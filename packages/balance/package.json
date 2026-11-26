@@ -1,0 +1,7 @@
+{
+  "name": "@tidefront/balance",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": { "./v1": "./v1/balance.json" }
+}
