@@ -78,6 +78,13 @@
       "when": 1795727664243,
       "tag": "0010_marketnews",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795729107040,
+      "tag": "0011_bug_report",
+      "breakpoints": true
     }
   ]
 }

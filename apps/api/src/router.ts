@@ -38,6 +38,7 @@ import { worldEventsRouter } from "./routers/world-events.ts";
 import { researchRouter } from "./routers/research.ts";
 import { guideRouter } from "./routers/guide.ts";
 import { espionageRouter } from "./routers/espionage.ts";
+import { bugReportRouter } from "./routers/bug-report.ts";
 
 export type { Ctx };
 
@@ -178,6 +179,7 @@ export const appRouter = t.router({
   research: researchRouter,
   guide: guideRouter,
   espionage: espionageRouter,
+  bugReport: bugReportRouter,
 });
 
 export type AppRouter = typeof appRouter;

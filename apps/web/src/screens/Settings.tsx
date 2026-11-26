@@ -10,6 +10,7 @@ import { useBackLayer } from "../lib/back.ts";
 import { Switch } from "../components/Switch.tsx";
 import { InvitePanel } from "../components/Invite.tsx";
 import { SummaryCard } from "../components/MorningSummary.tsx";
+import { requestBugReport } from "../lib/bug-log.ts";
 
 const field = "w-full h-12 rounded-lg field px-3 mb-3";
 
@@ -224,6 +225,10 @@ export function SettingsScreen({ onClose, initialAdmin = false, onAdmin }: { onC
       <Card title="Freunde einladen"><InvitePanel playerName={me.data?.player?.name} /></Card>
       <SummaryCard />
       <PasswordCard />
+      <Card title="Fehler melden">
+        <p className="text-sm text-slate-300 mb-2">Schickt der Verwaltung einen Entwurf mit Screenshot der Spielansicht, Version, Gerät und Log. Du prüfst und ergänzt vor dem Senden.</p>
+        <Button kind="secondary" onClick={requestBugReport} className="w-full">Fehler melden</Button>
+      </Card>
       {isAdmin && (
         <Card title="Verwaltung">
           <p className="text-sm text-slate-300 mb-2">Einladungscodes, Einladungen der Spieler, Spieler, Passwort-Rücksetzcodes, E-Mail-Versand und Systemzustand.</p>

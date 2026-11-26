@@ -36,6 +36,14 @@ export interface OutgoingMail {
   html: string;
   text: string;
   headers?: Record<string, string>;
+  /** Anhänge (z. B. Log und Screenshot einer Fehlermeldung). */
+  attachments?: MailAttachment[];
+}
+
+export interface MailAttachment {
+  filename: string;
+  content: Buffer | string;
+  contentType: string;
 }
 
 export type MailSender = (cfg: SmtpConfig & { password: string }, mail: OutgoingMail) => Promise<void>;
@@ -66,6 +74,7 @@ const defaultSender: MailSender = async (cfg, mail) => {
     html: mail.html,
     text: mail.text,
     headers: mail.headers,
+    attachments: mail.attachments,
   });
 };
 
@@ -146,7 +155,12 @@ export async function mailReady(db: Db): Promise<boolean> {
 }
 
 /** Versand einer gerenderten Mail; Fehler werden protokolliert und als Zustand gespeichert. */
-export async function sendMail(engine: Engine, to: string, content: MailContent, opts: { force?: boolean } = {}): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function sendMail(
+  engine: Engine,
+  to: string,
+  content: MailContent,
+  opts: { force?: boolean; attachments?: MailAttachment[] } = {},
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const cfg = await readyConfig(engine.db, opts.force);
   if (!cfg) return { ok: false, error: secretAvailable() ? "E-Mail ist nicht eingerichtet oder abgeschaltet." : "APP_SECRET fehlt." };
   const r = renderMail(content);
@@ -156,7 +170,7 @@ export async function sendMail(engine: Engine, to: string, content: MailContent,
     headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
   }
   try {
-    await sender(cfg, { to, subject: r.subject, html: r.html, text: r.text, headers });
+    await sender(cfg, { to, subject: r.subject, html: r.html, text: r.text, headers, attachments: opts.attachments });
     await setSetting(engine.db, "mail_last_sent", new Date().toISOString());
     return { ok: true };
   } catch (err) {

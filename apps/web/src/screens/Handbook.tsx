@@ -10,6 +10,7 @@ import { Icon, IconTile } from "../icons.tsx";
 import { Button } from "../ui.tsx";
 import { SettingsScreen } from "./Settings.tsx";
 import { IntelChapter } from "../components/IntelChapter.tsx";
+import { requestBugReport } from "../lib/bug-log.ts";
 
 interface Chapter { id: string; icon: string; title: string; body: ReactNode }
 
@@ -279,6 +280,11 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
           <Button kind="secondary" onClick={onLogout}>Abmelden</Button>
         </div>
       </div>
+      <p className="text-sm text-ink2 mt-3 text-center">
+        Etwas stimmt nicht?{" "}
+        <button type="button" className="tap text-see underline underline-offset-4" onClick={requestBugReport}>Fehler melden</button>
+        <span className="block text-xs">mit Screenshot der Ansicht hinter dem Handbuch und Log</span>
+      </p>
       <VersionLine onOpen={() => setNews(true)} />
       <ChangelogSheet open={news} onClose={() => setNews(false)} />
     </div>

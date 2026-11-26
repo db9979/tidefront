@@ -1,4 +1,4 @@
-// Verwaltung (nur Admins; der Server prüft jede Anfrage): Systemzustand, Einladungscodes, Spieler, E-Mail-Versand,
+// Verwaltung (nur Admins; der Server prüft jede Anfrage): Systemzustand, Fehlermeldungen, Einladungscodes, Spieler, E-Mail-Versand,
 // Sicherungen und Statistik.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -9,6 +9,7 @@ import { AdminMail } from "./AdminMail.tsx";
 import { AdminInvites } from "./AdminInvites.tsx";
 import { AdminBackups } from "./AdminBackups.tsx";
 import { AdminStats } from "./AdminStats.tsx";
+import { AdminBugReports } from "./AdminBugReports.tsx";
 
 function when(v: string | Date | null | undefined): string {
   if (!v) return "–";
@@ -129,6 +130,8 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
           ))}
         </ul>
       </Card>
+
+      <AdminBugReports />
 
       <AdminInvites />
 
