@@ -2,6 +2,10 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.12.1 – 27.11.2026
+- **Ressourcen antippen**: Ein Tipp auf Stahl, Treibstoff, Elektronik oder Proviant in der Kopfleiste öffnet ein Infoblatt – Art und Verwendung, Bestand und Lager mit Füllstand, „voll in …“ bzw. „leer in …“, Produktion nach Quellen (Gebäude, Grundproduktion, Verbrauch durch Truppen oder Kraftwerk), Strommangel und Wirkungen wie Blockade oder Sabotage, Bunkerschutz, Börsenkurs und Wert des Bestands.
+- Truppen: Doppelte Zeile in der Missionsliste entfernt.
+
 ## 0.12.0 – 27.11.2026
 - **Admirale**: Ernenne bis zu drei Admirale (Truppen → Admirale). Sie führen einen Verband auf Mission oder als Hafenkommandant daheim die Verteidigung. Sechs Spezialisierungen (Angriff, Verteidigung, Logistik, Aufklärung, Beutemeister, U-Boot-Taktik), Erfahrung aus gewonnenen Kämpfen, Beförderung bis zum Admiral. Nach schweren Niederlagen entscheidet ein W20 über Verwundung, Gefangenschaft oder Tod.
 - **Sammelangriff**: Allianzmitglieder greifen gemeinsam an – alle Verbände kommen gleichzeitig an und kämpfen als eine Streitmacht. Die Beute wird nach Kampfbeitrag geteilt, höchstens so viel, wie der eigene Laderaum fasst. Eröffnen über die Missionsplanung, beitreten unter Allianz → Angriffe.

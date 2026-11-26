@@ -150,6 +150,8 @@ export async function baseView(engine: Engine, playerId: number) {
       resources: s.resources,
       capacity: storageCapacity(s, balance, mods),
       rates: rates.perHour,
+      /** Anteil der Gebäude an der Produktion (nach Strom und Modifikatoren), für das Ressourcen-Infoblatt. */
+      buildingRates: rates.buildingPerHour,
       power: { supply: rates.powerSupply, demand: rates.powerDemand, factor: rates.powerFactor },
       /** Stromnetz und Wetter am Hafen (v1.6): Augenblick, Kurve über 24 h, Mangelwarnung. */
       grid: gridView(s, nowMs, mods),
