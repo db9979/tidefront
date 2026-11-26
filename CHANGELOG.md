@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.14.1 – 27.11.2026
+- Vorbereitung für mehrere Häfen je Spieler (Heimathafen, Besitzprüfung je Hafen). Für dich ändert sich noch nichts.
+
 ## 0.14.0 – 27.11.2026
 - **Rohstofffelder einnehmen** (Welle 3, Teil 1): Auf See liegen Ölfelder (Treibstoff), Erzbuchten (Stahl), Fischgründe (Proviant) und Elektronik-Wracks – in drei Größen, bevorzugt zwischen den Häfen. Neutrale Felder bewacht das Kartell.
 - **Besetzen**: Aufklären, mit bewaffneten Schiffen besetzen, die Wache schlagen. Eine Besatzung bleibt vor Ort (belegt einen Missionsplatz, kostet Proviant) und verteidigt das Feld. Alle 4 Stunden fährt der Ertrag als Konvoi zum Hafen – Kriegsgegner und Kartell können ihn abfangen, eine Blockade hält ihn zurück.
