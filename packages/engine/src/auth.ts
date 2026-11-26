@@ -6,6 +6,7 @@ import { market as marketCore } from "@tidefront/game-core";
 import { tables, type Db } from "@tidefront/db";
 import { marketBalance, GameError, SESSION_DAYS } from "./context.ts";
 import { grantAdminOnRegister } from "./account.ts";
+import { claimPersonalInvite, markInviteAccepted } from "./invite.ts";
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number) => Promise<Buffer>;
 
@@ -33,7 +34,8 @@ export async function createSession(db: Db, playerId: number): Promise<string> {
   return token;
 }
 
-/** Registrierung: Einladungscode wird im selben Commit verbraucht. Codes: invite_invalid, name_taken. */
+/** Registrierung: Einladungscode wird im selben Commit verbraucht. Codes: invite_invalid, name_taken.
+ * Den Einladenden einer persönlichen Einladung benachrichtigt danach notifyInviter (invite.ts). */
 export async function register(db: Db, input: { inviteCode: string; name: string; password: string }) {
   const nowMs = Date.now();
   const playerId = await db.transaction(async (tx) => {
@@ -47,6 +49,8 @@ export async function register(db: Db, input: { inviteCode: string; name: string
       ))
       .returning({ code: tables.inviteCode.code });
     if (used.length === 0) throw new GameError("invite_invalid");
+    // Persönliche Einladung (Freunde einladen): muss noch gelten; wird nach dem Anlegen als angenommen markiert.
+    const personalInvite = await claimPersonalInvite(tx, used[0].code, nowMs);
     const [taken] = await tx
       .select({ id: tables.player.id })
       .from(tables.player)
@@ -59,6 +63,7 @@ export async function register(db: Db, input: { inviteCode: string; name: string
       .values({ name: input.name, passHash: await hashPassword(input.password), trader: rest })
       .returning({ id: tables.player.id });
     await grantAdminOnRegister(tx, p.id, input.name);
+    if (personalInvite !== null) await markInviteAccepted(tx, personalInvite, p.id, nowMs);
     return p.id;
   });
   return { playerId, token: await createSession(db, playerId) };

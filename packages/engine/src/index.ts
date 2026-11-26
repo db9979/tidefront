@@ -16,4 +16,6 @@ export * from "./mail.ts";
 export * from "./mail-templates.ts";
 export * from "./notices.ts";
 export * from "./settings.ts";
+export * from "./invite.ts";
+export { inviteMail } from "./invite-mail.ts";
 export { scheduleAttackWarning } from "./event-notices.ts";

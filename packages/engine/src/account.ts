@@ -165,8 +165,13 @@ export async function listPlayers(db: Db) {
     .orderBy(asc(tables.player.id));
 }
 
+/** Allgemeine Codes; persönliche Einladungen von Spielern (player_invite) stehen in einer eigenen Liste. */
 export async function listInvites(db: Db) {
-  return db.select().from(tables.inviteCode).orderBy(desc(tables.inviteCode.createdAt));
+  return db
+    .select()
+    .from(tables.inviteCode)
+    .where(sql`not exists (select 1 from player_invite pi where pi.code = ${tables.inviteCode.code})`)
+    .orderBy(desc(tables.inviteCode.createdAt));
 }
 
 /** Code frei oder zufällig. Codes: invite_exists, bad_code. */

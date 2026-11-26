@@ -68,6 +68,31 @@ Einladungscodes anlegen und deaktivieren, Spielerliste mit letzter Aktivität, P
 24 Stunden), E-Mail-Versand und Systemzustand. Spieler ändern ihr Passwort in den Einstellungen; „Passwort vergessen?“
 auf dem Anmeldebildschirm nimmt den Rücksetzcode oder schickt mit bestätigter Adresse einen Link per E-Mail.
 
+### Einladungen (Freunde einladen)
+
+Neben den allgemeinen Codes aus `INVITE_CODES` und der Verwaltung kann jeder Spieler unter Einstellungen →
+„Freunde einladen“ (auch aus Meldungen → Rangliste) Freunde einladen:
+
+- **Per E-Mail** (braucht eingerichteten SMTP-Versand): Name und persönliche Nachricht (bis 500 Zeichen) optional.
+  Die Mail im Stil Seekarte enthält Einladenden, kurze Spielbeschreibung, Knopf „Einladung annehmen“
+  (`PUBLIC_URL/?invite=CODE`), den Code als Text und die Gültigkeit. Ihr Fußlink „Keine Einladungen mehr an diese
+  Adresse“ (`/api/mail/invite-block`, Bestätigung per Knopf, auch Ein-Klick aus dem Mailprogramm) sperrt die Adresse
+  dauerhaft; gespeichert wird nur ein SHA-256 der Adresse.
+- **Als Link** („Link teilen“, immer möglich, auch ohne SMTP): erzeugt ebenso einen persönlichen Code; geteilt über
+  das Teilen-Menü des Geräts oder kopiert.
+
+Jeder persönliche Code gilt einmal und 14 Tage. Der Anmeldebildschirm öffnet mit `?invite=` direkt „Registrieren“ mit
+eingetragenem Code und „Eingeladen von …“ (öffentliche, ratenbegrenzte Abfrage, liefert nur den Namen). Nach der
+Registrierung bekommt der Einladende eine Systemnachricht sowie Push/E-Mail (Art „Kampfberichte“). Unter
+„Meine Einladungen“: Status (versandt, Link offen, angenommen von …, abgelaufen, zurückgezogen), Zurückziehen,
+erneut senden frühestens 24 Stunden nach dem letzten Versand (höchstens dreimal, verlängert die Gültigkeit).
+
+Grenzen gegen Missbrauch: je Spieler höchstens 5 offene und 10 neue Einladungen in 7 Tagen (Verwaltung →
+„Freunde einladen“, gespeichert in `server_setting` unter `invite_settings`); dieselbe Adresse höchstens einmal je
+7 Tage; Adressen mit bestätigter `player_email` und gesperrte Adressen werden abgelehnt; zusätzlich 10 Versuche je
+Stunde und Spieler. Dort lässt sich das Einladen für Nicht-Admins ganz abschalten, und die Verwaltung sieht alle
+persönlichen Einladungen mit Einladendem. Eine Belohnung für Einladungen gibt es bewusst nicht.
+
 ### Benachrichtigungen
 
 - **Push** (Web Push mit VAPID): `migrate` erzeugt die Schlüssel beim ersten Start und legt sie in `server_setting` ab;

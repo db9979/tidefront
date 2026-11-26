@@ -50,6 +50,8 @@ export interface MailContent {
   button?: { label: string; url: string };
   /** Abmeldelink in der Fußzeile; fehlt er, steht dort nur der Hinweis. */
   unsubscribeUrl?: string;
+  /** Beschriftung des Links in der Fußzeile; Vorgabe „E-Mail-Benachrichtigungen abbestellen“. */
+  unsubscribeLabel?: string;
   footerNote?: string;
 }
 
@@ -85,7 +87,7 @@ ${(c.items ?? []).map((s) => `<tr><td width="18" valign="top" class="tf-seal" st
     : "";
   const footer = [
     c.footerNote ? esc(c.footerNote) : "Du erhältst diese Nachricht, weil du E-Mail-Benachrichtigungen für TIDEFRONT eingeschaltet hast.",
-    c.unsubscribeUrl ? `<a href="${esc(c.unsubscribeUrl)}" class="tf-muted" style="color:${t.muted};text-decoration:underline;">E-Mail-Benachrichtigungen abbestellen</a>` : "",
+    c.unsubscribeUrl ? `<a href="${esc(c.unsubscribeUrl)}" class="tf-muted" style="color:${t.muted};text-decoration:underline;">${esc(c.unsubscribeLabel ?? "E-Mail-Benachrichtigungen abbestellen")}</a>` : "",
   ].filter(Boolean).join("<br>");
 
   const html = `<!DOCTYPE html>
@@ -138,7 +140,7 @@ ${button}
     ...(c.button ? [`${c.button.label}: ${c.button.url}`, ""] : []),
     "--",
     c.footerNote ?? "Du erhältst diese Nachricht, weil du E-Mail-Benachrichtigungen für TIDEFRONT eingeschaltet hast.",
-    ...(c.unsubscribeUrl ? [`Abbestellen: ${c.unsubscribeUrl}`] : []),
+    ...(c.unsubscribeUrl ? [`${c.unsubscribeLabel ?? "Abbestellen"}: ${c.unsubscribeUrl}`] : []),
   ].join("\n");
 
   return { subject, html, text };

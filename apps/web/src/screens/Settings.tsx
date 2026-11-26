@@ -1,4 +1,4 @@
-// Einstellungen: Benachrichtigungen (Push, E-Mail), Passwort, Zugang zur Verwaltung.
+// Einstellungen: Benachrichtigungen (Push, E-Mail), Freunde einladen, Passwort, Zugang zur Verwaltung.
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
@@ -7,6 +7,7 @@ import { currentEndpoint, disablePush, enablePush, isIos, isStandalone, KIND_LAB
 import { Badge, Button, Card, ErrorLine } from "../ui.tsx";
 import { AdminScreen } from "./Admin.tsx";
 import { Switch } from "../components/Switch.tsx";
+import { InvitePanel } from "../components/Invite.tsx";
 
 const field = "w-full h-12 rounded-lg field px-3 mb-3";
 
@@ -212,10 +213,11 @@ export function SettingsScreen({ onClose, initialAdmin = false }: { onClose: () 
       </div>
       <PushCard isAdmin={isAdmin} />
       <EmailCard isAdmin={isAdmin} />
+      <Card title="Freunde einladen"><InvitePanel playerName={me.data?.player?.name} /></Card>
       <PasswordCard />
       {isAdmin && (
         <Card title="Verwaltung">
-          <p className="text-sm text-slate-300 mb-2">Einladungscodes, Spieler, Passwort-Rücksetzcodes, E-Mail-Versand und Systemzustand.</p>
+          <p className="text-sm text-slate-300 mb-2">Einladungscodes, Einladungen der Spieler, Spieler, Passwort-Rücksetzcodes, E-Mail-Versand und Systemzustand.</p>
           <Button kind="secondary" onClick={() => setAdmin(true)} className="w-full">Verwaltung öffnen</Button>
         </Card>
       )}
