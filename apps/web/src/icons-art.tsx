@@ -133,7 +133,10 @@ export const ART: Record<string, ReactNode> = {
   sonne: (<><circle cx="32" cy="32" r="12" {...h} /><path d="M32 6 V13 M32 51 V58 M6 32 H13 M51 32 H58 M14 14 L19 19 M45 45 L50 50 M50 14 L45 19 M19 45 L14 50" {...ln} strokeWidth={2.6} /></>),
   wolke: (<path d="M15 47 Q4 47 6 38 Q8 30 17 32 Q19 19 32 20 Q45 21 46 31 Q58 30 59 39 Q59 47 49 47 Z" {...h} />),
   nebel: (<path d="M6 20 H40 M46 20 H58 M6 30 H22 M28 30 H58 M6 40 H48 M54 40 H58 M12 50 H34 M40 50 H52" {...ln} strokeWidth={2.8} strokeDasharray="0" />),
-  sturm: (<><path d="M15 38 Q4 38 6 29 Q8 21 17 23 Q19 10 32 11 Q45 12 46 22 Q58 21 59 30 Q59 38 49 38 Z" {...h} /><path d="M33 34 L24 48 H31 L27 60 L40 44 H33 Z" {...red} /></>),
+  // Sturm: Signalmast mit zwei Sturmwimpeln über bewegter See (Sturmwarnung), statt Blitz.
+  sturm: (<><path d="M22 6 V54" {...ln} strokeWidth={2.8} /><path d="M23 8 L52 15 L23 22 Z M23 26 L52 33 L23 40 Z" {...red} /><path d="M4 50 q7 -6 14 0 t14 0 t14 0 t14 0 M4 59 q7 -6 14 0 t14 0 t14 0 t14 0" fill="none" stroke={SEE} strokeWidth={2.2} strokeLinecap="round" /></>),
+  // Klare Nacht: Mondsichel mit Schraffur und zwei Sternen.
+  mond: (<><path d="M38 8 A24 24 0 1 0 56 44 A19 19 0 1 1 38 8 Z" {...h} /><path d="M50 10 L52 15 L57 16 L52 18 L50 23 L48 18 L43 16 L48 15 Z M12 14 L13 17 L16 18 L13 19 L12 22 L11 19 L8 18 L11 17 Z" fill={INK} /></>),
 
   // ---------------------------------------------------------------- Navigation (Linie in Textfarbe)
   "nav-basis": nav("M32 17 V56 M22 26 H42 M10 38 Q14 56 32 56 Q50 56 54 38", <circle cx="32" cy="12" r="5" fill="none" stroke="currentColor" strokeWidth={3.4} />),

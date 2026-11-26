@@ -410,7 +410,7 @@ der Angreifer 50 % gewinnt; links ohne Würfel wie v1.3, rechts mit):
    (`Mission.weather`); Rückweg = Hinweg wie bisher. Flugzeuge werden nicht gebremst; das Startverbot gilt nur ohne Schiffe.
 10. **Kampf:** `resolveBattle(…, weather)` als benannter Parameter statt Modifikator, weil Wolken nur den Luftschlag der
     Bomber treffen sollen (über Modifikatoren nicht von Jägern zu trennen). Weltereignis-Kämpfe (Großflotte, Ring,
-    Schatzschiff) rechnen noch ohne Wetter.
+    Schatzschiff, Hafenangriffe der Großflotte) rechnen ebenfalls mit dem Wetter am Kampfort.
 11. **Nebel und Aufklärung:** Rundung statt Spannen, damit gespeicherte Lagebilder (Kampfvorschau) dieselbe Form behalten;
     das Feld `uncertain` kennzeichnet sie.
 
@@ -430,11 +430,38 @@ der Angreifer 50 % gewinnt; links ohne Würfel wie v1.3, rechts mit):
 
 ### F2. Offene Punkte
 
-- Weltereignis-Kämpfe ohne Wetter; Kartell-Überfälle mit Wetter am Hafen (Kartell hat keine Flugzeuge, wirkt nur auf die
-  des Verteidigers).
+- Kartell-Überfälle mit Wetter am Hafen (Kartell hat keine Flugzeuge, wirkt nur auf die des Verteidigers).
+- Fronten (Kalt-/Warmfront) sind auf der Wetterkarte nicht gezeichnet; der Wolkenschirm ist nur nach Osten versetzt.
 - Erkannte Angriffe werden mit der aktuellen Vorwarnzeit geprüft: Fällt der Strom des Radars nach der Erkennung aus,
   verschwindet die Anzeige wieder, bis der Angriff in die verkürzte Vorwarnzeit kommt.
 - Tagesbefehle zu Wetter und Strom sind nicht ergänzt.
+
+### F3. Wettermodell v1.9 (Gutachten Entwickler und Meteorologe)
+
+- **Modell:** Tiefs ziehen nach Nordost (vLat 0,02–0,08°/h, Entstehung 44–62° N / 62–30° W), Wind im Ring um einen Radius
+  und an der Südflanke am stärksten, im Winter × 1, im Sommer × 0,5; Hochs 5–15 km/h, Lebensdauer `highLifeHours` (170 h,
+  ± 10 %, neuer optionaler Wert; fehlt er, wie Tiefs). Ein System alle 18 h statt 12 h (gleichzeitig ≈ 4 Tiefs, 3 Hochs;
+  T/H-Schilder erst ab Stärke 0,35). Klimawind entschärft, regionale Winde (Mistral, Meltemi, Gibraltar, Bora), Nebel
+  jahreszeitlich und nie bei Sturm, Wolkenschirm nach Osten versetzt, Süden nicht mehr fast wolkenlos. Werte in
+  `docs/REGELN-WETTER.md` (Klimatabelle). Die Koeffizienten stehen im Code (`climateAt`), nicht in der Balance: Sie sind
+  Modellform, keine Stellschrauben; die Regelwirkungen (Sturm, Bremsung, Strafen) bleiben in `weather`.
+- **Beaufort** einheitlich `round(Wind · 11,25)` in `game-core` (`beaufort`, `BEAUFORT_WORDS`): Sturm 0,8 = 9 Bft.
+- **Anzeige nach Regeln:** Alle Schwellen der Oberfläche aus `balance.weather` (Nebel ab `fogScoutFrom`/`fogScoutHeavy`,
+  Sturm ab `stormFrom`); Feldinfo zeigt Flugzeuge −X % (`airStormPenalty · Sturmanteil`), Luftschlag −X %
+  (`cloudStrikePenalty · Wolken`, linear), Startverbot und Radar −X % nur am eigenen Hafen. Planung zeigt das Wetter am
+  Ziel zur Ankunft (`RouteWeather.atTarget`, nur in der Vorschau, nicht im gespeicherten Plan).
+- **Stromkurve** beginnt zur nächsten vollen Stunde; die Sturmwarnung steht auf 5 Minuten genau (`stormWarning`) statt
+  auf dem Beginn des Stundenbalkens. Eine Mangelwarnung „Jetzt“ kommt aus dem Augenblickswert.
+- **Balance v1.9:** Mit dem neuen Klima sanken die Jahreserträge (Windpark Nordsee 44 → 39, Solarfeld Mittelmeer 35 → 29);
+  `windPowerPerLevel` 80 → 90 und `solarPowerPerLevel` 150 → 180 stellen sie wieder her (Nordsee 44, Mittelmeer 35).
+  Simulation (Bot 45 % Rüstung, Start 1. März): Windpark + Speicher Nordsee −0,3 % / −5,3 % (Tag 7/28; vorher −0,3/−3,1),
+  Kraftwerk + Solarfeld Mittelmeer +2,5 % / +1,4 % (unverändert), Mix Biskaya −2,0 % / −2,1 %; Wind im Mittelmeer nun
+  −24 % / −42 % (vorher −40/−58), weiter kein Ersatz für das Kraftwerk. Sturmzuschlag Nordsee → Norwegen Ø +4,4 % (vorher
+  +9,3 %), Startverbot Nordsee 6 %, Irland 6,5 % (vorher 11 %), Mittelmeer 0 %.
+- **Karte:** Isobaren per Marching Squares über das Druckfeld `p = Σ −Vorzeichen · Stärke · e^(−q)` (6 Stufen), Windrichtung
+  in km gerechnet und in die Projektion umgesetzt; Übersicht mit Haarlinien einmal je 15 min, Feldzeichen nur bei
+  Zoomsprung × 1,5 neu gestrichen, T/H aus einem Vorrat.
+- **Serverzeit:** Der Versatz wird nur bei erfolgreichem Abruf und nur mit neueren Daten übernommen (`trpc.ts`).
 
 ## G. Spionage, Kriegsglück und Kartell gegen Forschung (v1.7)
 

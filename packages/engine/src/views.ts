@@ -45,7 +45,7 @@ import { withLuckFactors } from "./battle-stats.ts";
 import { researchView } from "./research.ts";
 import { diplomacyBlock, relationsOf } from "./alliance-core.ts";
 import { intelView } from "./espionage.ts";
-import { gridView, missionWeather } from "./weather.ts";
+import { gridView, missionWeather, withArrival } from "./weather.ts";
 import { detectIncoming } from "./radar.ts";
 import { admiralPreviewMods } from "./admirals-core.ts"; // Admirale
 // Allianz-Ops: Stationierung (Vorschau, Gäste im Hafen) und gemeinsame Berichte der Sammelangriffe
@@ -297,7 +297,7 @@ export async function missionPreview(
     arriveAtMs: r.mission.arriveAtMs,
     returnAtMs: r.mission.returnAtMs,
     target: { kind: target.kind, own: target.playerId === playerId },
-    weather,
+    weather: withArrival(weather, input.col, input.row, r.mission.arriveAtMs),
     weatherFactor: r.mission.weather?.shipFactor ?? 1,
   };
 }

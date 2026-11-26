@@ -37,12 +37,43 @@ const GROUPS: { title: string; items: Item[] }[] = [
   {
     title: "Wetter (Knopf „Wetter an/aus“)",
     items: [
-      { icon: <Hatch d="M2 14 L14 2 M7 16 L16 7 M0 9 L9 0" color="#18273a" />, text: "Wolken (Schraffur)" },
-      { icon: <Hatch d="M2 14 L9 4 L16 14 M6 14 L13 4" color="#a8331f" />, text: "Sturm: Schiffe langsamer, Flugzeuge bleiben am Boden" },
-      { icon: <Hatch d="M1 6 H4 M7 6 H10 M13 6 H16 M1 11 H4 M7 11 H10 M13 11 H16" color="#2d5b7a" />, text: "Nebel: Radar und Aufklärung schlechter" },
+      { icon: <PressureIcon />, text: "Isobaren um Tief (T: Wind, Wolken, Sturm) und Hoch (H: ruhig, klar)" },
+      { icon: <VaneIcon pennant={false} />, text: "Windfahne: Pfeil zeigt, wohin der Wind weht; je Strich stärker, zwei Striche ab 6 Bft (Schiffe langsamer)" },
+      { icon: <VaneIcon pennant />, text: "Wimpel an der Windfahne: Sturm ab 9 Bft" },
+      { icon: <StormFlag />, text: "Sturmwimpel: Schiffe langsamer, Flugzeuge schwächer, am eigenen Hafen bleiben sie am Boden; rötlicher Ton: Schiffe gebremst" },
+      { icon: <Hatch d="M2 14 L14 2 M7 16 L16 7 M0 9 L9 0" color="#8c96a3" />, text: "Wolken, Striche darunter: Regen; Wolken schwächen den Luftschlag" },
+      { icon: <Hatch d="M1 6 H4 M7 6 H10 M13 6 H16 M1 11 H4 M7 11 H10 M13 11 H16" color="#2d5b7a" />, text: "Nebel: Aufklärung ungenau, Radar am eigenen Hafen kürzer" },
     ],
   },
 ];
+
+function PressureIcon() {
+  return (
+    <svg width="34" height="18" viewBox="0 0 34 18" aria-hidden="true">
+      <ellipse cx="17" cy="9" rx="15" ry="7.5" fill="none" stroke="#18273a" strokeOpacity={0.5} strokeWidth={1} />
+      <ellipse cx="17" cy="9" rx="9" ry="4.5" fill="none" stroke="#18273a" strokeOpacity={0.5} strokeWidth={1} />
+      <text x="17" y="12.5" textAnchor="middle" fontSize="10" fontWeight="700" fill="#a8331f" fontFamily="Fraunces, Georgia, serif">T</text>
+    </svg>
+  );
+}
+
+function VaneIcon({ pennant }: { pennant: boolean }) {
+  return (
+    <svg width="30" height="18" viewBox="0 0 30 18" aria-hidden="true">
+      <path d="M3 12 H27 M22 8.5 L27 12 L22 15.5" fill="none" stroke="#18273a" strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" />
+      {pennant ? <path d="M3 12 L5 3 L8 12 Z" fill="#18273a" /> : <path d="M4 12 L6 4 M8 12 L10 4 M12 12 L13 8" fill="none" stroke="#18273a" strokeWidth={1.3} strokeLinecap="round" />}
+    </svg>
+  );
+}
+
+function StormFlag() {
+  return (
+    <svg width="22" height="18" viewBox="0 0 22 18" aria-hidden="true">
+      <path d="M6 1 V17" stroke="#18273a" strokeWidth={1.3} />
+      <path d="M6 1.5 L17 4 L6 6.5 Z M6 8.5 L17 11 L6 13.5 Z" fill="#a8331f" />
+    </svg>
+  );
+}
 
 function Hatch({ d, color }: { d: string; color: string }) {
   return <svg width="22" height="18" viewBox="0 0 17 16" aria-hidden="true"><path d={d} stroke={color} strokeWidth={1.4} fill="none" strokeLinecap="round" /></svg>;

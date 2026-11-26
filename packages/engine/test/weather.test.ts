@@ -89,6 +89,10 @@ test("Versorgung: Strom nach Quelle und Rang, Kurve über 24 h, Warnung bei Mang
   assert.equal(g.now.supply.kraftwerk, 60);
   assert.equal(g.now.served.radar, 1);
   for (const h of g.curve) assert.ok(h.wind >= 0 && h.wind <= 1 && h.daylight >= 0 && h.daylight <= 1);
+  // Kurve beginnt zur nächsten vollen Stunde (Beschriftung je Stunde stimmt); Sturmwarnung auf 5 Minuten genau.
+  assert.equal(g.curve[0].atMs % 3600000, 0);
+  assert.ok(g.curve[0].atMs - Date.now() <= 3600000 + 60000);
+  assert.ok(g.stormWarning === null || g.stormWarning % 300000 === 0 || g.stormWarning <= Date.now() + 60000);
   // Zu wenig Strom: Radar 20 (Bedarf 100) > Kraftwerk 60.
   await patchBase(p.baseId, (s) => { s.buildings = { ...s.buildings, windpark: 0, speicherwerk: 0, radarstation: 20, stahlwerk: 0 }; s.powerStored = 0; });
   const v = (await baseView(engine, p.playerId)).base!;
@@ -120,14 +124,18 @@ test("Missionsvorschau und Plan tragen das Wetter der Route", async () => {
   const nest = (await db.select().from(tables.nest))[0];
   const prev = await missionPreview(engine, p.playerId, { type: "aufklaerung", units: { korvette: 1 }, col: nest.col, row: nest.row });
   assert.equal(prev.ok, true, JSON.stringify(prev));
-  const pv = prev as { weather?: { shipFactor: number; avgWind: number }; weatherFactor: number };
+  const pv = prev as { weather?: { shipFactor: number; avgWind: number; atTarget?: { atMs: number; fog: number } }; weatherFactor: number; arriveAtMs: number };
   assert.ok(pv.weather && pv.weather.avgWind >= 0 && pv.weather.avgWind <= 1);
+  // Wetter am Ziel zur Ankunft (nur Anzeige): deterministisch aus Ziel und Ankunftszeit.
+  assert.equal(pv.weather.atTarget?.atMs, pv.arriveAtMs);
+  assert.ok(pv.weather.atTarget!.fog >= 0 && pv.weather.atTarget!.fog <= 1);
   assert.ok(pv.weatherFactor >= 1 && pv.weatherFactor <= 1 + balance.weather!.shipSlowMax);
   const m = await launchMission(engine, p.playerId, key(), { type: "aufklaerung", units: { korvette: 1 }, col: nest.col, row: nest.row });
   assert.equal(m.ok, true, JSON.stringify(m));
   const [row] = await db.select().from(tables.mission).where(eq(tables.mission.id, (m as { missionId: number }).missionId));
   const plan = row.plan as Mission;
   assert.ok(plan.weather && plan.weather.shipFactor >= 1);
+  assert.equal((plan.weather as { atTarget?: unknown }).atTarget, undefined);
 });
 
 test("Nebel kürzt das Radar nur mit Radarstation (Quelle Wetter)", () => {

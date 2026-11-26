@@ -210,13 +210,13 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
                 <div>Treibstoff {fmtNum(p.fuelCost)} (hin und zurück)</div>
                 <div>Ankunft {fmtTime(p.arriveAtMs)} · zurück {fmtTime(p.returnAtMs)}</div>
                 {"intercept" in p && p.intercept && <div>Abfangpunkt Feld {p.intercept.col}/{p.intercept.row}</div>}
-                {"weather" in p && p.weather && <RouteWeather w={p.weather} factor={"weatherFactor" in p ? p.weatherFactor : 1} />}
+                {"weather" in p && p.weather && balance.weather && <RouteWeather w={p.weather} wb={balance.weather} factor={"weatherFactor" in p ? p.weatherFactor : 1} />}
               </>
             ) : (
               <div className="text-red-300">
                 {errorText(p.code)}
                 {p.code === "target_protected" && tInfo?.base?.protection ? ` Grund: ${label(tInfo.base.protection)}. Ein Überfall ist erst danach möglich.` : ""}
-                {"weather" in p && p.weather && <RouteWeather w={p.weather} />}
+                {"weather" in p && p.weather && balance.weather && <RouteWeather w={p.weather} wb={balance.weather} />}
               </div>
             )}
           </div>

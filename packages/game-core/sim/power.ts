@@ -75,17 +75,25 @@ function weatherTable(balance: Balance): void {
   const wind = balance.buildings.windpark;
   const sun = balance.buildings.solarfeld;
   console.log("\n  Wetter im Jahresmittel (alle 3 h) und Ertrag je Stufe (Strom; Kraftwerk: 60 je Stufe für 3 Treibstoff/h):");
-  console.log("                  Wind  Wolken  Nebel  Sonne  Sturm %  Windpark  Solarfeld");
+  console.log("  (Sturm Winter: Dez–Feb; Nebel %: Anteil mit Nebel ab fogScoutFrom, Aufklärung unsicher; Sommer: Jun–Aug)");
+  console.log("                  Wind  Wolken  Nebel  Sonne  Sturm %  Winter %  Nebel %  Sommer %  Windpark  Solarfeld");
   for (const [name, p] of PLACES) {
-    let w = 0, c = 0, f = 0, s = 0, st = 0, wp = 0, n = 0;
+    let w = 0, c = 0, f = 0, s = 0, st = 0, wp = 0, n = 0, stW = 0, nW = 0, fg = 0, fgS = 0, nS = 0;
     for (let h = 0; h < 365 * 24; h += 3) {
-      const x = weatherAt(p, Date.UTC(2026, 0, 1) + h * HOUR, wb);
+      const t = Date.UTC(2026, 0, 1) + h * HOUR;
+      const x = weatherAt(p, t, wb);
       w += x.wind; c += x.clouds; f += x.fog; s += sunshine(x, sun.cloudLoss ?? 0); st += x.storm ? 1 : 0; n++;
       wp += x.wind <= (wind.stormCutoff ?? 1) ? x.wind : 0;
+      const m = new Date(t).getUTCMonth();
+      const foggy = x.fog >= wb.fogScoutFrom ? 1 : 0;
+      fg += foggy;
+      if (m <= 1 || m === 11) { nW++; stW += x.storm ? 1 : 0; }
+      if (m >= 5 && m <= 7) { nS++; fgS += foggy; }
     }
     const f2 = (v: number) => pad((v / n).toFixed(2), 5);
+    const p1 = (a: number, b: number, k: number) => pad(((100 * a) / b).toFixed(1), k);
     console.log(
-      `  ${name.padEnd(14)}${f2(w)}  ${f2(c)}  ${f2(f)}  ${f2(s)}  ${pad(((100 * st) / n).toFixed(1), 6)}  ${pad(((wind.windPowerPerLevel ?? 0) * wp / n).toFixed(1), 8)}  ${pad(((sun.solarPowerPerLevel ?? 0) * s / n).toFixed(1), 9)}`,
+      `  ${name.padEnd(14)}${f2(w)}  ${f2(c)}  ${f2(f)}  ${f2(s)}  ${p1(st, n, 6)}  ${p1(stW, nW, 8)}  ${p1(fg, n, 7)}  ${p1(fgS, nS, 8)}  ${pad(((wind.windPowerPerLevel ?? 0) * wp / n).toFixed(1), 8)}  ${pad(((sun.solarPowerPerLevel ?? 0) * s / n).toFixed(1), 9)}`,
     );
   }
 }
@@ -111,7 +119,7 @@ function routeTable(balance: Balance): void {
 
 export function runPowerSim(balance: Balance): void {
   if (!balance.weather) return;
-  console.log("\nWetter und Strom (v1.6)");
+  console.log("\nWetter und Strom (v1.6, Wettermodell v1.9)");
   botTable(balance);
   sourceTable(balance);
   weatherTable(balance);
