@@ -286,3 +286,45 @@ export const mailDigest = pgTable("mail_digest", {
   createdAt: ts("created_at").notNull().defaultNow(),
   sentAt: ts("sent_at"),
 }, (t) => [index("mail_digest_open").on(t.sentAt, t.playerId)]);
+
+// ---------------------------------------------------------------- Freunde einladen (persönliche Einladungen)
+
+/**
+ * Persönliche Einladung eines Spielers (per E-Mail oder als geteilter Link). Der Code selbst liegt als
+ * einmaliger Eintrag in invite_code (max_uses 1); Zurückziehen setzt dort zusätzlich disabled_at.
+ */
+export const playerInvite = pgTable("player_invite", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().references(() => inviteCode.code, { onDelete: "cascade" }),
+  inviterId: integer("inviter_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  /** email | link */
+  channel: text("channel").notNull(),
+  /** Adresse des Freundes (nur bei channel email). */
+  email: text("email"),
+  /** Name des Freundes (optional, Anrede und Übersicht). */
+  friendName: text("friend_name"),
+  /** Persönliche Nachricht (höchstens 500 Zeichen). */
+  message: text("message"),
+  /** Token für „Keine Einladungen mehr an diese Adresse“ (nur bei channel email). */
+  blockToken: text("block_token"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  expiresAt: ts("expires_at").notNull(),
+  /** Letzter Versand der Mail („erneut senden“ frühestens 24 h danach). */
+  sentAt: ts("sent_at"),
+  sendCount: integer("send_count").notNull().default(0),
+  revokedAt: ts("revoked_at"),
+  acceptedAt: ts("accepted_at"),
+  acceptedPlayerId: integer("accepted_player_id").references(() => player.id, { onDelete: "set null" }),
+}, (t) => [
+  uniqueIndex("player_invite_code").on(t.code),
+  uniqueIndex("player_invite_block").on(t.blockToken),
+  index("player_invite_inviter").on(t.inviterId, t.createdAt),
+  index("player_invite_email").on(sql`lower(${t.email})`),
+  index("player_invite_accepted").on(t.acceptedPlayerId),
+]);
+
+/** Adressen, die keine Einladungen mehr wollen; nur als SHA-256 der kleingeschriebenen Adresse. */
+export const inviteBlock = pgTable("invite_block", {
+  emailHash: text("email_hash").primaryKey(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});

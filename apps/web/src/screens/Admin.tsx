@@ -5,6 +5,7 @@ import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
 import { errorText } from "../lib/names.ts";
 import { Badge, Button, Card, ErrorLine, Loading, StatTable, Stepper } from "../ui.tsx";
 import { AdminMail } from "./AdminMail.tsx";
+import { AdminInvites } from "./AdminInvites.tsx";
 
 function when(v: string | Date | null | undefined): string {
   if (!v) return "–";
@@ -105,6 +106,8 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
           ))}
         </ul>
       </Card>
+
+      <AdminInvites />
 
       <Card title={`Spieler (${players.length})`}>
         {reset && (

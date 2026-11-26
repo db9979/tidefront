@@ -25,6 +25,7 @@ import {
 import { seasonRouter, socialRouter } from "./routers/social.ts";
 import { authed, t, wrap, type Ctx } from "./trpc.ts";
 import { accountRouter, adminRouter, authExtras, pushRouter } from "./routers/ops.ts";
+import { afterRegister, inviteRouter } from "./routers/invite.ts";
 
 export type { Ctx };
 
@@ -49,6 +50,7 @@ export const appRouter = t.router({
         return wrap(async () => {
           const r = await register(ctx.engine.db, input);
           ctx.setSession(r.token);
+          afterRegister(ctx.engine, r.playerId);
           return { ok: true as const };
         });
       }),
@@ -73,6 +75,7 @@ export const appRouter = t.router({
   push: pushRouter,
   account: accountRouter,
   admin: adminRouter,
+  invite: inviteRouter,
 
   world: t.router({
     map: authed.query(({ ctx }) => mapView(ctx.engine, ctx.player.id)),

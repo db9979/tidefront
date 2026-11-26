@@ -43,7 +43,8 @@ Auslegungen stehen in `packages/game-core/ENTSCHEIDUNGEN.md` und `packages/game-
 - Börse: Startkredite 0; Bestände werden für die Börse abgerundet, der Stützpunkt behält Nachkommastellen. Lieferungen
   buchen bei Ankunft `delivery:<id>` an `player:<id>`. Der Worker prüft alle 10 Minuten das Journal gegen Kredite und offene
   Lieferungen (`audit_run`).
-- Einladungscodes kommen aus `INVITE_CODES` und werden bei jedem `migrate` ergänzt.
+- Einladungscodes kommen aus `INVITE_CODES` und werden bei jedem `migrate` ergänzt; dazu persönliche Einladungen der
+  Spieler (Abschnitt „Freunde einladen“).
 - Bauschlange: Jeder eingereihte Auftrag plant beim Einreihen sein eigenes `build_complete`. Der Handler schließt alle
   fälligen Aufträge ab und tut nichts, wenn der erste noch nicht fällig ist. Abbruch (`base.cancelUpgrade` mit
   `buildingId` und `targetLevel`, ohne Angabe der laufende Auftrag) plant für nachgerückte Aufträge neue Ereignisse;
@@ -81,6 +82,25 @@ Auslegungen stehen in `packages/game-core/ENTSCHEIDUNGEN.md` und `packages/game-
   Einladungscodes bleiben. Danach wird die nächste Saison angelegt und ihr Ende geplant; Meldung `season` an alle.
 - Oberfläche: Der Reiter „Meldungen“ der unteren Leiste hat oben drei Reiter Berichte | Nachrichten | Rangliste
   (mit Spielerübersicht und Ruhmeshalle). Ohne Stützpunkt landet der Spieler in der Hafenwahl, die den Saisonwechsel anzeigt.
+
+## Festlegungen: Freunde einladen
+
+- Tabellen `player_invite` (Einladung: Einladender, Kanal `email`/`link`, Adresse, Name, Nachricht, Sperr-Token,
+  Gültigkeit, Versand, zurückgezogen, angenommen von) und `invite_block` (SHA-256 gesperrter Adressen), Abschnitt am
+  Ende von `schema.ts`. Der Code selbst ist ein normaler Eintrag in `invite_code` mit `max_uses = 1`; Zurückziehen und
+  Sperren setzen dort zusätzlich `disabled_at`. Persönliche Codes erscheinen nicht in der Code-Liste der Verwaltung.
+- Logik in `packages/engine/src/invite.ts`, Mail in `invite-mail.ts` (über `renderMail`; `MailContent` hat dafür das
+  optionale Feld `unsubscribeLabel` bekommen). Router `apps/api/src/routers/invite.ts`, Sperrlink in `mail-links.ts`.
+- Registrierung (`auth.register`): nach dem Verbrauchen des Codes prüft `claimPersonalInvite` (Zeile gesperrt), ob eine
+  persönliche Einladung noch gilt (sonst `invite_invalid`), nach dem Anlegen markiert `markInviteAccepted` sie –
+  alles in derselben Transaktion. Danach benachrichtigt `notifyInviter` den Einladenden (Systemnachricht über
+  `message`, Push und E-Mail über `engine.push` mit der Art `report`).
+- Grenzen: `invite_settings` in `server_setting` (`enabled`, `maxOpen` 5, `maxWeek` 10); offen = nicht angenommen,
+  nicht zurückgezogen, nicht abgelaufen; Woche = in 7 Tagen angelegt (auch zurückgezogene). Geprüft unter Sperre der
+  Spielerzeile. Dieselbe Adresse (klein geschrieben) höchstens einmal je 7 Tage, über alle Einladenden. Mailfehler
+  beim Anlegen löschen die Einladung wieder. Admins dürfen auch bei abgeschaltetem Einladen.
+- Keine Belohnung: Ein Ressourcenpaket würde in die Wirtschaft der Saison eingreifen und den Stützpunkt-Code berühren;
+  im kleinen Freundeskreis reicht die Meldung an den Einladenden.
 
 ## Festlegungen für den Betrieb
 

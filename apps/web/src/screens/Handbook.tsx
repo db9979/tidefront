@@ -127,6 +127,15 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
       ),
     },
     {
+      id: "freunde", icon: "anker", title: "Freunde einladen",
+      body: (
+        <>
+          <P>Unter Einstellungen → <strong>Freunde einladen</strong> (oder Meldungen → Rangliste) schickst du einem Freund eine Einladung per E-Mail – mit persönlicher Nachricht – oder teilst einen persönlichen Link über Messenger und Co.</P>
+          <P>Jede Einladung hat einen eigenen Code, gilt einmal und 14 Tage. Folgt dein Freund ihr, bekommst du eine Nachricht. Unter „Meine Einladungen“ siehst du den Stand, kannst Einladungen zurückziehen oder nach einem Tag erneut senden. Wie viele Einladungen offen sein dürfen, legt die Verwaltung fest.</P>
+        </>
+      ),
+    },
+    {
       id: "einheiten", icon: "kampfpanzer", title: "Einheiten im Überblick",
       body: b ? (
         <ul className="space-y-2">

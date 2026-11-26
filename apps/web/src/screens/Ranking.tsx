@@ -8,6 +8,7 @@ import { Badge, Button, Card, Loading, Sheet, StatTable } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 import { SeasonBar } from "../components/Season.tsx";
 import { HallOfFame } from "./HallOfFame.tsx";
+import { InvitePanel } from "../components/Invite.tsx";
 import type { Draft } from "./Messages.tsx";
 import type { Target } from "../App.tsx";
 
@@ -31,6 +32,7 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
   const q = useQuery({ ...trpc.social.ranking.queryOptions(), refetchInterval: 60000 });
   const [sort, setSort] = useState<Sort>("total");
   const [open, setOpen] = useState<Row | null>(null);
+  const [invite, setInvite] = useState(false);
   if (!q.data) return <Loading />;
   const rows = [...q.data.rows].sort((a, b) => b[sort] - a[sort] || a.rank - b.rank);
 
@@ -65,8 +67,12 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
           </ol>
         )}
         <p className="text-[11px] text-slate-500 mt-2">1 Punkt je 100 Ressourcen Kostenwert. Antippen für Details.</p>
+        <Button kind="secondary" className="w-full mt-3" onClick={() => setInvite(true)}>Freunde einladen</Button>
       </Card>
       <HallOfFame />
+      <Sheet open={invite} onClose={() => setInvite(false)} title="Freunde einladen" icon={<Icon id="anker" size={28} />}>
+        <InvitePanel playerName={q.data.rows.find((r) => r.own)?.name} />
+      </Sheet>
       <Sheet open={open !== null} onClose={() => setOpen(null)} title={open?.name ?? ""} icon={<Icon id="anker" size={28} />}>
         {open && <PlayerDetail r={open} onCompose={(d) => { setOpen(null); onCompose(d); }} onShowOnMap={(t) => { setOpen(null); onShowOnMap(t); }} />}
       </Sheet>

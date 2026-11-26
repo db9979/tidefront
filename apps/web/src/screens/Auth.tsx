@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
 import { errorText } from "../lib/names.ts";
 import { Button, ErrorLine } from "../ui.tsx";
@@ -9,6 +10,12 @@ type Mode = "login" | "register" | "forgot";
 function resetTokenFromUrl(): string {
   const t = new URLSearchParams(location.search).get("reset") ?? "";
   return /^[0-9a-f]{64}$/.test(t) ? t : "";
+}
+
+/** Persönlicher Einladungscode aus dem Link der Einladung (/?invite=…). */
+function inviteFromUrl(): string {
+  const c = (new URLSearchParams(location.search).get("invite") ?? "").trim();
+  return /^[A-Za-z0-9_-]{3,64}$/.test(c) ? c : "";
 }
 
 function ForgotForm({ field, onDone }: { field: string; onDone: () => void }) {
@@ -79,10 +86,14 @@ function ForgotForm({ field, onDone }: { field: string; onDone: () => void }) {
 }
 
 export function AuthScreen() {
-  const [mode, setMode] = useState<Mode>(() => (resetTokenFromUrl() ? "forgot" : "login"));
+  const [linkInvite] = useState(inviteFromUrl);
+  const [mode, setMode] = useState<Mode>(() => (resetTokenFromUrl() ? "forgot" : linkInvite ? "register" : "login"));
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
-  const [invite, setInvite] = useState("");
+  const [invite, setInvite] = useState(linkInvite);
+  // Nur der Name des Einladenden (öffentlich, ratenbegrenzt).
+  const inviter = useQuery({ ...trpc.invite.lookup.queryOptions({ code: linkInvite }), enabled: !!linkInvite, staleTime: Infinity, retry: false });
+  const inviterName = invite.trim() === linkInvite ? inviter.data?.inviterName ?? null : null;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -96,7 +107,10 @@ export function AuthScreen() {
           ? await trpcClient.auth.login.mutate({ name, password })
           : await trpcClient.auth.register.mutate({ name, password, inviteCode: invite });
       if (!r.ok) setError(errorText(r.code));
-      else await queryClient.invalidateQueries(trpc.auth.pathFilter());
+      else {
+        if (linkInvite) history.replaceState(null, "", "/");
+        await queryClient.invalidateQueries(trpc.auth.pathFilter());
+      }
     } catch (err) {
       const msg = String((err as Error).message ?? "");
       setError(msg.includes("password") || msg.includes("name") ? "Name (3–24 Zeichen) und Passwort (mind. 8 Zeichen) prüfen." : errorText("network"));
@@ -126,6 +140,12 @@ export function AuthScreen() {
         </>
       ) : (
         <form onSubmit={submit}>
+          {mode === "register" && inviterName && (
+            <div className="rounded-[3px] border border-ink bg-card px-3 py-2 mb-4 flex items-center gap-2" role="status">
+              <span className="diamond bg-siegel shrink-0" aria-hidden="true" />
+              <span className="text-sm">Eingeladen von <strong>{inviterName}</strong>. Wähle einen Namen und ein Passwort.</span>
+            </div>
+          )}
           <label className="text-[11px] font-display uppercase tracking-wider text-slate-400">Name</label>
           <input className={field} value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" required />
           <label className="text-[11px] font-display uppercase tracking-wider text-slate-400">Passwort</label>
