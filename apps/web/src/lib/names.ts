@@ -11,6 +11,7 @@ const NAMES: Record<string, string> = {
   stahl: "Stahl", treibstoff: "Treibstoff", elektronik: "Elektronik", proviant: "Proviant", credits: "Kredite",
   ueberfall: "Überfall", aufklaerung: "Aufklärung", transport: "Transport", kartell: "Kartell-Überfall",
   luftkampf: "Luftkampf", luftschlag: "Luftschlag", ubootangriff: "U-Boot-Angriff", seegefecht: "Seegefecht", landung: "Landung",
+  weltereignis: "Weltereignis", weltereignis_leer: "Weltereignis",
   anfaengerschutz: "Anfängerschutz", niederlage: "Schutz nach Niederlage", nachtschild: "Nachtschild",
 };
 
@@ -36,6 +37,14 @@ export function label(id: string): string {
 export const RES_ICON: Record<string, string> = { stahl: "⛓", treibstoff: "🛢", elektronik: "🔌", proviant: "🥫" };
 
 const ERRORS: Record<string, string> = {
+  // Weltereignisse
+  no_event: "Dieses Weltereignis gibt es nicht (mehr).",
+  event_over: "Dieses Weltereignis ist schon vorbei.",
+  event_needs_raid: "Gegen Weltereignisse ist nur ein Überfall möglich.",
+  own_siege: "Den Ring um den eigenen Hafen können nur andere Spieler brechen.",
+  intercept_impossible: "Der Verband erreicht das Schatzschiff nicht mehr vor dem Hafen – schnellere Schiffe wählen.",
+  too_late: "Der Verband käme erst nach dem Ende des Ereignisses an.",
+  siege: "Belagerungsring: keine Börsenkäufe, bis die Belagerung endet oder gebrochen ist.",
   already_claimed: "Diese Belohnung ist schon abgeholt.",
   not_done: "Dieser Befehl ist noch nicht erfüllt.",
   no_challenge: "Diesen Tagesbefehl gibt es nicht (mehr).",

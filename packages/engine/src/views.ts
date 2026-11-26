@@ -35,6 +35,8 @@ import { balance, marketBalance, type Engine } from "./context.ts";
 import { processDueForBase } from "./events.ts";
 import { activeMissionCount, baseOfPlayer } from "./store.ts";
 import { loadMarket, targetAt } from "./commands.ts";
+// Weltereignisse: Vorschau einer Mission gegen ein Ereignis.
+import { previewAgainstEvent } from "./world-events-missions.ts";
 
 /** Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? */
 export async function incomingDetected(tx: DbOrTx, baseId: number, state: BaseState, nowMs: number): Promise<boolean> {
@@ -203,11 +205,12 @@ export async function mapView(engine: Engine, playerId: number) {
 export async function missionPreview(
   engine: Engine,
   playerId: number,
-  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap },
+  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number },
 ) {
   const nowMs = Date.now();
   const own = await baseOfPlayer(engine.db, playerId);
   if (!own) return { ok: false as const, code: "no_base" };
+  if (input.eventId !== undefined) return previewAgainstEvent(engine.db, playerId, own, { ...input, eventId: input.eventId }, nowMs);
   const target = await targetAt(engine.db as never, input.col, input.row);
   const distanceKm = hexDistanceKm(own, input);
   if (!target) return { ok: false as const, code: "no_target", distanceKm };

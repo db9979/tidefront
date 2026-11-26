@@ -9,4 +9,5 @@ export * from "./combat.ts";
 export * from "./pirates.ts";
 export * from "./protection.ts";
 export * from "./resolution.ts";
+export * from "./world-events.ts";
 export * as market from "./market/index.ts";

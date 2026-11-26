@@ -36,3 +36,6 @@ export * from "./diplomacy.ts";
 export * from "./player-trade.ts";
 export * from "./input-errors.ts";
 export { dailySummarySection } from "./daily-summary.ts";
+export { ensureWorldEventPlanner, siegeEffects, clearWorldEvents } from "./world-events.ts";
+export { spawnWorldEvent } from "./world-events-spawn.ts";
+export { worldEventsView } from "./world-events-view.ts";

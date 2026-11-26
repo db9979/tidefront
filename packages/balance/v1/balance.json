@@ -105,5 +105,42 @@
     "slippageTolerance": 0.01,
     "tradesPerMinute": 10,
     "convoySpeedKmh": 45
+  },
+  "worldEvents": {
+    "spawnIntervalHours": [48, 96],
+    "firstSpawnAfterHours": 24,
+    "retryHours": 6,
+    "minSeasonHoursLeft": 36,
+    "kindWeights": { "schatzschiff": 1, "grossflotte": 1, "belagerung": 1 },
+    "seasonGrowth": 1,
+    "minReferenceHp": 1500,
+    "nearbyKm": 600,
+    "schatzschiff": {
+      "durationHours": [12, 24],
+      "routeKm": [400, 900],
+      "spawnKmFromBase": [150, 450],
+      "escortShareOfDefense": 0.3,
+      "minEscort": 4,
+      "loot": { "stahl": 6000, "treibstoff": 3000, "elektronik": 1500, "proviant": 2000 },
+      "lootSeasonGrowth": 1.5
+    },
+    "grossflotte": {
+      "announceHours": 12,
+      "attackIntervalHours": 3,
+      "maxTargets": 3,
+      "regionRadiusKm": 700,
+      "shareOfDefense": 0.8,
+      "minSchnellboote": 10,
+      "miliPerBoot": 8,
+      "lootPool": { "stahl": 5000, "treibstoff": 2500, "elektronik": 1200, "proviant": 1800 }
+    },
+    "belagerung": {
+      "durationHours": 24,
+      "productionPenalty": 0.3,
+      "tickMinutes": 60,
+      "shareOfDefense": 0.5,
+      "minSchnellboote": 6,
+      "lootPool": { "stahl": 2500, "treibstoff": 1200, "elektronik": 600, "proviant": 900 }
+    }
   }
 }

@@ -162,6 +162,52 @@ Nach dem Kampf:
   dreht der Verband bei Ankunft ohne Kampf ab; der Verteidiger erhält dazu einen Bericht (`abgewiesen`).
 - Kartell und Nester haben keine U-Boote und keine U-Jagd (v1.2): U-Boote sind für sie unverwundbar.
 
+## Weltereignisse des Kartells
+
+Zeitlich begrenzte Ereignisse auf der Karte, die alle Spieler betreffen und Zusammenarbeit belohnen. Werte unter
+`worldEvents`, Kern in `packages/game-core/src/world-events.ts`.
+
+- **Planung:** Das erste Ereignis einer Saison entsteht frühestens `firstSpawnAfterHours` nach Saisonbeginn, danach
+  je eines im Abstand `spawnIntervalHours` (gleichverteilt, ganze Stunden). Die Art wird nach `kindWeights` gezogen;
+  findet sie kein Ziel, wird eine andere Art versucht, sonst nach `retryHours` erneut. Endet die Saison in weniger als
+  `minSeasonHoursLeft` Stunden, entsteht keines mehr.
+- **Ziele:** Häfen im Anfängerschutz sind nie Ziel und nie Bezug. Die Belagerung trifft nur einen Hafen ohne jeden Schutz,
+  der nicht schon belagert ist.
+- **Stärke:** Faktor `1 + seasonGrowth * Saisonfortschritt`. Bezugs-Lebenspunkte = Median der Verteidigungs-Lebenspunkte
+  (wie beim Kartell-Überfall) der Bezugshäfen, mindestens `minReferenceHp`. Schnellboote =
+  `max(Mindestzahl, round(Bezug * Anteil * Faktor / hp(schnellboot)))`.
+- **Kampf auf See:** Missionen gegen Ereignisse sind nur Überfälle (`event_needs_raid`). Der Kartellverband verteidigt
+  ohne Anlagen. Sinken alle seine Schiffe, ertrinken seine Truppen an Bord und zählen als Verluste; der Verband ist dann
+  vernichtet (Bericht: Sieg des Angreifers). Verluste des Verbands bleiben bestehen. Beute wird stets durch die
+  Ladekapazität der überlebenden Schiffe begrenzt (proportional gekürzt). Wracks entstehen wie sonst am Kampfort.
+  Kampfpunkte zählen wie bei jedem Kampfbericht.
+- **Schatzschiff:** entsteht auf einem Seefeld `spawnKmFromBase` km von einem zufälligen Hafen und fährt über Seefelder
+  zu einem Piratennest (Kartellhafen), Streckenlänge `routeKm`, Dauer `durationHours`; die Zeit verteilt sich nach
+  Strecke. Begleitschutz mit `escortShareOfDefense` und `minEscort` (Bezug: alle Häfen außerhalb des Anfängerschutzes),
+  Beute `loot * (1 + lootSeasonGrowth * Fortschritt)`, auf 10 gerundet. Beim Planen wird der früheste Abfangpunkt
+  berechnet (erster Zeitpunkt, zu dem die Fahrzeit des langsamsten Schiffs zur Position des Schatzschiffs nicht größer
+  ist als die verstrichene Zeit); das Ziel ist das Feld dieses Punktes. Gibt es keinen bis zum Ende der Route:
+  `intercept_impossible`; käme der Verband erst nach dem Ende an: `too_late`. Nur der erste Verband, der den
+  Begleitschutz vernichtet, erhält die Beute; das Ereignis endet. Später Ankommende finden es leer
+  (Bericht `weltereignis_leer`). Erreicht es den Hafen, ist die Beute verloren.
+- **Großflotte:** Region um einen zufälligen Hafen (`regionRadiusKm`), Ziele sind bis zu `maxTargets` Häfen außerhalb
+  des Anfängerschutzes, nach Entfernung zum Mittelpunkt. Sammelpunkt: Seefeld bis drei Felder vor dem ersten Hafen.
+  Ankündigung `announceHours` vorher per Karte, Systemnachricht an alle und Push an die Ziele. Verband aus Schnellbooten
+  (`shareOfDefense`, `minSchnellboote`, Bezug: die Zielhäfen) und `miliPerBoot` Milizionären je Boot. Danach greift
+  sie alle `attackIntervalHours` den nächsten Hafen an (Kampf wie Kartell-Überfall: eigene Landungskapazität, Beute
+  ohne Laderaumgrenze); ein Hafen unter Nachtschild, Anfängerschutz oder Schutz nach Niederlage wird übersprungen.
+  Ihre Verluste bleiben. Sind alle Schnellboote versenkt oder alle Ziele abgearbeitet, endet sie. Spieler können sie
+  jederzeit davor angreifen (Ziel: ihr aktuelles Feld; der Kampf findet bei Ankunft statt, solange sie besteht).
+- **Belagerung:** Ring aus Schnellbooten (`shareOfDefense`, `minSchnellboote`, Bezug: der belagerte Hafen) für
+  `durationHours`. Wirkung: keine Börsenkäufe (`siege`; Lieferungen, die schon unterwegs sind, kommen an) und
+  `productionPenalty` der Gebäudeproduktion: alle `tickMinutes` wird dieser Anteil der Gebäudeproduktion seit dem
+  letzten Abzug abgezogen (nicht bei vollem Lager, nie unter 0), zuletzt beim Ende bzw. Bruch. Der Besitzer kann den
+  Ring nicht selbst angreifen (`own_siege`); andere Spieler brechen ihn, indem sie den Verband vernichten.
+- **Beute für Schaden** (Großflotte, Belagerung): Beutepool `lootPool * Stärkefaktor` (Großflotte: plus ihre Beute aus
+  Hafenangriffen). Je Angriff erhält der Angreifer `Pool * vernichtete Lebenspunkte / Anfangs-Lebenspunkte`, höchstens
+  den noch nicht ausgezahlten Rest, begrenzt durch den Laderaum.
+- **Saisonende:** Alle Ereignisse und Beiträge verfallen; die Planung beginnt in der neuen Saison von vorn.
+
 ## Schutz
 
 - Nachtschild: `nightShieldHours` Stunden täglich, Startstunde wählt der Spieler (ohne Wahl kein Nachtschild). Eigene Angriffe heben

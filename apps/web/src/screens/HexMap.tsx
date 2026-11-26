@@ -22,6 +22,8 @@ import {
   INK, SEE, SIEGEL, alertRing, compassRose, mapLabel, nameTag, nestSymbol, otherBaseSymbol, ownBaseSymbol, portSymbol, shipSymbol, wreckSymbol,
 } from "../map/symbols.ts";
 import { buildSoundings } from "../map/soundings.ts";
+// Weltereignisse des Kartells (eigene Ebene unter den Hafenzeichen)
+import { buildWorldEventLayer, type MapWorldEvent } from "../map/world-events.ts";
 
 /** Kartenschriften vor dem ersten Zeichnen laden (Pixi rastert Text über das Canvas). */
 const FONTS = ["600 12px Fraunces", "italic 600 12px Fraunces", "600 12px 'IBM Plex Sans'", "500 10px 'IBM Plex Mono'"];
@@ -50,6 +52,8 @@ export interface HexMapProps {
   home?: { col: number; row: number } | null;
   missions?: MapMission[];
   alert?: boolean;
+  /** Weltereignisse (Schatzschiff, Großflotte, Belagerung). */
+  events?: MapWorldEvent[];
 }
 
 /** Element in fester Bildschirmgröße, sichtbar in einem Zoombereich. */
@@ -110,7 +114,7 @@ function dashed(g: Graphics, a: { x: number; y: number }, b: { x: number; y: num
 }
 
 export function HexMap(props: HexMapProps) {
-  const { data, selected, onSelect, selectMode, center, zoom, recenter, free, home, missions, alert } = props;
+  const { data, selected, onSelect, selectMode, center, zoom, recenter, free, home, missions, alert, events } = props;
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<Scene | null>(null);
   const [ready, setReady] = useState(false);
@@ -285,6 +289,25 @@ export function HexMap(props: HexMapProps) {
     }
     applyPinned(s.pinnedMarkers, s.world.scale.x, 0.5);
   }, [ready, data]);
+
+  // Weltereignisse: nach den Symbolen (die pinnedMarkers neu anlegen) eigene Ebene neu aufbauen.
+  const eventLayer = useRef<{ root: Container; pinned: Pinned[] } | null>(null);
+  useEffect(() => {
+    const s = scene.current;
+    if (!ready || !s) return;
+    const old = eventLayer.current;
+    if (old) {
+      s.pinnedMarkers = s.pinnedMarkers.filter((p) => !old.pinned.includes(p));
+      old.root.destroy({ children: true });
+      eventLayer.current = null;
+    }
+    if (!events || events.length === 0) return;
+    const layer = buildWorldEventLayer(events, serverNow());
+    s.world.addChildAt(layer.root, s.world.getChildIndex(s.markerLayer));
+    s.pinnedMarkers.push(...layer.pinned);
+    eventLayer.current = layer;
+    applyPinned(s.pinnedMarkers, s.world.scale.x, 0.5);
+  }, [ready, data, events]);
 
   // Auswahl
   useEffect(() => {

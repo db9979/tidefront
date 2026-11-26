@@ -9,6 +9,7 @@ import {
   balance,
   checkOps,
   cleanup,
+  ensureWorldEventPlanner,
   flushMailDigests,
   noticeHook,
   processDue,
@@ -55,6 +56,8 @@ async function loop() {
         const audit = await auditLedger(engine);
         if (!audit.ok) log("AUDIT FAILED", audit);
         await cleanup(engine, Date.now(), balance.combat.wreckHours);
+        // Weltereignisse: nächstes Ereignis planen, falls keines ansteht (auch nach Saisonwechsel).
+        await ensureWorldEventPlanner(db, Date.now()).catch((err) => log("world events planner", String(err)));
       }
       if (Date.now() >= nextOps) {
         // Jede Minute: Kennzahlen, Alarm an Admins, gebündelte E-Mails.

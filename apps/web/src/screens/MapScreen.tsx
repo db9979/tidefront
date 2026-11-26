@@ -10,6 +10,8 @@ import { Button, Loading } from "../ui.tsx";
 import { MapLegend } from "../map/Legend.tsx";
 import { TacticalIcon } from "../map/TacticalIcon.tsx";
 import { fmtPosition } from "../map/coords.ts";
+// Weltereignisse
+import { WorldEventCard, useWorldEvents } from "../components/WorldEvents.tsx";
 
 const TERRAIN: Record<string, string> = { sea: "Offene See", coast: "Küste", land: "Binnenland" };
 const LEVEL_TEXT = ["", "schwach besetzt", "kleine Bande", "befestigt", "Festung", "Hauptquartier"];
@@ -17,6 +19,7 @@ const LEVEL_TEXT = ["", "schwach besetzt", "kleine Bande", "befestigt", "Festung
 export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Target | null; onPlan: (t: Target) => void }) {
   const map = useQuery({ ...trpc.world.map.queryOptions(), refetchInterval: 60000 });
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
+  const worldEvents = useWorldEvents();
   const [sel, setSel] = useState<Target | null>(focus);
   const [recenter, setRecenter] = useState(0);
   const [centerOn, setCenterOn] = useState<Target>(focus ?? { col: base.col, row: base.row });
@@ -28,6 +31,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
     base: map.data.bases.find((b) => b.col === t.col && b.row === t.row),
     nest: map.data.nests.find((n) => n.col === t.col && n.row === t.row),
     wreck: map.data.wrecks.find((w) => w.col === t.col && w.row === t.row),
+    event: worldEvents.data?.events.find((e) => e.col === t.col && e.row === t.row),
   });
   const info = sel ? at(sel) : null;
   const units = meta.data?.balance.units;
@@ -51,6 +55,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
           home={home}
           missions={base.missions}
           alert={alert}
+          events={worldEvents.data?.events}
         />
         <div className="absolute left-2 top-6 flex flex-col gap-1.5 items-start">
           <button
@@ -120,7 +125,10 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
                   <span>Wrackfeld: {fmtNum(info.wreck.stahl)} Stahl, {fmtNum(info.wreck.elektronik)} Elektronik – jede Mission hierher birgt es mit freiem Laderaum.</span>
                 </div>
               )}
-              {!info.base && !info.nest && !info.wreck && (
+              {info.event && (
+                <WorldEventCard e={info.event} onPlan={() => onPlan({ col: info.event!.col, row: info.event!.row, eventId: info.event!.id })} />
+              )}
+              {!info.base && !info.nest && !info.wreck && !info.event && (
                 <div className="text-slate-400 mt-1">Hier ist nichts. Ziele sind Piratennester (rote Raute) und fremde Stützpunkte.</div>
               )}
               {!isHome && (info.base || info.nest) && (
