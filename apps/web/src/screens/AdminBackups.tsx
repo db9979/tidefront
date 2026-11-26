@@ -77,7 +77,7 @@ export function AdminBackups() {
   };
 
   return (
-    <Card title="Sicherungen" right={<Badge tone={mounted ? "slate" : "red"}>{mounted ? `${files.length} Dateien` : "nicht eingehängt"}</Badge>}>
+    <Card title="Sicherungen" right={<Badge tone={mounted ? "slate" : "red"}>{mounted ? `${files.length} ${files.length === 1 ? "Datei" : "Dateien"}` : "nicht eingehängt"}</Badge>}>
       {!mounted && (
         <p className="text-sm text-ink2 mb-2">
           Das Sicherungsverzeichnis ist im api-Dienst nicht eingehängt (docker-compose.yml: <span className="mono">/backups:ro</span>).

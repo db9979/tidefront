@@ -38,13 +38,14 @@ export function DayBars({ days, series, values, height = 110, label }: {
 }) {
   const W = 320;
   const H = height;
-  const left = 30;
+  const totals = values.map((v) => series.reduce((a, s) => a + (v[s.key] ?? 0), 0));
+  const max = niceMax(Math.max(0, ...totals));
+  // Platz für die längste Achsenbeschriftung (z. B. „100 Tsd.“), damit die Zahl nicht abgeschnitten wird.
+  const left = Math.max(30, 8 + Math.max(compact(max).length, compact(max / 2).length) * 5.3);
   const top = 8;
   const bottom = 18;
   const plotH = H - top - bottom;
   const plotW = W - left - 4;
-  const totals = values.map((v) => series.reduce((a, s) => a + (v[s.key] ?? 0), 0));
-  const max = niceMax(Math.max(0, ...totals));
   const step = plotW / Math.max(1, days.length);
   const bw = Math.max(2, step * 0.62);
   const y = (v: number) => top + plotH - (v / max) * plotH;

@@ -8,6 +8,7 @@ import { Icon } from "../icons.tsx";
 import { BattleLog, type Battle } from "../components/BattleLog.tsx";
 import { RepeatButton } from "../components/Repeat.tsx";
 import { WorldEventReportNote } from "../components/WorldEvents.tsx";
+import { useBackLayer } from "../lib/back.ts";
 
 const KIND_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "kartell", aufklaerung: "aufklaerung", transport: "transport", leer: "kartell", abgewiesen: "schild", weltereignis: "kartell", weltereignis_leer: "kartell" };
 
@@ -25,6 +26,8 @@ function roleText(role: string, kind: string): string {
 export function ReportsScreen() {
   const [open, setOpen] = useState<number | null>(null);
   const list = useQuery(trpc.report.list.queryOptions());
+  // Zurück-Taste schließt den geöffneten Bericht.
+  useBackLayer(open !== null, () => setOpen(null), 2);
   if (open !== null) return <ReportDetail id={open} onBack={() => setOpen(null)} />;
   if (!list.data) return <Loading />;
   return (
@@ -75,6 +78,7 @@ function ReportDetail({ id, onBack }: { id: number; onBack: () => void }) {
           names={[String(d.attackerName), String(d.defenderName)]}
           role={r.role === "attacker" ? "attacker" : "defender"}
           protectedPerResource={typeof d.protectedPerResource === "number" ? d.protectedPerResource : null}
+          salvage={d.salvage && typeof d.salvage === "object" ? (d.salvage as Counts) : null}
         />
       ) : null}
       {d.scout ? <ScoutView s={d.scout as Record<string, unknown>} owner={String(d.owner ?? "")} /> : null}

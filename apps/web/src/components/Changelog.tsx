@@ -99,9 +99,10 @@ const seenKey = (playerId: number) => `tf-seen-version:${playerId}`;
 
 /**
  * Nach einem Update einmal je Spieler „Neu in Version …“ zeigen; außerdem ein Banner, wenn auf dem
- * Server schon eine neuere Fassung läuft als die geladene App (dann neu laden).
+ * Server schon eine neuere Fassung läuft als die geladene App (dann neu laden). paused: solange die
+ * Begrüßung offen ist, wartet „Neu in Version“ (nie beides gleichzeitig).
  */
-export function UpdateNotices({ playerId }: { playerId: number }) {
+export function UpdateNotices({ playerId, paused = false }: { playerId: number; paused?: boolean }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), refetchInterval: 5 * 60000 });
   const [seen, setSeen] = useState<string | null>(() => localStorage.getItem(seenKey(playerId)));
   const [open, setOpen] = useState(false);
@@ -135,7 +136,7 @@ export function UpdateNotices({ playerId }: { playerId: number }) {
           <Button onClick={() => void reloadApp()}>Neu laden</Button>
         </div>
       )}
-      <Sheet open={open && newer.length > 0} onClose={close} title={`Neu in Version ${APP_VERSION}`}>
+      <Sheet open={open && !paused && newer.length > 0} onClose={close} title={`Neu in Version ${APP_VERSION}`}>
         <ReleaseList releases={newer} />
         <Button className="w-full mt-4" onClick={close}>Verstanden</Button>
       </Sheet>

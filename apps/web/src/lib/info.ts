@@ -29,7 +29,7 @@ export const UNIT_TEXT: Record<string, string> = {
   korvette: "Schnelles, günstiges Kriegsschiff. Stark gegen Schnellboote der Piraten, jagt mit Wasserbomben U-Boote.",
   zerstoerer: "Schweres Kriegsschiff mit starker Flugabwehr und U-Jagd. Bonus gegen Korvetten.",
   landungsschiff: "Trägt {lsTroops} Plätze Truppen und {lsCargo} Beute. Ohne Landungsschiff keine Landung, kein Sieg.",
-  uboot: "Getaucht und schwer zu fassen: eröffnet das Seegefecht mit Torpedos aus dem Verborgenen, stark gegen Landungsschiffe. Nur Schiffe mit U-Jagd (Korvette, Zerstörer) können es treffen. Trifft keine Küstenbatterien, wenig gegen Schnellboote.",
+  uboot: "Getaucht und schwer zu fassen: feuert in einer eigenen Phase U-Boot-Angriff vor dem Seegefecht Torpedos aus dem Verborgenen, stark gegen Landungsschiffe. Nur Einheiten mit U-Jagd (Korvette, Zerstörer) können es treffen. Trifft keine Küstenbatterien, wenig gegen Schnellboote.",
   schuetzen: "Günstige Infanterie. Erobert, verteidigt und hält den Stützpunkt gegen Kartell-Überfälle.",
   pioniere: "Halbieren den Schaden von Minensperren und knacken Bunkerlinien (Bonus ×4).",
   kampfpanzer: "Teuer, aber stark im Bodenkampf. Bonus gegen Schützen und Piratenmiliz. Braucht {panzerSize} Plätze.",

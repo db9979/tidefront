@@ -123,8 +123,8 @@ function CountEditor({ ids, counts, onChange, balance }: { ids: string[]; counts
     <div>
       <ul className="divide-y divide-rule">
         {shown.map((id) => (
-          <li key={id} className="py-1.5 flex items-center justify-between gap-2 flex-wrap">
-            <span className="flex items-center gap-2 text-sm"><IconTile id={id} size={32} tone={unitTone(balance, id)} />{label(id)}</span>
+          <li key={id} className="py-1.5 flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2 text-sm min-w-0 flex-1"><IconTile id={id} size={32} tone={unitTone(balance, id)} /><span className="min-w-0 break-words leading-tight">{label(id)}</span></span>
             <Stepper value={counts[id] ?? 0} onChange={(v) => onChange({ ...counts, [id]: v })} />
           </li>
         ))}

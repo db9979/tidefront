@@ -79,6 +79,7 @@ test("ohne SMTP: Mail abgelehnt, Link geht; Link-Code nur einmal nutzbar", async
   assert.match(l.code, /^[A-Z2-9]{10}$/);
   assert.equal(l.url, `https://spiel.example/?invite=${l.code}`);
   assert.deepEqual(await inviterForCode(db, l.code), { inviterName: "Bert" });
+  assert.deepEqual(await inviterForCode(db, l.code.toLowerCase()), { inviterName: "Bert" }, "Kleinschreibung wie bei der Registrierung");
   assert.deepEqual(await inviterForCode(db, "GIBTSNICHT"), { inviterName: null });
   assert.deepEqual(await inviterForCode(db, "TEST"), { inviterName: null }, "allgemeine Codes verraten nichts");
   // Persönliche Codes erscheinen nicht in der Liste allgemeiner Codes.

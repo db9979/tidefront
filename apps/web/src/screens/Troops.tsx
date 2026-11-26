@@ -32,7 +32,8 @@ const MAX_TRAIN = 10000;
 /** Name eines Missionsziels aus der Karte: Hafen oder Nest mit Stufe, sonst Koordinaten. */
 export function targetName(map: MapData | undefined, col: number, row: number): string {
   const b = map?.bases.find((x) => x.col === col && x.row === row);
-  if (b) return `Hafen ${b.name}`;
+  // Kein doppeltes „Hafen Hafen …“, wenn der Name schon so beginnt.
+  if (b) return /^hafen\b/i.test(b.name) ? b.name : `Hafen ${b.name}`;
   const n = map?.nests.find((x) => x.col === col && x.row === row);
   if (n) return `Nest Stufe ${n.level}`;
   return `Feld ${col}/${row}`;

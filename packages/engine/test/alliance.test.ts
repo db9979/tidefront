@@ -29,6 +29,7 @@ import {
   launchMission,
   leaveAlliance,
   makePeace,
+  missionPreview,
   playerTradeStats,
   offersView,
   processDue,
@@ -187,9 +188,18 @@ test("Allianz-Chat: nur Mitglieder, Echtzeitmeldung alliance an alle Mitglieder"
   assert.deepEqual(await allianceChatList(engine, D.playerId), []);
 });
 
+async function preview(from: P, to: P, type = "ueberfall"): Promise<string> {
+  const r = await missionPreview(engine, from.playerId, { type, units: { korvette: 1, landungsschiff: 1, schuetzen: 50 }, col: to.col, row: to.row });
+  return r.ok ? "ok" : r.code;
+}
+
 test("Überfall auf Verbündete wird abgelehnt (ally)", async () => {
   assert.deepEqual(await attack(A, B), { ok: false, code: "ally" });
   assert.deepEqual(await attack(C, A), { ok: false, code: "ally" });
+  // Schon die Vorschau nennt den Grund; Aufklärung bleibt erlaubt, der eigene Hafen nicht.
+  assert.equal(await preview(A, B), "ally");
+  assert.equal(await preview(A, B, "aufklaerung"), "ok");
+  assert.equal(await preview(A, A, "transport"), "own_base");
 });
 
 test("Nichtangriffspakt: beide bestätigen, Überfälle abgelehnt (pact), Kündigung mit 24 h Frist", async () => {
@@ -205,6 +215,7 @@ test("Nichtangriffspakt: beide bestätigen, Überfälle abgelehnt (pact), Kündi
   await acceptPact(engine, B.playerId, offer.id);
   assert.deepEqual(await attack(D, A), { ok: false, code: "pact" });
   assert.deepEqual(await attack(B, D), { ok: false, code: "pact" });
+  assert.equal(await preview(D, A), "pact");
   assert.equal(await code(declareWar(engine, A.playerId, `p:${D.playerId}`)), "pact_active");
   // Kündigung: gilt noch 24 h.
   const c = await cancelPact(engine, D.playerId, offer.id);
@@ -217,6 +228,18 @@ test("Nichtangriffspakt: beide bestätigen, Überfälle abgelehnt (pact), Kündi
   // Frist abgelaufen: der Pakt ist weg, der Überfall wird nicht mehr wegen pact abgelehnt.
   await db.update(tables.diplomacy).set({ endsAt: new Date(Date.now() - 1000) }).where(eq(tables.diplomacy.id, offer.id));
   assert.equal((await diplomacyView(engine, D.playerId)).treaties.length, 0);
+  // Erlöschen wird beiden Seiten genau einmal gemeldet (auch bei weiteren Zugriffen und dem geplanten Ereignis).
+  const [ev] = await db.select().from(tables.gameEvent).where(eq(tables.gameEvent.type, "pact_expire"));
+  assert.ok(ev, "Ablauf ist als Ereignis geplant");
+  await diplomacyView(engine, A.playerId);
+  await allianceDirectory(engine, B.playerId);
+  const { HANDLERS } = await import("../src/handlers.ts");
+  await db.transaction((tx) => HANDLERS.pact_expire(tx, { ...ev, payload: ev.payload as Record<string, unknown> }, ev.dueAt.getTime() + 1));
+  for (const pid of [A.playerId, B.playerId, D.playerId]) {
+    const gone = (await db.select().from(tables.message).where(eq(tables.message.toPlayerId, pid))).filter((m) => m.subject === "Diplomatie: Pakt erloschen");
+    assert.equal(gone.length, 1, `Nachricht an ${pid}`);
+    assert.match(gone[0].body, /erloschen/);
+  }
   const r = await attack(D, A);
   assert.equal(r.ok, true, JSON.stringify(r));
 });
