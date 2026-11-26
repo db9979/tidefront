@@ -12,6 +12,20 @@ import { SettingsScreen } from "./Settings.tsx";
 import { IntelChapter } from "../components/IntelChapter.tsx";
 import { requestBugReport } from "../lib/bug-log.ts";
 
+/** Kachel im Schnellzugriff oben im Handbuch. */
+function QuickButton({ onClick, title, icon, mark, accent = false }: { onClick: () => void; title: string; icon?: string; mark?: string; accent?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} className={`tap panel rounded-xl p-2 flex flex-col items-center gap-1 text-center ${accent ? "border-siegel" : ""}`}>
+      {mark ? (
+        <span aria-hidden className="grid place-items-center w-8 h-8 rounded-full bg-siegel text-[#f6f1e5] font-serif text-lg font-bold">{mark}</span>
+      ) : (
+        <Icon id={icon ?? "anker"} size={32} />
+      )}
+      <span className={`text-xs font-semibold leading-tight ${accent ? "text-siegel" : ""}`}>{title}</span>
+    </button>
+  );
+}
+
 interface Chapter { id: string; icon: string; title: string; body: ReactNode }
 
 function P({ children }: { children: ReactNode }) {
@@ -263,6 +277,12 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
         <h1 className="font-display text-xl font-bold uppercase">Handbuch</h1>
         <Button kind="secondary" onClick={onClose}>Zurück</Button>
       </div>
+      {/* Schnellzugriff: Fehler melden gut sichtbar ganz oben */}
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <QuickButton onClick={requestBugReport} mark="!" title="Fehler melden" accent />
+        <QuickButton onClick={() => setView("settings")} icon="zahnrad" title="Einstellungen" />
+        <QuickButton onClick={() => setNews(true)} icon="uhr" title="Was ist neu?" />
+      </div>
       {chapters.map((c) => (
         <section key={c.id} className="panel rounded-xl mb-2 overflow-hidden">
           <button type="button" className="tap w-full flex items-center gap-3 p-3 text-left" onClick={() => setOpen(open === c.id ? null : c.id)} aria-expanded={open === c.id}>
@@ -280,11 +300,16 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
           <Button kind="secondary" onClick={onLogout}>Abmelden</Button>
         </div>
       </div>
-      <p className="text-sm text-ink2 mt-3 text-center">
-        Etwas stimmt nicht?{" "}
-        <button type="button" className="tap text-see underline underline-offset-4" onClick={requestBugReport}>Fehler melden</button>
-        <span className="block text-xs">mit Screenshot der Ansicht hinter dem Handbuch und Log</span>
-      </p>
+      <div className="panel rounded-xl p-3 mt-3">
+        <div className="flex items-center gap-3 mb-2">
+          <span aria-hidden className="shrink-0 grid place-items-center w-10 h-10 rounded-full bg-siegel text-[#f6f1e5] font-serif text-xl font-bold">!</span>
+          <div className="min-w-0">
+            <div className="font-serif text-[17px] leading-tight">Etwas stimmt nicht?</div>
+            <div className="text-xs text-slate-400">Screenshot und Protokoll werden automatisch angehängt.</div>
+          </div>
+        </div>
+        <Button className="w-full" onClick={requestBugReport}>Fehler melden</Button>
+      </div>
       <VersionLine onOpen={() => setNews(true)} />
       <ChangelogSheet open={news} onClose={() => setNews(false)} />
     </div>

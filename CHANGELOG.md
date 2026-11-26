@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.11.1 – 27.11.2026
+- **Fehler melden ist leichter zu finden**: Ganz oben im Handbuch gibt es jetzt drei Schnellknöpfe – Fehler melden, Einstellungen und Was ist neu? Unten im Handbuch steht ein deutlicher Knopf statt eines kleinen Links.
+
 ## 0.11.0 – 27.11.2026
 - **Wetter**: Tiefs und Hochs ziehen von West nach Ost über die Karte, dazu Nebelküsten, Tag und Nacht. Die Karte zeigt Wolken, Sturm und Nebel (Knopf „Wetter an/aus“). Sturm verlängert Seefahrten, hält Flugzeuge am Boden und schwächt sie im Kampf; Nebel verkürzt die Radar-Vorwarnung und macht Aufklärung ungenau.
 - **Strom**: Neue Gebäude **Windpark**, **Solarfeld** und **Speicherwerk**. Das Kraftwerk verbraucht jetzt Treibstoff. Fehlt Strom, wird nach Rang versorgt: Radar, Produktion, Ausbildung, Forschung. Die Basis zeigt Angebot, Bedarf, Speicher, eine 24-Stunden-Kurve und die Wettervorhersage.
