@@ -29,13 +29,24 @@ export const MILITARY_SHARE = 0.45;
  * Doktrin: Zielanteile am Rüstungswert je Einheitentyp und ab wann der Typ gebaut wird
  * (Stufe des Baugebäudes). Landungsschiffe stehen nicht in der Liste, sie folgen dem Truppenbedarf.
  */
-export const DOCTRINE: { id: string; share: number; fromLevel: number }[] = [
+export type Doctrine = { id: string; share: number; fromLevel: number }[];
+
+export const DOCTRINE: Doctrine = [
   { id: "korvette", share: 0.22, fromLevel: 1 },
   { id: "zerstoerer", share: 0.12, fromLevel: 3 },
   { id: "schuetzen", share: 0.3, fromLevel: 1 },
   { id: "pioniere", share: 0.1, fromLevel: 2 },
   { id: "kampfpanzer", share: 0.08, fromLevel: 4 },
   { id: "jagdbomber", share: 0.18, fromLevel: 1 },
+];
+
+/** Gegenprobe ab v1.2: U-Boote statt Zerstörer (gleicher Anteil, ebenfalls ab Werft 3). */
+export const UBOOT_DOCTRINE: Doctrine = DOCTRINE.map((d) => (d.id === "zerstoerer" ? { ...d, id: "uboot" } : d));
+
+/** Gegenprobe ab v1.2: schwere U-Boot-Rüstung (30 % U-Boote statt Zerstörern und Jagdbombern). */
+export const UBOOT_HEAVY_DOCTRINE: Doctrine = [
+  ...DOCTRINE.filter((d) => d.id !== "zerstoerer" && d.id !== "jagdbomber"),
+  { id: "uboot", share: 0.3, fromLevel: 3 },
 ];
 
 /** Gebäude, die der Bot ausbaut (Radar und Börse braucht er für Nester nicht). */
@@ -73,12 +84,12 @@ function armyWithQueue(base: BaseState): Counts {
 }
 
 /** Mögliche Ausbildungsaufträge nach Doktrin, größtes Defizit zuerst. */
-function nextOrders(base: BaseState, spentByType: Record<string, number>, balance: Balance): { id: string; count: number }[] {
+function nextOrders(base: BaseState, spentByType: Record<string, number>, balance: Balance, doctrine: Doctrine): { id: string; count: number }[] {
   const army = armyWithQueue(base);
   const totals = fleetTotals(army, balance);
   // Erst Transportraum für vorhandene Truppen.
   if (totals.troopSize > totals.troopSpace) return [{ id: "landungsschiff", count: 1 }];
-  const open = DOCTRINE.filter((d) => (base.buildings[balance.units[d.id].builtIn ?? ""] ?? 0) >= d.fromLevel);
+  const open = doctrine.filter((d) => (base.buildings[balance.units[d.id].builtIn ?? ""] ?? 0) >= d.fromLevel);
   const shareSum = open.reduce((a, d) => a + d.share, 0);
   const spent = open.reduce((a, d) => a + (spentByType[d.id] ?? 0), 0);
   const ranked = open
@@ -109,7 +120,13 @@ function affordableArmy(base: BaseState, id: string, count: number, balance: Bal
  * Lässt den Bot `days` Tage laufen und gibt Momentaufnahmen nach den Tagen in `checkpoints` zurück.
  * militaryShare 0 ergibt den reinen Wirtschafts-Bot.
  */
-export function runBot(balance: Balance, days: number, checkpoints: number[], militaryShare = MILITARY_SHARE): BotSnapshot[] {
+export function runBot(
+  balance: Balance,
+  days: number,
+  checkpoints: number[],
+  militaryShare = MILITARY_SHARE,
+  doctrine: Doctrine = DOCTRINE,
+): BotSnapshot[] {
   let base: BaseState = createBase(balance, 0);
   let spentBuild = 0;
   let spentMil = 0;
@@ -168,7 +185,7 @@ export function runBot(balance: Balance, days: number, checkpoints: number[], mi
     // Über dem Anteil nur, wenn das Lager überzulaufen droht.
     const full = base.resources.stahl > 0.8 * storageCapacity(base, balance);
     if (spentMil > militaryShare * (spentMil + spentBuild) && !full) return "idle";
-    for (const order of nextOrders(base, spentByType, balance)) {
+    for (const order of nextOrders(base, spentByType, balance, doctrine)) {
       if (!affordableArmy(base, order.id, order.count, balance)) continue;
       const r = startTraining(base, order.id, order.count, t, balance);
       // Fehlt Geld für den dringendsten Auftrag, wird gespart; andere Hindernisse überspringen.

@@ -4,7 +4,7 @@ const NAMES: Record<string, string> = {
   kommandozentrale: "Kommandozentrale", stahlwerk: "Stahlwerk", raffinerie: "Raffinerie", chipfabrik: "Chipfabrik",
   versorgungshof: "Versorgungshof", kraftwerk: "Kraftwerk", lagerkomplex: "Lagerkomplex", tiefbunker: "Tiefbunker",
   werft: "Werft", kaserne: "Kaserne", flugfeld: "Flugfeld", radarstation: "Radarstation", hafenkommandantur: "Hafenkommandantur",
-  korvette: "Korvette", zerstoerer: "Zerstörer", landungsschiff: "Landungsschiff", schuetzen: "Schützen", pioniere: "Pioniere",
+  korvette: "Korvette", zerstoerer: "Zerstörer", landungsschiff: "Landungsschiff", uboot: "U-Boot", schuetzen: "Schützen", pioniere: "Pioniere",
   kampfpanzer: "Kampfpanzer", abfangjaeger: "Abfangjäger", jagdbomber: "Jagdbomber", aufklaerungsdrohne: "Aufklärungsdrohne",
   schnellboot: "Schnellboot", piratenmiliz: "Piratenmiliz", kuestenbatterie: "Küstenbatterie", flakstellung: "Flakstellung",
   bunkerlinie: "Bunkerlinie", minensperre: "Minensperre",

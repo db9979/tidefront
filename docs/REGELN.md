@@ -2,7 +2,7 @@
 
 Verbindlich für `packages/game-core`. Alle Zahlen stehen in `packages/balance/v1/balance.json`
 und werden dort geändert, nie im Code. Zahlen sind Startwerte; Kartell und Piratennester sind seit Balance v1.1
-per Simulation abgestimmt (`npm run sim`, Ergebnisse in `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt C).
+per Simulation abgestimmt, U-Boote seit v1.2 (`npm run sim`, Ergebnisse in `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt C).
 
 ## Grundsätze
 
@@ -46,14 +46,20 @@ Vier Ressourcen: `stahl`, `treibstoff`, `elektronik`, `proviant`. Strom ist eine
 
 ## Einheiten
 
-Neun Spielereinheiten in drei Gattungen, siehe `units`. Verteidigungsanlagen siehe `defenses`, Gegner siehe `npcUnits`.
+Zehn Spielereinheiten in drei Gattungen, siehe `units`. Verteidigungsanlagen siehe `defenses`, Gegner siehe `npcUnits`.
 
-- Bau nur, wenn das Gebäude `builtIn` mindestens Stufe 1 hat und kein Versorgungsmangel herrscht.
+- Bau nur, wenn das Gebäude `builtIn` mindestens Stufe `requiresLevel` (Vorgabe 1) hat und kein Versorgungsmangel herrscht.
+  Fehlt das Gebäude ganz: `building_required`; liegt es unter der Mindeststufe: `building_level`.
 - Bauzeit je Einheit: `seconds / (1 + buildSpeedPerLevel * (L - 1))`.
 - Flugzeuge brauchen Stellplätze: `slotsPerLevel * L` (Flugfeld).
 - Ein Verband darf höchstens die Kommandopunkte seines Startstützpunkts kosten.
 - Bodentruppen reisen nur in Landungsschiffen: Summe `size * Anzahl` ≤ Summe `troopSpace`.
 - Flugzeuge nehmen nur teil, wenn die Entfernung zum Ziel ≤ `rangeKm` ist.
+- **U-Boote** (`uboot`, seit v1.2): Gattung See, gebaut in der Werft ab Stufe 3 (`requiresLevel`), ohne Truppenraum
+  und Ladung. Sie sind getaucht (`submerged`): Sie können nur von Einheiten mit **U-Jagd** (Angriffswert `uboot` > 0)
+  getroffen werden – nicht von Bombern, Küstenbatterien, Flak, Landungsschiffen oder dem Kartell. Reisezeit,
+  Treibstoff, Kommandopunkte und Unterhalt gelten wie für jedes Schiff.
+- Angriffswert `uboot` (U-Jagd, Vorgabe 0): Schaden gegen getauchte U-Boote. In v1.2 haben ihn Korvette und Zerstörer.
 
 ## Missionen
 
@@ -102,8 +108,14 @@ Automatisch, höchstens `maxRoundsPerPhase` Runden je Phase.
 1. **Luftkampf:** Abfangjäger beider Seiten, Angriffswert `luft`. Wer danach mehr Jäger-Lebenspunkte hat, besitzt Luftüberlegenheit.
 2. **Luftschlag:** Zuerst feuern Flak und Schiffe mit ihrem `luft`-Wert auf die Bomber. Überlebende Bomber greifen Schiffe (`see`) und Anlagen (`anlage`) an.
    Mit Luftüberlegenheit mal `airSuperiorityBomberBonus`, gegen fremde Luftüberlegenheit mal `airSuperiorityBomberMalus`.
-3. **Seegefecht:** Schiffe gegeneinander (`see`), Küstenbatterien feuern mit.
-4. **Landung:** Nur wenn Landungsschiffe überleben. Truppen über der verbliebenen Kapazität gehen verloren.
+   Getauchte U-Boote sind kein Ziel des Luftschlags.
+3. **U-Boot-Angriff:** Die U-Boote beider Seiten feuern gleichzeitig `combat.torpedoSalvos` Salven (v1.2: 1) mit `see`
+   auf die Überwasserschiffe des Gegners (keine Anlagen). Niemand schießt zurück. Ohne U-Boote oder ohne Ziele entfällt die Phase.
+4. **Seegefecht:** Schiffe gegeneinander (`see`), Küstenbatterien feuern mit. U-Boote feuern weiter mit `see` auf Schiffe;
+   Ziel sind sie nur für die U-Jagd: Jede Einheit mit `uboot` > 0 feuert zusätzlich zu ihrer Salve über Wasser eine
+   U-Jagd-Salve (`uboot`) auf die gegnerischen U-Boote, verteilt nach deren Lebenspunkten, mit demselben Zufallsfaktor.
+   Das Seegefecht endet vorzeitig, wenn keine Seite die andere mehr treffen kann.
+5. **Landung:** Nur wenn Landungsschiffe überleben. Truppen über der verbliebenen Kapazität gehen verloren.
    Minensperren wirken einmal, Pioniere halbieren den Schaden. Dann Bodenkampf: Truppen treffen Bodentruppen mit `land`
    und die Bunkerlinie mit `anlage`. Verteidigende Bodentruppen und Bunkerlinie feuern mit `land`, Küstenbatterien feuern
    mit `land` mit, sind im Bodenkampf aber kein Ziel und zählen nicht für den Sieg.
@@ -126,7 +138,7 @@ Nach dem Kampf:
 - Schwachziel: Ist die Stärke des Ziels (Summe aller Gebäudestufen) kleiner als `weakTargetBelowShare` mal der Stärke des
   angreifenden Stützpunkts, wird die Anteilsbeute zusätzlich mit `weakTargetLootFactor` multipliziert.
 - Piratennester geben ihren festen `loot` statt eines Anteils, ebenfalls durch `cargo` begrenzt; keine Schwachziel-Regel.
-- Wracks: `wreckShare` der Stahl- und Elektronikkosten versenkter Schiffe beider Seiten bleiben als Wrackfeld am Kampfort.
+- Wracks: `wreckShare` der Stahl- und Elektronikkosten versenkter Schiffe (auch U-Boote) beider Seiten bleiben als Wrackfeld am Kampfort.
   Das Wrackgut verfällt linear und ist nach `wreckHours` Stunden verschwunden. Jede eigene Mission, die das Feld erreicht,
   birgt Wrackgut bis zur freien Ladekapazität ihrer Schiffe (nach der Beute) und bringt es mit heim.
 - Verteidiger: `defenseRepairShare` der zerstörten Anlagen und `hospitalShareDefender` der Bodentruppen kehren zurück.
@@ -140,13 +152,14 @@ Nach dem Kampf:
   Stufe 3 um Tag 7–10, Stufe 4 um Tag 14–18 und Stufe 5 um Tag 21–28 mit mindestens 70 %. Die Beute einer Stufe passt
   ungefähr in die Ladung der Landungsschiffe eines solchen Verbands.
 - Überfälle auf Spieler alle `raidIntervalHours` je Stützpunkt. Stärke (seit v1.1):
-  - Verteidigungs-Lebenspunkte = Lebenspunkte aller Schiffe, Bodentruppen und Anlagen daheim (Flugzeuge zählen nicht).
+  - Verteidigungs-Lebenspunkte = Lebenspunkte aller Schiffe (auch U-Boote), Bodentruppen und Anlagen daheim (Flugzeuge zählen nicht).
   - Grundstärke in Booten = `raidStrengthShareOfDefense * Verteidigungs-Lebenspunkte / hp(schnellboot)`, mindestens `raidMinSchnellboote`.
   - Je Überfall wird ein Faktor gleichverteilt aus `[1 - raidStrengthSpread, 1 + raidStrengthSpread]` gezogen (eigener Seed,
     nicht der Kampf-Seed). Milizionäre = `Grundstärke * Faktor * raidMiliPerBoot`, gerundet, mindestens 1;
     Schnellboote = `Milizionäre / raidMiliPerBoot`, aufgerundet.
   - Das Kartell führt eigene Landungskapazität mit (`raidMiliPerBoot` je Schnellboot).
 - Kein Überfall während Nachtschild, Anfängerschutz oder Schutz nach Niederlage.
+- Kartell und Nester haben keine U-Boote und keine U-Jagd (v1.2): U-Boote sind für sie unverwundbar.
 
 ## Schutz
 

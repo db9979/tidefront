@@ -66,8 +66,8 @@ test("Eingaben bleiben unverändert", () => {
   assert.deepEqual(report.attacker.before, attacker.units);
 });
 
-test("Bericht: vier Phasen in fester Reihenfolge mit Beständen und Schlüssel entscheidend", () => {
-  const report = fight({ units: { ...strongFleet, jagdbomber: 3, abfangjaeger: 3 } }, {
+test("Bericht: fünf Phasen in fester Reihenfolge mit Beständen und Schlüssel entscheidend", () => {
+  const report = fight({ units: { ...strongFleet, jagdbomber: 3, abfangjaeger: 3, uboot: 2 } }, {
     units: { korvette: 4, piratenmiliz: 30, abfangjaeger: 2 },
     defenses: { flakstellung: 1, kuestenbatterie: 1 },
   });
@@ -83,8 +83,8 @@ test("Bericht: vier Phasen in fester Reihenfolge mit Beständen und Schlüssel e
     assert.deepEqual(report.phases[i].before, report.phases[i - 1].after);
   }
   assert.deepEqual(report.phases[0].before.attacker, report.attacker.before);
-  assert.deepEqual(report.phases[3].after.attacker, report.attacker.survivors);
-  assert.deepEqual(report.phases[3].after.defender, report.defender.survivors);
+  assert.deepEqual(report.phases[4].after.attacker, report.attacker.survivors);
+  assert.deepEqual(report.phases[4].after.defender, report.defender.survivors);
   assert.equal(report.phases[0].entscheidend, "abfangjaeger");
 });
 
@@ -122,14 +122,14 @@ test("ein Verband ohne Landungsschiffe erhält keine Beute", () => {
   assert.equal(report.winner, "defender");
   assert.equal(report.landed, false);
   assert.deepEqual(report.loot, zeroLoot);
-  assert.equal(report.phases[3].skipped, true);
-  assert.equal(report.phases[3].skipReason, "no_landing_ships");
-  assert.equal(report.phases[3].entscheidend, null);
+  assert.equal(report.phases[4].skipped, true);
+  assert.equal(report.phases[4].skipReason, "no_landing_ships");
+  assert.equal(report.phases[4].entscheidend, null);
 });
 
 test("Landungsschiffe ohne Truppen: keine Landung, kein Sieg", () => {
   const report = fight({ units: { zerstoerer: 8, landungsschiff: 2 } }, nest(1));
-  assert.equal(report.phases[3].skipReason, "no_troops");
+  assert.equal(report.phases[4].skipReason, "no_troops");
   assert.equal(report.winner, "defender");
   assert.deepEqual(report.loot, zeroLoot);
 });
@@ -237,14 +237,14 @@ test("Luftschlag: Flak feuert zuerst; ohne Bomber wird die Phase übersprungen",
 test("Seegefecht: Bonus gegen Zieltyp und Küstenbatterien feuern mit", () => {
   // 10 Korvetten gegen 10 Schnellboote: 10 * 40 * 1.5 = 600 je Runde (mal Zufall) -> 7 Boote
   const report = fight({ units: { korvette: 10 } }, { units: { schnellboot: 10 }, defenses: {} }, 2);
-  const phase = report.phases[2];
+  const phase = report.phases[3];
   const perRound = phase.damage.attacker.korvette / phase.rounds;
   assert.ok(perRound >= 600 * 0.95 - 1e-9 && perRound <= 600 * 1.05 + 1e-9);
   assert.equal(phase.entscheidend, "korvette");
   // Küstenbatterien allein versenken Schiffe
   const coast = fight({ units: { korvette: 3 } }, { units: {}, defenses: { kuestenbatterie: 10 } }, 2);
-  assert.equal(coast.phases[2].skipped, false);
-  assert.equal(coast.phases[2].entscheidend, "kuestenbatterie");
+  assert.equal(coast.phases[3].skipped, false);
+  assert.equal(coast.phases[3].entscheidend, "kuestenbatterie");
   assert.equal(coast.attacker.survivors.korvette, 0);
   // Wracks: 30 % der Stahl- und Elektronikkosten von 3 Korvetten
   assert.deepEqual(coast.wreck, { stahl: 360, elektronik: 45 });
@@ -253,7 +253,7 @@ test("Seegefecht: Bonus gegen Zieltyp und Küstenbatterien feuern mit", () => {
 test("Schaden verteilt sich proportional zu den Lebenspunkten der Zieltypen", () => {
   // Ziel: 9 Zerstörer (4050 HP) und 3 Landungsschiffe (900 HP); 30 Zerstörer schießen 2100 je Runde.
   const report = fight({ units: { zerstoerer: 30 } }, { units: { zerstoerer: 9, landungsschiff: 3 }, defenses: {} }, 4);
-  const phase = report.phases[2];
+  const phase = report.phases[3];
   assert.ok(phase.rounds >= 1);
   // In Runde 1: Anteil Zerstörer 4050/4950 -> rund 1718 -> 3 versenkt; Landungsschiffe 382 -> 1 versenkt.
   // Über die Runden hinweg bleiben die Verluste ganzzahlig und im Bestand.
@@ -265,7 +265,7 @@ test("Restschaden wird über Runden mitgeführt", () => {
   // 4 Schnellboote: rund 72 Schaden je Runde gegen eine Korvette mit 200 HP -> nach 3 Runden versenkt.
   // Die Korvette: rund 60 Schaden je Runde (Bonus 1,5) gegen Boote mit 80 HP -> 2 Boote nach 3 Runden.
   const report = fight({ units: { schnellboot: 4 } }, { units: { korvette: 1 }, defenses: {} });
-  const sea = report.phases[2];
+  const sea = report.phases[3];
   assert.equal(sea.rounds, 3);
   assert.equal(report.defender.survivors.korvette, 0);
   assert.equal(report.attacker.survivors.schnellboot, 2);
@@ -281,7 +281,7 @@ test("Restschaden wird über Phasen mitgeführt (Luftschlag -> Seegefecht)", () 
   const report = fight({ units: { jagdbomber: 1, korvette: 2 } }, { units: { korvette: 1 }, defenses: {} }, 3);
   assert.equal(report.phases[1].after.defender.korvette, 1);
   assert.ok(report.phases[1].damage.attacker.jagdbomber > 150);
-  assert.equal(report.phases[2].rounds, 1);
+  assert.equal(report.phases[3].rounds, 1);
   assert.equal(report.defender.survivors.korvette, 0);
 });
 
@@ -292,7 +292,7 @@ test("Landung: Truppen über der verbliebenen Kapazität gehen verloren", () => 
   });
   const ships = report.attacker.survivors.landungsschiff;
   assert.ok(ships < 4);
-  assert.ok(report.phases[3].after.attacker.schuetzen <= ships * 100);
+  assert.ok(report.phases[4].after.attacker.schuetzen <= ships * 100);
   if (ships === 0) assert.equal(report.attacker.survivors.schuetzen, 0);
 });
 
@@ -301,9 +301,9 @@ test("Minensperren wirken einmal, Pioniere halbieren den Schaden", () => {
   // 2 * 300 = 600 Schaden -> 30 Schützen
   const plain = fight({ units: { landungsschiff: 1, schuetzen: 50 } }, mines);
   assert.equal(plain.attacker.survivors.schuetzen, 20);
-  assert.equal(plain.phases[3].entscheidend, "minensperre");
-  assert.equal(plain.phases[3].rounds, 0);
-  assert.equal(plain.phases[3].skipped, false);
+  assert.equal(plain.phases[4].entscheidend, "minensperre");
+  assert.equal(plain.phases[4].rounds, 0);
+  assert.equal(plain.phases[4].skipped, false);
   assert.equal(plain.winner, "attacker");
   assert.equal(plain.defender.survivors.minensperre, 2);
   // Lazarett des Angreifers bei Sieg: 20 % von 30
@@ -345,18 +345,18 @@ test("Reparatur der Anlagen: 60 % der zerstörten kehren zurück", () => {
 
 test("Versorgungsmangel: Angriffswert der Einheiten mal 0,8, Anlagen unberührt", () => {
   const defender: DefenderInput = { units: { schnellboot: 30 }, defenses: { kuestenbatterie: 2 } };
-  const normal = fight({ units: { korvette: 10 } }, defender, 77).phases[2];
-  const starving = fight({ units: { korvette: 10 }, versorgungsmangel: true }, defender, 77).phases[2];
+  const normal = fight({ units: { korvette: 10 } }, defender, 77).phases[3];
+  const starving = fight({ units: { korvette: 10 }, versorgungsmangel: true }, defender, 77).phases[3];
   // Vergleich der ersten Runde ist nicht direkt möglich; beide Kämpfe laufen aber bis Runde 1 identisch an.
   assert.ok(starving.damage.attacker.korvette < normal.damage.attacker.korvette);
   const one = (flag: boolean) =>
-    fight({ units: { korvette: 1 }, versorgungsmangel: flag }, { units: { zerstoerer: 50 }, defenses: {} }, 77).phases[2];
+    fight({ units: { korvette: 1 }, versorgungsmangel: flag }, { units: { zerstoerer: 50 }, defenses: {} }, 77).phases[3];
   // Die einzelne Korvette überlebt Runde 1 nicht: genau eine Runde, Schaden exakt im Verhältnis 0,8.
   assert.equal(one(false).rounds, 1);
   assert.ok(approx(one(true).damage.attacker.korvette / one(false).damage.attacker.korvette, 0.8, 1e-9));
   const defStarving = fight({ units: { korvette: 1 } }, { units: {}, defenses: { kuestenbatterie: 20 }, versorgungsmangel: true }, 77);
   const defNormal = fight({ units: { korvette: 1 } }, { units: {}, defenses: { kuestenbatterie: 20 } }, 77);
-  assert.equal(defStarving.phases[2].damage.defender.kuestenbatterie, defNormal.phases[2].damage.defender.kuestenbatterie);
+  assert.equal(defStarving.phases[3].damage.defender.kuestenbatterie, defNormal.phases[3].damage.defender.kuestenbatterie);
 });
 
 test("höchstens maxRoundsPerPhase Runden je Phase", () => {
@@ -365,7 +365,7 @@ test("höchstens maxRoundsPerPhase Runden je Phase", () => {
     defenses: { bunkerlinie: 20 },
   });
   for (const phase of report.phases) assert.ok(phase.rounds <= balance.combat.maxRoundsPerPhase);
-  assert.equal(report.phases[2].rounds, 3);
+  assert.equal(report.phases[3].rounds, 3);
 });
 
 test("ungültige Eingaben werden als Fehlercode gemeldet", () => {
@@ -389,7 +389,7 @@ test("ungültige Eingaben werden als Fehlercode gemeldet", () => {
 
 test("leere Verbände: alle Phasen sauber übersprungen", () => {
   const report = fight({ units: {} }, noDefender);
-  assert.equal(report.phases.length, 4);
+  assert.equal(report.phases.length, 5);
   for (const phase of report.phases) {
     assert.equal(phase.skipped, true);
     assert.equal(typeof phase.skipReason, "string");
@@ -438,7 +438,7 @@ test("Eigenschaftstest: viele Seeds und zufällige Verbände", () => {
     assert.equal(JSON.stringify(attacker), attackerSnapshot, context);
     assert.equal(JSON.stringify(defender), defenderSnapshot, context);
 
-    // Bericht immer mit vier Phasen in fester Reihenfolge
+    // Bericht immer mit fünf Phasen in fester Reihenfolge
     assert.deepEqual(report.phases.map((p) => p.phase), [...PHASE_NAMES], context);
     let prev = { attacker: report.attacker.before, defender: report.defender.before };
     for (const phase of report.phases) {
@@ -484,8 +484,8 @@ test("Eigenschaftstest: viele Seeds und zufällige Verbände", () => {
         assert.ok(final <= before, `${context}: ${id} nach Rückkehr mehr als vorher`);
       }
     }
-    assert.deepEqual(report.phases[3].after.attacker, report.attacker.survivors, context);
-    assert.deepEqual(report.phases[3].after.defender, report.defender.survivors, context);
+    assert.deepEqual(report.phases[4].after.attacker, report.attacker.survivors, context);
+    assert.deepEqual(report.phases[4].after.defender, report.defender.survivors, context);
 
     // Beute: nie negativ, nie über dem ungeschützten Bestand, nur bei Sieg, nie über der Ladekapazität
     let lootSum = 0;
@@ -523,7 +523,7 @@ test("Bodenkampf: Truppen treffen die Bunkerlinie mit anlage, Küstenbatterien f
     { units: { schuetzen: 20 }, defenses: { kuestenbatterie: 1 } },
     2,
   );
-  const landing = guns.phases[3];
+  const landing = guns.phases[4];
   assert.ok((landing.damage.defender.kuestenbatterie ?? 0) > 0);
   // Batterien sind im Bodenkampf kein Ziel und verhindern den Sieg nicht.
   assert.equal(landing.after.defender.kuestenbatterie, landing.before.defender.kuestenbatterie);

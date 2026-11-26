@@ -43,7 +43,7 @@ export function aircraftSlotsUsed(base: BaseState, balance: Balance): number {
 
 /**
  * Startet die Ausbildung von Einheiten oder den Bau von Verteidigungsanlagen.
- * Codes: unknown_unit, bad_count, building_required, supply_shortage, queue_busy,
+ * Codes: unknown_unit, bad_count, building_required, building_level (Stufe unter requiresLevel), supply_shortage, queue_busy,
  * no_aircraft_slots, insufficient_resources.
  */
 export function startTraining(
@@ -66,6 +66,7 @@ export function startTraining(
     builtIn = def.builtIn ?? "";
     const level = buildingLevel(base, builtIn);
     if (level < 1) return { ok: false, code: "building_required" };
+    if (level < (def.requiresLevel ?? 1)) return { ok: false, code: "building_level" };
     if (next.versorgungsmangel) return { ok: false, code: "supply_shortage" };
     secondsEach = trainingSecondsPerUnit(id, level, balance);
   } else {
