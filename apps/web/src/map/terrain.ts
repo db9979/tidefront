@@ -1,6 +1,7 @@
-// Gelände im Stil eines Satellitenbilds: Landmaske aus den Küstenlinien gerastert, Höhe aus Abstand zur
-// Küste, Rauschen und Gebirgen, Schummerung mit Licht aus Nordwest. Wird einmal je Sitzung berechnet
-// und als Textur wiederverwendet. Darüber: feine Küstenlinie und ein sehr zartes Hexraster.
+// Gelände im Stil einer Admiralitätskarte: Land als chamois Papier mit Küstenschraffur und Bergstrichen,
+// Meer als helles Papier mit blau getönten Flachwasserstufen und Tiefenlinien (Isobathen). Landmaske aus
+// den Küstenlinien gerastert; einmal je Sitzung berechnet und als Textur wiederverwendet.
+// Darüber: Tintenküste und ein zartes Hexraster.
 import { Container, Graphics, Sprite, Texture } from "pixi.js";
 import {
   COLS, HEX_SIZE_KM, HEX_W, ISLANDS, KM_PER_DEG_LAT, KM_PER_DEG_LON, LAND, LAT1, LON0, ROWS, ROW_H, WATER, hexCenterXY,
@@ -108,32 +109,20 @@ const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const smooth = (a: number, b: number, v: number) => { const t = clamp01((v - a) / (b - a)); return t * t * (3 - 2 * t); };
 
 const C = {
-  deep: hex(0x081a29), mid: hex(0x0d2b40), shelf: hex(0x1a4656), lagoon: hex(0x26575f),
-  forest: hex(0x3a4b31), meadow: hex(0x56613d), dryOlive: hex(0x7a7452), steppe: hex(0x8f8560),
-  sand: hex(0xb39a6a), rock: hex(0x6e6a5d), tundra: hex(0x5f6658), boreal: hex(0x34402f), ice: hex(0xdfe5e8), snow: hex(0xeef2f3),
+  sea: hex(0xf4f1e7), sea1: hex(0xe9eee6), sea2: hex(0xdbe7e2), sea3: hex(0xc9dcd8), isobath: hex(0x8eaaad),
+  land: hex(0xe6d5a9), land2: hex(0xdcc792), ink: hex(0x18273a), hachure: hex(0x6b5a3a), ice: hex(0xf1ece0),
 };
 
 function landBase(lon: number, lat: number, e: number, n: number): RGB {
-  let c: RGB = lon < -50 ? lerp(C.forest, C.meadow, n * 0.6) : lerp(C.meadow, C.forest, n * 0.7);
-  // Mittelmeerklima: trockenes Oliv
-  const med = smooth(46, 40, lat) * (lon > -12 && lon < 45 ? 1 : 0);
-  c = lerp(c, C.dryOlive, med * 0.85);
-  // Wüste und Steppe in Nordafrika und Nahost
-  const desert = smooth(35, 30, lat) * (lon > -18 && lon < 45 ? 1 : 0) + smooth(37, 33, lat) * (lon > 33 ? 0.8 : 0);
-  c = lerp(c, lerp(C.steppe, C.sand, smooth(33, 28, lat)), clamp01(desert));
-  // Nordwälder, Tundra
-  c = lerp(c, C.boreal, smooth(56, 61, lat) * 0.8);
-  c = lerp(c, C.tundra, smooth(63, 68, lat) * 0.85);
-  // Gebirge: Fels, Schnee in großer Höhe
-  const eRough = e + (n - 0.5) * 0.45;
-  c = lerp(c, C.rock, smooth(0.55, 0.95, eRough) * 0.6);
-  // Schnee nur in Hochgebirgen (Alpen, Skanden, Atlas-Gipfel) und hohen Breiten
-  const snowLine = 1.12 - smooth(55, 70, lat) * 0.35;
-  c = lerp(c, C.snow, smooth(snowLine, snowLine + 0.25, eRough) * 0.5);
-  // Inlandeis
+  let c = lerp(C.land, C.land2, clamp01(n * 0.8 - 0.15));
   const greenland = lon < -20 && lon > -62 && lat > 59.5;
   if (greenland || (lon < -62 && lat > 66)) c = lerp(c, C.ice, smooth(0.25, 0.5, e));
   return c;
+}
+
+/** Flachwasserstufe 0..3 aus dem Landanteil der Umgebung. */
+function seaBand(nr: number, fr: number): number {
+  return nr > 0.42 ? 3 : nr > 0.12 ? 2 : fr > 0.16 ? 1 : 0;
 }
 
 let cached: HTMLCanvasElement | null = null;
@@ -188,30 +177,40 @@ export function terrainCanvas(): HTMLCanvasElement {
   const [out, octx] = canvas(W, H);
   const img = octx.createImageData(W, H);
   const d = img.data;
+  const band = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) band[i] = m[i * 4 + 3] > 127 ? 9 : seaBand(near[i * 4 + 3] / 255, far[i * 4 + 3] / 255);
+  const SEA = [C.sea, C.sea1, C.sea2, C.sea3];
   for (let y = 0; y < H; y++) {
     const lat = LAT1 - (Y0 + y * KM_PX) / KM_PER_DEG_LAT;
     for (let x = 0; x < W; x++) {
       const i = y * W + x;
       const lon = LON0 + (X0 + x * KM_PX) / KM_PER_DEG_LON;
-      const land = m[i * 4 + 3] > 127;
       const n = hash(x, y);
       let c: RGB;
-      if (land) {
+      if (band[i] === 9) {
         const e = elev[i];
         c = landBase(lon, lat, e, fbm(x / 9, y / 9));
-        // Schummerung: Licht aus Nordwest
-        const xa = Math.max(0, x - 1), ya = Math.max(0, y - 1), xb = Math.min(W - 1, x + 1), yb = Math.min(H - 1, y + 1);
-        const slope = (elev[ya * W + xa] - elev[yb * W + xb]) * 9;
-        const shade = 0.88 + Math.max(-0.45, Math.min(0.5, slope)) + (n - 0.5) * 0.05;
-        c = [c[0] * shade, c[1] * shade, c[2] * shade];
+        // Bergstriche: kurze Schraffen in Hanglage
+        const eRough = e + (fbm(x / 9, y / 9) - 0.5) * 0.4;
+        const hill = smooth(0.5, 1.0, eRough);
+        if (hill > 0 && (x - y + 300000) % 3 === 0 && n > 0.25) c = lerp(c, C.hachure, hill * 0.55);
+        // Küstenschraffur: diagonale Tintenlinien in einem schmalen Saum an der Küste
+        const coast = smooth(0.985, 0.72, near[i * 4 + 3] / 255);
+        if (coast > 0 && (x + y) % 3 === 0) c = lerp(c, C.ink, coast * 0.42);
+        const s2 = 1 + (n - 0.5) * 0.03;
+        c = [c[0] * s2, c[1] * s2, c[2] * s2];
       } else {
-        const nr = near[i * 4 + 3] / 255;
-        const fr = far[i * 4 + 3] / 255;
-        c = lerp(C.deep, C.mid, smooth(0.02, 0.35, fr));
-        c = lerp(c, C.shelf, smooth(0.05, 0.6, nr) * 0.9);
-        c = lerp(c, C.lagoon, smooth(0.55, 0.95, nr) * 0.5);
-        const s = 1 + (fbm(x / 60, y / 60) - 0.5) * 0.12 + (n - 0.5) * 0.025;
-        c = [c[0] * s, c[1] * s, c[2] * s];
+        const b0 = band[i];
+        c = SEA[b0];
+        // Tiefenlinie an jeder Stufengrenze; die äußere gestrichelt
+        const r1 = x + 1 < W ? band[i + 1] : b0, d1 = y + 1 < H ? band[i + W] : b0;
+        const edge = (r1 !== b0 && r1 !== 9) || (d1 !== b0 && d1 !== 9);
+        if (edge) {
+          const lo = Math.min(b0, r1 === 9 ? b0 : r1, d1 === 9 ? b0 : d1);
+          if (lo >= 1 || (x + y) % 6 < 3) c = lerp(c, C.isobath, 0.85);
+        }
+        const s2 = 1 + (n - 0.5) * 0.02;
+        c = [c[0] * s2, c[1] * s2, c[2] * s2];
       }
       d[i * 4] = c[0];
       d[i * 4 + 1] = c[1];
@@ -248,8 +247,8 @@ export function buildTerrain(): TerrainLayers {
     coast.closePath();
     glow.closePath();
   }
-  glow.stroke({ color: 0xbfe6f2, width: 10, alpha: 0.07, join: "round" });
-  coast.stroke({ color: 0xd8ecf2, width: 2.2, alpha: 0.55, join: "round" });
+  glow.stroke({ color: 0xf4f1e7, width: 7, alpha: 0.55, join: "round" });
+  coast.stroke({ color: 0x18273a, width: 1.8, alpha: 0.9, join: "round" });
   root.addChild(glow, coast);
 
   const grid = new Graphics();
@@ -257,7 +256,7 @@ export function buildTerrain(): TerrainLayers {
     const { x, y } = hexCenterXY(col, row);
     grid.poly(hexPoints(x, y, HEX_SIZE_KM));
   }
-  grid.stroke({ color: 0xcfe8f0, width: 1.4, alpha: 1 });
+  grid.stroke({ color: 0x18273a, width: 1.2, alpha: 1 });
   grid.alpha = 0;
   root.addChild(grid);
   return { root, grid };

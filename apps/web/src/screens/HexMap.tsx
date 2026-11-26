@@ -19,8 +19,13 @@ import { buildTerrain, hexPoints, xyOf } from "../map/terrain.ts";
 import { Graticule } from "../map/graticule.ts";
 import { attachGestures, clampScale } from "../map/gestures.ts";
 import {
-  FRIEND, NEUTRAL, alertRing, mapLabel, nameTag, nestSymbol, otherBaseSymbol, ownBaseSymbol, portSymbol, shipSymbol, wreckSymbol,
+  INK, SEE, SIEGEL, alertRing, compassRose, mapLabel, nameTag, nestSymbol, otherBaseSymbol, ownBaseSymbol, portSymbol, shipSymbol, wreckSymbol,
 } from "../map/symbols.ts";
+import { buildSoundings } from "../map/soundings.ts";
+
+/** Kartenschriften vor dem ersten Zeichnen laden (Pixi rastert Text über das Canvas). */
+const FONTS = ["600 12px Fraunces", "italic 600 12px Fraunces", "600 12px 'IBM Plex Sans'", "500 10px 'IBM Plex Mono'"];
+const fontsReady = () => Promise.all(FONTS.map((f) => document.fonts?.load(f))).catch(() => undefined);
 
 export interface MapMission {
   id: number;
@@ -68,6 +73,7 @@ interface Scene {
   alert: Graphics | null;
   grid: Graphics;
   graticule: Graticule;
+  compass: Container;
 }
 
 /** Gegenskalierung: Symbole bleiben etwa gleich groß, wachsen beim Hineinzoomen nur leicht. */
@@ -120,7 +126,8 @@ export function HexMap(props: HexMapProps) {
     const app = new Application();
     const cleanups: (() => void)[] = [];
     void app
-      .init({ resizeTo: el, background: 0x061521, antialias: true, resolution: Math.min(2, window.devicePixelRatio || 1), autoDensity: true })
+      .init({ resizeTo: el, background: 0xf4f1e7, antialias: true, resolution: Math.min(2, window.devicePixelRatio || 1), autoDensity: true })
+      .then(fontsReady)
       .then(() => {
         if (destroyed) {
           app.destroy(true);
@@ -142,8 +149,12 @@ export function HexMap(props: HexMapProps) {
         const selection = new Graphics();
         world.addChild(freeG, routes, markerLayer, pinnedLayer, selection);
 
-        // Beschriftungen und Handelshäfen (fest)
+        // Lotungen, Beschriftungen und Handelshäfen (fest)
         const pinnedStatic: Pinned[] = [];
+        for (const t of buildSoundings()) {
+          pinnedLayer.addChild(t);
+          pinnedStatic.push({ obj: t, min: 0.2 });
+        }
         for (const l of MAP_LABELS) {
           const t = mapLabel(l.name, l.kind, l.size);
           const p = xyOf(l.lon, l.lat);
@@ -157,17 +168,19 @@ export function HexMap(props: HexMapProps) {
           const p = hexCenterXY(h.col, h.row);
           const c = new Container();
           c.addChild(portSymbol());
-          const tag = nameTag(name, 0x9fd3e6, 9);
+          const tag = nameTag(name, INK, 11);
           c.addChild(tag);
           c.position.set(p.x, p.y);
           pinnedLayer.addChild(c);
           pinnedStatic.push({ obj: c, min: 0.16 });
         }
         app.stage.addChild(graticule.labels);
+        const compass = compassRose();
+        app.stage.addChild(compass);
 
         const s: Scene = {
           app, world, free: freeG, routes, pinnedLayer, markerLayer, selection, pinnedStatic,
-          pinnedMarkers: [], ships: new Map(), alert: null, grid: terrain.grid, graticule,
+          pinnedMarkers: [], ships: new Map(), alert: null, grid: terrain.grid, graticule, compass,
         };
         scene.current = s;
 
@@ -183,7 +196,7 @@ export function HexMap(props: HexMapProps) {
             drawSelection(s, live.current.selected);
             s.graticule.redraw(sc);
             // Hexraster erst beim Hineinzoomen und nur zart
-            s.grid.alpha = Math.max(0, Math.min(0.09, (sc - 0.18) * 0.25));
+            s.grid.alpha = Math.max(0, Math.min(0.16, (sc - 0.16) * 0.4));
             s.grid.visible = s.grid.alpha > 0.005;
             lastMove = 0;
           }
@@ -191,6 +204,7 @@ export function HexMap(props: HexMapProps) {
           if (pos !== lastPos) {
             lastPos = pos;
             s.graticule.place(world, app.screen.width, app.screen.height);
+            s.compass.position.set(app.screen.width - 40, Math.min(178, app.screen.height - 60));
           }
           const now = performance.now();
           if (now - lastMove > 250) {
@@ -240,10 +254,10 @@ export function HexMap(props: HexMapProps) {
     for (const key of free) {
       const [col, row] = key.split(",").map(Number);
       const { x, y } = hexCenterXY(col, row);
-      s.free.poly(hexPoints(x, y, HEX_SIZE_KM * 0.82)).fill({ color: 0x9fe3ff, alpha: 0.13 });
+      s.free.poly(hexPoints(x, y, HEX_SIZE_KM * 0.82)).fill({ color: SEE, alpha: 0.12 });
       s.free.poly(hexPoints(x, y, HEX_SIZE_KM * 0.82));
     }
-    s.free.stroke({ color: 0xbfefff, width: 2.2, alpha: 0.75 });
+    s.free.stroke({ color: SEE, width: 2, alpha: 0.85 });
   }, [ready, selectMode, free]);
 
   // Symbole für Stützpunkte, Nester, Wracks
@@ -264,7 +278,7 @@ export function HexMap(props: HexMapProps) {
       const c = new Container();
       c.addChild(b.own ? ownBaseSymbol() : otherBaseSymbol(b.protection !== null));
       add(c, b.col, b.row);
-      const tag = nameTag(b.own ? b.name : `${b.name} · ${b.owner}`, b.own ? FRIEND : NEUTRAL);
+      const tag = nameTag(b.own ? b.name : `${b.name} · ${b.owner}`, b.own ? INK : SEE);
       add(tag, b.col, b.row, b.own ? 0.08 : 0.15);
     }
     applyPinned(s.pinnedMarkers, s.world.scale.x, 0.5);
@@ -290,8 +304,8 @@ export function HexMap(props: HexMapProps) {
     <div className="w-full h-full relative">
       <div ref={host} className="w-full h-full overflow-hidden select-none" />
       <div className="absolute right-2 top-6 flex flex-col gap-1.5">
-        <button type="button" className="tap rounded-[4px] bg-navy-800/95 border border-navy-600 text-lg font-mono text-slate-100 backdrop-blur-sm" onClick={() => zoomBy(1.5)} aria-label="Hineinzoomen">+</button>
-        <button type="button" className="tap rounded-[4px] bg-navy-800/95 border border-navy-600 text-lg font-mono text-slate-100 backdrop-blur-sm" onClick={() => zoomBy(1 / 1.5)} aria-label="Herauszoomen">−</button>
+        <button type="button" className="tap rounded-[3px] bg-card border border-ink text-xl text-ink" onClick={() => zoomBy(1.5)} aria-label="Hineinzoomen">+</button>
+        <button type="button" className="tap rounded-[3px] bg-card border border-ink text-xl text-ink" onClick={() => zoomBy(1 / 1.5)} aria-label="Herauszoomen">−</button>
       </div>
     </div>
   );
@@ -306,12 +320,12 @@ function drawSelection(s: Scene, selected: { col: number; row: number } | null |
   const h = Math.max(HEX_SIZE_KM * 1.05, 22 / sc);
   const l = h * 0.42;
   const g = s.selection;
-  g.poly(hexPoints(x, y, HEX_SIZE_KM)).stroke({ color: 0x5ee0ff, width: 1 / sc, alpha: 0.45 });
+  g.poly(hexPoints(x, y, HEX_SIZE_KM)).fill({ color: SIEGEL, alpha: 0.06 }).stroke({ color: SIEGEL, width: 1 / sc, alpha: 0.6 });
   for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
     g.moveTo(x + sx * h, y + sy * (h - l)).lineTo(x + sx * h, y + sy * h).lineTo(x + sx * (h - l), y + sy * h);
   }
-  g.stroke({ color: 0x5ee0ff, width: 2 / sc, cap: "square" });
-  g.circle(x, y, 1.6 / sc).fill({ color: 0x5ee0ff });
+  g.stroke({ color: SIEGEL, width: 2 / sc, cap: "square" });
+  g.circle(x, y, 1.6 / sc).fill({ color: SIEGEL });
 }
 
 /** Routen, Schiffe und Warnring; läuft gedrosselt im Ticker. */
@@ -326,9 +340,10 @@ function drawMovers(s: Scene, live: { home?: { col: number; row: number } | null
       if (m.status !== "outbound" && m.status !== "returning") continue;
       const tgt = hexCenterXY(m.target.col, m.target.row);
       const pos = missionPosition(m, home, tgt, now);
-      const color = pos.outbound ? FRIEND : 0xcfe6ff;
+      const color = pos.outbound ? SIEGEL : INK;
+      s.routes.moveTo(home.x, home.y).lineTo(tgt.x, tgt.y).stroke({ color: 0xf4f1e7, width: 5 / sc, alpha: 0.8, cap: "round" });
       dashed(s.routes, home, tgt, 6 / sc);
-      s.routes.stroke({ color, width: 1.5 / sc, alpha: 0.9 });
+      s.routes.stroke({ color, width: 1.8 / sc, alpha: 0.95 });
       s.routes.moveTo(tgt.x - 8 / sc, tgt.y).lineTo(tgt.x + 8 / sc, tgt.y).moveTo(tgt.x, tgt.y - 8 / sc).lineTo(tgt.x, tgt.y + 8 / sc);
       s.routes.stroke({ color, width: 1.2 / sc });
       const key = m.id * 2 + (pos.outbound ? 0 : 1);

@@ -5,7 +5,7 @@ import { xyOf } from "./terrain.ts";
 import { fmtLat, fmtLon } from "./coords.ts";
 
 const LON_MIN = -90, LON_MAX = 50, LAT_MIN = 20, LAT_MAX = 76;
-const STYLE = { fontFamily: "ui-monospace, Menlo, Consolas, monospace", fontSize: 10, fill: 0x9fd3e6 };
+const STYLE = { fontFamily: "'IBM Plex Mono', ui-monospace, Menlo, monospace", fontSize: 9.5, fill: 0x4f5b69, fontWeight: "500" as const, stroke: { color: 0xf4f1e7, width: 3 } };
 
 export class Graticule {
   lines = new Graphics();
@@ -22,7 +22,7 @@ export class Graticule {
   private text(s: string): Text {
     const t = new Text({ text: s, style: STYLE });
     t.resolution = 2;
-    t.alpha = 0.85;
+    t.alpha = 1;
     this.labels.addChild(t);
     return t;
   }
@@ -42,7 +42,7 @@ export class Graticule {
       const x = xyOf(lon, LAT1).x;
       g.moveTo(x, a.y).lineTo(x, b.y);
     }
-    g.stroke({ color: 0x7fd4f0, width: 1 / scale, alpha: 0.18 });
+    g.stroke({ color: 0x18273a, width: 0.8 / scale, alpha: 0.28 });
   }
 
   /** Beschriftungen an den Bildrand legen (Bildschirmkoordinaten; die Ebene liegt außerhalb der Welt). */

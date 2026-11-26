@@ -55,35 +55,35 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
         <div className="absolute left-2 top-6 flex flex-col gap-1.5 items-start">
           <button
             type="button"
-            className="tap rounded-[4px] bg-navy-800/95 border border-ink text-ink px-3 text-[11px] font-mono uppercase tracking-widest backdrop-blur-sm flex items-center gap-2"
+            className="tap rounded-[3px] bg-card border border-ink text-ink px-3 text-[11px] font-display uppercase tracking-[0.12em] flex items-center gap-2"
             onClick={() => { setCenterOn(home); setRecenter((n) => n + 1); }}
           >
             <TacticalIcon kind="own" size={20} /> Mein Hafen
           </button>
           {alert && (
-            <div className="rounded-[4px] bg-red-950/85 border border-[#ff8080] text-[#ffb0b0] px-2 py-1 text-[11px] font-mono uppercase tracking-wider animate-pulse">
+            <div className="rounded-[3px] bg-card border border-siegel border-l-4 text-siegel px-2 py-1 text-[11px] font-display uppercase tracking-wider">
               Feindkontakt – Angriff im Anmarsch
             </div>
           )}
         </div>
         {sel && (
-          <div className="absolute right-2 bottom-2 rounded-[4px] bg-navy-800/95 border border-navy-600 px-2 py-1 text-[11px] font-mono text-ink2 pointer-events-none">
+          <div className="absolute right-2 bottom-2 rounded-[3px] bg-card border border-rule px-2 py-1 text-[11px] mono text-ink2 pointer-events-none">
             {(() => { const c = hexCenter(sel.col, sel.row); return fmtPosition(c.lat, c.lon); })()}
           </div>
         )}
         {!sel && <MapLegend />}
       </div>
       {sel && info && (
-        <div className="p-3 bg-navy-800/95 border-t border-navy-600">
+        <div className="p-3 pt-2.5 bg-card border-t-[3px] border-double border-ink shadow-[0_-8px_24px_rgba(24,39,58,0.12)]">
           <div className="flex items-start justify-between gap-2">
             <div className="text-sm min-w-0 flex-1">
-              <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">
+              <div className="text-[11px] mono tracking-wide text-ink2">
                 {TERRAIN[terrainAt(sel.col, sel.row) ?? "sea"]} · Feld {sel.col}/{sel.row}
                 {!isHome && ` · ${fmtNum(dist)} km`}
               </div>
               {info.base && (
                 <div className="mt-1">
-                  <div className="text-base font-semibold flex items-center gap-2">
+                  <div className="font-serif text-[19px] leading-tight flex items-center gap-2 mt-0.5">
                     <TacticalIcon kind={info.base.own ? "own" : "other"} size={26} /> {info.base.name}
                   </div>
                   <div className="text-xs text-slate-300">{info.base.own ? "Dein Stützpunkt" : `Stützpunkt von ${info.base.owner}`}</div>
@@ -93,9 +93,9 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
               )}
               {info.nest && (
                 <div className="mt-1">
-                  <div className="text-base font-semibold flex items-center gap-2">
+                  <div className="font-serif text-[19px] leading-tight flex items-center gap-2 mt-0.5">
                     <TacticalIcon kind={info.nest.empty ? "nestEmpty" : "nest"} level={info.nest.level} size={30} />
-                    <span>Piratennest Stufe {info.nest.level} <span className="text-xs font-normal text-slate-400">{LEVEL_TEXT[info.nest.level]}</span></span>
+                    <span>Piratennest Stufe {info.nest.level} <em className="block text-[13px] text-ink2">{LEVEL_TEXT[info.nest.level]}</em></span>
                   </div>
                   {info.nest.empty ? (
                     <div className="text-xs text-slate-400">Verlassen – neu besetzt in {fmtDuration((info.nest.respawnAtMs ?? now) - now)}</div>
