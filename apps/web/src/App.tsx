@@ -139,7 +139,7 @@ export function App() {
               key={t.id}
               type="button"
               onClick={() => go(t.id)}
-              className={`tap relative flex flex-col items-center justify-center pt-1.5 pb-1 text-[10px] font-display uppercase tracking-normal ${active ? "text-sea-300" : "text-slate-500"}`}
+              className={`tap relative flex flex-col items-center justify-center pt-1.5 pb-1 text-[11px] font-display tracking-normal ${active ? "text-sea-300" : "text-slate-500"}`}
               aria-current={active ? "page" : undefined}
             >
               {active && <span className="absolute top-0 inset-x-3 h-0.5 bg-sea-400" />}
