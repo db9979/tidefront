@@ -4,7 +4,8 @@
 // oder bei deutlicher Zoomänderung; die T/H-Schilder behalten bei jedem Zoom ihre Bildschirmgröße.
 import { Container, Graphics, Text } from "pixi.js";
 import { weatherAt, weatherSystemsAt, type WeatherBalance } from "@tidefront/game-core";
-import { COLS, KM_PER_DEG_LAT, KM_PER_DEG_LON, LAT1, LON0, ROWS, hexCenter, hexCenterXY } from "@tidefront/world";
+import { COLS, HEX_SIZE_KM, terrainAt, KM_PER_DEG_LAT, KM_PER_DEG_LON, LAT1, LON0, ROWS, hexCenter, hexCenterXY } from "@tidefront/world";
+import { weatherAlpha } from "./lod.ts";
 import { INK, PAPER, SEE, SIEGEL } from "./symbols.ts";
 
 /** Abtastung: jedes STEP-te Feld in beide Richtungen. */
@@ -13,6 +14,18 @@ const REDRAW_MS = 15 * 60000;
 const CLOUD = 0x8c96a3;
 const FOG = 0xdfe8ee;
 const SERIF = "Fraunces, Georgia, serif";
+/** Ab diesem Zoom werden betroffene Felder einzeln eingefärbt (Sturm, Nebel, dichte Wolken). */
+const HEX_FROM = 0.42;
+
+/** Sechseck (Spitze oben) um einen Feldmittelpunkt. */
+function hexPoly(x: number, y: number, r: number): number[] {
+  const pts: number[] = [];
+  for (let k = 0; k < 6; k++) {
+    const a = ((60 * k - 30) * Math.PI) / 180;
+    pts.push(x + r * Math.cos(a), y + r * Math.sin(a));
+  }
+  return pts;
+}
 
 export interface WeatherLayer {
   root: Container;
@@ -70,10 +83,14 @@ function pressureLabel(low: boolean): Container {
 
 export function buildWeatherLayer(wb: WeatherBalance): WeatherLayer {
   const root = new Container();
+  const atmos = new Container();
   const wash = new Graphics();
   const lines = new Graphics();
   const labels = new Container();
-  root.addChild(wash, lines, labels);
+  const fields = new Graphics();
+  const fieldLines = new Graphics();
+  atmos.addChild(wash, lines);
+  root.addChild(fields, fieldLines, atmos, labels);
   const cells: Cell[] = [];
   for (let row = 1; row < ROWS; row += STEP) {
     for (let col = 1; col < COLS; col += STEP) {
@@ -166,6 +183,62 @@ export function buildWeatherLayer(wb: WeatherBalance): WeatherLayer {
     }
     lines.stroke({ color: SEE, width: 1.4 * px, alpha: 0.45 });
 
+    // Nah dran: jedes Feld mit eigenem Wetterzeichen – genau dort wirkt das Wetter (Route, Radar, Kampfort).
+    fields.clear();
+    fieldLines.clear();
+    if (scale >= HEX_FROM) {
+      const r = HEX_SIZE_KM * 0.97;
+      const wind: number[][] = [];
+      const rain: number[][] = [];
+      const fog: number[][] = [];
+      const bolts: number[][] = [];
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          if (terrainAt(col, row) === "land") continue;
+          const { lat, lon } = hexCenter(col, row);
+          const w = weatherAt({ lat, lon }, ms, wb);
+          const { x, y } = hexCenterXY(col, row);
+          const poly = hexPoly(x, y, r);
+          if (w.storm) fields.poly(poly).fill({ color: SIEGEL, alpha: 0.16 }).stroke({ color: SIEGEL, width: 1.6 * px, alpha: 0.7 });
+          else if (w.fog >= 0.45) fields.poly(poly).fill({ color: SEE, alpha: 0.08 + 0.12 * w.fog });
+          else if (w.clouds >= 0.5) fields.poly(poly).fill({ color: CLOUD, alpha: (w.clouds - 0.5) * 0.45 });
+          if (w.storm) bolts.push([x, y]);
+          if (w.fog >= 0.45) fog.push([x, y]);
+          if (w.clouds >= 0.72 && !w.storm) rain.push([x, y]);
+          if (w.wind >= 0.15) wind.push([x, y, w.wind]);
+        }
+      }
+      const R = HEX_SIZE_KM;
+      for (const [x, y, v] of wind) {
+        const d = windDir(x, y, systems);
+        const len = R * 0.75;
+        const tx = x + (d.x * len) / 2, ty = y + (d.y * len) / 2;
+        const bx = x - (d.x * len) / 2, by = y - (d.y * len) / 2;
+        const h = R * 0.2;
+        fieldLines.moveTo(bx, by).lineTo(tx, ty);
+        fieldLines.moveTo(tx - d.x * h - d.y * h * 0.55, ty - d.y * h + d.x * h * 0.55).lineTo(tx, ty).lineTo(tx - d.x * h + d.y * h * 0.55, ty - d.y * h - d.x * h * 0.55);
+        const barbs = v >= 0.8 ? 3 : v >= 0.6 ? 2 : v >= 0.4 ? 1 : 0;
+        for (let b = 0; b < barbs; b++) {
+          const ox = bx + d.x * R * 0.13 * b, oy = by + d.y * R * 0.13 * b;
+          fieldLines.moveTo(ox, oy).lineTo(ox + d.y * R * 0.24 - d.x * R * 0.08, oy - d.x * R * 0.24 - d.y * R * 0.08);
+        }
+      }
+      fieldLines.stroke({ color: INK, width: 1.6 * px, alpha: 0.75 });
+      for (const [x, y] of rain) {
+        for (let k = -1; k <= 1; k++) fieldLines.moveTo(x + k * R * 0.3 + R * 0.08, y + R * 0.3).lineTo(x + k * R * 0.3 - R * 0.04, y + R * 0.6);
+      }
+      fieldLines.stroke({ color: SEE, width: 1.6 * px, alpha: 0.8 });
+      for (const [x, y] of fog) {
+        for (const yy of [-0.35, 0.45]) for (let k = -2; k <= 2; k++) fieldLines.moveTo(x + k * R * 0.22 - R * 0.06, y + yy * R).lineTo(x + k * R * 0.22 + R * 0.06, y + yy * R);
+      }
+      fieldLines.stroke({ color: SEE, width: 1.6 * px, alpha: 0.7 });
+      for (const [x, y] of bolts) {
+        const b = R * 0.3;
+        fieldLines.moveTo(x + R * 0.45 + b * 0.3, y - R * 0.5 - b).lineTo(x + R * 0.45 - b * 0.25, y - R * 0.5 + b * 0.05).lineTo(x + R * 0.45 + b * 0.2, y - R * 0.5 + b * 0.05).lineTo(x + R * 0.45 - b * 0.3, y - R * 0.5 + b);
+      }
+      fieldLines.stroke({ color: SIEGEL, width: 2.2 * px, alpha: 0.95 });
+    }
+
     // Schilder T (Tief) und H (Hoch) in der Mitte der Systeme.
     for (const s of systems) {
       const l = pressureLabel(s.sign > 0);
@@ -177,9 +250,15 @@ export function buildWeatherLayer(wb: WeatherBalance): WeatherLayer {
   return {
     root,
     update(nowMs: number, scale: number): void {
+      // Übersicht (Wetterkarte) blendet aus, Feldzeichen blenden ein; T/H bleiben immer.
+      const near = Math.max(0, Math.min(1, (scale - HEX_FROM) / 0.12));
+      atmos.alpha = weatherAlpha(scale) * (1 - near);
+      fields.alpha = near;
+      fieldLines.alpha = near;
       for (const l of labels.children) l.scale.set(Math.max(0.6, Math.min(1.1, scale / 0.3 + 0.3)) / scale);
       const slot = Math.floor(nowMs / REDRAW_MS) * REDRAW_MS;
-      if (slot === drawnAt && drawnScale > 0 && Math.abs(Math.log(scale / drawnScale)) < 0.15) return;
+      const sameMode = (scale >= HEX_FROM) === (drawnScale >= HEX_FROM);
+      if (slot === drawnAt && drawnScale > 0 && sameMode && Math.abs(Math.log(scale / drawnScale)) < 0.15) return;
       drawnAt = slot;
       drawnScale = scale;
       draw(slot, scale);

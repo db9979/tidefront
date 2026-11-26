@@ -8,6 +8,7 @@ import { fmtDuration, fmtTime } from "../lib/time.ts";
 import { Bar, Button, ErrorLine, Sheet, UnitChips } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 import { spyKindText } from "./SpyPlan.tsx";
+import { hexAtXY, hexCenterXY } from "@tidefront/world";
 
 type MissionData = BaseData["missions"][number];
 
@@ -57,6 +58,15 @@ export function missionPhase(m: MissionData, now: number) {
   return { outbound, start, end, progress: Math.max(0, Math.min(1, (now - start) / Math.max(1, end - start))) };
 }
 
+/** Feld, auf dem der Verband gerade fährt (gerade Linie Heimathafen ↔ Ziel wie auf der Karte). */
+export function missionHex(m: MissionData, home: { col: number; row: number }, now: number): { col: number; row: number } {
+  const ph = missionPhase(m, now);
+  const a = hexCenterXY(home.col, home.row);
+  const b = hexCenterXY(m.target.col, m.target.row);
+  const t = ph.outbound ? ph.progress : 1 - ph.progress;
+  return hexAtXY(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
+}
+
 /** Infoblatt eines Verbands: Auftrag, Ziel, Truppen, Zeiten, Fortschritt, Ladung, Rückruf. */
 export function MissionSheet({ mission, now, home, onClose, onShowTarget }: {
   mission: MissionData;
@@ -93,7 +103,7 @@ export function MissionSheet({ mission, now, home, onClose, onShowTarget }: {
             <span className="text-ink2 font-normal"> · {fmtTime(ph.end)} Uhr</span>
           </div>
         </div>
-        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 items-center">
           <span className="text-slate-400">Auftrag</span><span className="text-right">{kind}{m.spy?.building ? ` (${label(m.spy.building)})` : ""}</span>
           <span className="text-slate-400">Ziel</span>
           <span className="text-right">

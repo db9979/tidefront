@@ -11,7 +11,7 @@ import { MapLegend } from "../map/Legend.tsx";
 import { RELATION_HEX, TacticalIcon, relationKind } from "../map/TacticalIcon.tsx";
 import { fmtPosition } from "../map/coords.ts";
 import { MissionSheet } from "../components/MissionSheet.tsx";
-import { WeatherChip } from "../map/WeatherChip.tsx";
+import { WeatherChip, WeatherLine } from "../map/WeatherChip.tsx";
 // Weltereignisse
 import { WorldEventCard, useWorldEvents } from "../components/WorldEvents.tsx";
 
@@ -29,8 +29,8 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
   const map = useQuery({ ...trpc.world.map.queryOptions(), refetchInterval: 60000 });
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const worldEvents = useWorldEvents();
-  const [sel, setSel] = useState<Target | null>(focus);
-  const [missionId, setMissionId] = useState<number | null>(null);
+  const [sel, setSel] = useState<Target | null>(focus?.missionId ? null : focus);
+  const [missionId, setMissionId] = useState<number | null>(focus?.missionId ?? null);
   const [recenter, setRecenter] = useState(0);
   const [centerOn, setCenterOn] = useState<Target>(focus ?? { col: base.col, row: base.row });
   // Wetterschicht (v1.6): abschaltbar, Wahl bleibt im Gerät.
@@ -166,6 +166,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
               {info.event && (
                 <WorldEventCard e={info.event} onPlan={() => onPlan({ col: info.event!.col, row: info.event!.row, eventId: info.event!.id })} />
               )}
+              {meta.data?.balance.weather && terrainAt(sel.col, sel.row) !== "land" && <WeatherLine at={sel} wb={meta.data.balance.weather} now={now} />}
               {!info.base && !info.nest && !info.wreck && !info.event && (
                 <div className="text-slate-400 mt-1">Hier ist nichts. Ziele sind Piratennester (rote Raute) und fremde Stützpunkte.</div>
               )}

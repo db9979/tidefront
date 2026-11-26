@@ -15,7 +15,7 @@ import { TECH, techName } from "../lib/research.ts";
 import { unitBreakdown } from "../lib/breakdown.ts";
 import { Breakdown, RankBadge, VeteranLine } from "../components/Breakdown.tsx";
 import { spyKindText } from "../components/SpyPlan.tsx"; // Nachrichtendienst
-import { RecallSheet, targetName } from "../components/MissionSheet.tsx";
+import { RecallSheet, missionHex, targetName } from "../components/MissionSheet.tsx";
 export { targetName };
 
 /** Werte, die die Aufschlüsselung zeigt (aus der festen Werte-Tabelle ausgeblendet). */
@@ -71,9 +71,13 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
                 </button>
               </div>
               <div className="text-xs text-slate-300"><UnitChips counts={m.status === "returning" ? m.returning : m.units} /></div>
-              <div className="text-sea-300">
-                {m.status === "outbound" ? `Ankunft in ${fmtDuration(m.arriveAtMs - now)}` : `Rückkehr in ${fmtDuration(m.returnAtMs - now)}`}
-              </div>
+              <button
+                type="button"
+                className="tap text-sea-300 text-left underline underline-offset-4 decoration-dotted"
+                onClick={() => onShowOnMap({ ...missionHex(m, { col: base.col, row: base.row }, now), missionId: m.id })}
+              >
+                {m.status === "outbound" ? `Ankunft in ${fmtDuration(m.arriveAtMs - now)}` : `Rückkehr in ${fmtDuration(m.returnAtMs - now)}`} · auf der Karte zeigen
+              </button>
               {m.cargoHome && Object.values(m.cargoHome).some((v) => v > 0) && (
                 <div className="text-xs text-brass-400">Ladung: <UnitChips counts={m.cargoHome} /></div>
               )}

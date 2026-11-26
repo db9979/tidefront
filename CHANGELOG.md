@@ -2,6 +2,12 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.11.4 – 27.11.2026
+- **Mission auf der Karte zeigen**: In der Missionsliste (Truppen) springt „auf der Karte zeigen“ zur aktuellen Position des Verbands und öffnet das Missionsblatt.
+- **Wetter je Feld**: Beim Hineinzoomen bekommt jedes Seefeld sein eigenes Wetterzeichen – Windpfeil mit Stärke-Fiedern, Wolkentönung, Regen, Nebel, Sturmfelder rot umrandet mit Blitz. Weit draußen bleibt die Wetterkarte mit Tiefs und Hochs.
+- **Feld antippen zeigt das Wetter**: Himmel, Windstärke, Nebel und die Wirkung (Schiffe langsamer, Flugzeuge am Boden, Aufklärung ungenau, Luftschlag schwächer).
+- iPhone/Safari: Texte vergrößern sich nicht mehr eigenmächtig und brechen sauber um; Silbentrennung im Fließtext.
+
 ## 0.11.3 – 27.11.2026
 - **Verband antippen**: Ein Tipp auf ein eigenes Schiff auf der Karte öffnet die Mission im Detail – Auftrag, Ziel, Fortschritt, Abfahrt, Ankunft, Rückkehr, Truppen, Verluste und Ladung; auf der Hinfahrt mit „Zurückrufen“.
 - **Wetter wie auf einer Wetterkarte**: Tiefs (T) und Hochs (H) mit Isobaren, Windpfeile mit Fiedern je nach Stärke, Wolkenfelder mit Regen, Sturmzellen mit Blitz und Nebelschleier. Neu: ein Wetterkärtchen „Am Hafen“ mit Himmel und Windstärke in Beaufort.

@@ -253,7 +253,6 @@ export function HexMap(props: HexMapProps) {
             drawMovers(s, live.current);
             const wl = weatherLayer.current;
             if (wl) {
-              wl.root.alpha = weatherAlpha(sc);
               wl.update(serverNow(), sc);
             }
           }
@@ -390,7 +389,6 @@ export function HexMap(props: HexMapProps) {
     if (!ready || !s || !weather) return;
     const layer = buildWeatherLayer(weather);
     s.world.addChildAt(layer.root, s.world.getChildIndex(s.routes));
-    layer.root.alpha = weatherAlpha(s.world.scale.x);
     layer.update(serverNow(), s.world.scale.x);
     weatherLayer.current = layer;
     return () => {

@@ -34,7 +34,7 @@ const BugReportSheet = lazy(() => import("./components/BugReport.tsx").then((m) 
 
 export type Tab = "basis" | "karte" | "truppen" | "berichte" | "boerse";
 /** Missionsziel; eventId: Weltereignis (Schatzschiff, Großflotte, Belagerung). */
-export interface Target { col: number; row: number; eventId?: number }
+export interface Target { col: number; row: number; eventId?: number; /** Karte: dieses Missionsblatt öffnen. */ missionId?: number }
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "basis", label: "Basis", icon: "nav-basis" },
@@ -213,7 +213,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       <BaseScreen base={b} asOf={base.data.serverNow} sheet={sheet} setSheet={setSheet} onGuide={onGuide} onTroops={() => go("truppen")} onResearch={openResearch} />
     </>
   ) : tab === "karte" ? (
-    <MapScreen base={b} focus={mapFocus} onPlan={openPlan} />
+    <MapScreen key={mapFocus?.missionId ?? "karte"} base={b} focus={mapFocus} onPlan={openPlan} />
   ) : tab === "truppen" ? (
     <TroopsScreen base={b} onResearch={openResearch} onPlan={() => openPlan(null)} onShowOnMap={(t) => { setMapFocus(t); go("karte"); }} />
   ) : tab === "berichte" ? (
