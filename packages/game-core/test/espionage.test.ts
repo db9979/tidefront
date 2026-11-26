@@ -123,7 +123,7 @@ test("Planung: Stufe je Art, Spione, Missionsplatz, schnellere Reise ohne Treibs
   assert.ok(Math.abs(r.mission.travelSeconds - (r.mission.distanceKm / E.speedKmh) * 3600) < 1e-6);
   const k = planSpyMission(b, { ...input, kind: "kartell", target: null }, T0, balance);
   assert.ok(k.ok && k.mission.arriveAtMs === T0 + E.kinds.kartell.hours! * HOUR);
-  const three = makeBase(balance, { units: { spion: 1 }, buildings: { nachrichtendienst: 3 } as never });
+  const three = makeBase(balance, { units: { spion: E.kinds.sabotage.spies - 1 }, buildings: { nachrichtendienst: 3 } as never });
   assert.deepEqual(planSpyMission(three, { ...input, kind: "sabotage", building: "kraftwerk" }, T0, balance), { ok: false, code: "no_spies" });
   assert.deepEqual(planSpyMission(three, { ...input, kind: "sabotage", building: "lagerkomplex" }, T0, balance), { ok: false, code: "bad_sabotage_target" });
   const lost = loseSpies(r.base, 1, T0 + HOUR, balance);

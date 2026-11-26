@@ -91,14 +91,24 @@ export function runResearchSim(balance: Balance, snaps: BotSnapshot[]): void {
     }
   }
 
-  console.log("\n  Kartell gegen den Bot-Hafen: Sieg % Kartell ohne / mit voller Forschung des Verteidigers");
-  for (const day of [7, 28]) {
+  // v1.7: Das Kartell zählt den Anteil raidResearchWeight des Lebenspunkte-Zuwachses aus der Forschung mit.
+  const half: Counts = {};
+  for (const [id, t] of Object.entries(techs)) half[id] = Math.ceil(t.maxLevel / 2);
+  const halfMods = researchModifiers(half, balance);
+  const w = balance.pirates.raidResearchWeight ?? 0;
+  console.log(
+    `\n  Kartell gegen den Bot-Hafen: Sieg % Kartell ohne / halbe / volle Forschung des Verteidigers;` +
+      ` links Stärke nach unmodifizierten Lebenspunkten (bis v1.6), rechts mit Forschungsanteil ${w} (v1.7)`,
+  );
+  for (const day of [7, 14, 21, 28]) {
     const s = snaps.find((x) => x.day === day);
     if (!s) continue;
-    const attacker = (seed: number) => composeRaid(s.base.units, s.base.defenses, balance, seed + RAID_SEED_OFFSET).attacker;
-    const a = winRate(balance, attacker, defenderFromBase(s.base, balance));
-    const b = winRate(balance, attacker, defenderFromBase(s.base, balance, full));
-    console.log(`  Tag ${String(day).padStart(2)}: ${pct(a)} / ${pct(b)}`);
+    const cell = (md: Modifiers | undefined, counted: boolean) => {
+      const attacker = (seed: number) => composeRaid(s.base.units, s.base.defenses, balance, seed + RAID_SEED_OFFSET, counted ? md : undefined).attacker;
+      return pct(winRate(balance, attacker, defenderFromBase(s.base, balance, md)));
+    };
+    const row = (counted: boolean) => [undefined, halfMods, full].map((md) => cell(md, counted)).join(" /");
+    console.log(`  Tag ${String(day).padStart(2)}: ${row(false)}   |  ${row(true)}`);
   }
 
   const s28 = snaps.find((x) => x.day === 28) ?? snaps[snaps.length - 1];

@@ -169,6 +169,8 @@ export interface Balance {
     raidMiliPerBoot: number;
     /** Schwankung der Überfallstärke je Überfall (0,3 = ±30 %). */
     raidStrengthSpread: number;
+    /** Anteil des Lebenspunkte-Zuwachses aus der Forschung des Verteidigers, den das Kartell mitzählt (v1.7; fehlt: 0). */
+    raidResearchWeight?: number;
   };
   market: MarketBalance;
   /** Forschung (seit v1.3); fehlt sie, gibt es keine Forschung. */

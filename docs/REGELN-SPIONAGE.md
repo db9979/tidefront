@@ -10,12 +10,12 @@ Teil der Regeln (siehe `docs/REGELN.md`).
 - **Spionageaufträge** (Missionsart `spionage`, Befehl `espionage.launch`, Ereignis `spy_arrive`): Sie belegen einen
   Missionsplatz, reisen ohne Treibstoff mit `espionage.speedKmh` (Hin- und Rückweg gleich lang) und sind für Radar und
   Vorwarnung unsichtbar. Je Art Mindeststufe des Nachrichtendiensts, Zahl der Spione und Zuschlag (`espionage.kinds`):
-  - **Erkunden** (Stufe 1, 1 Spion, +2): Lagebild wie Aufklärung, dazu laufende Forschung, Bauschlange,
+  - **Erkunden** (Stufe 1, 1 Spion, +4): Lagebild wie Aufklärung, dazu laufende Forschung, Bauschlange,
     Ausbildung und Veteranenränge; ab Stufe `missionsFromLevel` (4) des Absenders auch die laufenden Missionen des Ziels.
   - **Desinformation** (Stufe 2, 1 Spion, ±0): Beim Absender wird hinterlegt, dass das Ziel bis `disinfo.hours` (24 h)
     im **nächsten** Lagebild (Aufklärung oder Erkunden) über den Absender verfälschte Zahlen sieht: Einheiten und
-    Anlagen mal `forceFactor` (gerundet), Bestände und Bunkerschutz mal `resourceFactor` (abgerundet). Einmalig.
-  - **Sabotage** (Stufe 3, 2 Spione, −3): wählbares Ziel aus `sabotage.targets`, nicht zerstörerisch:
+    Anlagen mal `forceFactor` (1,5; gerundet), Bestände und Bunkerschutz mal `resourceFactor` (0,4; abgerundet). Einmalig.
+  - **Sabotage** (Stufe 3, 1 Spion, −2): wählbares Ziel aus `sabotage.targets`, nicht zerstörerisch:
     Kraftwerk → Gebäudeproduktion mal `productionFactor`; Radarstation → Vorwarnzeit 0; Werft, Kaserne, Flugfeld →
     der laufende Auftrag dort verschiebt sich um `sabotage.hours`, neue Aufträge dort dauern mal `trainingFactor`;
     Forschungsamt → die laufende Forschung verschiebt sich um `sabotage.hours`, neue dauert mal `researchFactor`;
@@ -24,7 +24,7 @@ Teil der Regeln (siehe `docs/REGELN.md`).
     `spy_sabotage_end` schreibt bis zum Ende fort und hebt sie auf. Höchstens **eine** gelungene Sabotage je Hafen in
     `cooldownHours` (24 h, `sabotage_cooldown`).
   - **Kartell-Aufklärung** (Stufe 2, 1 Spion, ±0, kein Ziel, feste Dauer `kinds.kartell.hours` je Richtung, Abwehr
-    `kinds.kartell.defense`): nächstes Weltereignis (Art und Zeitpunkt), laufende Ereignisse mit Position, Kurs mit
+    `kinds.kartell.defense` = 4): nächstes Weltereignis (Art und Zeitpunkt), laufende Ereignisse mit Position, Kurs mit
     Uhrzeiten (Schatzschiff), Zielhäfen mit erwarteter Angriffszeit (Großflotte), Belagerung.
 - **Ziele:** fremde Spielerhäfen (`spy_target`, `own_base`), nicht unter **Anfängerschutz** (`target_beginner`).
   Nachtschild und Schutz nach Niederlage halten Spione nicht auf. **Sabotage** ist gegen Verbündete und Paktpartner
@@ -32,7 +32,7 @@ Teil der Regeln (siehe `docs/REGELN.md`).
   unter Freunden ist ein Vertrauensbruch, aber kein Angriff). Bei Ankunft wird erneut geprüft (Anfängerschutz,
   Bündnis, Sperrfrist); dann bricht der Spion ohne Wurf ab und kehrt heim.
 - **Probe (offener W20, `espionage.die`):** Erfolgswert E = `base` (9) + Stufe Nachrichtendienst × `attackPerLevel`
-  + Forschung (Agentenschulung) + Erfahrung (je `xpPerPoint` gelungene Aufträge +1, höchstens `maxXpPoints`) +
+  + Forschung (Agentenschulung) + Erfahrung (je `xpPerPoint` = 5 gelungene Aufträge +1, höchstens `maxXpPoints` = 2) +
   Zuschlag der Art. Abwehr A = Stufe Nachrichtendienst des Ziels × `defensePerLevel` + Forschung (Verschlüsselung);
   beim Kartell der feste Wert. Zielzahl Z = E − A, begrenzt auf 1 … die − 1. **Erfolg bei Wurf ≤ Z**, sonst enttarnt;
   eine 1 gelingt immer, eine 20 scheitert immer. Erfolgschance Z / 20, Enttarnungs-Chance 1 − Z / 20; beide stehen vor
