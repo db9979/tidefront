@@ -5,6 +5,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   cancelTraining,
   cancelUpgrade,
+  combineModifiers,
   createBase,
   createProtection,
   harborCreditLimit,
@@ -38,6 +39,7 @@ import { siegeEffects } from "./world-events.ts";
 import { effectiveMarketRefs } from "./market-news.ts";
 import { modifiersFor, modsOf } from "./modifiers.ts";
 import { applyPendingBoost } from "./guide.ts";
+import { admiralForLaunch, assignAdmiral } from "./admirals-core.ts"; // Admirale
 
 export type Rejected = { ok: false; code: string };
 type Draft<T> = T | (Rejected & { keepWrites?: boolean });
@@ -234,7 +236,7 @@ export function launchMission(
   engine: Engine,
   playerId: number,
   key: string,
-  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number },
+  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number; admiralId?: number },
 ) {
   return runCommand<{ ok: true; missionId: number; arriveAtMs: number }>(engine, playerId, key, "mission", async (ctx) => {
     const b = await ownBaseLocked(ctx);
@@ -249,7 +251,9 @@ export function launchMission(
     if (input.type === "ueberfall" && target.kind === "nest" && target.defeatedAt && !isNestRespawned(target.defeatedAt.getTime(), ctx.nowMs, balance)) {
       fail("nest_empty");
     }
-    const mods = await modsOf(ctx.tx, b, ctx.nowMs);
+    // Admirale: Führer des Verbands (Tempo, Treibstoff, Tarnung …); prüft Besitz und Verfügbarkeit.
+    const adm = input.admiralId !== undefined ? await admiralForLaunch(ctx.tx, playerId, input.admiralId, ctx.nowMs) : null;
+    const mods = combineModifiers(await modsOf(ctx.tx, b, ctx.nowMs), adm?.mods);
     const r = planMission(
       b.state,
       {
@@ -272,10 +276,11 @@ export function launchMission(
       .insert(tables.mission)
       .values({
         playerId, baseId: b.id, type: r.mission.type, targetKind: target.kind, targetId: target.id,
-        targetCol: target.col, targetRow: target.row, plan: r.mission, status: "outbound",
+        targetCol: target.col, targetRow: target.row, plan: adm ? { ...r.mission, admiralId: adm.id } : r.mission, status: "outbound",
         arriveAt: new Date(r.mission.arriveAtMs),
       })
       .returning({ id: tables.mission.id });
+    if (adm) await assignAdmiral(ctx.tx, adm.id, m.id); // Admirale
     await scheduleEvent(ctx.tx, "mission_arrive", r.mission.arriveAtMs, { missionId: m.id }, target.kind === "base" ? target.id : null);
     if (r.mission.type === "ueberfall" && target.kind === "base" && target.state) {
       const targetMods = await modifiersFor(ctx.tx, target.playerId, { state: target.state, nowMs: ctx.nowMs });

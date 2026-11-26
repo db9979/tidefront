@@ -108,6 +108,8 @@ export const ART: Record<string, ReactNode> = {
   // Abzeichen aus dem Auftragsbuch: Medaille mit Anker an zwei Bändern.
   hafenmeister: (<><path d="M20 4 L30 26 L24 30 L12 8 Z M44 4 L34 26 L40 30 L52 8 Z" {...hd} strokeWidth={1.8} /><circle cx="32" cy="41" r="18" {...h} /><circle cx="32" cy="41" r="12.5" {...p} strokeWidth={1.6} /><path d="M32 33 V50 M27 37 H37 M25 44 Q26 50 32 50 Q38 50 39 44" fill="none" stroke={MESSING} strokeWidth={2.4} strokeLinecap="round" /><circle cx="32" cy="31.5" r="1.8" fill={MESSING} /></>),
   anker: (<><circle cx="32" cy="11" r="5" {...p} /><path d="M32 16 V55 M21 25 H43 M11 38 Q15 55 32 55 Q49 55 53 38" {...ln} strokeWidth={3.6} /><path d="M7 41 L11 35 L15 41 M49 41 L53 35 L57 41" {...ln} strokeWidth={2.6} /></>),
+  // Admirale: Schirmmütze mit weißem Bezug, dunklem Band, Kokarde mit Anker und Eichenlaub auf dem Schirm.
+  admiral: (<><path d="M6 31 Q8 13 32 12 Q58 13 59 27 L54 34 H11 Z" {...p} /><path d="M17 20 Q32 15 50 19" {...ln} strokeWidth={1.4} /><path d="M11 34 H54 V42 H11 Z" {...hd} /><path d="M8 42 H56 Q54 51 32 53 Q12 52 8 42 Z" {...h} /><circle cx="32" cy="27" r="6" fill={PAPER} stroke={MESSING} strokeWidth={1.8} /><path d="M32 23 V31 M29 25.5 H35 M28.5 29 Q32 32.5 35.5 29" fill="none" stroke={INK} strokeWidth={1.4} strokeLinecap="round" /><path d="M16 46 q4 -3 8 0 q4 -3 8 0 q4 -3 8 0 q4 -3 8 0" fill="none" stroke={MESSING} strokeWidth={1.8} strokeLinecap="round" /></>),
 
   // ---------------------------------------------------------------- Wetter (v1.6)
   wind: (<path d="M6 22 H40 Q50 22 50 14 Q50 7 43 8 M6 33 H52 Q60 33 60 41 Q60 48 53 47 M6 44 H30 Q37 44 37 50 Q37 56 31 55" {...ln} strokeWidth={3} />),

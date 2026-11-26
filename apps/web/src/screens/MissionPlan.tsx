@@ -18,6 +18,8 @@ import { ProbeCard } from "../components/SimLauncher.tsx";
 import { KIND_TITLE, useWorldEvents } from "../components/WorldEvents.tsx";
 // Nachrichtendienst: Spionageaufträge
 import { SpyPlan } from "../components/SpyPlan.tsx";
+// Admirale: Führung des Verbands
+import { AdmiralPick } from "../components/Admirals.tsx";
 
 const TYPES = [
   { id: "ueberfall", text: "Überfall", hint: "Kampf am Ziel, Beute bei Sieg" },
@@ -44,19 +46,20 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   const [note, setNote] = useState<string | null>(shortText(first.short));
   const [cargo, setCargo] = useState<Record<string, number>>({});
   const [sent, setSent] = useState<{ arriveAtMs: number; type: string } | null>(null);
+  const [admiralId, setAdmiralId] = useState<number | null>(null); // Admirale
   // Frische Bestände beim Öffnen
   useEffect(() => {
     void queryClient.invalidateQueries(trpc.base.pathFilter());
   }, []);
   const worldEvents = useWorldEvents(!!target?.eventId);
   const launch = useCommand(
-    (i: { key: string; type: string; units: Record<string, number>; col: number; row: number; cargo?: Record<string, number>; eventId?: number }) => trpcClient.mission.launch.mutate(i),
-    () => [trpc.base.pathFilter().queryKey],
+    (i: { key: string; type: string; units: Record<string, number>; col: number; row: number; cargo?: Record<string, number>; eventId?: number; admiralId?: number }) => trpcClient.mission.launch.mutate(i),
+    () => [trpc.base.pathFilter().queryKey, trpc.admiral.pathFilter().queryKey], // Admirale: Status
   );
 
   const chosen = useMemo(() => Object.fromEntries(Object.entries(units).filter(([, n]) => n > 0)), [units]);
   const cargoSent = type === "transport" ? Object.fromEntries(Object.entries(cargo).filter(([, n]) => n > 0)) : undefined;
-  const input = target ? { type, units: chosen, col: target.col, row: target.row, cargo: cargoSent, ...(target.eventId ? { eventId: target.eventId } : {}) } : null;
+  const input = target ? { type, units: chosen, col: target.col, row: target.row, cargo: cargoSent, ...(target.eventId ? { eventId: target.eventId } : admiralId ? { admiralId } : {}) } : null;
   const event = target?.eventId ? worldEvents.data?.events.find((e) => e.id === target.eventId) : undefined;
   const preview = useQuery({
     ...trpc.mission.preview.queryOptions(input ?? { type, units: {}, col: 0, row: 0 }),
@@ -153,6 +156,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           ))}
         </Card>
       )}
+
+      {!target?.eventId && <AdmiralPick value={admiralId} onChange={setAdmiralId} />}
 
       {type === "ueberfall" && tInfo?.nest && !tInfo.nest.empty && Object.keys(chosen).length > 0 && (
         <Strength balance={balance} units={chosen} level={tInfo.nest.level} />

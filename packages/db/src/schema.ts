@@ -6,3 +6,4 @@ export * from "./schema/social.ts";
 export * from "./schema/progress.ts";
 export * from "./schema/admin.ts";
 export * from "./schema/world.ts";
+export * from "./schema/admirals.ts"; // Admirale

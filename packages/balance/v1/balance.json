@@ -273,5 +273,26 @@
       "researchFactor": 2
     },
     "disinfo": { "hours": 24, "forceFactor": 1.5, "resourceFactor": 0.4 }
+  },
+  "admirals": {
+    "slots": { "base": 1, "perHarborLevels": 5, "max": 3 },
+    "cost": { "credits": 2000, "elektronik": 400 },
+    "ranks": [
+      { "id": "kapitaen", "name": "Kapitän zur See", "minXp": 0, "factor": 0.5 },
+      { "id": "konteradmiral", "name": "Konteradmiral", "minXp": 100, "factor": 0.7 },
+      { "id": "vizeadmiral", "name": "Vizeadmiral", "minXp": 300, "factor": 0.85 },
+      { "id": "admiral", "name": "Admiral", "minXp": 700, "factor": 1 }
+    ],
+    "secondSpecFromRank": 3,
+    "specs": {
+      "angriff": { "name": "Angriff", "text": "Geschütze und Zielführung: mehr Angriff zur See.", "mission": { "attack.see": 0.08 }, "defense": { "attack.see": 0.07, "attack.anlage": 0.07 } },
+      "verteidigung": { "name": "Verteidigung", "text": "Schadenskontrolle: mehr Lebenspunkte für den ganzen Verband.", "mission": { "hp.see": 0.06, "hp.land": 0.06, "hp.luft": 0.06 }, "defense": { "hp.see": 0.06, "hp.land": 0.06, "hp.luft": 0.06, "hp.anlage": 0.06 } },
+      "logistik": { "name": "Logistik", "text": "Marschordnung und Bunkerplan: schneller und sparsamer unterwegs.", "mission": { "speed.see": 0.1, "speed.luft": 0.1, "fuel": -0.15 } },
+      "aufklaerung": { "name": "Aufklärung", "text": "Funkdisziplin auf Mission (später erkannt), daheim längere Radar-Vorwarnzeit.", "mission": { "stealth": -0.25 }, "harbor": { "radarWarning": 0.25 } },
+      "beutemeister": { "name": "Beutemeister", "text": "Mehr Laderaum und Beute; daheim besser versteckte Bestände.", "mission": { "cargo": 0.15, "loot": 0.1 }, "harbor": { "bunker": 0.1 } },
+      "uboot": { "name": "U-Boot-Taktik", "text": "Wolfsrudel und U-Jagd: mehr Angriff der U-Boote und gegen getauchte U-Boote.", "mission": { "attackUnit.uboot": 0.12, "attackVs.uboot": 0.12 }, "defense": { "attackUnit.uboot": 0.12, "attackVs.uboot": 0.12 } }
+    },
+    "xp": { "hpPerXp": 60, "minWin": 5, "maxPerBattle": 120 },
+    "risk": { "lossShare": 0.7, "die": 20, "fallenMax": 1, "capturedMax": 5, "woundedMax": 12, "woundedHours": 12, "captiveHours": 48, "ransomCredits": 1500 }
   }
 }

@@ -486,3 +486,42 @@ der Angreifer 50 % gewinnt; links ohne Würfel wie v1.3, rechts mit):
    Tag 7 12 / 9 / 8 %, Tag 14 13 / 12 / 11 %, Tag 28 13 / 12 / 11 % (Gewicht 1 überzieht: 17–22 %).
    **Offen:** Der Server übergibt die Modifikatoren noch nicht (`packages/engine/src/handlers.ts`, `raidLaunch`:
    `composeRaid(state.units, state.defenses, balance, randomSeed(), mods)`); bis dahin rechnet das Spiel wie v1.6.
+
+## H. Admirale (Welle 2, Block `admirals`, ab v1.8)
+
+1. **Wirkung über das Modifikatoren-System, je Rolle getrennt.** Jede Spezialisierung hat Boni für drei Rollen:
+   `mission` (nur der Verband, den er führt: Kampf, Tempo, Treibstoff, Tarnung, Laderaum/Beute), `defense` (nur im
+   Verteidigungskampf des eigenen Hafens, auch gegen das Kartell) und `harbor` (passiv, solange er stationiert und bereit
+   ist: Radar-Vorwarnzeit, Bunkerschutz; als Quelle „Hafenkommandant“ in `modifierSourcesFor`). Kampfwerte stehen bewusst
+   **nicht** in `harbor`, sonst wirkte der Hafenkommandant auch auf eigene Überfälle. Der Bonus wächst mit dem Rang:
+   Faktor 0,5 / 0,7 / 0,85 / 1 (Kapitän zur See … Admiral). Die zweite Spezialisierung wirkt ab Rang 3 (Vizeadmiral).
+2. **Auslegung „+Angriff See“:** `attack.see` = Angriff der eigenen Schiffe (Gattung des Schützen), nicht aller Schützen
+   gegen Schiffe. Folge: In Landungskämpfen bringt „Angriff“ fast nichts; dort hilft „Verteidigung“ (LP aller Gattungen).
+   „Aufklärung“: auf Mission Tarnung (Vorwarnzeit des Ziels −25 %), daheim Radar-Vorwarnzeit +25 % – die gewünschte
+   „bessere Vorschau“ ist damit als längere Vorwarnung umgesetzt, nicht als genaueres Lagebild (offen).
+3. **Kampfwert (`sim/admirals.ts`, 200 Seeds):** Feuerkraft-Faktor für 50 % Sieg ohne und mit Admiral; Bonus = nötige
+   Mehr-Feuerkraft ohne Admiral.
+
+| Admiral | Seegefecht | Landung | Nest 3 | Nest 5 |
+|---|---|---|---|---|
+| Kapitän z. S., Angriff | +4,0 % | 0 % | +0,2 % | 0 % |
+| Admiral, Angriff | +8,0 % | 0 % | +0,9 % | 0 % |
+| Admiral, Verteidigung | +9,2 % | +0,8 % | +7,2 % | +0,9 % |
+| Admiral, Angriff + Verteidigung | **+17,9 %** | +0,8 % | +8,1 % | +0,9 % |
+| Hafen: Admiral Angriff + Verteidigung | **+18,9 %** | +6,0 % | +10,2 % | +8,1 % |
+
+   Mit den ersten Werten (Angriff +10 %, Verteidigung +8 %) lag der Hafenkommandant im Seegefecht bei +27 %, der
+   Missionsadmiral bei +21 %. Gesenkt auf Angriff See +8 % (daheim +7 %, auch Anlagen) und LP +6 %: voll ausgebildet
+   +10–19 %, nie über 20 %. Landungen bleiben fast unberührt (Ausgang hängt an Truppen und Bunkern).
+4. **Erfahrung** nur bei Sieg: zerstörte gegnerische LP / 60, mindestens 5, höchstens 120 je Kampf (Nest 5 ≈ Deckel).
+   Ränge ab 0 / 100 / 300 / 700: Admiral nach etwa 6–10 großen Siegen. Ohne Landung gewinnt der Angreifer nie
+   (Kampfregel) – reine Seeangriffe bringen dem Angreifer-Admiral also keine Erfahrung, dem Verteidiger schon.
+5. **Risiko:** Wurf nur nach Niederlage mit > 70 % verlorener LP (endgültig, nach Lazarett/Reparatur). W20 aus
+   `mulberry32(seed ^ Seitenkonstante)` – unabhängig von den Würfen des Kampfs, je Seite eigener Strom, im Bericht.
+   1 gefallen (Zeile gelöscht), 2–5 gefangen (48 h oder Lösegeld 1 500 Kredite), 6–12 verwundet (12 h), 13–20 unversehrt.
+   Der Sieger erhält den Gefangenen nicht.
+6. **Kosten** 2 000 Kredite + 400 Elektronik; Kredite mit Journal (`player:<id>` → `admiralitaet`), damit der Prüflauf
+   ausgeglichen bleibt. Plätze 1 + 1 je 5 Stufen Hafenkommandantur, höchstens 3. Kredite gibt es erst über die Börse
+   (Hafenkommandantur 3) – Admirale sind bewusst ein Mittelspiel-Ziel.
+7. **Status ohne Buchführung bei der Rückkehr:** „unterwegs“ = die Mission in `admiral.mission_id` ist outbound oder
+   returning. Weltereignis-Missionen nehmen (noch) keinen Admiral mit (offen).

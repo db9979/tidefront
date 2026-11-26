@@ -170,6 +170,20 @@ Nach dem Kampf:
   alt × Bestand / (Bestand + neue).
 - Der Verteidiger erhält seine Erfahrung sofort nach dem Kampf, der Angreifer, wenn sein Verband heimkehrt.
 
+## Admirale
+
+- Ernennen in der Hafenkommandantur (Truppen → Admirale), Block `admirals`: Plätze 1 + 1 je 5 Stufen Hafenkommandantur,
+  höchstens 3; Kosten 2 000 Kredite und 400 Elektronik. Name aus einer festen Liste (oder ausgelost).
+- Ränge nach Erfahrung: Kapitän zur See (0), Konteradmiral (100), Vizeadmiral (300), Admiral (700); Wirkung 50 / 70 /
+  85 / 100 % der vollen Boni. Eine Spezialisierung beim Ernennen, eine zweite ab Vizeadmiral: Angriff, Verteidigung,
+  Logistik, Aufklärung, Beutemeister, U-Boot-Taktik (Werte in `admirals.specs`, je Rolle `mission`, `defense`, `harbor`).
+- Ein Admiral führt einen Verband (Auswahl in der Missionsplanung; wirkt nur auf diesen Verband) oder ist
+  **Hafenkommandant** (höchstens einer): Er führt daheim die Verteidigung, auch gegen das Kartell, und wirkt passiv auf den
+  Hafen (Quelle „Hafenkommandant“). Unterwegs, verwundet oder gefangen fehlt er daheim.
+- Erfahrung nur bei Sieg: zerstörte gegnerische Lebenspunkte / 60, 5 bis 120 je Kampf.
+- Nach einer Niederlage mit über 70 % verlorenen Lebenspunkten W20 aus dem Kampf-Seed: 1 gefallen, 2–5 gefangen (48 h
+  oder Lösegeld 1 500 Kredite), 6–12 verwundet (12 h), sonst unversehrt. Bericht: beide Admirale, Einfluss, Erfahrung, Wurf.
+
 ## Freibeuter-Kartell
 
 - Nester der Stufen 1 bis 5 mit fester Besatzung und Beute (`pirates.nestLevels`), neu besetzt nach `nestRespawnHours`.
