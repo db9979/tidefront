@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { countLabel, fmtNum, label } from "./lib/names.ts";
 import { Icon } from "./icons.tsx";
 
@@ -95,6 +95,8 @@ export function Loading() {
 
 /** Blatt von unten (Info und Aktionen); Schließen per Hintergrund, Knopf oder Escape. */
 export function Sheet({ open, onClose, title, icon, children }: { open: boolean; onClose: () => void; title: ReactNode; icon?: ReactNode; children: ReactNode }) {
+  const panel = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ startY: number; dy: number } | null>(null);
   useEffect(() => {
     if (!open) return;
     const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -102,15 +104,45 @@ export function Sheet({ open, onClose, title, icon, children }: { open: boolean;
     return () => window.removeEventListener("keydown", k);
   }, [open, onClose]);
   if (!open) return null;
+
+  // Griff und Kopfzeile: nach unten ziehen schließt das Blatt (ab 80 px), Antippen des Griffs ebenso.
+  const setOffset = (dy: number, animate: boolean) => {
+    const el = panel.current;
+    if (!el) return;
+    el.style.transition = animate ? "transform 160ms ease-out" : "none";
+    el.style.transform = dy > 0 ? `translateY(${dy}px)` : "";
+  };
+  const onDown = (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest("button[data-close]")) return;
+    drag.current = { startY: e.clientY, dy: 0 };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onMove = (e: React.PointerEvent) => {
+    if (!drag.current) return;
+    drag.current.dy = Math.max(0, e.clientY - drag.current.startY);
+    setOffset(drag.current.dy, false);
+  };
+  const onUp = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d) return;
+    if (d.dy > 80) onClose();
+    else setOffset(0, true);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" role="dialog" aria-modal="true">
       <button type="button" aria-label="Schließen" className="absolute inset-0 bg-ink/45" onClick={onClose} />
-      <div className="sheet-in relative w-full max-w-xl max-h-[88vh] overflow-y-auto rounded-t-[10px] bg-card border border-ink border-b-0 shadow-[0_-10px_30px_rgba(24,39,58,0.18)] p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
-        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-rule" />
-        <div className="flex items-center gap-3 mb-3 pb-3 border-b-[3px] border-double border-ink">
-          {icon}
-          <h2 className="font-serif text-xl flex-1 min-w-0">{title}</h2>
-          <button type="button" className="tap rounded-lg border border-rule text-ink2 text-base" onClick={onClose} aria-label="Schließen">✕</button>
+      <div ref={panel} className="sheet-in relative w-full max-w-xl max-h-[88vh] overflow-y-auto rounded-t-[10px] bg-card border border-ink border-b-0 shadow-[0_-10px_30px_rgba(24,39,58,0.18)] px-4 pb-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
+        <div className="sticky top-0 z-10 bg-card -mx-4 px-4 pt-1 touch-none select-none" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
+          <button type="button" data-close aria-label="Blatt schließen (oder nach unten ziehen)" onClick={onClose} className="block mx-auto h-6 w-16 cursor-grab">
+            <span className="block mx-auto h-1 w-10 rounded-full bg-rule" />
+          </button>
+          <div className="flex items-center gap-3 mb-3 pb-3 border-b-[3px] border-double border-ink">
+            {icon}
+            <h2 className="font-serif text-xl flex-1 min-w-0">{title}</h2>
+            <button type="button" data-close className="tap rounded-lg border border-rule text-ink2 text-base" onClick={onClose} aria-label="Schließen">✕</button>
+          </div>
         </div>
         {children}
       </div>

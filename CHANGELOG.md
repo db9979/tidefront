@@ -6,6 +6,13 @@
 - Neue Einheit **U-Boot** (Werft ab Stufe 3): Torpedosalve vor dem Seegefecht, nur von Korvetten und Zerstörern zu treffen. Neue Kampfphase „U-Boot-Angriff“ im Kampfbericht.
 - **Freunde einladen** per E-Mail mit persönlicher Nachricht oder als teilbarer Link (Einstellungen oder Rangliste). Du erfährst, wenn dein Freund beitritt.
 - **Versionsnummer und „Was ist neu?“**: Nach jedem Update erscheint ein kurzer Hinweis; ist eine neuere Version online, bietet die App das Neuladen an.
+- **Tagesbefehle**: jeden Tag drei Aufgaben (leicht, mittel, schwer) mit Ressourcen und Saisonpunkten, Serienbonus und einmal täglich neu würfeln.
+- **Probekampf** in der Missionsplanung und ein freier Kampfsimulator unter Truppen.
+- **Verbandsvorlagen** und „Wiederholen“ an Berichten und heimgekehrten Verbänden.
+- **Zeitleiste** auf der Basis mit allen anstehenden Ereignissen.
+- **Morgenbericht** per E-Mail (Einstellungen): was über Nacht geschah.
+- Verwaltung: **Sicherungen herunterladen** und „Jetzt sichern“, dazu eine **Statistikseite**.
+- Info-Blätter lassen sich am Griff nach unten wegziehen.
 - Sicherungen laufen auch nach Updates zuverlässig weiter.
 
 ## 0.6.0 – 26.11.2026
