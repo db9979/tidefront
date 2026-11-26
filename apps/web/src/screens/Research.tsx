@@ -180,7 +180,7 @@ function TechSheet(props: { id: string; def: TechDef; row: TechRow; research: Re
           <div className="text-sm font-semibold">{maxed ? "–" : techEffectText(def.effects, row.level + 1)}</div>
         </div>
       </div>
-      <p className="text-xs text-ink2 mb-3">Je Stufe {def.effects.map((e) => pctText(1 + e.perLevel)).join(" / ")}. Mehrere Quellen auf denselben Wert werden multipliziert.</p>
+      <p className="text-xs text-ink2 mb-3">Je Stufe {def.effects.map((e) => pctText(1 + e.perLevel, e.path)).join(" / ")}. Mehrere Quellen auf denselben Wert werden multipliziert.</p>
       {!maxed && (
         <div className="rounded-xl bg-paper border border-rule p-2 mb-3">
           <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-1">Kosten</div>

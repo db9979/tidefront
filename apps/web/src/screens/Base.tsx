@@ -18,13 +18,14 @@ import { WorldEventBanner } from "../components/WorldEvents.tsx";
 import { researchNote } from "../lib/research.ts";
 import { buildingBreakdown } from "../lib/breakdown.ts";
 import { Breakdown } from "../components/Breakdown.tsx";
+import { IntelPanel, SabotageBanner, sabotagedUntil } from "../components/Intel.tsx"; // Nachrichtendienst
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 
 const GROUPS: { title: string; ids: string[] }[] = [
   { title: "Wirtschaft", ids: ["stahlwerk", "raffinerie", "chipfabrik", "versorgungshof", "kraftwerk", "lagerkomplex"] },
   { title: "Militär", ids: ["werft", "kaserne", "flugfeld"] },
-  { title: "Führung und Schutz", ids: ["kommandozentrale", "hafenkommandantur", "radarstation", "tiefbunker", "forschungsamt"] },
+  { title: "Führung und Schutz", ids: ["kommandozentrale", "hafenkommandantur", "radarstation", "tiefbunker", "forschungsamt", "nachrichtendienst"] },
 ];
 
 type Building = BaseData["buildings"][number];
@@ -72,6 +73,7 @@ export function BaseScreen(props: {
         </div>
       ))}
 
+      <SabotageBanner base={base} now={now} />
       <WorldEventBanner onMap={() => props.onGuide({ kind: "tab", tab: "karte" })} />
       <Guide base={base} onAction={props.onGuide} />
       <DailyOrders />
@@ -83,7 +85,7 @@ export function BaseScreen(props: {
       {GROUPS.map((g) => (
         <Card key={g.title} title={g.title}>
           <div className="grid grid-cols-3 gap-2">
-            {g.ids.map((id) => byId[id] && <BuildingTile key={id} b={byId[id]} res={res} queueFull={queueFull} running={queue[0]?.buildingId === id} queued={queue.some((o) => o.buildingId === id)} onOpen={() => setSheet(id)} />)}
+            {g.ids.map((id) => byId[id] && <BuildingTile key={id} b={byId[id]} sabotaged={sabotagedUntil(base, id, now) !== null} res={res} queueFull={queueFull} running={queue[0]?.buildingId === id} queued={queue.some((o) => o.buildingId === id)} onOpen={() => setSheet(id)} />)}
           </div>
         </Card>
       ))}
@@ -170,7 +172,7 @@ function BuildYard({ base, now }: { base: BaseData; now: number }) {
   );
 }
 
-function BuildingTile({ b, res, queueFull, running, queued, onOpen }: { b: Building; res: Record<string, number>; queueFull: boolean; running: boolean; queued: boolean; onOpen: () => void }) {
+function BuildingTile({ b, res, queueFull, running, queued, onOpen, sabotaged }: { b: Building; res: Record<string, number>; queueFull: boolean; running: boolean; queued: boolean; onOpen: () => void; sabotaged?: boolean }) {
   const can = !queueFull && b.planned < b.maxAllowed && affordable(b.cost, res);
   return (
     <button
@@ -182,7 +184,7 @@ function BuildingTile({ b, res, queueFull, running, queued, onOpen }: { b: Build
       <span className="w-full font-serif text-[12.5px] mt-1 leading-tight break-words hyphens-auto" lang="de">{label(b.id).replace("kommandantur", "\u00ADkommandantur").replace("zentrale", "\u00ADzentrale")}</span>
       <span className="mt-1 flex items-center gap-1">
         <span className={`w-[22px] h-[22px] rounded-full grid place-items-center text-[11px] mono border ${b.level > 0 ? "border-ink text-ink" : "border-rule text-ink2"}`}>{b.level}</span>
-        {running ? <Badge tone="red">Ausbau</Badge> : queued ? <Badge tone="sea">→ {b.planned}</Badge> : null}
+        {sabotaged ? <Badge tone="red">sabotiert</Badge> : running ? <Badge tone="red">Ausbau</Badge> : queued ? <Badge tone="sea">→ {b.planned}</Badge> : null}
       </span>
       {can && <span className="absolute top-1.5 left-1.5 diamond bg-moos" title="Ausbau möglich" />}
     </button>
@@ -206,7 +208,8 @@ function BuildingSheet({ b, base, res, onClose, onTroops, onResearch }: { b: Bui
     : !enough ? "Noch nicht genug Ressourcen." : null;
   const now = balance ? buildingEffect(balance, b.id, b.level) : null;
   const next = balance && !maxed ? buildingEffect(balance, b.id, target) : null;
-  const trains = ["werft", "kaserne", "flugfeld"].includes(b.id);
+  const trains = ["werft", "kaserne", "flugfeld", "nachrichtendienst"].includes(b.id);
+  const sabotaged = sabotagedUntil(base, b.id, Date.now());
   // Wirksame Werte mit Aufschlüsselung nach Quelle (nur, wenn eine Quelle wirkt).
   const effective = balance ? buildingBreakdown(balance, base.modifierSources, b.id, b.level).filter((r) => r.parts.length > 1) : [];
   const buildNote = researchNote(base.modifiers, "buildTime");
@@ -214,6 +217,8 @@ function BuildingSheet({ b, base, res, onClose, onTroops, onResearch }: { b: Bui
     <Sheet open onClose={onClose} title={<>{label(b.id)} <span className="text-ink2 font-sans text-sm mono">Stufe {b.level}</span></>} icon={<IconTile id={b.id} size={56} />}>
       <p className="text-sm text-slate-200 mb-3">{buildingText(balance, b.id)}</p>
       <StagePictures id={b.id} level={b.level} target={maxed ? null : target} />
+      {sabotaged !== null && <p className="text-sm text-siegel mb-2">Sabotiert bis {fmtTime(sabotaged)} – der Täter ist unbekannt.</p>}
+      {b.id === "nachrichtendienst" && b.level > 0 && <IntelPanel base={base} now={Date.now()} />}
       {(now || next) && (
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="rounded-xl bg-paper border border-rule p-2">

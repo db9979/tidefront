@@ -14,6 +14,7 @@ import { FreeSimCard } from "../components/SimLauncher.tsx";
 import { TECH, techName } from "../lib/research.ts";
 import { unitBreakdown } from "../lib/breakdown.ts";
 import { Breakdown, RankBadge, VeteranLine } from "../components/Breakdown.tsx";
+import { spyKindText } from "../components/SpyPlan.tsx"; // Nachrichtendienst
 
 /** Werte, die die Aufschlüsselung zeigt (aus der festen Werte-Tabelle ausgeblendet). */
 const BROKEN_DOWN = /^(Lebenspunkte|Angriff|U-Jagd|Tempo|Ladung|Treibstoff)/;
@@ -23,6 +24,7 @@ const GROUPS: { builtIn: string; title: string }[] = [
   { builtIn: "werft", title: "Werft" },
   { builtIn: "kaserne", title: "Kaserne" },
   { builtIn: "flugfeld", title: "Flugfeld" },
+  { builtIn: "nachrichtendienst", title: "Nachrichtendienst" },
   { builtIn: "anlagen", title: "Verteidigungsanlagen" },
 ];
 
@@ -69,9 +71,9 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
               <Icon id={m.type} size={36} />
               <div className="flex-1 min-w-0">
               <div className="flex justify-between gap-2">
-                <strong>{label(m.type)} {m.status === "returning" ? (m.recalled ? "· zurückgerufen" : "· Rückfahrt") : ""}</strong>
+                <strong>{m.spy ? spyKindText(m.spy.kind) : label(m.type)} {m.status === "returning" ? (m.recalled ? "· zurückgerufen" : "· Rückfahrt") : ""}</strong>
                 <button type="button" className="tap text-sea-300 underline text-xs" onClick={() => onShowOnMap({ col: m.target.col, row: m.target.row })}>
-                  {targetName(map.data, m.target.col, m.target.row)}
+                  {m.target.kind === "kartell" ? "Kartell-Informanten" : targetName(map.data, m.target.col, m.target.row)}
                 </button>
               </div>
               <div className="text-xs text-slate-300"><UnitChips counts={m.status === "returning" ? m.returning : m.units} /></div>
@@ -104,6 +106,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
         return (
           <Card key={g.builtIn} title={<span className="flex items-center gap-2"><Icon id={g.builtIn === "anlagen" ? "kuestenbatterie" : g.builtIn} size={22} />{g.title}</span>} right={g.builtIn !== "anlagen" ? <span className="text-xs text-slate-400">Stufe {level}</span> : undefined}>
             {g.builtIn === "flugfeld" && <p className="text-xs text-slate-400 mb-1">Stellplätze {base.aircraftSlots.used}/{base.aircraftSlots.total}</p>}
+            {g.builtIn === "nachrichtendienst" && base.intel && level > 0 && <p className="text-xs text-slate-400 mb-1">Spione {base.intel.spies.home + base.intel.spies.away + base.intel.spies.training}/{base.intel.cap} · Aufträge über „Mission planen“ → Spionage</p>}
             {order && (
               <div className="rounded-lg bg-paper border border-rule p-2 mb-2 flex items-center justify-between gap-2">
                 <div className="text-sm">

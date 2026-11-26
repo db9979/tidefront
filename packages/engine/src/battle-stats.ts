@@ -11,7 +11,7 @@ import { veteranView, type VeteranInfo } from "./veterans.ts";
 // Wert wie in der Wertung (Summe der Kosten; NPC-Einheiten mit festem Wert).
 import { unitValue } from "./scoring.ts";
 
-export type BattleCategory = "ueberfall" | "abwehr" | "nest" | "kartell" | "weltereignis";
+export type BattleCategory = "ueberfall" | "abwehr" | "nest" | "kartell" | "weltereignis" | "spionage";
 
 export interface BattleStatsRow {
   kind: string;
@@ -23,7 +23,7 @@ export interface BattleStatsRow {
 
 export interface BattleStats {
   battles: number;
-  /** Siege/Niederlagen je Art: Überfälle (eigene), Abwehr gegen Spieler, Nester, Kartell-Abwehr, Weltereignisse. */
+  /** Siege/Niederlagen je Art: Überfälle (eigene), Abwehr gegen Spieler, Nester, Kartell-Abwehr, Weltereignisse, Spionage (enttarnt). */
   record: Record<BattleCategory, { wins: number; losses: number }>;
   wins: number;
   losses: number;
@@ -43,13 +43,15 @@ export interface BattleStats {
   strongestNest: number | null;
 }
 
-const CATEGORIES: BattleCategory[] = ["ueberfall", "abwehr", "nest", "kartell", "weltereignis"];
+const CATEGORIES: BattleCategory[] = ["ueberfall", "abwehr", "nest", "kartell", "weltereignis", "spionage"];
 
 const isShip = (id: string) => (balance.units[id] ?? balance.npcUnits[id])?.branch === "see";
 
 function categoryOf(row: BattleStatsRow, own: boolean): BattleCategory | null {
   if (row.kind === "kartell") return "kartell";
   if (row.kind === "weltereignis") return "weltereignis";
+  // Enttarnte Spione (nur diese Berichte tragen Verluste): Spionage bzw. Gegenspionage.
+  if (row.kind === "spionage") return "spionage";
   if (row.kind === "ueberfall") return row.nestLevel !== null ? "nest" : own ? "ueberfall" : "abwehr";
   return null;
 }

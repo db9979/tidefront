@@ -37,6 +37,7 @@ import { eventMissionArrive } from "./world-events-missions.ts";
 import { WORLD_EVENT_HANDLERS } from "./world-events-run.ts";
 import { modifiersFor, modsOf } from "./modifiers.ts";
 import { withAttackExperience } from "./veterans.ts";
+import { scoutWithDisinfo } from "./espionage.ts"; // Nachrichtendienst (Desinformation)
 
 const HOUR_MS = 3600000;
 const none = (): HandlerResult => ({ notify: [] });
@@ -183,7 +184,8 @@ const missionArrive: Handler = async (tx, ev, due) => {
         report: { cargo: plan.cargo, from: attackerName, to: target.name },
       });
     } else if (m.type === "aufklaerung") {
-      const scout = scoutBase(target.state, due, balance, await modsOf(tx, target, due));
+      // Nachrichtendienst: hinterlegte Desinformation des Ziels verfälscht dieses Lagebild (einmalig).
+      const { scout } = await scoutWithDisinfo(tx, target, m.playerId, scoutBase(target.state, due, balance, await modsOf(tx, target, due)), due);
       reportId = await storeReport(tx, {
         kind: "aufklaerung", title: `Aufklärung: ${target.name}`, attackerPlayerId: m.playerId, defenderPlayerId: null,
         attackerBaseId: m.baseId, defenderBaseId: target.id, nestId: null, winner: null, seed: null, atMs: due,
@@ -420,6 +422,9 @@ export const HANDLERS: Record<string, Handler> = {
     return { notify };
   }),
   research_complete: (tx, ev, due) => import("./research.ts").then((m) => m.researchComplete(tx, ev, due)),
+  // Nachrichtendienst und Spionage (espionage-run.ts)
+  spy_arrive: (tx, ev, due) => import("./espionage-run.ts").then((m) => m.spyArrive(tx, ev, due)),
+  spy_sabotage_end: (tx, ev, due) => import("./espionage-run.ts").then((m) => m.spySabotageEnd(tx, ev, due)),
 };
 
 // Für Tests

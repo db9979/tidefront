@@ -44,6 +44,7 @@ import { veteranView } from "./veterans.ts";
 import { withLuckFactors } from "./battle-stats.ts";
 import { researchView } from "./research.ts";
 import { diplomacyBlock } from "./alliance-core.ts";
+import { intelView } from "./espionage.ts";
 
 /** Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband.) */
 export async function incomingDetected(tx: DbOrTx, baseId: number, state: BaseState, nowMs: number, mods?: Modifiers): Promise<boolean> {
@@ -117,6 +118,8 @@ export async function baseView(engine: Engine, playerId: number) {
     ? new Map((await engine.db.select({ id: tables.base.id, name: tables.base.name }).from(tables.base).where(inArray(tables.base.id, senderIds))).map((r) => [r.id, r.name]))
     : new Map<number, string>();
   const incoming = incomingRows
+    // Spionageaufträge bleiben unsichtbar (kein Radar).
+    .filter((m) => m.type !== "spionage")
     .filter((m) => m.type === "transport" || isAttackDetected(m.arriveAt.getTime(), nowMs, warn * warnFactor(m.plan)))
     .map((m) => ({
       id: m.id,
@@ -180,6 +183,7 @@ export async function baseView(engine: Engine, playerId: number) {
         returning: m.returning as Counts | null,
         cargoHome: m.cargoHome as ResourceMap | null,
         reportId: m.reportId,
+        spy: (m.plan as { spy?: { kind: string; building?: string } }).spy ?? null,
       })),
       incoming,
       deliveries: deliveries.map((d) => ({ id: d.id, resource: d.resource, qty: d.qty, arriveAtMs: d.arriveAt.getTime() })),
@@ -189,6 +193,7 @@ export async function baseView(engine: Engine, playerId: number) {
       modifierSources: modSources.filter((x) => Object.keys(x.mods).length > 0),
       veterans: veteranView(s),
       research: researchView(s, mods),
+      intel: intelView(s, mods, nowMs),
     },
   };
 }
@@ -286,7 +291,7 @@ export async function reportList(engine: Engine, playerId: number) {
       winner: tables.battleReport.winner,
       attackerPlayerId: tables.battleReport.attackerPlayerId,
       createdAt: tables.battleReport.createdAt,
-      from: sql<string | null>`${tables.battleReport.report}->>'from'`,
+      from: sql<string | null>`coalesce(${tables.battleReport.report}->>'from', ${tables.battleReport.report}->'spy'->>'from')`,
     })
     .from(tables.battleReport)
     .where(or(eq(tables.battleReport.attackerPlayerId, playerId), eq(tables.battleReport.defenderPlayerId, playerId)))
@@ -298,12 +303,19 @@ export async function reportList(engine: Engine, playerId: number) {
       id: r.id,
       kind: r.kind,
       // Empfänger einer Lieferung sieht den Absender statt des eigenen Hafens.
-      title: role === "recipient" ? `Lieferung von ${r.from ?? "?"}` : r.title,
+      title: reportTitle(r.kind, role, r.title, r.from),
       atMs: r.createdAt.getTime(),
       role,
       won: r.winner === null ? null : (r.winner === "attacker") === (r.attackerPlayerId === playerId),
     };
   });
+}
+
+/** Titel aus Sicht des Lesers: Lieferung mit Absender, enttarnter fremder Spion mit Absender. */
+function reportTitle(kind: string, role: string, title: string, from: string | null): string {
+  if (role === "recipient") return `Lieferung von ${from ?? "?"}`;
+  if (kind === "spionage" && role === "defender") return `Fremder Spion enttarnt – Absender ${from ?? "?"}`;
+  return title;
 }
 
 /** Rolle des Lesers: eigene Mission, angegriffener Hafen oder Empfänger einer Lieferung. */
@@ -325,7 +337,7 @@ export async function reportGet(engine: Engine, playerId: number, id: number) {
   return {
     id: r.id,
     kind: r.kind,
-    title: role === "recipient" ? `Lieferung von ${String((r.report as { from?: string }).from ?? "?")}` : r.title,
+    title: reportTitle(r.kind, role, r.title, (r.report as { spy?: { from?: string }; from?: string }).spy?.from ?? (r.report as { from?: string }).from ?? null),
     atMs: r.createdAt.getTime(),
     role,
     winner: r.winner,

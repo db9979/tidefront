@@ -33,6 +33,7 @@ export function cloneBase(base: BaseState): BaseState {
       ? { research: cloneResearch(base.research) }
       : {}),
     ...(base.veterancy ? { veterancy: { ...base.veterancy } } : {}),
+    ...(base.intel ? { intel: structuredClone(base.intel) } : {}),
   };
 }
 

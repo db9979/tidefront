@@ -26,7 +26,8 @@ const MINUTE_MS = 60000;
 /** Ein Stützpunkt als Verteidiger: Einheiten daheim, Anlagen, Bestände, Bunkerschutz (mit `mods`, die auch im Kampf wirken). */
 export function defenderFromBase(base: BaseState, balance: Balance, mods?: Modifiers): DefenderInput {
   return {
-    units: { ...base.units },
+    // Verdeckte Einheiten (Spione) kämpfen nicht und bleiben vom Kampf unberührt.
+    units: Object.fromEntries(Object.entries(base.units).filter(([id]) => !balance.units[id]?.covert)),
     defenses: { ...base.defenses },
     versorgungsmangel: base.versorgungsmangel,
     resources: { ...base.resources },

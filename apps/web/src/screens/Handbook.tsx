@@ -9,6 +9,7 @@ import { buildingText, unitText, unitTone } from "../lib/info.ts";
 import { Icon, IconTile } from "../icons.tsx";
 import { Button } from "../ui.tsx";
 import { SettingsScreen } from "./Settings.tsx";
+import { IntelChapter } from "../components/IntelChapter.tsx";
 
 interface Chapter { id: string; icon: string; title: string; body: ReactNode }
 
@@ -140,7 +141,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
       id: "forschung", icon: "forschungsamt", title: "Forschung",
       body: (
         <>
-          <P>Im <strong>Forschungsamt</strong> (Basis → Führung und Schutz) erforschst du Techniken in vier Zweigen: Seefahrt, Heer, Luftfahrt und Wirtschaft. Es läuft immer <strong>eine</strong> Forschung; sie kostet Ressourcen und Zeit. Abbrechen erstattet den Anteil der Restzeit.</P>
+          <P>Im <strong>Forschungsamt</strong> (Basis → Führung und Schutz) erforschst du Techniken in fünf Zweigen: Seefahrt, Heer, Luftfahrt, Wirtschaft und Nachrichtendienst. Es läuft immer <strong>eine</strong> Forschung; sie kostet Ressourcen und Zeit. Abbrechen erstattet den Anteil der Restzeit.</P>
           <P>Jede Technik hat 1 bis 3 Stufen mit je 5 bis 12 % Wirkung, zum Beispiel Dampfturbinen +8 % Tempo der Schiffe, Sonar +10 % U-Jagd, Hochofen +8 % Stahl oder Logistik −8 % Treibstoff und +8 % Ladung. Voll erforscht bringt kein Bereich mehr als 25 %. Fortgeschrittene Techniken brauchen eine höhere Stufe des Forschungsamts (3 oder 5) und eine Vorgänger-Technik. Jede Stufe des Forschungsamts über 1 forscht 10 % schneller.</P>
           <P>Die Boni wirken überall: in Kämpfen (auch gegen das Kartell), auf Reisen, in Produktion, Lager und Bunker. Die Info-Blätter zeigen sie als „+10 % durch Forschung“. Treffen mehrere Quellen denselben Wert, werden sie multipliziert.</P>
           <P><strong>Durchbruch:</strong> Beim Abschluss jeder Forschung wird ein Prozentwurf (W100) gewürfelt. Die Chance steht vorher im Info-Blatt: {b?.research?.breakthrough ? `${Math.round(b.research.breakthrough.baseChance * 100)} % plus ${Math.round(b.research.breakthrough.perBuildingLevel * 100)} Punkte je Stufe des Forschungsamts, höchstens ${Math.round(b.research.breakthrough.maxChance * 100)} %` : "10 % plus 2 Punkte je Stufe, höchstens 25 %"}. Bei einem Durchbruch wählst du: (a) die Technik erhält sofort eine Stufe zusätzlich oder (b) deine nächste Forschung dauert nur halb so lange. Ist die Technik schon auf Höchststufe, gibt es automatisch (b). Kein Einsatz, kein Risiko – nur ein Bonus.</P>
@@ -148,6 +149,8 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
         </>
       ),
     },
+    // Nachrichtendienst und Spionage (components/Intel.tsx)
+    { id: "nachrichtendienst", icon: "spion", title: "Nachrichtendienst", body: <IntelChapter b={b} /> },
     {
       id: "tagesbefehle", icon: "uhr", title: "Tagesbefehle",
       body: (

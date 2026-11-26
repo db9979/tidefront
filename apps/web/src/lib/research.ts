@@ -9,6 +9,7 @@ export const BRANCHES: { id: string; name: string; icon: string }[] = [
   { id: "heer", name: "Heer", icon: "kampfpanzer" },
   { id: "luftfahrt", name: "Luftfahrt", icon: "abfangjaeger" },
   { id: "wirtschaft", name: "Wirtschaft", icon: "stahlwerk" },
+  { id: "nachrichtendienst", name: "Nachrichtendienst", icon: "nachrichtendienst" },
 ];
 
 export const TECH: Record<string, { name: string; icon: string; text: string }> = {
@@ -32,6 +33,8 @@ export const TECH: Record<string, { name: string; icon: string; text: string }> 
   lagertechnik: { name: "Lagertechnik", icon: "lagerkomplex", text: "Hochregale: mehr Lagerplatz für jede Ressource." },
   fertigbau: { name: "Fertigbau", icon: "kran", text: "Vorgefertigte Teile: Gebäude werden schneller ausgebaut." },
   stahlbetonbunker: { name: "Stahlbetonbunker", icon: "tiefbunker", text: "Tiefere Bunker: mehr Ressourcen sind vor Plünderung geschützt." },
+  verschluesselung: { name: "Verschlüsselung", icon: "nachrichtendienst", text: "Chiffren und Funkdisziplin: +1 Abwehr je Stufe gegen fremde Spione." },
+  agentenschulung: { name: "Agentenschulung", icon: "spion", text: "Tarnidentitäten und Ausbildung: +1 auf den Erfolgswert eigener Spione je Stufe." },
 };
 
 export function techName(id: string): string {
@@ -74,6 +77,8 @@ const PATH_LABEL: Record<string, string> = {
   buildTime: "Bauzeit Gebäude",
   bunker: "Bunkerschutz",
   researchTime: "Forschungsdauer",
+  spyAttack: "Erfolgswert Spione",
+  spyDefense: "Abwehr gegen Spione",
 };
 
 export function pathLabel(path: string): string {
@@ -81,7 +86,9 @@ export function pathLabel(path: string): string {
 }
 
 /** Faktor als Prozent mit Vorzeichen, z. B. „+8 %“ oder „−10 %“. */
-export function pctText(factor: number): string {
+export function pctText(factor: number, path?: string): string {
+  // Spionage-Werte zählen in Würfelpunkten (Faktor 1,1 = +1), nicht in Prozent.
+  if (path === "spyAttack" || path === "spyDefense") return `+${Math.round((factor - 1) * 10)} Punkte`;
   const p = Math.round((factor - 1) * 1000) / 10;
   return `${p >= 0 ? "+" : "−"}${String(Math.abs(p)).replace(".", ",")} %`;
 }
@@ -106,7 +113,7 @@ export function modRows(mods: Mods | null | undefined): [string, string][] {
   const rows: [string, string][] = [];
   if (!mods) return rows;
   for (const [k, v] of Object.entries(mods)) {
-    if (typeof v === "number") rows.push([pathLabel(k), pctText(v)]);
+    if (typeof v === "number") rows.push([pathLabel(k), pctText(v, k)]);
     else for (const [e, f] of Object.entries((v ?? {}) as Record<string, number>)) rows.push([pathLabel(`${k}.${e}`), pctText(f)]);
   }
   return rows;
@@ -129,7 +136,7 @@ export function unitResearchRows(mods: Mods | null | undefined, branch: string, 
 /** Wirkung einer Technik auf Stufe L als Text („Stahlproduktion +16 %“); Stufe 0: „noch keine Wirkung“. */
 export function techEffectText(effects: { path: string; perLevel: number }[], level: number): string {
   if (level <= 0) return "noch keine Wirkung";
-  return effects.map((e) => `${pathLabel(e.path)} ${pctText(1 + e.perLevel * level)}`).join(", ");
+  return effects.map((e) => `${pathLabel(e.path)} ${pctText(1 + e.perLevel * level, e.path)}`).join(", ");
 }
 
 const ROMAN = ["0", "I", "II", "III", "IV", "V"];

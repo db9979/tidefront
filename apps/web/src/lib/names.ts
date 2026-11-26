@@ -12,6 +12,8 @@ const NAMES: Record<string, string> = {
   ueberfall: "Überfall", aufklaerung: "Aufklärung", transport: "Transport", kartell: "Kartell-Überfall",
   luftkampf: "Luftkampf", luftschlag: "Luftschlag", ubootangriff: "U-Boot-Angriff", seegefecht: "Seegefecht", landung: "Landung",
   weltereignis: "Weltereignis", weltereignis_leer: "Weltereignis",
+  nachrichtendienst: "Nachrichtendienst", spion: "Spion", spionage: "Spionage", sabotage: "Sabotage",
+  erkunden: "Erkunden", desinformation: "Desinformation", bauschlange: "Bauschlange",
   anfaengerschutz: "Anfängerschutz", niederlage: "Schutz nach Niederlage", nachtschild: "Nachtschild",
 };
 
@@ -19,7 +21,7 @@ const PLURAL: Record<string, string> = {
   korvette: "Korvetten", zerstoerer: "Zerstörer", landungsschiff: "Landungsschiffe", uboot: "U-Boote", schuetzen: "Schützen", pioniere: "Pioniere",
   kampfpanzer: "Kampfpanzer", abfangjaeger: "Abfangjäger", jagdbomber: "Jagdbomber", aufklaerungsdrohne: "Aufklärungsdrohnen",
   schnellboot: "Schnellboote", piratenmiliz: "Piratenmilizionäre", kuestenbatterie: "Küstenbatterien", flakstellung: "Flakstellungen",
-  bunkerlinie: "Bunkerlinien", minensperre: "Minensperren",
+  bunkerlinie: "Bunkerlinien", minensperre: "Minensperren", spion: "Spione",
 };
 
 /** Name mit passender Zahlform für eine Menge. */
@@ -174,6 +176,17 @@ const ERRORS: Record<string, string> = {
   already_chosen: "Die Belohnung ist schon gewählt.",
   bad_choice: "Ungültige Wahl.",
   no_research: "Forschung ist nicht verfügbar.",
+  // Nachrichtendienst
+  covert_unit: "Spione fahren nicht in Verbänden mit – sie reisen nur mit Spionageaufträgen.",
+  unit_cap: "Höchstzahl erreicht: der Nachrichtendienst führt je Stufe nur wenige Spione.",
+  spy_level: "Dafür braucht der Nachrichtendienst eine höhere Stufe.",
+  no_spies: "Nicht genug Spione daheim.",
+  bad_sabotage_target: "Dieses Ziel lässt sich nicht sabotieren.",
+  target_beginner: "Das Ziel steht unter Anfängerschutz – keine Spionage.",
+  spy_target: "Spione arbeiten nur gegen Spielerhäfen.",
+  sabotage_cooldown: "Dieser Hafen wurde vor Kurzem sabotiert und ist noch in Alarmbereitschaft (höchstens eine Sabotage je 24 Stunden).",
+  no_espionage: "Spionage ist nicht verfügbar.",
+  bad_spy_kind: "Unbekannte Auftragsart.",
 };
 
 export function errorText(code: string): string {

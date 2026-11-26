@@ -2,7 +2,7 @@
 // Wetter, Admirale, Weltereignisse). Quellen werden multiplikativ kombiniert (combineModifiers im Kern).
 // Jede Stelle des Servers, die eine Kernfunktion für einen Spielerstützpunkt aufruft, übergibt das Ergebnis.
 // Für Info-Blätter liefert modifierBreakdown die Quellen getrennt (Grundwert · Forschung · Veteranen …).
-import { combineModifiers, researchModifiers, veteranModifiers, type BaseState, type Modifiers } from "@tidefront/game-core";
+import { combineModifiers, researchModifiers, sabotageModifiers, veteranModifiers, type BaseState, type Modifiers } from "@tidefront/game-core";
 import type { DbOrTx } from "@tidefront/db";
 import { balance } from "./context.ts";
 import { baseOfPlayer } from "./store.ts";
@@ -66,7 +66,9 @@ export async function modifierSourcesFor(
   const extra = await Promise.all(
     SOURCES.map(async (s) => ({ id: s.id, label: s.label, mods: (await s.source(db, playerId, { state, nowMs })) ?? {} })),
   );
-  return [...baseModifierSources(state), ...extra];
+  // Sabotage (Nachrichtendienst): laufende Sabotage im eigenen Hafen, zeitabhängig.
+  const sabotage = { id: "sabotage", label: "Sabotage", mods: sabotageModifiers(state, nowMs, balance) };
+  return [...baseModifierSources(state), sabotage, ...extra];
 }
 
 /**

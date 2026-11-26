@@ -15,6 +15,7 @@ const CATEGORY: { id: keyof Stats["record"]; name: string }[] = [
   { id: "nest", name: "Piratennester" },
   { id: "kartell", name: "Kartell-Abwehr" },
   { id: "weltereignis", name: "Weltereignisse" },
+  { id: "spionage", name: "Spionage (enttarnte Spione)" },
 ];
 
 /** Sieg-/Niederlagen-Balken einer Kategorie (Siege Moos, Niederlagen Siegelrot). */
