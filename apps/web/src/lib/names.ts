@@ -261,6 +261,7 @@ const ERRORS: Record<string, string> = {
   too_close_own: "Zu nah an einem deiner eigenen Häfen.",
   same_base: "Ausgangs- und Zielhafen sind gleich.",
   admiral_elsewhere: "Dieser Admiral gehört zu einem anderen Hafen.",
+  admiral_other_base: "Dieser Admiral dient in einem anderen Hafen – erst dorthin verlegen.",
 };
 
 export function errorText(code: string): string {
