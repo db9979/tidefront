@@ -16,6 +16,10 @@ backup_once() {
   pg_dump -Fc -f "$tmp"
   mv "$tmp" "$DIR/tidefront-$ts.dump"
   date +%s > "$DIR/.last-ok"
+  # Für den Systemzustand im Spiel (Worker-Alarm): erfolgreiche Sicherung vermerken.
+  size=$(wc -c < "$DIR/tidefront-$ts.dump" | tr -d ' ')
+  psql -qAtc "insert into backup_run (file, bytes) values ('tidefront-$ts.dump', $size)" >/dev/null 2>&1 \
+    || echo "backup_run nicht vermerkt"
   find "$DIR" -maxdepth 1 -name 'tidefront-*.dump' -mtime +"$KEEP" -delete
   echo "backup ok: tidefront-$ts.dump"
 }

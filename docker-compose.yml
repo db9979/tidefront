@@ -11,6 +11,18 @@ x-app: &app
     DATABASE_URL: postgres://tidefront:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD in .env setzen}@postgres:5432/tidefront
     VALKEY_URL: redis://valkey:6379
     INVITE_CODES: ${INVITE_CODES:-}
+    # Admins (Komma-Liste von Spielernamen); leer: der zuerst registrierte Spieler ist Admin.
+    ADMIN_NAMES: ${ADMIN_NAMES:-}
+    # Öffentliche Adresse (Links in E-Mails, VAPID-Subject).
+    PUBLIC_URL: ${PUBLIC_URL:-https://tidefront.metaluna9.i234.me}
+    # Web-Push: ohne Angabe erzeugt migrate die Schlüssel und legt sie in server_setting ab.
+    VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+    VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+    VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+    # Schlüssel für gespeicherte Geheimnisse (SMTP-Passwort); ohne ihn ist E-Mail abgeschaltet.
+    APP_SECRET: ${APP_SECRET:-}
+    # Sitzungs-Cookie mit Secure: auto (nach X-Forwarded-Proto), true oder false.
+    COOKIE_SECURE: ${COOKIE_SECURE:-auto}
     LOG_LEVEL: ${LOG_LEVEL:-info}
     TZ: ${TZ:-Europe/Berlin}
 

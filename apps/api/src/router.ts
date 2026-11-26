@@ -1,5 +1,4 @@
 // tRPC-Router: der Client sendet nur Absichten, der Server entscheidet.
-import { initTRPC, TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
   balance,
@@ -7,7 +6,6 @@ import {
   cancelBuild,
   cancelTrain,
   chooseBase,
-  GameError,
   launchMission,
   login,
   logout,
@@ -22,35 +20,11 @@ import {
   trade,
   train,
   upgrade,
-  type Engine,
 } from "@tidefront/engine";
+import { authed, t, wrap, type Ctx } from "./trpc.ts";
+import { accountRouter, adminRouter, authExtras, pushRouter } from "./routers/ops.ts";
 
-export interface Ctx {
-  engine: Engine;
-  player: { id: number; name: string } | null;
-  token: string | undefined;
-  setSession: (token: string | null) => void;
-  rateLimit: (bucket: string, limit: number, windowSec: number) => Promise<boolean>;
-  ip: string;
-}
-
-const t = initTRPC.context<Ctx>().create();
-
-const authed = t.procedure.use(async ({ ctx, next }) => {
-  if (!ctx.player) throw new TRPCError({ code: "UNAUTHORIZED" });
-  if (!(await ctx.rateLimit(`cmd:${ctx.player.id}`, 120, 60))) throw new TRPCError({ code: "TOO_MANY_REQUESTS" });
-  return next({ ctx: { ...ctx, player: ctx.player } });
-});
-
-/** Fehler des Spiels als Rückgabewert statt Ausnahme. */
-async function wrap<T>(fn: () => Promise<T>): Promise<T | { ok: false; code: string }> {
-  try {
-    return await fn();
-  } catch (err) {
-    if (err instanceof GameError) return { ok: false, code: err.code };
-    throw err;
-  }
-}
+export type { Ctx };
 
 const key = z.string().min(8).max(80);
 const counts = z.record(z.string().max(40), z.number().int().min(0).max(1_000_000));
@@ -91,7 +65,12 @@ export const appRouter = t.router({
       ctx.setSession(null);
       return { ok: true as const };
     }),
+    ...authExtras,
   }),
+
+  push: pushRouter,
+  account: accountRouter,
+  admin: adminRouter,
 
   world: t.router({
     map: authed.query(({ ctx }) => mapView(ctx.engine, ctx.player.id)),

@@ -25,6 +25,7 @@ import { balance, marketBalance, GameError, type ChangeKind, type Engine } from 
 import { processDueForBase } from "./events.ts";
 import { activeMissionCount, baseOfPlayer, lockBase, saveBase, scheduleEvent } from "./store.ts";
 import { incomingDetected } from "./views.ts";
+import { scheduleAttackWarning } from "./event-notices.ts";
 
 export type Rejected = { ok: false; code: string };
 type Draft<T> = T | (Rejected & { keepWrites?: boolean });
@@ -239,6 +240,9 @@ export function launchMission(
       })
       .returning({ id: tables.mission.id });
     await scheduleEvent(ctx.tx, "mission_arrive", r.mission.arriveAtMs, { missionId: m.id }, target.kind === "base" ? target.id : null);
+    if (r.mission.type === "ueberfall" && target.kind === "base" && target.state) {
+      await scheduleAttackWarning(ctx.tx, { missionId: m.id, targetBaseId: target.id, targetState: target.state, arriveAtMs: r.mission.arriveAtMs, nowMs: ctx.nowMs });
+    }
     ctx.notify.push([[playerId], "base"], [[playerId], "missions"]);
     if (target.kind === "base" && target.playerId !== null) ctx.notify.push([[target.playerId], "missions"]);
     return { ok: true as const, missionId: m.id, arriveAtMs: r.mission.arriveAtMs };

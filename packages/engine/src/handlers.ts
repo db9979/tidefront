@@ -30,6 +30,7 @@ import { tables, type Tx } from "@tidefront/db";
 import { balance, RAID_LEAD_MS } from "./context.ts";
 import type { EventRow, Handler, HandlerResult } from "./events.ts";
 import { lockBase, lockBases, randomSeed, readBase, saveBase, scheduleEvent } from "./store.ts";
+import { attackWarning, scheduleAttackWarning } from "./event-notices.ts";
 
 const HOUR_MS = 3600000;
 const none = (): HandlerResult => ({ notify: [] });
@@ -310,6 +311,7 @@ const raidLaunch: Handler = async (tx, ev, due) => {
     })
     .returning({ id: tables.mission.id });
   await scheduleEvent(tx, "raid_arrive", arrive, { missionId: m.id }, b.id);
+  await scheduleAttackWarning(tx, { missionId: m.id, targetBaseId: b.id, targetState: state, arriveAtMs: arrive, nowMs: due });
   return { notify: [[[b.playerId], "missions"]] };
 };
 
@@ -366,6 +368,7 @@ export const HANDLERS: Record<string, Handler> = {
   raid_launch: raidLaunch,
   raid_arrive: raidArrive,
   delivery_arrive: deliveryArrive,
+  attack_warning: attackWarning,
 };
 
 // Für Tests

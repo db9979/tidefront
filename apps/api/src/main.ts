@@ -9,14 +9,17 @@ import { fastifyTRPCPlugin, type CreateFastifyContextOptions, type FastifyTRPCPl
 import Valkey from "iovalkey";
 import { sql } from "drizzle-orm";
 import { createDb } from "@tidefront/db";
-import { playerForToken, type ChangeKind, type Engine } from "@tidefront/engine";
+import { noticeHook, playerForToken, touchLastSeen, type ChangeKind, type Engine } from "@tidefront/engine";
 import { appRouter, type AppRouter, type Ctx } from "./router.ts";
+import { registerMailLinks } from "./routers/mail-links.ts";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://tidefront:tidefront@localhost:5432/tidefront";
 const VALKEY_URL = process.env.VALKEY_URL ?? "redis://localhost:6379";
 const WEB_DIR = resolve(process.env.WEB_DIR ?? "apps/web/dist");
 const COOKIE = "tf_session";
+/** auto: Secure, wenn die Anfrage per HTTPS kam (hinter dem Proxy über X-Forwarded-Proto, trustProxy ist an). */
+const COOKIE_SECURE = (process.env.COOKIE_SECURE ?? "auto").toLowerCase();
 
 const { db } = createDb(DATABASE_URL, 10);
 const pub = new Valkey(VALKEY_URL, { lazyConnect: false, maxRetriesPerRequest: 2 });
@@ -35,6 +38,7 @@ const engine: Engine = {
   },
   log: (msg, data) => app.log.warn({ data }, msg),
 };
+engine.push = noticeHook(() => engine);
 
 /** Feste Fenster je Schlüssel; ohne Valkey wird nicht begrenzt. */
 async function rateLimit(bucket: string, limit: number, windowSec: number): Promise<boolean> {
@@ -89,14 +93,16 @@ await app.register(fastifyTRPCPlugin, {
     router: appRouter,
     createContext: async ({ req, res }: CreateFastifyContextOptions): Promise<Ctx> => {
       const token = req.cookies[COOKIE];
+      const player = await playerForToken(db, token);
+      if (player) void touchLastSeen(db, player.id).catch(() => {});
       return {
         engine,
         token,
-        player: await playerForToken(db, token),
+        player,
         ip: req.ip,
         rateLimit,
         setSession: (t) => {
-          const secure = req.protocol === "https";
+          const secure = COOKIE_SECURE === "true" || (COOKIE_SECURE !== "false" && req.protocol === "https");
           if (t === null) res.clearCookie(COOKIE, { path: "/" });
           else res.setCookie(COOKIE, t, { path: "/", httpOnly: true, sameSite: "lax", secure, maxAge: 30 * 86400 });
         },
@@ -107,6 +113,8 @@ await app.register(fastifyTRPCPlugin, {
     },
   } satisfies FastifyTRPCPluginOptions<AppRouter>["trpcOptions"],
 });
+
+registerMailLinks(app, engine, rateLimit);
 
 // ---------------------------------------------------------------- Gesundheit und Oberfläche
 app.get("/healthz", async (_req, reply) => {
@@ -127,7 +135,7 @@ if (existsSync(WEB_DIR)) {
     },
   });
   app.setNotFoundHandler((req, reply) => {
-    if (req.method === "GET" && !req.url.startsWith("/trpc") && !req.url.startsWith("/ws")) return reply.sendFile("index.html");
+    if (req.method === "GET" && !req.url.startsWith("/trpc") && !req.url.startsWith("/ws") && !req.url.startsWith("/api/")) return reply.sendFile("index.html");
     return reply.code(404).send({ error: "not found" });
   });
 }

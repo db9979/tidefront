@@ -39,6 +39,70 @@ Aktualisieren:
     git pull
     docker compose up -d --build
 
+## Betrieb
+
+### Proxy (nginx o. ä.)
+
+Der Proxy terminiert TLS und leitet alles an den Port des `api`-Dienstes weiter. Nötig sind:
+
+- WebSocket unter `/ws`: `Upgrade`- und `Connection`-Header durchreichen, langes Lese-Timeout (z. B. 1 h).
+- `X-Forwarded-Proto` (und `X-Forwarded-For`) setzen. Daran erkennt der Server HTTPS und setzt das Sitzungs-Cookie
+  mit `Secure` (`COOKIE_SECURE=auto`; `true`/`false` erzwingt bzw. verbietet es).
+
+      location / {
+          proxy_pass http://127.0.0.1:8080;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection $connection_upgrade;   # map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+          proxy_read_timeout 3600s;
+      }
+
+### Verwaltung (ohne Konsole)
+
+Admins stehen in `ADMIN_NAMES` (Spielernamen, Komma-getrennt; `migrate` gleicht bei jedem Start ab). Ist die Liste leer,
+wird der zuerst registrierte Spieler Admin. Admins erreichen über „?“ → „Einstellungen“ → „Verwaltung“:
+Einladungscodes anlegen und deaktivieren, Spielerliste mit letzter Aktivität, Passwort-Rücksetzcodes (einmalig,
+24 Stunden), E-Mail-Versand und Systemzustand. Spieler ändern ihr Passwort in den Einstellungen; „Passwort vergessen?“
+auf dem Anmeldebildschirm nimmt den Rücksetzcode oder schickt mit bestätigter Adresse einen Link per E-Mail.
+
+### Benachrichtigungen
+
+- **Push** (Web Push mit VAPID): `migrate` erzeugt die Schlüssel beim ersten Start und legt sie in `server_setting` ab;
+  alternativ `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` setzen. Spieler aktivieren Push in den Einstellungen.
+  iPhone/iPad: nur als installierte Home-Bildschirm-App ab iOS 16.4.
+- **E-Mail** (SMTP, nur Versand): in der Verwaltung einrichten (Vorlagen für iCloud und Google, sonst eigener Server).
+  Das SMTP-Passwort wird mit `APP_SECRET` verschlüsselt gespeichert; ohne `APP_SECRET` bleibt E-Mail abgeschaltet.
+  Erzeugen: `openssl rand -hex 32`, in `.env` eintragen, `docker compose up -d`. Wird `APP_SECRET` geändert, das
+  SMTP-Passwort in der Verwaltung neu eingeben. Angriffe und Kampfberichte gehen sofort raus, fertige Aufträge
+  gebündelt (höchstens eine Mail je 30 Minuten und Spieler). Jede Mail enthält einen Abmeldelink.
+- Arten: Angriff erkannt (zur Radar-Vorwarnzeit), Kampfbericht, Ausbau fertig, Ausbildung fertig, Verband zurück,
+  Lieferung angekommen; für Admins zusätzlich Betriebsalarm.
+
+### Überwachung
+
+Der Worker prüft jede Minute: Rückstau (Ereignisse über 2 Minuten überfällig), fehlgeschlagene Ereignisse, letzter
+Prüflauf der Börse, Alter der letzten Sicherung (der `backup`-Dienst trägt jede Sicherung in `backup_run` ein).
+Neue Probleme gehen per Push/E-Mail an alle Admins (je Vorfall höchstens einmal pro Stunde). Der Gesundheitsendpunkt
+des Workers meldet 503, wenn der Rückstau älter als 10 Minuten ist. Anzeige unter Verwaltung → Systemzustand.
+
+### Umgebungsvariablen (`.env`)
+
+| Variable | Bedeutung |
+| --- | --- |
+| `POSTGRES_PASSWORD` | Datenbankpasswort (Pflicht) |
+| `TIDEFRONT_PORT` | veröffentlichter HTTP-Port, Vorgabe 8080 |
+| `INVITE_CODES` | Einladungscodes `CODE:Anzahl`, Komma-getrennt; werden bei jedem Start ergänzt |
+| `ADMIN_NAMES` | Admins (Spielernamen); leer: erster Spieler |
+| `PUBLIC_URL` | öffentliche Adresse für Links in E-Mails und VAPID, Vorgabe `https://tidefront.metaluna9.i234.me` |
+| `APP_SECRET` | Schlüssel für gespeicherte Geheimnisse (SMTP-Passwort); ohne ihn kein E-Mail-Versand |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | optional eigene Push-Schlüssel; Subject Vorgabe `PUBLIC_URL` |
+| `COOKIE_SECURE` | `auto` (Vorgabe), `true`, `false` |
+| `BACKUP_HOUR`, `BACKUP_KEEP_DAYS`, `BACKUP_DIR` | Sicherung |
+| `TZ`, `LOG_LEVEL` | Zeitzone (auch für Uhrzeiten in Benachrichtigungen), Protokollstufe |
+
 ## Sicherung und Wiederherstellung
 
 Der Dienst `backup` sichert täglich um `BACKUP_HOUR` Uhr nach `./backups` (Vorgabe, änderbar über `BACKUP_DIR`)

@@ -1,10 +1,11 @@
 // Konten: Anmeldung nur mit Einladungscode, Passwort mit scrypt, Sitzung als Zufallstoken.
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
-import { and, eq, gt, lt, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, lt, sql } from "drizzle-orm";
 import { market as marketCore } from "@tidefront/game-core";
 import { tables, type Db } from "@tidefront/db";
 import { marketBalance, GameError, SESSION_DAYS } from "./context.ts";
+import { grantAdminOnRegister } from "./account.ts";
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number) => Promise<Buffer>;
 
@@ -22,7 +23,7 @@ export async function verifyPassword(pw: string, stored: string): Promise<boolea
   return key.length === expected.length && timingSafeEqual(key, expected);
 }
 
-async function createSession(db: Db, playerId: number): Promise<string> {
+export async function createSession(db: Db, playerId: number): Promise<string> {
   const token = randomBytes(32).toString("hex");
   await db.insert(tables.session).values({
     token,
@@ -39,7 +40,11 @@ export async function register(db: Db, input: { inviteCode: string; name: string
     const used = await tx
       .update(tables.inviteCode)
       .set({ uses: sql`${tables.inviteCode.uses} + 1` })
-      .where(and(eq(tables.inviteCode.code, input.inviteCode.trim()), lt(tables.inviteCode.uses, tables.inviteCode.maxUses)))
+      .where(and(
+        eq(tables.inviteCode.code, input.inviteCode.trim()),
+        lt(tables.inviteCode.uses, tables.inviteCode.maxUses),
+        isNull(tables.inviteCode.disabledAt),
+      ))
       .returning({ code: tables.inviteCode.code });
     if (used.length === 0) throw new GameError("invite_invalid");
     const [taken] = await tx
@@ -53,6 +58,7 @@ export async function register(db: Db, input: { inviteCode: string; name: string
       .insert(tables.player)
       .values({ name: input.name, passHash: await hashPassword(input.password), trader: rest })
       .returning({ id: tables.player.id });
+    await grantAdminOnRegister(tx, p.id, input.name);
     return p.id;
   });
   return { playerId, token: await createSession(db, playerId) };
@@ -72,10 +78,10 @@ export async function logout(db: Db, token: string): Promise<void> {
   await db.delete(tables.session).where(eq(tables.session.token, token));
 }
 
-export async function playerForToken(db: Db, token: string | undefined): Promise<{ id: number; name: string } | null> {
+export async function playerForToken(db: Db, token: string | undefined): Promise<{ id: number; name: string; isAdmin: boolean } | null> {
   if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
   const [r] = await db
-    .select({ id: tables.player.id, name: tables.player.name })
+    .select({ id: tables.player.id, name: tables.player.name, isAdmin: tables.player.isAdmin })
     .from(tables.session)
     .innerJoin(tables.player, eq(tables.player.id, tables.session.playerId))
     .where(and(eq(tables.session.token, token), gt(tables.session.expiresAt, new Date())));
