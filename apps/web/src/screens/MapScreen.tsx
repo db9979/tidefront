@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { hexCenter, hexDistanceKm, nearestTradePort, terrainAt } from "@tidefront/world";
 import { trpc, type BaseData } from "../lib/trpc.ts";
@@ -10,7 +10,7 @@ import { Button, Loading } from "../ui.tsx";
 import { MapLegend } from "../map/Legend.tsx";
 import { RELATION_HEX, TacticalIcon, relationKind } from "../map/TacticalIcon.tsx";
 import { fmtPosition } from "../map/coords.ts";
-import { MissionSheet } from "../components/MissionSheet.tsx";
+import { MissionPanel, missionHex } from "../components/MissionSheet.tsx";
 import { WeatherChip, WeatherLine } from "../map/WeatherChip.tsx";
 // Weltereignisse
 import { WorldEventCard, useWorldEvents } from "../components/WorldEvents.tsx";
@@ -36,6 +36,14 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
   // Wetterschicht (v1.6): abschaltbar, Wahl bleibt im Gerät.
   const [showWeather, setShowWeather] = useState(() => localStorage.getItem("tf-wetter") !== "aus");
   const now = useNow();
+  useEffect(() => {
+    if (missionId === null) return;
+    const m = base.missions.find((x) => x.id === missionId);
+    if (!m) return;
+    const t = setTimeout(() => { setCenterOn(missionHex(m, { col: base.col, row: base.row }, Date.now())); setRecenter((n) => n + 1); }, 80);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missionId]);
   const home = useMemo(() => ({ col: base.col, row: base.row }), [base.col, base.row]);
   const alert = base.incoming.some((i) => i.type !== "transport");
   if (!map.data) return <Loading />;
@@ -62,7 +70,8 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
           data={map.data}
           selected={sel}
           onSelect={setSel}
-          onMissionTap={setMissionId}
+          onMissionTap={(id) => { setSel(null); setMissionId(id); }}
+          focusMission={missionId}
           center={centerOn}
           recenter={recenter}
           home={home}
@@ -104,16 +113,16 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
       {(() => {
         const m = missionId !== null ? base.missions.find((x) => x.id === missionId) : undefined;
         return m ? (
-          <MissionSheet
+          <MissionPanel
             mission={m}
             now={now}
             home={home}
             onClose={() => setMissionId(null)}
-            onShowTarget={(t) => { setSel(t); setCenterOn(t); setRecenter((n) => n + 1); }}
+            onShowTarget={(t) => { setMissionId(null); setSel(t); setCenterOn(t); setRecenter((n) => n + 1); }}
           />
         ) : null;
       })()}
-      {sel && info && (
+      {missionId === null && sel && info && (
         <div className="p-3 pt-2.5 bg-card border-t-[3px] border-double border-ink shadow-[0_-8px_24px_rgba(24,39,58,0.12)]">
           <div className="flex items-start justify-between gap-2">
             <div className="text-sm min-w-0 flex-1">
