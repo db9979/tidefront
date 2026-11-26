@@ -262,7 +262,7 @@ export function launchMission(
     if (isNavalInput(input)) return launchNaval(ctx.tx, playerId, b, input, ctx.nowMs, ctx.notify);
     const target = await targetAt(ctx.tx, input.col, input.row);
     if (!target) fail("no_target");
-    if (target.kind === "base" && target.playerId === playerId) fail("own_base");
+    if (target.kind === "base" && target.playerId === playerId && (input.type !== "transport" || target.id === b.id)) fail("own_base"); // Transport in eigenen Hafen erlaubt
     // Allianzen/Diplomatie: kein Überfall auf Verbündete (ally) oder Paktpartner (pact).
     if (input.type === "ueberfall" && target.kind === "base" && target.playerId !== null) { const d = await diplomacyBlock(ctx.tx, playerId, target.playerId, ctx.nowMs); if (d) fail(d); }
     if (input.type === "transport" && target.kind !== "base") fail("transport_needs_base");

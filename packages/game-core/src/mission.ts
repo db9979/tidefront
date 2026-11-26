@@ -18,6 +18,12 @@ import { modEntry, modValue } from "./modifiers.ts";
 
 export const MISSION_TYPES: readonly MissionType[] = ["ueberfall", "aufklaerung", "transport"];
 
+/** Mehrere Häfen: Gründung (Kolonieschiff, Geleit kehrt heim) und Verlegung (nur Hinfahrt), nur serverseitig geplant. */
+export const EXPANSION_MISSION_TYPES: readonly MissionType[] = ["gruendung", "verlegung"];
+
+/** Missionsarten, die Ladung mitführen dürfen. */
+const CARGO_TYPES: readonly string[] = ["transport", "gruendung", "verlegung"];
+
 /** Hin- und Rückweg (REGELN.md, Abschnitt Missionen). */
 export const ROUND_TRIP_FACTOR = 2;
 
@@ -99,14 +105,14 @@ export function travelSeconds(units: Counts, distance: number, balance: Balance,
   return (distance / speed) * 3600;
 }
 
-/** Treibstoff für Hin- und Rückweg, aufgerundet (`mods.fuel` vor dem Aufrunden). */
-export function fuelCost(units: Counts, distance: number, balance: Balance, mods?: Modifiers): number {
+/** Treibstoff für Hin- und Rückweg (`trips` Strecken, Vorgabe 2), aufgerundet (`mods.fuel` vor dem Aufrunden). */
+export function fuelCost(units: Counts, distance: number, balance: Balance, mods?: Modifiers, trips = ROUND_TRIP_FACTOR): number {
   let sum = 0;
   for (const [id, n] of entries(units)) {
     sum += ((balance.units[id]?.fuelPer100Km ?? 0) * n * distance) / 100;
   }
   // Rundung auf 9 Nachkommastellen vor dem Aufrunden, damit 7.000000000001 nicht 8 kostet.
-  return Math.ceil(Math.round(sum * ROUND_TRIP_FACTOR * modValue(mods, "fuel") * 1e9) / 1e9);
+  return Math.ceil(Math.round(sum * trips * modValue(mods, "fuel") * 1e9) / 1e9);
 }
 
 /**
@@ -114,6 +120,9 @@ export function fuelCost(units: Counts, distance: number, balance: Balance, mods
  * (und Transportgut) ab und verschiebt die Einheiten nach unitsAway.
  * Zusätzliche Codes: bad_type, no_mission_slot, target_protected, cargo_not_allowed, bad_cargo,
  * cargo_capacity, fuel, insufficient_resources, storm (reine Luftmission bei Sturm am Start).
+ * Mehrere Häfen: „gruendung“ braucht genau ein Kolonieschiff (colony_ship, ohne Balance-Block expansion_off); Treibstoff
+ * für das Kolonieschiff nur hin, für das Geleit hin und zurück. „verlegung“ fährt nur hin (Treibstoff einfach,
+ * returnAtMs = arriveAtMs). Beide dürfen Ladung bis zur Kapazität mitführen.
  * Wetter (`input.weather`, v1.6): Mit Schiffen verlängert der Sturm entlang der Route die Reisezeit (shipFactor).
  */
 export function planMission(
@@ -123,8 +132,13 @@ export function planMission(
   balance: Balance,
   mods?: Modifiers,
 ): Result<{ base: BaseState; mission: Mission }> {
-  if (!(MISSION_TYPES as readonly string[]).includes(input.type)) return { ok: false, code: "bad_type" };
+  if (!(MISSION_TYPES as readonly string[]).includes(input.type) && !(EXPANSION_MISSION_TYPES as readonly string[]).includes(input.type)) {
+    return { ok: false, code: "bad_type" };
+  }
   const type = input.type as MissionType;
+  const ship = balance.expansion?.colonyShip;
+  if (type === "gruendung" && ship === undefined) return { ok: false, code: "expansion_off" };
+  if (type === "gruendung" && (input.units[ship!] ?? 0) !== 1) return { ok: false, code: "colony_ship" };
   if (input.activeMissions >= missionSlots(base, balance)) return { ok: false, code: "no_mission_slot" };
 
   const distance = distanceKm(input.origin, input.target);
@@ -144,7 +158,7 @@ export function planMission(
   let cargoTotal = 0;
   for (const [r, amount] of Object.entries(input.cargo ?? {})) {
     if (amount === 0) continue;
-    if (type !== "transport") return { ok: false, code: "cargo_not_allowed" };
+    if (!CARGO_TYPES.includes(type)) return { ok: false, code: "cargo_not_allowed" };
     if (!balance.resources.includes(r) || !(amount > 0)) return { ok: false, code: "bad_cargo" };
     cargo[r] = amount;
     cargoTotal += amount;
@@ -152,7 +166,12 @@ export function planMission(
   if (cargoTotal > fleet.check.cargoCapacity) return { ok: false, code: "cargo_capacity" };
 
   const next = settle(base, nowMs, balance, mods);
-  const fuel = fuelCost(input.units, distance, balance, mods);
+  let fuel: number;
+  if (type === "verlegung") fuel = fuelCost(input.units, distance, balance, mods, 1);
+  else if (type === "gruendung") {
+    const { [ship!]: one, ...escort } = input.units;
+    fuel = fuelCost(escort, distance, balance, mods) + fuelCost({ [ship!]: one }, distance, balance, mods, 1);
+  } else fuel = fuelCost(input.units, distance, balance, mods);
   if ((next.resources.treibstoff ?? 0) < fuel) return { ok: false, code: "fuel" };
   next.resources = subtractResources(next.resources, { treibstoff: fuel });
   if (!hasResources(next.resources, cargo)) return { ok: false, code: "insufficient_resources" };
@@ -182,7 +201,7 @@ export function planMission(
     cargo,
     departAtMs: nowMs,
     arriveAtMs: nowMs + travelMs,
-    returnAtMs: nowMs + 2 * travelMs,
+    returnAtMs: type === "verlegung" ? nowMs + travelMs : nowMs + 2 * travelMs,
     ...(mods?.stealth !== undefined && mods.stealth !== 1 ? { warningFactor: mods.stealth } : {}),
     ...(input.weather ? { weather: { avgWind: input.weather.avgWind, storminess: input.weather.storminess, shipFactor } } : {}),
   };

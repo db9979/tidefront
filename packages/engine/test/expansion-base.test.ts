@@ -178,12 +178,12 @@ test("Befehl mit baseId der Kolonie wirkt auf die Kolonie; base.get liefert Hafe
   assert.equal(view.base?.isHome, false);
   assert.equal(view.base?.buildQueue.length, 1);
 
-  // Gründung/Verlegung sind in P0 noch abgeschaltet.
-  for (const type of [FOUNDING_TYPE, TRANSFER_TYPE]) {
-    assert.deepEqual(await launchMission(engine, p.playerId, key(), { type, units: {}, col: 3, row: 3 }), { ok: false, code: "expansion_off" });
+  // Gründung/Verlegung laufen über die Weiche (P1, expansion.ts); ohne Kolonieschiff bzw. Zielhafen abgelehnt.
+  for (const [type, expected] of [[FOUNDING_TYPE, "command_level"], [TRANSFER_TYPE, "transfer_needs_own_base"]] as const) {
+    assert.deepEqual(await launchMission(engine, p.playerId, key(), { type, units: {}, col: 3, row: 3 }), { ok: false, code: expected });
     const pv = await missionPreview(engine, p.playerId, { type, units: {}, col: 3, row: 3 });
     assert.equal(pv.ok, false);
-    assert.equal((pv as { code: string }).code, "expansion_off");
+    assert.equal((pv as { code: string }).code, expected);
   }
 });
 

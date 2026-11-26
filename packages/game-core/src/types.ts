@@ -6,6 +6,7 @@ import type { EspionageBalance, IntelState } from "./espionage.ts";
 import type { CombatWeather, RouteWeather, WeatherBalance } from "./weather.ts";
 import type { PowerBalance, PowerSnapshot } from "./power.ts";
 import type { BlockadeBalance, ConvoysBalance, MinesBalance } from "./naval.ts"; // See: Minen/Blockade/Konvoi
+import type { ExpansionDef } from "./expansion.ts"; // Mehrere Häfen
 
 export type ResourceMap = Record<string, number>;
 export type Counts = Record<string, number>;
@@ -195,6 +196,8 @@ export interface Balance {
   mines?: MinesBalance;
   blockade?: BlockadeBalance;
   convoys?: ConvoysBalance;
+  /** Mehrere Häfen: Gründung und Verlegung (expansion.ts); fehlt es, gibt es keine Außenposten. */
+  expansion?: ExpansionDef;
 }
 
 // ---------------------------------------------------------------- Erfolge (Abzeichen) und Wochenziele
@@ -347,8 +350,10 @@ export type Result<T> = ({ ok: true } & T) | Fail;
 // ---------------------------------------------------------------- Stützpunkt
 
 export interface ProtectionState {
-  /** Gründungszeitpunkt des Stützpunkts (Beginn des Anfängerschutzes). */
+  /** Gründungszeitpunkt des Stützpunkts (Beginn des Anfängerschutzes; Kolonien erben den des Heimathafens). */
   createdAtMs: number;
+  /** Mehrere Häfen: Gründungsschutz einer Kolonie bis zu diesem Zeitpunkt (fehlt sonst). */
+  foundingShieldUntilMs?: number;
   /** Startstunde des Nachtschilds 0..23 in Ortszeit des Spielers; null = nicht gewählt. */
   nightShieldStartHour: number | null;
   /** Versatz der Ortszeit zu UTC in Minuten (z. B. 60 für MEZ). */
@@ -404,6 +409,8 @@ export interface BaseState {
   /** Lage des Hafens für das Wetter (v1.6; fehlt sie, gilt power.ts DEFAULT_SITE) und Ladung des Speicherwerks. */
   site?: GeoPoint;
   powerStored?: number;
+  /** Mehrere Häfen: nur bei Kolonien (gegründet per Kolonieschiff); fehlt im Heimathafen. */
+  colony?: { foundedAtMs: number };
 }
 
 export interface ProductionInfo {
@@ -428,7 +435,8 @@ export interface GeoPoint {
 export type MissionType = "ueberfall" | "aufklaerung" | "transport"
   // See: Minen/Blockade/Konvoi – nur serverseitig geplant (naval-*.ts), nicht in MISSION_TYPES.
   | "minen" | "raeumen" | "blockade" | "abfangen" | "geleit"
-  | "besetzen"; // Felder: Rohstofffeld besetzen (fields-*.ts)
+  | "besetzen" // Felder: Rohstofffeld besetzen (fields-*.ts)
+  | "gruendung" | "verlegung"; // Mehrere Häfen (expansion.ts): Außenposten gründen, Einheiten verlegen
 
 export interface MissionInput {
   type: string;
@@ -437,7 +445,7 @@ export interface MissionInput {
   target: GeoPoint;
   /** Anzahl bereits laufender Missionen dieses Stützpunkts. */
   activeMissions: number;
-  /** Nur Transport: mitgeführte Ressourcen. */
+  /** Nur Transport, Gründung, Verlegung: mitgeführte Ressourcen. */
   cargo?: ResourceMap;
   targetProtection?: ProtectionState; // Schutz des Ziels; Überfälle auf geschützte Ziele werden abgelehnt
   weather?: RouteWeather; // Wetter entlang der Route bei Abfahrt (v1.6); fehlt es, kein Wettereinfluss

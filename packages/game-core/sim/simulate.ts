@@ -27,6 +27,7 @@ import { runEspionageSim } from "./espionage.ts";
 import { runAdmiralSim } from "./admirals.ts"; // Admirale
 import { runNavalSim } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 import { runFieldsSim } from "./fields.ts"; // Felder
+import { runExpansionSim } from "./expansion.ts"; // Mehrere Häfen
 
 const balance = JSON.parse(
   readFileSync(new URL("../../balance/v1/balance.json", import.meta.url), "utf8"),
@@ -268,6 +269,7 @@ runAdmiralSim(balance);
 runNavalSim(balance, snaps);
 // Felder: Ertrag gegen Kosten und Risiko, Fallquote der Besatzung.
 runFieldsSim(balance, snaps);
+runExpansionSim(balance, snaps); // Mehrere Häfen
 
 /** Der Bot schickt alles, was daheim steht (die Doktrin hält ihn innerhalb der Kommandopunkte). */
 function sentFleet(s: BotSnapshot): Counts {
