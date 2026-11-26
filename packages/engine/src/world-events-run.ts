@@ -27,19 +27,23 @@ import {
 } from "./world-events.ts";
 import { worldEventSpawn } from "./world-events-spawn.ts";
 import { modsOf } from "./modifiers.ts";
+import { battleWeather } from "./weather.ts"; // Wetter am Kampfort wie bei normalen Kämpfen (v1.6)
 
 const HOUR_MS = 3600000;
 const none = (): HandlerResult => ({ notify: [] });
 
-/** Belagerung: Abzug von productionPenalty der Gebäudeproduktion seit dem letzten Abzug bis `untilMs`. */
+/** Belagerung: Abzug von productionPenalty der (modifizierten) Gebäudeproduktion seit dem letzten Abzug bis `untilMs`. */
 async function siegeTick(tx: Tx, ev: WorldEventRow, untilMs: number): Promise<number[]> {
   const from = ev.data.lastTickMs ?? ev.startsAt.getTime();
   const to = Math.min(untilMs, ev.endsAt.getTime());
   if (to <= from || ev.targetBaseId === null) return [];
   const b = await lockBase(tx, ev.targetBaseId);
   if (!b) return [];
-  const state = settle(b.state, to, balance);
-  const r = applySiegePenalty(state.resources, productionRates(state, balance).buildingPerHour, storageCapacity(state, balance), (to - from) / HOUR_MS, balance);
+  // Produktion wie überall über die Modifikatoren (Forschung, Sabotage, Strom, Wetter, Ereignisse).
+  const mods = await modsOf(tx, b, to);
+  const state = settle(b.state, to, balance, mods);
+  const rates = productionRates(state, balance, mods).buildingPerHour;
+  const r = applySiegePenalty(state.resources, rates, storageCapacity(state, balance, mods), (to - from) / HOUR_MS, balance);
   state.resources = r.resources;
   await saveBase(tx, b.id, state);
   const data = { ...ev.data, lastTickMs: to, deducted: addRes(ev.data.deducted ?? {}, r.deducted) };
@@ -95,7 +99,7 @@ const worldEventAttack: Handler = async (tx, ev, due) => {
       const state = settle(b.state, due, balance, mods);
       const attacker = armadaAttacker(units, balance);
       const seed = randomSeed();
-      const res = resolveBattle(attacker, defenderFromBase(state, balance, mods), balance, seed);
+      const res = resolveBattle(attacker, defenderFromBase(state, balance, mods), balance, seed, battleWeather(b.col, b.row, due));
       if (!res.ok) throw new Error(`battle: ${res.code}`);
       const report = res.report;
       await saveBase(tx, b.id, applyDefenseResult(state, report, due, balance, mods));

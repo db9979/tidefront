@@ -173,3 +173,18 @@ export const playerOffer = pgTable("player_offer", {
   createdAt: ts("created_at").notNull().defaultNow(),
   closedAt: ts("closed_at"),
 }, (t) => [index("player_offer_status").on(t.status, t.createdAt), index("player_offer_seller").on(t.sellerId, t.status)]);
+
+/** Allianzwertung zum Saisonende (Ruhmeshalle). */
+export const seasonAllianceResult = pgTable("season_alliance_result", {
+  id: serial("id").primaryKey(),
+  seasonId: integer("season_id").notNull().references(() => season.id, { onDelete: "cascade" }),
+  /** null, wenn die Allianz inzwischen aufgelöst ist. */
+  allianceId: integer("alliance_id").references(() => alliance.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  tag: text("tag").notNull(),
+  rank: integer("rank").notNull(),
+  members: integer("members").notNull(),
+  total: integer("total").notNull(),
+  /** Spieler-IDs der Mitglieder zum Saisonende (eigene Allianz in der Ruhmeshalle). */
+  playerIds: jsonb("player_ids").notNull().default([]),
+}, (t) => [uniqueIndex("season_alliance_result_alliance").on(t.seasonId, t.allianceId), index("season_alliance_result_rank").on(t.seasonId, t.rank)]);

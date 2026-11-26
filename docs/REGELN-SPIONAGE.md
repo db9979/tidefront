@@ -43,4 +43,6 @@ Teil der Regeln (siehe `docs/REGELN.md`).
   Abwehr in der Kampfbilanz (Kategorie Spionage), Kampfpunkte für das Ziel in der Wertung.
 - **Unentdeckt:** Erfolg, das Ziel merkt nichts. Bei einer Sabotage sieht es nur die Folgen (Bericht `sabotage` ohne
   Absender, Hinweis „sabotiert bis …“ im Hafen). Die Spione kehren heim (`mission_return`); der Absender erhält den
-  Spionagebericht.
+  Spionagebericht. Bei der Heimkehr meldet sich „Spione zurück“ mit Art, Ziel und Ergebnis (gelungen oder
+  abgebrochen), nicht das allgemeine „Verband zurück“. Gelungenes Erkunden und Kartell-Aufklärung zählen für den
+  Tagesbefehl „Erfolgreiche Erkundung“.

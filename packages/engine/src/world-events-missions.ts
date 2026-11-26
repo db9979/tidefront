@@ -17,6 +17,7 @@ import {
   type AttackerInput,
   type Counts,
   type Mission,
+  type Modifiers,
   type ResourceMap,
 } from "@tidefront/game-core";
 import { hexAtLonLat, hexCenter, hexDistanceKm } from "@tidefront/world";
@@ -28,7 +29,8 @@ import {
   type Hex, type WorldEventRow,
 } from "./world-events.ts";
 import { siegeTick } from "./world-events-run.ts";
-import { modifiersFor } from "./modifiers.ts";
+import { modifiersFor, modsOf } from "./modifiers.ts";
+import { battleWeather, missionWeather } from "./weather.ts"; // Wetter wie bei normalen Missionen (v1.6)
 
 export interface EventMissionInput {
   type: string;
@@ -45,17 +47,32 @@ function aim(ev: WorldEventRow | null, playerId: number, own: BaseRow, input: Ev
   if (ev.kind !== "schatzschiff" || !ev.data.route) return { col: ev.col, row: ev.row };
   const speed = slowestSpeedKmh(input.units, balance);
   if (speed === null) throw new GameError("no_carrier");
-  const hit = interceptPoint(ev.data.route, hexCenter(own.col, own.row), speed, nowMs);
+  let hit = interceptPoint(ev.data.route, hexCenter(own.col, own.row), speed, nowMs);
   if (!hit) throw new GameError("intercept_impossible");
+  // Sturm entlang der Route verlangsamt den Verband: Abfangpunkt mit der Wettergeschwindigkeit nachrechnen (v1.6).
+  for (let i = 0; i < 3; i++) {
+    const h = hexAtLonLat(hit.point.lon, hit.point.lat);
+    const factor = missionWeather(own.col, own.row, h.col, h.row, nowMs)?.shipFactor ?? 1;
+    if (factor <= 1.001) break;
+    const next = interceptPoint(ev.data.route, hexCenter(own.col, own.row), speed / factor, nowMs);
+    if (!next) throw new GameError("intercept_impossible");
+    if (Math.abs(next.point.lon - hit.point.lon) < 1e-6 && Math.abs(next.point.lat - hit.point.lat) < 1e-6) break;
+    hit = next;
+  }
   return hexAtLonLat(hit.point.lon, hit.point.lat);
 }
 
-function plan(own: BaseRow, input: EventMissionInput, target: Hex, active: number, nowMs: number) {
+/** Planung wie bei normalen Missionen: Modifikatoren des Spielers und Wetter entlang der Route (Sturm). */
+function plan(own: BaseRow, input: EventMissionInput, target: Hex, active: number, nowMs: number, mods: Modifiers) {
   return planMission(
     own.state,
-    { type: input.type, units: input.units, origin: hexCenter(own.col, own.row), target: hexCenter(target.col, target.row), activeMissions: active },
+    {
+      type: input.type, units: input.units, origin: hexCenter(own.col, own.row), target: hexCenter(target.col, target.row), activeMissions: active,
+      weather: missionWeather(own.col, own.row, target.col, target.row, nowMs),
+    },
     nowMs,
     balance,
+    mods,
   );
 }
 
@@ -70,7 +87,7 @@ export async function launchAgainstEvent(
 ): Promise<{ ok: true; missionId: number; arriveAtMs: number } | { ok: false; code: string }> {
   const ev = await readWorldEvent(tx, input.eventId);
   const target = aim(ev, playerId, own, input, nowMs);
-  const r = plan(own, input, target, await activeMissionCount(tx, own.id), nowMs);
+  const r = plan(own, input, target, await activeMissionCount(tx, own.id), nowMs, await modsOf(tx, own, nowMs));
   if (!r.ok) return r;
   if (ev!.kind !== "grossflotte" && r.mission.arriveAtMs >= ev!.endsAt.getTime()) return { ok: false, code: "too_late" };
   await saveBase(tx, own.id, r.base);
@@ -97,9 +114,11 @@ export async function previewAgainstEvent(db: DbOrTx, playerId: number, own: Bas
     throw err;
   }
   const distanceKm = hexDistanceKm(own, target);
-  const r = plan({ ...own, state: settle(own.state, nowMs, balance) }, input, target, await activeMissionCount(db, own.id), nowMs);
-  if (!r.ok) return { ok: false as const, code: r.code, distanceKm };
-  if (ev!.kind !== "grossflotte" && r.mission.arriveAtMs >= ev!.endsAt.getTime()) return { ok: false as const, code: "too_late", distanceKm };
+  const mods = await modsOf(db, own, nowMs);
+  const weather = missionWeather(own.col, own.row, target.col, target.row, nowMs);
+  const r = plan({ ...own, state: settle(own.state, nowMs, balance, mods) }, input, target, await activeMissionCount(db, own.id), nowMs, mods);
+  if (!r.ok) return { ok: false as const, code: r.code, distanceKm, weather };
+  if (ev!.kind !== "grossflotte" && r.mission.arriveAtMs >= ev!.endsAt.getTime()) return { ok: false as const, code: "too_late", distanceKm, weather };
   return {
     ok: true as const,
     distanceKm,
@@ -109,6 +128,8 @@ export async function previewAgainstEvent(db: DbOrTx, playerId: number, own: Bas
     returnAtMs: r.mission.returnAtMs,
     target: { kind: "event", own: false },
     intercept: target,
+    weather,
+    weatherFactor: r.mission.weather?.shipFactor ?? 1,
   };
 }
 
@@ -168,7 +189,7 @@ export async function eventMissionArrive(
   const modifiers = await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due });
   const attacker: AttackerInput = { units: plan.units, versorgungsmangel: origin?.state.versorgungsmangel ?? false, modifiers };
   const seed = randomSeed();
-  const res = resolveBattle(attacker, { units: activeUnits(ev.units), defenses: {} }, balance, seed);
+  const res = resolveBattle(attacker, { units: activeUnits(ev.units), defenses: {} }, balance, seed, battleWeather(m.targetCol, m.targetRow, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
   const { report: raw, destroyed } = strandTroops(res.report, balance);
   const before = forceHp(activeUnits(ev.units), balance);

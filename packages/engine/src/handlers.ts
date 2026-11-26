@@ -338,7 +338,7 @@ const raidLaunch: Handler = async (tx, ev, due) => {
   const mods = await modsOf(tx, b, due);
   const state = settle(b.state, due, balance, mods);
   // Eigener Seed für die Stärke-Schwankung des Kartells (unabhängig vom Kampf-Seed).
-  const raid = composeRaid(state.units, state.defenses, balance, randomSeed());
+  const raid = composeRaid(state.units, state.defenses, balance, randomSeed(), mods);
   const [m] = await tx
     .insert(tables.mission)
     .values({

@@ -10,6 +10,7 @@ import { resetChallenges } from "./challenges.ts";
 import { expireOffers } from "./player-trade.ts";
 import { clearWorldEvents } from "./world-events.ts";
 import { clearMarketNews } from "./market-news.ts";
+import { allianceResultsFor, allianceStandings, saveAllianceStandings } from "./season-alliances.ts";
 
 const DAY_MS = 86400000;
 
@@ -115,6 +116,12 @@ export const seasonEnd: Handler = async (tx, ev, due) => {
       .onConflictDoNothing();
   }
 
+  // Allianzwertung: Summe der Mitgliederpunkte zum Saisonende.
+  const allianceList = await allianceStandings(tx, new Map(ranked.map((r) => [r.playerId, r.total])));
+  await saveAllianceStandings(tx, s.id, allianceList);
+  const ownAlliance = new Map(allianceList.flatMap((a) => a.playerIds.map((id) => [id, a] as const)));
+  const topAlliance = allianceList[0];
+
   // 2. Systemnachricht an alle Spieler.
   const winner = ranked[0];
   const byId = new Map(ranked.map((r) => [r.playerId, r]));
@@ -129,6 +136,9 @@ export const seasonEnd: Handler = async (tx, ev, due) => {
         const a = awards.get(p.playerId) ?? [];
         if (a.length > 0) lines.push(`Deine Auszeichnungen: ${a.map(awardText).join(", ")}.`);
       } else lines.push("Du warst in dieser Saison nicht platziert.");
+      if (topAlliance && topAlliance.total > 0) lines.push(`Stärkste Allianz: [${topAlliance.tag}] ${topAlliance.name} mit ${topAlliance.total} Punkten.`);
+      const al = ownAlliance.get(p.playerId);
+      if (al) lines.push(`Deine Allianz [${al.tag}] ${al.name}: Platz ${al.rank} von ${allianceList.length} mit ${al.total} Punkten.`);
       lines.push(`Saison ${s.number + 1} beginnt jetzt. Wähle einen neuen Hafen.`);
       return { fromPlayerId: null, toPlayerId: p.playerId, subject: `Saison ${s.number}: Endstand`, body: lines.join("\n"), createdAt: new Date(due) };
     }));
@@ -218,6 +228,7 @@ export async function hallOfFame(db: DbOrTx, playerId: number) {
     .orderBy(desc(tables.season.number))
     .limit(50);
   if (seasons.length === 0) return [];
+  const allianceResults = await allianceResultsFor(db, seasons.map((s) => s.id), playerId);
   const results = await db
     .select()
     .from(tables.seasonResult)
@@ -240,6 +251,8 @@ export async function hallOfFame(db: DbOrTx, playerId: number) {
           return [a, r ? { name: r.playerName, value: r[a.slice(5) as "ausbau"] } : null];
         }),
       ) as Record<string, { name: string; value: number } | null>,
+      /** Allianzwertung zum Saisonende (Summe der Mitgliederpunkte), nach Rang. */
+      alliances: allianceResults.get(s.id) ?? [],
       own: own ? { ...pick(own), ausbau: own.ausbau, militaer: own.militaer, kampf: own.kampf, beute: own.beute, befehle: own.befehle } : null,
     };
   });

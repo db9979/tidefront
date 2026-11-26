@@ -32,6 +32,7 @@ import { diplomacyBlock } from "./alliance-core.ts";
 import { veteranView } from "./veterans.ts";
 import { TECH_NAMES } from "./research.ts";
 import { scoutWithDisinfo } from "./espionage.ts";
+import { trackProgress } from "./challenges.ts";
 import { KIND_TEXT, openWorldEvents, systemMessage } from "./world-events.ts";
 
 const HOUR_MS = 3600000;
@@ -233,6 +234,8 @@ export const spyArrive: Handler = async (tx, ev, due) => {
     report: { spy: dice, ...detail },
   });
   await back(reportId, true);
+  // Tagesbefehl „erkundung“: erfolgreiche Erkundung (Hafen oder Kartell).
+  if (spy.kind === "erkunden" || spy.kind === "kartell") await trackProgress(tx, pid, "erkundung", 1, { atMs: due });
   push.push({ playerId: pid, notice: { kind: "report", url: "/?tab=meldungen", tag: `spy-${m.id}`, title: `Spionagebericht: ${KIND_TITLE[spy.kind]}`, body: `Auftrag gegen ${targetName} gelungen (Wurf ${roll.roll}, nötig ≤ ${roll.threshold}).` } });
   return { notify, push };
 };

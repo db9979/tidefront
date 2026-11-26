@@ -7,6 +7,8 @@ import { balance, type NoticeJob } from "./context.ts";
 import type { EventRow, Handler } from "./events.ts";
 import { lockBase, readBase, scheduleEvent } from "./store.ts";
 import { amounts, clock, fmtInt, minutesText, nameOf } from "./names.ts";
+import { modsOf } from "./modifiers.ts";
+import { detectedAtOf, isDetected, markDetected, warnFactor } from "./radar.ts";
 
 export type Snapshot =
   | { kind: "build"; order: BuildOrder | null }
@@ -121,6 +123,7 @@ export async function noticesAfter(tx: Tx, ev: EventRow, due: number, snap: Snap
   if (snap.status === null) return [];
   const [m] = await tx.select().from(tables.mission).where(eq(tables.mission.id, Number(ev.payload.missionId)));
   if (!m || m.status === snap.status) return [];
+  if (ev.type === "mission_return" && m.status === "done" && m.playerId !== null && m.type === "spionage") return spyReturnNotice(tx, m);
   if (ev.type === "mission_return" && m.status === "done" && m.playerId !== null) {
     const cargo = amounts(m.cargoHome as Record<string, number>);
     return [{ playerId: m.playerId, notice: {
@@ -130,6 +133,27 @@ export async function noticesAfter(tx: Tx, ev: EventRow, due: number, snap: Snap
   }
   if ((ev.type === "mission_arrive" || ev.type === "raid_arrive") && m.reportId) return reportNotices(tx, m.reportId);
   return [];
+}
+
+const SPY_KIND: Record<string, string> = { erkunden: "Erkunden", sabotage: "Sabotage", desinformation: "Desinformation", kartell: "Kartell-Aufklärung" };
+
+/** Heimkehr eines Spionageauftrags: eigene Meldung „Spione zurück“ mit Art und Ergebnis (aus dem Bericht). */
+async function spyReturnNotice(tx: Tx, m: { id: number; playerId: number | null; plan: unknown; reportId: number | null }): Promise<NoticeJob[]> {
+  const spy = (m.plan as { spy?: { kind?: string } } | null)?.spy;
+  const kind = SPY_KIND[spy?.kind ?? ""] ?? "Spionage";
+  let result = "Auftrag ausgeführt";
+  let target = "";
+  if (m.reportId !== null) {
+    const [r] = await tx.select({ winner: tables.battleReport.winner, report: tables.battleReport.report }).from(tables.battleReport).where(eq(tables.battleReport.id, m.reportId));
+    const info = (r?.report as { spy?: { aborted?: string; targetName?: string } } | undefined)?.spy;
+    target = info?.targetName ?? "";
+    result = info?.aborted ? "abgebrochen" : r?.winner === "attacker" ? "gelungen" : result;
+  }
+  const facts: [string, string][] = [["Auftrag", kind], ...(target ? [["Ziel", target] as [string, string]] : []), ["Ergebnis", result]];
+  return [{ playerId: m.playerId!, notice: {
+    kind: "fleet", url: "/?tab=meldungen", tag: `spy-back-${m.id}`, title: "Spione zurück",
+    body: `${kind}${target ? ` gegen ${target}` : ""}: ${result}. Die Spione sind wieder im Hafen.`, facts,
+  } }];
 }
 
 /**
@@ -153,12 +177,29 @@ export async function scheduleAttackWarning(
   return due;
 }
 
-/** Ereignis attack_warning: Angriff erkannt, solange der Verband noch unterwegs ist. */
+/** Spätestens so oft prüft eine aufgeschobene Warnung das Radar erneut (Strom oder Nebel können sich bessern). */
+export const RADAR_RECHECK_MS = 15 * 60000;
+
+/**
+ * Ereignis attack_warning: Angriff erkannt, solange der Verband noch unterwegs ist. Geprüft wird mit dem Radar zum
+ * Fälligkeitszeitpunkt (Strom, Sabotage, Nebel); ist er noch nicht erfasst, wird neu geplant. Erkannt wird im Plan
+ * gemerkt (radar.ts) – Anzeige und Push fallen danach nicht mehr zurück.
+ */
 export const attackWarning: Handler = async (tx, ev, due) => {
   const [m] = await tx.select().from(tables.mission).where(eq(tables.mission.id, Number(ev.payload.missionId)));
   if (!m || m.status !== "outbound" || m.targetKind !== "base" || m.targetId === null) return { notify: [] };
   const b = await readBase(tx, m.targetId);
   if (!b) return { notify: [] };
+  if (detectedAtOf(m.plan) === null) {
+    const mods = await modsOf(tx, b, due);
+    const warn = radarWarningMinutes(settle(b.state, due, balance, mods), balance, mods);
+    if (!isDetected(m, due, warn)) {
+      const next = Math.min(m.arriveAt.getTime() - warn * warnFactor(m.plan) * 60000, due + RADAR_RECHECK_MS);
+      if (next < m.arriveAt.getTime()) await scheduleEvent(tx, "attack_warning", Math.max(next, due + 1), { missionId: m.id }, b.id);
+      return { notify: [] };
+    }
+    await markDetected(tx, [m.id], due);
+  }
   let attacker = "Freibeuter-Kartell";
   if (m.playerId !== null) {
     const [p] = await tx.select({ name: tables.player.name }).from(tables.player).where(eq(tables.player.id, m.playerId));

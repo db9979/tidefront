@@ -218,7 +218,8 @@ test("Modifikatoren im Kampf: Angreifer im Bericht, Kartell-Verteidigung mit For
     const [r] = await db.select().from(tables.battleReport).where(sql`${tables.battleReport.kind} = 'kartell' and ${tables.battleReport.defenderBaseId} = ${q.baseId}`);
     assert.equal(r.winner, "defender");
     const battle = (r.report as { battle: { defender: { losses: Record<string, number> } } }).battle;
-    assert.equal(battle.defender.losses.schuetzen ?? 0, 0);
+    // Das Kartell zählt die Hälfte der Forschungs-Lebenspunkte mit (pirates.raidResearchWeight, v1.7), verliert aber klar.
+    assert.ok((battle.defender.losses.schuetzen ?? 0) < 25, JSON.stringify(battle.defender.losses));
   } finally {
     off();
   }

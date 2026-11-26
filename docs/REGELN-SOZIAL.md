@@ -20,6 +20,8 @@ Umsetzung in `packages/engine` (Allianzen, Diplomatie, Spielerhandel), Tabellen 
   Planen mit `ally` abgelehnt. Aufklärung und Transport bleiben erlaubt. Wie beim Schutz zählt der Stand beim Planen;
   ein Verband, der vor dem Beitritt ausgelaufen ist, kämpft noch.
 - Allianz-Chat: höchstens 500 Zeichen je Zeile, 20 Zeilen je Minute und Spieler, sichtbar sind die letzten 100 Zeilen.
+- Saisonende: Allianzen, Mitgliedschaften, Chat und Verträge bleiben bestehen. Die Allianzwertung zum Saisonende wird
+  in `season_alliance_result` festgehalten (Ruhmeshalle).
 - Wertung: Allianzpunkte = Summe der Gesamtpunkte der aktuellen Mitglieder; Rang nach Allianzpunkten, Gleichstand teilt den Rang.
   Das Kürzel steht in Rangliste und Spielerübersicht vor dem Namen.
 - Saisonende: Allianzen, Mitgliedschaften, Chat und Verträge bleiben bestehen. Allianzpunkte werden nicht in

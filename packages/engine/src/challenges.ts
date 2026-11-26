@@ -2,7 +2,7 @@
 // die Auswertung von Ereignissen (Vorher/Nachher um den Handler, aufgerufen aus events.ts).
 // Fehler hier dürfen Spielereignisse und Befehle nie blockieren: alles läuft in einem eigenen Savepoint.
 import { and, asc, count, eq, gte, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
-import { protectionStatus, settle, type Counts, type ResourceMap, type TrainingOrder } from "@tidefront/game-core";
+import { protectionStatus, settle, type Counts, type Mission, type ResourceMap, type TrainingOrder } from "@tidefront/game-core";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance } from "./context.ts";
 import type { EventRow } from "./events.ts";
@@ -16,6 +16,7 @@ import {
   dayStartMs,
   drawDay,
   poolContext,
+  STORM_MISSION_FROM,
   type PoolContext,
   type Tier,
 } from "./challenge-pool.ts";
@@ -29,10 +30,11 @@ const dc = tables.dailyChallenge;
 export async function contextFor(tx: DbOrTx, playerId: number, atMs: number): Promise<PoolContext | null> {
   const b = await baseOfPlayer(tx, playerId);
   if (!b) return null;
-  const state = settle(b.state, atMs, balance, await modsOf(tx, b, atMs));
+  const mods = await modsOf(tx, b, atMs);
+  const state = settle(b.state, atMs, balance, mods);
   const [o] = await tx.select({ n: count() }).from(tables.base).where(ne(tables.base.playerId, playerId));
   const raidsPossible = protectionStatus(state.protection, atMs, balance).reason !== "anfaengerschutz";
-  return poolContext(state, { others: (o?.n ?? 0) > 0, raidsPossible });
+  return poolContext(state, { others: (o?.n ?? 0) > 0, raidsPossible }, mods);
 }
 
 async function dayRows(tx: DbOrTx, playerId: number, day: string): Promise<ChallengeRow[]> {
@@ -134,6 +136,8 @@ export async function refreshDerived(tx: DbOrTx, playerId: number, rows: Challen
     else if (c && r.kind === "lager") value = Math.floor(c.resources[r.param ?? ""] ?? 0);
     else if (c && r.kind === "produktion") value = Math.floor(c.production[r.param ?? ""] ?? 0);
     else if (c && r.kind === "kommando") value = c.stage;
+    else if (c && r.kind === "speicherwerk") value = c.levels.speicherwerk ?? 0;
+    else if (c && r.kind === "stromspeicher") value = Math.floor(c.power?.stored ?? 0);
     const progress = Math.min(r.target, Math.max(r.progress, value));
     if (progress === r.progress) continue;
     const completedAt = progress >= r.target ? new Date(nowMs) : null;
@@ -220,6 +224,10 @@ async function after(tx: Tx, ev: EventRow, due: number, snap: NonNullable<Challe
   // Wrackgut: Ladung der Heimfahrt ohne die Beute.
   await trackProgress(tx, pid, "wrack", sumRes(m.cargoHome as ResourceMap) - loot, at);
   if (!r) return;
+  // Wetter: Mission trotz Sturm auf der Route erfolgreich (Sturmanteil bei Abfahrt).
+  const storm = (m.plan as Mission | null)?.weather?.storminess ?? 0;
+  const success = r.kind === "aufklaerung" || r.kind === "transport" || ((r.kind === "ueberfall" || r.kind === "weltereignis") && r.winner === "attacker");
+  if (storm >= STORM_MISSION_FROM && success) await trackProgress(tx, pid, "sturmfahrt", 1, at);
   if (r.kind === "aufklaerung") await trackProgress(tx, pid, "aufklaerung", 1, at);
   else if (r.kind === "transport") await trackProgress(tx, pid, "transport", 1, at);
   else if (r.kind === "ueberfall") {
