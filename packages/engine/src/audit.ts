@@ -1,0 +1,53 @@
+// Prüflauf: Journal der Börse gegen Kreditstände und offene Lieferungen.
+import { eq, sql } from "drizzle-orm";
+import { tables } from "@tidefront/db";
+import type { Engine } from "./context.ts";
+
+export interface AuditResult {
+  ok: boolean;
+  unbalancedTrades: { tradeId: string; asset: string; sum: string }[];
+  creditMismatches: { playerId: number; ledger: string; state: number }[];
+  deliveryMismatches: { id: string; ledger: string; expected: number }[];
+}
+
+export async function auditLedger(engine: Engine): Promise<AuditResult> {
+  const unbalanced = await engine.db.execute<{ trade_id: string; asset: string; sum: string }>(sql`
+    select trade_id, asset, sum(amount)::text as sum from trade_ledger
+    group by trade_id, asset having sum(amount) <> 0 limit 50`);
+  const ledgerCredits = await engine.db.execute<{ account: string; sum: string }>(sql`
+    select account, sum(amount)::text as sum from trade_ledger
+    where asset = 'credits' and account like 'player:%' group by account`);
+  const byPlayer = new Map(ledgerCredits.map((r) => [Number(r.account.slice(7)), r.sum]));
+  const players = await engine.db.select({ id: tables.player.id, trader: tables.player.trader }).from(tables.player);
+  const creditMismatches: AuditResult["creditMismatches"] = [];
+  for (const p of players) {
+    const state = (p.trader as { credits: number }).credits;
+    const ledger = byPlayer.get(p.id) ?? "0";
+    if (Math.round(Number(ledger) * 100) !== Math.round(state * 100)) creditMismatches.push({ playerId: p.id, ledger, state });
+  }
+  const deliveries = await engine.db.execute<{ id: string; qty: number; status: string; sum: string | null }>(sql`
+    select d.id, d.qty, d.status, (select sum(amount)::text from trade_ledger l where l.account = 'delivery:' || d.id) as sum
+    from delivery d`);
+  const deliveryMismatches: AuditResult["deliveryMismatches"] = [];
+  for (const d of deliveries) {
+    const expected = d.status === "underway" ? d.qty : 0;
+    if (Number(d.sum ?? 0) !== expected) deliveryMismatches.push({ id: d.id, ledger: d.sum ?? "0", expected });
+  }
+  const result: AuditResult = {
+    ok: unbalanced.length === 0 && creditMismatches.length === 0 && deliveryMismatches.length === 0,
+    unbalancedTrades: unbalanced.map((r) => ({ tradeId: r.trade_id, asset: r.asset, sum: r.sum })),
+    creditMismatches,
+    deliveryMismatches,
+  };
+  await engine.db.insert(tables.auditRun).values({ ok: result.ok ? 1 : 0, details: result });
+  return result;
+}
+
+/** Abgelaufene Wracks und Sitzungen entfernen. */
+export async function cleanup(engine: Engine, nowMs: number, wreckHours: number): Promise<void> {
+  await engine.db.execute(sql`delete from wreck where created_at < ${new Date(nowMs - wreckHours * 3600000).toISOString()}::timestamptz`);
+  await engine.db.execute(sql`delete from session where expires_at < now()`);
+  await engine.db.execute(sql`delete from command_log where created_at < now() - interval '7 days'`);
+  await engine.db.execute(sql`delete from game_event where status = 'done' and processed_at < now() - interval '3 days'`);
+  void eq;
+}
