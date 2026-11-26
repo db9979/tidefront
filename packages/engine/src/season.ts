@@ -7,6 +7,7 @@ import type { Handler, HandlerResult } from "./events.ts";
 import { awardsFor, computeStandings } from "./scoring.ts";
 import { scheduleEvent } from "./store.ts";
 import { resetChallenges } from "./challenges.ts";
+import { expireOffers } from "./player-trade.ts";
 
 const DAY_MS = 86400000;
 
@@ -132,6 +133,7 @@ export const seasonEnd: Handler = async (tx, ev, due) => {
   }
 
   // 3. Journal abschließen (Kredite und Lieferungen auf 0), dann die Welt zurücksetzen.
+  await expireOffers(tx, s.number, due); // Handel zwischen Spielern: offene Angebote verfallen (Treuhand an season:<n>)
   await closeLedger(tx, s.number, due);
   await tx.delete(tables.delivery);
   await tx.delete(tables.mission);

@@ -30,6 +30,8 @@ import { afterRegister, inviteRouter } from "./routers/invite.ts";
 import { dailyRouter } from "./routers/daily.ts";
 import { adminStatsRouter } from "./routers/adminstats.ts";
 import { comfortRouter } from "./routers/comfort.ts";
+import { allianceRouter } from "./routers/alliance.ts";
+import { playerTradeRouter } from "./routers/trade.ts";
 
 export type { Ctx };
 
@@ -160,6 +162,8 @@ export const appRouter = t.router({
   season: seasonRouter,
   daily: dailyRouter,
   comfort: comfortRouter,
+  alliance: allianceRouter,
+  playerTrade: playerTradeRouter,
 });
 
 export type AppRouter = typeof appRouter;

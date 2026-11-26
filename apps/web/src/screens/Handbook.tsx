@@ -162,6 +162,17 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
       ),
     },
     {
+      id: "allianz", icon: "transport", title: "Allianzen, Diplomatie, Handel",
+      body: (
+        <>
+          <P>Unter Meldungen → <strong>Allianz</strong> gründest du eine Allianz (Name und Kürzel aus 2–4 Zeichen) oder fragst bei einer an. Führung und Offiziere laden ein und nehmen Anfragen an; die Führung vergibt Rollen und kann die Allianz auflösen. Das Kürzel steht in der Rangliste vor deinem Namen, die <strong>Allianzwertung</strong> zählt die Punkte aller Mitglieder zusammen. Allianzen bleiben über das Saisonende bestehen.</P>
+          <P><strong>Verbündete</strong> können sich nicht überfallen. Im Allianz-Chat sprecht ihr euch ab.</P>
+          <P><strong>Diplomatie</strong> gibt es zwischen Allianzen und Spielern ohne Allianz. Ein <strong>Nichtangriffspakt</strong> gilt, wenn beide Seiten zustimmen; danach sind gegenseitige Überfälle ausgeschlossen. Kündigen kann jede Seite, der Pakt gilt dann noch 24 Stunden. Eine <strong>Kriegserklärung</strong> wirkt nach 12 Stunden Vorlauf: Im Krieg entfällt die Schwachziel-Kürzung der Beute. Frieden gibt es, wenn beide Seiten ihn wollen.</P>
+          <P>In der Börse findest du den <strong>Handel mit Spielern</strong>: Biete eine Ressource oder Kredite gegen eine andere an, für alle oder nur für deine Allianz. Die Ware geht beim Einstellen in Treuhand und kommt beim Zurückziehen sofort zurück. Wer annimmt, zahlt sofort; Ressourcen reisen auf beiden Seiten per Konvoi nach Entfernung der Häfen, Kredite kommen sofort. Je Seite wird eine kleine Gebühr einbehalten. Offene Angebote verfallen am Saisonende.</P>
+        </>
+      ),
+    },
+    {
       id: "einheiten", icon: "kampfpanzer", title: "Einheiten im Überblick",
       body: b ? (
         <ul className="space-y-2">

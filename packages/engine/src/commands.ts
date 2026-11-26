@@ -29,11 +29,12 @@ import { activeMissionCount, baseOfPlayer, lockBase, saveBase, scheduleEvent } f
 import { incomingDetected } from "./views.ts";
 import { scheduleAttackWarning } from "./event-notices.ts";
 import { trackProgress } from "./challenges.ts";
+import { diplomacyBlock } from "./alliance-core.ts"; // Allianzen/Diplomatie
 
 export type Rejected = { ok: false; code: string };
 type Draft<T> = T | (Rejected & { keepWrites?: boolean });
 
-interface Ctx {
+export interface Ctx {
   tx: Tx;
   playerId: number;
   nowMs: number;
@@ -229,6 +230,8 @@ export function launchMission(
     const target = await targetAt(ctx.tx, input.col, input.row);
     if (!target) fail("no_target");
     if (target.kind === "base" && target.playerId === playerId) fail("own_base");
+    // Allianzen/Diplomatie: kein Überfall auf Verbündete (ally) oder Paktpartner (pact).
+    if (input.type === "ueberfall" && target.kind === "base" && target.playerId !== null) { const d = await diplomacyBlock(ctx.tx, playerId, target.playerId, ctx.nowMs); if (d) fail(d); }
     if (input.type === "transport" && target.kind !== "base") fail("transport_needs_base");
     if (input.type === "ueberfall" && target.kind === "nest" && target.defeatedAt && !isNestRespawned(target.defeatedAt.getTime(), ctx.nowMs, balance)) {
       fail("nest_empty");

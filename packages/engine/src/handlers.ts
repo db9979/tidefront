@@ -31,6 +31,7 @@ import { balance, RAID_LEAD_MS } from "./context.ts";
 import type { EventRow, Handler, HandlerResult } from "./events.ts";
 import { lockBase, lockBases, randomSeed, readBase, saveBase, scheduleEvent } from "./store.ts";
 import { attackWarning, scheduleAttackWarning } from "./event-notices.ts";
+import { atWar } from "./alliance-core.ts"; // Diplomatie (Krieg)
 
 const HOUR_MS = 3600000;
 const none = (): HandlerResult => ({ notify: [] });
@@ -197,6 +198,8 @@ const missionArrive: Handler = async (tx, ev, due) => {
         priorAttacksInWindow: prior?.n ?? 0,
         weakTarget: origin ? isWeakTarget(baseStrength(origin.state), baseStrength(defenderBase), balance) : false,
       };
+      // Diplomatie: im Krieg (nach Vorlauf) entfällt die Schwachziel-Kürzung der Beute.
+      if (attacker.weakTarget && (await atWar(tx, m.playerId!, target.playerId, due))) attacker.weakTarget = false;
       const seed = randomSeed();
       const res = resolveBattle(attacker, defenderFromBase(defenderBase, balance), balance, seed);
       if (!res.ok) throw new Error(`battle: ${res.code}`);

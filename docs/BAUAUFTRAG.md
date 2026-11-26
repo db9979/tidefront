@@ -80,8 +80,33 @@ Auslegungen stehen in `packages/game-core/ENTSCHEIDUNGEN.md` und `packages/game-
   Befehlsprotokoll, ausstehende Ereignisse außer `season_end` und alle Stützpunkte. Nester ohne `defeated_at`, Markt auf
   Richtwert, Händlerzustand der Spieler neu (Kredite 0). Spieler, Sitzungen, Nachrichten, `season_result`, Journal und
   Einladungscodes bleiben. Danach wird die nächste Saison angelegt und ihr Ende geplant; Meldung `season` an alle.
-- Oberfläche: Der Reiter „Meldungen“ der unteren Leiste hat oben drei Reiter Berichte | Nachrichten | Rangliste
-  (mit Spielerübersicht und Ruhmeshalle). Ohne Stützpunkt landet der Spieler in der Hafenwahl, die den Saisonwechsel anzeigt.
+- Oberfläche: Der Reiter „Meldungen“ der unteren Leiste hat oben die Reiter Berichte | Nachrichten | Rangliste
+  (mit Spielerübersicht und Ruhmeshalle) | Allianz. Ohne Stützpunkt landet der Spieler in der Hafenwahl, die den Saisonwechsel anzeigt.
+
+## Festlegungen: Allianzen, Diplomatie, Handel zwischen Spielern
+
+- Tabellen (Abschnitt am Ende von `schema.ts`): `alliance`, `alliance_member` (PK `player_id`: höchstens eine Allianz),
+  `alliance_request` (Einladung/Anfrage, eindeutig je Allianz und Spieler), `alliance_chat`, `diplomacy`
+  (Paar `party_a < party_b` als `a:<allianz>` bzw. `p:<spieler>`, eindeutig je Paar und Art), `player_offer`.
+- Engine: `alliance-core.ts` (Parteien, Systemnachrichten, Abfragen `diplomacyBlock` und `atWar`), `alliance.ts`
+  (Mitgliedschaft, Chat), `alliance-view.ts` (Lesemodelle, Allianzwertung aus der zwischengespeicherten Rangliste),
+  `diplomacy.ts`, `player-trade.ts`. API: `routers/alliance.ts` (`alliance.*`), `routers/trade.ts` (`playerTrade.*`).
+- Allianz-Befehle laufen ohne Idempotenz-Schlüssel in einer Transaktion und sperren zuerst die Allianzzeile
+  (Größe und Rollen). Diplomatie sperrt das Paar per `pg_advisory_xact_lock`. Abgelaufene Pakte werden beim nächsten
+  Zugriff gelöscht (kein Ereignis). Änderungen melden `alliance` über WebSocket (neue `ChangeKind`), Systemnachrichten `messages`.
+- Eingriffe in bestehende Dateien, jeweils markiert: `launchMission` lehnt `ueberfall` auf Verbündete (`ally`) und
+  Paktpartner (`pact`) ab, geprüft vor dem Schutz. `mission_arrive` setzt `AttackerInput.weakTarget` auf `false`, wenn zum
+  Kampfzeitpunkt Krieg herrscht. `runCommand` und `Ctx` in `commands.ts` sind exportiert. `season_end` ruft vor dem
+  Journalabschluss `expireOffers` auf.
+- Handel: Befehle mit Idempotenz-Schlüssel (`runCommand`). Sperrreihenfolge: Angebot (`FOR UPDATE`), Stützpunkte
+  aufsteigend, Spieler aufsteigend. Journal (`trade_ledger`): Einstellen `po-<id>:escrow` (`player:<id>` → `escrow:po-<id>`),
+  Annahme `po-<id>:accept` (Treuhand → `delivery:po-<id>-k` bzw. `player:<käufer>`; Zahlung `player:<käufer>` →
+  `delivery:po-<id>-v` bzw. `player:<anbieter>`; Gebühr → `fees`), Rückzug `po-<id>:cancel`, Saisonende `po-<id>:expire`
+  (Treuhand → `season:<n>`). Ressourcen reisen über die bestehende Tabelle `delivery` und das Ereignis `delivery_arrive`.
+- Prüflauf (`audit.ts`) zusätzlich: Treuhand je Angebot = angebotene Menge, solange offen, sonst 0 (`escrowMismatches`).
+- Oberfläche: Reiter „Allianz“ unter Meldungen (Übersicht, Chat, Mitglieder, Diplomatie; Reiterleiste scrollbar),
+  Allianzwertung und Kürzel in der Rangliste, Beziehung und Einladen in der Spielerübersicht, „Handel mit Spielern“
+  als Abschnitt der Börse (`components/PlayerTrade.tsx`). Die Karte markiert Verbündete noch nicht.
 
 ## Festlegungen: Freunde einladen
 

@@ -8,6 +8,8 @@ export interface AuditResult {
   unbalancedTrades: { tradeId: string; asset: string; sum: string }[];
   creditMismatches: { playerId: number; ledger: string; state: number }[];
   deliveryMismatches: { id: string; ledger: string; expected: number }[];
+  /** Handel zwischen Spielern: Treuhand je Angebot (offen: Menge, sonst 0). */
+  escrowMismatches: { offerId: number; ledger: string; expected: number }[];
 }
 
 export async function auditLedger(engine: Engine): Promise<AuditResult> {
@@ -33,11 +35,20 @@ export async function auditLedger(engine: Engine): Promise<AuditResult> {
     const expected = d.status === "underway" ? d.qty : 0;
     if (Number(d.sum ?? 0) !== expected) deliveryMismatches.push({ id: d.id, ledger: d.sum ?? "0", expected });
   }
+  const offers = await engine.db.execute<{ id: number; give_qty: number; status: string; sum: string | null }>(sql`
+    select o.id, o.give_qty, o.status, (select sum(amount)::text from trade_ledger l where l.account = 'escrow:po-' || o.id) as sum
+    from player_offer o`);
+  const escrowMismatches: AuditResult["escrowMismatches"] = [];
+  for (const o of offers) {
+    const expected = o.status === "open" ? Number(o.give_qty) : 0;
+    if (Number(o.sum ?? 0) !== expected) escrowMismatches.push({ offerId: o.id, ledger: o.sum ?? "0", expected });
+  }
   const result: AuditResult = {
-    ok: unbalanced.length === 0 && creditMismatches.length === 0 && deliveryMismatches.length === 0,
+    ok: unbalanced.length === 0 && creditMismatches.length === 0 && deliveryMismatches.length === 0 && escrowMismatches.length === 0,
     unbalancedTrades: unbalanced.map((r) => ({ tradeId: r.trade_id, asset: r.asset, sum: r.sum })),
     creditMismatches,
     deliveryMismatches,
+    escrowMismatches,
   };
   await engine.db.insert(tables.auditRun).values({ ok: result.ok ? 1 : 0, details: result });
   return result;
