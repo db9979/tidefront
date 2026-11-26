@@ -140,6 +140,12 @@ input, select, textarea { color: var(--color-ink); }
 .slip::after { bottom: -6px; }
 .dotted-row { border-bottom: 1px dotted var(--color-rule); }
 
+/* Stufenbilder der Gebäude: Bauplan als Blaupause, dezentes Einblenden beim Aufstieg in einen neuen Abschnitt. */
+.tf-plan path, .tf-plan rect, .tf-plan circle { fill: none; stroke: var(--color-see); stroke-width: 1; stroke-dasharray: 2.4 1.8; }
+@keyframes tf-grow { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.tf-grow { animation: tf-grow 600ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .tf-grow { animation: none !important; } }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
   /* Tickerband steht still und lässt sich wischen. */

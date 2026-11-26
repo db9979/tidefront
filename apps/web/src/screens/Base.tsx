@@ -7,6 +7,7 @@ import { fmtDuration, fmtSeconds, fmtTime, useNow } from "../lib/time.ts";
 import { liveResources } from "../lib/live.res.ts";
 import { buildingEffect, buildingText, cancelLoss, cancelQuestion } from "../lib/info.ts";
 import { Icon, IconTile } from "../icons.tsx";
+import { BuildingArt, BuildingArtTile, nextStageLevel, stageOf } from "../building-art/index.tsx";
 import { Badge, Bar, Button, Card, Cost, CountsLine, ErrorLine, Sheet } from "../ui.tsx";
 import { Guide, type GuideAction } from "../components/Guide.tsx";
 import { DailyOrders } from "../components/Daily.tsx";
@@ -48,7 +49,7 @@ export function BaseScreen(props: {
     <div>
       {/* Hafen-Kopf */}
       <section className="mb-3 pb-3 flex items-center gap-3.5 border-b border-rule">
-        <HarborVignette />
+        <HarborVignette levels={base.buildings.reduce((a, b) => a + b.level, 0)} />
         <div className="min-w-0 flex-1">
           <div className="font-display text-[10px] uppercase tracking-[0.2em] text-ink2">Stützpunkt</div>
           <h1 className="font-serif text-[32px] leading-none mt-0.5 mb-1 truncate">{base.name}</h1>
@@ -130,7 +131,7 @@ function BuildYard({ base, now }: { base: BaseData; now: number }) {
             const running = o.startedAt <= now;
             return (
               <li key={`${o.buildingId}:${o.targetLevel}`} className="py-2 flex items-center gap-3">
-                <IconTile id={o.buildingId} size={i === 0 ? 52 : 40} />
+                <BuildingArtTile id={o.buildingId} level={o.targetLevel} size={i === 0 ? 60 : 48} />
                 <div className="flex-1 min-w-0">
                   <div className="font-medium">{label(o.buildingId)} · Ausbau auf Stufe {o.targetLevel}</div>
                   {running ? (
@@ -177,7 +178,7 @@ function BuildingTile({ b, res, queueFull, running, queued, onOpen }: { b: Build
       onClick={onOpen}
       className={`relative rounded-xl px-1.5 pt-2 pb-2 flex flex-col items-center text-center border bg-card transition ${queued ? "reticle" : "border-rule"} active:scale-[0.97]`}
     >
-      <Icon id={b.id} size={50} />
+      <BuildingArt id={b.id} level={b.level} size={68} />
       <span className="w-full font-serif text-[12.5px] mt-1 leading-tight break-words hyphens-auto" lang="de">{label(b.id).replace("kommandantur", "\u00ADkommandantur").replace("zentrale", "\u00ADzentrale")}</span>
       <span className="mt-1 flex items-center gap-1">
         <span className={`w-[22px] h-[22px] rounded-full grid place-items-center text-[11px] mono border ${b.level > 0 ? "border-ink text-ink" : "border-rule text-ink2"}`}>{b.level}</span>
@@ -212,6 +213,7 @@ function BuildingSheet({ b, base, res, onClose, onTroops, onResearch }: { b: Bui
   return (
     <Sheet open onClose={onClose} title={<>{label(b.id)} <span className="text-ink2 font-sans text-sm mono">Stufe {b.level}</span></>} icon={<IconTile id={b.id} size={56} />}>
       <p className="text-sm text-slate-200 mb-3">{buildingText(balance, b.id)}</p>
+      <StagePictures id={b.id} level={b.level} target={maxed ? null : target} />
       {(now || next) && (
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="rounded-xl bg-paper border border-rule p-2">
@@ -244,6 +246,31 @@ function BuildingSheet({ b, base, res, onClose, onTroops, onResearch }: { b: Bui
       </div>
       {b.id === "hafenkommandantur" && <p className="text-xs text-slate-400 mt-2">Missionsplätze jetzt: {base.missionSlots}</p>}
     </Sheet>
+  );
+}
+
+/** Stufenbilder im Info-Blatt: jetzt und nach dem nächsten Ausbau nebeneinander. */
+function StagePictures({ id, level, target }: { id: string; level: number; target: number | null }) {
+  const next = nextStageLevel(level);
+  const changes = target !== null && stageOf(target) !== stageOf(level);
+  return (
+    <div className="mb-3">
+      <div className="grid grid-cols-2 gap-2">
+        <figure className="rounded-xl bg-[#f6f1e5] border border-rule p-1.5 flex flex-col items-center">
+          <BuildingArt id={id} level={level} size={128} />
+          <figcaption className="text-[11px] uppercase tracking-wider text-slate-400 mt-1">Jetzt · Stufe {level}</figcaption>
+        </figure>
+        {target !== null ? (
+          <figure className={`rounded-xl bg-[#f6f1e5] border p-1.5 flex flex-col items-center ${changes ? "border-moos/60" : "border-rule"}`}>
+            <BuildingArt id={id} level={target} size={128} />
+            <figcaption className={`text-[11px] uppercase tracking-wider mt-1 ${changes ? "text-emerald-300" : "text-slate-400"}`}>Stufe {target}</figcaption>
+          </figure>
+        ) : (
+          <div className="rounded-xl border border-rule p-2 grid place-items-center text-center text-xs text-ink2">Prachtbau – höchste Ausbaustufe.</div>
+        )}
+      </div>
+      {next !== null && <p className="text-xs text-ink2 mt-1">{changes ? "Mit diesem Ausbau wächst das Gebäude sichtbar." : `Neues Ausbaubild ab Stufe ${next}.`}</p>}
+    </div>
   );
 }
 
