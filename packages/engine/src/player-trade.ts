@@ -9,7 +9,7 @@ import { hexDistanceKm } from "@tidefront/world";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, type Engine } from "./context.ts";
 import { runCommand, type Ctx } from "./commands.ts";
-import { baseOfPlayer, lockBase, lockBases, saveBase, scheduleEvent } from "./store.ts";
+import { homeBaseOf, lockBases, lockOwnBase, ownBase, readBase, saveBase, scheduleEvent, type BaseRow } from "./store.ts";
 import { fail, membershipOf, systemMessage } from "./alliance-core.ts";
 import { getSetting } from "./settings.ts";
 import { attachTradeEscort, createConvoy } from "./naval.ts"; // See: Konvoi (Lieferungen reisen als Konvoi, Geleitschutz)
@@ -67,8 +67,14 @@ export interface OfferInput {
   want: string;
   wantQty: number;
   visibility: "public" | "alliance";
-  /** Mehrere Häfen: Hafen, aus dem die Ware kommt (P2; fehlt → Heimathafen). */
+  /** Mehrere Häfen: Hafen, aus dem die Ware kommt und an den die Gegenleistung geht (fehlt → Heimathafen). */
   baseId?: number;
+}
+
+/** Hafen eines Angebots: seller_base_id, solange er dem Verkäufer gehört, sonst (ältere Angebote) dessen Heimathafen. */
+async function offerBase(tx: Tx, o: { sellerId: number; sellerBaseId: number | null }): Promise<BaseRow | null> {
+  const b = o.sellerBaseId !== null ? await readBase(tx, o.sellerBaseId) : null;
+  return b && b.playerId === o.sellerId ? b : homeBaseOf(tx, o.sellerId);
 }
 
 /** Angebot einstellen. Codes: bad_offer, bad_qty, no_alliance, locked, too_many_offers, funds. */
@@ -80,9 +86,7 @@ export function createOffer(engine: Engine, playerId: number, key: string, input
     if (input.visibility !== "public" && input.visibility !== "alliance") fail("bad_offer");
     const m = await membershipOf(ctx.tx, playerId);
     if (input.visibility === "alliance" && !m) fail("no_alliance");
-    const own = await baseOfPlayer(ctx.tx, playerId);
-    if (!own) fail("no_base");
-    const b = (await lockBase(ctx.tx, own.id))!;
+    const b = await lockOwnBase(ctx.tx, playerId, input.baseId); // Treuhand aus dem aktiven Hafen
     const state = settle(b.state, ctx.nowMs, balance);
     if (!harborMarketUnlocked(state, balance)) fail("locked");
     const [n] = await ctx.tx
@@ -102,7 +106,7 @@ export function createOffer(engine: Engine, playerId: number, key: string, input
     const [o] = await ctx.tx
       .insert(tables.playerOffer)
       .values({
-        sellerId: playerId, give: input.give, giveQty: input.giveQty, want: input.want, wantQty: input.wantQty,
+        sellerId: playerId, sellerBaseId: b.id, give: input.give, giveQty: input.giveQty, want: input.want, wantQty: input.wantQty,
         visibility: input.visibility, allianceId: m?.allianceId ?? null, createdAt: new Date(ctx.nowMs),
       })
       .returning({ id: tables.playerOffer.id });
@@ -120,7 +124,7 @@ export function createOffer(engine: Engine, playerId: number, key: string, input
  * Angebot annehmen. Das Angebot wird zuerst gesperrt: von zwei gleichzeitigen Annahmen gelingt genau eine.
  * Codes: offer_gone, own_offer, not_ally, no_base, seller_gone, locked, funds.
  */
-export function acceptOffer(engine: Engine, playerId: number, key: string, offerId: number, escort?: Record<string, number>, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
+export function acceptOffer(engine: Engine, playerId: number, key: string, offerId: number, escort?: Record<string, number>, baseId?: number) {
   return runCommand<{ ok: true; arriveAtMs: number }>(engine, playerId, key, "offerAccept", async (ctx: Ctx) => {
     const [o] = await ctx.tx.select().from(tables.playerOffer).where(eq(tables.playerOffer.id, offerId)).for("update");
     if (!o || o.status !== "open") fail("offer_gone");
@@ -130,13 +134,15 @@ export function acceptOffer(engine: Engine, playerId: number, key: string, offer
       const theirs = await membershipOf(ctx.tx, o.sellerId);
       if (!mine || mine.allianceId !== o.allianceId || theirs?.allianceId !== o.allianceId) fail("not_ally");
     }
-    const buyerRow = await baseOfPlayer(ctx.tx, playerId);
-    if (!buyerRow) fail("no_base");
-    const sellerRow = await baseOfPlayer(ctx.tx, o.sellerId);
+    // Mehrere Häfen: Käufer zahlt aus dem aktiven Hafen und empfängt dort; Verkäufer empfängt im Angebotshafen.
+    const buyerRow = await ownBase(ctx.tx, playerId, baseId);
+    const sellerRow = await offerBase(ctx.tx, o);
     if (!sellerRow) fail("seller_gone");
     const bases = await lockBases(ctx.tx, [buyerRow.id, sellerRow.id]);
-    const buyerBase = bases.get(buyerRow.id)!;
-    const sellerBase = bases.get(sellerRow.id)!;
+    const buyerBase = bases.get(buyerRow.id);
+    const sellerBase = bases.get(sellerRow.id);
+    if (!buyerBase || buyerBase.playerId !== playerId) fail("no_base");
+    if (!sellerBase || sellerBase.playerId !== o.sellerId) fail("seller_gone");
     const buyerState = settle(buyerBase.state, ctx.nowMs, balance);
     if (!harborMarketUnlocked(buyerState, balance)) fail("locked");
     const traders = o.want === "credits" || o.give === "credits" ? await lockPlayers(ctx.tx, [playerId, o.sellerId]) : new Map<number, Trader>();
@@ -203,7 +209,7 @@ export function acceptOffer(engine: Engine, playerId: number, key: string, offer
 }
 
 /** Eigenes offenes Angebot zurückziehen; die Ware kommt sofort zurück. Codes: offer_gone, no_rights, no_base. */
-export function withdrawOffer(engine: Engine, playerId: number, key: string, offerId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
+export function withdrawOffer(engine: Engine, playerId: number, key: string, offerId: number, _baseId?: number) { // Ware zurück in den Angebotshafen
   return runCommand(engine, playerId, key, "offerWithdraw", async (ctx: Ctx) => {
     const [o] = await ctx.tx.select().from(tables.playerOffer).where(eq(tables.playerOffer.id, offerId)).for("update");
     if (!o || o.status !== "open") fail("offer_gone");
@@ -212,9 +218,10 @@ export function withdrawOffer(engine: Engine, playerId: number, key: string, off
       const trader = (await lockPlayers(ctx.tx, [playerId])).get(playerId)!;
       await setCredits(ctx.tx, playerId, trader, trader.credits + o.giveQty);
     } else {
-      const own = await baseOfPlayer(ctx.tx, playerId);
+      const own = await offerBase(ctx.tx, o);
       if (!own) fail("no_base");
-      const b = (await lockBase(ctx.tx, own.id))!;
+      const b = (await lockBases(ctx.tx, [own.id])).get(own.id);
+      if (!b || b.playerId !== playerId) fail("no_base");
       await saveBase(ctx.tx, b.id, deliverCargo(b.state, { [o.give]: o.giveQty }, ctx.nowMs, balance));
     }
     const tradeId = `po-${o.id}:cancel`;
@@ -240,7 +247,7 @@ export async function expireOffers(tx: Tx, seasonNumber: number, atMs: number): 
 }
 
 /** Sichtbare offene Angebote (öffentlich oder aus der eigenen Allianz) und die eigenen der letzten Zeit. */
-export async function offersView(engine: Engine, playerId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
+export async function offersView(engine: Engine, playerId: number, baseId?: number) { // Reisezeiten ab dem aktiven Hafen
   const nowMs = Date.now();
   const m = await membershipOf(engine.db, playerId);
   const visible = m
@@ -264,7 +271,10 @@ export async function offersView(engine: Engine, playerId: number, baseId?: numb
     .where(and(eq(tables.playerOffer.sellerId, playerId), sql`${tables.playerOffer.status} <> 'open'`))
     .orderBy(desc(tables.playerOffer.closedAt))
     .limit(10);
-  const own = await baseOfPlayer(engine.db, playerId);
+  const own = await ownBase(engine.db, playerId, baseId).catch((err: unknown) => {
+    if (baseId !== undefined) throw err;
+    return null;
+  });
   const tags = new Map(
     (await engine.db
       .select({ playerId: tables.allianceMember.playerId, tag: tables.alliance.tag })
@@ -284,6 +294,7 @@ export async function offersView(engine: Engine, playerId: number, baseId?: numb
       ...shape(r.o),
       seller: { id: r.o.sellerId, name: r.name, tag: tags.get(r.o.sellerId) ?? null },
       own: r.o.sellerId === playerId,
+      sellerBaseId: r.o.sellerId === playerId ? r.o.sellerBaseId : null,
       travelMs: own && r.col !== null && r.row !== null && r.o.sellerId !== playerId ? travelMs({ col: r.col, row: r.row! }, own) : null,
     })),
     closed: mine.map(shape),

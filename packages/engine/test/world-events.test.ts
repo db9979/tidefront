@@ -12,6 +12,7 @@ import {
   balance, chooseBase, computeStandings, ensureWorldEventPlanner, launchMission, missionPreview, processDue, register,
   runningSeason, seed, siegeEffects, spawnWorldEvent, trade, worldEventsView, type Engine,
 } from "../src/index.ts";
+import { addSecondHarbor } from "./multi-base.ts";
 
 const url = process.env.TEST_DATABASE_URL;
 const HOUR = 3600000;
@@ -286,6 +287,23 @@ test("Belagerung: keine Börsenkäufe, Produktion −30 %, Ring brechen nur durc
   assert.ok(msgs.some((x) => (x.subject ?? "").includes("gebrochen")));
   const view = await worldEventsView(engine, a.playerId);
   assert.equal(view.ownSiege, null);
+});
+
+test("Mehrere Häfen: Belagerung einer Kolonie wirkt nur dort; Lesemodell je aktivem Hafen", async () => {
+  const c = await newPlayer("Kolonist", 140);
+  const c2 = await addSecondHarbor(db, c.playerId, { patch: (s) => { s.protection.createdAtMs = Date.now() - 30 * DAY; s.buildings.hafenkommandantur = 6; } });
+  await patchBase(c.baseId, (s) => { s.buildings.hafenkommandantur = 6; s.resources.stahl = 100; });
+  const id = await spawn("belagerung", c2.baseId);
+  assert.equal((await eventRow(id)).targetBaseId, c2.baseId);
+  assert.ok((await worldEventsView(engine, c.playerId, c2.baseId)).ownSiege, "Kolonie sieht den Ring");
+  assert.equal((await worldEventsView(engine, c.playerId)).ownSiege, null, "Heimathafen frei");
+  await assert.rejects(worldEventsView(engine, c.playerId, 999999), /no_base/);
+  const buyCol = await trade(engine, c.playerId, key(), { side: "buy", resource: "stahl", qty: 10, expectedPrice: 1, baseId: c2.baseId });
+  assert.deepEqual(buyCol, { ok: false, code: "siege" });
+  const buyHome = await trade(engine, c.playerId, key(), { side: "buy", resource: "stahl", qty: 10, expectedPrice: 1 });
+  assert.notEqual((buyHome as { code?: string }).code, "siege");
+  const msgs = await db.select().from(tables.message).where(eq(tables.message.toPlayerId, c.playerId));
+  assert.ok(msgs.some((x) => (x.subject ?? "").includes(c2.name)), "Text nennt den Hafen");
 });
 
 test("Saisonende räumt Ereignisse ab, der Planer setzt in der neuen Saison neu an", async () => {

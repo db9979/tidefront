@@ -231,7 +231,7 @@ const missionArrive: Handler = async (tx, ev, due) => {
       // Diplomatie: im Krieg (nach Vorlauf) entfällt die Schwachziel-Kürzung der Beute.
       if (attacker.weakTarget && (await atWar(tx, m.playerId!, target.playerId, due))) attacker.weakTarget = false;
       const seed = randomSeed();
-      const admD = await defenseAdmiral(tx, target.playerId, due); // Admirale: Hafenkommandant des Ziels
+      const admD = await defenseAdmiral(tx, target.playerId, target.id, due); // Admirale: Hafenkommandant des Ziels
       const defender = defenderFromBase(defenderBase, balance, combineModifiers(targetMods, admD?.mods));
       const guests = await stationedGuests(tx, target.id); // Allianz-Ops: stationierte Verbündete verteidigen mit
       const res = resolveBattle(attacker, withGuests(defender, guests), balance, seed, battleWeather(target.col, target.row, due));
@@ -395,7 +395,7 @@ const raidArrive: Handler = async (tx, ev, due) => {
   const mods = await modsOf(tx, b, due);
   const state = settle(b.state, due, balance, mods);
   const seed = randomSeed();
-  const admD = await defenseAdmiral(tx, b.playerId, due); // Admirale: Hafenkommandant
+  const admD = await defenseAdmiral(tx, b.playerId, b.id, due); // Admirale: Hafenkommandant
   const defender = defenderFromBase(state, balance, combineModifiers(mods, admD?.mods));
   const guests = await stationedGuests(tx, b.id); // Allianz-Ops: stationierte Verbündete verteidigen mit
   const res = resolveBattle(plan.attacker, withGuests(defender, guests), balance, seed, battleWeather(b.col, b.row, due));

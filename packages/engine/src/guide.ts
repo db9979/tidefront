@@ -65,7 +65,7 @@ async function claimsOf(db: DbOrTx, playerId: number, seasonId: number) {
 export async function guideView(engine: Engine, playerId: number) {
   const g = guideBalance();
   const s = await runningSeason(engine.db);
-  const own = await baseOfPlayer(engine.db, playerId);
+  const own = await baseOfPlayer(engine.db, playerId); // Mehrere Häfen: bewusst Heimathafen (Leitfaden folgt dem Heimathafen)
   const claims = s ? await claimsOf(engine.db, playerId, s.id) : [];
   const claimed = new Map(claims.map((c) => [c.step, c]));
   const won = own ? await wonNestRaid(engine.db, playerId) : false;
@@ -181,7 +181,7 @@ async function boostQueue(tx: Tx, baseId: number, state: BaseState, ms: number, 
 }
 
 async function lockedOwn(tx: Tx, playerId: number) {
-  const own = await baseOfPlayer(tx, playerId);
+  const own = await baseOfPlayer(tx, playerId); // Mehrere Häfen: bewusst Heimathafen (Belohnung dorthin)
   if (!own) fail("no_base");
   // Sperre auf dem Stützpunkt: gleichzeitige Abholungen desselben Spielers laufen nacheinander.
   const b = await lockBase(tx, own.id);

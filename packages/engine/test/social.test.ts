@@ -8,6 +8,8 @@ import type { BaseState } from "@tidefront/game-core";
 import {
   auditLedger,
   balance,
+  baseView,
+  marketView,
   buildingValue,
   chooseBase,
   clearRankingCache,
@@ -31,6 +33,7 @@ import {
   unreadCount,
   type Engine,
 } from "../src/index.ts";
+import { addSecondHarbor } from "./multi-base.ts";
 
 const url = process.env.TEST_DATABASE_URL;
 const { db, client } = createDb(url ?? "postgres://invalid", 10);
@@ -278,4 +281,29 @@ test("Saisonende: Endstand, Auszeichnungen, Nachrichten, Reset, Prüflauf ok, id
   const view = await rankingView(engine, A.playerId);
   assert.equal(view.season?.number, 2);
   assert.equal(view.rows.find((r) => r.playerId === A.playerId)?.kampf, 0);
+});
+
+test("Mehrere Häfen: Börse spielerweit (Freischaltung und Kreditlimit nach höchster Hafenkommandantur, Tageslimit nach Heimathafen), Forschung des Heimathafens in der Kolonie", async () => {
+  const X = await newPlayer("Xaver", 15);
+  await patchBase(X.baseId, (s) => {
+    s.buildings.hafenkommandantur = 2; s.buildings.forschungsamt = 3; s.buildings.lagerkomplex = 6;
+    s.research = { levels: { ...(s.research?.levels ?? {}), [Object.keys(balance.research!.techs)[0]]: 2 }, order: null };
+  });
+  const col = await addSecondHarbor(db, X.playerId, { patch: (s) => { s.buildings.hafenkommandantur = 6; s.buildings.lagerkomplex = 1; } });
+  const home = (await baseView(engine, X.playerId))!.base!;
+  const colony = (await baseView(engine, X.playerId, col.baseId))!.base!;
+  const limit = (balance.buildings.hafenkommandantur.creditLimitPerLevel ?? 0) * 6;
+  for (const v of [home, colony]) {
+    assert.equal(v.market.unlocked, true);
+    assert.equal(v.market.creditLimit, limit);
+  }
+  assert.deepEqual(colony.research, home.research, "Kolonie zeigt die Forschung des Heimathafens");
+  // Tageslimit: Lager des Heimathafens, gleich in jedem aktiven Hafen.
+  const mh = await marketView(engine, X.playerId);
+  const mc = await marketView(engine, X.playerId, col.baseId);
+  assert.equal(mc.resources[0].dailyLimit, mh.resources[0].dailyLimit);
+  assert.equal(mh.resources[0].dailyLimit, Math.floor(balance.market.dailyLimitShareOfStorage * home.capacity));
+  // Börse aus dem Heimathafen (Stufe 2) nicht gesperrt, weil eine Kolonie Stufe 6 hat.
+  const t = await trade(engine, X.playerId, key(), { side: "sell", resource: "stahl", qty: 1, expectedPrice: 1 });
+  assert.notEqual((t as { code?: string }).code, "locked");
 });

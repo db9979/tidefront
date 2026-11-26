@@ -17,7 +17,6 @@ import {
   settle,
   startTraining,
   startUpgrade,
-  storageCapacity,
   market as marketCore,
   type BaseState,
   type Counts,
@@ -28,7 +27,8 @@ import { hexCenter, isCoast, nearestTradePort } from "@tidefront/world";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, marketBalance, GameError, type ChangeKind, type Engine } from "./context.ts";
 import { processDueForBase } from "./events.ts";
-import { activeMissionCount, basesOfPlayer, homeBaseOf, lockOwnBase, saveBase, scheduleEvent, withSite } from "./store.ts";
+import { activeMissionCount, basesOfPlayer, homeBaseOf, lockBases, lockOwnBase, ownBase, saveBase, scheduleEvent, withSite } from "./store.ts";
+import { homeStorageCapacity, maxHarborLevel } from "./player-wide.ts"; // Mehrere Häfen: Börse spielerweit
 import { missionWeather } from "./weather.ts"; // Wetter (v1.6): Sturm auf der Route
 import { incomingDetected } from "./views.ts";
 import { scheduleAttackWarning } from "./event-notices.ts";
@@ -206,14 +206,26 @@ export function cancelTrain(engine: Engine, playerId: number, key: string, built
 
 export function setNightShield(engine: Engine, playerId: number, key: string, startHour: number | null, tzOffsetMinutes: number, baseId?: number) {
   return runCommand<{ ok: true; fromMs: number }>(engine, playerId, key, "nightShield", async (ctx) => {
-    const b = await ownBaseLocked(ctx, baseId); // P2: Nachtschild spielerweit (alle Häfen)
-    const next = settle(b.state, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs));
-    const r = scheduleNightShieldChange(next.protection, startHour, tzOffsetMinutes, ctx.nowMs, balance);
-    if (!r.ok) return { ok: false as const, code: r.code };
-    next.protection = r.protection;
-    await saveBase(ctx.tx, b.id, next);
+    // Mehrere Häfen: Einstellung spielerweit – der aktive Hafen entscheidet über Erfolg und fromMs, die übrigen
+    // Häfen übernehmen sie, soweit ihr Schutzzustand es erlaubt. Sperren aufsteigend nach ID.
+    const active = (await ownBase(ctx.tx, playerId, baseId)).id;
+    const locked = await lockBases(ctx.tx, (await basesOfPlayer(ctx.tx, playerId)).map((x) => x.id));
+    const b = locked.get(active);
+    if (!b || b.playerId !== playerId) fail("no_base");
+    let fromMs = 0;
+    for (const x of [b, ...[...locked.values()].filter((y) => y.id !== active)]) {
+      const next = settle(x.state, ctx.nowMs, balance, await modsOf(ctx.tx, x, ctx.nowMs));
+      const r = scheduleNightShieldChange(next.protection, startHour, tzOffsetMinutes, ctx.nowMs, balance);
+      if (!r.ok) {
+        if (x.id === active) return { ok: false as const, code: r.code };
+        continue;
+      }
+      if (x.id === active) fromMs = r.fromMs;
+      next.protection = r.protection;
+      await saveBase(ctx.tx, x.id, next);
+    }
     ctx.notify.push([[playerId], "base"]);
-    return { ok: true as const, fromMs: r.fromMs };
+    return { ok: true as const, fromMs };
   });
 }
 
@@ -270,7 +282,7 @@ export function launchMission(
       fail("nest_empty");
     }
     // Admirale: Führer des Verbands (Tempo, Treibstoff, Tarnung …); prüft Besitz und Verfügbarkeit.
-    const adm = input.admiralId !== undefined ? await admiralForLaunch(ctx.tx, playerId, input.admiralId, ctx.nowMs) : null;
+    const adm = input.admiralId !== undefined ? await admiralForLaunch(ctx.tx, playerId, input.admiralId, ctx.nowMs, b.id) : null;
     const mods = combineModifiers(await modsOf(ctx.tx, b, ctx.nowMs), adm?.mods);
     const r = planMission(
       b.state,
@@ -382,7 +394,7 @@ export function trade(
     const stock = {} as Record<ResourceId, number>;
     for (const r of balance.resources) stock[r as ResourceId] = Math.floor(state.resources[r] ?? 0);
     const trader = { ...(p.trader as Omit<marketCore.TraderState, "stock">), stock } as marketCore.TraderState;
-    const capacity = storageCapacity(state, balance, mods);
+    const capacity = await homeStorageCapacity(ctx.tx, playerId, ctx.nowMs, { ...b, state }); // Tageslimit: Heimathafen
     const storage = {} as Record<ResourceId, number>;
     for (const r of balance.resources) storage[r as ResourceId] = capacity;
     const tradeId = `t-${randomUUID()}`;
@@ -393,7 +405,7 @@ export function trade(
       {
         playerId: String(playerId),
         tradeId,
-        harborLevel: state.buildings.hafenkommandantur ?? 0,
+        harborLevel: await maxHarborLevel(ctx.tx, playerId, { id: b.id, state }), // höchste Hafenkommandantur
         storageCapacity: storage,
         attackDetected: await incomingDetected(ctx.tx, b.id, state, ctx.nowMs, mods),
         distanceToPortKm: nearestTradePort(b).distanceKm,

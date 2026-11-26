@@ -48,6 +48,7 @@ import {
   withdrawOffer,
   type Engine,
 } from "../src/index.ts";
+import { addSecondHarbor } from "./multi-base.ts";
 
 const url = process.env.TEST_DATABASE_URL;
 const { db, client } = createDb(url ?? "postgres://invalid", 10);
@@ -406,6 +407,36 @@ test("Handelsstatistik: angenommene Angebote der letzten 7 Tage je Paar, zwische
   clearTradeStatsCache();
   assert.equal((await playerTradeStats(engine)).pairs.find((p) => p.a === "stahl" && p.b === "elektronik")!.count, 1);
   if (o.ok) await withdrawOffer(engine, C.playerId, key(), (o as { offerId: number }).offerId);
+  assert.equal((await auditLedger(engine)).ok, true);
+});
+
+test("Mehrere Häfen: Angebot aus dem zweiten Hafen, Annahme in den aktiven Hafen, Rückzug in den Angebotshafen", async () => {
+  const market = (s: BaseState) => { s.buildings.hafenkommandantur = 4; };
+  const E2 = await addSecondHarbor(db, E.playerId, { patch: market });
+  const F2 = await addSecondHarbor(db, F.playerId, { patch: market });
+  const eHome = (await stateOf(E.baseId)).resources.stahl;
+  const o = await createOffer(engine, E.playerId, key(), { give: "stahl", giveQty: 1000, want: "proviant", wantQty: 100, visibility: "public", baseId: E2.baseId });
+  assert.equal(o.ok, true, JSON.stringify(o));
+  const offerId = (o as { offerId: number }).offerId;
+  const [row] = await db.select().from(tables.playerOffer).where(eq(tables.playerOffer.id, offerId));
+  assert.equal(row.sellerBaseId, E2.baseId);
+  assert.ok((await stateOf(E2.baseId)).resources.stahl <= 50000 - 1000 + 5, "Treuhand aus dem zweiten Hafen");
+  assert.ok(Math.abs((await stateOf(E.baseId)).resources.stahl - eHome) < 50, "Heimathafen unberührt");
+  assert.deepEqual(await createOffer(engine, E.playerId, key(), { give: "stahl", giveQty: 1, want: "proviant", wantQty: 1, visibility: "public", baseId: F2.baseId }), { ok: false, code: "no_base" });
+  assert.deepEqual(await acceptOffer(engine, F.playerId, key(), offerId, undefined, E2.baseId), { ok: false, code: "no_base" });
+  const list = await offersView(engine, F.playerId, F2.baseId);
+  assert.ok(list.open.find((x) => x.id === offerId)?.travelMs, "Reisezeit ab dem aktiven Hafen");
+  const acc = await acceptOffer(engine, F.playerId, key(), offerId, undefined, F2.baseId);
+  assert.equal(acc.ok, true, JSON.stringify(acc));
+  assert.ok((await stateOf(F2.baseId)).resources.proviant <= 50000 - 100 + 5, "Käufer zahlt aus dem aktiven Hafen");
+  const dels = await db.select().from(tables.delivery).where(sql`${tables.delivery.id} like ${`po-${offerId}-%`}`);
+  assert.equal(dels.find((d) => d.playerId === F.playerId)!.baseId, F2.baseId, "Ware an den Käuferhafen");
+  assert.equal(dels.find((d) => d.playerId === E.playerId)!.baseId, E2.baseId, "Gegenleistung an den Angebotshafen");
+  // Rückzug: Ware zurück in den Angebotshafen, auch wenn ein anderer Hafen aktiv ist.
+  const w = await createOffer(engine, E.playerId, key(), { give: "treibstoff", giveQty: 500, want: "stahl", wantQty: 1, visibility: "public", baseId: E2.baseId });
+  const t0 = (await stateOf(E2.baseId)).resources.treibstoff;
+  assert.deepEqual(await withdrawOffer(engine, E.playerId, key(), (w as { offerId: number }).offerId), { ok: true });
+  assert.ok((await stateOf(E2.baseId)).resources.treibstoff >= t0 + 500 - 5);
   assert.equal((await auditLedger(engine)).ok, true);
 });
 

@@ -18,7 +18,7 @@ import {
 import { hexCenter } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError, type Engine, type NoticeJob } from "./context.ts";
-import { activeMissionCount, baseOfPlayer, lockBase, readBase, saveBase, scheduleEvent, withSite } from "./store.ts";
+import { activeMissionCount, lockBase, lockOwnBase, readBase, saveBase, scheduleEvent, withSite } from "./store.ts";
 import { missionWeather } from "./weather.ts";
 import { modifiersFor, modsOf } from "./modifiers.ts";
 import { diplomacyBlock, memberIds, membershipOf, systemMessage, type Notes } from "./alliance-core.ts";
@@ -105,11 +105,10 @@ export async function raidMembers(db: DbOrTx, raidId: number) {
 }
 
 /** Verband beitreten lassen: planen wie ein Überfall, Einheiten und Treibstoff binden, Mission "staged". */
-async function joinWith(ctx: Ctx, raid: RaidRow, units: Counts): Promise<{ missionId: number }> {
+async function joinWith(ctx: Ctx, raid: RaidRow, units: Counts, baseId?: number): Promise<{ missionId: number }> {
   const { tx, playerId, nowMs } = ctx;
-  const found = await baseOfPlayer(tx, playerId);
-  const own = found ? await lockBase(tx, found.id) : null;
-  if (!own) fail("no_base");
+  const own = await lockOwnBase(tx, playerId, baseId); // mehrere Häfen: Verband aus dem aktiven Hafen
+
   const p = await targetProblem(tx, playerId, raid, nowMs);
   if (p.code) fail(p.code);
   const members = await raidMembers(tx, raid.id);
@@ -166,7 +165,7 @@ export function openRaid(
   engine: Engine,
   playerId: number,
   key: string,
-  input: { col: number; row: number; eventId?: number; units: Counts; joinMinutes: number; arriveMinutes: number; baseId?: number }, // P2: baseId
+  input: { col: number; row: number; eventId?: number; units: Counts; joinMinutes: number; arriveMinutes: number; baseId?: number },
 ) {
   const jobs: NoticeJob[] = [];
   return runCommand<{ ok: true; raidId: number; missionId: number }>(engine, playerId, key, "raidOpen", async (ctx) => {
@@ -191,7 +190,7 @@ export function openRaid(
         status: "offen", createdAt: new Date(ctx.nowMs),
       })
       .returning();
-    const { missionId } = await joinWith(ctx, raid, input.units);
+    const { missionId } = await joinWith(ctx, raid, input.units, input.baseId);
     await scheduleEvent(ctx.tx, "alliance_raid_launch", deadline, { raidId: raid.id }, null);
     const ids = await memberIds(ctx.tx, ms.allianceId);
     const who = await nameOf(ctx.tx, playerId);
@@ -207,7 +206,7 @@ export function openRaid(
 }
 
 /** Mit eigenem Verband beitreten. Codes: no_raid, raid_closed, raid_other_alliance, raid_joined, raid_full, Ziel- und Planungscodes. */
-export function joinRaid(engine: Engine, playerId: number, key: string, input: { raidId: number; units: Counts; baseId?: number }) { // P2: baseId
+export function joinRaid(engine: Engine, playerId: number, key: string, input: { raidId: number; units: Counts; baseId?: number }) {
   const jobs: NoticeJob[] = [];
   return runCommand<{ ok: true; missionId: number }>(engine, playerId, key, "raidJoin", async (ctx) => {
     const raid = await lockRaid(ctx.tx, input.raidId);
@@ -216,7 +215,7 @@ export function joinRaid(engine: Engine, playerId: number, key: string, input: {
     const ms = await membershipOf(ctx.tx, playerId);
     if (!ms || ms.allianceId !== raid.allianceId) fail("raid_other_alliance");
     const others = (await raidMembers(ctx.tx, raid.id)).map((m) => m.playerId);
-    const r = await joinWith(ctx, raid, input.units);
+    const r = await joinWith(ctx, raid, input.units, input.baseId);
     const who = await nameOf(ctx.tx, playerId);
     await systemMessage(ctx.tx, ctx.notify, [...others, playerId], `Sammelangriff auf ${raid.targetName}`, `${who} tritt dem Sammelangriff bei (${others.length + 1} Verbände). Auslaufen ${clock(raid.joinDeadline.getTime())} Uhr.`);
     jobs.push(...pushAll(others, `Sammelangriff: ${who} ist dabei`, `${others.length + 1} Verbände gegen ${raid.targetName}.`, `raid-${raid.id}`));
@@ -228,8 +227,11 @@ export function joinRaid(engine: Engine, playerId: number, key: string, input: {
   });
 }
 
-/** Vor dem Auslaufen zurückziehen: Verband und Treibstoff zurück. Codes: no_raid, raid_launched, not_joined. */
-export function withdrawRaid(engine: Engine, playerId: number, key: string, raidId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
+/**
+ * Vor dem Auslaufen zurückziehen: Verband und Treibstoff zurück (in den Hafen, aus dem er kam – mission.base_id;
+ * baseId wird nicht gebraucht). Codes: no_raid, raid_launched, not_joined.
+ */
+export function withdrawRaid(engine: Engine, playerId: number, key: string, raidId: number, _baseId?: number) {
   return runCommand<{ ok: true }>(engine, playerId, key, "raidWithdraw", async (ctx) => {
     const raid = await lockRaid(ctx.tx, raidId);
     if (!raid) fail("no_raid");
@@ -245,7 +247,7 @@ export function withdrawRaid(engine: Engine, playerId: number, key: string, raid
 }
 
 /** Abbrechen vor dem Auslaufen: Eröffner, Führung oder Offiziere. Codes: no_raid, raid_launched, no_rights. */
-export function cancelRaid(engine: Engine, playerId: number, key: string, raidId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
+export function cancelRaid(engine: Engine, playerId: number, key: string, raidId: number, _baseId?: number) { // Verbände kehren in ihre Häfen zurück
   return runCommand<{ ok: true }>(engine, playerId, key, "raidCancel", async (ctx) => {
     const raid = await lockRaid(ctx.tx, raidId);
     if (!raid) fail("no_raid");

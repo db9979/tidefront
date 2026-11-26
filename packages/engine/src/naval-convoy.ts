@@ -26,7 +26,7 @@ import {
 import { hexAtLonLat, hexCenter } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError, type NoticeJob } from "./context.ts";
-import { activeMissionCount, randomSeed, saveBase, scheduleEvent, type BaseRow } from "./store.ts";
+import { activeMissionCount, randomSeed, readBase, saveBase, scheduleEvent, type BaseRow } from "./store.ts";
 import { modifiersFor, modsOf } from "./modifiers.ts";
 import { battleWeather } from "./weather.ts";
 import { atWar } from "./alliance-core.ts";
@@ -141,11 +141,14 @@ async function takeCargo(tx: Tx, c: ConvoyRow, lost: ResourceMap, account: strin
 
 /** Seekampf gegen das Geleit (Angreifer: Kartell oder Spieler). Rückgabe: Geleit hält, Bericht, Überlebende. */
 async function fightEscort(tx: Tx, c: ConvoyRow, attacker: AttackerInput, escort: Counts, due: number) {
-  const ownerId = c.kind === "transport" ? c.senderId : (await escortOwner(tx, c));
+  const src = await escortSource(tx, c);
   const seed = randomSeed();
   const at = routePosition(route(c), due);
   const hex = hexAtLonLat(at.lon, at.lat);
-  const res = resolveBattle(attacker, { units: escort, defenses: {}, modifiers: ownerId !== null ? await modifiersFor(tx, ownerId, { nowMs: due }) : {} }, balance, seed, battleWeather(hex.col, hex.row, due));
+  // Mehrere Häfen: das Geleit kämpft mit den Modifikatoren des Hafens, aus dem es ausgelaufen ist.
+  const from = src?.baseId != null ? await readBase(tx, src.baseId) : null;
+  const escortMods = !src ? {} : from && from.playerId === src.playerId ? await modsOf(tx, from, due) : await modifiersFor(tx, src.playerId, { nowMs: due });
+  const res = resolveBattle(attacker, { units: escort, defenses: {}, modifiers: escortMods }, balance, seed, battleWeather(hex.col, hex.row, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
   const { report, destroyed } = strandTroops(res.report, balance);
   const left = activeUnits(report.defender.final);
@@ -154,10 +157,13 @@ async function fightEscort(tx: Tx, c: ConvoyRow, attacker: AttackerInput, escort
   return { held: !destroyed, report: { ...report, loot: {} }, seed, attackerLeft: activeUnits(report.attacker.final), hex };
 }
 
-async function escortOwner(tx: Tx, c: ConvoyRow): Promise<number | null> {
-  if (c.escortMissionId === null) return null;
-  const [m] = await tx.select({ playerId: tables.mission.playerId }).from(tables.mission).where(eq(tables.mission.id, c.escortMissionId));
-  return m?.playerId ?? null;
+/** Besitzer und Ausgangshafen des Geleits (Transport: der Verband selbst, Handel: die Geleitmission), null ohne. */
+async function escortSource(tx: Tx, c: ConvoyRow): Promise<{ playerId: number; baseId: number | null } | null> {
+  const missionId = c.kind === "transport" ? c.missionId : c.escortMissionId;
+  if (missionId === null) return c.kind === "transport" && c.senderId !== null ? { playerId: c.senderId, baseId: null } : null;
+  const [m] = await tx.select({ playerId: tables.mission.playerId, baseId: tables.mission.baseId }).from(tables.mission).where(eq(tables.mission.id, missionId));
+  if (!m || m.playerId === null) return c.kind === "transport" && c.senderId !== null ? { playerId: c.senderId, baseId: null } : null;
+  return { playerId: m.playerId, baseId: m.baseId };
 }
 
 async function addEvent(tx: Tx, c: ConvoyRow, e: ConvoyEvent): Promise<void> {

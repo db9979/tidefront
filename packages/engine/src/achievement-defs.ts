@@ -156,7 +156,7 @@ export const WEEKLY_KINDS: Record<string, WeeklyKind> = {
   abwehr: {
     icon: "schild",
     spec: (c) => (c.raidsPossible ? { param: null, target: 2 } : null),
-    text: (n) => `Wehre ${n} Angriffe auf deinen Hafen ab`,
+    text: (n) => `Wehre ${n} Angriffe auf deine Häfen ab`,
   },
   wrack: {
     icon: "stahl",

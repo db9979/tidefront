@@ -42,6 +42,8 @@ export interface AdminStats {
   nests: { playerId: number; name: string; maxLevel: number | null; wins: number; attempts: number }[];
   economy: {
     bases: number;
+    /** Mehrere Häfen: davon Kolonien (nicht Heimathafen). */
+    colonies: number;
     avgKommandozentrale: number;
     /** levels[i] = Anzahl Stützpunkte mit Stufe i. */
     buildings: { id: string; avg: number; max: number; levels: number[] }[];
@@ -254,7 +256,7 @@ export async function adminStats(db: Db, days: StatsDays, nowMs = Date.now(), tz
     },
     combat,
     nests: nestRows.map((r) => ({ playerId: r.id, name: r.name, maxLevel: r.maxl, wins: r.wins, attempts: r.attempts })),
-    economy: { bases: bases.length, avgKommandozentrale: kz?.avg ?? 0, buildings },
+    economy: { bases: bases.length, colonies: bases.filter((b) => !b.is_home).length, avgKommandozentrale: kz?.avg ?? 0, buildings },
     anomalies: {
       richPlayers,
       repeatedAttacks: rep.map((r) => ({ attacker: r.attacker, defender: r.defender, maxPerDay: r.maxday, total: r.total })),

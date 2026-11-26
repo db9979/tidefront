@@ -6,6 +6,7 @@ import { createDb, migrateDb, tables } from "@tidefront/db";
 import { nestSites, isCoast, hexDistanceKm, COLS, ROWS } from "@tidefront/world";
 import type { BaseState } from "@tidefront/game-core";
 import { balance, chooseBase, ensureFieldPlanner, fieldRecall, fieldsView, launchMission, missionPreview, processDue, register, seed, type Engine } from "../src/index.ts";
+import { addSecondHarbor } from "./multi-base.ts";
 
 const url = process.env.TEST_DATABASE_URL;
 const HOUR = 3600000;
@@ -175,4 +176,33 @@ test("Felder: Verteilung, Aufklärung, Besetzen, Ertragskonvoi, Angriff, Rückru
   await patchBase(a.baseId, (s) => { s.buildings.hafenkommandantur = 0; });
   const lim = await missionPreview(engine, a.playerId, { type: "besetzen", units: { zerstoerer: 2 }, col: target.col, row: target.row, fieldId: target.id });
   assert.equal(lim.ok ? "ok" : lim.code, "field_limit");
+});
+
+test("Mehrere Häfen: Feld gehört dem Hafen, der es nimmt; Ertrag dorthin; Höchstzahl nach höchster Hafenkommandantur", async () => {
+  const c = await newPlayer("Feldkolonist", coastNear(null));
+  await patchBase(c.baseId, (s) => { s.buildings.hafenkommandantur = 0; });
+  const free = (await db.select().from(tables.resourceField)).find((x) => x.ownerId === null)!;
+  await db.update(tables.resourceField).set({ guard: {}, guardAt: new Date(Date.now() + 30 * DAY) }).where(eq(tables.resourceField.id, free.id));
+  const c2 = await addSecondHarbor(db, c.playerId, {
+    near: free, minKm: 60, maxKm: 400,
+    patch: (s) => { s.buildings.hafenkommandantur = 10; s.buildings.kommandozentrale = 15; s.protection.createdAtMs = 0; s.units = { korvette: 6 }; },
+  });
+  assert.equal((await fieldsView(engine, c.playerId))!.maxFields, 3, "höchste Hafenkommandantur zählt (Kolonie Stufe 10)");
+  const go = await launchMission(engine, c.playerId, key(), { type: "besetzen", units: { korvette: 2 }, col: free.col, row: free.row, fieldId: free.id, baseId: c2.baseId });
+  assert.equal(go.ok, true, JSON.stringify(go));
+  await runUntil((go as { arriveAtMs: number }).arriveAtMs + 1000);
+  const f = await fieldRow(free.id);
+  assert.equal(f.ownerId, c.playerId);
+  assert.equal(f.baseId, c2.baseId, "Feld hängt am nehmenden Hafen");
+  const mine = (await fieldsView(engine, c.playerId))!.mine.find((m) => m.id === free.id)!;
+  assert.equal(mine.baseId, c2.baseId);
+  assert.equal(mine.home, c2.name);
+  // Ertragskonvoi zum nehmenden Hafen.
+  await db.update(tables.resourceField).set({ lastTickAt: new Date(Date.now() - 4 * HOUR) }).where(eq(tables.resourceField.id, free.id));
+  await db.update(tables.gameEvent).set({ dueAt: new Date() }).where(sql`${tables.gameEvent.type} = 'field_tick' and ${tables.gameEvent.status} = 'pending'`);
+  await runUntil(Date.now() + 1000);
+  const cvs = await db.select().from(tables.convoy).where(eq(tables.convoy.recipientId, c.playerId));
+  assert.ok(cvs.length > 0 && cvs.every((x) => x.recipientBaseId === c2.baseId), "Ertrag an den nehmenden Hafen");
+  // Rückruf aus jedem aktiven Hafen erlaubt (Feld ist spielerweit).
+  assert.equal((await fieldRecall(engine, c.playerId, key(), free.id)).ok, true);
 });

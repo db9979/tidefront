@@ -11,13 +11,13 @@ import { tables, type Db, type Tx } from "@tidefront/db";
 import { balance, type NoticeJob } from "./context.ts";
 import type { HandlerResult } from "./events.ts";
 import { lockBase, lockBases, randomSeed, saveBase, scheduleEvent } from "./store.ts";
-import { modifiersFor, modsOf } from "./modifiers.ts";
+import { modsOf } from "./modifiers.ts";
 import { battleWeather } from "./weather.ts";
 import { systemMessage } from "./alliance-core.ts";
 import { runningSeasonRow } from "./world-events.ts";
 import { activeBlockade, createConvoy } from "./naval.ts";
 import { pushNotice, storeNavalReport, type Notes } from "./naval-common.ts";
-import { HOUR_MS, allianceMap, fieldById, fieldName, ownedBy, rules, spawnFields, zonesOf, type FieldRow } from "./fields-core.ts";
+import { HOUR_MS, allianceMap, garrisonMods, fieldById, fieldName, ownedBy, rules, spawnFields, zonesOf, type FieldRow } from "./fields-core.ts";
 import { endGarrison, releaseField } from "./fields-missions.ts";
 
 const none = (): HandlerResult => ({ notify: [] });
@@ -132,7 +132,7 @@ async function fieldRaid(tx: Tx, payload: Record<string, unknown>, due: number):
   const units = activeUnits(payload.units as Counts);
   const garrison = activeUnits((m.returning as Counts | null) ?? {});
   const seed = randomSeed();
-  const res = resolveBattle({ units }, { units: garrison, defenses: {}, modifiers: await modifiersFor(tx, owner, { nowMs: due }) }, balance, seed, battleWeather(f.col, f.row, due));
+  const res = resolveBattle({ units }, { units: garrison, defenses: {}, modifiers: await garrisonMods(tx, f, due) }, balance, seed, battleWeather(f.col, f.row, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
   const { report, destroyed } = strandTroops(res.report, balance);
   const name = fieldName(f);

@@ -8,7 +8,7 @@ import { blockadeOf, minesOf } from "@tidefront/game-core";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError, type Engine, type NoticeJob } from "./context.ts";
 import type { HandlerResult } from "./events.ts";
-import { baseOfPlayer, readBase, scheduleEvent, type BaseRow } from "./store.ts";
+import { ownBase, readBase, scheduleEvent, type BaseRow } from "./store.ts";
 import { NAVAL_TYPES, sendHome, type MissionRowLike, type NavalInput, type Notes } from "./naval-common.ts";
 import { launchMines, mineTransitFor, minesArrive, previewMines, routeMines, visibleFields } from "./naval-mines.ts";
 import {
@@ -163,9 +163,12 @@ export async function clearNaval(tx: Tx): Promise<void> {
 }
 
 /** Lesemodell für Karte, Hafen und Börse. */
-export async function navalView(engine: Engine, playerId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
+export async function navalView(engine: Engine, playerId: number, baseId?: number) { // ownBlockade: aktiver Hafen
   const nowMs = Date.now();
-  const own = await baseOfPlayer(engine.db, playerId);
+  const own = await ownBase(engine.db, playerId, baseId).catch((err: unknown) => {
+    if (baseId !== undefined) throw err; // fremder Hafen: no_base
+    return null;
+  });
   const blockade = own ? await activeBlockade(engine.db, { baseId: own.id }, nowMs) : null;
   return {
     serverNow: nowMs,
@@ -178,8 +181,8 @@ export async function navalView(engine: Engine, playerId: number, baseId?: numbe
 }
 
 /** Bekannte Minen auf der Route zum Feld (Warnung in der Missionsplanung). */
-export async function navalRouteMines(engine: Engine, playerId: number, col: number, row: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
-  return routeMines(engine.db, playerId, col, row, Date.now());
+export async function navalRouteMines(engine: Engine, playerId: number, col: number, row: number, baseId?: number) { // Route ab aktivem Hafen
+  return routeMines(engine.db, playerId, col, row, Date.now(), baseId);
 }
 
 export type { Counts, ResourceMap };

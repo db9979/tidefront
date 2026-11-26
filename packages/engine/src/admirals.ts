@@ -1,6 +1,6 @@
 // Admirale im Server: Ernennen, Spezialisierung, Hafenkommandant, Lösegeld, Entlassen und Ansicht.
 // Regeln rein im Kern (game-core/src/admirals.ts); Status und Auslaufen in admirals-core.ts, Kampf in admirals-battle.ts.
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   ADMIRAL_NAMES,
   admiralModLines,
@@ -15,7 +15,8 @@ import {
 import { tables } from "@tidefront/db";
 import { balance, GameError, type Engine } from "./context.ts";
 import { runCommand, type Ctx } from "./commands.ts";
-import { baseOfPlayer, lockBase, randomSeed, saveBase } from "./store.ts";
+import { basesOfPlayer, lockOwnBase, ownBase, randomSeed, saveBase, type BaseRow } from "./store.ts";
+import type { DbOrTx } from "@tidefront/db";
 import { modsOf } from "./modifiers.ts";
 import { activeMissions, admiralStatus, type AdmiralRow, type AdmiralStatus } from "./admirals-core.ts";
 
@@ -25,6 +26,13 @@ function fail(code: string): never {
 
 const cents = (n: number) => Math.round(n * 100) / 100;
 const specsOf = (a: AdmiralRow) => [a.spec1, a.spec2];
+
+/** Mehrere Häfen: Admiral-Plätze nach der höchsten Hafenkommandantur aller eigenen Häfen (spielerweit). */
+async function slotsOf(db: DbOrTx, playerId: number, known?: BaseRow): Promise<number> {
+  const bases = await basesOfPlayer(db, playerId);
+  const levels = bases.map((x) => buildingLevel(x.id === known?.id ? known.state : x.state, "hafenkommandantur"));
+  return admiralSlots(Math.max(0, ...levels), balance);
+}
 
 // ---------------------------------------------------------------- Befehle
 
@@ -55,10 +63,10 @@ export function appointAdmiral(engine: Engine, playerId: number, key: string, in
   return runCommand<{ ok: true; admiralId: number; name: string }>(engine, playerId, key, "admiralAppoint", async (ctx) => {
     const cfg = balance.admirals ?? fail("admiral_off");
     if (!Object.hasOwn(cfg.specs, input.spec)) fail("admiral_spec");
-    const own = (await baseOfPlayer(ctx.tx, playerId)) ?? fail("no_base");
-    const b = (await lockBase(ctx.tx, own.id)) ?? fail("no_base");
+    // Mehrere Häfen: Ernennung in den aktiven Hafen (dort Kosten und Dienstort).
+    const b = await lockOwnBase(ctx.tx, playerId, input.baseId);
     const rows = await ctx.tx.select().from(tables.admiral).where(eq(tables.admiral.playerId, playerId));
-    if (rows.length >= admiralSlots(buildingLevel(b.state, "hafenkommandantur"), balance)) fail("admiral_slots");
+    if (rows.length >= (await slotsOf(ctx.tx, playerId, b))) fail("admiral_slots");
     const used = rows.map((r) => r.name);
     const name = input.name ?? pickAdmiralName(randomSeed(), used);
     if (!ADMIRAL_NAMES.includes(name) || used.includes(name)) fail("admiral_name");
@@ -68,7 +76,7 @@ export function appointAdmiral(engine: Engine, playerId: number, key: string, in
     await saveBase(ctx.tx, b.id, state);
     const [a] = await ctx.tx
       .insert(tables.admiral)
-      .values({ playerId, baseId: b.id, name, spec1: input.spec, stationed: rows.every((r) => !r.stationed) })
+      .values({ playerId, baseId: b.id, name, spec1: input.spec, stationed: rows.every((r) => r.baseId !== b.id || !r.stationed) })
       .returning({ id: tables.admiral.id });
     await payCredits(ctx, cfg.cost.credits, `admiral-${a.id}:appoint`);
     ctx.notify.push([[playerId], "base"]);
@@ -90,11 +98,18 @@ export function chooseAdmiralSpec(engine: Engine, playerId: number, key: string,
   });
 }
 
-/** Hafenkommandant festlegen (admiralId) oder abberufen (null). Höchstens einer je Spieler. */
-export function stationAdmiral(engine: Engine, playerId: number, key: string, input: { admiralId: number | null; baseId?: number }) { // P2: Hafenkommandant je Hafen (baseId)
+/**
+ * Hafenkommandant des aktiven Hafens festlegen (admiralId) oder abberufen (null). Höchstens einer je Hafen; der
+ * Admiral muss in diesem Hafen dienen. Codes: no_base, admiral_unknown, admiral_other_base.
+ */
+export function stationAdmiral(engine: Engine, playerId: number, key: string, input: { admiralId: number | null; baseId?: number }) {
   return runCommand<{ ok: true }>(engine, playerId, key, "admiralStation", async (ctx) => {
-    if (input.admiralId !== null) await lockOwnAdmiral(ctx, input.admiralId);
-    await ctx.tx.update(tables.admiral).set({ stationed: false }).where(eq(tables.admiral.playerId, playerId));
+    const b = await ownBase(ctx.tx, playerId, input.baseId);
+    if (input.admiralId !== null && (await lockOwnAdmiral(ctx, input.admiralId)).baseId !== b.id) fail("admiral_other_base");
+    await ctx.tx
+      .update(tables.admiral)
+      .set({ stationed: false })
+      .where(and(eq(tables.admiral.playerId, playerId), eq(tables.admiral.baseId, b.id)));
     if (input.admiralId !== null) await ctx.tx.update(tables.admiral).set({ stationed: true }).where(eq(tables.admiral.id, input.admiralId));
     ctx.notify.push([[playerId], "base"]);
     return { ok: true as const };
@@ -138,7 +153,12 @@ export interface AdmiralInfo {
   specs: string[];
   /** Zweite Spezialisierung jetzt wählbar. */
   canChooseSecond: boolean;
+  /** Hafenkommandant seines Hafens. */
   stationed: boolean;
+  /** Dienstort (Hafen-ID) und ob es der aktive Hafen ist (mehrere Häfen). */
+  baseId: number;
+  baseName: string;
+  here: boolean;
   status: AdmiralStatus;
   until: number | null;
   battles: number;
@@ -148,11 +168,15 @@ export interface AdmiralInfo {
   harbor: AdmiralModLine[];
 }
 
-/** Karte „Admirale“: Plätze, Kosten, Regeln und eigene Admirale. */
-export async function admiralView(engine: Engine, playerId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
+/** Karte „Admirale“: Plätze (spielerweit), Kosten, Regeln und alle eigenen Admirale (here: im aktiven Hafen). */
+export async function admiralView(engine: Engine, playerId: number, baseId?: number) {
   const cfg = balance.admirals;
-  const own = await baseOfPlayer(engine.db, playerId);
+  const own = await ownBase(engine.db, playerId, baseId).catch((err: unknown) => {
+    if (baseId !== undefined) throw err;
+    return null;
+  });
   if (!cfg || !own) return null;
+  const names = new Map((await basesOfPlayer(engine.db, playerId)).map((x) => [x.id, x.name]));
   const nowMs = Date.now();
   const rows = await engine.db.select().from(tables.admiral).where(eq(tables.admiral.playerId, playerId)).orderBy(tables.admiral.id);
   const active = await activeMissions(engine.db, rows);
@@ -166,6 +190,7 @@ export async function admiralView(engine: Engine, playerId: number, baseId?: num
       specs: [a.spec1, ...(a.spec2 ? [a.spec2] : [])],
       canChooseSecond: !a.spec2 && r.index >= cfg.secondSpecFromRank,
       stationed: a.stationed,
+      baseId: a.baseId, baseName: names.get(a.baseId) ?? "", here: a.baseId === own.id,
       ...admiralStatus(a, active, nowMs),
       battles: a.battles, wins: a.wins,
       mission: admiralModLines(specs, a.xp, "mission", balance),
@@ -175,7 +200,7 @@ export async function admiralView(engine: Engine, playerId: number, baseId?: num
   });
   const used = rows.map((r) => r.name);
   return {
-    slots: admiralSlots(buildingLevel(own.state, "hafenkommandantur"), balance),
+    slots: await slotsOf(engine.db, playerId),
     slotsRule: cfg.slots,
     cost: cfg.cost,
     ranks: cfg.ranks,

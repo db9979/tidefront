@@ -54,6 +54,7 @@ import { sharedReportIds } from "./alliance-ops-view.ts";
 import { isNavalInput, previewNaval } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 import { previewField } from "./fields-missions.ts"; // Felder
 import { isExpansionType, previewExpansion } from "./expansion.ts"; // Mehrere Häfen
+import { homeStorageCapacity, maxHarborLevelOf, settledHome } from "./player-wide.ts"; // Mehrere Häfen: spielerweit
 
 /**
  * Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband;
@@ -159,6 +160,9 @@ export async function baseView(engine: Engine, playerId: number, baseId?: number
   const [p] = await engine.db.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, playerId));
   const status = protectionStatus(s.protection, nowMs, balance);
   const all = await basesOfPlayer(engine.db, playerId);
+  const harborLevel = maxHarborLevelOf(all, { id: own.id, state: s });
+  // Forschung ist spielerweit und liegt im Heimathafen: Kolonien zeigen dessen Stand.
+  const home = own.isHome ? null : await settledHome(engine.db, playerId, nowMs);
   return {
     serverNow: nowMs,
     base: {
@@ -198,8 +202,9 @@ export async function baseView(engine: Engine, playerId: number, baseId?: number
         nightWindow: nightShieldWindow(s.protection, nowMs, balance),
       },
       market: {
-        unlocked: harborMarketUnlocked(s, balance),
-        creditLimit: harborCreditLimit(s, balance),
+        // Mehrere Häfen: Börse spielerweit nach der höchsten Hafenkommandantur.
+        unlocked: harborLevel >= (balance.buildings.hafenkommandantur.marketFromLevel ?? 3),
+        creditLimit: (balance.buildings.hafenkommandantur.creditLimitPerLevel ?? 0) * harborLevel,
         credits: (p?.trader as { credits: number } | undefined)?.credits ?? 0,
         port: nearestTradePort(own),
       },
@@ -226,7 +231,7 @@ export async function baseView(engine: Engine, playerId: number, baseId?: number
       /** Dieselben Modifikatoren nach Quelle getrennt (Forschung, Veteranen, …) für die Wertaufschlüsselung. */
       modifierSources: modSources.filter((x) => Object.keys(x.mods).length > 0),
       veterans: veteranView(s),
-      research: researchView(s, mods),
+      research: home ? researchView(home.state, home.mods) : researchView(s, mods),
       intel: intelView(s, mods, nowMs),
       /** Allianz-Ops: fremde Verbände im eigenen Hafen (stationiert oder anfahrend). */
       stationed: await stationedView(engine.db, own.id),
@@ -405,10 +410,9 @@ export async function marketView(engine: Engine, playerId: number, baseId?: numb
   const refs = await marketRefs(engine.db, nowMs);
   const [p] = await engine.db.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, playerId));
   const trader = p?.trader as Omit<marketCore.TraderState, "stock">;
-  // Mehrere Häfen: Lager (Tageslimit) des gewählten Hafens; fremde baseId → "no_base".
-  const own = baseId === undefined ? await homeBaseOf(engine.db, playerId) : await ownBase(engine.db, playerId, baseId);
-  const mods = own ? await modsOf(engine.db, own, nowMs) : undefined;
-  const cap = own ? storageCapacity(settle(own.state, nowMs, balance, mods), balance, mods) : 0;
+  // Mehrere Häfen: Tageslimit spielerweit nach dem Lager des Heimathafens; fremde baseId → "no_base".
+  if (baseId !== undefined) await ownBase(engine.db, playerId, baseId);
+  const cap = await homeStorageCapacity(engine.db, playerId, nowMs);
   const dayIndex = marketCore.utcDayIndex(nowMs);
   return {
     serverNow: nowMs,

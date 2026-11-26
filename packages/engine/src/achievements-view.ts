@@ -39,7 +39,7 @@ function fail(code: string): never {
 async function payReward(tx: Tx, playerId: number, reward: Record<string, number>, nowMs: number, tradeId: string): Promise<void> {
   const { credits, resources } = splitReward(reward);
   if (Object.keys(resources).length > 0) {
-    const own = await baseOfPlayer(tx, playerId);
+    const own = await baseOfPlayer(tx, playerId); // Mehrere Häfen: bewusst Heimathafen (Belohnung dorthin)
     if (!own) fail("no_base");
     const b = (await lockBase(tx, own.id))!;
     const mods = await modsOf(tx, b, nowMs);
@@ -195,7 +195,7 @@ export function claimWeekly(engine: Engine, playerId: number, key: string, goalI
       let bonus: Record<string, number> | null = null;
       const week = await ctx.tx.select().from(wg).where(and(eq(wg.playerId, playerId), eq(wg.week, row.week))).for("update");
       if (week.length >= 3 && week.every((r) => r.claimedAt !== null || r.id === row.id) && !week.some((r) => r.bonus !== null)) {
-        const own = await baseOfPlayer(ctx.tx, playerId);
+        const own = await baseOfPlayer(ctx.tx, playerId); // Mehrere Häfen: bewusst Heimathafen (Bonus nach dessen Kommandozentrale)
         bonus = weeklyBonus(own?.state.buildings.kommandozentrale ?? 0);
         await payReward(ctx.tx, playerId, bonus, ctx.nowMs, `woche-${row.week}-bonus-${playerId}`);
         await ctx.tx.update(wg).set({ bonus }).where(eq(wg.id, row.id));

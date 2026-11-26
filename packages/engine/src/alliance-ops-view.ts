@@ -22,8 +22,11 @@ export async function sharedReportIds(db: DbOrTx, playerId: number, onlyId?: num
   return rows.map((r) => r.id!).filter((x) => x !== null);
 }
 
-/** Sammelangriffe der eigenen Allianz: offen, unterwegs und die der letzten 24 Stunden. */
-export async function allianceRaidsView(engine: Engine, playerId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
+/**
+ * Sammelangriffe der eigenen Allianz: offen, unterwegs und die der letzten 24 Stunden. Spielerweit (Allianz); mit
+ * mehreren Häfen nennt joinedBaseId den Hafen des eigenen Verbands (baseId des aktiven Hafens wird nicht gebraucht).
+ */
+export async function allianceRaidsView(engine: Engine, playerId: number, _baseId?: number) {
   const nowMs = Date.now();
   const ms = await membershipOf(engine.db, playerId);
   const cfg = allianceOpsOf(balance);
@@ -40,7 +43,7 @@ export async function allianceRaidsView(engine: Engine, playerId: number, baseId
   const ids = raids.map((r) => r.id);
   const members = ids.length
     ? await engine.db
-      .select({ raidId: tables.allianceRaidMember.raidId, playerId: tables.allianceRaidMember.playerId, name: tables.player.name, plan: tables.mission.plan, status: tables.mission.status, arriveAt: tables.mission.arriveAt })
+      .select({ raidId: tables.allianceRaidMember.raidId, playerId: tables.allianceRaidMember.playerId, name: tables.player.name, plan: tables.mission.plan, status: tables.mission.status, arriveAt: tables.mission.arriveAt, baseId: tables.mission.baseId })
       .from(tables.allianceRaidMember)
       .innerJoin(tables.player, eq(tables.player.id, tables.allianceRaidMember.playerId))
       .innerJoin(tables.mission, eq(tables.mission.id, tables.allianceRaidMember.missionId))
@@ -69,6 +72,7 @@ export async function allianceRaidsView(engine: Engine, playerId: number, baseId
         arriveAtMs: r.arriveAt?.getTime() ?? plannedArrive,
         reportId: r.reportId,
         joined: list.some((m) => m.playerId === playerId),
+        joinedBaseId: list.find((m) => m.playerId === playerId)?.baseId ?? null,
         canCancel: r.status === "offen" && (r.creatorPlayerId === playerId || ms.role !== "mitglied"),
         participants: list.map((m) => ({ name: m.name, mine: m.playerId === playerId, units: (m.plan as Mission).units as Counts, status: m.status })),
       };

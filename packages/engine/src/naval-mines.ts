@@ -19,7 +19,7 @@ import {
 import { hexCenter, hexDistanceKm, terrainAt } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError } from "./context.ts";
-import { activeMissionCount, baseOfPlayer, saveBase, type BaseRow } from "./store.ts";
+import { activeMissionCount, basesOfPlayer, ownBase, saveBase, type BaseRow } from "./store.ts";
 import { modsOf } from "./modifiers.ts";
 import {
   HOUR_MS, hasShips, hostile, insertMission, partyMates, planNaval, playerName, sendHome, storeNavalReport,
@@ -220,13 +220,15 @@ export async function visibleFields(db: DbOrTx, playerId: number, nowMs: number)
     .select({ id: tables.minefieldKnown.minefieldId })
     .from(tables.minefieldKnown)
     .where(and(eq(tables.minefieldKnown.playerId, playerId), inArray(tables.minefieldKnown.minefieldId, all.map((f) => f.id))))).map((r) => r.id));
-  const own = await baseOfPlayer(db, playerId);
-  const radarKm = own ? (own.state.buildings.radarstation ?? 0) * mb.radarKmPerLevel : 0;
+  // Mehrere Häfen: Radar-Sicht ist die Vereinigung der Radarkreise aller eigenen Häfen.
+  const radars = (await basesOfPlayer(db, playerId))
+    .map((b) => ({ col: b.col, row: b.row, km: (b.state.buildings.radarstation ?? 0) * mb.radarKmPerLevel }))
+    .filter((r) => r.km > 0);
   const owners = new Map<number, string>();
   const out = [];
   for (const f of all) {
     const allied = mates.has(f.ownerId);
-    const inRadar = own !== null && radarKm > 0 && hexDistanceKm(own, f) <= radarKm;
+    const inRadar = radars.some((r) => hexDistanceKm(r, f) <= r.km);
     if (!allied && !known.has(f.id) && !inRadar) continue;
     if (!owners.has(f.ownerId)) owners.set(f.ownerId, await playerName(db, f.ownerId));
     out.push({
@@ -238,9 +240,12 @@ export async function visibleFields(db: DbOrTx, playerId: number, nowMs: number)
   return out;
 }
 
-/** Bekannte feindliche Felder auf der Route vom eigenen Hafen zum Feld col/row (Warnung in der Planung). */
-export async function routeMines(db: DbOrTx, playerId: number, col: number, row: number, nowMs: number) {
-  const own = await baseOfPlayer(db, playerId);
+/** Bekannte feindliche Felder auf der Route vom (aktiven) eigenen Hafen zum Feld col/row (Warnung in der Planung). */
+export async function routeMines(db: DbOrTx, playerId: number, col: number, row: number, nowMs: number, baseId?: number) {
+  const own = await ownBase(db, playerId, baseId).catch((err: unknown) => {
+    if (baseId !== undefined) throw err;
+    return null;
+  });
   if (!own) return [];
   const a = hexCenter(own.col, own.row), b = hexCenter(col, row);
   const out = [];

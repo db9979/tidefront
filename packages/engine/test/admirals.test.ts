@@ -25,6 +25,7 @@ import {
   stationAdmiral,
   type Engine,
 } from "../src/index.ts";
+import { addSecondHarbor, harborState } from "./multi-base.ts";
 
 const url = process.env.TEST_DATABASE_URL;
 const { db, client } = createDb(url ?? "postgres://invalid", 10);
@@ -201,4 +202,45 @@ test("Hafenkommandant mit Aufklärung: längere Radar-Vorwarnzeit über das Modi
   assert.equal((await stationAdmiral(engine, A.playerId, key(), { admiralId: null })).ok, true);
   const off = (await modifierSourcesFor(db, A.playerId)).find((s) => s.id === "admiral");
   assert.deepEqual(off?.mods, {});
+});
+
+test("Mehrere Häfen: Ernennung in den aktiven Hafen, Plätze nach höchster Hafenkommandantur, Hafenkommandant je Hafen", async () => {
+  const C = await newPlayer("Kolonialherrin", 12);
+  await patchBase(C.baseId, (s) => { s.buildings.hafenkommandantur = 2; s.resources = { ...rich }; s.units = { korvette: 2 }; s.protection.createdAtMs = 0; });
+  const col = await addSecondHarbor(db, C.playerId, { patch: (s) => { s.buildings.hafenkommandantur = 10; s.units = { korvette: 2 }; } });
+  await grantCredits(C.playerId, 20000);
+  // Plätze spielerweit nach der höchsten Hafenkommandantur (Kolonie Stufe 10 → 3 Plätze).
+  assert.equal((await admiralView(engine, C.playerId))!.slots, 3);
+  await assert.rejects(admiralView(engine, C.playerId, A.baseId), /no_base/);
+  assert.deepEqual(await appointAdmiral(engine, C.playerId, key(), { name: null, spec: "aufklaerung", baseId: A.baseId }), { ok: false, code: "no_base" });
+  const elBefore = (await harborState(db, col.baseId)).resources.elektronik ?? 0;
+  const homeEl = (await harborState(db, C.baseId)).resources.elektronik ?? 0;
+  const r1 = await appointAdmiral(engine, C.playerId, key(), { name: null, spec: "aufklaerung", baseId: col.baseId });
+  assert.equal(r1.ok, true, JSON.stringify(r1));
+  assert.ok((await harborState(db, col.baseId)).resources.elektronik! <= elBefore - cfg.cost.elektronik + 1, "Kosten aus der Kolonie");
+  assert.ok(((await harborState(db, C.baseId)).resources.elektronik ?? 0) >= homeEl, "Heimathafen zahlt nichts");
+  const r2 = await appointAdmiral(engine, C.playerId, key(), { name: null, spec: "logistik" });
+  assert.equal(r2.ok, true, JSON.stringify(r2));
+  const v = (await admiralView(engine, C.playerId, col.baseId))!;
+  const inCol = v.list.find((a) => a.baseId === col.baseId)!;
+  const inHome = v.list.find((a) => a.baseId === C.baseId)!;
+  assert.equal(inCol.stationed, true, "erster Admiral der Kolonie wird ihr Hafenkommandant");
+  assert.equal(inHome.stationed, true, "erster Admiral des Heimathafens wird dessen Hafenkommandant");
+  assert.equal(inCol.here, true);
+  assert.equal(inHome.here, false);
+  // Modifikatorquelle je Hafen: Aufklärung (Radar) nur in der Kolonie.
+  const colState = await harborState(db, col.baseId);
+  const colSrc = (await modifierSourcesFor(db, C.playerId, { state: colState, baseId: col.baseId, isHome: false })).find((x) => x.id === "admiral");
+  assert.ok((colSrc?.mods.radarWarning ?? 1) > 1, JSON.stringify(colSrc));
+  const homeSrc = (await modifierSourcesFor(db, C.playerId)).find((x) => x.id === "admiral");
+  assert.equal(homeSrc?.mods.radarWarning, undefined, "Heimathafen ohne Radar-Bonus");
+  // Admiral eines anderen Hafens: weder Hafenkommandant hier noch Führer eines Verbands von hier.
+  assert.deepEqual(await stationAdmiral(engine, C.playerId, key(), { admiralId: inHome.id, baseId: col.baseId }), { ok: false, code: "admiral_other_base" });
+  const far = await launchMission(engine, C.playerId, key(), { type: "aufklaerung", units: { korvette: 1 }, col: B.col, row: B.row, admiralId: inHome.id, baseId: col.baseId });
+  assert.equal((far as { code?: string }).code, "admiral_other_base");
+  // Abberufen in der Kolonie lässt den Heimathafen unberührt.
+  assert.equal((await stationAdmiral(engine, C.playerId, key(), { admiralId: null, baseId: col.baseId })).ok, true);
+  const after = (await admiralView(engine, C.playerId))!.list;
+  assert.equal(after.find((a) => a.id === inCol.id)!.stationed, false);
+  assert.equal(after.find((a) => a.id === inHome.id)!.stationed, true);
 });

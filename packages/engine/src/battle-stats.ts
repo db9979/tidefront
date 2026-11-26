@@ -2,11 +2,11 @@
 // Saisonende geleert, enthält also genau die laufende Saison) und kurz zwischengespeichert.
 // aggregateBattleStats ist rein (Tests ohne Datenbank), battleStats liest und speichert zwischen.
 import { eq, or, sql } from "drizzle-orm";
-import { luckFactor, type BattleReport, type Counts } from "@tidefront/game-core";
+import { luckFactor, type BaseState, type BattleReport, type Counts } from "@tidefront/game-core";
 import { tables } from "@tidefront/db";
 import { balance } from "./context.ts";
 import type { Engine } from "./context.ts";
-import { baseOfPlayer } from "./store.ts";
+import { basesOfPlayer } from "./store.ts";
 import { veteranView, type VeteranInfo } from "./veterans.ts";
 // Wert wie in der Wertung (Summe der Kosten; NPC-Einheiten mit festem Wert).
 import { unitValue } from "./scoring.ts";
@@ -163,9 +163,23 @@ export async function battleStats(engine: Engine, playerId: number, nowMs = Date
     .leftJoin(tables.nest, eq(tables.nest.id, br.nestId))
     .where(or(eq(br.attackerPlayerId, playerId), eq(br.defenderPlayerId, playerId)));
   const stats = aggregateBattleStats(rows, playerId);
-  const own = await baseOfPlayer(engine.db, playerId);
-  const value = { ...stats, veterans: own ? veteranView(own.state) : [] };
+  // Mehrere Häfen: Veteranen über alle Häfen – je Typ die höchste Erfahrung, Bestände zusammengezählt.
+  const bases = await basesOfPlayer(engine.db, playerId);
+  const value = { ...stats, veterans: bases.length > 0 ? veteranView(mergedVeterans(bases.map((b) => b.state))) : [] };
   if (cache.size > 5000) cache.clear();
   cache.set(playerId, { atMs: nowMs, value });
   return value;
+}
+
+/** Zusammengefasster Stand für die Veteranenanzeige (höchste Erfahrung je Typ, Summe der Einheiten). */
+function mergedVeterans(states: BaseState[]): BaseState {
+  const veterancy: Record<string, number> = {};
+  const units: Record<string, number> = {};
+  const unitsAway: Record<string, number> = {};
+  for (const st of states) {
+    for (const [id, xp] of Object.entries(st.veterancy ?? {})) veterancy[id] = Math.max(veterancy[id] ?? 0, xp);
+    for (const [id, n] of Object.entries(st.units)) units[id] = (units[id] ?? 0) + n;
+    for (const [id, n] of Object.entries(st.unitsAway)) unitsAway[id] = (unitsAway[id] ?? 0) + n;
+  }
+  return { ...states[0], veterancy, units, unitsAway };
 }
