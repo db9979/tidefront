@@ -36,6 +36,7 @@ import { balance, marketBalance, type Engine } from "./context.ts";
 import { processDueForBase } from "./events.ts";
 import { activeMissionCount, baseOfPlayer } from "./store.ts";
 import { loadMarket, targetAt } from "./commands.ts";
+import { effectiveMarketRefs, marketRefs } from "./market-news.ts";
 // Weltereignisse: Vorschau einer Mission gegen ein Ereignis.
 import { previewAgainstEvent } from "./world-events-missions.ts";
 import { modsOf } from "./modifiers.ts";
@@ -315,6 +316,8 @@ export async function reportGet(engine: Engine, playerId: number, id: number) {
 export async function marketView(engine: Engine, playerId: number) {
   const nowMs = Date.now();
   const m = await engine.db.transaction((tx) => loadMarket(tx));
+  // Marktnachrichten: Kurs und Richtwert beziehen sich auf den effektiven Richtwert.
+  const refs = await marketRefs(engine.db, nowMs);
   const [p] = await engine.db.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, playerId));
   const trader = p?.trader as Omit<marketCore.TraderState, "stock">;
   const own = await baseOfPlayer(engine.db, playerId);
@@ -327,8 +330,10 @@ export async function marketView(engine: Engine, playerId: number) {
       const st = m[r as marketCore.ResourceId];
       return {
         id: r,
-        price: st ? marketCore.currentPrice(st, r as marketCore.ResourceId, marketBalance, nowMs) : balance.market.refPrice[r],
-        ref: balance.market.refPrice[r],
+        price: st ? marketCore.currentPrice(st, r as marketCore.ResourceId, marketBalance, nowMs, refs.refs) : refs.refs[r],
+        /** Effektiver Richtwert (mit Marktnachrichten); baseRef = Grundrichtwert aus balance.json. */
+        ref: refs.refs[r],
+        baseRef: balance.market.refPrice[r],
         haltedUntilMs: st?.haltedUntilMs ?? 0,
         history: st?.history ?? [],
         dailyUsed: trader && trader.dailyDayIndex === dayIndex ? (trader.dailyVolume[r as marketCore.ResourceId] ?? 0) : 0,
@@ -341,8 +346,9 @@ export async function marketView(engine: Engine, playerId: number) {
 }
 
 export async function marketQuote(engine: Engine, req: { side: "buy" | "sell"; resource: string; qty: number }) {
+  const nowMs = Date.now();
   const m = await engine.db.transaction((tx) => loadMarket(tx));
-  return marketCore.quote(m, req as never, marketBalance, Date.now());
+  return marketCore.quote(m, req as never, marketBalance, nowMs, await effectiveMarketRefs(engine.db, nowMs));
 }
 
 export async function missionsCount(engine: Engine, baseId: number) {

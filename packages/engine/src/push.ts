@@ -81,6 +81,8 @@ export type Prefs = Partial<Record<NoticeKind, boolean>>;
 /** Vorgaben je Art; fehlende Einträge gelten als Vorgabe. */
 export const PUSH_DEFAULTS: Record<NoticeKind, boolean> = {
   attack: true, report: true, build: true, training: true, fleet: true, delivery: true, ops: true, test: true,
+  // Marktnachricht: standardmäßig aus, in den Einstellungen schaltbar.
+  market: false,
 };
 
 export function wants(prefs: Prefs | null | undefined, defaults: Record<NoticeKind, boolean>, kind: NoticeKind): boolean {

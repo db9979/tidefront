@@ -4,6 +4,7 @@
 import { sql } from "drizzle-orm";
 import { productionRates, settle, type BaseState } from "@tidefront/game-core";
 import type { Db } from "@tidefront/db";
+import { marketNewsAdmin } from "./market-news.ts";
 import { balance } from "./context.ts";
 
 export const STATS_CACHE_MS = 60_000;
@@ -49,6 +50,8 @@ export interface AdminStats {
     repeatedAttacks: { attacker: string; defender: string; maxPerDay: number; total: number }[];
     failedEvents: { count: number; recent: { id: number; type: string; error: string | null; at: string }[] };
   };
+  /** Marktnachrichten: effektiver Versatz, Ziel und wirkende Einflüsse je Ressource (jetzt). */
+  marketNews: Awaited<ReturnType<typeof marketNewsAdmin>>;
 }
 
 function validTz(tz: string | undefined): string {
@@ -253,6 +256,7 @@ export async function adminStats(db: Db, days: StatsDays, nowMs = Date.now(), tz
         recent: failed.map((f) => ({ id: Number(f.id), type: f.type, error: f.last_error ? f.last_error.split("\n")[0].slice(0, 200) : null, at: iso(f.t) })),
       },
     },
+    marketNews: await marketNewsAdmin(db, nowMs),
   };
 }
 

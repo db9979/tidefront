@@ -1,5 +1,6 @@
 // Gemeinsame Typen des Regelkerns. Nur löschbare Typ-Syntax (kein enum, kein namespace).
 import type { Modifiers } from "./modifiers.ts";
+import type { MarketNewsBalance } from "./market/types.ts";
 
 export type ResourceMap = Record<string, number>;
 export type Counts = Record<string, number>;
@@ -90,6 +91,8 @@ export interface MarketBalance {
   slippageTolerance: number;
   tradesPerMinute: number;
   convoySpeedKmh: number;
+  /** Marktnachrichten (seit v1.5). */
+  news?: MarketNewsBalance;
 }
 
 export interface Balance {

@@ -80,3 +80,25 @@ Spezifikation offen lässt, und wie der Code es löst. Alle Zahlen kommen aus `b
   `floorFactor`/`ceilFactor` laufen. `balance.json` selbst bleibt unverändert.
 - Mit den Originalwerten endet eine Folge praktisch, sobald das Stundenband auslöst (Handelspause bei fester Zeit);
   der Kurs bleibt dort also innerhalb von ±10 % um den Richtwert.
+
+## E. Marktnachrichten (Balance v1.5)
+
+1. **Richtwert, nicht Kurs.** `quote`, `currentPrice` und `executeTrade` nehmen optional `refPrices` (effektiver Richtwert
+   je Ressource). Fehlt er oder ist ein Wert nicht endlich bzw. nicht positiv, gilt `refPrice` aus `balance.json`.
+   Ohne Nachrichten übergibt der Server `undefined`; Ergebnisse sind dann bit-gleich (Test „ohne Nachrichten bit-gleich“).
+2. **Kursgrenzen am Grundrichtwert.** `price_bounds` prüft gegen `floorFactor/ceilFactor × refPrice` (Grundrichtwert).
+   Begründung: Manipulationssicherheit. Einzelne Anlässe (Kriegserklärungen, Lagerbestände) kann ein Spieler mit
+   beeinflussen; der harte Korridor soll davon unabhängig fest bleiben. Bei ±25 % Höchstversatz und 0,4/2,5 als Grenzen
+   ist der Korridor auch um den effektiven Richtwert noch weit (mindestens 0,32 … 2,0 davon).
+3. **Kursband mit tatsächlichen Kursen.** Das Band vergleicht wie bisher mit dem Kurs vor 1 h bzw. 24 h; fortgeschrieben
+   (Rückkehr) wird dabei mit dem effektiven Richtwert zum Handelszeitpunkt. Eine reine Richtwertänderung kann das Band
+   nicht auslösen, da der Richtwert sich höchstens 5 % je Stunde bewegt und der Kurs ihm nur mit der Halbwertszeit folgt.
+4. **Sanfte Änderung mit gespeichertem Stand.** Der effektive Versatz wird im Worker alle 10 Minuten fortgeschrieben und
+   gespeichert (`server_setting` „market_ref_offsets“); Börse, Angebot und Handel schreiben ihn lazy vom gespeicherten
+   Stand bis zur Anfrage fort (höchstens 5 %/h Richtung Ziel). Damit ist der Richtwert zu jedem Zeitpunkt eindeutig
+   und nicht durch den Zeitpunkt einer Anfrage beeinflussbar. Ohne gespeicherten Stand beginnt er bei 0.
+5. **Garantie.** Die Eigenschaftstests (`market-news.property.test.ts`) prüfen mit zufälligen Versätzen im ganzen Bereich
+   ±25 %: Gesamtwert zum effektiven Richtwert steigt nicht (Markt am effektiven Richtwert), Kauf und Rückverkauf verliert
+   immer, keine Folge mit wiederhergestellten Mengen bringt Kredite; die Kurse bleiben in den Grenzen des Grundrichtwerts.
+6. **Rundung gegen Nachrichtenflut.** Wirkungen werden auf 0,1 Prozentpunkte gerundet, Kriegslage und Knappheit auf ganze
+   Prozent; nur eine geänderte Wirkung erzeugt eine neue Nachricht.

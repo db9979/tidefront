@@ -128,6 +128,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
         <>
           <P>Ab Hafenkommandantur Stufe 3. Verkaufen bringt sofort Kredite, gekaufte Ware kommt per Konvoi vom nächsten Handelshafen. Gebühr {Math.round((b?.market.fee ?? 0.04) * 100)} % je Geschäft.</P>
           <P>Große Mengen bewegen den Kurs; der Kurs kehrt langsam zum Richtwert zurück. Tageslimit je Ressource, Kreditlimit nach Stufe der Hafenkommandantur. Bei einem erkannten Angriff sind Verkäufe gesperrt.</P>
+          <P><strong>Marktnachrichten:</strong> Die Welt verschiebt den Richtwert vorübergehend – eine Großflotte macht Treibstoff und Proviant teurer, eine Belagerung Proviant, ein erbeutetes Schatzschiff drückt Stahl und Elektronik, Kriege und Kartell-Überfälle heben Treibstoff, volle oder leere Lager aller Häfen wirken einmal am Tag, und in der letzten Saisonwoche steigen Stahl und Elektronik. Zusammen höchstens ±{Math.round((b?.market.news?.maxTotal ?? 0.25) * 100)} %, und der Richtwert bewegt sich höchstens {Math.round((b?.market.news?.maxChangePerHour ?? 0.05) * 100)} % je Stunde. Der Kurs springt nicht, er folgt dem neuen Richtwert langsam. Nach dem Anlass klingt die Wirkung über ein bis zwei Tage ab. Als Push „Marktnachricht“ abonnierbar (Einstellungen).</P>
         </>
       ),
     },

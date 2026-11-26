@@ -12,8 +12,9 @@ import { SummaryCard } from "../components/MorningSummary.tsx";
 
 const field = "w-full h-12 rounded-lg field px-3 mb-3";
 
-function kinds(isAdmin: boolean): string[] {
-  return Object.keys(KIND_LABEL).filter((k) => k !== "ops" || isAdmin);
+/** Arten für Push bzw. E-Mail; Marktnachrichten gibt es nur als Push. */
+function kinds(isAdmin: boolean, mail = false): string[] {
+  return Object.keys(KIND_LABEL).filter((k) => (k !== "ops" || isAdmin) && !(mail && k === "market"));
 }
 
 function PushCard({ isAdmin }: { isAdmin: boolean }) {
@@ -150,7 +151,7 @@ function EmailCard({ isAdmin }: { isAdmin: boolean }) {
           </div>
           {e.verified && (
             <div className="divide-y divide-navy-600/70">
-              {kinds(isAdmin).map((k) => (
+              {kinds(isAdmin, true).map((k) => (
                 <Switch key={k} label={KIND_LABEL[k]} on={e.prefs[k as keyof typeof e.prefs] ?? false} onChange={(v) => void toggle(k, v)} />
               ))}
             </div>
