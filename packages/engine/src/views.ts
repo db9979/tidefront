@@ -7,7 +7,6 @@ import {
   commandPoints,
   harborCreditLimit,
   harborMarketUnlocked,
-  isAttackDetected,
   isNestRespawned,
   maxAllowedLevel,
   missionSlots,
@@ -46,12 +45,16 @@ import { researchView } from "./research.ts";
 import { diplomacyBlock } from "./alliance-core.ts";
 import { intelView } from "./espionage.ts";
 import { gridView, missionWeather } from "./weather.ts";
+import { detectIncoming } from "./radar.ts";
 
-/** Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband.) */
+/**
+ * Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband;
+ * einmal erkannt bleibt erkannt, radar.ts.)
+ */
 export async function incomingDetected(tx: DbOrTx, baseId: number, state: BaseState, nowMs: number, mods?: Modifiers): Promise<boolean> {
   const warn = radarWarningMinutes(state, balance, mods);
   const rows = await tx
-    .select({ arriveAt: tables.mission.arriveAt, plan: tables.mission.plan })
+    .select({ id: tables.mission.id, arriveAt: tables.mission.arriveAt, plan: tables.mission.plan })
     .from(tables.mission)
     .where(and(
       eq(tables.mission.targetKind, "base"),
@@ -59,12 +62,7 @@ export async function incomingDetected(tx: DbOrTx, baseId: number, state: BaseSt
       eq(tables.mission.status, "outbound"),
       inArray(tables.mission.type, ["ueberfall", "kartell"]),
     ));
-  return rows.some((r) => isAttackDetected(r.arriveAt.getTime(), nowMs, warn * warnFactor(r.plan)));
-}
-
-/** Tarnfaktor eines Verbands (Mission.warningFactor), 1 ohne Tarnung. */
-function warnFactor(plan: unknown): number {
-  return (plan as Mission | null)?.warningFactor ?? 1;
+  return (await detectIncoming(tx, rows, nowMs, warn)).length > 0;
 }
 
 export async function baseView(engine: Engine, playerId: number) {
@@ -118,10 +116,11 @@ export async function baseView(engine: Engine, playerId: number) {
   const senders = senderIds.length
     ? new Map((await engine.db.select({ id: tables.base.id, name: tables.base.name }).from(tables.base).where(inArray(tables.base.id, senderIds))).map((r) => [r.id, r.name]))
     : new Map<number, string>();
+  // Spionageaufträge bleiben unsichtbar (kein Radar); Angriffe ab Erkennung (einmal erkannt bleibt erkannt).
+  const attacks = incomingRows.filter((m) => m.type !== "spionage" && m.type !== "transport");
+  const seen = new Set((await detectIncoming(engine.db, attacks, nowMs, warn)).map((m) => m.id));
   const incoming = incomingRows
-    // Spionageaufträge bleiben unsichtbar (kein Radar).
-    .filter((m) => m.type !== "spionage")
-    .filter((m) => m.type === "transport" || isAttackDetected(m.arriveAt.getTime(), nowMs, warn * warnFactor(m.plan)))
+    .filter((m) => m.type === "transport" || seen.has(m.id))
     .map((m) => ({
       id: m.id,
       type: m.type,

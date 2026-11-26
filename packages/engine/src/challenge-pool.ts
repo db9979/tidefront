@@ -2,10 +2,12 @@
 // Reine Funktionen (keine Datenbank); die Datenbankseite steht in challenges.ts.
 import {
   mulberry32,
+  powerAt,
   productionRates,
   storageCapacity,
   upgradeDurationMs,
   type BaseState,
+  type Modifiers,
   type ResourceMap,
 } from "@tidefront/game-core";
 import { balance } from "./context.ts";
@@ -89,6 +91,8 @@ export interface PoolContext {
   raidsPossible: boolean;
   /** Es gibt andere Spieler mit Hafen. */
   others: boolean;
+  /** Stromspeicher (Speicherwerk): Bestand und Kapazität; fehlt = kein Speicher. */
+  power?: { stored: number; capacity: number };
 }
 
 export interface Spec {
@@ -114,6 +118,17 @@ const pick = <T,>(xs: T[], tier: Tier): T | null => xs[tier] ?? null;
 const canLand = (c: PoolContext) => lvl(c, "werft") >= 1 && lvl(c, "kaserne") >= 1;
 const canSail = (c: PoolContext) => lvl(c, "werft") >= 1 || lvl(c, "flugfeld") >= 1;
 const one = (n: number, a: string, b: string) => (n === 1 ? a : b);
+
+/** Nachrichtendienst: Erkunden möglich (Stufe für „erkunden“; Ziel ein Mitspieler oder das Kartell). */
+function canScout(c: PoolContext): boolean {
+  const e = balance.espionage;
+  if (!e) return false;
+  const level = lvl(c, e.building);
+  return level >= e.kinds.erkunden.minLevel && (c.others || level >= (e.kinds.kartell?.minLevel ?? Infinity));
+}
+
+/** Ab diesem Sturmanteil der Route (0–1) gilt eine Mission als „trotz Sturm“ (Tagesbefehl sturmfahrt). */
+export const STORM_MISSION_FROM = 0.2;
 
 /** Höchste Nest-Stufe, die zum Fortschritt passt (1 bis 5). */
 function nestCap(c: PoolContext): number {
@@ -231,6 +246,35 @@ export const KINDS: Record<string, KindDef> = {
     spec: (t, c) => (t === 2 && canLand(c) ? { param: null, target: 1 } : null),
     text: () => "Gewinne einen Überfall ohne eigene Verluste",
   },
+  // Strom, Wetter, Nachrichtendienst (v1.6): nur mit dem Gebäude bzw. wenn erreichbar.
+  speicherwerk: {
+    icon: "speicherwerk",
+    spec: (t, c) => {
+      const next = lvl(c, "speicherwerk") + 1;
+      if (t !== 1 || next < 2 || next > balance.building.maxLevel || upgradeDurationMs("speicherwerk", next, balance) > 12 * 3600000) return null;
+      return { param: null, target: next };
+    },
+    text: (n) => `Baue das Speicherwerk auf Stufe ${n} aus`,
+  },
+  stromspeicher: {
+    icon: "strom",
+    spec: (t, c) => {
+      if (t !== 0 || !c.power || c.power.capacity <= 0) return null;
+      const target = round(c.power.capacity * 0.6, 10);
+      return target > Math.floor(c.power.stored) && target <= c.power.capacity ? { param: null, target } : null;
+    },
+    text: (n) => `Halte einen Stromüberschuss: fülle den Speicher auf ${fmt(n)} Strom`,
+  },
+  sturmfahrt: {
+    icon: "sturm",
+    spec: (t, c) => (t > 0 && balance.weather && canSail(c) ? { param: null, target: 1 } : null),
+    text: () => "Bringe eine Mission trotz Sturm erfolgreich ans Ziel",
+  },
+  erkundung: {
+    icon: "nachrichtendienst",
+    spec: (t, c) => (canScout(c) ? pick([{ param: null, target: 1 }, { param: null, target: 2 }], t) : null),
+    text: (n) => `Erkunde ${n === 1 ? "ein Ziel" : `${n} Ziele`} erfolgreich mit dem Nachrichtendienst`,
+  },
   forschung: {
     icon: "forschungsamt",
     spec: (t, c) => (t === 1 && lvl(c, "forschungsamt") >= 1 ? { param: null, target: 1 } : null),
@@ -239,7 +283,7 @@ export const KINDS: Record<string, KindDef> = {
 };
 
 /** Arten, deren Fortschritt aus dem Zustand gelesen wird (beim Abruf), nicht aus Ereignissen. */
-export const DERIVED_KINDS = new Set(["lager", "produktion", "nachricht", "kommando"]);
+export const DERIVED_KINDS = new Set(["lager", "produktion", "nachricht", "kommando", "speicherwerk", "stromspeicher"]);
 
 export function challengeText(kind: string, target: number, param: string | null): string {
   return KINDS[kind]?.text(target, param) ?? kind;
@@ -252,10 +296,10 @@ export function challengeIcon(kind: string): string {
 // ---------------------------------------------------------------- Auswahl und Belohnung
 
 /** Kontext aus dem (fortgeschriebenen) Stützpunkt. */
-export function poolContext(state: BaseState, extra: { others: boolean; raidsPossible: boolean }): PoolContext {
+export function poolContext(state: BaseState, extra: { others: boolean; raidsPossible: boolean }, mods?: Modifiers): PoolContext {
   const units: Record<string, number> = {};
   for (const src of [state.units, state.unitsAway]) for (const [id, n] of Object.entries(src ?? {})) units[id] = (units[id] ?? 0) + n;
-  const rates = productionRates(state, balance);
+  const rates = productionRates(state, balance, mods);
   const production: ResourceMap = {};
   for (const r of balance.resources) production[r] = (rates.buildingPerHour[r] ?? 0) + (balance.baseTricklePerHour[r] ?? 0);
   const harbor = state.buildings.hafenkommandantur ?? 0;
@@ -264,12 +308,18 @@ export function poolContext(state: BaseState, extra: { others: boolean; raidsPos
     levels: { ...state.buildings },
     units,
     resources: { ...state.resources },
-    capacity: storageCapacity(state, balance),
+    capacity: storageCapacity(state, balance, mods),
     production,
     marketOpen: harbor >= (balance.buildings.hafenkommandantur.marketFromLevel ?? 3),
     raidsPossible: extra.raidsPossible,
     others: extra.others,
+    ...((state.buildings.speicherwerk ?? 0) >= 1 ? { power: powerOf(state, mods) } : {}),
   };
+}
+
+function powerOf(state: BaseState, mods?: Modifiers): { stored: number; capacity: number } {
+  const p = powerAt(state, state.resUpdatedAt, balance, mods);
+  return { stored: p.stored, capacity: p.storageCapacity };
 }
 
 function hashSeed(text: string): number {

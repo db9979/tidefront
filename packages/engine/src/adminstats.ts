@@ -6,6 +6,7 @@ import { productionRates, settle, type BaseState } from "@tidefront/game-core";
 import type { Db } from "@tidefront/db";
 import { marketNewsAdmin } from "./market-news.ts";
 import { balance } from "./context.ts";
+import { modsOf } from "./modifiers.ts";
 
 export const STATS_CACHE_MS = 60_000;
 /** Auffällig: Ressourcen über dem Vielfachen des Medians (ab 3 Spielern und Mindestmenge). */
@@ -193,8 +194,10 @@ export async function adminStats(db: Db, days: StatsDays, nowMs = Date.now(), tz
   const levels = new Map(buildingIds.map((id) => [id, [] as number[]]));
   const totals: { playerId: number; name: string; total: number }[] = [];
   for (const b of bases) {
-    const s = settle(b.state, nowMs, balance);
-    for (const [r, v] of Object.entries(productionRates(s, balance).perHour)) add(production, r, v);
+    // Produktion über die Modifikatoren wie im Stützpunkt (Forschung, Sabotage, Strom, Wetter, Ereignisse).
+    const mods = await modsOf(db, { playerId: b.player_id, state: b.state }, nowMs);
+    const s = settle(b.state, nowMs, balance, mods);
+    for (const [r, v] of Object.entries(productionRates(s, balance, mods).perHour)) add(production, r, v);
     let total = 0;
     for (const r of balance.resources) total += s.resources[r] ?? 0;
     totals.push({ playerId: b.player_id, name: b.name, total });

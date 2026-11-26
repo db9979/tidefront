@@ -29,7 +29,7 @@ export function timelineItems(base: BaseData, nowMs: number, opts: { seasonEndMs
   }
   for (const m of base.missions) {
     if (m.status === "outbound") out.push({ key: `ma:${m.id}`, atMs: m.arriveAtMs, icon: m.type, text: `${label(m.type)}: Ankunft Feld ${m.target.col}/${m.target.row}` });
-    out.push({ key: `mr:${m.id}`, atMs: m.returnAtMs, icon: m.type, text: `${label(m.type)}: Verband zurück` });
+    out.push({ key: `mr:${m.id}`, atMs: m.returnAtMs, icon: m.type, text: m.type === "spionage" ? "Spione zurück" : `${label(m.type)}: Verband zurück` });
   }
   for (const i of base.incoming) {
     const attack = i.type !== "transport";

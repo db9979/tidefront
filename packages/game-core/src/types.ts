@@ -405,6 +405,7 @@ export interface Mission {
   returnAtMs: number;
   recalledAtMs?: number; // Rückruf auf der Hinfahrt; fehlt ohne Rückruf
   warningFactor?: number; // Tarnung des Angreifers: Faktor auf die Vorwarnzeit des Ziels (fehlt = 1)
+  detectedAtMs?: number; // vom Radar des Ziels erkannt (Server); einmal erkannt bleibt erkannt
   weather?: { avgWind: number; storminess: number; shipFactor: number }; // Wetter bei Abfahrt (v1.6)
 }
 

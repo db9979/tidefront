@@ -625,3 +625,20 @@ export const bugReport = pgTable("bug_report", {
   /** E-Mail an die Verwaltung verschickt (null = nicht eingerichtet oder fehlgeschlagen). */
   mailedAt: ts("mailed_at"),
 }, (t) => [index("bug_report_player").on(t.playerId, t.createdAt), index("bug_report_status").on(t.status, t.id)]);
+
+// ================================================================ Allianzwertung zum Saisonende
+// Summe der Mitgliederpunkte (season_result.total) je Allianz zum Saisonende; Name und Kürzel wie damals.
+
+export const seasonAllianceResult = pgTable("season_alliance_result", {
+  id: serial("id").primaryKey(),
+  seasonId: integer("season_id").notNull().references(() => season.id, { onDelete: "cascade" }),
+  /** null, wenn die Allianz inzwischen aufgelöst ist. */
+  allianceId: integer("alliance_id").references(() => alliance.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  tag: text("tag").notNull(),
+  rank: integer("rank").notNull(),
+  members: integer("members").notNull(),
+  total: integer("total").notNull(),
+  /** Spieler-IDs der Mitglieder zum Saisonende (eigene Allianz in der Ruhmeshalle). */
+  playerIds: jsonb("player_ids").notNull().default([]),
+}, (t) => [uniqueIndex("season_alliance_result_alliance").on(t.seasonId, t.allianceId), index("season_alliance_result_rank").on(t.seasonId, t.rank)]);

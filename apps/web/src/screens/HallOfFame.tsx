@@ -1,4 +1,4 @@
-// Ruhmeshalle: vergangene Saisons mit Podium, Kategoriebesten und eigenem Ergebnis.
+// Ruhmeshalle: vergangene Saisons mit Podium, Kategoriebesten, Allianzwertung und eigenem Ergebnis.
 import { useQuery } from "@tanstack/react-query";
 import { trpc } from "../lib/trpc.ts";
 import { fmtNum } from "../lib/names.ts";
@@ -46,6 +46,7 @@ export function HallOfFame() {
                   </div>
                 ))}
               </dl>
+              {s.alliances.length > 0 && <SeasonAlliances alliances={s.alliances} />}
               {s.own && (
                 <div className="mt-2 pt-2 border-t border-navy-600 text-xs">
                   <span className="text-slate-400">Du: </span>
@@ -61,5 +62,26 @@ export function HallOfFame() {
         </ul>
       )}
     </Card>
+  );
+}
+
+type AllianceRow = { rank: number; name: string; tag: string; members: number; total: number; own: boolean };
+
+/** Allianzwertung einer Saison: die ersten drei und die eigene Allianz (Summe der Mitgliederpunkte). */
+function SeasonAlliances({ alliances }: { alliances: AllianceRow[] }) {
+  const shown = alliances.filter((a, i) => i < 3 || a.own);
+  return (
+    <div className="mt-2 pt-2 border-t border-navy-600">
+      <div className="text-[11px] text-slate-400 mb-1">Allianzwertung ({alliances.length})</div>
+      <ol className="text-xs space-y-0.5">
+        {shown.map((a) => (
+          <li key={`${a.rank}-${a.tag}`} className={`flex items-center gap-2 ${a.own ? "text-sea-300" : ""}`}>
+            <span className="w-5 text-center tabular-nums text-slate-400">{a.rank}</span>
+            <span className="flex-1 truncate"><span className="mono text-ink2">[{a.tag}]</span> {a.name} <span className="text-slate-500">· {a.members}</span></span>
+            <span className="font-mono tabular-nums text-slate-300">{fmtNum(a.total)}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }

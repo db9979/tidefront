@@ -91,6 +91,9 @@ Rückruf:
 - Radarstation Stufe L ≥ 1: Vorwarnzeit `warningMinutesBase + warningMinutesPerLevel * L` Minuten, ohne Radar 0; seit v1.6 mal Stromanteil des Radars und Nebelfaktor.
 - Ein anrückender Angriff gilt als erkannt, sobald seine Ankunft höchstens die Vorwarnzeit entfernt ist.
   Erst dann sieht der Verteidiger ihn, und erst dann greift an der Börse die Sperre `under_attack`.
+- **Einmal erkannt bleibt erkannt:** Der Erkennungszeitpunkt wird an der Mission gemerkt. Fällt das Radar danach aus
+  (Strommangel, Sabotage, Nebel), bleibt der Angriff sichtbar. Die Push-Warnung „Angriff erkannt“ prüft das Radar zum
+  Zeitpunkt der Warnung; erfasst es den Verband noch nicht, wird spätestens alle 15 Minuten neu geprüft (bis zur Ankunft).
 
 ## Abbruch
 
@@ -226,7 +229,8 @@ Zeitlich begrenzte Ereignisse auf der Karte, die alle Spieler betreffen und Zusa
 - **Belagerung:** Ring aus Schnellbooten (`shareOfDefense`, `minSchnellboote`, Bezug: der belagerte Hafen) für
   `durationHours`. Wirkung: keine Börsenkäufe (`siege`; Lieferungen, die schon unterwegs sind, kommen an) und
   `productionPenalty` der Gebäudeproduktion: alle `tickMinutes` wird dieser Anteil der Gebäudeproduktion seit dem
-  letzten Abzug abgezogen (nicht bei vollem Lager, nie unter 0), zuletzt beim Ende bzw. Bruch. Der Besitzer kann den
+  letzten Abzug abgezogen (nicht bei vollem Lager, nie unter 0), zuletzt beim Ende bzw. Bruch. Grundlage ist die
+  Gebäudeproduktion mit allen Modifikatoren (Forschung, Sabotage, Strom, Wetter, Ereignisse) wie im Hafen. Der Besitzer kann den
   Ring nicht selbst angreifen (`own_siege`); andere Spieler brechen ihn, indem sie den Verband vernichten.
 - **Beute für Schaden** (Großflotte, Belagerung): Beutepool `lootPool * Stärkefaktor` (Großflotte: plus ihre Beute aus
   Hafenangriffen). Je Angriff erhält der Angreifer `Pool * vernichtete Lebenspunkte / Anfangs-Lebenspunkte`, höchstens
@@ -311,6 +315,9 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
 - Am Saisonende: Gold, Silber und Bronze für Rang 1 bis 3 (mit Punkten), je Kategorie eine Auszeichnung für den Besten
   (für Befehle: „Pflichtbewusstester Kapitän“). Der Endstand hält alle fünf Kategorien fest.
   Jeder Spieler erhält eine Systemnachricht mit Platz und Auszeichnungen.
+- Allianzwertung zum Saisonende: je Allianz die Summe der Gesamtpunkte ihrer Mitglieder zu diesem Zeitpunkt, Rang
+  nach Punkten (Gleichstand teilt den Rang). Festgehalten in `season_alliance_result` (Name, Kürzel, Mitglieder, Punkte),
+  angezeigt in der Ruhmeshalle; die Systemnachricht nennt die stärkste und die eigene Allianz.
 - Danach wird die Welt zurückgesetzt: Stützpunkte, Missionen, Lieferungen, Wracks, Kampfberichte und Kredite verfallen,
   Nester sind wieder besetzt, die Börse steht auf Richtwert, Tagesbefehle und Serien verfallen. Konten, Nachrichten und die Ruhmeshalle bleiben.
   Jeder Spieler wählt einen neuen Hafen und erhält erneut Anfängerschutz.
@@ -344,11 +351,16 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
   | Beute machen | m/s | Werft und Kaserne | 1.500 / 4.000 × (1 + s/4) |
   | Überfall ohne eigene Verluste gewinnen | s | Werft und Kaserne | 1 |
   | Forschung abschließen | m | Forschungsamt | 1 |
+  | Speicherwerk ausbauen | m | Speicherwerk, nächste Stufe ≤ 12 h Bauzeit | Stufe + 1 |
+  | Stromüberschuss halten (Speicher füllen) | l | Speicherwerk, Speicher unter dem Ziel | 60 % der Speicherkapazität, auf 10 gerundet |
+  | Mission trotz Sturm erfolgreich | m/s | Werft oder Flugfeld, Wetter aktiv | 1 (Sturmanteil der Route bei Abfahrt ≥ 0,2; Aufklärung, Transport oder gewonnener Überfall) |
+  | Erfolgreiche Erkundung (Nachrichtendienst) | l/m | Nachrichtendienst ab Stufe für „erkunden“, Ziel erreichbar | 1 / 2 (Erkunden oder Kartell-Aufklärung gelingt) |
 
 - Fortschritt zählt nur für Geschehen am selben Spieltag (Zeitpunkt des Ereignisses) und nur nach der Vergabe:
   Ausbau, Ausbildung, Anlagen, Kampf, Aufklärung, Transport, Wrack und Beute aus den verarbeiteten Ereignissen,
   Börsenhandel (Kreditbetrag des Handels) und Bauschlange (höchste Länge) aus den Befehlen. Vorrat, Produktion,
-  Forschung zählt beim Abschluss (Ereignis). Kommandozentrale und Nachrichten werden beim Abruf und beim Abholen aus dem Zustand gelesen.
+  Forschung zählt beim Abschluss (Ereignis). Kommandozentrale, Speicherwerk, Stromspeicher und Nachrichten werden beim
+  Abruf und beim Abholen aus dem Zustand gelesen.
 - Belohnung je Befehl: Ressourcenpaket im Wert 400 / 1.000 / 2.500 × (1 + 0,3·s) (Stahl 40 %, Treibstoff 25 %,
   Elektronik 15 %, Proviant 20 %, auf 10 gerundet; s bei der Vergabe) und 3 / 6 / 12 Punkte der Kategorie Befehle.
   Abholen ist ein Befehl mit Idempotenz-Schlüssel und gelingt genau einmal; die Ressourcen werden auch über die
@@ -415,8 +427,8 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
 - Allianz-Chat: höchstens 500 Zeichen je Zeile, 20 Zeilen je Minute und Spieler, sichtbar sind die letzten 100 Zeilen.
 - Wertung: Allianzpunkte = Summe der Gesamtpunkte der aktuellen Mitglieder; Rang nach Allianzpunkten, Gleichstand teilt den Rang.
   Das Kürzel steht in Rangliste und Spielerübersicht vor dem Namen.
-- Saisonende: Allianzen, Mitgliedschaften, Chat und Verträge bleiben bestehen. Allianzpunkte werden nicht in
-  `season_result` festgehalten.
+- Saisonende: Allianzen, Mitgliedschaften, Chat und Verträge bleiben bestehen. Die Allianzwertung zum Saisonende wird
+  in `season_alliance_result` festgehalten (siehe Wertung).
 
 ## Diplomatie
 

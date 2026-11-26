@@ -66,6 +66,8 @@ und `research_complete` bleiben unverändert); spätere Änderungen am Hafen ver
 - **Kampf:** Wetter am Kampfort zum Kampfzeitpunkt. Aller Schaden von Flugzeugen (Luftkampf, Luftschlag) beider Seiten mal
   `1 − airStormPenalty * Sturmanteil` (0,6); der Luftschlag der Bomber zusätzlich mal `1 − cloudStrikePenalty * Bewölkung`
   (0,3). Flak und Schiffe sind nicht betroffen. Der Bericht enthält das Wetter.
+- **Weltereignisse:** Missionen gegen Großflotte, Schatzschiff und Belagerungsring planen mit dem Wetter der Route
+  (Vorschau und Plan wie oben); ihre Kämpfe und die Hafenangriffe der Großflotte rechnen mit dem Wetter am Kampfort.
 - **Nebel und Radar:** Vorwarnzeit mal `1 − fogRadarMax * Nebel` am Hafen (bis −30 %), als Modifikator-Quelle „Wetter“
   (auf ganze Prozent gerundet, nur mit Radarstation).
 - **Nebel und Aufklärung:** Ab Nebel `fogScoutFrom` (0,35) am Ziel ist das Lagebild unsicher (`uncertain`): Bestände auf
