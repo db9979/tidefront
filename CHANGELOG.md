@@ -2,6 +2,13 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.11.0 – 27.11.2026
+- **Wetter**: Tiefs und Hochs ziehen von West nach Ost über die Karte, dazu Nebelküsten, Tag und Nacht. Die Karte zeigt Wolken, Sturm und Nebel (Knopf „Wetter an/aus“). Sturm verlängert Seefahrten, hält Flugzeuge am Boden und schwächt sie im Kampf; Nebel verkürzt die Radar-Vorwarnung und macht Aufklärung ungenau.
+- **Strom**: Neue Gebäude **Windpark**, **Solarfeld** und **Speicherwerk**. Das Kraftwerk verbraucht jetzt Treibstoff. Fehlt Strom, wird nach Rang versorgt: Radar, Produktion, Ausbildung, Forschung. Die Basis zeigt Angebot, Bedarf, Speicher, eine 24-Stunden-Kurve und die Wettervorhersage.
+- **Nachrichtendienst**: Spione ausbilden und losschicken – Erkunden, Desinformation, Sabotage (ein Gebäude fällt 6 Stunden aus) und Kartell-Aufklärung. Jeder Auftrag wird mit dem W20 gewürfelt; wer enttarnt wird, verliert seine Spione. Neue Forschung Verschlüsselung und Agentenschulung.
+- **Fehler melden**: Im Handbuch und in den Einstellungen. Ein Screenshot der aktuellen Ansicht und das Fehlerprotokoll werden automatisch angehängt; du ergänzt nur noch, was passiert ist. Die Verwaltung bekommt eine E-Mail und sieht alle Meldungen im Admin-Menü.
+- Neue Gebäude haben eigene Bilder je Ausbaustufe.
+
 ## 0.10.2 – 27.11.2026
 - Ausbildung: Bei Menge 0 steht nicht mehr „kostenlos“ und „Nicht genug Ressourcen“, sondern die Kosten je Stück und wie viele du dir leisten kannst.
 
