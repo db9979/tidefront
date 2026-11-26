@@ -80,9 +80,9 @@ export function PlayerTrade({ base }: { base: BaseData }) {
         <ErrorLine text={create.error} />
         {done && <p className="text-moos text-sm mb-1">{done}</p>}
         <div className="flex items-center gap-3">
-          <span className="min-w-0 flex-1 text-sm leading-tight">
-            <span className="block text-[10.5px] font-display uppercase text-ink2">{visibility === "alliance" ? "Nur Allianz" : "Für alle"}</span>
-            <span className="block truncate mono">{fmtNum(g)} {label(give)} → {fmtNum(w)} {label(want)}</span>
+          <span className="min-w-0 flex-1 text-[12.5px] leading-tight" title={visibility === "alliance" ? "Nur Allianz" : "Für alle"}>
+            <span className="block truncate"><span className="text-siegel">gebe</span> <span className="mono">{fmtNum(g)}</span> {label(give)}</span>
+            <span className="block truncate"><span className="text-moos">will</span> <span className="mono">{fmtNum(w)}</span> {label(want)}</span>
           </span>
           <Button className="shrink-0 px-3" disabled={!unlocked || create.busy || g < 1 || w < 1 || g > have || ownOpen >= maxOpen}
             onClick={async () => {
