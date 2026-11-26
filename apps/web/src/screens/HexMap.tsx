@@ -13,6 +13,7 @@ import {
 } from "@tidefront/world";
 import type { MapData } from "../lib/trpc.ts";
 import { serverNow } from "../lib/time.ts";
+import { registerSnapshotSurface } from "../lib/screenshot.ts";
 import { buildTerrain, hexPoints, xyOf } from "../map/terrain.ts";
 import { Graticule } from "../map/graticule.ts";
 import { MAP_BOUNDS, attachGestures, clampScale, clampView, minScale, zoomAround } from "../map/gestures.ts";
@@ -120,6 +121,9 @@ export function HexMap(props: HexMapProps) {
     let destroyed = false;
     const app = new Application();
     const cleanups: (() => void)[] = [];
+    // „Fehler melden“: Kartenbild für den Screenshot (WebGL ohne preserveDrawingBuffer).
+    const shot = registerSnapshotSurface();
+    cleanups.push(() => shot.dispose());
     void app
       .init({ resizeTo: el, background: 0xf4f1e7, antialias: true, resolution: Math.min(2, window.devicePixelRatio || 1), autoDensity: true })
       .then(fontsReady)
@@ -131,6 +135,7 @@ export function HexMap(props: HexMapProps) {
         el.appendChild(app.canvas);
         app.canvas.style.touchAction = "none";
         app.canvas.style.display = "block";
+        shot.ready(app.canvas, () => app.render());
         const world = new Container();
         app.stage.addChild(world);
         const terrain = buildTerrain();

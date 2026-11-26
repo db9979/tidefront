@@ -49,3 +49,4 @@ export * from "./battle-stats.ts";
 export { veteranView, withAttackExperience, type VeteranInfo } from "./veterans.ts";
 export { researchStart, researchCancel, researchChoose, researchView, TECH_NAMES } from "./research.ts";
 export { guideView, claimGuideStep, claimGuideFinal, hafenmeisterIds, shortenQueue, GUIDE_STEPS, GUIDE_FINAL } from "./guide.ts";
+export * from "./bug-report.ts";

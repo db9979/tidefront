@@ -14,6 +14,7 @@ import { noticeHook, playerForToken, touchLastSeen, type ChangeKind, type Engine
 import { appRouter, type AppRouter, type Ctx } from "./router.ts";
 import { registerMailLinks } from "./routers/mail-links.ts";
 import { registerBackupDownload } from "./routers/backup-download.ts";
+import { registerBugReportBodyLimit } from "./routers/bug-report.ts";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://tidefront:tidefront@localhost:5432/tidefront";
@@ -29,7 +30,8 @@ const sub = new Valkey(VALKEY_URL, { lazyConnect: false });
 pub.on("error", () => {});
 sub.on("error", () => {});
 
-const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" }, trustProxy: true, bodyLimit: 256 * 1024 });
+const BODY_LIMIT = 256 * 1024;
+const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" }, trustProxy: true, bodyLimit: BODY_LIMIT });
 
 const engine: Engine = {
   db,
@@ -89,6 +91,8 @@ app.get("/ws", { websocket: true }, async (socket, req) => {
 });
 
 // ---------------------------------------------------------------- tRPC
+// Fehlermeldungen tragen einen Screenshot: nur bugReport.send darf größere Anfragen schicken.
+registerBugReportBodyLimit(app, BODY_LIMIT);
 await app.register(fastifyTRPCPlugin, {
   prefix: "/trpc",
   trpcOptions: {

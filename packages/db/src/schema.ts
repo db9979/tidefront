@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  customType,
   bigserial,
   boolean,
   doublePrecision,
@@ -16,6 +17,8 @@ import {
 } from "drizzle-orm/pg-core";
 
 const ts = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
+/** Binärdaten (PostgreSQL bytea) als Buffer. */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
 
 export const player = pgTable("player", {
   id: serial("id").primaryKey(),
@@ -600,3 +603,25 @@ export const marketNews = pgTable("market_news", {
   pushedAt: ts("pushed_at"),
   createdAt: ts("created_at").notNull().defaultNow(),
 }, (t) => [index("market_news_key").on(t.key, t.resource, t.id), index("market_news_ends").on(t.endsAt)]);
+
+// ================================================================ Fehlermeldungen
+// „Fehler melden“ im Spiel: Beschreibung, automatische Angaben (Version, Bildschirm, Browser), Client-Log und
+// Screenshot (JPEG/WebP, höchstens ~1,2 MB). Die Verwaltung sieht die Liste und schaltet den Status um.
+
+export const bugReport = pgTable("bug_report", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").references(() => player.id, { onDelete: "set null" }),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  subject: text("subject").notNull(),
+  text: text("text").notNull(),
+  /** Automatische Angaben: Version, Build, Bildschirm, Browser, Fenstergröße, Spielername, Zeit. */
+  meta: jsonb("meta").notNull().default({}),
+  log: text("log").notNull().default(""),
+  screenshot: bytea("screenshot"),
+  /** MIME-Typ des Screenshots (image/jpeg, image/webp, image/png). */
+  screenshotType: text("screenshot_type"),
+  /** offen | erledigt */
+  status: text("status").notNull().default("offen"),
+  /** E-Mail an die Verwaltung verschickt (null = nicht eingerichtet oder fehlgeschlagen). */
+  mailedAt: ts("mailed_at"),
+}, (t) => [index("bug_report_player").on(t.playerId, t.createdAt), index("bug_report_status").on(t.status, t.id)]);

@@ -6,6 +6,10 @@ import { App } from "./App.tsx";
 import "./fonts.ts";
 import "./styles.css";
 import { IconDefs } from "./icons.tsx";
+import { installBugLog } from "./lib/bug-log.ts";
+
+// Client-Log für „Fehler melden“ so früh wie möglich.
+installBugLog();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

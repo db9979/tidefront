@@ -93,7 +93,7 @@ export function CountsLine({ counts }: { counts: Record<string, number> | null |
 
 export function Loading() {
   return (
-    <div className="h-full grid place-items-center p-8 text-slate-400">
+    <div className="h-full grid place-items-center p-8 text-slate-400" data-loading>
       <div className="flex flex-col items-center gap-3">
         <Icon id="anker" size={48} className="animate-pulse" />
         <span className="font-serif italic text-base text-ink2">Lädt …</span>

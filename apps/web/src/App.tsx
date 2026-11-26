@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc.ts";
 import { useLive } from "./lib/live.ts";
@@ -26,6 +26,10 @@ import { parseOpenUrl, type OpenTarget } from "./lib/push.ts";
 import { usePlanRequests, type PlanPreset } from "./lib/plan-request.ts";
 const ResearchScreen = lazy(() => import("./screens/Research.tsx").then((m) => ({ default: m.ResearchScreen })));
 import { ResearchRollPopup } from "./components/ResearchDice.tsx";
+import { onBugReportRequest } from "./lib/bug-log.ts";
+import { captureScreen, waitForSettled } from "./lib/screenshot.ts";
+import type { BugDraft } from "./components/BugReport.tsx";
+const BugReportSheet = lazy(() => import("./components/BugReport.tsx").then((m) => ({ default: m.BugReportSheet })));
 
 export type Tab = "basis" | "karte" | "truppen" | "berichte" | "boerse";
 /** Missionsziel; eventId: Weltereignis (Schatzschiff, Großflotte, Belagerung). */
@@ -102,6 +106,26 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const [sub, setSub] = useState<MeldungenTab>("berichte");
   // Begrüßung hat Vorrang vor „Neu in Version“ (das erst danach erscheint).
   const [welcome, setWelcome] = useState(() => !welcomeSeen(playerId));
+  // „Fehler melden“: Handbuch/Einstellungen schließen, Ansicht abwarten, Screenshot, dann Entwurf zeigen.
+  const [bug, setBug] = useState<BugDraft | null>(null);
+  const [bugReq, setBugReq] = useState(0);
+  const screenRef = useRef("");
+  useEffect(() => onBugReportRequest(() => {
+    setHelp(false);
+    setHelpView(null);
+    setBugReq((n) => n + 1);
+  }), []);
+  useEffect(() => {
+    if (bugReq === 0) return;
+    let stop = false;
+    void (async () => {
+      await waitForSettled();
+      const screen = screenRef.current;
+      const shot = stop ? null : await captureScreen();
+      if (!stop) setBug({ shot, screen });
+    })();
+    return () => { stop = true; };
+  }, [bugReq]);
   // Zurück schließt die offene Ansicht (Handbuch, Planung, Forschung); Blätter haben eigene Ebenen.
   useBackLayer(help || !!plan || research, () => {
     setHelp(false);
@@ -173,6 +197,8 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
 
   const openResearch = () => { setPlan(null); setHelp(false); setResearch(true); };
   const fullBleed = tab === "karte" && !plan && !help && !research;
+  screenRef.current = help ? "Handbuch" : research ? "Forschung" : plan ? "Missionsplanung"
+    : `${TABS.find((x) => x.id === tab)?.label ?? tab}${tab === "berichte" ? ` · ${sub}` : ""}${tab === "basis" && sheet ? ` · Blatt ${sheet}` : ""}`;
   const content = help ? (
     <Handbook key={helpKey} onClose={() => { setHelp(false); setHelpView(null); }} onLogout={logout} playerName={playerName} initialView={helpView} onView={setHelpView} />
   ) : research ? (
@@ -228,6 +254,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       {welcome && <Welcome playerId={playerId} onDone={() => setWelcome(false)} />}
       <ResearchRollPopup base={b} />
       <UpdateNotices playerId={playerId} paused={welcome} />
+      {bug && <Suspense fallback={null}><BugReportSheet draft={bug} playerName={playerName} onClose={() => setBug(null)} /></Suspense>}
     </div>
   );
 }
