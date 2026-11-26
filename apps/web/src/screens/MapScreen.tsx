@@ -5,7 +5,7 @@ import { trpc, type BaseData } from "../lib/trpc.ts";
 import { fmtDuration, fmtSeconds, useNow } from "../lib/time.ts";
 import { countLabel, fmtNum, label } from "../lib/names.ts";
 import type { Target } from "../App.tsx";
-import { HexMap } from "./HexMap.tsx";
+import { HexMap } from "./LazyHexMap.tsx";
 import { Button, Loading } from "../ui.tsx";
 import { MapLegend } from "../map/Legend.tsx";
 

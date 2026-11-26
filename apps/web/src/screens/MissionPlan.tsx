@@ -7,7 +7,7 @@ import { Icon, IconTile } from "../icons.tsx";
 import { unitTone } from "../lib/info.ts";
 import { fmtSeconds, fmtTime } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
-import { HexMap } from "./HexMap.tsx";
+import { HexMap } from "./LazyHexMap.tsx";
 import { Button, Card, ErrorLine, Loading, Stepper } from "../ui.tsx";
 
 const TYPES = [

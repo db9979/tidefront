@@ -4,7 +4,7 @@ import { COLS, QUICK_PICKS, ROWS, hexAtLonLat, hexDistanceKm, hexIndex, nearestT
 import { queryClient, trpc, trpcClient } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum } from "../lib/names.ts";
-import { HexMap } from "./HexMap.tsx";
+import { HexMap } from "./LazyHexMap.tsx";
 import { Button, ErrorLine, Loading } from "../ui.tsx";
 
 type Hex = { col: number; row: number };
