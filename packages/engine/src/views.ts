@@ -42,7 +42,7 @@ import { modifierBreakdown, modsOf } from "./modifiers.ts";
 import { veteranView } from "./veterans.ts";
 import { withLuckFactors } from "./battle-stats.ts";
 import { researchView } from "./research.ts";
-import { diplomacyBlock } from "./alliance-core.ts";
+import { diplomacyBlock, relationsOf } from "./alliance-core.ts";
 import { intelView } from "./espionage.ts";
 import { gridView, missionWeather } from "./weather.ts";
 import { detectIncoming } from "./radar.ts";
@@ -208,6 +208,8 @@ export async function mapView(engine: Engine, playerId: number) {
     .innerJoin(tables.player, eq(tables.player.id, tables.base.playerId));
   const nests = await engine.db.select().from(tables.nest);
   const wrecks = await engine.db.select().from(tables.wreck);
+  // Freund/Feind aus Sicht des Betrachters (nur eigene Allianz, eigene Pakte und Kriege).
+  const relations = await relationsOf(engine.db, playerId, nowMs);
   return {
     serverNow: nowMs,
     bases: bases.map((b) => ({
@@ -217,6 +219,7 @@ export async function mapView(engine: Engine, playerId: number) {
       row: b.row,
       owner: b.owner,
       own: b.playerId === playerId,
+      relation: b.playerId === playerId ? ("own" as const) : relations.get(b.playerId) ?? ("neutral" as const),
       protection: protectionStatus((b.state as BaseState).protection, nowMs, balance).reason,
     })),
     nests: nests.map((n) => ({

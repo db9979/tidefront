@@ -9,6 +9,7 @@ import { fmtSeconds, fmtTime } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
 import { HexMap } from "../screens/LazyHexMap.tsx";
 import { Icon } from "../icons.tsx";
+import { RELATION_HEX } from "../map/TacticalIcon.tsx";
 import { Button, Card, ErrorLine } from "../ui.tsx";
 
 type Kind = "erkunden" | "sabotage" | "desinformation" | "kartell";
@@ -39,6 +40,8 @@ export function partsText(v: { parts: { id: string; value: number }[] }): string
 }
 
 const pct = (x: number) => `${Math.round(x * 100)} %`;
+/** Verhältnis zum Ziel (aus der Kartenansicht); neutral ohne Zusatz. */
+const REL: Record<string, string> = { own: "eigener Hafen", allianz: "Allianzmitglied", pakt: "Paktpartner", krieg: "Kriegsgegner", neutral: "" };
 
 export function SpyPlan({ base, map, target, setTarget, center, onClose }: { base: BaseData; map: MapData; target: Target | null; setTarget: (t: Target | null) => void; center: Target; onClose: () => void }) {
   const [kind, setKind] = useState<Kind>("erkunden");
@@ -89,7 +92,7 @@ export function SpyPlan({ base, map, target, setTarget, center, onClose }: { bas
             <HexMap data={map} selected={target} onSelect={setTarget} center={center} />
           </div>
           <p className="text-sm">
-            {!target || target.eventId ? "Spielerhafen auf der Karte antippen." : tBase ? <>Hafen <strong>{tBase.name}</strong> ({tBase.owner})</> : <span className="text-slate-400">Feld {target.col}/{target.row}: kein Hafen</span>}
+            {!target || target.eventId ? "Spielerhafen auf der Karte antippen." : tBase ? <>Hafen <strong>{tBase.name}</strong> ({tBase.owner}){REL[tBase.relation] && <span className="font-semibold" style={{ color: RELATION_HEX[tBase.relation] }}> · {REL[tBase.relation]}</span>}</> : <span className="text-slate-400">Feld {target.col}/{target.row}: kein Hafen</span>}
           </p>
         </Card>
       )}
@@ -118,15 +121,20 @@ export function SpyPlan({ base, map, target, setTarget, center, onClose }: { bas
               <>
                 <div className="flex justify-between"><span>Erfolgswert</span><strong className="mono">{p.success.total}</strong></div>
                 <div className="text-xs text-slate-400">{partsText(p.success)}</div>
-                <div className="flex justify-between"><span>Abwehr des Ziels</span><strong className="mono">{p.defense.total}</strong></div>
+                <div className="flex justify-between"><span>{kind === "kartell" ? "Abwehr des Kartells" : "Abwehr des Ziels"}</span><strong className="mono">− {p.defense.total}</strong></div>
                 <div className="text-xs text-slate-400">{partsText(p.defense)}</div>
-                <div className="flex justify-between"><span>Gelingt bei W{p.die} ≤</span><strong className="mono">{p.threshold}</strong></div>
-                <div className="flex h-2 overflow-hidden rounded bg-navy-950 mt-1">
-                  <div className="bg-moos" style={{ width: pct(p.chance) }} />
+                <div className="flex justify-between gap-2 border-t border-rule pt-1">
+                  <span>Gelingt bei Wurf (W{p.die}) von 1 bis</span><strong className="mono">{p.threshold}</strong>
+                </div>
+                {/* Breite in CSS-Schreibweise (pct() setzt ein Leerzeichen vor %, das wäre ungültig). */}
+                <div className="flex h-2.5 overflow-hidden rounded bg-navy-950 mt-1" role="img" aria-label={`Erfolg ${pct(p.chance)}, Enttarnung ${pct(p.detectChance)}`}>
+                  <div className="bg-moos" style={{ width: `${Math.round(p.chance * 100)}%` }} />
                   <div className="bg-siegel flex-1" />
                 </div>
-                <div className="flex justify-between text-xs"><span className="text-moos">Erfolg {pct(p.chance)}</span><span className="text-siegel">Enttarnung {pct(p.detectChance)}</span></div>
-                <p className="text-xs text-slate-400">Enttarnt: die Spione sind verloren und das Ziel erfährt, wer sie geschickt hat. Gewürfelt wird bei Ankunft mit den dann gültigen Werten.</p>
+                <div className="flex justify-between text-xs font-semibold"><span className="text-moos">Erfolg {pct(p.chance)}</span><span className="text-siegel">Enttarnt {pct(p.detectChance)}</span></div>
+                <p className="text-xs text-slate-400">
+                  Misslingt der Wurf, wird der Spion enttarnt: {kind === "kartell" ? "er ist verloren." : "er ist verloren und das Ziel erfährt, wer ihn geschickt hat."} Gewürfelt wird bei Ankunft mit den dann gültigen Werten.
+                </p>
               </>
             )}
             {p.ok ? (

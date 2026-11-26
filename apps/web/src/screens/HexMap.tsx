@@ -18,7 +18,7 @@ import { buildTerrain, hexPoints, xyOf } from "../map/terrain.ts";
 import { Graticule } from "../map/graticule.ts";
 import { MAP_BOUNDS, attachGestures, clampScale, clampView, minScale, zoomAround } from "../map/gestures.ts";
 import {
-  INK, SEE, SIEGEL, alertRing, compassRose, dotSymbol, mapLabel, nameTag, nestSymbol, otherBaseSymbol, ownBaseSymbol, portSymbol, shipSymbol, wreckSymbol,
+  INK, RELATION_COLOR, SEE, SIEGEL, alertRing, compassRose, diamondDot, dotSymbol, mapLabel, nameTag, nestSymbol, otherBaseSymbol, ownBaseSymbol, portSymbol, shipSymbol, wreckSymbol,
 } from "../map/symbols.ts";
 import { LOD_NEAR, LOD_OVERVIEW, fade, layout, pinScale, snap, weatherAlpha, type Pinned } from "../map/lod.ts";
 import { buildWeatherLayer, type WeatherLayer } from "../map/weather.ts"; // Wetterschicht (v1.6)
@@ -140,7 +140,17 @@ export function HexMap(props: HexMapProps) {
         el.appendChild(app.canvas);
         app.canvas.style.touchAction = "none";
         app.canvas.style.display = "block";
-        shot.ready(app.canvas, () => app.render());
+        // Vor der Aufnahme auf die aktuelle Größe des Kartenrahmens bringen und Randzeichen neu setzen,
+        // sonst schneidet der Rahmen eine veraltete, breitere Fläche ab (Windrose am rechten Rand).
+        shot.ready(app.canvas, () => {
+          app.resize();
+          tick(app.ticker);
+          app.render();
+        });
+        // resizeTo hört nur auf Fenstergrößen; Größenänderungen des Rahmens (Info-Blatt, Overlays) zusätzlich.
+        const ro = new ResizeObserver(() => app.queueResize());
+        ro.observe(el);
+        cleanups.push(() => ro.disconnect());
         const world = new Container();
         app.stage.addChild(world);
         const terrain = buildTerrain();
@@ -309,18 +319,21 @@ export function HexMap(props: HexMapProps) {
     // Detailstufen: Übersicht nur Punkte (Nester nach Stufe, fremde Häfen), ab mittlerer Stufe Zeichen, nah alles.
     for (const w of data.wrecks) add(wreckSymbol(), w.col, w.row, { min: LOD_NEAR });
     for (const n of data.nests) {
-      if (!n.empty) add(dotSymbol(SIEGEL, 1.6 + n.level * 0.45, 0.72), n.col, n.row, { max: LOD_OVERVIEW, fixed: true });
+      // Kartell-Nester in der Übersicht als Rauten (Häfen sind Kreise), Größe nach Stufe.
+      if (!n.empty) add(diamondDot(SIEGEL, 2.2 + n.level * 0.5, 0.8), n.col, n.row, { max: LOD_OVERVIEW, fixed: true });
       add(nestSymbol(n.level, n.empty), n.col, n.row, { min: LOD_OVERVIEW });
     }
     for (const b of data.bases) {
-      const tag = nameTag(b.own ? b.name : `${b.name} · ${b.owner}`, b.own ? INK : SEE);
+      const rel = b.relation === "own" ? "neutral" : b.relation;
+      const tag = nameTag(b.own ? b.name : `${b.name} · ${b.owner}`, b.own ? INK : RELATION_COLOR[rel]);
       if (b.own) {
         add(ownBaseSymbol(), b.col, b.row, { prio: PRIO.always });
         add(tag, b.col, b.row, { fixed: true, prio: PRIO.always });
         continue;
       }
-      add(dotSymbol(SEE, 3, 0.95), b.col, b.row, { max: LOD_OVERVIEW, fixed: true });
-      add(otherBaseSymbol(b.protection !== null), b.col, b.row, { min: LOD_OVERVIEW });
+      // Übersicht: Punkt in der Farbe des Verhältnisses; Kriegsgegner etwas größer.
+      add(dotSymbol(RELATION_COLOR[rel], rel === "krieg" ? 3.6 : 3, 0.95), b.col, b.row, { max: LOD_OVERVIEW, fixed: true });
+      add(otherBaseSymbol(b.protection !== null, rel), b.col, b.row, { min: LOD_OVERVIEW });
       add(tag, b.col, b.row, { min: LOD_NAMES, fixed: true, prio: PRIO.base });
     }
     // Eigener Hafen zuoberst
