@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { countLabel, fmtNum, label } from "./lib/names.ts";
 import { Icon } from "./icons.tsx";
 import { useBackLayer } from "./lib/back.ts";
@@ -253,4 +254,27 @@ export function UnitChips({ counts }: { counts: Record<string, number> | null | 
       ))}
     </span>
   );
+}
+
+const ACTION_BAR_HOST = "tf-actionbar";
+
+/**
+ * Platz der Aktionsleiste: letztes Kind des gemeinsamen <main> (App.tsx), sticky am unteren Rand über der
+ * Navigation. -mx-3 für volle Breite, -bottom-8 gleicht das Polster (pb-8) aus; leer unsichtbar.
+ * Die Navigation darunter trägt bereits den Safe-Area-Abstand.
+ */
+export function ActionBarHost() {
+  return <div id={ACTION_BAR_HOST} className="sticky -bottom-8 z-20 -mx-3 mt-3 empty:hidden" />;
+}
+
+/**
+ * Fixierte Aktionsleiste (Auslaufen, Order, Angebot einstellen): bleibt beim Scrollen sichtbar, auch wenn die
+ * Komponente tief in einer Karte steckt – sie wird per Portal in ActionBarHost gezeichnet. Je Ansicht höchstens eine.
+ * Ohne Platz (z. B. außerhalb von <main>) erscheint sie an Ort und Stelle.
+ */
+export function ActionBar({ children }: { children: ReactNode }) {
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => setHost(document.getElementById(ACTION_BAR_HOST)), []);
+  const bar = <div className="px-3 py-2 bg-paper border-t-[3px] border-double border-ink">{children}</div>;
+  return host ? createPortal(bar, host) : <div className="mt-3">{bar}</div>;
 }

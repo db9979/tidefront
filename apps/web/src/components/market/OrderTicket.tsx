@@ -6,7 +6,7 @@ import { useCommand } from "../../lib/command.ts";
 import { errorText, fmtNum, label } from "../../lib/names.ts";
 import { fmtDuration } from "../../lib/time.ts";
 import { Icon } from "../../icons.tsx";
-import { ErrorLine } from "../../ui.tsx";
+import { ActionBar, ErrorLine } from "../../ui.tsx";
 import { allowedRange, limits, maxSensible, when, DAY, type Limits, type MarketCfg, type MarketRes } from "./calc.ts";
 import { Slip } from "./Slip.tsx";
 
@@ -154,9 +154,11 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
         </ul>
       )}
 
+      {/* Fixierte Aktionsleiste: Order-Knopf bleibt über der Navigation sichtbar. */}
+      <ActionBar>
       <button
         type="button"
-        className={`tap w-full h-14 rounded-lg font-display uppercase text-[14px] text-white disabled:opacity-45 shadow-[0_2px_0_var(--color-ink)] ${buy ? "bg-moos" : "bg-siegel"}`}
+        className={`tap w-full h-12 rounded-lg font-display uppercase text-[14px] text-white disabled:opacity-45 shadow-[0_2px_0_var(--color-ink)] ${buy ? "bg-moos" : "bg-siegel"}`}
         disabled={!q || blocked || exec.busy}
         onClick={async () => {
           if (!q) return;
@@ -168,7 +170,8 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
         {buy ? "Kaufen" : "Verkaufen"}{q ? ` · ${fmtNum(q.totalCredits, 2)} Kr` : ""}
       </button>
       <ErrorLine text={exec.error} />
-      {done && <p className="text-moos text-sm mt-2 font-semibold" role="status">{done}</p>}
+      {done && <p className="text-moos text-sm mt-1 font-semibold" role="status">{done}</p>}
+      </ActionBar>
     </div>
   );
 }
