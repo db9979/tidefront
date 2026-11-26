@@ -6,6 +6,7 @@ import { GameError, type Engine } from "./context.ts";
 import { computeStandings, type Standing } from "./scoring.ts";
 import { runningSeason } from "./season.ts";
 import { hafenmeisterIds } from "./guide.ts";
+import { topBadges } from "./achievements.ts"; // Erfolge
 
 // ---------------------------------------------------------------- Rangliste
 
@@ -27,11 +28,12 @@ export async function rankingView(engine: Engine, playerId: number) {
     cache = { at: nowMs, seasonId, rows };
   }
   const hafenmeister = await hafenmeisterIds(engine.db, seasonId); // Abzeichen aus dem Auftragsbuch
+  const badges = await topBadges(engine.db, cache.rows.map((r) => r.playerId)); // Erfolge: höchste drei Abzeichen
   return {
     serverNow: nowMs,
     computedAtMs: cache.at,
     season: s ? { number: s.number, startsAtMs: s.startsAt.getTime(), endsAtMs: s.endsAt.getTime() } : null,
-    rows: cache.rows.map((r) => ({ ...r, own: r.playerId === playerId, hafenmeister: hafenmeister.has(r.playerId) })),
+    rows: cache.rows.map((r) => ({ ...r, own: r.playerId === playerId, hafenmeister: hafenmeister.has(r.playerId), badges: badges.get(r.playerId) ?? [] })),
   };
 }
 

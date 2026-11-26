@@ -5,6 +5,7 @@ import { MAX_EVENT_ATTEMPTS, type ChangeKind, type Engine, type NoticeJob } from
 import { HANDLERS } from "./handlers.ts";
 import { noticesAfter, noticeSnapshot } from "./event-notices.ts";
 import { challengesAfter, challengeSnapshot } from "./challenges.ts";
+import { achievementsAfter, achievementSnapshot } from "./achievements.ts"; // Erfolge
 
 export interface EventRow {
   id: number;
@@ -58,10 +59,12 @@ async function processOne(engine: Engine, pick: Pick): Promise<boolean> {
         await tx.transaction(async (inner) => {
           const snap = await noticeSnapshot(inner, ev as EventRow);
           const daily = await challengeSnapshot(inner, ev as EventRow);
+          const erfolge = await achievementSnapshot(inner, ev as EventRow); // Erfolge: neue Berichte, Bau/Forschung
           const res = await handler(inner, ev as EventRow, ev.dueAt.getTime());
           notes.push(...res.notify);
           jobs.push(...(res.push ?? []), ...(await noticesAfter(inner, ev as EventRow, ev.dueAt.getTime(), snap)));
           await challengesAfter(inner, ev as EventRow, ev.dueAt.getTime(), daily);
+          await achievementsAfter(inner, ev.dueAt.getTime(), erfolge); // Erfolge und Wochenziele
         });
         await tx
           .update(tables.gameEvent)

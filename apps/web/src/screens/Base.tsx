@@ -11,6 +11,7 @@ import { BuildingArt, BuildingArtTile, nextStageLevel, stageOf } from "../buildi
 import { Badge, Bar, Button, Card, Cost, CountsLine, ErrorLine, Sheet } from "../ui.tsx";
 import { Guide, type GuideAction } from "../components/Guide.tsx";
 import { DailyOrders } from "../components/Daily.tsx";
+import { WeeklyGoals } from "../components/Weekly.tsx"; // Erfolge: Wochenziele
 import { HarborVignette, fmtDeg } from "../components/Vignette.tsx";
 import { hexCenter } from "@tidefront/world";
 import { Timeline } from "../components/Timeline.tsx";
@@ -79,6 +80,7 @@ export function BaseScreen(props: {
       <WorldEventBanner onMap={() => props.onGuide({ kind: "tab", tab: "karte" })} />
       <Guide base={base} onAction={props.onGuide} />
       <DailyOrders />
+      <WeeklyGoals />
       <Timeline base={base} />
 
       {/* Bauschlange */}

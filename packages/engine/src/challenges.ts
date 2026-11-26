@@ -8,6 +8,7 @@ import { balance } from "./context.ts";
 import type { EventRow } from "./events.ts";
 import { baseOfPlayer, readBase } from "./store.ts";
 import { modsOf } from "./modifiers.ts";
+import { achievementsFromDaily } from "./achievements.ts"; // Erfolge
 import {
   addDays,
   challengeReward,
@@ -100,6 +101,8 @@ async function applyProgress(tx: DbOrTx, playerId: number, kind: string, amount:
  */
 export async function trackProgress(tx: Tx, playerId: number, kind: string, amount: number, o: TrackOptions): Promise<number> {
   if (!(amount > 0)) return 0;
+  // Erfolge und Wochenziele: dieselben Fortschritte (Ausbau, Handel, Forschung, Wrackgut, Anlagen) mitzählen.
+  if (o.mode !== "max") await achievementsFromDaily(tx, playerId, kind, amount, o.atMs);
   try {
     return await tx.transaction((inner) => applyProgress(inner, playerId, kind, amount, o));
   } catch (err) {

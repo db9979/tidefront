@@ -10,6 +10,7 @@ import { Icon } from "../icons.tsx";
 import { SeasonBar } from "../components/Season.tsx";
 import { HallOfFame } from "./HallOfFame.tsx";
 import { InvitePanel } from "../components/Invite.tsx";
+import { AchievementBadge, TIER_LABEL } from "../components/achievement-art.tsx"; // Erfolge
 import type { Draft } from "./Messages.tsx";
 import type { Target } from "../App.tsx";
 
@@ -29,6 +30,12 @@ const SORTS: { id: Sort; label: string }[] = [
 /** Abzeichen aus dem Auftragsbuch (diese Saison alle Grundaufträge erledigt). */
 function Hafenmeister() {
   return <span title="Hafenmeister: alle Aufträge des Auftragsbuchs erledigt" aria-label="Hafenmeister"><Icon id="hafenmeister" size={16} className="inline-block align-[-3px] ml-1" /></span>;
+}
+
+/** Höchste drei Abzeichen aus den Erfolgen (saisonübergreifend). */
+function Badges({ badges, size = 16 }: { badges: Row["badges"]; size?: number }) {
+  if (badges.length === 0) return null;
+  return <span className="inline-flex gap-0.5 ml-1 align-[-3px]">{badges.map((b) => <AchievementBadge key={b.id} id={b.id} tier={b.tier} size={size} title={b.title} />)}</span>;
 }
 
 function ProtectionBadge({ p }: { p: string | null }) {
@@ -70,7 +77,7 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
                   className={`tap w-full flex items-center gap-2 px-1 py-2 text-left ${r.own ? "bg-sea-400/10 rounded-lg" : ""}`}>
                   <span className="w-7 text-right font-mono tabular-nums text-slate-400">{sort === "total" ? r.rank : i + 1}</span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">{tag(r.playerId) && <span className="mono text-ink2 font-normal">[{tag(r.playerId)}] </span>}{r.name}{r.hafenmeister && <Hafenmeister />}{r.own && <span className="text-sea-300 font-normal"> (du)</span>}</span>
+                    <span className="block truncate text-sm font-semibold">{tag(r.playerId) && <span className="mono text-ink2 font-normal">[{tag(r.playerId)}] </span>}{r.name}{r.hafenmeister && <Hafenmeister />}<Badges badges={r.badges} />{r.own && <span className="text-sea-300 font-normal"> (du)</span>}</span>
                     <span className="block truncate text-xs text-slate-400">{r.base ? r.base.name : "kein Hafen"}</span>
                   </span>
                   {r.base?.protection && <Icon id="schild" size={16} className="shrink-0 opacity-70" />}
@@ -137,6 +144,9 @@ function PlayerDetail({ r, dir, ownId, onCompose, onShowOnMap }: { r: Row; dir: 
         {rel && <Badge tone={RELATION_TEXT[rel].tone}>{RELATION_TEXT[rel].text}</Badge>}
       </div>
       {r.hafenmeister && <p className="flex items-center gap-2 text-sm"><Icon id="hafenmeister" size={24} /> Abzeichen „Hafenmeister“ dieser Saison</p>}
+      {r.badges.map((b) => (
+        <p key={b.id} className="flex items-center gap-2 text-sm"><AchievementBadge id={b.id} tier={b.tier} size={28} /> Erfolg „{b.title}“ in {TIER_LABEL[b.tier]}</p>
+      ))}
       <StatTable rows={[
         ["Rang", String(r.rank)],
         ["Ausbau", fmtNum(r.ausbau)],

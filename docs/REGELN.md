@@ -3,7 +3,7 @@
 Verbindlich für `packages/game-core`. Alle Zahlen stehen in `packages/balance/v1/balance.json`
 und werden dort geändert, nie im Code. Zahlen sind Startwerte; Kartell und Piratennester sind seit Balance v1.1
 per Simulation abgestimmt, U-Boote seit v1.2, Forschung seit v1.3, Marktnachrichten seit v1.5, Wetter, Strom und Nachrichtendienst seit v1.6, Spionage-Abstimmung und Kartell gegen Forschung seit v1.7 (`npm run sim`, Ergebnisse in `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitte C–G).
-**Wetter und Strom** (Wetterfeld, Stromquellen, Rangfolge bei Mangel, Wetter im Einsatz) stehen in `docs/REGELN-WETTER.md`, **Nachrichtendienst und Spionage** in `docs/REGELN-SPIONAGE.md`, **Allianzen, Diplomatie und Handel zwischen Spielern** in `docs/REGELN-SOZIAL.md`; alle gelten als Teil dieser Regeln.
+**Wetter und Strom** (Wetterfeld, Stromquellen, Rangfolge bei Mangel, Wetter im Einsatz) stehen in `docs/REGELN-WETTER.md`, **Nachrichtendienst und Spionage** in `docs/REGELN-SPIONAGE.md`, **Allianzen, Diplomatie und Handel zwischen Spielern** in `docs/REGELN-SOZIAL.md`, **Erfolge (Abzeichen) und Wochenziele** in `docs/REGELN-ERFOLGE.md`; alle gelten als Teil dieser Regeln.
 
 ## Grundsätze
 

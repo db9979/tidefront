@@ -294,5 +294,27 @@
     },
     "xp": { "hpPerXp": 60, "minWin": 5, "maxPerBattle": 120 },
     "risk": { "lossShare": 0.7, "die": 20, "fallenMax": 1, "capturedMax": 5, "woundedMax": 12, "woundedHours": 12, "captiveHours": 48, "ransomCredits": 1500 }
+  },
+  "achievements": {
+    "rewards": [
+      { "credits": 100, "stahl": 800, "treibstoff": 500, "elektronik": 300, "proviant": 400 },
+      { "credits": 300, "stahl": 2400, "treibstoff": 1500, "elektronik": 900, "proviant": 1200 },
+      { "credits": 1000, "stahl": 6400, "treibstoff": 4000, "elektronik": 2400, "proviant": 3200 }
+    ],
+    "list": {
+      "nestjaeger": { "title": "Nestjäger", "description": "Kartell-Nester ausgehoben", "counter": "nester", "thresholds": [5, 25, 100] },
+      "freibeuter": { "title": "Freibeuter", "description": "Überfälle auf Mitspieler gewonnen", "counter": "ueberfaelle", "thresholds": [3, 15, 50] },
+      "bollwerk": { "title": "Bollwerk", "description": "Angriffe abgewehrt, ohne Einheiten oder Anlagen zu verlieren", "counter": "abwehr_ohne_verluste", "thresholds": [1, 5, 20] },
+      "prisenmeister": { "title": "Prisenmeister", "description": "Beute aus Überfällen insgesamt (Ressourcen)", "counter": "beute", "thresholds": [25000, 250000, 2000000] },
+      "kaufmann": { "title": "Kaufmann", "description": "Geschäfte an der Börse abgeschlossen", "counter": "handel", "thresholds": [10, 50, 200] },
+      "baumeister": { "title": "Baumeister", "description": "Gebäude als Prachtbau (Stufe 18 oder höher)", "counter": "prachtbau", "thresholds": [1, 4, 10] },
+      "gelehrter": { "title": "Gelehrter", "description": "Techniken vollständig erforscht", "counter": "forschung_voll", "thresholds": [1, 5, 12] },
+      "meisterspion": { "title": "Meisterspion", "description": "Aufträge des Nachrichtendienstes gelungen", "counter": "spionage", "thresholds": [5, 25, 100] },
+      "flottenbrecher": { "title": "Flottenbrecher", "description": "Weltereignisse mit dem entscheidenden Angriff besiegt", "counter": "weltereignisse", "thresholds": [1, 3, 10] },
+      "pflichttreu": { "title": "Pflichttreu", "description": "Längste Serie: Tage in Folge alle drei Tagesbefehle abgeholt", "counter": "serie", "thresholds": [3, 7, 21] },
+      "ruhmreich": { "title": "Ruhmreich", "description": "Beste Platzierung am Ende einer Saison", "counter": "saison", "thresholds": [1, 2, 3], "tierTexts": ["Platz 1 bis 10", "Platz 1 bis 3", "Saisonsieg"] },
+      "wochenwerk": { "title": "Wochenwerk", "description": "Wochenziele erfüllt", "counter": "wochenziele", "thresholds": [3, 15, 50] }
+    },
+    "weekly": { "goalValue": 5000, "goalCredits": 150, "bonusValue": 9000, "bonusCredits": 400, "stageGrowth": 0.3 }
   }
 }

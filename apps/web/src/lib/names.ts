@@ -62,6 +62,9 @@ const ERRORS: Record<string, string> = {
   unknown_step: "Diesen Auftrag gibt es nicht.",
   no_season: "Gerade läuft keine Saison.",
   no_challenge: "Diesen Tagesbefehl gibt es nicht (mehr).",
+  // Erfolge und Wochenziele
+  no_goal: "Dieses Wochenziel gibt es nicht (mehr).",
+  not_unlocked: "Diese Stufe ist noch nicht freigeschaltet.",
   reroll_used: "Heute wurde schon ein Befehl neu gewürfelt.",
   already_done: "Erfüllte Befehle lassen sich nicht neu würfeln.",
   no_alternative: "Gerade gibt es keinen anderen passenden Befehl.",
