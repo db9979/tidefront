@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.11.6 – 27.11.2026
+- Mission auf der Karte: Statt eines abdunkelnden Blatts erscheint unten eine kompakte Leiste – die Karte bleibt sichtbar, der Verband steht mittig und ist mit einem pulsierenden Ring markiert. Die Leiste zeigt, wo der Verband gerade ist („Jetzt bei Feld …“), Fortschritt, Truppen, auf Wunsch die Zeiten, und Knöpfe „Ziel zeigen“ und „Zurückrufen“.
+
 ## 0.11.5 – 27.11.2026
 - Börse: Die Kurszeile steht jetzt fest oben unter den Ressourcen (bei der Einstellung „Immer unten“ unten) statt mitten in der Seite.
 

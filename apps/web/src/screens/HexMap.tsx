@@ -45,6 +45,8 @@ export interface HexMapProps {
   onSelect: (h: { col: number; row: number }) => void;
   /** Tipp auf einen eigenen Verband (Schiffssymbol): Missions-ID. */
   onMissionTap?: (missionId: number) => void;
+  /** Hervorgehobener Verband (pulsierender Ring). */
+  focusMission?: number | null;
   selectMode?: boolean;
   center?: { col: number; row: number } | null;
   /** Anfangszoom beim Zentrieren (Vorgabe 0,35). */
@@ -121,8 +123,8 @@ export function HexMap(props: HexMapProps) {
   onSelectRef.current = onSelect;
   const onMissionRef = useRef(props.onMissionTap);
   onMissionRef.current = props.onMissionTap;
-  const live = useRef({ selected, home, missions, alert });
-  live.current = { selected, home, missions, alert };
+  const live = useRef({ selected, home, missions, alert, focus: props.focusMission ?? null });
+  live.current = { selected, home, missions, alert, focus: props.focusMission ?? null };
 
   // Aufbau (einmal)
   useEffect(() => {
@@ -438,7 +440,7 @@ function drawSelection(s: Scene, selected: { col: number; row: number } | null |
 }
 
 /** Routen, Schiffe und Warnring; läuft gedrosselt im Ticker. */
-function drawMovers(s: Scene, live: { home?: { col: number; row: number } | null; missions?: MapMission[]; alert?: boolean }): void {
+function drawMovers(s: Scene, live: { home?: { col: number; row: number } | null; missions?: MapMission[]; alert?: boolean; focus?: number | null }): void {
   const sc = s.world.scale.x;
   s.routes.clear();
   const seen = new Set<number>();
@@ -463,7 +465,14 @@ function drawMovers(s: Scene, live: { home?: { col: number; row: number } | null
         s.world.addChild(ship);
       }
       ship.position.set(pos.x, pos.y);
-      ship.scale.set(pinScale(sc));
+      ship.scale.set(pinScale(sc) * (live.focus === m.id ? 1.35 : 1));
+      if (live.focus === m.id) {
+        // Gewählter Verband: pulsierender Doppelring
+        const pulse = 1 + 0.25 * Math.sin(performance.now() / 220);
+        const r = 16 * pinScale(sc) * pulse;
+        s.routes.circle(pos.x, pos.y, r).stroke({ color, width: 2.2 / sc, alpha: 0.9 });
+        s.routes.circle(pos.x, pos.y, r * 1.45).stroke({ color, width: 1.2 / sc, alpha: 0.45 });
+      }
       seen.add(key);
     }
   }
