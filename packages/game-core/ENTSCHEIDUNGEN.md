@@ -43,6 +43,28 @@ Die Börse hat ihre eigene Liste in `src/market/ENTSCHEIDUNGEN.md`.
 12. **Verteidigungsanlagen bauen** ist in REGELN nicht geregelt (kein `builtIn`). Umgesetzt über `startTraining`:
     keine Gebäudevoraussetzung, keine Beschleunigung, eigener Bauplatz `anlagen`, kein Stopp bei Versorgungsmangel.
 
+13. **U-Boote (seit v1.2): eigene Phase „U-Boot-Angriff“ vor dem Seegefecht.** Die U-Boote beider Seiten feuern
+    `torpedoSalvos` Salven (1) mit `see` auf die Überwasserschiffe des Gegners, ohne Gegenwehr. Begründung: Das
+    U-Boot lebt vom Überraschungsmoment; eine eigene Phase macht im Kampfbericht sichtbar, woher die ersten Verluste
+    kommen. Im Seegefecht schießen U-Boote weiter, sind aber nur Ziel der U-Jagd. Die U-Jagd ist eine zusätzliche
+    Salve (Wasserbomben) neben der Salve über Wasser, nicht ein Teil davon: Eine Korvette verliert gegen Schnellboote
+    nichts, wenn zugleich ein U-Boot da ist. Sie nutzt denselben Zufallsfaktor wie die Salve über Wasser; ohne U-Boote
+    bleibt der Zufallsstrom und damit jeder bisherige Kampf unverändert (`npm run sim` gibt für v1.1-Fälle dieselben Zahlen).
+14. **Wer U-Boote treffen kann:** nur Einheiten und Anlagen mit `attack.uboot > 0` (in v1.2 Korvette 40, Zerstörer 60).
+    Bomber (auch Jagdbomber), Flak, Küstenbatterien und das Kartell bekommen keine U-Jagd: Die Korvette ist der billige
+    Spezialist, der Zerstörer der Allrounder; Flugzeuge und Anlagen bleiben einfach, und das Gegenmittel steht in der
+    Werft, die auch das U-Boot baut. Torpedos treffen keine Anlagen (`anlage` 0) und Schnellboote kaum
+    (`bonus.schnellboot` 0,5: flach gehende Boote), dafür Landungsschiffe hart (`bonus.landungsschiff` 1,5).
+15. **Getaucht ist eine Eigenschaft, keine ID:** `UnitDef.submerged` macht eine See-Einheit zum U-Boot (Kampfrolle
+    `sub`). Die Mindeststufe des Baugebäudes ist generisch (`UnitDef.requiresLevel`, Code `building_level`).
+16. **Seegefecht ohne mögliche Treffer endet** vor der nächsten Runde (z. B. U-Boote gegen Küstenbatterien), statt
+    leere Runden zu zählen; ohne eine einzige Runde gilt es als übersprungen (`no_targets`). Für Kämpfe ohne U-Boote
+    ändert das nichts, weil dort jedes Schiff ein Ziel treffen kann.
+17. **Kartell und Nester:** keine U-Boote, keine U-Jagd. U-Boote daheim zählen zur Verteidigungsstärke (sie kämpfen
+    gegen die Schnellboote mit) und locken wie jedes Schiff größere Überfälle an. Nester der Stufen 3–5 bekommen
+    vorerst **keine** U-Jagd: Die Simulation (C4) zeigt, dass U-Boote gegen Nester nicht besser sind als Korvetten und
+    Zerstörer (Torpedos treffen keine Küstenbatterien, kaum Schnellboote); keine Neststufe fällt früher.
+
 ## B. Technische Festlegungen
 
 - **Bestände sind Gleitkommazahlen**; `settle` rundet nicht. Kosten, Treibstoff, Beute und Wracks sind ganzzahlig.
@@ -91,7 +113,7 @@ Die Börse hat ihre eigene Liste in `src/market/ENTSCHEIDUNGEN.md`.
 - `harborMarketUnlocked` und `harborCreditLimit` liegen in `buildings.ts` (Abschnitt Gebäude) und heißen bewusst
   anders als mögliche Funktionen des Börsenkerns.
 
-## C. Auffälligkeiten und Balance (Stand v1.1)
+## C. Auffälligkeiten und Balance (Stand v1.2)
 
 - **`maxBuildSeconds` (432000 s) wird nie erreicht.** Die längste Bauzeit ist Kommandozentrale 19 auf 20 mit
   120 * 1,4^19, rund 71700 s (knapp 20 Stunden). Der Test prüft die Kappung deshalb mit verkleinerter Obergrenze.
@@ -188,7 +210,39 @@ Empfindlichkeit: Bei 30 % Rüstungsanteil verschiebt sich jede Stufe um einen Pr
 2 → 5, 3 → 10, 4 → 18, 5 → 21), bei 60 % fällt Stufe 2 schon an Tag 2; alle anderen Stufen bleiben im Fenster.
 Die Übergänge sind scharf (0 % oder 100 %), weil der Zufall im Kampf nur ±5 % beträgt.
 
-### C4. Offene Punkte
+### C4. U-Boote in v1.2 (`npm run sim`, 200 Seeds je Fall)
+
+Werte: Kosten 700 Stahl / 250 Treibstoff / 250 Elektronik (Richtwert 1900, wie ein Zerstörer), 900 s, ab Werft 3,
+Unterhalt 3, 6 Kommandopunkte, 250 HP, `see` 80, keine Luftabwehr, 45 km/h, 6 Treibstoff je 100 km,
+Bonus Landungsschiff 1,5, Schnellboot 0,5. U-Jagd: Korvette 40, Zerstörer 60. Alle v1.1-Zahlen ohne U-Boote unverändert.
+
+Seegefecht Spieler gegen Spieler (nur Schiffe), Ø Verlust zum Richtwert:
+
+| Angreifer | Verteidiger | Verlust Angreifer | Verlust Verteidiger |
+| --- | --- | --- | --- |
+| 4 U-Boote (7600) | 6 Landungsschiffe (6660) | 0 | 6660 (alle) |
+| 4 U-Boote | 4 Korvetten, 3 Landungsschiffe (6250) | 1900 (1 U-Boot) | 4647 |
+| 4 U-Boote | 4 Zerstörer (7800) | 3800 (2 U-Boote) | 3900 |
+| 4 U-Boote | 10 Korvetten (7300) | 5700 (3 U-Boote) | 3643 |
+| Bot-Flotte Tag 14 (13 Korv., 3 Zerst., 4 L) | 4 U-Boote im Hafen | 1121 | 7600 (alle) |
+| 3 Zerstörer, 4 Landungsschiffe | 4 U-Boote im Hafen | 4170 | 1900 |
+| Vergleich: 10 Korvetten | 4 Zerstörer | 3300 | 3900 |
+
+Stark gegen ungeschützte Flotten (Landungsschiffe), gleichwertig gegen Zerstörer, klar unterlegen gegen Korvetten
+gleichen Werts. Gegen Nester schwächer als Zerstörer: 4 U-Boote, 3 L-Schiffe, 5 Pz, 200 Sch. schlagen Stufe 3 zu 0 %
+(mit 4 Zerstörern 51 %); 8 U-Boote, 5 L-Schiffe, 10 Pz, 300 Sch., 50 Pio. schlagen Stufe 4 zu 0 %, weil die
+Küstenbatterien weiter auf die Landungsschiffe feuern.
+
+Kartell: 2 U-Boote, 30 Schützen 25 % (2 Korvetten, 30 Schützen 17 %); 4 U-Boote, 40 Schützen 19 %.
+Bot-Gegenprobe (Doktrin wie oben, 45 % Rüstung): U-Boote statt Zerstörer → Stufe 1–5 an Tag 1/3/7/14/21 (wie ohne
+U-Boote), Kartell gegen den Bot 7 % (Tag 7) / 7 % (Tag 28). Schwere U-Boot-Rüstung (30 % U-Boote statt Zerstörern und
+Jagdbombern) → ebenfalls Tag 1/3/7/14/21, Kartell 20 % / 21 %. Alle Neststufen bleiben im Zielfenster.
+
+Verworfen: Bonus des U-Boots gegen Zerstörer (1,2) und Zerstörer-U-Jagd 30 – dann verloren 4 Zerstörer gegen
+4 U-Boote 5850 bei 1900 eigenem Verlust. Ohne Malus gegen Schnellboote waren U-Boote daheim ein unverwundbarer
+Kartell-Konter (2 U-Boote, 30 Schützen: 0 %).
+
+### C5. Offene Punkte
 
 - **Seed für die Überfallstärke:** Der Server (`packages/engine`, `raidLaunch`) ruft `composeRaid` noch ohne Seed
   auf. Dann ist der Faktor 1, und die Wache (20 Schützen) trifft immer auf 32 Miliz: Das Kartell siegt dort zu
@@ -200,3 +254,6 @@ Die Übergänge sind scharf (0 % oder 100 %), weil der Zufall im Kampf nur ±5 %
   Stützpunkt mit vielen Schiffen und wenig Bodentruppen verliert häufiger (Bot nach 28 Tagen 13 %).
 - Der Bot schickt den ganzen Verband und rechnet keine Verluste aus früheren Überfällen oder Kartell-Angriffen ein.
   Weitere Landungsschiffe für mehr Ladung baut er nicht; ab Stufe 2 lohnt ein zweites Schiff für die volle Beute.
+- **U-Boote (v1.2):** Ob Nester der Stufen 3–5 oder das Kartell später U-Jagd bekommen, nach Spielerfahrung
+  entscheiden (Mechanik vorhanden: jede NPC-Einheit oder Anlage mit `attack.uboot`). Aufklärung zeigt U-Boote wie jede
+  andere Einheit; ein „getarntes“ Lagebild gibt es nicht.

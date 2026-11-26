@@ -171,11 +171,13 @@ function Strength({ balance, units, level }: { balance: Balance; units: Record<s
   const nest = balance.pirates.nestLevels[String(level)] as Record<string, unknown> | undefined;
   if (!nest) return null;
   const all = { ...balance.units, ...balance.npcUnits } as Balance["units"];
-  let sea = 0, land = 0, enemySea = 0, enemyLand = 0, space = 0, troops = 0;
+  let sea = 0, land = 0, enemySea = 0, enemyLand = 0, space = 0, troops = 0, subs = 0, enemyHunt = 0, batteries = 0;
   for (const [id, n] of Object.entries(units)) {
     const u = all[id];
     if (!u) continue;
-    if (u.branch === "see") sea += u.attack.see * n;
+    // U-Boote: Torpedos wirken gegen Schnellboote nur mit ihrem (kleinen) Bonusfaktor.
+    if (u.branch === "see") sea += u.attack.see * n * (u.submerged ? u.bonus.schnellboot ?? 1 : 1);
+    if (u.submerged) subs += n;
     if (u.branch === "land") { land += u.attack.land * n; troops += (u.size ?? 0) * n; }
     space += (u.troopSpace ?? 0) * n;
   }
@@ -184,6 +186,8 @@ function Strength({ balance, units, level }: { balance: Balance; units: Record<s
     const u = all[id];
     const d = balance.defenses[id];
     if (u?.branch === "see") enemySea += u.attack.see * v;
+    enemyHunt += ((u ?? d)?.attack?.uboot ?? 0) * v;
+    if (d?.attack && d.attack.see > 0) batteries += v;
     if (u?.branch === "land") enemyLand += u.attack.land * v;
     if (d?.attack) { enemySea += d.attack.see * v; enemyLand += d.attack.land * v; }
   }
@@ -204,6 +208,12 @@ function Strength({ balance, units, level }: { balance: Balance; units: Record<s
           </div>
         ))}
         <p className={`font-semibold ${verdict[1]}`}>{verdict[0]}</p>
+        {subs > 0 && (
+          <p className="text-xs text-slate-300">
+            {enemyHunt > 0 ? "Das Nest hat U-Jagd: auch U-Boote können sinken." : "Das Nest hat keine U-Jagd: deine U-Boote sind dort nicht zu treffen."}
+            {batteries > 0 ? " Küstenbatterien treffen sie nicht, werden aber auch nicht von Torpedos getroffen – sie schießen weiter auf die Schiffe über Wasser." : ""}
+          </p>
+        )}
         <p className="text-xs text-slate-400">Grobe Schätzung aus den Angriffswerten, ohne Zufall, Boni und Lebenspunkte. Eine Aufklärung zeigt die Besatzung genau.</p>
       </div>
     </Card>

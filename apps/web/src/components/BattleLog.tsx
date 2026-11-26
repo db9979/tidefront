@@ -28,9 +28,14 @@ export interface Battle {
 
 const SKIP: Record<string, string> = {
   no_fighters: "keine Jäger", no_opponent: "kein Gegner", no_bombers: "keine Bomber", no_targets: "keine Ziele",
-  no_ships: "keine Schiffe", no_landing_ships: "keine Landungsschiffe", no_troops: "keine Truppen",
+  no_submarines: "keine U-Boote", no_ships: "keine Schiffe", no_landing_ships: "keine Landungsschiffe", no_troops: "keine Truppen",
 };
 const RES = ["stahl", "treibstoff", "elektronik", "proviant"];
+/** Kurze Erklärung unter einer ausgetragenen Phase. */
+const NOTE: Record<string, string> = {
+  ubootangriff: "Torpedos aus dem Verborgenen auf Schiffe über Wasser – ohne Gegenwehr.",
+};
+const hasSubs = (c: Counts) => (c.uboot ?? 0) > 0;
 
 function Side({ name, before, after }: { name: string; before: Counts; after: Counts }) {
   const ids = Object.keys(before).filter((id) => (before[id] ?? 0) > 0);
@@ -95,8 +100,11 @@ export function BattleLog({ b, names, role }: { b: Battle; names: [string, strin
               <div className="flex items-baseline gap-2 mb-1.5">
                 <span className="mono text-[11px] text-siegel">0{no}</span>
                 <span className="font-serif text-[18px] flex-1">{label(p.phase)}</span>
-                <span className="mono text-[11px] text-ink2">{p.rounds} Runden</span>
+                <span className="mono text-[11px] text-ink2">{p.phase === "ubootangriff" ? `${p.rounds} ${p.rounds === 1 ? "Salve" : "Salven"}` : `${p.rounds} ${p.rounds === 1 ? "Runde" : "Runden"}`}</span>
               </div>
+              {(NOTE[p.phase] || (p.phase === "seegefecht" && (hasSubs(p.before.attacker) || hasSubs(p.before.defender)))) && (
+                <p className="text-[12px] text-ink2 mb-1.5">{NOTE[p.phase] ?? "Getauchte U-Boote treffen nur Schiffe mit U-Jagd (Korvette, Zerstörer)."}</p>
+              )}
               <div className="grid grid-cols-2 gap-3 bg-card border border-rule rounded-[3px] px-2.5 py-2">
                 <Side name={names[0]} before={p.before.attacker} after={p.after.attacker} />
                 <Side name={names[1]} before={p.before.defender} after={p.after.defender} />

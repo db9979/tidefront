@@ -1,5 +1,5 @@
 {
-  "version": "v1.1",
+  "version": "v1.2",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -28,9 +28,10 @@
     "hafenkommandantur": { "cost": { "stahl": 300, "treibstoff": 80, "elektronik": 60 }, "seconds": 60, "missionSlotsBase": 1, "missionSlotsPerTwoLevels": 1, "marketFromLevel": 3, "creditLimitPerLevel": 5000 }
   },
   "units": {
-    "korvette": { "branch": "see", "builtIn": "werft", "cost": { "stahl": 400, "treibstoff": 100, "elektronik": 50, "proviant": 0 }, "seconds": 300, "upkeepPerHour": 2, "commandPoints": 3, "hp": 200, "attack": { "see": 40, "luft": 5, "land": 0, "anlage": 15 }, "speedKmh": 60, "fuelPer100Km": 4, "cargo": 0, "troopSpace": 0, "bonus": { "schnellboot": 1.5 } },
-    "zerstoerer": { "branch": "see", "builtIn": "werft", "cost": { "stahl": 900, "treibstoff": 250, "elektronik": 200, "proviant": 0 }, "seconds": 720, "upkeepPerHour": 4, "commandPoints": 6, "hp": 450, "attack": { "see": 70, "luft": 60, "land": 0, "anlage": 30 }, "speedKmh": 55, "fuelPer100Km": 9, "cargo": 0, "troopSpace": 0, "bonus": { "korvette": 1.3 } },
+    "korvette": { "branch": "see", "builtIn": "werft", "cost": { "stahl": 400, "treibstoff": 100, "elektronik": 50, "proviant": 0 }, "seconds": 300, "upkeepPerHour": 2, "commandPoints": 3, "hp": 200, "attack": { "see": 40, "luft": 5, "land": 0, "anlage": 15, "uboot": 40 }, "speedKmh": 60, "fuelPer100Km": 4, "cargo": 0, "troopSpace": 0, "bonus": { "schnellboot": 1.5 } },
+    "zerstoerer": { "branch": "see", "builtIn": "werft", "cost": { "stahl": 900, "treibstoff": 250, "elektronik": 200, "proviant": 0 }, "seconds": 720, "upkeepPerHour": 4, "commandPoints": 6, "hp": 450, "attack": { "see": 70, "luft": 60, "land": 0, "anlage": 30, "uboot": 60 }, "speedKmh": 55, "fuelPer100Km": 9, "cargo": 0, "troopSpace": 0, "bonus": { "korvette": 1.3 } },
     "landungsschiff": { "branch": "see", "builtIn": "werft", "cost": { "stahl": 600, "treibstoff": 200, "elektronik": 50, "proviant": 0 }, "seconds": 600, "upkeepPerHour": 3, "commandPoints": 5, "hp": 300, "attack": { "see": 5, "luft": 2, "land": 0, "anlage": 0 }, "speedKmh": 40, "fuelPer100Km": 12, "cargo": 4000, "troopSpace": 100, "bonus": {} },
+    "uboot": { "branch": "see", "builtIn": "werft", "requiresLevel": 3, "submerged": true, "cost": { "stahl": 700, "treibstoff": 250, "elektronik": 250, "proviant": 0 }, "seconds": 900, "upkeepPerHour": 3, "commandPoints": 6, "hp": 250, "attack": { "see": 80, "luft": 0, "land": 0, "anlage": 0, "uboot": 0 }, "speedKmh": 45, "fuelPer100Km": 6, "cargo": 0, "troopSpace": 0, "bonus": { "landungsschiff": 1.5, "schnellboot": 0.5 } },
     "schuetzen": { "branch": "land", "builtIn": "kaserne", "cost": { "stahl": 30, "treibstoff": 0, "elektronik": 0, "proviant": 20 }, "seconds": 30, "upkeepPerHour": 0.1, "commandPoints": 0.15, "hp": 20, "attack": { "see": 0, "luft": 0, "land": 6, "anlage": 2 }, "size": 1, "bonus": { "pioniere": 1.5 } },
     "pioniere": { "branch": "land", "builtIn": "kaserne", "cost": { "stahl": 60, "treibstoff": 0, "elektronik": 10, "proviant": 25 }, "seconds": 60, "upkeepPerHour": 0.15, "commandPoints": 0.3, "hp": 20, "attack": { "see": 0, "luft": 0, "land": 4, "anlage": 6 }, "size": 1, "bonus": { "bunkerlinie": 4, "minensperre": 4 } },
     "kampfpanzer": { "branch": "land", "builtIn": "kaserne", "cost": { "stahl": 500, "treibstoff": 100, "elektronik": 80, "proviant": 40 }, "seconds": 480, "upkeepPerHour": 1.5, "commandPoints": 4, "hp": 300, "attack": { "see": 0, "luft": 0, "land": 60, "anlage": 20 }, "size": 10, "bonus": { "schuetzen": 1.5, "piratenmiliz": 1.5 } },
@@ -58,7 +59,8 @@
     "defenseRepairShare": 0.6,
     "hospitalShareDefender": 0.4,
     "hospitalShareAttacker": 0.2,
-    "aircraftDamagedShare": 0.3
+    "aircraftDamagedShare": 0.3,
+    "torpedoSalvos": 1
   },
   "loot": {
     "maxShareOfUnprotected": 0.3,

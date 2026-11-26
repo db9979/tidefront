@@ -77,11 +77,12 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
       id: "kampf", icon: "zerstoerer", title: "So läuft ein Kampf",
       body: (
         <>
-          <P>Automatisch in vier Phasen mit höchstens {b?.combat.maxRoundsPerPhase ?? 3} Runden:</P>
+          <P>Automatisch in fünf Phasen mit höchstens {b?.combat.maxRoundsPerPhase ?? 3} Runden:</P>
           <ol className="text-sm list-decimal pl-5 space-y-1 mb-2">
             <li><strong>Luftkampf:</strong> Abfangjäger beider Seiten. Wer danach mehr Jäger hat, hat Luftüberlegenheit.</li>
             <li><strong>Luftschlag:</strong> Flak und Schiffe schießen auf Bomber, dann treffen die Bomber Schiffe und Anlagen (mit Luftüberlegenheit stärker).</li>
-            <li><strong>Seegefecht:</strong> Schiffe gegeneinander, Küstenbatterien feuern mit.</li>
+            <li><strong>U-Boot-Angriff:</strong> Getauchte U-Boote beider Seiten feuern eine Torpedosalve auf Schiffe über Wasser – ohne Gegenwehr.</li>
+            <li><strong>Seegefecht:</strong> Schiffe gegeneinander, Küstenbatterien feuern mit. U-Boote schießen weiter, können aber nur von Schiffen mit <strong>U-Jagd</strong> (Korvette, Zerstörer) getroffen werden – nicht von Bombern, Batterien oder dem Kartell.</li>
             <li><strong>Landung:</strong> Nur mit überlebenden Landungsschiffen. Minen treffen einmal (Pioniere halbieren), dann Bodenkampf gegen Truppen und Bunkerlinie.</li>
           </ol>
           <P>Du gewinnst, wenn nach der Landung keine Verteidiger und keine Bunkerlinie mehr stehen und eigene Truppen leben. Schaden verteilt sich nach Lebenspunkten auf die Gegner; angefangener Schaden bleibt über Runden erhalten.</P>
@@ -138,10 +139,10 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
               <li key={id} className="flex gap-2 items-start">
                 <IconTile id={id} size={40} tone={unitTone(b, id)} />
                 <div className="text-sm min-w-0">
-                  <strong>{label(id)}</strong> <span className="text-xs text-slate-400">{u ? `aus ${label(u.builtIn ?? "")}` : "Anlage"}</span>
+                  <strong>{label(id)}</strong> <span className="text-xs text-slate-400">{u ? `aus ${label(u.builtIn ?? "")}${(u.requiresLevel ?? 1) > 1 ? ` ab Stufe ${u.requiresLevel}` : ""}` : "Anlage"}</span>
                   <div className="text-slate-300">{UNIT_TEXT[id]}</div>
                   <div className="text-xs text-slate-400 tabular-nums">
-                    HP {fmtNum(u?.hp ?? d?.hp ?? 0)}{a ? ` · See ${a.see} · Luft ${a.luft} · Land ${a.land}` : ""}{u?.speedKmh ? ` · ${u.speedKmh} km/h` : ""}
+                    HP {fmtNum(u?.hp ?? d?.hp ?? 0)}{a ? ` · See ${a.see} · Luft ${a.luft} · Land ${a.land}` : ""}{a?.uboot ? ` · U-Jagd ${a.uboot}` : ""}{u?.submerged ? " · getaucht" : ""}{u?.speedKmh ? ` · ${u.speedKmh} km/h` : ""}
                   </div>
                 </div>
               </li>

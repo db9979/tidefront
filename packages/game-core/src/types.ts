@@ -8,6 +8,8 @@ export interface AttackValues {
   luft: number;
   land: number;
   anlage?: number;
+  /** U-Jagd: Schaden gegen getauchte U-Boote (Wasserbomben); Vorgabe 0. */
+  uboot?: number;
 }
 
 export interface BuildingDef {
@@ -41,6 +43,10 @@ export interface UnitDef {
   attack: AttackValues;
   bonus: Record<string, number>;
   builtIn?: string;
+  /** Mindeststufe des Baugebäudes `builtIn` (Vorgabe 1). */
+  requiresLevel?: number;
+  /** Getaucht (U-Boot): nur durch U-Jagd (`attack.uboot`) zu treffen, kein Ziel für Bomber und Küstenbatterien. */
+  submerged?: boolean;
   cost?: ResourceMap;
   seconds?: number;
   upkeepPerHour?: number;
@@ -113,6 +119,8 @@ export interface Balance {
     hospitalShareDefender: number;
     hospitalShareAttacker: number;
     aircraftDamagedShare: number;
+    /** Salven des U-Boot-Angriffs aus dem Verborgenen vor dem Seegefecht (Vorgabe 1). */
+    torpedoSalvos?: number;
   };
   loot: {
     maxShareOfUnprotected: number;
@@ -253,7 +261,7 @@ export interface FleetCheck {
 // ---------------------------------------------------------------- Kampf
 
 export type Side = "attacker" | "defender";
-export type PhaseName = "luftkampf" | "luftschlag" | "seegefecht" | "landung";
+export type PhaseName = "luftkampf" | "luftschlag" | "ubootangriff" | "seegefecht" | "landung";
 
 export interface AttackerInput {
   units: Counts;

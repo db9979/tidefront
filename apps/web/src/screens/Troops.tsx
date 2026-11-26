@@ -105,7 +105,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap }: { base: BaseData; on
                       <TrainRow key={d.id} id={d.id} have={d.count} away={0} base={base} balance={balance} busy={!!order} secondsEach={balance.defenses[d.id].seconds} cost={balance.defenses[d.id].cost} />
                     ))
                   : base.units.filter((u) => u.builtIn === g.builtIn).map((u) => (
-                      <TrainRow key={u.id} id={u.id} have={u.home} away={u.away} base={base} balance={balance} busy={!!order} secondsEach={u.secondsEach} cost={balance.units[u.id].cost} />
+                      <TrainRow key={u.id} id={u.id} have={u.home} away={u.away} base={base} balance={balance} busy={!!order} secondsEach={u.secondsEach} cost={balance.units[u.id].cost} needLevel={(balance.units[u.id].requiresLevel ?? 1) > level ? balance.units[u.id].requiresLevel : undefined} />
                     ))}
               </ul>
             )}
@@ -116,7 +116,8 @@ export function TroopsScreen({ base, onPlan, onShowOnMap }: { base: BaseData; on
   );
 }
 
-function TrainRow(props: { id: string; have: number; away: number; base: BaseData; balance: Balance; busy: boolean; secondsEach: number | null; cost: Record<string, number> | undefined }) {
+/** needLevel: Baugebäude ist noch unter der Mindeststufe der Einheit (requiresLevel). */
+function TrainRow(props: { id: string; have: number; away: number; base: BaseData; balance: Balance; busy: boolean; secondsEach: number | null; cost: Record<string, number> | undefined; needLevel?: number }) {
   const [n, setN] = useState(1);
   const cmd = useCommand((i: { key: string; id: string; count: number }) => trpcClient.base.train.mutate(i), invalidateBase);
   const [info, setInfo] = useState(false);
@@ -133,10 +134,16 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
         </div>
       </div>
       <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
-        <Stepper value={n} onChange={setN} />
-        <Button kind="secondary" disabled={props.busy || cmd.busy || n < 1} onClick={() => void cmd.run({ id: props.id, count: n })}>
-          Bauen
-        </Button>
+        {props.needLevel ? (
+          <span className="text-xs text-brass-300">Bau ab {label(props.balance.units[props.id]?.builtIn ?? "")} Stufe {props.needLevel}</span>
+        ) : (
+          <>
+            <Stepper value={n} onChange={setN} />
+            <Button kind="secondary" disabled={props.busy || cmd.busy || n < 1} onClick={() => void cmd.run({ id: props.id, count: n })}>
+              Bauen
+            </Button>
+          </>
+        )}
       </div>
       <div className="flex justify-between gap-2 mt-1">
         <Cost cost={scale(props.cost, n)} have={props.base.resources} />
