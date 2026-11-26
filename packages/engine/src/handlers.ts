@@ -38,6 +38,7 @@ import { WORLD_EVENT_HANDLERS } from "./world-events-run.ts";
 import { modifiersFor, modsOf } from "./modifiers.ts";
 import { withAttackExperience } from "./veterans.ts";
 import { scoutWithDisinfo } from "./espionage.ts"; // Nachrichtendienst (Desinformation)
+import { battleWeather, fogAt } from "./weather.ts"; // Wetter am Kampfort und Nebel (v1.6)
 
 const HOUR_MS = 3600000;
 const none = (): HandlerResult => ({ notify: [] });
@@ -184,8 +185,8 @@ const missionArrive: Handler = async (tx, ev, due) => {
         report: { cargo: plan.cargo, from: attackerName, to: target.name },
       });
     } else if (m.type === "aufklaerung") {
-      // Nachrichtendienst: hinterlegte Desinformation des Ziels verfälscht dieses Lagebild (einmalig).
-      const { scout } = await scoutWithDisinfo(tx, target, m.playerId, scoutBase(target.state, due, balance, await modsOf(tx, target, due)), due);
+      // Nebel (v1.6) und Nachrichtendienst: hinterlegte Desinformation des Ziels verfälscht dieses Lagebild (einmalig).
+      const { scout } = await scoutWithDisinfo(tx, target, m.playerId, scoutBase(target.state, due, balance, await modsOf(tx, target, due), fogAt(target.col, target.row, due)), due);
       reportId = await storeReport(tx, {
         kind: "aufklaerung", title: `Aufklärung: ${target.name}`, attackerPlayerId: m.playerId, defenderPlayerId: null,
         attackerBaseId: m.baseId, defenderBaseId: target.id, nestId: null, winner: null, seed: null, atMs: due,
@@ -214,7 +215,7 @@ const missionArrive: Handler = async (tx, ev, due) => {
       if (attacker.weakTarget && (await atWar(tx, m.playerId!, target.playerId, due))) attacker.weakTarget = false;
       const seed = randomSeed();
       const defender = defenderFromBase(defenderBase, balance, targetMods);
-      const res = resolveBattle(attacker, defender, balance, seed);
+      const res = resolveBattle(attacker, defender, balance, seed, battleWeather(target.col, target.row, due));
       if (!res.ok) throw new Error(`battle: ${res.code}`);
       const report = res.report;
       await saveBase(tx, target.id, applyDefenseResult(defenderBase, report, due, balance, targetMods));
@@ -246,7 +247,7 @@ const missionArrive: Handler = async (tx, ev, due) => {
       if (!def.ok) throw new Error(def.code);
       const attacker: AttackerInput = { units: plan.units, versorgungsmangel: origin?.state.versorgungsmangel ?? false, modifiers: attackerMods };
       const seed = randomSeed();
-      const res = resolveBattle(attacker, def.defender, balance, seed);
+      const res = resolveBattle(attacker, def.defender, balance, seed, battleWeather(nest.col, nest.row, due));
       if (!res.ok) throw new Error(`battle: ${res.code}`);
       const report = res.report;
       if (report.winner === "attacker") {
@@ -373,7 +374,7 @@ const raidArrive: Handler = async (tx, ev, due) => {
   const state = settle(b.state, due, balance, mods);
   const seed = randomSeed();
   const defender = defenderFromBase(state, balance, mods);
-  const res = resolveBattle(plan.attacker, defender, balance, seed);
+  const res = resolveBattle(plan.attacker, defender, balance, seed, battleWeather(b.col, b.row, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
   const report: BattleReport = res.report;
   await saveBase(tx, b.id, applyDefenseResult(state, report, due, balance, mods));

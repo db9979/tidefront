@@ -375,3 +375,63 @@ der Angreifer 50 % gewinnt; links ohne Würfel wie v1.3, rechts mit):
 - Veteranen-Werte (Schwellen, Gewinn) sind geschätzt; die Kampfbilanz zeigt die Ränge, Admin-Statistik noch nicht.
 - Probekampf und freier Simulator rechnen mit den eigenen Modifikatoren (Forschung, Veteranen), das Ziel ohne
   (Forschung und Erfahrung des Gegners zeigt die Aufklärung nicht).
+
+## F. Wetter und Strom (v1.6)
+
+1. **Wetter ohne gespeicherten Zustand:** `weatherAt(Ort, Zeit, weather)` ist eine reine Funktion (`src/weather.ts`).
+   Die Systeme entstehen je Zeitfenster (`systemEveryHours`) mit Seed `hash(weather.seed, Fenster)`; der „Saison-Seed“ ist
+   damit implizit: Jede Saison liegt in anderen Zeitfenstern und hat eigenes Wetter, ohne dass Server und Karte einen
+   Seed austauschen müssen. Die Karte rechnet dasselbe Feld im Browser (`apps/web/src/map/weather.ts`).
+2. **Zwischenspeicher:** je Ort (0,01°) und Minute (höchstens 50 000 Einträge, dann geleert) und je System. Eine Abfrage
+   kostet ohne Treffer etwa 1,6 µs; eine Fortschreibung über drei Tage braucht 144 Abfragen.
+3. **Lage im Stützpunkt:** `BaseState.site` (Breite, Länge des Felds). Ältere Stände erhalten sie beim Lesen
+   (`engine/store.ts`, `withSite`) und beim nächsten Speichern dauerhaft; keine Schemaänderung. Ohne Lage (Tests, Simulation)
+   gilt `DEFAULT_SITE` (50° N, 0°). Der Speicher-Ladezustand liegt in `BaseState.powerStored`.
+4. **Integration statt Mittelwert:** `settle` integriert stückweise mit konstanten Raten (Schritt 30 min, an der Uhr
+   ausgerichtet, Teilung an Ereignissen). Dadurch ist Fortschreiben in Teilen exakt gleich dem in einem Stück (Test), und
+   Lager- und Bestandsgrenzen wirken wie bisher je Stück.
+5. **Kraftwerk ohne Treibstoff:** Statt eines An-Aus-Flackerns (Treibstoff kommt nach, Kraftwerk springt an, Bestand sofort
+   wieder 0) läuft das Kraftwerk bei Bestand 0 mit der Auslastung, bei der die Treibstoff-Rate 0 ist (Bisektion, 24 Schritte).
+   Ohne Zufluss liefert es nichts. So bleibt die Rechnung zustandslos und zerlegungsgleich.
+6. **Rang 3 und 4 nur bei laufendem Auftrag:** Werft, Kaserne und Flugfeld verbrauchen nur, solange dort eine Ausbildung
+   läuft, das Forschungsamt nur während einer Forschung. Anlagenbau (`anlagen`) braucht keinen Strom.
+7. **Fertigstellung beim Start (nicht beim Abschluss nachgerechnet):** Das Wetter ist deterministisch, die Prognose also
+   bis auf spätere Änderungen am Hafen exakt. Beim Start wird mit dem Auftrag als unbegrenzt laufendem Verbraucher
+   vorausgerechnet (`poweredFinishMs`, Horizont 336 h, Mindesttempo 0,25). Vorteile: Der Spieler sieht eine feste Zeit,
+   die Ereignisse `training_complete`/`research_complete` werden nie verschoben, Abbruch-Erstattung (Restzeit/Gesamtdauer)
+   bleibt unverändert. Nachteil: Wer nach dem Start Strom zubaut, beschleunigt den laufenden Auftrag nicht (wie beim
+   Ausbau, dessen Dauer beim Einreihen feststeht). Halbe Dauer nach Durchbruch wirkt vor der Stromprognose.
+8. **Radar:** Der Stromanteil wird zum Stand des Stützpunkts (`resUpdatedAt`) bestimmt; die Basis-Ansicht und die
+   Sperre `under_attack` rechnen mit dem aktuellen Stand, die Push-Warnung `attack_warning` mit dem Stand bei der Planung
+   des Angriffs (Prognose). Nebel ist eine Modifikator-Quelle „Wetter“ (nur mit Radarstation, auf ganze Prozent gerundet),
+   damit die Info-Blätter ihn aufschlüsseln.
+9. **Reise:** Wetter nur bei Abfahrt, gemittelt über 9 Stützstellen der Route (`MissionInput.weather`, vom Server gesetzt;
+   fehlt es, kein Wettereinfluss, so bleiben alte Tests und die Simulation unverändert). Der Faktor steht im Plan
+   (`Mission.weather`); Rückweg = Hinweg wie bisher. Flugzeuge werden nicht gebremst; das Startverbot gilt nur ohne Schiffe.
+10. **Kampf:** `resolveBattle(…, weather)` als benannter Parameter statt Modifikator, weil Wolken nur den Luftschlag der
+    Bomber treffen sollen (über Modifikatoren nicht von Jägern zu trennen). Weltereignis-Kämpfe (Großflotte, Ring,
+    Schatzschiff) rechnen noch ohne Wetter.
+11. **Nebel und Aufklärung:** Rundung statt Spannen, damit gespeicherte Lagebilder (Kampfvorschau) dieselbe Form behalten;
+    das Feld `uncertain` kennzeichnet sie.
+
+### F1. Simulation v1.6 (`npm run sim`, Abschnitt „Wetter und Strom“)
+
+- Bot (Kraftwerk bei Strommangel) gegenüber v1.4: Tag 7 und 28 Ausgaben, Gebäudestufen und Kraftwerksstufen gleich
+  (±0 %), Treibstoff-Rate −10 bis −14 % durch den Verbrauch der Kraftwerke (9–10 Stufen: 27–30 Treibstoff/h). Nestfahrplan
+  unverändert im Zielfenster (Stufe 1–5: Tag 1, 3, 7, 14, 21).
+- Stromquelle je Lage (Bot mit 45 % Rüstung, Ausgaben gegenüber Kraftwerk): Windpark + Speicher an der Nordsee −0,3 % /
+  −3,1 % (Tag 7/28), Mix Kraftwerk/Wind/Sonne in der Biskaya −2 %, Kraftwerk + Solarfeld im Mittelmeer +2,5 % / +1,4 %.
+  Nur Sonne (auch mit Speicher) reicht nachts nicht (−44 % bis −85 %), nur Wind im Mittelmeer ebenso nicht (−40 % bis −58 %):
+  Sonne und Wind ergänzen das Kraftwerk, Wind kann es im Norden ersetzen.
+- Jahresmittel je Stufe: Windpark Nordsee 44 Strom, Mittelmeer 17; Solarfeld Mittelmeer 35, Nordsee 14 (Kraftwerk 60
+  für 3 Treibstoff/h).
+- Sturmzuschlag der Schiffe: Nordsee → Norwegen Ø +9 % (39 % der Abfahrten über +10 %), Mittelmeer Ø 0 %; Startverbot
+  reiner Luftmissionen Irland 11 %, Nordsee 7 %, Mittelmeer 0 %.
+
+### F2. Offene Punkte
+
+- Weltereignis-Kämpfe ohne Wetter; Kartell-Überfälle mit Wetter am Hafen (Kartell hat keine Flugzeuge, wirkt nur auf die
+  des Verteidigers).
+- Erkannte Angriffe werden mit der aktuellen Vorwarnzeit geprüft: Fällt der Strom des Radars nach der Erkennung aus,
+  verschwindet die Anzeige wieder, bis der Angriff in die verkürzte Vorwarnzeit kommt.
+- Tagesbefehle zu Wetter und Strom sind nicht ergänzt.

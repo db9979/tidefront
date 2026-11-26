@@ -19,11 +19,13 @@ import { researchNote } from "../lib/research.ts";
 import { buildingBreakdown } from "../lib/breakdown.ts";
 import { Breakdown } from "../components/Breakdown.tsx";
 import { IntelPanel, SabotageBanner, sabotagedUntil } from "../components/Intel.tsx"; // Nachrichtendienst
+import { PowerGrid } from "../components/PowerGrid.tsx";
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 
 const GROUPS: { title: string; ids: string[] }[] = [
-  { title: "Wirtschaft", ids: ["stahlwerk", "raffinerie", "chipfabrik", "versorgungshof", "kraftwerk", "lagerkomplex"] },
+  { title: "Wirtschaft", ids: ["stahlwerk", "raffinerie", "chipfabrik", "versorgungshof", "lagerkomplex"] },
+  { title: "Strom", ids: ["kraftwerk", "windpark", "solarfeld", "speicherwerk"] },
   { title: "Militär", ids: ["werft", "kaserne", "flugfeld"] },
   { title: "Führung und Schutz", ids: ["kommandozentrale", "hafenkommandantur", "radarstation", "tiefbunker", "forschungsamt", "nachrichtendienst"] },
 ];
@@ -289,15 +291,10 @@ function StagePictures({ id, level, target }: { id: string; level: number; targe
 }
 
 function Supply({ base }: { base: BaseData }) {
-  const short = base.power.factor < 1;
   return (
     <Card title="Versorgung">
       <div className="space-y-2 text-sm">
-        <div>
-          <div className="flex justify-between"><span className="flex items-center gap-1"><Icon id="strom" size={16} /> Strom</span><span className={`mono ${short ? "text-red-300" : ""}`}>{fmtNum(base.power.demand)} / {fmtNum(base.power.supply)}</span></div>
-          <Bar value={base.power.supply > 0 ? base.power.demand / base.power.supply : base.power.demand > 0 ? 1 : 0} tone={short ? "red" : "green"} />
-          {short && <p className="text-xs text-red-300 mt-1">Zu wenig Strom: Produktion läuft nur mit {fmtNum(base.power.factor * 100)} %. Kraftwerk ausbauen!</p>}
-        </div>
+        <PowerGrid base={base} />
         <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-slate-300 [&>span:nth-child(even)]:mono">
           <span>Lager je Ressource</span><span className="text-right">{fmtNum(base.capacity)}<Note text={researchNote(base.modifiers, "storage")} /></span>
           <span>Bunkerschutz</span><span className="text-right">{fmtNum(base.bunkerProtection)}<Note text={researchNote(base.modifiers, "bunker")} /></span>
@@ -305,7 +302,7 @@ function Supply({ base }: { base: BaseData }) {
           <span>Kommandopunkte</span><span className="text-right">{fmtNum(base.commandPoints)}</span>
           <span>Missionsplätze</span><span className="text-right">{base.activeMissions}/{base.missionSlots}</span>
           <span>Stellplätze Flugfeld</span><span className="text-right">{base.aircraftSlots.used}/{base.aircraftSlots.total}</span>
-          <span>Radar-Vorwarnzeit</span><span className="text-right">{fmtNum(base.radarWarningMinutes, 1)} min<Note text={researchNote(base.modifiers, "radarWarning")} /></span>
+          <span>Radar-Vorwarnzeit</span><span className="text-right">{fmtNum(base.radarWarningMinutes, 1)} min<Note text={researchNote(base.modifierSources.find((m) => m.id === "forschung")?.mods, "radarWarning")} /><Note text={researchNote(base.modifierSources.find((m) => m.id === "wetter")?.mods, "radarWarning")?.replace("Forschung", "Nebel") ?? null} /></span>
         </div>
         {base.versorgungsmangel && <p className="text-red-300">Versorgungsmangel: keine Ausbildung, Angriffswert −20 %. Versorgungshof ausbauen oder Proviant kaufen.</p>}
         {base.deliveries.length > 0 && <DeliveryList base={base} />}

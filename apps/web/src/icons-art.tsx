@@ -49,6 +49,11 @@ export const ART: Record<string, ReactNode> = {
   radarstation: (<><path d="M32 56 V30 M22 56 L32 38 L42 56" {...ln} /><path d="M12 14 Q28 42 52 24 Z" {...p} /><path d="M18 18 Q28 34 46 25" {...ln} strokeWidth={1.4} /><path d="M32 22 L40 12" {...ln} strokeWidth={1.8} /><path d="M48 6 a10 10 0 0 1 8 10 M50 1 a16 16 0 0 1 11 15" fill="none" stroke={SEE} strokeWidth={1.8} strokeLinecap="round" />{GROUND}</>),
   hafenkommandantur: (<><path d="M8 56 V30 H44 V56 Z" {...p} /><path d="M4 30 L26 16 L48 30 Z" {...h} /><path d="M48 56 V14 H56 V56 Z" {...p} /><path d="M48.5 24 H55.5 M48.5 34 H55.5" stroke={SIEGEL} strokeWidth={3} /><path d="M46 14 H58 L56 9 H48 Z" {...hd} strokeWidth={1.6} /><path d="M20 56 V42 H32 V56 M14 36 H20 M32 36 H38" {...ln} strokeWidth={1.8} />{WATER}</>),
 
+  // Strom (v1.6): Windpark, Solarfeld, Speicherwerk.
+  windpark: (<><path d="M20 56 L22 23 L24 56 Z M44 56 L46 33 L48 56 Z" {...p} strokeWidth={1.8} /><path d="M22 22 L23 5 Q19 14 22 22 Z M22 22 L37 29 Q28 21 22 22 Z M22 22 L7 30 Q16 30 22 22 Z" {...h} strokeWidth={1.6} /><path d="M46 32 L47 20 Q43 26 46 32 Z M46 32 L56 37 Q51 31 46 32 Z M46 32 L36 38 Q42 37 46 32 Z" {...h} strokeWidth={1.4} /><circle cx="22" cy="22" r="2.2" fill={INK} /><circle cx="46" cy="32" r="1.8" fill={INK} />{GROUND}</>),
+  solarfeld: (<><circle cx="50" cy="12" r="6" {...p} strokeWidth={1.8} /><path d="M50 2 V0 M60 12 H62 M57 5 L59 3 M41 5 L39 3" {...ln} strokeWidth={1.6} /><path d="M4 48 L13 33 H39 L30 48 Z" {...h} /><path d="M8.5 40.5 H34.5 M22 33 L17 48" {...ln} strokeWidth={1.4} /><path d="M27 56 L35 44 H60 L52 56 Z" {...p} /><path d="M31 50 H56 M47 44 L40 56" {...ln} strokeWidth={1.4} /><path d="M14 48 V56 M26 48 V56" {...ln} strokeWidth={1.8} />{GROUND}</>),
+  speicherwerk: (<><path d="M6 56 V26 H58 V56 Z" {...p} /><path d="M12 32 H22 V50 H12 Z M27 32 H37 V50 H27 Z M42 32 H52 V50 H42 Z" {...h} strokeWidth={1.8} /><path d="M15 26 V21 H19 V26 M45 26 V21 H49 V26" {...ln} strokeWidth={1.8} /><path d="M34 4 L26 16 H32 L28 25 L38 12 H32 Z" {...red} />{GROUND}</>),
+
   forschungsamt: (<><path d="M6 56 V32 H58 V56 Z" {...p} /><path d="M18 32 A14 14 0 0 1 46 32 Z" {...h} /><path d="M33 22 L52 8" {...ln} strokeWidth={3.4} /><path d="M50 4 L56 12" {...ln} strokeWidth={1.8} /><path d="M13 40 H21 V48 H13 Z M43 40 H51 V48 H43 Z M28 56 V42 H36 V56" {...ln} strokeWidth={1.8} />{GROUND}</>),
   // Nachrichtendienst: unscheinbares Kontor mit Funkmast und verhängtem Fenster, Antenne mit Wellen.
   nachrichtendienst: (<><path d="M8 56 V30 L26 20 L44 30 V56 Z" {...p} /><path d="M8 30 L26 20 L44 30" {...ln} /><path d="M15 36 H23 V46 H15 Z" {...h} strokeWidth={1.8} /><path d="M29 56 V42 H37 V56" {...ln} strokeWidth={1.8} /><path d="M52 56 V12 M46 56 L52 30 L58 56" {...ln} strokeWidth={1.8} /><path d="M45 9 a8 8 0 0 1 14 0 M41 5 a13 13 0 0 1 22 0" fill="none" stroke={SEE} strokeWidth={1.6} strokeLinecap="round" /><circle cx="52" cy="12" r="2.4" {...red} />{GROUND}</>),
@@ -103,6 +108,13 @@ export const ART: Record<string, ReactNode> = {
   // Abzeichen aus dem Auftragsbuch: Medaille mit Anker an zwei Bändern.
   hafenmeister: (<><path d="M20 4 L30 26 L24 30 L12 8 Z M44 4 L34 26 L40 30 L52 8 Z" {...hd} strokeWidth={1.8} /><circle cx="32" cy="41" r="18" {...h} /><circle cx="32" cy="41" r="12.5" {...p} strokeWidth={1.6} /><path d="M32 33 V50 M27 37 H37 M25 44 Q26 50 32 50 Q38 50 39 44" fill="none" stroke={MESSING} strokeWidth={2.4} strokeLinecap="round" /><circle cx="32" cy="31.5" r="1.8" fill={MESSING} /></>),
   anker: (<><circle cx="32" cy="11" r="5" {...p} /><path d="M32 16 V55 M21 25 H43 M11 38 Q15 55 32 55 Q49 55 53 38" {...ln} strokeWidth={3.6} /><path d="M7 41 L11 35 L15 41 M49 41 L53 35 L57 41" {...ln} strokeWidth={2.6} /></>),
+
+  // ---------------------------------------------------------------- Wetter (v1.6)
+  wind: (<path d="M6 22 H40 Q50 22 50 14 Q50 7 43 8 M6 33 H52 Q60 33 60 41 Q60 48 53 47 M6 44 H30 Q37 44 37 50 Q37 56 31 55" {...ln} strokeWidth={3} />),
+  sonne: (<><circle cx="32" cy="32" r="12" {...h} /><path d="M32 6 V13 M32 51 V58 M6 32 H13 M51 32 H58 M14 14 L19 19 M45 45 L50 50 M50 14 L45 19 M19 45 L14 50" {...ln} strokeWidth={2.6} /></>),
+  wolke: (<path d="M15 47 Q4 47 6 38 Q8 30 17 32 Q19 19 32 20 Q45 21 46 31 Q58 30 59 39 Q59 47 49 47 Z" {...h} />),
+  nebel: (<path d="M6 20 H40 M46 20 H58 M6 30 H22 M28 30 H58 M6 40 H48 M54 40 H58 M12 50 H34 M40 50 H52" {...ln} strokeWidth={2.8} strokeDasharray="0" />),
+  sturm: (<><path d="M15 38 Q4 38 6 29 Q8 21 17 23 Q19 10 32 11 Q45 12 46 22 Q58 21 59 30 Q59 38 49 38 Z" {...h} /><path d="M33 34 L24 48 H31 L27 60 L40 44 H33 Z" {...red} /></>),
 
   // ---------------------------------------------------------------- Navigation (Linie in Textfarbe)
   "nav-basis": nav("M32 17 V56 M22 26 H42 M10 38 Q14 56 32 56 Q50 56 54 38", <circle cx="32" cy="12" r="5" fill="none" stroke="currentColor" strokeWidth={3.4} />),

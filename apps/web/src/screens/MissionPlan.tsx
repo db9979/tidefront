@@ -9,6 +9,7 @@ import { fmtSeconds, fmtTime } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
 import { HexMap } from "./LazyHexMap.tsx";
 import { Button, Card, ErrorLine, Loading, Stepper } from "../ui.tsx";
+import { RouteWeather } from "../components/RouteWeather.tsx"; // Wetter auf der Route (v1.6)
 // Komfort: Vorlagen, Wiederholen, Probekampf
 import { fitUnits, type PlanPreset } from "../lib/plan-request.ts";
 import { TemplateBar, shortText } from "../components/Templates.tsx";
@@ -181,11 +182,13 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
                 <div>Treibstoff {fmtNum(p.fuelCost)} (hin und zurück)</div>
                 <div>Ankunft {fmtTime(p.arriveAtMs)} · zurück {fmtTime(p.returnAtMs)}</div>
                 {"intercept" in p && p.intercept && <div>Abfangpunkt Feld {p.intercept.col}/{p.intercept.row}</div>}
+                {"weather" in p && p.weather && <RouteWeather w={p.weather} factor={"weatherFactor" in p ? p.weatherFactor : 1} />}
               </>
             ) : (
               <div className="text-red-300">
                 {errorText(p.code)}
                 {p.code === "target_protected" && tInfo?.base?.protection ? ` Grund: ${label(tInfo.base.protection)}. Ein Überfall ist erst danach möglich.` : ""}
+                {"weather" in p && p.weather && <RouteWeather w={p.weather} />}
               </div>
             )}
           </div>

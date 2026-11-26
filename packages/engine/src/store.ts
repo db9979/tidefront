@@ -2,6 +2,7 @@
 // Spieler, Marktzeile.
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { BaseState } from "@tidefront/game-core";
+import { hexCenter } from "@tidefront/world";
 import { tables, type DbOrTx } from "@tidefront/db";
 
 export interface BaseRow {
@@ -11,6 +12,15 @@ export interface BaseRow {
   col: number;
   row: number;
   state: BaseState;
+}
+
+/** Zustand mit Lage des Hafens für das Wetter (v1.6; ältere Stände erhalten sie beim Lesen aus col/row). */
+export function withSite(state: BaseState, col: number, row: number): BaseState {
+  return state.site ? state : { ...state, site: hexCenter(col, row) };
+}
+
+function toRow(r: { id: number; playerId: number; name: string; col: number; row: number; state: unknown }): BaseRow {
+  return { ...r, state: withSite(r.state as BaseState, r.col, r.row) };
 }
 
 /** Sperrt Stützpunkte in aufsteigender ID und liefert sie als Map. */
@@ -24,7 +34,7 @@ export async function lockBases(tx: DbOrTx, ids: number[]): Promise<Map<number, 
     .where(inArray(tables.base.id, unique))
     .orderBy(asc(tables.base.id))
     .for("update");
-  for (const r of rows) out.set(r.id, { ...r, state: r.state as BaseState });
+  for (const r of rows) out.set(r.id, toRow(r));
   return out;
 }
 
@@ -34,12 +44,12 @@ export async function lockBase(tx: DbOrTx, id: number): Promise<BaseRow | null> 
 
 export async function readBase(tx: DbOrTx, id: number): Promise<BaseRow | null> {
   const [r] = await tx.select().from(tables.base).where(eq(tables.base.id, id));
-  return r ? { ...r, state: r.state as BaseState } : null;
+  return r ? toRow(r) : null;
 }
 
 export async function baseOfPlayer(tx: DbOrTx, playerId: number): Promise<BaseRow | null> {
   const [r] = await tx.select().from(tables.base).where(eq(tables.base.playerId, playerId));
-  return r ? { ...r, state: r.state as BaseState } : null;
+  return r ? toRow(r) : null;
 }
 
 export async function saveBase(tx: DbOrTx, id: number, state: BaseState): Promise<void> {

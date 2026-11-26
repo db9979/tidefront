@@ -45,6 +45,7 @@ import { withLuckFactors } from "./battle-stats.ts";
 import { researchView } from "./research.ts";
 import { diplomacyBlock } from "./alliance-core.ts";
 import { intelView } from "./espionage.ts";
+import { gridView, missionWeather } from "./weather.ts";
 
 /** Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband.) */
 export async function incomingDetected(tx: DbOrTx, baseId: number, state: BaseState, nowMs: number, mods?: Modifiers): Promise<boolean> {
@@ -145,6 +146,8 @@ export async function baseView(engine: Engine, playerId: number) {
       capacity: storageCapacity(s, balance, mods),
       rates: rates.perHour,
       power: { supply: rates.powerSupply, demand: rates.powerDemand, factor: rates.powerFactor },
+      /** Stromnetz und Wetter am Hafen (v1.6): Augenblick, Kurve über 24 h, Mangelwarnung. */
+      grid: gridView(s, nowMs, mods),
       upkeepPerHour: rates.upkeepPerHour,
       versorgungsmangel: s.versorgungsmangel,
       buildings,
@@ -255,6 +258,7 @@ export async function missionPreview(
     return { ok: false as const, code: "nest_empty", distanceKm };
   }
   const mods = await modsOf(engine.db, own, nowMs);
+  const weather = missionWeather(own.col, own.row, input.col, input.row, nowMs);
   const r = planMission(
     settle(own.state, nowMs, balance, mods),
     {
@@ -265,12 +269,13 @@ export async function missionPreview(
       activeMissions: await activeMissionCount(engine.db, own.id),
       cargo: input.cargo,
       targetProtection: target.kind === "base" ? target.state!.protection : undefined,
+      weather,
     },
     nowMs,
     balance,
     mods,
   );
-  if (!r.ok) return { ok: false as const, code: r.code, distanceKm };
+  if (!r.ok) return { ok: false as const, code: r.code, distanceKm, weather };
   return {
     ok: true as const,
     distanceKm,
@@ -279,6 +284,8 @@ export async function missionPreview(
     arriveAtMs: r.mission.arriveAtMs,
     returnAtMs: r.mission.returnAtMs,
     target: { kind: target.kind, own: target.playerId === playerId },
+    weather,
+    weatherFactor: r.mission.weather?.shipFactor ?? 1,
   };
 }
 

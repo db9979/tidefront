@@ -59,7 +59,7 @@ test("zu wenig Ressourcen", () => {
 });
 
 test("startTraining zieht Kosten ab; Bauzeit skaliert mit Anzahl und Stufe", () => {
-  const base = makeBase(balance, { resources: rich, buildings: { werft: 3 } });
+  const base = makeBase(balance, { resources: rich, buildings: { werft: 3, kraftwerk: 1 } });
   const res = startTraining(base, "korvette", 4, T0, balance);
   assert.ok(res.ok);
   assert.equal(res.base.resources.stahl, 1e7 - 1600);
@@ -98,7 +98,7 @@ test("Stellplätze begrenzen Flugzeuge (daheim, unterwegs, in Ausbildung)", () =
 });
 
 test("completeTraining: zu früh, dann Einheiten im Bestand", () => {
-  const base = makeBase(balance, { resources: rich, buildings: { werft: 1 }, units: { korvette: 1 } });
+  const base = makeBase(balance, { resources: rich, buildings: { werft: 1, kraftwerk: 1 }, units: { korvette: 1 } });
   const started = startTraining(base, "korvette", 2, T0, balance);
   assert.ok(started.ok);
   assert.deepEqual(completeTraining(started.base, T0 + 599999, balance), { ok: false, code: "not_finished" });
@@ -112,7 +112,7 @@ test("completeTraining: zu früh, dann Einheiten im Bestand", () => {
 });
 
 test("neue Einheiten kosten erst ab Fertigstellung Unterhalt", () => {
-  const base = makeBase(balance, { buildings: { werft: 1 }, resources: { stahl: 5000, treibstoff: 5000, elektronik: 5000, proviant: 1000 } });
+  const base = makeBase(balance, { buildings: { werft: 1, kraftwerk: 1 }, resources: { stahl: 5000, treibstoff: 5000, elektronik: 5000, proviant: 1000 } });
   const started = startTraining(base, "zerstoerer", 5, T0, balance);
   assert.ok(started.ok);
   // fertig nach 3600 s, verbucht eine Stunde später: 1 h +15, 1 h (15 - 20)

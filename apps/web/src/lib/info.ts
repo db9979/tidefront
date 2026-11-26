@@ -11,16 +11,19 @@ export const BUILDING_TEXT: Record<string, { kurz: string; lang: string }> = {
   raffinerie: { kurz: "Produziert Treibstoff", lang: "Treibstoff kosten vor allem Missionen (Hin- und Rückweg werden beim Auslaufen bezahlt). Verbraucht Strom." },
   chipfabrik: { kurz: "Produziert Elektronik", lang: "Elektronik brauchen Flugzeuge, Radar und Anlagen. Verbraucht viel Strom." },
   versorgungshof: { kurz: "Produziert Proviant", lang: "Jede Einheit isst Proviant. Fällt der Bestand auf 0, herrscht Versorgungsmangel: keine Ausbildung, Angriff −20 %." },
-  kraftwerk: { kurz: "Liefert Strom", lang: "Produktionsgebäude brauchen Strom. Reicht er nicht, sinkt die gesamte Gebäudeproduktion im selben Verhältnis." },
+  kraftwerk: { kurz: "Liefert Strom, verbrennt Treibstoff", lang: "Verlässlicher Strom bei jedem Wetter, verbraucht aber {kwFuel} Treibstoff je Stunde und Stufe. Ist kein Treibstoff mehr da, verbrennt es nur, was nachkommt – dann tragen Wind, Sonne und Speicher die Last. Reicht der Strom nicht, wird nach fester Rangfolge versorgt: Radar, Produktion, Ausbildung, Forschung." },
+  windpark: { kurz: "Strom aus Wind", lang: "Liefert bis zu {windMax} Strom je Stufe, im Verhältnis zum Wind am Hafen – ohne Treibstoff. Bei Orkan (Wind über {windCut} %) schalten die Anlagen ab. Lohnt sich vor allem im Norden: Nordsee, Nordatlantik, Skandinavien." },
+  solarfeld: { kurz: "Strom aus Sonne", lang: "Liefert bis zu {solarMax} Strom je Stufe, im Verhältnis zum Sonnenstand; Wolken kosten bis zu {cloudLoss} %. Nachts liefert es nichts. Lohnt sich vor allem im Süden: Mittelmeer und Nordafrika." },
+  speicherwerk: { kurz: "Puffert Strom", lang: "Speichert je Stufe {storeCap} Strom-Stunden und lädt oder liefert bis zu {storeRate} Strom je Stunde. Überschuss am Tag oder bei Wind wird geladen, bei Flaute oder nachts entladen." },
   lagerkomplex: { kurz: "Mehr Lagerplatz", lang: "Produktion füllt das Lager nur bis zur Kapazität. Beute, Lieferungen und Transporte dürfen darüber hinausgehen." },
   tiefbunker: { kurz: "Schützt vor Plünderung", lang: "Diese Menge je Ressource kann bei einem verlorenen Kampf nicht geplündert werden." },
-  werft: { kurz: "Baut Schiffe", lang: "Korvetten, Zerstörer und Landungsschiffe, ab Stufe {ubootLevel} auch U-Boote. Jede Stufe beschleunigt den Bau um {werftSpeed}." },
-  kaserne: { kurz: "Bildet Bodentruppen aus", lang: "Schützen, Pioniere und Kampfpanzer. Nur Bodentruppen können erobern und Beute holen." },
-  flugfeld: { kurz: "Flugzeuge und Stellplätze", lang: "Jede Stufe gibt {slots} Stellplätze. Flugzeuge kämpfen nur innerhalb ihrer Reichweite." },
-  radarstation: { kurz: "Vorwarnung bei Angriffen", lang: "Meldet anrückende Angriffe vor der Ankunft: {radarFirst} Minuten auf Stufe 1, je weitere Stufe {radarStep} mehr. Ohne Radar siehst du einen Angriff erst bei Ankunft." },
+  werft: { kurz: "Baut Schiffe", lang: "Korvetten, Zerstörer und Landungsschiffe, ab Stufe {ubootLevel} auch U-Boote. Jede Stufe beschleunigt den Bau um {werftSpeed}. {trainPower}" },
+  kaserne: { kurz: "Bildet Bodentruppen aus", lang: "Schützen, Pioniere und Kampfpanzer. Nur Bodentruppen können erobern und Beute holen. {trainPower}" },
+  flugfeld: { kurz: "Flugzeuge und Stellplätze", lang: "Jede Stufe gibt {slots} Stellplätze. Flugzeuge kämpfen nur innerhalb ihrer Reichweite. Bei Sturm am Hafen starten reine Luftmissionen nicht. {trainPower}" },
+  radarstation: { kurz: "Vorwarnung bei Angriffen", lang: "Meldet anrückende Angriffe vor der Ankunft: {radarFirst} Minuten auf Stufe 1, je weitere Stufe {radarStep} mehr. Ohne Radar siehst du einen Angriff erst bei Ankunft. Das Radar wird bei Strommangel zuerst versorgt; fehlt Strom, schrumpft die Vorwarnzeit anteilig, ganz ohne Strom gibt es keine. Nebel am Hafen kürzt sie um bis zu {fogRadar} %." },
   forschungsamt: {
     kurz: "Forschung dieser Saison",
-    lang: "Hier wird geforscht: eine Technik gleichzeitig, Boni bis zum Saisonende. Höhere Stufen öffnen weitere Techniken (ab Stufe 3 und 5), forschen 10 % schneller je Stufe und erhöhen die Chance auf einen Durchbruch.",
+    lang: "Hier wird geforscht: eine Technik gleichzeitig, Boni bis zum Saisonende. Höhere Stufen öffnen weitere Techniken (ab Stufe 3 und 5), forschen 10 % schneller je Stufe und erhöhen die Chance auf einen Durchbruch. Forschung braucht Strom und wird bei Mangel zuletzt versorgt (Rang 4); dann dauert sie anteilig länger.",
   },
   nachrichtendienst: {
     kurz: "Spione und Gegenspionage",
@@ -65,6 +68,15 @@ function numbers(b: Balance | undefined): Record<string, string> {
     panzerSize: String(b?.units.kampfpanzer?.size ?? 10),
     mine: fmtNum(b?.defenses.minensperre?.oneShotDamageToLanding ?? 300),
     spyCap: String(b?.units.spion?.maxPerLevel ?? 2),
+    kwFuel: fmtNum(b?.buildings.kraftwerk?.fuelPerHourPerLevel ?? 0),
+    windMax: fmtNum(b?.buildings.windpark?.windPowerPerLevel ?? 0),
+    windCut: String(Math.round((b?.buildings.windpark?.stormCutoff ?? 1) * 100)),
+    solarMax: fmtNum(b?.buildings.solarfeld?.solarPowerPerLevel ?? 0),
+    cloudLoss: String(Math.round((b?.buildings.solarfeld?.cloudLoss ?? 0) * 100)),
+    storeCap: fmtNum(b?.buildings.speicherwerk?.storagePerLevel ?? 0),
+    storeRate: fmtNum(b?.buildings.speicherwerk?.storageRatePerLevel ?? 0),
+    trainPower: "Während der Ausbildung braucht es Strom (Rang 3 nach Radar und Produktion); fehlt er, dauert die Ausbildung anteilig länger – die Fertigstellung wird beim Start mit der Stromprognose festgelegt.",
+    fogRadar: String(Math.round((b?.weather?.fogRadarMax ?? 0) * 100)),
   };
 }
 
@@ -101,7 +113,10 @@ export function buildingEffect(balance: Balance, id: string, level: number): str
     if (level < 1) return `+0 ${label(def.produces)}/h`;
     return `+${fmtNum((def.perHour ?? 0) * g ** (level - 1))} ${label(def.produces)}/h, braucht ${fmtNum((def.powerPerLevel ?? 0) * level)} Strom`;
   }
-  if (def.powerSupplyPerLevel) return `${fmtNum(def.powerSupplyPerLevel * level)} Strom`;
+  if (def.powerSupplyPerLevel) return `${fmtNum(def.powerSupplyPerLevel * level)} Strom, verbraucht ${fmtNum((def.fuelPerHourPerLevel ?? 0) * level)} Treibstoff/h`;
+  if (def.windPowerPerLevel) return `bis ${fmtNum(def.windPowerPerLevel * level)} Strom bei vollem Wind`;
+  if (def.solarPowerPerLevel) return `bis ${fmtNum(def.solarPowerPerLevel * level)} Strom bei voller Sonne`;
+  if (def.storagePerLevel) return `${fmtNum(def.storagePerLevel * level)} Speicher, ${fmtNum((def.storageRatePerLevel ?? 0) * level)} Strom/h`;
   if (def.capacityBase) return `${fmtNum(def.capacityBase * (def.capacityGrowth ?? 1) ** level)} je Ressource`;
   if (def.protectedBase) return `${fmtNum(def.protectedBase * (def.protectedGrowth ?? 1) ** level)} je Ressource geschützt`;
   if (def.commandPointsBase !== undefined) return `${fmtNum(def.commandPointsBase + (def.commandPointsPerLevel ?? 0) * level)} Kommandopunkte`;
@@ -109,15 +124,16 @@ export function buildingEffect(balance: Balance, id: string, level: number): str
     if (level < 1) return "noch keine Spione";
     return `bis ${(balance.units[balance.espionage.unit]?.maxPerLevel ?? 0) * level} Spione, Erfolg und Abwehr +${level * balance.espionage.attackPerLevel}`;
   }
-  if (def.slotsPerLevel) return `${def.slotsPerLevel * level} Stellplätze, Bau ${level < 1 ? "–" : `+${Math.round((def.buildSpeedPerLevel ?? 0) * (level - 1) * 100)} %`}`;
-  if (def.buildSpeedPerLevel) return level < 1 ? "noch nicht gebaut" : `Bautempo +${Math.round(def.buildSpeedPerLevel * (level - 1) * 100)} %`;
+  const power = def.powerPerLevel && level >= 1 ? `, braucht ${fmtNum(def.powerPerLevel * level)} Strom` : "";
+  if (def.slotsPerLevel) return `${def.slotsPerLevel * level} Stellplätze, Bau ${level < 1 ? "–" : `+${Math.round((def.buildSpeedPerLevel ?? 0) * (level - 1) * 100)} %`}${power}`;
+  if (def.buildSpeedPerLevel) return level < 1 ? "noch nicht gebaut" : `Bautempo +${Math.round(def.buildSpeedPerLevel * (level - 1) * 100)} %${power}`;
   if (def.researchSpeedPerLevel !== undefined) {
     if (level < 1) return "noch keine Forschung";
     const bt = balance.research?.breakthrough;
     const chance = bt ? Math.min(bt.maxChance, bt.baseChance + bt.perBuildingLevel * level) : 0;
-    return `Forschung +${Math.round(def.researchSpeedPerLevel * (level - 1) * 100)} % schneller, Durchbruch ${Math.round(chance * 100)} %`;
+    return `Forschung +${Math.round(def.researchSpeedPerLevel * (level - 1) * 100)} % schneller, Durchbruch ${Math.round(chance * 100)} %${power}`;
   }
-  if (def.warningMinutesBase !== undefined) return level < 1 ? "keine Vorwarnung" : `${def.warningMinutesBase + (def.warningMinutesPerLevel ?? 0) * level} min Vorwarnung`;
+  if (def.warningMinutesBase !== undefined) return level < 1 ? "keine Vorwarnung" : `${def.warningMinutesBase + (def.warningMinutesPerLevel ?? 0) * level} min Vorwarnung${power}`;
   if (def.missionSlotsBase !== undefined) {
     const slots = def.missionSlotsBase + Math.floor(level / 2) * (def.missionSlotsPerTwoLevels ?? 0);
     const market = level >= (def.marketFromLevel ?? 99) ? `, Kreditlimit ${fmtNum((def.creditLimitPerLevel ?? 0) * level)}` : "";

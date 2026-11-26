@@ -2,6 +2,8 @@
 import type { Modifiers } from "./modifiers.ts";
 import type { MarketNewsBalance } from "./market/types.ts";
 import type { EspionageBalance, IntelState } from "./espionage.ts";
+import type { CombatWeather, RouteWeather, WeatherBalance } from "./weather.ts";
+import type { PowerBalance, PowerSnapshot } from "./power.ts";
 
 export type ResourceMap = Record<string, number>;
 export type Counts = Record<string, number>;
@@ -38,6 +40,15 @@ export interface BuildingDef {
   warningMinutesPerLevel?: number;
   /** Forschungsamt: Forschung je Stufe über 1 schneller (0,1 = +10 %). */
   researchSpeedPerLevel?: number;
+  /** Strom (v1.6): Rang bei Mangel, Kraftwerk-Treibstoff, Windpark, Solarfeld, Speicherwerk (siehe power.ts). */
+  powerRank?: number;
+  fuelPerHourPerLevel?: number;
+  windPowerPerLevel?: number;
+  stormCutoff?: number;
+  solarPowerPerLevel?: number;
+  cloudLoss?: number;
+  storagePerLevel?: number;
+  storageRatePerLevel?: number;
 }
 
 export type Branch = "see" | "land" | "luft";
@@ -166,6 +177,8 @@ export interface Balance {
   veterans?: VeteranBalance;
   /** Nachrichtendienst und Spionage (espionage.ts); fehlt es, gibt es keine Spionage. */
   espionage?: EspionageBalance;
+  weather?: WeatherBalance; // Wetter (seit v1.6); fehlt es, rechnen Wind und Sonne mit 0
+  power?: PowerBalance;
 }
 
 /** Würfel des Kriegsglücks: 1 = min, die = max, dazwischen linear innerMin … innerMax (luck.ts). */
@@ -339,6 +352,9 @@ export interface BaseState {
   veterancy?: Record<string, number>;
   /** Nachrichtendienst: Sabotage, Desinformation, Erfahrung (espionage.ts); fehlt er, ist nichts davon aktiv. */
   intel?: IntelState;
+  /** Lage des Hafens für das Wetter (v1.6; fehlt sie, gilt power.ts DEFAULT_SITE) und Ladung des Speicherwerks. */
+  site?: GeoPoint;
+  powerStored?: number;
 }
 
 export interface ProductionInfo {
@@ -350,6 +366,7 @@ export interface ProductionInfo {
   powerDemand: number;
   powerFactor: number;
   upkeepPerHour: number;
+  grid: PowerSnapshot; // Stromnetz im Augenblick (Quellen, Rangfolge, Speicher, Wetter)
 }
 
 // ---------------------------------------------------------------- Mission
@@ -370,8 +387,8 @@ export interface MissionInput {
   activeMissions: number;
   /** Nur Transport: mitgeführte Ressourcen. */
   cargo?: ResourceMap;
-  /** Schutzangaben des Ziels (Spielerstützpunkt); Überfälle auf geschützte Ziele werden abgelehnt. */
-  targetProtection?: ProtectionState;
+  targetProtection?: ProtectionState; // Schutz des Ziels; Überfälle auf geschützte Ziele werden abgelehnt
+  weather?: RouteWeather; // Wetter entlang der Route bei Abfahrt (v1.6); fehlt es, kein Wettereinfluss
 }
 
 export interface Mission {
@@ -386,10 +403,9 @@ export interface Mission {
   departAtMs: number;
   arriveAtMs: number;
   returnAtMs: number;
-  /** Zeitpunkt des Rückrufs auf der Hinfahrt; fehlt, wenn der Verband nicht zurückgerufen wurde. */
-  recalledAtMs?: number;
-  /** Tarnung des Angreifers: Faktor auf die Vorwarnzeit des Ziels (fehlt = 1). */
-  warningFactor?: number;
+  recalledAtMs?: number; // Rückruf auf der Hinfahrt; fehlt ohne Rückruf
+  warningFactor?: number; // Tarnung des Angreifers: Faktor auf die Vorwarnzeit des Ziels (fehlt = 1)
+  weather?: { avgWind: number; storminess: number; shipFactor: number }; // Wetter bei Abfahrt (v1.6)
 }
 
 export interface FleetCheck {
@@ -474,6 +490,7 @@ export interface BattleReport {
   defender: SideOutcome;
   loot: ResourceMap;
   wreck: ResourceMap;
+  weather?: CombatWeather; // Wetter am Kampfort (v1.6)
 }
 
 // ---------------------------------------------------------------- Piraten
@@ -488,7 +505,6 @@ export interface NestGarrison {
 export interface RaidForce {
   units: Counts;
   defenseHp: number;
-  /** Gezogener Schwankungsfaktor der Stärke (1 ohne Seed). */
-  strengthFactor: number;
+  strengthFactor: number; // gezogener Schwankungsfaktor der Stärke (1 ohne Seed)
   attacker: AttackerInput;
 }

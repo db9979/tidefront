@@ -118,6 +118,7 @@ function ScoutView({ s, owner }: { s: Record<string, unknown>; owner: string }) 
         <div><span className="text-slate-400">Einheiten:</span> <CountsLine counts={s.units as Counts} /></div>
         <div><span className="text-slate-400">Anlagen:</span> <CountsLine counts={s.defenses as Counts} /></div>
         <div><span className="text-slate-400">Gebäude:</span> {Object.entries(s.buildings as Counts).filter(([, l]) => l > 0).map(([id, l]) => `${label(id)} ${l}`).join(", ") || "–"}</div>
+        {s.uncertain ? <div className="text-xs text-red-300">Sichtung unsicher – Nebel am Ziel ({Math.round(Number((s.uncertain as { fog: number }).fog) * 100)} %): Bestände, Einheiten und Anlagen nur {(s.uncertain as { heavy: boolean }).heavy ? "grob " : ""}gerundet, Gebäude genau.</div> : null}
       </div>
     </Card>
   );

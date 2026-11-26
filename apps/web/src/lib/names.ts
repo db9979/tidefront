@@ -2,7 +2,7 @@
 
 const NAMES: Record<string, string> = {
   kommandozentrale: "Kommandozentrale", stahlwerk: "Stahlwerk", raffinerie: "Raffinerie", chipfabrik: "Chipfabrik",
-  versorgungshof: "Versorgungshof", kraftwerk: "Kraftwerk", lagerkomplex: "Lagerkomplex", tiefbunker: "Tiefbunker",
+  versorgungshof: "Versorgungshof", kraftwerk: "Kraftwerk", windpark: "Windpark", solarfeld: "Solarfeld", speicherwerk: "Speicherwerk", lagerkomplex: "Lagerkomplex", tiefbunker: "Tiefbunker",
   werft: "Werft", kaserne: "Kaserne", flugfeld: "Flugfeld", radarstation: "Radarstation", hafenkommandantur: "Hafenkommandantur", forschungsamt: "Forschungsamt",
   korvette: "Korvette", zerstoerer: "Zerstörer", landungsschiff: "Landungsschiff", uboot: "U-Boot", schuetzen: "Schützen", pioniere: "Pioniere",
   kampfpanzer: "Kampfpanzer", abfangjaeger: "Abfangjäger", jagdbomber: "Jagdbomber", aufklaerungsdrohne: "Aufklärungsdrohne",
@@ -83,6 +83,7 @@ const ERRORS: Record<string, string> = {
   troop_capacity: "Zu wenig Platz auf den Landungsschiffen.",
   command_points: "Der Verband kostet zu viele Kommandopunkte.",
   fuel: "Nicht genug Treibstoff.",
+  storm: "Sturm am Hafen: Reine Luftmissionen starten nicht. Mit Schiffen auslaufen oder das Wetter abwarten.",
   out_of_range: "Ein Flugzeugtyp erreicht das Ziel nicht.",
   no_mission_slot: "Alle Missionsplätze sind belegt.",
   target_protected: "Das Ziel steht unter Schutz.",

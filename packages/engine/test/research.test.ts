@@ -143,9 +143,11 @@ test("Durchbruch: Wurf im Ereignis, Systemnachricht, Wahl idempotent", async () 
   assert.equal(s.research!.levels.funkmesstechnik, 2);
   const view = await baseView(engine, p.playerId);
   assert.equal(view.base!.radarWarningMinutes, 0); // ohne Radarstation keine Vorwarnung
-  await patchBase(p.baseId, (st) => { st.buildings.radarstation = 2; });
+  // v1.6: Radar braucht Strom; Nebel (Quelle „Wetter“) wirkt mit.
+  await patchBase(p.baseId, (st) => { st.buildings.radarstation = 2; st.buildings.kraftwerk = 2; });
   const v2 = await baseView(engine, p.playerId);
-  assert.ok(Math.abs(v2.base!.radarWarningMinutes - 20 * 1.24) < 1e-9);
+  const fog = v2.base!.modifierSources.find((x) => x.id === "wetter")?.mods.radarWarning ?? 1;
+  assert.ok(Math.abs(v2.base!.radarWarningMinutes - 20 * 1.24 * fog) < 1e-9);
 });
 
 test("Modifikatoren: Produktion, Lager und Reise aus der Forschung; weitere Quelle multiplikativ", async () => {

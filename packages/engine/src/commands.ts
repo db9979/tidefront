@@ -26,7 +26,8 @@ import { hexCenter, isCoast, nearestTradePort } from "@tidefront/world";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, marketBalance, GameError, type ChangeKind, type Engine } from "./context.ts";
 import { processDueForBase } from "./events.ts";
-import { activeMissionCount, baseOfPlayer, lockBase, saveBase, scheduleEvent } from "./store.ts";
+import { activeMissionCount, baseOfPlayer, lockBase, saveBase, scheduleEvent, withSite } from "./store.ts";
+import { missionWeather } from "./weather.ts"; // Wetter (v1.6): Sturm auf der Route
 import { incomingDetected } from "./views.ts";
 import { scheduleAttackWarning } from "./event-notices.ts";
 import { trackProgress } from "./challenges.ts";
@@ -119,7 +120,7 @@ export function chooseBase(engine: Engine, playerId: number, key: string, input:
       .from(tables.nest)
       .where(and(eq(tables.nest.col, input.col), eq(tables.nest.row, input.row)));
     if (occupiedNest) fail("field_taken");
-    const state: BaseState = createBase(balance, ctx.nowMs);
+    const state: BaseState = createBase(balance, ctx.nowMs, hexCenter(input.col, input.row));
     state.protection = createProtection(ctx.nowMs, input.nightShieldStartHour, input.tzOffsetMinutes);
     const inserted = await ctx.tx
       .insert(tables.base)
@@ -223,7 +224,7 @@ export interface MissionTarget {
 
 export async function targetAt(tx: Tx, col: number, row: number): Promise<MissionTarget | null> {
   const [b] = await tx.select().from(tables.base).where(and(eq(tables.base.col, col), eq(tables.base.row, row)));
-  if (b) return { kind: "base", id: b.id, col, row, playerId: b.playerId, state: b.state as BaseState };
+  if (b) return { kind: "base", id: b.id, col, row, playerId: b.playerId, state: withSite(b.state as BaseState, col, row) };
   const [n] = await tx.select().from(tables.nest).where(and(eq(tables.nest.col, col), eq(tables.nest.row, row)));
   if (n) return { kind: "nest", id: n.id, col, row, playerId: null, defeatedAt: n.defeatedAt };
   return null;
@@ -259,6 +260,7 @@ export function launchMission(
         activeMissions: await activeMissionCount(ctx.tx, b.id),
         cargo: input.cargo,
         targetProtection: target.kind === "base" ? target.state!.protection : undefined,
+        weather: missionWeather(b.col, b.row, target.col, target.row, ctx.nowMs),
       },
       ctx.nowMs,
       balance,

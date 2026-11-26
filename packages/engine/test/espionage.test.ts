@@ -201,6 +201,8 @@ test("Desinformation: Ziel sieht im nächsten Lagebild über den Absender falsch
   const sent = await launchMission(engine, B.playerId, key(), { type: "aufklaerung", units: { zerstoerer: 1 }, col: A.col, row: A.row });
   assert.equal(sent.ok, true, JSON.stringify(sent));
   const [m] = await db.select().from(tables.mission).where(and(eq(tables.mission.playerId, B.playerId), eq(tables.mission.type, "aufklaerung")));
+  // Sturm kann die Fahrt verlängern (Wetter, v1.6): Frist für diesen Test hinter die Ankunft legen.
+  await patchBase(A.baseId, (s) => { s.intel!.disinfo![String(B.playerId)] = m.arriveAt.getTime() + HOUR; });
   await processDue(engine, m.arriveAt.getTime() + 1000);
   const [done] = await db.select().from(tables.mission).where(eq(tables.mission.id, m.id));
   const rep = await reportGet(engine, B.playerId, done.reportId!);

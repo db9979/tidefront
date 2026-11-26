@@ -113,7 +113,8 @@ export function fuelCost(units: Counts, distance: number, balance: Balance, mods
  * Plant eine Mission: prüft Verband, Missionsplatz, Treibstoff und Ladung, zieht Treibstoff
  * (und Transportgut) ab und verschiebt die Einheiten nach unitsAway.
  * Zusätzliche Codes: bad_type, no_mission_slot, target_protected, cargo_not_allowed, bad_cargo,
- * cargo_capacity, fuel, insufficient_resources.
+ * cargo_capacity, fuel, insufficient_resources, storm (reine Luftmission bei Sturm am Start).
+ * Wetter (`input.weather`, v1.6): Mit Schiffen verlängert der Sturm entlang der Route die Reisezeit (shipFactor).
  */
 export function planMission(
   base: BaseState,
@@ -129,6 +130,9 @@ export function planMission(
   const distance = distanceKm(input.origin, input.target);
   const fleet = validateFleet(base, input.units, distance, balance, mods);
   if (!fleet.ok) return fleet;
+
+  const hasShips = Object.entries(input.units).some(([id, n]) => n > 0 && balance.units[id]?.branch === "see");
+  if (input.weather?.stormAtOrigin && !hasShips) return { ok: false, code: "storm" };
 
   if (type === "ueberfall" && input.targetProtection !== undefined) {
     if (protectionStatus(input.targetProtection, nowMs, balance).protected) {
@@ -164,7 +168,8 @@ export function planMission(
     next.protection = suspendNightShield(next.protection, nowMs, balance);
   }
 
-  const seconds = travelSeconds(input.units, distance, balance, mods) ?? 0;
+  const shipFactor = hasShips && input.weather ? input.weather.shipFactor : 1;
+  const seconds = (travelSeconds(input.units, distance, balance, mods) ?? 0) * shipFactor;
   const travelMs = Math.ceil(seconds * 1000);
   const mission: Mission = {
     type,
@@ -179,6 +184,7 @@ export function planMission(
     arriveAtMs: nowMs + travelMs,
     returnAtMs: nowMs + 2 * travelMs,
     ...(mods?.stealth !== undefined && mods.stealth !== 1 ? { warningFactor: mods.stealth } : {}),
+    ...(input.weather ? { weather: { avgWind: input.weather.avgWind, storminess: input.weather.storminess, shipFactor } } : {}),
   };
   return { ok: true, base: next, mission };
 }
