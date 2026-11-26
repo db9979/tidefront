@@ -7,7 +7,7 @@ import { fmtNum, label } from "../lib/names.ts";
 import { fmtDuration } from "../lib/time.ts";
 import { Badge, Button, Card, ErrorLine, Loading } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
-import { readerValue, usePrices, ValueLine, type Prices } from "./TradeValue.tsx";
+import { DevTag, readerValue, usePrices, ValueLine, type Prices } from "./TradeValue.tsx";
 
 type Offer = Outputs["playerTrade"]["list"]["open"][number];
 type Res = { ok: boolean; code?: string };
@@ -42,13 +42,14 @@ export function PlayerTrade({ base }: { base: BaseData }) {
 
   return (
     <Card title={<><Icon id="transport" size={18} /> Handel mit Spielern</>} right={<span className="text-[11px] text-ink2">Gebühr {fmtNum(fee * 100, 1)} %</span>}>
-      <div className="grid grid-cols-[auto_1fr_6.5rem] gap-2 items-center mb-2">
-        <span className="text-sm text-ink2">Gebe</span>
+      <h3 className="font-display text-[11px] uppercase text-ink2 mb-1.5">Angebot aufgeben</h3>
+      <div className="grid grid-cols-[auto_1fr_6.5rem] gap-2 items-center mb-2 rounded-lg bg-inset border border-rule p-2">
+        <span className="text-sm text-siegel font-display uppercase text-[11px] w-9">Gebe</span>
         <select aria-label="Gebe" className="h-11 rounded-lg field px-2" value={give} onChange={(e) => { setGive(e.target.value); if (e.target.value === want) setWant(assets.find((a) => a !== e.target.value)!); }}>
           {assets.map((a) => <option key={a} value={a}>{label(a)}</option>)}
         </select>
         <input aria-label="Menge geben" inputMode="numeric" className="h-11 rounded-lg field px-2 mono text-right" value={giveQty} onChange={(e) => setGiveQty(e.target.value.replace(/\D/g, ""))} />
-        <span className="text-sm text-ink2">Will</span>
+        <span className="text-sm text-moos font-display uppercase text-[11px] w-9">Will</span>
         <select aria-label="Will" className="h-11 rounded-lg field px-2" value={want} onChange={(e) => setWant(e.target.value)}>
           {assets.filter((a) => a !== give).map((a) => <option key={a} value={a}>{label(a)}</option>)}
         </select>
@@ -62,7 +63,12 @@ export function PlayerTrade({ base }: { base: BaseData }) {
           </button>
         ))}
       </div>
-      {g > 0 && w > 0 && <div className="mb-2"><ValueLine v={readerValue(prices, give, g, want, w)} /></div>}
+      {g > 0 && w > 0 && (
+        <div className="mb-2 flex items-start gap-2">
+          <DevTag v={readerValue(prices, give, g, want, w)} />
+          <div className="flex-1 -mt-1"><ValueLine v={readerValue(prices, give, g, want, w)} /></div>
+        </div>
+      )}
       <p className="text-xs text-ink2 mb-2">
         Bestand {fmtNum(have, give === "credits" ? 2 : 0)} · offene Angebote {ownOpen}/{maxOpen}. Die Ware geht sofort in Treuhand; Rückzug erstattet sie.
         Ressourcen reisen per Konvoi, Kredite werden sofort gutgeschrieben.
@@ -79,9 +85,14 @@ export function PlayerTrade({ base }: { base: BaseData }) {
       <ErrorLine text={create.error} />
       {done && <p className="text-moos text-sm mt-2">{done}</p>}
 
-      <h3 className="font-display text-[11px] uppercase text-ink2 tracking-[0.16em] mt-4 mb-1">Angebote ({open.length})</h3>
-      {open.length === 0 ? <p className="text-sm text-ink2">Keine offenen Angebote.</p> : (
-        <ul className="divide-y divide-navy-700">
+      <div className="flex items-baseline justify-between mt-5 mb-1 border-b-[3px] border-double border-ink pb-1">
+        <h3 className="font-display text-[11px] uppercase text-ink">Angebote ({open.length})</h3>
+        <span className="text-[10.5px] text-ink2">Wert ggü. Börse für dich</span>
+      </div>
+      {open.length === 0 ? (
+        <p className="text-sm text-ink2 py-3 text-center font-serif italic">Keine offenen Angebote – stelle das erste ein.</p>
+      ) : (
+        <ul>
           {open.map((o) => <OfferRow key={o.id} o={o} fee={fee} base={base} prices={prices} busy={accept.busy || withdraw.busy}
             onAccept={() => void accept.run({ offerId: o.id })} onWithdraw={() => void withdraw.run({ offerId: o.id })} />)}
         </ul>
@@ -98,14 +109,16 @@ function OfferRow({ o, fee, base, prices, busy, onAccept, onWithdraw }: { o: Off
   const have = o.want === "credits" ? base.market.credits : base.resources[o.want] ?? 0;
   const net = o.give === "credits" ? Math.floor(o.giveQty * (1 - fee) * 100) / 100 : o.giveQty - Math.floor(o.giveQty * fee);
   return (
-    <li className="py-2">
+    <li className={`py-2.5 pl-2.5 dotted-row border-l-[3px] ${o.own ? "border-l-see" : v?.strong ? (v.pct < 0 ? "border-l-siegel" : "border-l-messing") : "border-l-rule"}`}>
       <div className="flex items-center gap-2 text-sm">
         <strong className="min-w-0 flex-1 truncate">{o.own ? "Dein Angebot" : <>{o.seller.tag && <span className="mono text-ink2 font-normal">[{o.seller.tag}] </span>}{o.seller.name}</>}</strong>
         {o.visibility === "alliance" && <Badge tone="green">Allianz</Badge>}
+        <DevTag v={v} />
       </div>
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm mt-1">
-        <span className="text-ink2 text-xs">gibt</span><Asset id={o.give} qty={o.giveQty} />
-        <span className="text-ink2 text-xs">für</span><Asset id={o.want} qty={o.wantQty} />
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 text-sm mt-1.5 rounded bg-[#fffdf8] border border-rule px-2 py-1.5">
+        <span className="min-w-0"><span className="block text-ink2 text-[10.5px] font-display uppercase">{o.own ? "du gibst" : "du bekommst"}</span><Asset id={o.give} qty={o.giveQty} /></span>
+        <span className="text-ink2" aria-hidden="true">⇄</span>
+        <span className="min-w-0 text-right"><span className="block text-ink2 text-[10.5px] font-display uppercase">{o.own ? "du willst" : "du zahlst"}</span><Asset id={o.want} qty={o.wantQty} /></span>
       </div>
       {!confirm && <ValueLine v={v} />}
       <div className="flex items-center justify-between gap-2 mt-1">

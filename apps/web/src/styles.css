@@ -124,6 +124,25 @@ input, select, textarea { color: var(--color-ink); }
 /* Raute als Aufzählungszeichen (Logbuch). */
 .diamond { width: 9px; height: 9px; transform: rotate(45deg); display: inline-block; flex: none; }
 
+
+/* Börse: Tickerband (Tinte mit Papierschrift), Kurstafel und Kurszettel. */
+.ticker { background: var(--color-ink); color: var(--color-paper); }
+.ticker-up { color: #a6dbb7; }
+.ticker-down { color: #f3a99a; }
+.ticker-track { display: flex; width: max-content; animation: ticker-run 38s linear infinite; }
+.ticker:hover .ticker-track, .ticker:focus-within .ticker-track { animation-play-state: paused; }
+@keyframes ticker-run { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+/* Kurszettel: gezackter Abriss oben und unten. */
+.slip { background: #fffdf8; border-left: 1px solid var(--color-rule); border-right: 1px solid var(--color-rule); position: relative; }
+.slip::before, .slip::after { content: ""; position: absolute; left: 0; right: 0; height: 6px;
+  background: radial-gradient(circle at 4px 6px, transparent 3px, #fffdf8 3.5px) 0 0 / 8px 6px repeat-x; }
+.slip::before { top: -6px; transform: scaleY(-1); }
+.slip::after { bottom: -6px; }
+.dotted-row { border-bottom: 1px dotted var(--color-rule); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  /* Tickerband steht still und lässt sich wischen. */
+  .ticker-track { animation: none !important; }
+  .ticker-scroll { overflow-x: auto; }
 }
