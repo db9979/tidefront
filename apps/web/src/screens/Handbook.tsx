@@ -21,6 +21,8 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
   const [view, setView] = useState(initialView ?? null);
   const [news, setNews] = useState(false);
   const b = meta.data?.balance;
+  // Werte der Weltereignisse (balance.worldEvents; nicht im Balance-Typ des Regelkerns)
+  const we = (b as unknown as { worldEvents?: { spawnIntervalHours: number[]; schatzschiff: { durationHours: number[] }; grossflotte: { announceHours: number; attackIntervalHours: number }; belagerung: { durationHours: number; productionPenalty: number } } } | undefined)?.worldEvents;
 
   const chapters: Chapter[] = [
     {
@@ -99,6 +101,18 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
           <P>Das <strong>Freibeuter-Kartell</strong> greift jeden Hafen etwa alle {b?.pirates.raidIntervalHours ?? 18} Stunden an. Seine Stärke richtet sich nach deinen Schiffen und Anlagen; die Miliz landet auf den Schnellbooten. Bodentruppen daheim sind die beste Abwehr.</P>
           <P><strong>Anfängerschutz:</strong> {b?.protection.beginnerDays ?? 7} Tage nach der Gründung. <strong>Nachtschild:</strong> täglich {b?.protection.nightShieldHours ?? 8} Stunden ab der Startstunde, die du in der Basis wählst – ein eigener Überfall hebt ihn für diese Nacht auf. <strong>Nach einer Niederlage:</strong> {b?.protection.afterDefeatShieldHours ?? 8} Stunden Schutz.</P>
           <P>Das <strong>Radar</strong> zeigt anrückende Angriffe früher. Der <strong>Tiefbunker</strong> schützt einen Grundstock jeder Ressource.</P>
+        </>
+      ),
+    },
+    {
+      id: "weltereignisse", icon: "kartell", title: "Weltereignisse",
+      body: (
+        <>
+          <P>Alle {we?.spawnIntervalHours[0] ? we.spawnIntervalHours[0] / 24 : 2}–{we?.spawnIntervalHours[1] ? we.spawnIntervalHours[1] / 24 : 4} Tage zettelt das Kartell ein <strong>Weltereignis</strong> an, das alle betrifft. Es erscheint auf der Karte mit siegelroten Zeichen; jeder bekommt eine Nachricht, wer in der Nähe ist zusätzlich ein Banner auf der Basis. Tippe das Zeichen an: Das Blatt zeigt Besatzung, Restzeit und Belohnung, „Mission planen“ schickt einen Überfall los. Die Ereignisse werden im Lauf der Saison und mit der Stärke der Spieler härter; Spieler im Anfängerschutz sind nie Ziel.</P>
+          <P><strong>Schatzschiff:</strong> fährt mit Schnellbooten Begleitschutz in {we?.schatzschiff.durationHours[0] ?? 12}–{we?.schatzschiff.durationHours[1] ?? 24} Stunden eine Route in einen Kartellhafen. Beim Planen wird der Abfangpunkt berechnet – ist dein Verband zu langsam, wird die Mission abgelehnt. Nur der erste Verband, der den Begleitschutz versenkt, erhält die große Beute (begrenzt durch seinen Laderaum); wer danach ankommt, findet nur Treibgut.</P>
+          <P><strong>Großflotte:</strong> wird {we?.grossflotte.announceHours ?? 12} Stunden vorher angekündigt, mit Zielregion und Zielhäfen. Dann greift sie die Häfen nacheinander an, alle {we?.grossflotte.attackIntervalHours ?? 3} Stunden einen. Nachtschild, Anfängerschutz und Schutz nach Niederlage gelten: ein geschützter Hafen wird übersprungen. Jeder kann sie vorher und zwischendurch auf See angreifen – ihre Verluste bleiben, und du erhältst Beute anteilig zu deinem Schaden sowie Kampfpunkte.</P>
+          <P><strong>Belagerung:</strong> ein Ring aus Schnellbooten um einen Hafen für {we?.belagerung.durationHours ?? 24} Stunden: keine Börsenkäufe, Produktion −{Math.round((we?.belagerung.productionPenalty ?? 0.3) * 100)} %. Brechen können ihn nur die anderen – Verbündete und Mitspieler schicken einen Überfall auf den Ring und teilen sich den Beutepool nach Schaden.</P>
+          <P>Auf See gibt es keine Landung: Sinken alle Boote, ertrinkt die Miliz an Bord. Kampfberichte gegen Ereignisse findest du wie gewohnt unter Meldungen.</P>
         </>
       ),
     },

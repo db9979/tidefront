@@ -26,3 +26,6 @@ export * from "./backups.ts";
 export * from "./adminstats.ts";
 export * from "./comfort.ts";
 export * from "./summary.ts";
+export { ensureWorldEventPlanner, siegeEffects, clearWorldEvents } from "./world-events.ts";
+export { spawnWorldEvent } from "./world-events-spawn.ts";
+export { worldEventsView } from "./world-events-view.ts";

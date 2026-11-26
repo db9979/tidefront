@@ -31,6 +31,9 @@ import { balance, RAID_LEAD_MS } from "./context.ts";
 import type { EventRow, Handler, HandlerResult } from "./events.ts";
 import { lockBase, lockBases, randomSeed, readBase, saveBase, scheduleEvent } from "./store.ts";
 import { attackWarning, scheduleAttackWarning } from "./event-notices.ts";
+// Weltereignisse (world-events*.ts): Missionsziel „event“ und eigene Ereignistypen.
+import { eventMissionArrive } from "./world-events-missions.ts";
+import { WORLD_EVENT_HANDLERS } from "./world-events-run.ts";
 
 const HOUR_MS = 3600000;
 const none = (): HandlerResult => ({ notify: [] });
@@ -154,6 +157,7 @@ const missionArrive: Handler = async (tx, ev, due) => {
   if (!m || m.status !== "outbound") return none();
   const plan = m.plan as Mission;
   const notify: HandlerResult["notify"] = [[[m.playerId!], "missions"]];
+  const push: NonNullable<HandlerResult["push"]> = [];
   const origin = await readBase(tx, m.baseId!);
   let returning: Counts = { ...plan.units };
   let cargoHome: ResourceMap = {};
@@ -253,6 +257,14 @@ const missionArrive: Handler = async (tx, ev, due) => {
         seed: null, atMs: due, report: { nestLevel: nest.level },
       });
     }
+  } else if (m.targetKind === "event") {
+    // Weltereignis: Kampf, Beute und Ende in world-events-missions.ts.
+    const r = await eventMissionArrive(tx, m, plan, origin, due, attackerName);
+    returning = r.returning;
+    cargoHome = r.cargoHome;
+    reportId = r.reportId;
+    notify.push(...r.notify);
+    push.push(...r.push);
   }
 
   // Wrackgut bergen: freie Ladekapazität der heimkehrenden Schiffe nach der Beute.
@@ -267,7 +279,7 @@ const missionArrive: Handler = async (tx, ev, due) => {
     .where(eq(tables.mission.id, m.id));
   await scheduleEvent(tx, "mission_return", returnAt, { missionId: m.id }, m.baseId);
   notify.push([[m.playerId!], "reports"]);
-  return { notify };
+  return { notify, push };
 };
 
 const missionReturn: Handler = async (tx, ev, due) => {
@@ -371,6 +383,7 @@ export const HANDLERS: Record<string, Handler> = {
   delivery_arrive: deliveryArrive,
   season_end: (tx, ev, due) => import("./season.ts").then((m) => m.seasonEnd(tx, ev, due)),
   attack_warning: attackWarning,
+  ...WORLD_EVENT_HANDLERS,
 };
 
 // Für Tests

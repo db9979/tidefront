@@ -29,6 +29,9 @@ import { activeMissionCount, baseOfPlayer, lockBase, saveBase, scheduleEvent } f
 import { incomingDetected } from "./views.ts";
 import { scheduleAttackWarning } from "./event-notices.ts";
 import { trackProgress } from "./challenges.ts";
+// Weltereignisse: Missionen gegen Ereignisse, Belagerung sperrt Börsenkäufe.
+import { launchAgainstEvent } from "./world-events-missions.ts";
+import { siegeEffects } from "./world-events.ts";
 
 export type Rejected = { ok: false; code: string };
 type Draft<T> = T | (Rejected & { keepWrites?: boolean });
@@ -222,10 +225,12 @@ export function launchMission(
   engine: Engine,
   playerId: number,
   key: string,
-  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap },
+  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number },
 ) {
   return runCommand<{ ok: true; missionId: number; arriveAtMs: number }>(engine, playerId, key, "mission", async (ctx) => {
     const b = await ownBaseLocked(ctx);
+    // Weltereignis als Ziel (world-events-missions.ts).
+    if (input.eventId !== undefined) return launchAgainstEvent(ctx.tx, playerId, b, { ...input, eventId: input.eventId }, ctx.nowMs, ctx.notify);
     const target = await targetAt(ctx.tx, input.col, input.row);
     if (!target) fail("no_target");
     if (target.kind === "base" && target.playerId === playerId) fail("own_base");
@@ -325,6 +330,8 @@ export function trade(
     const b = await ownBaseLocked(ctx);
     const [p] = await ctx.tx.select().from(tables.player).where(eq(tables.player.id, playerId)).for("update");
     if (!balance.resources.includes(request.resource)) fail("bad_qty");
+    // Weltereignis Belagerung: keine Börsenkäufe (Lieferungen) während des Belagerungsrings.
+    if (request.side === "buy" && (await siegeEffects(ctx.tx, b.id, ctx.nowMs))?.marketBlocked) fail("siege");
     const marketState = await loadMarket(ctx.tx, request.resource);
     const state = settle(b.state, ctx.nowMs, balance);
     const stock = {} as Record<ResourceId, number>;

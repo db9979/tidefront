@@ -30,6 +30,7 @@ import { afterRegister, inviteRouter } from "./routers/invite.ts";
 import { dailyRouter } from "./routers/daily.ts";
 import { adminStatsRouter } from "./routers/adminstats.ts";
 import { comfortRouter } from "./routers/comfort.ts";
+import { worldEventsRouter } from "./routers/world-events.ts";
 
 export type { Ctx };
 
@@ -123,10 +124,10 @@ export const appRouter = t.router({
 
   mission: t.router({
     preview: authed
-      .input(z.object({ type: z.string().max(20), units: counts, ...field, cargo: resources.optional() }))
+      .input(z.object({ type: z.string().max(20), units: counts, ...field, cargo: resources.optional(), eventId: z.number().int().min(1).optional() }))
       .query(({ ctx, input }) => missionPreview(ctx.engine, ctx.player.id, input)),
     launch: authed
-      .input(z.object({ key, type: z.string().max(20), units: counts, ...field, cargo: resources.optional() }))
+      .input(z.object({ key, type: z.string().max(20), units: counts, ...field, cargo: resources.optional(), eventId: z.number().int().min(1).optional() }))
       .mutation(({ ctx, input }) => launchMission(ctx.engine, ctx.player.id, input.key, input)),
     recall: authed
       .input(z.object({ key, missionId: z.number().int().min(1) }))
@@ -160,6 +161,7 @@ export const appRouter = t.router({
   season: seasonRouter,
   daily: dailyRouter,
   comfort: comfortRouter,
+  worldEvents: worldEventsRouter,
 });
 
 export type AppRouter = typeof appRouter;

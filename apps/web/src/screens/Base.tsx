@@ -13,6 +13,7 @@ import { DailyOrders } from "../components/Daily.tsx";
 import { HarborVignette, fmtDeg } from "../components/Vignette.tsx";
 import { hexCenter } from "@tidefront/world";
 import { Timeline } from "../components/Timeline.tsx";
+import { WorldEventBanner } from "../components/WorldEvents.tsx";
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 
@@ -68,6 +69,7 @@ export function BaseScreen(props: {
         </div>
       ))}
 
+      <WorldEventBanner onMap={() => props.onGuide({ kind: "tab", tab: "karte" })} />
       <Guide base={base} wonRaid={wonRaid} onAction={props.onGuide} />
       <DailyOrders />
       <Timeline base={base} />

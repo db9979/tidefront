@@ -13,6 +13,8 @@ import { Button, Card, ErrorLine, Loading, Stepper } from "../ui.tsx";
 import { fitUnits, type PlanPreset } from "../lib/plan-request.ts";
 import { TemplateBar, shortText } from "../components/Templates.tsx";
 import { ProbeCard } from "../components/SimLauncher.tsx";
+// Weltereignisse als Ziel
+import { KIND_TITLE, useWorldEvents } from "../components/WorldEvents.tsx";
 
 const TYPES = [
   { id: "ueberfall", text: "Überfall", hint: "Kampf am Ziel, Beute bei Sieg" },
@@ -35,14 +37,16 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   useEffect(() => {
     void queryClient.invalidateQueries(trpc.base.pathFilter());
   }, []);
+  const worldEvents = useWorldEvents(!!target?.eventId);
   const launch = useCommand(
-    (i: { key: string; type: string; units: Record<string, number>; col: number; row: number; cargo?: Record<string, number> }) => trpcClient.mission.launch.mutate(i),
+    (i: { key: string; type: string; units: Record<string, number>; col: number; row: number; cargo?: Record<string, number>; eventId?: number }) => trpcClient.mission.launch.mutate(i),
     () => [trpc.base.pathFilter().queryKey],
   );
 
   const chosen = useMemo(() => Object.fromEntries(Object.entries(units).filter(([, n]) => n > 0)), [units]);
   const cargoSent = type === "transport" ? Object.fromEntries(Object.entries(cargo).filter(([, n]) => n > 0)) : undefined;
-  const input = target ? { type, units: chosen, col: target.col, row: target.row, cargo: cargoSent } : null;
+  const input = target ? { type, units: chosen, col: target.col, row: target.row, cargo: cargoSent, ...(target.eventId ? { eventId: target.eventId } : {}) } : null;
+  const event = target?.eventId ? worldEvents.data?.events.find((e) => e.id === target.eventId) : undefined;
   const preview = useQuery({
     ...trpc.mission.preview.queryOptions(input ?? { type, units: {}, col: 0, row: 0 }),
     enabled: !!input && Object.keys(chosen).length > 0,
@@ -59,10 +63,10 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
     space += (d.troopSpace ?? 0) * n;
     cargoCap += (d.cargo ?? 0) * n;
   }
-  const tInfo = target && {
+  const tInfo = target && !target.eventId ? {
     base: map.data.bases.find((b) => b.col === target.col && b.row === target.row),
     nest: map.data.nests.find((n) => n.col === target.col && n.row === target.row),
-  };
+  } : null;
   const p = preview.data;
 
   if (sent) {
@@ -99,9 +103,10 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         </div>
         <p className="text-sm">
           {!target && "Ziel auf der Karte antippen."}
-          {target && tInfo?.base && <>Stützpunkt <strong>{tInfo.base.name}</strong> ({tInfo.base.owner})</>}
-          {target && tInfo?.nest && <>Piratennest Stufe <strong>{tInfo.nest.level}</strong>{tInfo.nest.empty ? " (verlassen)" : ""}</>}
-          {target && !tInfo?.base && !tInfo?.nest && <span className="text-slate-400">Feld {target.col}/{target.row}: kein Ziel</span>}
+          {target?.eventId && <>Weltereignis <strong>{event ? KIND_TITLE[event.kind] : "…"}</strong>{event?.siege ? ` vor ${event.siege.name}` : ""} – nur Überfall; {event?.kind === "schatzschiff" ? "Abfangpunkt wird berechnet." : "Kampf auf See."}<br /></>}
+          {target && !target.eventId && tInfo?.base && <>Stützpunkt <strong>{tInfo.base.name}</strong> ({tInfo.base.owner})</>}
+          {target && !target.eventId && tInfo?.nest && <>Piratennest Stufe <strong>{tInfo.nest.level}</strong>{tInfo.nest.empty ? " (verlassen)" : ""}</>}
+          {target && !target.eventId && !tInfo?.base && !tInfo?.nest && <span className="text-slate-400">Feld {target.col}/{target.row}: kein Ziel</span>}
         </p>
       </Card>
 
@@ -163,6 +168,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
                 <div>Reisezeit {fmtSeconds(p.travelSeconds)} je Richtung</div>
                 <div>Treibstoff {fmtNum(p.fuelCost)} (hin und zurück)</div>
                 <div>Ankunft {fmtTime(p.arriveAtMs)} · zurück {fmtTime(p.returnAtMs)}</div>
+                {"intercept" in p && p.intercept && <div>Abfangpunkt Feld {p.intercept.col}/{p.intercept.row}</div>}
               </>
             ) : (
               <div className="text-red-300">{errorText(p.code)}</div>

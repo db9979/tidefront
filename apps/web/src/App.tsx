@@ -24,7 +24,8 @@ import { parseOpenUrl, type OpenTarget } from "./lib/push.ts";
 import { usePlanRequests, type PlanPreset } from "./lib/plan-request.ts";
 
 export type Tab = "basis" | "karte" | "truppen" | "berichte" | "boerse";
-export interface Target { col: number; row: number }
+/** Missionsziel; eventId: Weltereignis (Schatzschiff, Großflotte, Belagerung). */
+export interface Target { col: number; row: number; eventId?: number }
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "basis", label: "Basis", icon: "nav-basis" },
