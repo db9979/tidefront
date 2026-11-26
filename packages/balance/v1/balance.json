@@ -1,5 +1,5 @@
 {
-  "version": "v1.8",
+  "version": "v1.9",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -19,8 +19,8 @@
     "chipfabrik": { "cost": { "stahl": 200, "treibstoff": 60, "elektronik": 20 }, "seconds": 40, "produces": "elektronik", "perHour": 30, "powerPerLevel": 15 },
     "versorgungshof": { "cost": { "stahl": 100, "treibstoff": 20, "elektronik": 0 }, "seconds": 20, "produces": "proviant", "perHour": 80, "powerPerLevel": 6 },
     "kraftwerk": { "cost": { "stahl": 140, "treibstoff": 40, "elektronik": 10 }, "seconds": 25, "powerSupplyPerLevel": 60, "fuelPerHourPerLevel": 3 },
-    "windpark": { "cost": { "stahl": 180, "treibstoff": 10, "elektronik": 40 }, "seconds": 30, "windPowerPerLevel": 80, "stormCutoff": 0.95 },
-    "solarfeld": { "cost": { "stahl": 120, "treibstoff": 0, "elektronik": 70 }, "seconds": 30, "solarPowerPerLevel": 150, "cloudLoss": 0.7 },
+    "windpark": { "cost": { "stahl": 180, "treibstoff": 10, "elektronik": 40 }, "seconds": 30, "windPowerPerLevel": 90, "stormCutoff": 0.95 },
+    "solarfeld": { "cost": { "stahl": 120, "treibstoff": 0, "elektronik": 70 }, "seconds": 30, "solarPowerPerLevel": 180, "cloudLoss": 0.7 },
     "speicherwerk": { "cost": { "stahl": 220, "treibstoff": 20, "elektronik": 90 }, "seconds": 40, "storagePerLevel": 200, "storageRatePerLevel": 40 },
     "lagerkomplex": { "cost": { "stahl": 250, "treibstoff": 0, "elektronik": 0 }, "seconds": 30, "capacityBase": 5000, "capacityGrowth": 1.5 },
     "tiefbunker": { "cost": { "stahl": 300, "treibstoff": 0, "elektronik": 50 }, "seconds": 45, "protectedBase": 300, "protectedGrowth": 1.4 },
@@ -201,8 +201,9 @@
   },
   "weather": {
     "seed": 1906,
-    "systemEveryHours": 12,
+    "systemEveryHours": 18,
     "systemLifeHours": 108,
+    "highLifeHours": 170,
     "stormFrom": 0.8,
     "shipSlowFrom": 0.5,
     "shipSlowFull": 0.9,

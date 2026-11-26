@@ -49,8 +49,17 @@ export type BaseData = NonNullable<Outputs["base"]["get"]["base"]>;
 export type MapData = Outputs["world"]["map"];
 export type Balance = Outputs["meta"]["balance"];
 
-/** Antworten mit serverNow aktualisieren den Zeitversatz. */
+/**
+ * Frische Antworten mit serverNow aktualisieren den Zeitversatz. Nur bei erfolgreichem Abruf und nur, wenn die Daten
+ * neuer sind als die zuletzt übernommenen: Statuswechsel (Abruf beginnt, Invalidierung, Fehler) melden ebenfalls
+ * „updated“, tragen aber noch die alten Daten – deren serverNow würde die Uhr zurückspringen lassen.
+ */
+let serverTimeFrom = 0;
 queryClient.getQueryCache().subscribe((e) => {
+  if (e.type !== "updated" || e.action.type !== "success") return;
   const data = e.query.state.data as { serverNow?: number } | undefined;
-  if (e.type === "updated" && data && typeof data.serverNow === "number") noteServerTime(data.serverNow);
+  const at = e.query.state.dataUpdatedAt;
+  if (!data || typeof data.serverNow !== "number" || at <= serverTimeFrom) return;
+  serverTimeFrom = at;
+  noteServerTime(data.serverNow);
 });

@@ -1,7 +1,9 @@
-// Wetter (seit v1.6): deterministisches Wetterfeld über der Karte, rein aus Ort, Zeit und Seed.
-// Wenige ziehende Wettersysteme (Tiefs und Hochs) wandern von West nach Ost; dazu regionale Klimatendenzen
-// (Nordatlantik/Nordsee windiger und wolkiger, Mittelmeer/Nordafrika sonniger), weiches Rauschen über Raum und
-// Zeit, Nebel an den bekannten Nebelküsten und Tageslicht aus dem Sonnenstand. Einzige Zufallsquelle: mulberry32.
+// Wetter (seit v1.6, Modell überarbeitet in v1.9): deterministisches Wetterfeld über der Karte, rein aus Ort, Zeit
+// und Seed. Wenige ziehende Wettersysteme: Tiefs ziehen nach Nordost (stärkster Wind im Ring um den Kern und an der
+// Südflanke, im Winter kräftiger), Hochs ziehen langsam und leben länger. Dazu regionale Klimatendenzen (Nordatlantik
+// windiger und wolkiger, Mittelmeer sonniger, regionale Winde: Mistral, Meltemi, Levante bei Gibraltar, Bora),
+// weiches Rauschen über Raum und Zeit, Nebel an den Nebelküsten (jahreszeitlich) und Tageslicht aus dem Sonnenstand.
+// Einzige Zufallsquelle: mulberry32.
 import type { GeoPoint } from "./types.ts";
 import { mulberry32 } from "./rng.ts";
 
@@ -15,8 +17,10 @@ export interface WeatherBalance {
   seed: number;
   /** Alle so viele Stunden entsteht ein neues Wettersystem im Westen. */
   systemEveryHours: number;
-  /** Lebensdauer eines Systems in Stunden (Stärke steigt und fällt sinusförmig). */
+  /** Lebensdauer eines Tiefs in Stunden (Stärke steigt und fällt sinusförmig). */
   systemLifeHours: number;
+  /** Lebensdauer eines Hochs in Stunden (je System ±10 % gestreut); fehlt der Wert, wie Tiefs. */
+  highLifeHours?: number;
   /** Sturm ab dieser Windstärke (0–1). */
   stormFrom: number;
   /** Schiffe: Bremsung beginnt ab diesem Wind und ist ab `shipSlowFull` voll (`shipSlowMax`, 0,3 = +30 % Reisezeit). */
@@ -56,6 +60,8 @@ interface WeatherSystem {
   vLat: number;
   vLon: number;
   radiusKm: number;
+  /** Lebensdauer in Stunden. */
+  lifeH: number;
   /** +1 Tief (Wind, Wolken), −1 Hoch (ruhig, klar). */
   sign: number;
   intensity: number;
@@ -88,12 +94,13 @@ function systemOf(slot: number, wb: WeatherBalance): WeatherSystem {
   const hit = systemCache.get(key);
   if (hit) return hit;
   const rng = mulberry32(hash32(wb.seed, slot, 7));
-  const low = rng() < 0.62;
-  const lat0 = low ? 44 + 22 * rng() : 30 + 20 * rng();
-  const lon0 = low ? -72 + 32 * rng() : -55 + 30 * rng();
-  const speedKmh = low ? 32 + 28 * rng() : 10 + 14 * rng();
+  const low = rng() < 0.66;
+  // Tiefs entstehen über dem Westatlantik und ziehen nach Nordost; Hochs (Azorenhoch) wandern langsam.
+  const lat0 = low ? 44 + 18 * rng() : 30 + 16 * rng();
+  const lon0 = low ? -62 + 32 * rng() : -55 + 30 * rng();
+  const speedKmh = low ? 32 + 28 * rng() : 5 + 10 * rng();
   const vLon = speedKmh / (KM_PER_DEG * Math.cos(lat0 * RAD));
-  const vLat = low ? (rng() - 0.25) * 0.1 : (rng() - 0.5) * 0.06;
+  const vLat = low ? 0.02 + 0.06 * rng() : (rng() - 0.5) * 0.04;
   const sys: WeatherSystem = {
     bornH: slot * wb.systemEveryHours + rng() * wb.systemEveryHours,
     lat0,
@@ -101,6 +108,7 @@ function systemOf(slot: number, wb: WeatherBalance): WeatherSystem {
     vLat,
     vLon,
     radiusKm: low ? 450 + 550 * rng() : 800 + 700 * rng(),
+    lifeH: low ? wb.systemLifeHours : (wb.highLifeHours ?? wb.systemLifeHours) * (0.9 + 0.2 * rng()),
     sign: low ? 1 : -1,
     intensity: 0.55 + 0.45 * rng(),
   };
@@ -112,13 +120,14 @@ function systemOf(slot: number, wb: WeatherBalance): WeatherSystem {
 /** Aktive Systeme zur Stunde `h` mit Lebensphase (0–1, sinusförmig). */
 function activeSystems(h: number, wb: WeatherBalance): { sys: WeatherSystem; env: number }[] {
   const out: { sys: WeatherSystem; env: number }[] = [];
-  const first = Math.floor((h - wb.systemLifeHours) / wb.systemEveryHours) - 1;
+  const maxLife = Math.max(wb.systemLifeHours, 1.1 * (wb.highLifeHours ?? 0));
+  const first = Math.floor((h - maxLife) / wb.systemEveryHours) - 1;
   const last = Math.floor(h / wb.systemEveryHours);
   for (let k = first; k <= last; k++) {
     const sys = systemOf(k, wb);
     const age = h - sys.bornH;
-    if (age <= 0 || age >= wb.systemLifeHours) continue;
-    out.push({ sys, env: Math.sin((Math.PI * age) / wb.systemLifeHours) ** 0.7 });
+    if (age <= 0 || age >= sys.lifeH) continue;
+    out.push({ sys, env: Math.sin((Math.PI * age) / sys.lifeH) ** 0.7 });
   }
   return out;
 }
@@ -178,19 +187,35 @@ function medShare(lat: number, lon: number): number {
   return smooth(47, 42, lat) * smooth(-9, -4, lon) * smooth(40, 34, lon);
 }
 
-/** Regionale Grundwerte: Wind, Wolken, Nebelneigung. */
+/** Jahreszeit: +1 Mitte Januar (Winter der Nordhalbkugel), −1 Mitte Juli. */
+export function seasonAt(ms: number): number {
+  return Math.cos((2 * Math.PI * (dayOfYear(ms) - 15)) / 365);
+}
+
+/**
+ * Regionale Grundwerte: Wind, Wolken, Nebelneigung. Der Grundwind ist mäßig; Stürme bringen die Tiefs.
+ * Regionale Winde: Mistral (Golf du Lion, Winter), Meltemi (Ägäis, Sommer), Levante/Poniente (Straße von Gibraltar),
+ * Bora (Adria, Winter). Nebel an den Nebelküsten, im Sommer und in den Übergangszeiten häufiger.
+ */
 export function climateAt(lat: number, lon: number, ms: number): { wind: number; clouds: number; fog: number } {
   const north = smooth(40, 62, lat);
   const med = medShare(lat, lon);
   const south = smooth(36, 28, lat);
-  // Winter (Nordhalbkugel) etwas windiger.
-  const winter = Math.cos((2 * Math.PI * (dayOfYear(ms) - 15)) / 365);
-  const wind = 0.27 + 0.2 * north - 0.06 * med - 0.05 * south + 0.05 * winter * north;
-  const clouds = 0.22 + 0.4 * north - 0.15 * med - 0.12 * south + 0.06 * winter;
-  const fog = Math.max(
-    0.85 * bump(lat, lon, 46, -52, 6),
-    0.95 * bump(lat, lon, 55, 4, 5),
-    0.35 * bump(lat, lon, 50, -5, 4),
+  const winter = seasonAt(ms);
+  const win = Math.max(0, winter);
+  const summer = Math.max(0, -winter);
+  const wind = 0.27 + 0.05 * north - 0.05 * med - 0.04 * south + 0.06 * winter * (0.2 + north)
+    + 0.32 * win * bump(lat, lon, 42.5, 5, 2.5) // Mistral
+    + 0.22 * summer * bump(lat, lon, 38, 25.5, 3) // Meltemi
+    + 0.12 * bump(lat, lon, 36, -5.5, 1.2) // Gibraltar
+    + 0.1 * win * bump(lat, lon, 44, 15, 2.5); // Bora
+  const clouds = 0.56 + 0.12 * north - 0.3 * med * (0.4 + summer) - 0.12 * south + 0.06 * winter;
+  const fogSeason = 0.5 + 0.5 * summer + 0.25 * (1 - Math.abs(winter));
+  const fog = fogSeason * Math.max(
+    0.58 * bump(lat, lon, 45, -51, 5), // Neufundlandbank
+    0.57 * bump(lat, lon, 55, 3, 4.5), // Nordsee
+    0.45 * bump(lat, lon, 50, -4, 3), // Ärmelkanal
+    0.42 * bump(lat, lon, 40, -10, 2.5), // Portugal (Auftriebsnebel)
     0.12 * north,
   );
   return { wind, clouds, fog };
@@ -208,6 +233,8 @@ function computeWeather(lat: number, lon: number, ms: number, wb: WeatherBalance
   let cloudAdd = 0;
   let calm = 0;
   const kmLon = KM_PER_DEG * Math.cos(lat * RAD);
+  // Tiefs im Winter kräftiger als im Sommer.
+  const season = 0.75 + 0.25 * seasonAt(ms);
   for (const { sys, env } of activeSystems(h, wb)) {
     const age = h - sys.bornH;
     const cLat = sys.lat0 + sys.vLat * age;
@@ -219,11 +246,15 @@ function computeWeather(lat: number, lon: number, ms: number, wb: WeatherBalance
     const g = Math.exp(-q);
     const s = sys.intensity * env;
     if (sys.sign > 0) {
-      windAdd += 0.45 * s * g;
-      cloudAdd += 0.45 * s * Math.exp(-q / 1.7);
+      // Wind: im Kern schwächer, am stärksten im Ring um etwa einen Radius, an der Südflanke kräftiger.
+      const south = 1 - 0.3 * Math.max(-1, Math.min(1, dy / sys.radiusKm));
+      windAdd += 0.35 * s * season * south * (0.3 * g + 0.7 * q * Math.exp(1 - q));
+      // Wolkenschirm etwas nach Osten versetzt (Warmfront voraus).
+      const qc = ((dx - 0.4 * sys.radiusKm) ** 2 + dy * dy) / (sys.radiusKm * sys.radiusKm);
+      cloudAdd += 0.45 * s * Math.exp(-qc / 1.7);
     } else {
-      windAdd -= 0.1 * s * g;
-      cloudAdd -= 0.28 * s * g;
+      windAdd -= 0.07 * s * g;
+      cloudAdd -= 0.15 * s * g;
       calm += s * g;
     }
   }
@@ -233,10 +264,10 @@ function computeWeather(lat: number, lon: number, ms: number, wb: WeatherBalance
   const wind = clamp01(base.wind + windAdd + 0.1 * noise3(wb.seed ^ 0x1111, nx, ny, nt));
   const clouds = clamp01(base.clouds + cloudAdd + 0.16 * noise3(wb.seed ^ 0x2222, nx, ny, nt));
   const daylight = daylightAt(lat, lon, ms);
-  // Nebel: Nebelküsten, wenig Wind, eher nachts und morgens, unter Hochdruck häufiger.
-  const still = clamp01(1 - wind / 0.55);
+  // Nebel: Nebelküsten, wenig Wind (bei Sturm nie), eher nachts und morgens, unter Hochdruck häufiger.
+  const still = clamp01(1 - (wind - 0.2) / 0.45);
   const fogNoise = 0.5 + 0.5 * noise3(wb.seed ^ 0x3333, lon / 4, lat / 4, h / 6);
-  const fog = clamp01(base.fog * still * (0.55 + 0.45 * (1 - daylight)) * (0.6 + 0.8 * fogNoise) + 0.25 * base.fog * Math.min(1, calm));
+  const fog = clamp01(base.fog * still * ((0.75 + 0.25 * (1 - daylight)) * (0.6 + 0.8 * fogNoise) + 0.25 * Math.min(1, calm)));
   return { wind, clouds, fog, daylight, storm: wind >= wb.stormFrom };
 }
 
@@ -259,6 +290,17 @@ export function stormShare(wind: number, wb: WeatherBalance): number {
   return clamp01((wind - wb.shipSlowFrom) / (wb.shipSlowFull - wb.shipSlowFrom));
 }
 
+/** Windstärke 0–1 in Beaufort (0–12): Bremsung ab 0,5 ≈ Bft 6, Sturm ab 0,8 = Bft 9. */
+export function beaufort(wind: number): number {
+  return Math.max(0, Math.min(12, Math.round(wind * 11.25)));
+}
+
+/** Bezeichnungen der Beaufort-Skala (Index = Bft). */
+export const BEAUFORT_WORDS = [
+  "Windstille", "leiser Zug", "leichte Brise", "schwache Brise", "mäßige Brise", "frische Brise", "starker Wind",
+  "steifer Wind", "stürmischer Wind", "Sturm", "schwerer Sturm", "orkanartiger Sturm", "Orkan",
+] as const;
+
 /** Sonnenertrag 0–1 für Solarfelder: Tageslicht × (1 − cloudLoss · Bewölkung). */
 export function sunshine(w: Weather, cloudLoss: number): number {
   return w.daylight * (1 - cloudLoss * w.clouds);
@@ -280,6 +322,22 @@ export interface RouteWeather {
   shipFactor: number;
   /** Sturm am Start (Flugzeuge starten nicht). */
   stormAtOrigin: boolean;
+  /** Wetter am Ziel zur voraussichtlichen Ankunft (nur Anzeige in der Planung; deterministisch). */
+  atTarget?: ArrivalWeather;
+}
+
+/** Wetter am Ziel zur Ankunft: Nebel (Aufklärung), Wind (Luftkampf) und Wolken (Luftschlag). */
+export interface ArrivalWeather {
+  atMs: number;
+  wind: number;
+  clouds: number;
+  fog: number;
+  storm: boolean;
+}
+
+export function arrivalWeather(target: GeoPoint, arriveMs: number, wb: WeatherBalance): ArrivalWeather {
+  const w = weatherAt(target, arriveMs, wb);
+  return { atMs: arriveMs, wind: w.wind, clouds: w.clouds, fog: w.fog, storm: w.storm };
 }
 
 /** Wetter entlang der Großkreis-Näherung (lineare Interpolation) zwischen Start und Ziel zur Abfahrt. */

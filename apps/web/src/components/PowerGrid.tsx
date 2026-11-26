@@ -1,5 +1,6 @@
 // Versorgung mit Strom (v1.6): Augenblick nach Quelle, Rangfolge der Verbraucher, Speicher, Stromkurve über 24 h
 // und Wettervorhersage am Hafen. Kupferstich-Stil: Tinte, Schraffur, wenige Kennfarben.
+import { BEAUFORT_WORDS, beaufort } from "@tidefront/game-core";
 import type { BaseData } from "../lib/trpc.ts";
 import { fmtNum } from "../lib/names.ts";
 import { serverNow } from "../lib/time.ts";
@@ -27,6 +28,11 @@ const RANKS = [
 /** Volle Stunde in Ortszeit des Geräts. */
 function hourOf(ms: number): number {
   return new Date(ms - (serverNow() - Date.now())).getHours();
+}
+
+/** Uhrzeit hh:mm in Ortszeit des Geräts. */
+function clockOf(ms: number): string {
+  return new Date(ms - (serverNow() - Date.now())).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 }
 
 const sum = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a + b, 0);
@@ -77,13 +83,13 @@ export function PowerGrid({ base }: { base: BaseData }) {
       </div>
       {g.warning ? (
         <p className="text-xs text-red-300 font-semibold" role="status">
-          {g.warning.atMs - serverNow() < 3600000 ? "Jetzt" : `Ab ${hourOf(g.warning.atMs)} Uhr`} fehlen {fmtNum(g.warning.missing)} Strom – {g.warning.text}
+          {g.warning.atMs - serverNow() < 60000 ? "Jetzt" : `Ab ${hourOf(g.warning.atMs)} Uhr`} fehlen {fmtNum(g.warning.missing)} Strom – {g.warning.text}
         </p>
       ) : (
         <p className="text-xs text-moos">Die nächsten {g.curve.length} Stunden reicht der Strom.</p>
       )}
       <Curve curve={g.curve} />
-      <Forecast curve={g.curve} stormFrom={g.stormFrom} />
+      <Forecast g={g} />
     </div>
   );
 }
@@ -141,33 +147,38 @@ function Curve({ curve }: { curve: Hour[] }) {
   );
 }
 
-function weatherIcon(h: Hour, stormFrom: number): string {
-  if (h.storm || h.wind >= stormFrom) return "sturm";
-  if (h.fog >= 0.35) return "nebel";
+function weatherIcon(h: Hour, g: Grid): string {
+  if (h.storm || h.wind >= g.stormFrom) return "sturm";
+  if (h.fog >= g.fogFrom) return "nebel";
   if (h.clouds >= 0.55) return "wolke";
-  if (h.daylight > 0.05) return "sonne";
-  return h.wind >= 0.5 ? "wind" : "wolke";
+  if (h.wind >= g.slowFrom) return "wind";
+  return h.daylight > 0.05 ? "sonne" : "mond";
 }
 
-/** Wettervorhersage am Hafen alle drei Stunden: Wind, Sonne, Bewölkung, Nebel; Sturmwarnung. */
-function Forecast({ curve, stormFrom }: { curve: Hour[]; stormFrom: number }) {
-  const slots = curve.filter((_, i) => i % 3 === 0);
-  const storm = curve.find((h) => h.storm);
+/** Wettervorhersage am Hafen alle drei Stunden: Wind, Sonne, Bewölkung, Nebel; Sturmwarnung auf 5 Minuten genau. */
+function Forecast({ g }: { g: Grid }) {
+  const slots = g.curve.filter((_, i) => i % 3 === 0);
+  const storm = g.stormWarning;
+  const text = "Schiffe langsamer, reine Luftmissionen starten nicht, Windparks schalten über Orkanstärke ab.";
   return (
     <div>
       <div className="text-[11px] uppercase tracking-wider text-ink2 mb-1 font-display">Wetter am Hafen</div>
-      {storm && <p className="text-xs text-red-300 font-semibold mb-1">Sturmwarnung ab {hourOf(storm.atMs)} Uhr: Schiffe langsamer, reine Luftmissionen starten nicht, Windparks schalten über Orkanstärke ab.</p>}
+      {storm !== null && (
+        <p className="text-xs text-red-300 font-semibold mb-1">
+          {storm - serverNow() < 5 * 60000 ? "Sturm am Hafen" : `Sturmwarnung ab ${clockOf(storm)} Uhr`}: {text}
+        </p>
+      )}
       <div className="grid grid-cols-8 gap-0.5 text-center text-[10px]">
         {slots.map((h) => (
           <div key={h.atMs} className="rounded border border-rule bg-paper py-0.5">
             <div className="mono">{hourOf(h.atMs)}h</div>
-            <Icon id={weatherIcon(h, stormFrom)} size={22} />
-            <div className="mono" title="Wind">{Math.round(h.wind * 100)}</div>
+            <Icon id={weatherIcon(h, g)} size={22} />
+            <div className="mono" title={`Wind: ${BEAUFORT_WORDS[beaufort(h.wind)]}`}>{beaufort(h.wind)}</div>
             <div className="mono text-ink2" title="Bewölkung">{Math.round(h.clouds * 100)}</div>
           </div>
         ))}
       </div>
-      <p className="text-[10.5px] text-ink2 mt-0.5">Zeilen: Wind und Bewölkung in Prozent. Nebel kürzt die Radar-Vorwarnzeit und trübt Aufklärung.</p>
+      <p className="text-[10.5px] text-ink2 mt-0.5">Zeilen: Wind in Beaufort, Bewölkung in Prozent. Nebel kürzt die Radar-Vorwarnzeit und trübt Aufklärung.</p>
     </div>
   );
 }

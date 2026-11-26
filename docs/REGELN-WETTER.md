@@ -1,4 +1,4 @@
-# TIDEFRONT – Wetter und Strom (Balance v1.6)
+# TIDEFRONT – Wetter und Strom (Balance v1.6, Wettermodell v1.9)
 
 Teil von `docs/REGELN.md` (dort aus Platzgründen ausgelagert). Verbindlich für `packages/game-core`.
 
@@ -9,25 +9,55 @@ Werte unter `weather`, `power` und bei den Gebäuden in `balance.json`; Kern in
 
 Rein und deterministisch aus Ort, Zeit und `weather.seed`; einzige Zufallsquelle ist `mulberry32`.
 
-- Alle `systemEveryHours` (12) Stunden entsteht im Westen ein Wettersystem (Seed aus Grund-Seed und Zeitfenster): 62 % Tiefs
-  (Breite 44–66°, Zug 32–60 km/h nach Osten), sonst Hochs (Azorenhoch, langsam). Lebensdauer `systemLifeHours` (108 h),
-  Stärke sinusförmig über die Lebenszeit, Wirkung als Glocke um den Kern. Ein Saisonstart liegt in einem anderen Zeitfenster
-  als der vorige: jede Saison hat ihr eigenes Wetter.
-- Größen je Ort (alle 0–1): **Wind** = Klima + Tiefs − Hochs + Rauschen über Raum und Zeit; **Bewölkung** ebenso;
-  **Nebel** an den Nebelküsten (Neufundland, Nordsee, Ärmelkanal) bei wenig Wind, eher nachts und unter Hochdruck;
-  **Tageslicht** = Sinus der Sonnenhöhe aus Breitengrad, Uhrzeit (UTC und Länge) und Jahreszeit (Datum), nachts 0.
-  **Sturm** ab Wind `stormFrom` (0,8).
-- Klima: Nordatlantik, Nordsee und Skandinavien windiger und wolkiger, Mittelmeer und Nordafrika sonniger; im Winter
-  etwas mehr Wind und Wolken. Jahresmittel (Simulation): Nordsee Wind 0,56, Sturm 7 %; Mittelmeer Wind 0,21, nie Sturm.
+- Alle `systemEveryHours` (18) Stunden entsteht im Westen ein Wettersystem (Seed aus Grund-Seed und Zeitfenster):
+  66 % **Tiefs** (Entstehung 44–62° N, 62–30° W; Zug 32–60 km/h nach Osten und 0,02–0,08° je Stunde nach Norden, also
+  nach Nordost; Lebensdauer `systemLifeHours` 108 h), sonst **Hochs** (Azorenhoch, 30–46° N, 5–15 km/h,
+  Lebensdauer `highLifeHours` 170 h ± 10 %). Stärke sinusförmig über die Lebenszeit. Im Mittel sind gleichzeitig etwa
+  vier Tiefs und drei Hochs aktiv. Ein Saisonstart liegt in einem anderen Zeitfenster als der vorige: jede Saison hat ihr
+  eigenes Wetter.
+- **Wind** = Klima + Tiefs − Hochs + Rauschen. Ein Tief bläst im Kern schwächer und am stärksten im Ring um etwa einen
+  Radius (`0,3·g + 0,7·q·e^(1−q)`, q = Abstand²/Radius²), an der Südflanke um bis zu 30 % stärker, an der Nordflanke
+  schwächer, und im Winter kräftiger als im Sommer (× 0,75 + 0,25·cos Jahreszeit).
+- **Klimawind** mäßig (Grund 0,27, Norden +0,05, Mittelmeer −0,05, Süden −0,04, im Winter im Norden etwas mehr); Stürme
+  bringen die Tiefs. Regionale Winde: **Mistral** (Golf von Lion, Winter), **Meltemi** (Ägäis, Sommer), **Levante/Poniente**
+  (Straße von Gibraltar, ganzjährig), **Bora** (Adria, Winter).
+- **Bewölkung** = Klima (Norden wolkiger, Mittelmeer im Sommer fast klar, im Winter halb bedeckt) + Wolkenschirm der Tiefs
+  (um 0,4 Radien nach Osten versetzt, Warmfront voraus) − Hochs + Rauschen.
+- **Nebel** an den Nebelküsten – Neufundlandbank, Nordsee, Ärmelkanal, Portugal – nach Jahreszeit (Sommer am meisten,
+  Übergangszeiten mittel, Winter wenig), nur bei wenig Wind (`still = 1 − (Wind − 0,2)/0,45`, ab Wind 0,65 kein Nebel, also
+  nie bei Sturm), nachts etwas dichter und unter Hochdruck häufiger.
+- **Tageslicht** = Sinus der Sonnenhöhe aus Breitengrad, Uhrzeit (UTC und Länge) und Jahreszeit, nachts 0.
+- **Sturm** ab Wind `stormFrom` (0,8). Anzeige in **Beaufort** = `round(Wind · 11,25)`: Bremsung der Schiffe ab Wind 0,5
+  ≈ 6 Bft (starker Wind), Sturm 0,8 = 9 Bft.
 - Das Feld wird je Ort und Minute zwischengespeichert; die Karte rechnet dasselbe Feld im Browser.
+
+### Klima je Region (Simulation über drei Jahre, alle 3 h)
+
+| Ort | Wind Ø | Sturm Jahr | Sturm Winter | ≥ 7 Bft | ≤ 2 Bft | Wolken Ø (Winter/Sommer) | Nebel ≥ 0,45 Jahr / Sommer |
+|---|---|---|---|---|---|---|---|
+| Bergen (60,4° N) | 0,48 | 2,5 % | 8,3 % | 23 % | 0,7 % | 0,93 / 0,84 | – |
+| Nordsee (55° N, 4° O) | 0,49 | 4,0 % | 12,7 % | 26 % | 0,7 % | 0,92 / 0,81 | 3,4 % / 12,5 % |
+| Irland West | 0,50 | 5,1 % | 15,3 % | 30 % | 0,8 % | 0,91 / 0,79 | – |
+| Brest | 0,44 | 2,0 % | 5,5 % | 16 % | 2,5 % | 0,82 / 0,69 | – |
+| Biskaya | 0,36 | 0,5 % | 1,1 % | 7 % | 7 % | 0,70 / 0,47 | – |
+| Neufundlandbank | 0,30 | 0 % | 0 % | 0,4 % | 8 % | 0,64 / 0,52 | 16,7 % / 47 % |
+| Portugal | 0,30 | 0,1 % | 0,3 % | 1,4 % | 15 % | 0,63 / 0,48 | 5,3 % / 15,7 % |
+| Azoren | 0,25 | 0 % | 0 % | 0,5 % | 42 % | 0,54 / 0,39 | – |
+| Golf von Lion | 0,38 | 1,5 % | 5,4 % | 13 % | 19 % | 0,55 / 0,17 | – |
+| Ägäis | 0,29 | 0 % | 0 % | 0 % | 22 % | 0,50 / 0,12 | – |
+| Levante (Ostmittelmeer) | 0,21 | 0 % | 0 % | 0 % | 65 % | 0,46 / 0,08 | – |
+
+Im Sommer gibt es im Nordatlantik praktisch keine Stürme; Mittelmeer-Stürme sind selten (Mistral).
 
 ## Stromquellen
 
 - **Kraftwerk:** `powerSupplyPerLevel * L` (60) bei jedem Wetter, verbraucht `fuelPerHourPerLevel * L` (3) Treibstoff je
   Stunde. Bei Treibstoff 0 läuft es nur so weit, wie Treibstoff nachkommt (Grundrate und Raffinerie): Auslastung so, dass
   der Treibstoff-Bestand bei 0 bleibt. Ohne Zufluss liefert es nichts; dann tragen Wind, Sonne und Speicher die Last.
-- **Windpark:** `windPowerPerLevel * L * Wind` (80), bei Wind über `stormCutoff` (0,95) abgeschaltet.
-- **Solarfeld:** `solarPowerPerLevel * L * Tageslicht * (1 − cloudLoss * Bewölkung)` (150, cloudLoss 0,7).
+- **Windpark:** `windPowerPerLevel * L * Wind` (90), bei Wind über `stormCutoff` (0,95) abgeschaltet.
+- **Solarfeld:** `solarPowerPerLevel * L * Tageslicht * (1 − cloudLoss * Bewölkung)` (180, cloudLoss 0,7).
+- Ertrag je Stufe im Jahresmittel (v1.9): Windpark Nordsee 44, Biskaya 32, Mittelmeer 23; Solarfeld Mittelmeer 35,
+  Biskaya 25, Nordsee 14 (Kraftwerk 60 für 3 Treibstoff/h).
 - **Speicherwerk:** Kapazität `storagePerLevel * L` (200), Lade- und Entladeleistung `storageRatePerLevel * L` (40) je
   Stunde. Überschuss lädt bis zur Kapazität, bei Mangel wird bis zur Leistung entladen. Der Ladezustand steht im
   Stützpunkt (`powerStored`).
@@ -66,6 +96,8 @@ und `research_complete` bleiben unverändert); spätere Änderungen am Hafen ver
 - **Kampf:** Wetter am Kampfort zum Kampfzeitpunkt. Aller Schaden von Flugzeugen (Luftkampf, Luftschlag) beider Seiten mal
   `1 − airStormPenalty * Sturmanteil` (0,6); der Luftschlag der Bomber zusätzlich mal `1 − cloudStrikePenalty * Bewölkung`
   (0,3). Flak und Schiffe sind nicht betroffen. Der Bericht enthält das Wetter.
+- **Planung:** Die Vorschau zeigt zusätzlich das Wetter am Ziel zur voraussichtlichen Ankunft (Wind, Wolken, Nebel;
+  deterministisch, nur Anzeige – der Plan speichert das Routenwetter bei Abfahrt).
 - **Weltereignisse:** Missionen gegen Großflotte, Schatzschiff und Belagerungsring planen mit dem Wetter der Route
   (Vorschau und Plan wie oben); ihre Kämpfe und die Hafenangriffe der Großflotte rechnen mit dem Wetter am Kampfort.
 - **Nebel und Radar:** Vorwarnzeit mal `1 − fogRadarMax * Nebel` am Hafen (bis −30 %), als Modifikator-Quelle „Wetter“

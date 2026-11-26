@@ -21,7 +21,7 @@ import { hexCenter, hexDistanceKm } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError, type ChangeKind, type Engine } from "./context.ts";
 import { activeMissionCount, saveBase, scheduleEvent, type BaseRow } from "./store.ts";
-import { missionWeather } from "./weather.ts";
+import { missionWeather, withArrival } from "./weather.ts";
 import { modsOf } from "./modifiers.ts";
 import { membershipOf, systemMessage, type Notes } from "./alliance-core.ts";
 import { runCommand } from "./commands.ts";
@@ -98,7 +98,7 @@ export async function stationPreview(db: DbOrTx, playerId: number, own: BaseRow,
   if (!r.ok) return { ok: false as const, code: r.code, distanceKm, weather };
   return {
     ok: true as const, distanceKm, travelSeconds: r.mission.travelSeconds, fuelCost: r.mission.fuelCost, arriveAtMs: r.mission.arriveAtMs,
-    returnAtMs: r.mission.returnAtMs, target: { kind: "base", own: false }, intercept: null, weather, weatherFactor: r.mission.weather?.shipFactor ?? 1,
+    returnAtMs: r.mission.returnAtMs, target: { kind: "base", own: false }, intercept: null, weather: withArrival(weather, input.col, input.row, r.mission.arriveAtMs), weatherFactor: r.mission.weather?.shipFactor ?? 1,
   };
 }
 

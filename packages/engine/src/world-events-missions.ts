@@ -30,7 +30,7 @@ import {
 } from "./world-events.ts";
 import { siegeTick } from "./world-events-run.ts";
 import { modifiersFor, modsOf } from "./modifiers.ts";
-import { battleWeather, missionWeather } from "./weather.ts"; // Wetter wie bei normalen Missionen (v1.6)
+import { battleWeather, missionWeather, withArrival } from "./weather.ts"; // Wetter wie bei normalen Missionen (v1.6)
 
 export interface EventMissionInput {
   type: string;
@@ -128,7 +128,7 @@ export async function previewAgainstEvent(db: DbOrTx, playerId: number, own: Bas
     returnAtMs: r.mission.returnAtMs,
     target: { kind: "event", own: false },
     intercept: target,
-    weather,
+    weather: withArrival(weather, target.col, target.row, r.mission.arriveAtMs),
     weatherFactor: r.mission.weather?.shipFactor ?? 1,
   };
 }

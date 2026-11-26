@@ -2,6 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { Counts, GeoPoint, MissionInput } from "../src/index.ts";
 import {
+  BEAUFORT_WORDS,
+  arrivalWeather,
+  beaufort,
   combatWeather,
   daylightAt,
   fogRadarFactor,
@@ -12,6 +15,7 @@ import {
   sunshine,
   travelSeconds,
   weatherAt,
+  weatherSystemsAt,
 } from "../src/index.ts";
 import { DAY, HOUR, T0, approx, loadBalance, loadBalanceNoLuck, makeBase } from "./helpers.ts";
 
@@ -169,4 +173,87 @@ test("Nebel: Radar-Vorwarnzeit bis −30 %, Lagebild unsicher und gerundet", () 
   assert.equal(heavy.units.korvette, 10);
   assert.equal(heavy.resources.stahl, 10000);
   assert.deepEqual(heavy.buildings, clear.buildings);
+});
+
+/** Anteil der Stunden (alle 3 h) in den Monaten `months` über zwei Jahre, für die `f` gilt. */
+function share(p: GeoPoint, months: number[], f: (w: ReturnType<typeof weatherAt>) => boolean): number {
+  let hit = 0;
+  let n = 0;
+  for (let h = 0; h < 2 * 365 * 24; h += 3) {
+    const t = YEAR0 + h * HOUR;
+    if (!months.includes(new Date(t).getUTCMonth())) continue;
+    n++;
+    if (f(weatherAt(p, t, wb))) hit++;
+  }
+  return hit / n;
+}
+const WINTER = [11, 0, 1];
+const SUMMER = [5, 6, 7];
+
+test("Beaufort: Sturm ab 0,8 ist 9 Bft, Bremsung ab 0,5 etwa 6 Bft; Wörter der Skala", () => {
+  assert.equal(beaufort(wb.stormFrom), 9);
+  assert.equal(beaufort(wb.shipSlowFrom), 6);
+  assert.equal(beaufort(0), 0);
+  assert.equal(beaufort(1), 11);
+  assert.equal(BEAUFORT_WORDS.length, 13);
+  assert.equal(BEAUFORT_WORDS[9], "Sturm");
+  assert.equal(BEAUFORT_WORDS[6], "starker Wind");
+});
+
+test("Jahreszeiten: Stürme im Norden vor allem im Winter, Nebel vor Neufundland vor allem im Sommer", () => {
+  const BERGEN: GeoPoint = { lat: 60.4, lon: 5.3 };
+  const winter = share(BERGEN, WINTER, (w) => w.storm);
+  const summer = share(BERGEN, SUMMER, (w) => w.storm);
+  assert.ok(winter > 0.04 && winter < 0.2 && summer < 0.02, `${winter} ${summer}`);
+  const nfSummer = share(NEUFUNDLAND, SUMMER, (w) => w.fog >= 0.45);
+  const nfWinter = share(NEUFUNDLAND, WINTER, (w) => w.fog >= 0.45);
+  assert.ok(nfSummer > 0.1 && nfSummer > 2 * nfWinter, `${nfSummer} ${nfWinter}`);
+  // Auch im Norden gibt es Flauten (2 Bft und weniger), nicht nur Dauerwind.
+  assert.ok(share(BERGEN, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], (w) => beaufort(w.wind) <= 2) > 0);
+});
+
+test("Regionale Winde: Mistral im Winter, Meltemi im Sommer; Nebel nie bei Sturm", () => {
+  const LION: GeoPoint = { lat: 42.5, lon: 4.5 };
+  const AEGAEIS: GeoPoint = { lat: 37.5, lon: 25 };
+  const strong = (w: ReturnType<typeof weatherAt>) => beaufort(w.wind) >= 6;
+  assert.ok(share(LION, WINTER, strong) > 2 * share(LION, SUMMER, strong));
+  const meanWind = (p: GeoPoint, months: number[]) => {
+    let s = 0, n = 0;
+    for (let h = 0; h < 365 * 24; h += 6) {
+      const t = YEAR0 + h * HOUR;
+      if (months.includes(new Date(t).getUTCMonth())) { s += weatherAt(p, t, wb).wind; n++; }
+    }
+    return s / n;
+  };
+  assert.ok(meanWind(AEGAEIS, SUMMER) > meanWind(AEGAEIS, WINTER) + 0.05);
+  for (let h = 0; h < 365 * 24; h += 7) {
+    const w = weatherAt({ lat: 55, lon: 3 }, YEAR0 + h * HOUR, wb);
+    if (w.wind >= 0.65) assert.equal(w.fog, 0);
+  }
+});
+
+test("Zugbahnen: Tiefs ziehen nach Nordost, Hochs langsamer und langlebiger", () => {
+  // Zwei Zeitpunkte mit 6 h Abstand; dasselbe System erkennt man am Radius.
+  let lows = 0, northEast = 0, highKm = 0, lowKm = 0, highs = 0;
+  for (let d = 0; d < 60; d++) {
+    const t = YEAR0 + d * DAY;
+    const a = weatherSystemsAt(t, wb);
+    const b = weatherSystemsAt(t + 6 * HOUR, wb);
+    for (const s of a) {
+      const o = b.find((x) => x.radiusKm === s.radiusKm && x.sign === s.sign);
+      if (!o) continue;
+      const km = Math.hypot((o.lon - s.lon) * 111.32 * Math.cos((s.lat * Math.PI) / 180), (o.lat - s.lat) * 111.32);
+      if (s.sign > 0) { lows++; lowKm += km; if (o.lat > s.lat && o.lon > s.lon) northEast++; } else { highs++; highKm += km; }
+    }
+  }
+  assert.ok(northEast === lows && lows > 50, `${northEast}/${lows}`);
+  assert.ok(highKm / highs < 0.5 * (lowKm / lows));
+  assert.ok((wb.highLifeHours ?? 0) > wb.systemLifeHours);
+});
+
+test("Wetter am Ziel zur Ankunft: dasselbe Feld wie weatherAt", () => {
+  const t = T0 + 17 * HOUR;
+  const a = arrivalWeather(NORDSEE, t, wb);
+  const w = weatherAt(NORDSEE, t, wb);
+  assert.deepEqual(a, { atMs: t, wind: w.wind, clouds: w.clouds, fog: w.fog, storm: w.storm });
 });

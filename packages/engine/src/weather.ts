@@ -3,6 +3,7 @@
 // Das Wetter ist deterministisch (game-core/weather.ts); die Karte rechnet dasselbe Feld im Browser.
 import {
   DEFAULT_SITE,
+  arrivalWeather,
   POWER_RANKS,
   combatWeather,
   fogRadarFactor,
@@ -39,6 +40,15 @@ export function missionWeather(fromCol: number, fromRow: number, toCol: number, 
   return routeWeather(hexCenter(fromCol, fromRow), hexCenter(toCol, toRow), nowMs, balance.weather);
 }
 
+/**
+ * Planungsvorschau: Routenwetter samt Wetter am Ziel zur voraussichtlichen Ankunft (Nebel, Wind, Wolken; deterministisch).
+ * Nur für die Anzeige – der gespeicherte Plan behält das Routenwetter bei Abfahrt.
+ */
+export function withArrival(w: RouteWeather | undefined, toCol: number, toRow: number, arriveAtMs: number): RouteWeather | undefined {
+  if (!w || !balance.weather) return w;
+  return { ...w, atTarget: arrivalWeather(hexCenter(toCol, toRow), arriveAtMs, balance.weather) };
+}
+
 /** Wetter am Kampfort (Luftphasen); undefined ohne Wetter. */
 export function battleWeather(col: number, row: number, atMs: number): CombatWeather | undefined {
   if (!balance.weather) return undefined;
@@ -58,6 +68,7 @@ const RANK_TEXT: Record<PowerRankKey, string> = {
 };
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
+const HOUR_MS = 3600000;
 
 /**
  * Versorgung für die Basis: Augenblick, Stromkurve über forecastHours (Angebot nach Quelle, Bedarf nach Rang,
@@ -67,9 +78,17 @@ const r1 = (x: number) => Math.round(x * 10) / 10;
 export function gridView(state: BaseState, nowMs: number, mods?: Modifiers) {
   const now = powerAt(state, nowMs, balance, mods);
   const hours = powerBalance(balance).forecastHours;
-  const curve = powerForecast(state, nowMs, hours, balance, mods);
+  // Kurve ab der nächsten vollen Stunde: Jeder Balken ist genau eine Uhrzeit-Stunde (Beschriftung „14 Uhr“ stimmt).
+  const startMs = Math.ceil(nowMs / HOUR_MS) * HOUR_MS;
+  const curve = powerForecast(state, startMs, hours, balance, mods);
   let warning: { atMs: number; missing: number; rank: PowerRankKey; text: string } | null = null;
-  for (const h of curve) {
+  const nowRank = POWER_RANKS.find((k) => now.served[k] < 0.999);
+  if (nowRank) {
+    const supply = now.supply.kraftwerk + now.supply.wind + now.supply.solar + now.supply.storage;
+    const demand = POWER_RANKS.reduce((a, k) => a + now.demand[k], 0);
+    warning = { atMs: nowMs, missing: Math.max(1, Math.round(demand - supply)), rank: nowRank, text: RANK_TEXT[nowRank] };
+  }
+  for (const h of warning ? [] : curve) {
     const rank = POWER_RANKS.find((k) => h.served[k] < 0.999);
     if (!rank) continue;
     const supply = h.supply.kraftwerk + h.supply.wind + h.supply.solar + h.supply.storage;
@@ -104,6 +123,17 @@ export function gridView(state: BaseState, nowMs: number, mods?: Modifiers) {
     })),
     warning,
     stormFrom: wb?.stormFrom ?? 0.8,
-    stormWarning: curve.find((h) => h.storm)?.atMs ?? null,
+    fogFrom: wb?.fogScoutFrom ?? 0.35,
+    slowFrom: wb?.shipSlowFrom ?? 0.5,
+    stormWarning: wb ? stormStart(state.site ?? DEFAULT_SITE, nowMs, startMs + hours * HOUR_MS) : null,
   };
+}
+
+/** Beginn des nächsten Sturms am Hafen auf 5 Minuten genau (oder `fromMs`, wenn gerade Sturm ist); null ohne Sturm. */
+function stormStart(site: { lat: number; lon: number }, fromMs: number, untilMs: number): number | null {
+  const step = 5 * 60000;
+  for (let t = fromMs; t < untilMs; t = t === fromMs ? Math.floor(fromMs / step) * step + step : t + step) {
+    if (weatherAt(site, t, balance.weather!).storm) return t;
+  }
+  return null;
 }

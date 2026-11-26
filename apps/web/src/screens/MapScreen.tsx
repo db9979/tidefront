@@ -47,6 +47,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [missionId]);
   const home = useMemo(() => ({ col: base.col, row: base.row }), [base.col, base.row]);
+  const hasRadar = base.buildings.some((b) => b.id === "radarstation" && b.level > 0);
   const alert = base.incoming.some((i) => i.type !== "transport");
   if (!map.data) return <Loading />;
   const at = (t: Target) => ({
@@ -100,7 +101,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
           >
             Wetter {showWeather ? "an" : "aus"}
           </button>
-          {showWeather && meta.data?.balance.weather && <WeatherChip at={home} wb={meta.data.balance.weather} now={now} />}
+          {showWeather && meta.data?.balance.weather && <WeatherChip at={home} wb={meta.data.balance.weather} now={now} radar={hasRadar} />}
           {alert && (
             <div className="rounded-[3px] bg-card border border-siegel border-l-4 text-siegel px-2 py-1 text-[11px] font-display uppercase tracking-wider">
               Feindkontakt – Angriff im Anmarsch
@@ -179,7 +180,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
               {info.event && (
                 <WorldEventCard e={info.event} onPlan={() => onPlan({ col: info.event!.col, row: info.event!.row, eventId: info.event!.id })} />
               )}
-              {meta.data?.balance.weather && terrainAt(sel.col, sel.row) !== "land" && <WeatherLine at={sel} wb={meta.data.balance.weather} now={now} />}
+              {meta.data?.balance.weather && terrainAt(sel.col, sel.row) !== "land" && <WeatherLine at={sel} wb={meta.data.balance.weather} now={now} home={home} radar={hasRadar} />}
               <NavalSheet data={naval.data} sel={sel} onPlan={onPlan} />
               {!info.base && !info.nest && !info.wreck && !info.event && !info.naval && (
                 <div className="text-slate-400 mt-1">Hier ist nichts. Ziele sind Piratennester (rote Raute) und fremde Stützpunkte.</div>
