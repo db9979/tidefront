@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.8.1 – 27.11.2026
+- Das Handbuch lässt sich nicht mehr seitlich verschieben; kein Bildschirm scrollt mehr nach links oder rechts.
+
 ## 0.8.0 – 27.11.2026
 - **Allianzen**: gründen, einladen oder anfragen, Rollen (Führung, Offizier, Mitglied), eigener Chat und Allianzwertung in der Rangliste. Verbündete können sich nicht überfallen. Zu finden unter Meldungen → Allianz.
 - **Diplomatie**: Nichtangriffspakt (beide stimmen zu, 24 Stunden Kündigungsfrist) und Kriegserklärung mit 12 Stunden Vorlauf. Im Krieg entfällt die Beute-Kürzung für schwache Ziele.

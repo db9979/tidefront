@@ -215,9 +215,9 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
           {open === c.id && <div className="px-3 pb-3">{c.body}</div>}
         </section>
       ))}
-      <div className="panel rounded-xl p-3 mt-4 flex items-center justify-between gap-2">
-        <span className="text-sm text-slate-300">Angemeldet als <strong>{playerName}</strong></span>
-        <div className="flex gap-2">
+      <div className="panel rounded-xl p-3 mt-4 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm text-slate-300 min-w-0 break-words">Angemeldet als <strong>{playerName}</strong></span>
+        <div className="flex flex-wrap gap-2">
           <Button kind="secondary" onClick={() => setView("settings")}>Einstellungen</Button>
           <Button kind="secondary" onClick={onLogout}>Abmelden</Button>
         </div>

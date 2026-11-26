@@ -136,7 +136,7 @@ export function App() {
   return (
     <div className="h-full flex flex-col max-w-xl mx-auto">
       <ResourceBar base={b} asOf={base.data.serverNow} now={now} onHelp={() => { setHelpView(null); setHelp((h) => !h); }} />
-      <main className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto p-3"}`}>{content}</main>
+      <main className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto overflow-x-hidden p-3"}`}>{content}</main>
       <nav className="grid grid-cols-5 bg-paper border-t-[3px] border-double border-ink" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {TABS.map((t) => {
           const active = tab === t.id && !plan && !help;
