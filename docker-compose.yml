@@ -111,7 +111,7 @@ services:
       TZ: ${TZ:-Europe/Berlin}
     volumes:
       - ${BACKUP_DIR:-./backups}:/backups
-      - ./scripts/backup.sh:/scripts/backup.sh:ro
+      - ./scripts:/scripts:ro
     depends_on:
       migrate:
         condition: service_completed_successfully
