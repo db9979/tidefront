@@ -363,6 +363,13 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
 - **Gebühr:** je empfangener Seite 2 % (Ressourcen ganzzahlig abgerundet, Kredite auf Cent abgerundet); einstellbar über
   `server_setting` `player_trade_fee` (0 bis 0,2). Die Gebühr verlässt das Spiel.
 - Saisonende: Offene Angebote verfallen ohne Erstattung (wie Kredite und Lieferungen).
+- **Börsenwert:** Spielerhandel verändert die Börsenkurse nicht; angezeigt wird der Börsenwert zur Orientierung.
+  Jedes Angebot zeigt den Gegenwert beider Seiten zum aktuellen Börsenkurs (Ressourcen × Kurs, Kredite 1:1, ohne Gebühr)
+  und die Differenz in Krediten und Prozent aus Sicht des Lesers. Ab mehr als 20 % Abweichung gibt es einen deutlichen
+  Hinweis und vor der Annahme eine Rückfrage.
+- **Handelsstatistik:** Die Börse zeigt für die letzten 7 Tage je Paar die angenommenen Angebote (Anzahl, Mengen) und
+  das mittlere Tauschverhältnis (Summe gegen Summe) in Krediten je Einheit, die Gegenseite zum aktuellen Börsenkurs,
+  neben dem Börsenkurs. Serverseitig bis zu 60 s zwischengespeichert.
 
 ## Modifikatoren
 

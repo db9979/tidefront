@@ -7,6 +7,7 @@ import { Icon } from "../icons.tsx";
 import { fmtDuration, useNow } from "../lib/time.ts";
 import { Button, Card, ErrorLine, Loading } from "../ui.tsx";
 import { PlayerTrade } from "../components/PlayerTrade.tsx";
+import { PlayerTradeStats } from "../components/TradeValue.tsx";
 
 /** Höchstmenge je Handel (wie im Server). */
 const MAX_QTY = 10_000_000;
@@ -141,6 +142,7 @@ export function MarketScreen({ base }: { base: BaseData }) {
         {done && <p className="text-emerald-300 text-sm mt-2">{done}</p>}
       </Card>
       <PlayerTrade base={base} />
+      <PlayerTradeStats />
     </div>
   );
 }

@@ -34,6 +34,7 @@ export * from "./alliance.ts";
 export * from "./alliance-view.ts";
 export * from "./diplomacy.ts";
 export * from "./player-trade.ts";
+export * from "./player-trade-stats.ts";
 export * from "./input-errors.ts";
 export { dailySummarySection } from "./daily-summary.ts";
 export { ensureWorldEventPlanner, siegeEffects, clearWorldEvents } from "./world-events.ts";
