@@ -1,7 +1,7 @@
 // Befehle mit Idempotenz-Schlüssel: frischer Schlüssel je Absicht, nach Netzfehler derselbe.
 import { useRef, useState } from "react";
 import { queryClient } from "./trpc.ts";
-import { errorText } from "./names.ts";
+import { errorText, failText, isRejected } from "./names.ts";
 
 type Res = { ok: boolean; code?: string };
 
@@ -21,9 +21,11 @@ export function useCommand<P extends { key: string }, O extends Res>(call: (inpu
       if (!out.ok) setError(errorText(out.code ?? "?"));
       for (const k of invalidate()) await queryClient.invalidateQueries({ queryKey: k as readonly unknown[] });
       return out;
-    } catch {
+    } catch (err) {
       // Netzfehler: Schlüssel behalten, damit eine Wiederholung nicht doppelt wirkt.
-      setError(errorText("network"));
+      // Abgelehnte Eingabe (HTTP 400): nichts ist geschehen, der nächste Versuch bekommt einen neuen Schlüssel.
+      if (isRejected(err)) pending.current = null;
+      setError(failText(err));
       return null;
     } finally {
       setBusy(false);

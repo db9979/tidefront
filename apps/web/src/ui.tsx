@@ -37,9 +37,14 @@ export function Button(props: { children: ReactNode; onClick?: () => void; disab
   );
 }
 
+/** Fehlermeldung am auslösenden Element; rollt bei neuer Meldung in den sichtbaren Bereich. */
 export function ErrorLine({ text }: { text: string | null | undefined }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (text) ref.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+  }, [text]);
   if (!text) return null;
-  return <p className="text-red-300 text-sm mt-2" role="alert">{text}</p>;
+  return <p ref={ref} className="text-red-300 text-sm mt-2 scroll-mb-24" role="alert">{text}</p>;
 }
 
 export function Cost({ cost, have }: { cost: Record<string, number> | null | undefined; have?: Record<string, number> }) {
@@ -57,16 +62,19 @@ export function Cost({ cost, have }: { cost: Record<string, number> | null | und
   );
 }
 
-export function Stepper({ value, onChange, max }: { value: number; onChange: (v: number) => void; max?: number }) {
-  const clamp = (v: number) => Math.max(0, Math.min(max ?? Infinity, Math.floor(v || 0)));
+/** Ganzzahl-Eingabe; max zeigt „alle“, limit begrenzt nur (z. B. auf das Bezahlbare). */
+export function Stepper({ value, onChange, max, limit }: { value: number; onChange: (v: number) => void; max?: number; limit?: number }) {
+  const clamp = (v: number) => Math.max(0, Math.min(max ?? Infinity, limit ?? Infinity, Math.floor(v || 0)));
   return (
     <div className="flex items-center gap-1">
       <button type="button" className="tap rounded-lg btn-secondary text-lg" onClick={() => onChange(clamp(value - 1))} aria-label="weniger">−</button>
       <input
         inputMode="numeric"
         className="w-16 h-11 rounded-lg field text-center mono"
+        maxLength={8}
         value={value}
-        onChange={(e) => onChange(clamp(Number(e.target.value.replace(/\D/g, ""))))}
+        // Nur der ganzzahlige Teil zählt: „1.5“ wird 1, nicht 15.
+        onChange={(e) => onChange(clamp(Number(e.target.value.split(/[.,]/)[0].replace(/\D/g, ""))))}
       />
       <button type="button" className="tap rounded-lg btn-secondary text-lg" onClick={() => onChange(clamp(value + 1))} aria-label="mehr">+</button>
       {max !== undefined && (

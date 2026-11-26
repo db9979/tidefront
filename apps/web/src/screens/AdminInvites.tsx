@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
-import { errorText } from "../lib/names.ts";
+import { errorText, failText } from "../lib/names.ts";
 import { Badge, Button, Card, ErrorLine, Stepper } from "../ui.tsx";
 import { Switch } from "../components/Switch.tsx";
 
@@ -40,8 +40,8 @@ export function AdminInvites() {
       setS(r.settings);
       setMsg("Gespeichert.");
       await queryClient.invalidateQueries(trpc.invite.pathFilter());
-    } catch {
-      setError(errorText("network"));
+    } catch (err) {
+      setError(failText(err));
     } finally {
       setBusy(false);
     }

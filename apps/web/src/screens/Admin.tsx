@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
-import { errorText } from "../lib/names.ts";
+import { errorText, failText } from "../lib/names.ts";
 import { Badge, Button, Card, ErrorLine, Loading, StatTable, Stepper } from "../ui.tsx";
 import { AdminMail } from "./AdminMail.tsx";
 import { AdminInvites } from "./AdminInvites.tsx";
@@ -30,18 +30,21 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
   const [uses, setUses] = useState(1);
   const [reset, setReset] = useState<{ name: string; code: string; expiresAt: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Fehler erscheinen am auslösenden Abschnitt, nicht oben außer Sicht.
+  const [where, setWhere] = useState<"invite" | "players" | null>(null);
   const [busy, setBusy] = useState(false);
   const refresh = () => queryClient.invalidateQueries(trpc.admin.pathFilter());
 
-  const run = async (fn: () => Promise<{ ok: boolean; code?: string } | void>) => {
+  const run = async (fn: () => Promise<{ ok: boolean; code?: string } | void>, at: "invite" | "players" = "invite") => {
     setBusy(true);
     setError(null);
+    setWhere(at);
     try {
       const r = await fn();
-      if (r && !r.ok) setError(errorText(r.code ?? "?"));
+      if (r && !r.ok) setError(r.code ? errorText(r.code) : "Nicht möglich (Code schon in diesem Zustand?).");
       await refresh();
-    } catch {
-      setError(errorText("network"));
+    } catch (err) {
+      setError(failText(err));
     } finally {
       setBusy(false);
     }
@@ -57,9 +60,11 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
         <h1 className="font-display text-2xl font-bold uppercase">Verwaltung</h1>
         <Button kind="secondary" onClick={onClose}>Zurück</Button>
       </div>
-      <ErrorLine text={error} />
 
-      <Card title="Systemzustand" right={s.problems.length ? <Badge tone="red">{s.problems.length} Probleme</Badge> : <Badge tone="green">in Ordnung</Badge>}>
+      <Card
+        title="Systemzustand"
+        right={s.problems.length ? <Badge tone="red">{s.problems.length} Probleme</Badge> : !s.backup ? <Badge tone="brass">keine Sicherung erfasst</Badge> : <Badge tone="green">in Ordnung</Badge>}
+      >
         {s.problems.length > 0 && (
           <ul className="text-sm text-red-300 mb-2 list-disc pl-5">{s.problems.map((p) => <li key={p.key}>{p.text}</li>)}</ul>
         )}
@@ -71,6 +76,7 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
           ["Letzte E-Mail", s.mail.lastSentAt ? when(s.mail.lastSentAt) : "–"],
           ["Letzter Mail-Fehler", s.mail.lastError ? when(s.mail.lastError.at) : "–"],
         ]} />
+        {!s.backup && <p className="text-sm text-brass-300 mt-2">Noch keine Sicherung erfasst. Sicherungen einrichten (siehe README) oder unten „Jetzt sichern“.</p>}
         {s.failed.lastError && <p className="text-xs text-slate-400 mt-2 break-words">Zuletzt: {s.failed.lastType} – {s.failed.lastError}</p>}
         {s.mail.lastError && <p className="text-xs text-slate-400 mt-1 break-words">Mail: {s.mail.lastError.message}</p>}
       </Card>
@@ -79,7 +85,7 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
         <div className="flex flex-wrap items-end gap-2 mb-3">
           <div className="flex-1 min-w-36">
             <label className="text-sm text-slate-300" htmlFor="tf-code">Code (leer = zufällig)</label>
-            <input id="tf-code" className="w-full h-11 rounded-lg field px-3" value={code} autoCapitalize="characters" onChange={(e) => setCode(e.target.value)} />
+            <input id="tf-code" className="w-full h-11 rounded-lg field px-3" maxLength={64} value={code} autoCapitalize="characters" onChange={(e) => setCode(e.target.value)} />
           </div>
           <div>
             <span className="text-sm text-slate-300 block">Nutzungen</span>
@@ -95,6 +101,7 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
             return r;
           })}
         >Code anlegen</Button>
+        {where === "invite" && <ErrorLine text={error} />}
         <ul className="divide-y divide-navy-600/70">
           {invites.map((i) => (
             <li key={i.code} className="flex items-center gap-2 py-2">
@@ -102,8 +109,21 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
                 <div className="font-mono font-bold break-all">{i.code}</div>
                 <div className="text-xs text-slate-400">{i.uses} von {i.maxUses} genutzt · {when(i.createdAt)}</div>
               </div>
-              {i.disabledAt ? <Badge>deaktiviert</Badge> : i.uses >= i.maxUses ? <Badge>verbraucht</Badge> : (
-                <Button kind="ghost" disabled={busy} onClick={() => run(() => trpcClient.admin.disableInvite.mutate({ code: i.code }))}>Deaktivieren</Button>
+              {i.disabledAt ? (
+                <>
+                  <Badge>deaktiviert</Badge>
+                  <Button kind="ghost" disabled={busy} onClick={() => run(() => trpcClient.admin.enableInvite.mutate({ code: i.code }))}>Aktivieren</Button>
+                </>
+              ) : i.uses >= i.maxUses ? <Badge>verbraucht</Badge> : (
+                <Button
+                  kind="ghost"
+                  disabled={busy}
+                  onClick={() => {
+                    if (confirm(`Code ${i.code} deaktivieren? Mit ihm kann sich dann niemand mehr registrieren (später wieder aktivierbar).`)) {
+                      void run(() => trpcClient.admin.disableInvite.mutate({ code: i.code }));
+                    }
+                  }}
+                >Deaktivieren</Button>
               )}
             </li>
           ))}
@@ -113,6 +133,7 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
       <AdminInvites />
 
       <Card title={`Spieler (${players.length})`}>
+        {where === "players" && <ErrorLine text={error} />}
         {reset && (
           <div className="rounded-xl bg-navy-950 border border-brass-400/50 p-3 mb-3">
             <div className="text-sm text-slate-300">Rücksetzcode für <strong>{reset.name}</strong> (einmalig, gültig bis {when(new Date(reset.expiresAt))}):</div>
@@ -138,7 +159,7 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
                   const r = await trpcClient.admin.createResetCode.mutate({ playerId: p.id });
                   if (r.ok) setReset({ name: r.name, code: r.code, expiresAt: r.expiresAt });
                   return r;
-                })}
+                }, "players")}
               >Rücksetzcode</Button>
             </li>
           ))}

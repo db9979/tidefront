@@ -8,11 +8,18 @@ import { Icon } from "../icons.tsx";
 import { BattleLog, type Battle } from "../components/BattleLog.tsx";
 import { RepeatButton } from "../components/Repeat.tsx";
 
-const KIND_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "kartell", aufklaerung: "aufklaerung", transport: "transport", leer: "kartell" };
+const KIND_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "kartell", aufklaerung: "aufklaerung", transport: "transport", leer: "kartell", abgewiesen: "schild" };
 
 type Counts = Record<string, number>;
 
-
+/** Zeile unter dem Titel: aus Sicht des Lesers. */
+function roleText(role: string, kind: string): string {
+  if (role === "recipient") return "Lieferung an dich";
+  if (role === "defender") return "Angriff auf dich";
+  if (kind === "transport") return "eigene Lieferung";
+  if (kind === "aufklaerung") return "eigene Aufklärung";
+  return "eigene Mission";
+}
 
 export function ReportsScreen() {
   const [open, setOpen] = useState<number | null>(null);
@@ -37,7 +44,7 @@ export function ReportsScreen() {
                   <strong className="min-w-0 truncate font-serif font-semibold text-[15px]">{r.title}</strong>
                   {r.won !== null && <span className={`font-display text-[10.5px] uppercase ${r.won ? "text-moos" : "text-siegel"}`}>{r.won ? "Sieg" : "Niederlage"}</span>}
                 </div>
-                <div className="text-xs text-slate-400">{fmtTime(r.atMs)} · {r.role === "attacker" ? "eigene Mission" : "Angriff auf dich"}</div>
+                <div className="text-xs text-slate-400">{fmtTime(r.atMs)} · {roleText(r.role, r.kind)}</div>
               </div>
             </button>
           </li>
@@ -58,18 +65,36 @@ function ReportDetail({ id, onBack }: { id: number; onBack: () => void }) {
         <h1 className="font-serif text-xl leading-tight min-w-0">{r.title}</h1>
         <Button kind="secondary" onClick={onBack}>Zurück</Button>
       </div>
-      <p className="text-xs mono text-slate-400 mb-3">{fmtTime(r.atMs)}{r.seed !== null ? ` · Seed ${r.seed} · Balance ${r.balanceVersion}` : ""}</p>
+      <p className="text-xs mono text-slate-400 mb-3">{fmtTime(r.atMs)}</p>
       {r.role === "attacker" && r.kind !== "kartell" && <RepeatButton reportId={r.id} />}
-      {d.battle ? <BattleLog b={d.battle as Battle} names={[String(d.attackerName), String(d.defenderName)]} role={r.role} /> : null}
+      {d.battle ? (
+        <BattleLog
+          b={d.battle as Battle}
+          names={[String(d.attackerName), String(d.defenderName)]}
+          role={r.role === "attacker" ? "attacker" : "defender"}
+          protectedPerResource={typeof d.protectedPerResource === "number" ? d.protectedPerResource : null}
+        />
+      ) : null}
       {d.scout ? <ScoutView s={d.scout as Record<string, unknown>} owner={String(d.owner ?? "")} /> : null}
       {d.nest ? <NestScout n={d.nest as { level: number; empty: boolean; garrison: { units: Counts; defenses: Counts; loot: Counts } | null }} /> : null}
       {r.kind === "transport" && (
-        <Card title="Transport">
-          <p>Von {String(d.from)} an {String(d.to)}</p>
+        <Card title={r.role === "recipient" ? "Lieferung erhalten" : "Transport"}>
+          <p>{r.role === "recipient" ? `${String(d.from)} hat deinem Hafen ${String(d.to)} geliefert:` : `Von ${String(d.from)} an ${String(d.to)}`}</p>
           <p className="text-sm"><CountsLine counts={d.cargo as Counts} /></p>
         </Card>
       )}
+      {r.kind === "abgewiesen" && (
+        <Card>
+          <p>Ein Verband des Kartells erreichte deinen Hafen, traf aber auf deinen Schutz ({label(String(d.reason ?? "nachtschild"))}) und drehte ohne Kampf ab.</p>
+        </Card>
+      )}
       {r.kind === "leer" && <Card><p>Das Nest war bei Ankunft verlassen. Der Verband kehrt um.</p></Card>}
+      {r.seed !== null && (
+        <details className="mt-3 text-xs text-slate-400">
+          <summary className="cursor-pointer min-h-[44px] flex items-center">Technische Angaben</summary>
+          <p className="mono">Seed {r.seed} · Balance {r.balanceVersion}</p>
+        </details>
+      )}
     </div>
   );
 }

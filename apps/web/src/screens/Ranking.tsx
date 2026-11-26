@@ -40,13 +40,17 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
   return (
     <div>
       <SeasonBar season={q.data.season} />
-      <div className="flex gap-1 overflow-x-auto mb-2" role="tablist" aria-label="Wertung">
-        {SORTS.map((s) => (
-          <button key={s.id} type="button" role="tab" aria-selected={sort === s.id} onClick={() => setSort(s.id)}
-            className={`tap shrink-0 rounded-lg px-3 text-xs font-semibold ${sort === s.id ? "bg-ink text-paper" : "bg-navy-950/60 text-slate-400"}`}>
-            {s.label}
-          </button>
-        ))}
+      {/* Reiter seitlich scrollbar; Verlauf und Pfeil rechts zeigen, dass es weitergeht. */}
+      <div className="relative mb-2">
+        <div className="flex gap-1 overflow-x-auto pr-8" role="tablist" aria-label="Wertung">
+          {SORTS.map((s) => (
+            <button key={s.id} type="button" role="tab" aria-selected={sort === s.id} onClick={() => setSort(s.id)}
+              className={`tap shrink-0 rounded-lg px-3 text-xs font-semibold ${sort === s.id ? "bg-ink text-paper" : "bg-navy-950/60 text-slate-400"}`}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <span className="pointer-events-none absolute right-0 inset-y-0 w-8 grid place-items-center bg-linear-to-l from-paper via-paper/90 to-transparent text-ink2" aria-hidden="true">›</span>
       </div>
       <Card title={`Spieler (${rows.length})`} right={<span className="text-[11px] text-slate-500 tabular-nums">Stand {fmtTime(q.data.computedAtMs)}</span>}>
         {rows.length === 0 ? <p className="text-sm text-slate-400">Noch keine Spieler.</p> : (

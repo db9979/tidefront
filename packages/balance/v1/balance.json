@@ -72,7 +72,8 @@
   "protection": {
     "nightShieldHours": 8,
     "beginnerDays": 7,
-    "afterDefeatShieldHours": 8
+    "afterDefeatShieldHours": 8,
+    "nightShieldChangeHours": 24
   },
   "pirates": {
     "nestLevels": {

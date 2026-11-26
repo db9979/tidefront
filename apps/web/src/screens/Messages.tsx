@@ -1,8 +1,8 @@
 // Nachrichten: Posteingang und Gesendet, Lesen markiert als gelesen, Antworten, neue Nachricht.
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient, trpc, trpcClient, type Outputs } from "../lib/trpc.ts";
-import { errorText } from "../lib/names.ts";
+import { errorText, failText } from "../lib/names.ts";
 import { fmtTime } from "../lib/time.ts";
 import { Button, ErrorLine, Loading, Sheet } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
@@ -105,8 +105,11 @@ export function ComposeSheet({ draft, onClose }: { draft: Draft; onClose: () => 
   const [done, setDone] = useState(false);
   const others = (ranking.data?.rows ?? []).filter((r) => !r.own);
 
+  // Sperre ohne Render-Verzögerung: zwei Tipps im selben Moment senden nur einmal.
+  const sending = useRef(false);
   const send = async () => {
-    if (to === null) return;
+    if (to === null || sending.current) return;
+    sending.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -117,9 +120,10 @@ export function ComposeSheet({ draft, onClose }: { draft: Draft; onClose: () => 
         await queryClient.invalidateQueries(trpc.social.messages.pathFilter());
         setTimeout(onClose, 700);
       }
-    } catch {
-      setError(errorText("network"));
+    } catch (err) {
+      setError(failText(err));
     } finally {
+      sending.current = false;
       setBusy(false);
     }
   };

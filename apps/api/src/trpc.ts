@@ -1,6 +1,6 @@
 // tRPC-Grundlagen (Kontext, Prozeduren), getrennt vom Router, damit Teil-Router sie ohne Kreisimport nutzen.
 import { initTRPC, TRPCError } from "@trpc/server";
-import { GameError, type Engine } from "@tidefront/engine";
+import { GameError, inputErrorText, type Engine, type InputIssue } from "@tidefront/engine";
 
 export interface Ctx {
   engine: Engine;
@@ -11,7 +11,14 @@ export interface Ctx {
   ip: string;
 }
 
-export const t = initTRPC.context<Ctx>().create();
+export const t = initTRPC.context<Ctx>().create({
+  // Eingabefehler (Zod) als deutscher Kurztext, damit der Client mehr zeigen kann als „Keine Verbindung“.
+  errorFormatter({ shape, error }) {
+    const issues = (error.cause as { issues?: InputIssue[] } | undefined)?.issues;
+    const inputError = error.code === "BAD_REQUEST" && Array.isArray(issues) ? inputErrorText(issues) : null;
+    return { ...shape, data: { ...shape.data, inputError } };
+  },
+});
 
 export const authed = t.procedure.use(async ({ ctx, next }) => {
   if (!ctx.player) throw new TRPCError({ code: "UNAUTHORIZED" });

@@ -6,6 +6,7 @@ import {
   createInvite,
   createResetCode,
   disableInvite,
+  enableInvite,
   emailInfo,
   listInvites,
   listPlayers,
@@ -131,6 +132,9 @@ export const adminRouter = t.router({
   disableInvite: adminProc
     .input(z.object({ code: z.string().max(64) }))
     .mutation(async ({ ctx, input }) => ({ ok: await disableInvite(ctx.engine.db, input.code) })),
+  enableInvite: adminProc
+    .input(z.object({ code: z.string().max(64) }))
+    .mutation(async ({ ctx, input }) => ({ ok: await enableInvite(ctx.engine.db, input.code) })),
   createResetCode: adminProc
     .input(z.object({ playerId: z.number().int().min(1) }))
     .mutation(({ ctx, input }) =>

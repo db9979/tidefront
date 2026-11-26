@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { trpc, trpcClient, type BaseData, type Balance } from "../lib/trpc.ts";
+import { trpc, trpcClient, type BaseData, type Balance, type MapData } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { fmtDuration, fmtSeconds, fmtTime, useNow } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
 import { Button, Card, Cost, ErrorLine, Loading, Sheet, StatTable, Stepper, UnitChips } from "../ui.tsx";
 import { Icon, IconTile } from "../icons.tsx";
-import { UNIT_TEXT, unitStats, unitTone } from "../lib/info.ts";
+import { cancelLoss, cancelQuestion, unitStats, unitText, unitTone } from "../lib/info.ts";
 import { Progress } from "./Base.tsx";
 import { RecentMissions } from "../components/Repeat.tsx";
 import { FreeSimCard } from "../components/SimLauncher.tsx";
@@ -20,6 +20,18 @@ const GROUPS: { builtIn: string; title: string }[] = [
   { builtIn: "anlagen", title: "Verteidigungsanlagen" },
 ];
 
+/** Höchstmenge je Ausbildungsauftrag (wie im Server). */
+const MAX_TRAIN = 10000;
+
+/** Name eines Missionsziels aus der Karte: Hafen oder Nest mit Stufe, sonst Koordinaten. */
+export function targetName(map: MapData | undefined, col: number, row: number): string {
+  const b = map?.bases.find((x) => x.col === col && x.row === row);
+  if (b) return `Hafen ${b.name}`;
+  const n = map?.nests.find((x) => x.col === col && x.row === row);
+  if (n) return `Nest Stufe ${n.level}`;
+  return `Feld ${col}/${row}`;
+}
+
 function scale(cost: Record<string, number> | undefined, n: number): Record<string, number> {
   const out: Record<string, number> = {};
   for (const [r, v] of Object.entries(cost ?? {})) out[r] = v * n;
@@ -30,6 +42,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap }: { base: BaseData; on
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const now = useNow();
   const cancel = useCommand((i: { key: string; builtIn: string }) => trpcClient.base.cancelTraining.mutate(i), invalidateBase);
+  const map = useQuery(trpc.world.map.queryOptions());
   const [recallId, setRecallId] = useState<number | null>(null);
   if (!meta.data) return <Loading />;
   const balance = meta.data.balance;
@@ -51,7 +64,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap }: { base: BaseData; on
               <div className="flex justify-between gap-2">
                 <strong>{label(m.type)} {m.status === "returning" ? (m.recalled ? "· zurückgerufen" : "· Rückfahrt") : ""}</strong>
                 <button type="button" className="tap text-sea-300 underline text-xs" onClick={() => onShowOnMap({ col: m.target.col, row: m.target.row })}>
-                  Ziel {m.target.col}/{m.target.row}
+                  {targetName(map.data, m.target.col, m.target.row)}
                 </button>
               </div>
               <div className="text-xs text-slate-300"><UnitChips counts={m.status === "returning" ? m.returning : m.units} /></div>
@@ -73,7 +86,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap }: { base: BaseData; on
       <FreeSimCard balance={balance} base={base} />
       {(() => {
         const m = base.missions.find((x) => x.id === recallId && x.status === "outbound");
-        return m ? <RecallSheet mission={m} now={now} onClose={() => setRecallId(null)} /> : null;
+        return m ? <RecallSheet mission={m} name={targetName(map.data, m.target.col, m.target.row)} now={now} onClose={() => setRecallId(null)} /> : null;
       })()}
 
       <ErrorLine text={cancel.error} />
@@ -90,7 +103,15 @@ export function TroopsScreen({ base, onPlan, onShowOnMap }: { base: BaseData; on
                   <div className="text-sea-300">{order.finishesAt <= now ? "wird abgeschlossen …" : `noch ${fmtDuration(order.finishesAt - now)}`}</div>
                   <Progress start={order.startedAt} end={order.finishesAt} now={now} />
                 </div>
-                <Button kind="danger" disabled={cancel.busy} onClick={() => void cancel.run({ builtIn: g.builtIn })}>Abbruch</Button>
+                <Button
+                  kind="danger"
+                  disabled={cancel.busy || order.finishesAt <= now}
+                  onClick={() => {
+                    const def = balance.units[order.id] ?? balance.defenses[order.id];
+                    const loss = cancelLoss(scale(def?.cost, order.count), order.startedAt, order.finishesAt, Date.now());
+                    if (confirm(cancelQuestion(`Ausbildung von ${fmtNum(order.count)} × ${label(order.id)}`, loss))) void cancel.run({ builtIn: g.builtIn });
+                  }}
+                >Abbruch</Button>
               </div>
             )}
             {level < 1 ? (
@@ -125,16 +146,27 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
   const [n, setN] = useState(1);
   const cmd = useCommand((i: { key: string; id: string; count: number }) => trpcClient.base.train.mutate(i), invalidateBase);
   const [info, setInfo] = useState(false);
+  // Bezahlbare Höchstmenge: begrenzt die Eingabe, damit Kosten und Bauzeit sinnvoll bleiben.
+  const afford = Object.entries(props.cost ?? {}).reduce(
+    (m, [r, v]) => (v > 0 ? Math.min(m, Math.floor((props.base.resources[r] ?? 0) / v)) : m),
+    MAX_TRAIN,
+  );
+  const enough = n >= 1 && n <= afford;
+  const why = props.busy
+    ? "Hier läuft schon ein Auftrag (oben) – neue Ausbildung erst nach Abschluss oder Abbruch."
+    : props.base.versorgungsmangel ? "Versorgungsmangel: keine Ausbildung möglich."
+    : afford < 1 ? "Nicht genug Ressourcen für ein Stück."
+    : !enough ? `Nicht genug Ressourcen (höchstens ${fmtNum(afford)}).` : null;
   return (
     <li className="py-2">
       <div className="flex gap-3 items-start">
         <button type="button" onClick={() => setInfo(true)} aria-label={`${label(props.id)}: Info`}><IconTile id={props.id} size={52} tone={unitTone(props.balance, props.id)} /></button>
         <div className="min-w-0 flex-1">
           <div className="flex justify-between gap-2">
-            <button type="button" className="font-serif text-[17px] leading-tight text-left" onClick={() => setInfo(true)}>{label(props.id)} <span className="text-sea-300 text-xs">ⓘ</span></button>
+            <button type="button" className="font-serif text-[17px] leading-tight text-left min-h-[44px] -my-2" onClick={() => setInfo(true)}>{label(props.id)} <span className="text-sea-300 text-xs">ⓘ</span></button>
             <div className="text-sm tabular-nums"><strong>{fmtNum(props.have)}</strong>{props.away > 0 ? <span className="text-slate-400"> +{fmtNum(props.away)} unterwegs</span> : ""}</div>
           </div>
-          <div className="text-xs text-slate-400">{UNIT_TEXT[props.id]}</div>
+          <div className="text-xs text-slate-400">{unitText(props.balance, props.id)}</div>
         </div>
       </div>
       <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
@@ -142,8 +174,8 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
           <span className="text-xs text-brass-300">Bau ab {label(props.balance.units[props.id]?.builtIn ?? "")} Stufe {props.needLevel}</span>
         ) : (
           <>
-            <Stepper value={n} onChange={setN} />
-            <Button kind="secondary" disabled={props.busy || cmd.busy || n < 1} onClick={() => void cmd.run({ id: props.id, count: n })}>
+            <Stepper value={n} onChange={setN} limit={Math.max(1, afford)} />
+            <Button kind="secondary" disabled={!!why || cmd.busy || n < 1} onClick={() => void cmd.run({ id: props.id, count: n })}>
               Bauen
             </Button>
           </>
@@ -153,9 +185,10 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
         <Cost cost={scale(props.cost, n)} have={props.base.resources} />
         {props.secondsEach !== null && <span className="text-xs text-slate-400 flex items-center gap-1"><Icon id="uhr" size={14} /> {fmtSeconds(props.secondsEach * n)}</span>}
       </div>
+      {why && !props.needLevel && <p className="text-xs text-brass-300 mt-1">{why}</p>}
       <ErrorLine text={cmd.error} />
       <Sheet open={info} onClose={() => setInfo(false)} title={label(props.id)} icon={<IconTile id={props.id} size={56} tone={unitTone(props.balance, props.id)} />}>
-        <p className="text-sm text-slate-200 mb-3">{UNIT_TEXT[props.id]}</p>
+        <p className="text-sm text-slate-200 mb-3">{unitText(props.balance, props.id)}</p>
         <StatTable rows={unitStats(props.balance, props.id).map(([k, v]) => [k.replace(/^Bonus gegen (.*)$/, (_m, t: string) => `Bonus gegen ${label(t)}`), v])} />
         <div className="mt-3 text-sm"><span className="text-slate-400">Kosten je Stück: </span><Cost cost={props.cost} /></div>
       </Sheet>
@@ -166,7 +199,7 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
 type MissionData = BaseData["missions"][number];
 
 /** Bestätigung des Rückrufs: Rückkehr nach der bereits gefahrenen Zeit, Treibstoff ist verbraucht. */
-function RecallSheet({ mission, now, onClose }: { mission: MissionData; now: number; onClose: () => void }) {
+function RecallSheet({ mission, name, now, onClose }: { mission: MissionData; name: string; now: number; onClose: () => void }) {
   const cmd = useCommand(
     (i: { key: string; missionId: number }) => trpcClient.mission.recall.mutate(i),
     () => [trpc.base.pathFilter().queryKey, trpc.world.pathFilter().queryKey],
@@ -177,7 +210,7 @@ function RecallSheet({ mission, now, onClose }: { mission: MissionData; now: num
       <div className="text-sm space-y-2 mb-3">
         <p>Der Verband kehrt sofort um und ist nach der bereits gefahrenen Zeit wieder daheim.</p>
         <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-xl bg-paper border border-rule p-2">
-          <span className="text-slate-400">Ziel</span><span className="text-right">Feld {mission.target.col}/{mission.target.row}</span>
+          <span className="text-slate-400">Ziel</span><span className="text-right">{name}</span>
           <span className="text-slate-400">Unterwegs seit</span><span className="text-right">{fmtDuration(elapsed)}</span>
           <span className="text-slate-400">Wieder daheim</span><span className="text-right">etwa {fmtTime(now + elapsed)}</span>
         </div>

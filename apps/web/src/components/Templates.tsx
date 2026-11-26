@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient, trpc, trpcClient, type BaseData } from "../lib/trpc.ts";
-import { errorText, fmtNum, label } from "../lib/names.ts";
+import { errorText, failText, fmtNum, label } from "../lib/names.ts";
 import { fitUnits, isPlanType, type PlanType } from "../lib/plan-request.ts";
 import { Icon } from "../icons.tsx";
 import { Button, Card, ErrorLine } from "../ui.tsx";
@@ -42,14 +42,14 @@ export function TemplateBar({ base, units, type, onApply }: {
         setName("");
       }
       await refresh();
-    } catch {
-      setError(errorText("network"));
+    } catch (err) {
+      setError(failText(err));
     } finally {
       setBusy(false);
     }
   };
   const remove = async (id: number) => {
-    await trpcClient.comfort.deleteTemplate.mutate({ id }).catch(() => setError(errorText("network")));
+    await trpcClient.comfort.deleteTemplate.mutate({ id }).catch((err) => setError(failText(err)));
     await refresh();
   };
 

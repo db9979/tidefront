@@ -1,5 +1,5 @@
 // Lesemodelle für die Oberfläche. Lesen verarbeitet zuerst fällige Ereignisse des eigenen Stützpunkts.
-import { and, desc, eq, inArray, or } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import {
   aircraftSlots,
   aircraftSlotsUsed,
@@ -246,19 +246,30 @@ export async function reportList(engine: Engine, playerId: number) {
       winner: tables.battleReport.winner,
       attackerPlayerId: tables.battleReport.attackerPlayerId,
       createdAt: tables.battleReport.createdAt,
+      from: sql<string | null>`${tables.battleReport.report}->>'from'`,
     })
     .from(tables.battleReport)
     .where(or(eq(tables.battleReport.attackerPlayerId, playerId), eq(tables.battleReport.defenderPlayerId, playerId)))
     .orderBy(desc(tables.battleReport.createdAt))
     .limit(100);
-  return rows.map((r) => ({
-    id: r.id,
-    kind: r.kind,
-    title: r.title,
-    atMs: r.createdAt.getTime(),
-    role: r.attackerPlayerId === playerId ? "attacker" : "defender",
-    won: r.winner === null ? null : (r.winner === "attacker") === (r.attackerPlayerId === playerId),
-  }));
+  return rows.map((r) => {
+    const role = reportRole(r.kind, r.attackerPlayerId, playerId);
+    return {
+      id: r.id,
+      kind: r.kind,
+      // Empfänger einer Lieferung sieht den Absender statt des eigenen Hafens.
+      title: role === "recipient" ? `Lieferung von ${r.from ?? "?"}` : r.title,
+      atMs: r.createdAt.getTime(),
+      role,
+      won: r.winner === null ? null : (r.winner === "attacker") === (r.attackerPlayerId === playerId),
+    };
+  });
+}
+
+/** Rolle des Lesers: eigene Mission, angegriffener Hafen oder Empfänger einer Lieferung. */
+export function reportRole(kind: string, attackerPlayerId: number | null, playerId: number): "attacker" | "defender" | "recipient" {
+  if (attackerPlayerId === playerId) return "attacker";
+  return kind === "transport" ? "recipient" : "defender";
 }
 
 export async function reportGet(engine: Engine, playerId: number, id: number) {
@@ -270,12 +281,13 @@ export async function reportGet(engine: Engine, playerId: number, id: number) {
       or(eq(tables.battleReport.attackerPlayerId, playerId), eq(tables.battleReport.defenderPlayerId, playerId)),
     ));
   if (!r) return null;
+  const role = reportRole(r.kind, r.attackerPlayerId, playerId);
   return {
     id: r.id,
     kind: r.kind,
-    title: r.title,
+    title: role === "recipient" ? `Lieferung von ${String((r.report as { from?: string }).from ?? "?")}` : r.title,
     atMs: r.createdAt.getTime(),
-    role: r.attackerPlayerId === playerId ? ("attacker" as const) : ("defender" as const),
+    role,
     winner: r.winner,
     seed: r.seed,
     balanceVersion: r.balanceVersion,

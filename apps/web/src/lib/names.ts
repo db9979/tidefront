@@ -120,12 +120,38 @@ const ERRORS: Record<string, string> = {
   rate_limited: "Zu viele Versuche. Bitte kurz warten.",
   network: "Keine Verbindung zum Server. Bitte erneut versuchen.",
   bad_name: "Name: 1–32 Zeichen.",
+  shield_cooldown: "Der Nachtschild lässt sich nur einmal je 24 Stunden umstellen.",
+  shield_unchanged: "Diese Einstellung ist schon gewählt.",
+  bad_hour: "Ungültige Startstunde.",
+  bad_tz: "Ungültige Zeitzone.",
   template_limit: "Höchstens 20 Vorlagen. Bitte erst eine löschen.",
 };
 
 export function errorText(code: string): string {
   if (code === "rate") return "Zu viele Versuche. Bitte kurz warten.";
   return ERRORS[code] ?? `Abgelehnt (${code}).`;
+}
+
+/**
+ * Text für eine Ausnahme bei einem Serveraufruf: Eingabefehler (HTTP 400) mit der Erklärung des Servers,
+ * sonst passende Meldungen für Anmeldung, Drosselung und fehlende Verbindung.
+ */
+export function failText(err: unknown): string {
+  const data = (err as { data?: { code?: string; inputError?: string | null } | null } | null)?.data;
+  switch (data?.code) {
+    case "BAD_REQUEST": return data.inputError ?? "Ungültige Eingabe. Bitte die Angaben prüfen.";
+    case "TOO_MANY_REQUESTS": return errorText("rate");
+    case "UNAUTHORIZED": return "Nicht mehr angemeldet. Bitte neu anmelden.";
+    case "FORBIDDEN": return "Dafür fehlt die Berechtigung.";
+    case "PAYLOAD_TOO_LARGE": return "Die Eingabe ist zu lang.";
+    default: return errorText("network");
+  }
+}
+
+/** War der Fehler ein abgelehnter Aufruf (Eingabe, Rechte) statt eines Netzfehlers? */
+export function isRejected(err: unknown): boolean {
+  const code = (err as { data?: { code?: string } | null } | null)?.data?.code;
+  return typeof code === "string" && code !== "INTERNAL_SERVER_ERROR";
 }
 
 export function fmtNum(n: number, digits = 0): string {

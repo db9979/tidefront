@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient, trpc, trpcClient } from "../lib/trpc.ts";
-import { errorText } from "../lib/names.ts";
+import { errorText, failText } from "../lib/names.ts";
 import { Card, ErrorLine } from "../ui.tsx";
 import { Switch } from "./Switch.tsx";
 
@@ -34,8 +34,8 @@ export function SummaryCard() {
       const r = await trpcClient.comfort.setSummary.mutate({ enabled: s.enabled, minuteOfDay: s.minuteOfDay, timeZone: s.timeZone, push: s.push, ...patch });
       if (!r.ok) setError(r.code === "bad_tz" ? "Unbekannte Zeitzone." : r.code === "bad_time" ? "Ungültige Uhrzeit." : errorText(r.code));
       await queryClient.invalidateQueries(trpc.comfort.summary.pathFilter());
-    } catch {
-      setError(errorText("network"));
+    } catch (err) {
+      setError(failText(err));
     } finally {
       setBusy(false);
     }

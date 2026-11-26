@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient, type Outputs } from "../lib/trpc.ts";
-import { errorText } from "../lib/names.ts";
+import { errorText, failText } from "../lib/names.ts";
 import { Badge, Button, ErrorLine } from "../ui.tsx";
 
 type Mine = Outputs["invite"]["mine"];
@@ -68,8 +68,8 @@ export function InvitePanel({ playerName }: { playerName?: string }) {
     setMsg(null);
     try {
       await fn();
-    } catch {
-      setError(errorText("network"));
+    } catch (err) {
+      setError(failText(err));
     } finally {
       setBusy(false);
       await refresh();
@@ -113,7 +113,7 @@ export function InvitePanel({ playerName }: { playerName?: string }) {
         <label className="text-sm text-ink2" htmlFor="inv-name">Name des Freundes (optional)</label>
         <input id="inv-name" className={field} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} autoComplete="off" />
         <label className="text-sm text-ink2" htmlFor="inv-email">E-Mail-Adresse</label>
-        <input id="inv-email" className={field} type="email" inputMode="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!d.mailReady} />
+        <input id="inv-email" className={field} maxLength={254} type="email" inputMode="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!d.mailReady} />
         <label className="text-sm text-ink2 flex justify-between" htmlFor="inv-msg">
           <span>Persönliche Nachricht (optional)</span>
           <span className="mono text-xs">{message.length}/{MESSAGE_MAX}</span>

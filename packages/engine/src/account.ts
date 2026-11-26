@@ -1,6 +1,6 @@
 // Konten ohne Konsole: Admins, Passwort ändern und zurücksetzen, Einladungscodes, Spielerliste, letzte Aktivität.
 import { randomBytes } from "node:crypto";
-import { and, asc, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { tables, type Db, type DbOrTx } from "@tidefront/db";
 import { GameError, type Engine } from "./context.ts";
 import { createSession, hashPassword, verifyPassword } from "./auth.ts";
@@ -176,8 +176,11 @@ export async function listInvites(db: Db) {
 
 /** Code frei oder zufällig. Codes: invite_exists, bad_code. */
 export async function createInvite(db: Db, input: { code?: string; maxUses: number }): Promise<{ code: string }> {
-  const code = input.code?.trim() || readableCode(8).replace(/-/g, "");
-  if (!/^[A-Za-z0-9_-]{3,64}$/.test(code)) throw new GameError("bad_code");
+  const code = (input.code?.trim() || readableCode(8).replace(/-/g, "")).toUpperCase();
+  if (!/^[A-Z0-9_-]{3,64}$/.test(code)) throw new GameError("bad_code");
+  // Codes gelten ohne Rücksicht auf Groß-/Kleinschreibung: auch „abc“ neben „ABC“ wäre doppelt.
+  const [clash] = await db.select({ code: tables.inviteCode.code }).from(tables.inviteCode).where(sql`upper(${tables.inviteCode.code}) = ${code}`);
+  if (clash) throw new GameError("invite_exists");
   const r = await db
     .insert(tables.inviteCode)
     .values({ code, maxUses: Math.max(1, Math.floor(input.maxUses)) })
@@ -185,6 +188,16 @@ export async function createInvite(db: Db, input: { code?: string; maxUses: numb
     .returning({ code: tables.inviteCode.code });
   if (r.length === 0) throw new GameError("invite_exists");
   return { code };
+}
+
+/** Deaktivierten Code wieder freigeben. */
+export async function enableInvite(db: Db, code: string): Promise<boolean> {
+  const r = await db
+    .update(tables.inviteCode)
+    .set({ disabledAt: null })
+    .where(and(eq(tables.inviteCode.code, code), isNotNull(tables.inviteCode.disabledAt)))
+    .returning({ code: tables.inviteCode.code });
+  return r.length > 0;
 }
 
 export async function disableInvite(db: Db, code: string): Promise<boolean> {

@@ -7,14 +7,20 @@ import { Icon } from "../icons.tsx";
 import { fmtDuration, useNow } from "../lib/time.ts";
 import { Button, Card, ErrorLine, Loading } from "../ui.tsx";
 
+/** Höchstmenge je Handel (wie im Server). */
+const MAX_QTY = 10_000_000;
+
 export function MarketScreen({ base }: { base: BaseData }) {
   const m = useQuery({ ...trpc.market.get.queryOptions(), refetchInterval: 30000 });
+  const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const now = useNow();
   const [resource, setResource] = useState("stahl");
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [qtyText, setQtyText] = useState("100");
   const [qty, setQty] = useState(100);
   const [done, setDone] = useState<string | null>(null);
+  // Neue Eingabe: alte Erfolgsmeldung weg.
+  useEffect(() => setDone(null), [qtyText, side, resource]);
   // Menge erst nach kurzer Pause anfragen
   useEffect(() => {
     const t = setTimeout(() => setQty(Math.max(0, Math.floor(Number(qtyText) || 0))), 300);
@@ -22,7 +28,7 @@ export function MarketScreen({ base }: { base: BaseData }) {
   }, [qtyText]);
   const quote = useQuery({
     ...trpc.market.quote.queryOptions({ side, resource, qty: Math.max(1, qty) }),
-    enabled: qty > 0 && base.market.unlocked,
+    enabled: qty > 0 && qty <= MAX_QTY && base.market.unlocked,
     placeholderData: keepPreviousData,
   });
   const exec = useCommand(
@@ -30,8 +36,15 @@ export function MarketScreen({ base }: { base: BaseData }) {
     () => [trpc.market.pathFilter().queryKey, trpc.base.pathFilter().queryKey],
   );
   if (!m.data) return <Loading />;
-  const q = quote.data && quote.data.ok ? quote.data : null;
+  // Vorschau nur zur aktuellen, gültigen Menge (nicht die alte bei leerer oder zu großer Eingabe).
+  const typed = Number(qtyText) || 0;
+  const valid = typed > 0 && typed <= MAX_QTY;
+  const fresh = valid && typed === qty;
+  const q = fresh && quote.data && quote.data.ok ? quote.data : null;
   const sel = m.data.resources.find((r) => r.id === resource)!;
+  const maxImpact = meta.data?.balance.market.maxImpactPerTrade;
+  const depth = (meta.data?.balance.market as { depth?: Record<string, number> } | undefined)?.depth?.[resource];
+  const maxPerTrade = maxImpact !== undefined && depth ? Math.floor(depth * maxImpact) : null;
   const halted = sel.haltedUntilMs > now;
 
   return (
@@ -82,13 +95,17 @@ export function MarketScreen({ base }: { base: BaseData }) {
             </button>
           ))}
         </div>
-        <label className="text-sm text-slate-300">Menge</label>
+        <label className="text-sm text-slate-300" htmlFor="tf-qty">Menge</label>
         <input
+          id="tf-qty"
           inputMode="numeric"
+          maxLength={8}
           className="w-full h-12 rounded-lg field px-3 mb-2"
           value={qtyText}
-          onChange={(e) => setQtyText(e.target.value.replace(/\D/g, ""))}
+          // Nur der ganzzahlige Teil: „1.5“ wird 1, nicht 15.
+          onChange={(e) => setQtyText(e.target.value.split(/[.,]/)[0].replace(/\D/g, ""))}
         />
+        {!valid && <p className="text-sm text-brass-300 mb-2">{typed > MAX_QTY ? `Menge zu groß (höchstens ${fmtNum(MAX_QTY)}).` : "Menge eingeben (ganze Zahl ab 1)."}</p>}
         <div className="text-xs text-slate-400 mb-2">
           Bestand {fmtNum(base.resources[resource] ?? 0)} · Tageslimit {fmtNum(sel.dailyUsed)}/{fmtNum(sel.dailyLimit)} · Gebühr {fmtNum(m.data.fee * 100)} %
         </div>
@@ -96,11 +113,16 @@ export function MarketScreen({ base }: { base: BaseData }) {
           <div className="text-sm rounded-lg bg-paper border border-rule p-2 mb-2">
             <div>Ausführungskurs {fmtNum(q.executionPrice, 4)} (Kurs danach {fmtNum(q.priceAfter, 4)})</div>
             <div>Kurswirkung {fmtNum(q.impact * 100, 2)} % · Gebühr {fmtNum(q.feeCredits, 2)} Kr</div>
+            {maxImpact !== undefined && q.impact > maxImpact && (
+              <div className="text-siegel text-xs">
+                Kurswirkung über {fmtNum(maxImpact * 100, 1)} %: so wird der Handel abgelehnt.{maxPerTrade ? ` Höchstens etwa ${fmtNum(maxPerTrade)} je Handel.` : ""}
+              </div>
+            )}
             <div className="font-semibold">{side === "buy" ? "Kosten" : "Erlös"}: {fmtNum(q.totalCredits, 2)} Kr</div>
             {side === "buy" && <div className="text-xs text-slate-400">Lieferung per Konvoi aus {base.market.port.name}</div>}
           </div>
         )}
-        {quote.data && !quote.data.ok && <ErrorLine text={errorText(quote.data.code)} />}
+        {fresh && quote.data && !quote.data.ok && <ErrorLine text={errorText(quote.data.code)} />}
         <Button
           className="w-full"
           disabled={!q || exec.busy || halted || !base.market.unlocked}

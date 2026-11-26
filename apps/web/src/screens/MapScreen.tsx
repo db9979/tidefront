@@ -87,7 +87,9 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
                     <TacticalIcon kind={info.base.own ? "own" : "other"} size={26} /> {info.base.name}
                   </div>
                   <div className="text-xs text-slate-300">{info.base.own ? "Dein Stützpunkt" : `Stützpunkt von ${info.base.owner}`}</div>
-                  {info.base.protection && <div className="text-emerald-300 text-xs">{label(info.base.protection)} – kein Überfall möglich</div>}
+                  {info.base.protection ? (
+                    <div className="text-emerald-300 text-xs">Schutz: {label(info.base.protection)} – kein Überfall möglich</div>
+                  ) : !info.base.own && <div className="text-siegel text-xs">Kein Schutz aktiv – Überfall möglich</div>}
                   {isHome && <div className="text-xs text-slate-400">Nächster Handelshafen: {nearestTradePort(home).name} ({fmtNum(nearestTradePort(home).distanceKm)} km)</div>}
                 </div>
               )}

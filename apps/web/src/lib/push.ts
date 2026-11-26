@@ -45,15 +45,46 @@ export async function currentEndpoint(): Promise<string | null> {
   return sub?.endpoint ?? null;
 }
 
+/** Hinweis, wenn der Browser Benachrichtigungen für diese Seite blockiert. */
+export const DENIED_HINT =
+  "Benachrichtigungen sind für diese Seite im Browser blockiert. Erlaube sie in den Website-Einstellungen " +
+  "(Schloss-Symbol neben der Adresse bzw. Einstellungen → Benachrichtigungen) und tippe dann erneut auf „Aktivieren“.";
+
+export function pushDenied(): boolean {
+  return "Notification" in window && Notification.permission === "denied";
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([p, new Promise<null>((resolve) => setTimeout(() => resolve(null), ms))]);
+}
+
 /** Fragt die Erlaubnis an (muss aus einem Tipp heraus laufen) und meldet das Abo beim Server an. */
 export async function enablePush(publicKey: string): Promise<{ ok: true; endpoint: string } | { ok: false; error: string }> {
-  const reg = await registration();
-  if (!reg) return { ok: false, error: "Dieser Browser unterstützt keine Push-Benachrichtigungen." };
+  if (!pushSupported()) return { ok: false, error: "Dieser Browser unterstützt keine Push-Benachrichtigungen." };
+  if (pushDenied()) return { ok: false, error: DENIED_HINT };
+  let reg: ServiceWorkerRegistration | null = null;
+  let regError = "";
+  try {
+    reg = (await navigator.serviceWorker.getRegistration()) ?? (await navigator.serviceWorker.register("/sw.js"));
+  } catch (err) {
+    regError = err instanceof Error ? ` (${err.message})` : "";
+  }
+  if (!reg) {
+    return { ok: false, error: `Der Hintergrunddienst der App (Service Worker) ließ sich nicht starten${regError}. Seite neu laden und erneut versuchen; im privaten Modus geht es oft nicht.` };
+  }
   const perm = await Notification.requestPermission();
-  if (perm !== "granted") return { ok: false, error: "Benachrichtigungen wurden nicht erlaubt. Das lässt sich in den Einstellungen des Browsers ändern." };
-  await navigator.serviceWorker.ready;
-  let sub = await reg.pushManager.getSubscription();
-  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) });
+  if (perm === "denied") return { ok: false, error: DENIED_HINT };
+  if (perm !== "granted") return { ok: false, error: "Benachrichtigungen wurden nicht erlaubt. Tippe erneut auf „Aktivieren“ und bestätige die Abfrage." };
+  if (!(await withTimeout(navigator.serviceWorker.ready, 10000))) {
+    return { ok: false, error: "Der Hintergrunddienst der App antwortet nicht. Seite neu laden und erneut versuchen." };
+  }
+  let sub: PushSubscription | null;
+  try {
+    sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) });
+  } catch (err) {
+    return { ok: false, error: `Das Abo ließ sich nicht anlegen${err instanceof Error ? ` (${err.message})` : ""}. Später erneut versuchen.` };
+  }
   const json = sub.toJSON();
   if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return { ok: false, error: "Das Abo ist unvollständig." };
   const r = await trpcClient.push.subscribe.mutate({ endpoint: json.endpoint, keys: { p256dh: json.keys.p256dh, auth: json.keys.auth } });

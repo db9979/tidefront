@@ -20,6 +20,13 @@ const TYPES = [
   { id: "transport", text: "Transport", hint: "Ladung an einen Stützpunkt" },
 ] as const;
 
+/** Bestätigung nach dem Auslaufen, passend zur Art der Mission. */
+const SENT_TEXT: Record<string, string> = {
+  ueberfall: "Den Kampfbericht findest du nach der Ankunft unter „Meldungen“, die Fahrt auf der Karte.",
+  aufklaerung: "Das Lagebild findest du nach der Ankunft unter „Meldungen“, die Fahrt auf der Karte.",
+  transport: "Die Ladung wird bei Ankunft gutgeschrieben; die Bestätigung erscheint unter „Meldungen“.",
+};
+
 export function MissionPlan({ base, initialTarget, onClose, preset }: { base: BaseData; initialTarget: Target | null; onClose: () => void; onPickOnMap?: () => void; preset?: PlanPreset }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const map = useQuery(trpc.world.map.queryOptions());
@@ -30,7 +37,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   const [units, setUnits] = useState<Record<string, number>>(first.units);
   const [note, setNote] = useState<string | null>(shortText(first.short));
   const [cargo, setCargo] = useState<Record<string, number>>({});
-  const [sent, setSent] = useState<{ arriveAtMs: number } | null>(null);
+  const [sent, setSent] = useState<{ arriveAtMs: number; type: string } | null>(null);
   // Frische Bestände beim Öffnen
   useEffect(() => {
     void queryClient.invalidateQueries(trpc.base.pathFilter());
@@ -68,7 +75,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   if (sent) {
     return (
       <Card title="Mission gestartet">
-        <div className="flex items-center gap-3"><Icon id={type} size={48} /><p>Der Verband hat abgelegt. Ankunft am Ziel {fmtTime(sent.arriveAtMs)}. Den Kampfbericht findest du danach unter „Berichte“, die Fahrt auf der Karte.</p></div>
+        <div className="flex items-center gap-3"><Icon id={sent.type} size={48} /><p>Der Verband hat abgelegt. Ankunft am Ziel {fmtTime(sent.arriveAtMs)}. {SENT_TEXT[sent.type] ?? ""}</p></div>
         <Button className="mt-3 w-full" onClick={onClose}>Fertig</Button>
       </Card>
     );
@@ -99,7 +106,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         </div>
         <p className="text-sm">
           {!target && "Ziel auf der Karte antippen."}
-          {target && tInfo?.base && <>Stützpunkt <strong>{tInfo.base.name}</strong> ({tInfo.base.owner})</>}
+          {target && tInfo?.base && <>Stützpunkt <strong>{tInfo.base.name}</strong> ({tInfo.base.owner}){tInfo.base.protection && <span className="text-messing"> · geschützt: {label(tInfo.base.protection)}</span>}</>}
           {target && tInfo?.nest && <>Piratennest Stufe <strong>{tInfo.nest.level}</strong>{tInfo.nest.empty ? " (verlassen)" : ""}</>}
           {target && !tInfo?.base && !tInfo?.nest && <span className="text-slate-400">Feld {target.col}/{target.row}: kein Ziel</span>}
         </p>
@@ -165,7 +172,10 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
                 <div>Ankunft {fmtTime(p.arriveAtMs)} · zurück {fmtTime(p.returnAtMs)}</div>
               </>
             ) : (
-              <div className="text-red-300">{errorText(p.code)}</div>
+              <div className="text-red-300">
+                {errorText(p.code)}
+                {p.code === "target_protected" && tInfo?.base?.protection ? ` Grund: ${label(tInfo.base.protection)}. Ein Überfall ist erst danach möglich.` : ""}
+              </div>
             )}
           </div>
         )}
@@ -175,7 +185,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           onClick={async () => {
             if (!input) return;
             const r = await launch.run(input);
-            if (r && r.ok) setSent({ arriveAtMs: r.arriveAtMs });
+            if (r && r.ok) setSent({ arriveAtMs: r.arriveAtMs, type });
           }}
         >
           Auslaufen

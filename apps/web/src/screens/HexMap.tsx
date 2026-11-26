@@ -255,10 +255,11 @@ export function HexMap(props: HexMapProps) {
     for (const key of free) {
       const [col, row] = key.split(",").map(Number);
       const { x, y } = hexCenterXY(col, row);
-      s.free.poly(hexPoints(x, y, HEX_SIZE_KM * 0.82)).fill({ color: SEE, alpha: 0.12 });
+      // Freie Küste deutlich: kräftige Füllung und Rand, auch bei kleinem Zoom erkennbar.
+      s.free.poly(hexPoints(x, y, HEX_SIZE_KM * 0.82)).fill({ color: SEE, alpha: 0.28 });
       s.free.poly(hexPoints(x, y, HEX_SIZE_KM * 0.82));
     }
-    s.free.stroke({ color: SEE, width: 2, alpha: 0.85 });
+    s.free.stroke({ color: SEE, width: 3, alpha: 1 });
   }, [ready, selectMode, free]);
 
   // Symbole für Stützpunkte, Nester, Wracks

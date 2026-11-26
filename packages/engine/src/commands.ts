@@ -11,6 +11,7 @@ import {
   isNestRespawned,
   planMission,
   recallMission,
+  scheduleNightShieldChange,
   settle,
   startTraining,
   startUpgrade,
@@ -188,13 +189,15 @@ export function cancelTrain(engine: Engine, playerId: number, key: string, built
 }
 
 export function setNightShield(engine: Engine, playerId: number, key: string, startHour: number | null, tzOffsetMinutes: number) {
-  return runCommand(engine, playerId, key, "nightShield", async (ctx) => {
+  return runCommand<{ ok: true; fromMs: number }>(engine, playerId, key, "nightShield", async (ctx) => {
     const b = await ownBaseLocked(ctx);
     const next = settle(b.state, ctx.nowMs, balance);
-    next.protection = { ...next.protection, nightShieldStartHour: startHour, tzOffsetMinutes };
+    const r = scheduleNightShieldChange(next.protection, startHour, tzOffsetMinutes, ctx.nowMs, balance);
+    if (!r.ok) return { ok: false as const, code: r.code };
+    next.protection = r.protection;
     await saveBase(ctx.tx, b.id, next);
     ctx.notify.push([[playerId], "base"]);
-    return { ok: true as const };
+    return { ok: true as const, fromMs: r.fromMs };
   });
 }
 
