@@ -36,6 +36,18 @@ export function label(id: string): string {
 export const RES_ICON: Record<string, string> = { stahl: "⛓", treibstoff: "🛢", elektronik: "🔌", proviant: "🥫" };
 
 const ERRORS: Record<string, string> = {
+  bad_password: "Das bisherige Passwort stimmt nicht.",
+  bad_reset: "Rücksetzcode oder Link ungültig, abgelaufen oder schon benutzt.",
+  invite_exists: "Diesen Einladungscode gibt es schon.",
+  bad_code: "Code: 3–64 Zeichen, nur Buchstaben, Ziffern, - und _.",
+  no_player: "Spieler nicht gefunden.",
+  bad_email: "Bitte eine gültige E-Mail-Adresse eingeben.",
+  mail_off: "Der E-Mail-Versand ist auf diesem Server nicht eingerichtet.",
+  no_secret: "APP_SECRET fehlt auf dem Server; E-Mail ist abgeschaltet.",
+  no_email: "Keine eigene E-Mail-Adresse hinterlegt.",
+  mail_failed: "Versand fehlgeschlagen.",
+  push_none: "Keine Benachrichtigung zugestellt.",
+  bad_endpoint: "Ungültiges Push-Abo.",
   insufficient_resources: "Nicht genug Ressourcen.",
   queue_full: "Die Bauschlange ist voll.",
   no_mission: "Diese Mission gibt es nicht (mehr).",

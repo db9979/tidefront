@@ -6,6 +6,7 @@ import { label, fmtNum } from "../lib/names.ts";
 import { BUILDING_TEXT, UNIT_TEXT, unitTone } from "../lib/info.ts";
 import { Icon, IconTile } from "../icons.tsx";
 import { Button } from "../ui.tsx";
+import { SettingsScreen } from "./Settings.tsx";
 
 interface Chapter { id: string; icon: string; title: string; body: ReactNode }
 
@@ -13,9 +14,10 @@ function P({ children }: { children: ReactNode }) {
   return <p className="text-sm text-slate-200 mb-2 leading-relaxed">{children}</p>;
 }
 
-export function Handbook({ onClose, onLogout, playerName }: { onClose: () => void; onLogout: () => void; playerName: string }) {
+export function Handbook({ onClose, onLogout, playerName, initialView }: { onClose: () => void; onLogout: () => void; playerName: string; initialView?: "settings" | "admin" | null }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const [open, setOpen] = useState<string | null>("ziel");
+  const [view, setView] = useState(initialView ?? null);
   const b = meta.data?.balance;
 
   const chapters: Chapter[] = [
@@ -150,6 +152,7 @@ export function Handbook({ onClose, onLogout, playerName }: { onClose: () => voi
     },
   ];
 
+  if (view) return <SettingsScreen onClose={() => setView(null)} initialAdmin={view === "admin"} />;
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
@@ -168,7 +171,10 @@ export function Handbook({ onClose, onLogout, playerName }: { onClose: () => voi
       ))}
       <div className="panel rounded-2xl p-3 mt-4 flex items-center justify-between gap-2">
         <span className="text-sm text-slate-300">Angemeldet als <strong>{playerName}</strong></span>
-        <Button kind="secondary" onClick={onLogout}>Abmelden</Button>
+        <div className="flex gap-2">
+          <Button kind="secondary" onClick={() => setView("settings")}>Einstellungen</Button>
+          <Button kind="secondary" onClick={onLogout}>Abmelden</Button>
+        </div>
       </div>
     </div>
   );

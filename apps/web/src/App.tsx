@@ -18,6 +18,7 @@ import { Handbook } from "./screens/Handbook.tsx";
 import { ResourceBar } from "./components/ResourceBar.tsx";
 import { Welcome } from "./components/Welcome.tsx";
 import type { GuideAction } from "./components/Guide.tsx";
+import { parseOpenUrl, type OpenTarget } from "./lib/push.ts";
 
 export type Tab = "basis" | "karte" | "truppen" | "berichte" | "boerse";
 export interface Target { col: number; row: number }
@@ -41,13 +42,30 @@ export function App() {
   const messages = useQuery({ ...trpc.social.messages.unread.queryOptions(), enabled: hasBase, refetchInterval: 60000 });
   useLive(loggedIn);
   const now = useNow();
-  const [tab, setTab] = useState<Tab>("basis");
+  // Ziel aus einer Benachrichtigung (?tab=…, ?view=…) beim Start und per Nachricht vom Service Worker.
+  const [opened] = useState<OpenTarget>(() => parseOpenUrl(location.href));
+  const [tab, setTab] = useState<Tab>(opened.tab ?? "basis");
   const [plan, setPlan] = useState<{ target: Target | null } | null>(null);
   const [mapFocus, setMapFocus] = useState<Target | null>(null);
-  const [help, setHelp] = useState(false);
+  const [help, setHelp] = useState(!!opened.view);
+  const [helpView, setHelpView] = useState(opened.view ?? null);
   const [sheet, setSheet] = useState<string | null>(null);
   const [seen, setSeen] = useState(() => Number(localStorage.getItem(SEEN_KEY) ?? 0));
   const [sub, setSub] = useState<MeldungenTab>("berichte");
+
+  useEffect(() => {
+    if (opened.tab || opened.view) history.replaceState(null, "", "/");
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.type !== "open" || typeof e.data.url !== "string") return;
+      const t = parseOpenUrl(e.data.url);
+      setPlan(null);
+      setHelpView(t.view ?? null);
+      setHelp(!!t.view);
+      if (t.tab) setTab(t.tab);
+    };
+    navigator.serviceWorker?.addEventListener("message", onMsg);
+    return () => navigator.serviceWorker?.removeEventListener("message", onMsg);
+  }, [opened]);
 
   const newestReport = reports.data?.[0]?.id ?? 0;
   useEffect(() => {
@@ -75,6 +93,7 @@ export function App() {
     if (t === "berichte" && tab !== "berichte") setSub(unread === 0 && unreadMsgs > 0 ? "nachrichten" : "berichte");
     setPlan(null);
     setHelp(false);
+    setHelpView(null);
     setTab(t);
   };
   const onGuide = (a: GuideAction) => {
@@ -90,7 +109,7 @@ export function App() {
 
   const fullBleed = tab === "karte" && !plan && !help;
   const content = help ? (
-    <Handbook onClose={() => setHelp(false)} onLogout={logout} playerName={me.data!.player!.name} />
+    <Handbook key={helpView ?? "h"} onClose={() => setHelp(false)} onLogout={logout} playerName={me.data!.player!.name} initialView={helpView} />
   ) : plan ? (
     <MissionPlan base={b} initialTarget={plan.target} onClose={() => setPlan(null)} onPickOnMap={() => go("karte")} />
   ) : tab === "basis" ? (
@@ -110,7 +129,7 @@ export function App() {
 
   return (
     <div className="h-full flex flex-col max-w-xl mx-auto">
-      <ResourceBar base={b} asOf={base.data.serverNow} now={now} onHelp={() => setHelp((h) => !h)} />
+      <ResourceBar base={b} asOf={base.data.serverNow} now={now} onHelp={() => { setHelpView(null); setHelp((h) => !h); }} />
       <main className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto p-3"}`}>{content}</main>
       <nav className="grid grid-cols-5 bg-navy-950/95 backdrop-blur border-t border-white/10" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {TABS.map((t) => {

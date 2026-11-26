@@ -1,8 +1,9 @@
 // Ereignis-Queue: eine Transaktion je Ereignis, fällige Ereignisse mit FOR UPDATE SKIP LOCKED.
 import { and, asc, eq, lte, sql } from "drizzle-orm";
 import { tables, type Tx } from "@tidefront/db";
-import { MAX_EVENT_ATTEMPTS, type ChangeKind, type Engine } from "./context.ts";
+import { MAX_EVENT_ATTEMPTS, type ChangeKind, type Engine, type NoticeJob } from "./context.ts";
 import { HANDLERS } from "./handlers.ts";
+import { noticesAfter, noticeSnapshot } from "./event-notices.ts";
 
 export interface EventRow {
   id: number;
@@ -14,6 +15,8 @@ export interface EventRow {
 
 export interface HandlerResult {
   notify: [number[] | null, ChangeKind][];
+  /** Benachrichtigungen, die nach dem Commit versandt werden. */
+  push?: NoticeJob[];
 }
 
 export type Handler = (tx: Tx, ev: EventRow, dueMs: number) => Promise<HandlerResult>;
@@ -28,6 +31,7 @@ async function processOne(engine: Engine, pick: Pick): Promise<boolean> {
   let failed: { id: number; attempts: number; error: string } | null = null;
   let processed = false;
   const notes: HandlerResult["notify"] = [];
+  const jobs: NoticeJob[] = [];
   try {
     await engine.db.transaction(async (tx) => {
       const where =
@@ -51,8 +55,10 @@ async function processOne(engine: Engine, pick: Pick): Promise<boolean> {
       try {
         if (!handler) throw new Error(`unknown event type ${ev.type}`);
         await tx.transaction(async (inner) => {
+          const snap = await noticeSnapshot(inner, ev as EventRow);
           const res = await handler(inner, ev as EventRow, ev.dueAt.getTime());
           notes.push(...res.notify);
+          jobs.push(...(res.push ?? []), ...(await noticesAfter(inner, ev as EventRow, ev.dueAt.getTime(), snap)));
         });
         await tx
           .update(tables.gameEvent)
@@ -79,6 +85,7 @@ async function processOne(engine: Engine, pick: Pick): Promise<boolean> {
   }
   if (failed) engine.log("event failed", failed);
   for (const [ids, kind] of notes) engine.notify(ids, kind);
+  if (!failed && jobs.length > 0 && engine.push) engine.push(jobs);
   return processed;
 }
 

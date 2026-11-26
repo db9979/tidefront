@@ -1,8 +1,20 @@
-// Worker: verarbeitet fällige Ereignisse, Prüflauf der Börse, Aufräumen.
+// Worker: verarbeitet fällige Ereignisse, Prüflauf der Börse, Aufräumen, Betriebsalarm, gebündelte E-Mails.
 import { createServer } from "node:http";
 import Valkey from "iovalkey";
 import { createDb } from "@tidefront/db";
-import { auditLedger, balance, cleanup, processDue, type Engine } from "@tidefront/engine";
+import {
+  AlertMemory,
+  auditLedger,
+  backlogHealthy,
+  balance,
+  checkOps,
+  cleanup,
+  flushMailDigests,
+  noticeHook,
+  processDue,
+  type Engine,
+  type OpsStatus,
+} from "@tidefront/engine";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://tidefront:tidefront@localhost:5432/tidefront";
 const VALKEY_URL = process.env.VALKEY_URL ?? "redis://localhost:6379";
@@ -23,10 +35,14 @@ const engine: Engine = {
   },
   log,
 };
+engine.push = noticeHook(() => engine);
 
 let lastLoop = Date.now();
 let stopping = false;
 let nextAudit = 0;
+let nextOps = 0;
+let ops: OpsStatus | null = null;
+const alerts = new AlertMemory();
 
 async function loop() {
   while (!stopping) {
@@ -39,6 +55,17 @@ async function loop() {
         if (!audit.ok) log("AUDIT FAILED", audit);
         await cleanup(engine, Date.now(), balance.combat.wreckHours);
       }
+      if (Date.now() >= nextOps) {
+        // Jede Minute: Kennzahlen, Alarm an Admins, gebündelte E-Mails.
+        nextOps = Date.now() + 60000;
+        try {
+          ops = await checkOps(engine, alerts);
+          const mails = await flushMailDigests(engine, Date.now());
+          if (mails > 0) log("digest mails", { sent: mails });
+        } catch (err) {
+          log("ops check failed", String(err));
+        }
+      }
       lastLoop = Date.now();
       if (n === 0) await new Promise((r) => setTimeout(r, POLL_MS));
     } catch (err) {
@@ -48,10 +75,11 @@ async function loop() {
   }
 }
 
-// Gesundheit: die Schleife lief in den letzten 60 Sekunden.
+// Gesundheit: die Schleife lief in den letzten 60 Sekunden und der Rückstau ist höchstens 10 Minuten alt.
 createServer((_req, res) => {
-  const ok = Date.now() - lastLoop < 60000;
-  res.writeHead(ok ? 200 : 503).end(ok ? "ok" : "stalled");
+  const alive = Date.now() - lastLoop < 60000;
+  const ok = alive && backlogHealthy(ops);
+  res.writeHead(ok ? 200 : 503).end(ok ? "ok" : alive ? "backlog" : "stalled");
 }).listen(HEALTH_PORT, "127.0.0.1");
 
 const stop = async () => {

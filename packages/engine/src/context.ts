@@ -13,11 +13,33 @@ export const MAX_EVENT_ATTEMPTS = 5;
 
 export type ChangeKind = "base" | "missions" | "reports" | "market" | "map" | "messages" | "season";
 
+/** Arten von Benachrichtigungen (Push und E-Mail). */
+export const NOTICE_KINDS = ["attack", "report", "build", "training", "fleet", "delivery", "ops", "test"] as const;
+export type NoticeKind = (typeof NOTICE_KINDS)[number];
+
+/** Eine Benachrichtigung an einen Spieler. facts: Kennzahlen (z. B. Ankunft in, Beute) für die E-Mail. */
+export interface Notice {
+  kind: NoticeKind;
+  title: string;
+  body: string;
+  /** Pfad in der App, z. B. "/?tab=berichte". */
+  url?: string;
+  tag?: string;
+  facts?: [string, string][];
+}
+
+export interface NoticeJob {
+  playerId: number;
+  notice: Notice;
+}
+
 export interface Engine {
   db: Db;
   /** Benachrichtigt Spieler über Änderungen (WebSocket über Valkey); null = alle. */
   notify: (playerIds: number[] | null, kind: ChangeKind) => void;
   log: (msg: string, data?: unknown) => void;
+  /** Benachrichtigungen (Push, E-Mail) nach erfolgreichem Commit; fehlt der Hook, wird nichts versandt. */
+  push?: (jobs: NoticeJob[]) => void;
 }
 
 export class GameError extends Error {

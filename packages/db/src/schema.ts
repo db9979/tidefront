@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   bigint,
   bigserial,
+  boolean,
   doublePrecision,
   index,
   integer,
@@ -23,6 +24,10 @@ export const player = pgTable("player", {
   /** TraderState der Börse ohne stock (die Bestände liegen im Stützpunkt). */
   trader: jsonb("trader").notNull(),
   createdAt: ts("created_at").notNull().defaultNow(),
+  /** Verwaltung: ADMIN_NAMES beim migrate bzw. erster Spieler. */
+  isAdmin: boolean("is_admin").notNull().default(false),
+  /** Letzte Aktivität (höchstens alle paar Minuten fortgeschrieben). */
+  lastSeenAt: ts("last_seen_at"),
 }, (t) => [uniqueIndex("player_name_lower").on(sql`lower(${t.name})`)]);
 
 export const session = pgTable("session", {
@@ -37,6 +42,8 @@ export const inviteCode = pgTable("invite_code", {
   maxUses: integer("max_uses").notNull().default(1),
   uses: integer("uses").notNull().default(0),
   createdAt: ts("created_at").notNull().defaultNow(),
+  /** Von der Verwaltung deaktiviert; dann nicht mehr nutzbar. */
+  disabledAt: ts("disabled_at"),
 });
 
 export const base = pgTable("base", {
@@ -213,3 +220,69 @@ export const seasonResult = pgTable("season_result", {
   uniqueIndex("season_result_player").on(t.seasonId, t.playerId),
   index("season_result_rank").on(t.seasonId, t.rank),
 ]);
+// ---------------------------------------------------------------- Betrieb, Verwaltung, Benachrichtigungen
+
+/** Schlüssel-Wert-Einstellungen des Servers (VAPID-Schlüssel, SMTP, Versandzustand). */
+export const serverSetting = pgTable("server_setting", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+/** Web-Push-Abo je Gerät; prefs: Art -> an/aus. */
+export const pushSubscription = pgTable("push_subscription", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  prefs: jsonb("prefs").notNull().default({}),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [uniqueIndex("push_subscription_endpoint").on(t.endpoint), index("push_subscription_player").on(t.playerId)]);
+
+/** Einmalige Rücksetzcodes (Verwaltung oder E-Mail-Link), nur als SHA-256 gespeichert. */
+export const passwordReset = pgTable("password_reset", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  codeHash: text("code_hash").notNull(),
+  /** admin | email */
+  via: text("via").notNull(),
+  createdBy: integer("created_by"),
+  expiresAt: ts("expires_at").notNull(),
+  usedAt: ts("used_at"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [uniqueIndex("password_reset_hash").on(t.codeHash), index("password_reset_player").on(t.playerId)]);
+
+/** Erfolgreiche Sicherungen; schreibt scripts/backup.sh nach jedem pg_dump. */
+export const backupRun = pgTable("backup_run", {
+  id: serial("id").primaryKey(),
+  file: text("file").notNull(),
+  bytes: bigint("bytes", { mode: "number" }),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+/** E-Mail-Adresse eines Spielers mit Bestätigung, Einstellungen je Art und Abmelde-Token. */
+export const playerEmail = pgTable("player_email", {
+  playerId: integer("player_id").primaryKey().references(() => player.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  verifiedAt: ts("verified_at"),
+  verifyHash: text("verify_hash"),
+  verifyExpiresAt: ts("verify_expires_at"),
+  /** Art -> an/aus für E-Mail. */
+  prefs: jsonb("prefs").notNull().default({}),
+  /** Abmelden ohne Anmeldung (Link in jeder Mail). */
+  unsubscribeToken: text("unsubscribe_token").notNull(),
+  lastDigestAt: ts("last_digest_at"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [uniqueIndex("player_email_unsub").on(t.unsubscribeToken)]);
+
+/** Gesammelte Meldungen für die gebündelte E-Mail (Bau, Ausbildung). */
+export const mailDigest = pgTable("mail_digest", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  sentAt: ts("sent_at"),
+}, (t) => [index("mail_digest_open").on(t.sentAt, t.playerId)]);
