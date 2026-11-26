@@ -1,5 +1,6 @@
 // Erfolge (Meldungen → Erfolge): Abzeichen-Raster im Kupferstich-Stil, gesperrt grau, Stufen Bronze/Silber/Gold,
 // Fortschrittsbalken zur nächsten Stufe, Abholen der Belohnungen. Antippen zeigt alle drei Stufen.
+// Errungene (ab Bronze oder mit Abholbarem) oben als große Kacheln, gesperrte darunter als kleines 4-Spalten-Raster.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, type Outputs } from "../lib/trpc.ts";
@@ -29,6 +30,8 @@ export function AchievementsScreen() {
   const v = q.data;
   const item = v.achievements.find((a) => a.id === open) ?? null;
   const claimNext = (a: Item) => a.tiers.find((t) => t.unlocked && !t.claimed);
+  const won = v.achievements.filter((a) => a.tier > 0 || claimNext(a));
+  const locked = v.achievements.filter((a) => !(a.tier > 0 || claimNext(a)));
 
   return (
     <div>
@@ -47,8 +50,8 @@ export function AchievementsScreen() {
         <ErrorLine text={claim.error} />
       </Card>
 
-      <ul className="grid grid-cols-2 gap-2 mb-3" aria-label="Abzeichen">
-        {v.achievements.map((a) => {
+      <ul className="grid grid-cols-2 gap-2 mb-3" aria-label="Errungene Abzeichen">
+        {won.map((a) => {
           const next = claimNext(a);
           return (
             <li key={a.id} className={`panel rounded-xl p-2.5 flex flex-col items-center text-center ${next ? "border-moos" : ""}`}>
@@ -75,6 +78,23 @@ export function AchievementsScreen() {
           );
         })}
       </ul>
+
+      {locked.length > 0 && (
+        <section className="mb-3" aria-label="Gesperrte Abzeichen">
+          <h2 className="font-display text-[11px] uppercase text-ink2 tracking-[0.16em] mb-1.5 px-0.5">Noch gesperrt ({locked.length})</h2>
+          <ul className="grid grid-cols-4 gap-1.5">
+            {locked.map((a) => (
+              <li key={a.id}>
+                <button type="button" className="tap w-full panel rounded-lg p-1.5 flex flex-col items-center text-center" onClick={() => setOpen(a.id)} aria-label={`${a.title} – gesperrt, Details`}>
+                  <AchievementBadge id={a.id} tier={0} size={40} title={a.title} />
+                  <span className="text-[10.5px] leading-tight mt-0.5 line-clamp-2 min-h-[2.5em]">{a.title}</span>
+                  <span className="w-full mt-1"><Bar value={a.share} tone="brass" /></span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <Sheet open={item !== null} onClose={() => setOpen(null)} title={item?.title ?? ""} icon={item ? <AchievementBadge id={item.id} tier={item.tier} size={30} /> : null}>
         {item && (

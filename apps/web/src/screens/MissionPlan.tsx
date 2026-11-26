@@ -8,7 +8,7 @@ import { unitTone } from "../lib/info.ts";
 import { fmtSeconds, fmtTime } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
 import { HexMap } from "./LazyHexMap.tsx";
-import { Button, Card, ErrorLine, Loading, Stepper } from "../ui.tsx";
+import { ActionBar, Button, Card, ErrorLine, Loading, Stepper } from "../ui.tsx";
 import { RouteWeather } from "../components/RouteWeather.tsx"; // Wetter auf der Route (v1.6)
 // Komfort: Vorlagen, Wiederholen, Probekampf
 import { fitUnits, isPlanType, type PlanPreset } from "../lib/plan-request.ts";
@@ -64,6 +64,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   const [cargo, setCargo] = useState<Record<string, number>>({});
   const [sent, setSent] = useState<{ arriveAtMs: number; type: string } | null>(null);
   const [admiralId, setAdmiralId] = useState<number | null>(null); // Admirale
+  // Art: nach der Auswahl auf eine Zeile mit „ändern“ eingeklappt (vorbelegt = schon gewählt).
+  const [typeOpen, setTypeOpen] = useState(!preset?.type && !initialTarget?.naval && !initialTarget?.convoyId);
   // Frische Bestände beim Öffnen
   useEffect(() => {
     void queryClient.invalidateQueries(trpc.base.pathFilter());
@@ -117,16 +119,24 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         <Button kind="ghost" onClick={onClose}>Schließen</Button>
       </div>
 
-      <Card title="Art">
+      <Card title="Art" right={!typeOpen ? <button type="button" className="tap -my-3 text-sm text-see underline underline-offset-4" onClick={() => setTypeOpen(true)}>ändern</button> : undefined}>
+        {!typeOpen ? (
+          <div className="flex items-center gap-2">
+            <Icon id={type} size={30} />
+            <span className="font-semibold">{TYPES.find((t) => t.id === type)!.text}</span>
+            <span className="text-xs text-ink2 min-w-0 truncate">{TYPES.find((t) => t.id === type)!.hint}</span>
+          </div>
+        ) : <>
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
           {TYPES.filter((t) => t.id !== "abfangen" || target?.convoyId).map((t) => (
-            <button key={t.id} type="button" onClick={() => setType(t.id)} className={`tap rounded-xl px-1 py-2 text-sm flex flex-col items-center gap-1 border ${type === t.id ? "border-sea-400 bg-sea-400/10 font-semibold reticle" : "border-navy-600 bg-navy-900"}`}>
+            <button key={t.id} type="button" onClick={() => { setType(t.id); setTypeOpen(false); }} className={`tap rounded-xl px-1 py-2 text-sm flex flex-col items-center gap-1 border ${type === t.id ? "border-sea-400 bg-sea-400/10 font-semibold reticle" : "border-navy-600 bg-navy-900"}`}>
               <Icon id={t.id} size={32} />
               {t.text}
             </button>
           ))}
         </div>
         <p className="text-xs text-slate-400 mt-1">{TYPES.find((t) => t.id === type)!.hint}</p>
+        </>}
       </Card>
 
       {type === "spionage" ? <SpyPlan base={base} map={map.data} target={target} setTarget={setTarget} center={initialTarget ?? { col: base.col, row: base.row }} onClose={onClose} /> : <>
@@ -221,22 +231,31 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
             )}
           </div>
         )}
-        <Button
-          className="w-full mt-3"
-          disabled={!p?.ok || launch.busy || !target}
-          onClick={async () => {
-            if (!input) return;
-            const r = await launch.run(input);
-            if (r && r.ok) setSent({ arriveAtMs: r.arriveAtMs, type });
-          }}
-        >
-          Auslaufen
-        </Button>
-        <ErrorLine text={launch.error} />
       </Card>
       {type === "ueberfall" && target && Object.keys(chosen).length > 0 && (tInfo?.base || tInfo?.nest || target.eventId) && (
         <RaidOpenCard balance={balance} target={target} units={chosen} ok={!!p?.ok} travelSeconds={p?.ok ? p.travelSeconds : null} onDone={(at) => setSent({ arriveAtMs: at, type: "sammelangriff" })} />
       )}
+      {/* Fixierte Leiste: Kurzfassung „n Einheiten · Dauer“ und Auslaufen (Details in „Vorschau“). */}
+      <ActionBar>
+        <ErrorLine text={launch.error} />
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1 text-sm leading-tight">
+            <div className="font-semibold">{fmtNum(Object.values(chosen).reduce((a, b) => a + b, 0))} Einheiten{target ? ` · Feld ${target.col}/${target.row}` : ""}</div>
+            <div className="text-xs text-ink2 truncate">{!target ? "Ziel wählen" : Object.keys(chosen).length === 0 ? "Einheiten wählen" : !p ? "Berechne …" : p.ok ? `Fahrt ${fmtSeconds(p.travelSeconds)} · ${fmtNum(p.fuelCost)} Treibstoff` : errorText(p.code)}</div>
+          </div>
+          <Button
+            className="shrink-0"
+            disabled={!p?.ok || launch.busy || !target}
+            onClick={async () => {
+              if (!input) return;
+              const r = await launch.run(input);
+              if (r && r.ok) setSent({ arriveAtMs: r.arriveAtMs, type });
+            }}
+          >
+            Auslaufen
+          </Button>
+        </div>
+      </ActionBar>
       </>}
     </div>
   );

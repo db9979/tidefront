@@ -1,4 +1,5 @@
-// Rangliste der laufenden Saison mit Spielerübersicht und Detail-Blatt; darunter die Ruhmeshalle.
+// Rangliste der laufenden Saison mit Spielerübersicht und Detail-Blatt; darunter die Ruhmeshalle (einklappbar).
+// Kurzansicht: Top 10 und die eigene Position ±2, „alle zeigen“ blendet den Rest ein.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, type Outputs } from "../lib/trpc.ts";
@@ -17,6 +18,10 @@ import type { Target } from "../App.tsx";
 type Row = Outputs["social"]["ranking"]["rows"][number];
 type Directory = Outputs["alliance"]["directory"];
 type Sort = "total" | "ausbau" | "militaer" | "kampf" | "beute" | "befehle";
+
+/** Kurzansicht: so viele von oben, dazu die eigene Position ± AROUND. */
+const TOP = 10;
+const AROUND = 2;
 
 const SORTS: { id: Sort; label: string }[] = [
   { id: "total", label: "Gesamt" },
@@ -48,10 +53,14 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
   const [sort, setSort] = useState<Sort>("total");
   const [open, setOpen] = useState<Row | null>(null);
   const [invite, setInvite] = useState(false);
+  const [all, setAll] = useState(false);
   const dir = useQuery(trpc.alliance.directory.queryOptions());
   if (!q.data) return <Loading />;
   const tag = (id: number) => dir.data?.players[id]?.tag;
   const rows = [...q.data.rows].sort((a, b) => b[sort] - a[sort] || a.rank - b.rank);
+  const ownIdx = rows.findIndex((r) => r.own);
+  const shown = (i: number) => all || i < TOP || (ownIdx >= 0 && Math.abs(i - ownIdx) <= AROUND);
+  const hidden = rows.filter((_, i) => !shown(i)).length;
 
   return (
     <div>
@@ -71,7 +80,10 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
       <Card title={`Spieler (${rows.length})`} right={<span className="text-[11px] text-slate-500 tabular-nums">Stand {fmtTime(q.data.computedAtMs)}</span>}>
         {rows.length === 0 ? <p className="text-sm text-slate-400">Noch keine Spieler.</p> : (
           <ol className="divide-y divide-navy-600/70 -mx-1">
-            {rows.map((r, i) => (
+            {rows.map((r, i) => !shown(i) ? (
+              // Lücke einmal je ausgeblendetem Abschnitt anzeigen.
+              shown(i - 1) ? <li key={`gap${i}`} className="py-1 text-center text-ink2 text-sm" aria-hidden>⋯</li> : null
+            ) : (
               <li key={r.playerId}>
                 <button type="button" onClick={() => setOpen(r)}
                   className={`tap w-full flex items-center gap-2 px-1 py-2 text-left ${r.own ? "bg-sea-400/10 rounded-lg" : ""}`}>
@@ -86,6 +98,11 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
               </li>
             ))}
           </ol>
+        )}
+        {(hidden > 0 || all) && rows.length > TOP && (
+          <button type="button" className="tap w-full text-sm text-see underline underline-offset-4" onClick={() => setAll(!all)}>
+            {all ? "Kurzansicht (Top 10 und deine Position)" : `alle ${rows.length} zeigen`}
+          </button>
         )}
         <p className="text-[11px] text-slate-500 mt-2">1 Punkt je 100 Ressourcen Kostenwert, Befehle zählen ihre Punkte direkt. Antippen für Details.</p>
         <Button kind="secondary" className="w-full mt-3" onClick={() => setInvite(true)}>Freunde einladen</Button>

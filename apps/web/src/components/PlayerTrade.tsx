@@ -5,7 +5,7 @@ import { trpc, trpcClient, type BaseData, type Outputs } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { fmtDuration } from "../lib/time.ts";
-import { Badge, Button, Card, ErrorLine, Loading } from "../ui.tsx";
+import { ActionBar, Badge, Button, Card, ErrorLine, Loading } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 import { DevTag, readerValue, usePrices, ValueLine, type Prices } from "./TradeValue.tsx";
 import { EscortPicker } from "./Naval.tsx"; // See: Konvoi – Geleitschutz
@@ -74,17 +74,26 @@ export function PlayerTrade({ base }: { base: BaseData }) {
         Bestand {fmtNum(have, give === "credits" ? 2 : 0)} · offene Angebote {ownOpen}/{maxOpen}. Die Ware geht sofort in Treuhand; Rückzug erstattet sie.
         Ressourcen reisen per Konvoi (das Kartell fängt gelegentlich ab, Kriegsgegner gezielt), Kredite werden sofort gutgeschrieben.
       </p>
-      <Button className="w-full" disabled={!unlocked || create.busy || g < 1 || w < 1 || g > have || ownOpen >= maxOpen}
-        onClick={async () => {
-          setDone(null);
-          const r = await create.run({ give, giveQty: g, want, wantQty: w, visibility });
-          if (r?.ok) setDone("Angebot eingestellt.");
-        }}>
-        Angebot einstellen
-      </Button>
       {!unlocked && <p className="text-xs text-ink2 mt-2">Handel ab Hafenkommandantur Stufe 3.</p>}
-      <ErrorLine text={create.error} />
-      {done && <p className="text-moos text-sm mt-2">{done}</p>}
+      {/* Fixierte Aktionsleiste: Kurzfassung des Angebots und „Angebot einstellen“. */}
+      <ActionBar>
+        <ErrorLine text={create.error} />
+        {done && <p className="text-moos text-sm mb-1">{done}</p>}
+        <div className="flex items-center gap-3">
+          <span className="min-w-0 flex-1 text-[12.5px] leading-tight" title={visibility === "alliance" ? "Nur Allianz" : "Für alle"}>
+            <span className="block truncate"><span className="text-siegel">gebe</span> <span className="mono">{fmtNum(g)}</span> {label(give)}</span>
+            <span className="block truncate"><span className="text-moos">will</span> <span className="mono">{fmtNum(w)}</span> {label(want)}</span>
+          </span>
+          <Button className="shrink-0 px-3" disabled={!unlocked || create.busy || g < 1 || w < 1 || g > have || ownOpen >= maxOpen}
+            onClick={async () => {
+              setDone(null);
+              const r = await create.run({ give, giveQty: g, want, wantQty: w, visibility });
+              if (r?.ok) setDone("Angebot eingestellt.");
+            }}>
+            Angebot einstellen
+          </Button>
+        </div>
+      </ActionBar>
 
       <div className="flex items-baseline justify-between mt-5 mb-1 border-b-[3px] border-double border-ink pb-1">
         <h3 className="font-display text-[11px] uppercase text-ink">Angebote ({open.length})</h3>

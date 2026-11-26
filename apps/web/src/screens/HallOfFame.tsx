@@ -11,7 +11,9 @@ export function HallOfFame() {
   const q = useQuery({ ...trpc.season.hall.queryOptions(), staleTime: 300000 });
   const seasons = q.data ?? [];
   return (
-    <Card title="Ruhmeshalle">
+    // Einklappbar (Rangliste): zugeklappt nur die Anzahl der beendeten Saisons.
+    <Card title="Ruhmeshalle" collapsible storageKey="ruhmeshalle" defaultOpen={false}
+      summary={seasons.length === 0 ? "Noch keine Saison beendet." : `${seasons.length} ${seasons.length === 1 ? "Saison" : "Saisons"} · zuletzt Saison ${seasons[0].number}`}>
       {seasons.length === 0 ? (
         <p className="text-sm text-slate-400">Noch keine Saison beendet. Am Saisonende werden hier Sieger und Auszeichnungen festgehalten.</p>
       ) : (

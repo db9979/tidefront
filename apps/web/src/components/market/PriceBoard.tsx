@@ -59,8 +59,8 @@ export function PriceBoard({ resources, selected, onSelect, nowMs, halfLife }: {
   );
 }
 
-/** Kleiner 24-h-Verlauf mit gestricheltem Richtwert. */
-function Spark({ r, nowMs, halfLife, tone }: { r: MarketRes; nowMs: number; halfLife: number; tone: "up" | "down" | "flat" }) {
+/** Kleiner 24-h-Verlauf mit gestricheltem Richtwert (auch in der Zusammenfassung des Kursverlaufs). */
+export function Spark({ r, nowMs, halfLife, tone }: { r: MarketRes; nowMs: number; halfLife: number; tone: "up" | "down" | "flat" }) {
   const pts = series(r, nowMs, DAY, halfLife, 40);
   // Bereich symmetrisch um den Richtwert, damit „über/unter Richtwert“ auf einen Blick lesbar ist.
   const dev = Math.max(...pts.map((p) => Math.abs(p.p - r.ref)), r.ref * 0.01) * 1.3;

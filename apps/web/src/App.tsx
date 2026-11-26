@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, lazy, Suspense } from "react";
+import { useViewScroll } from "./lib/view-scroll.ts";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc.ts";
 import { useLive } from "./lib/live.ts";
 import { useNow } from "./lib/time.ts";
-import { Loading } from "./ui.tsx";
+import { ActionBarHost, Loading } from "./ui.tsx";
 import { Icon } from "./icons.tsx";
 import { AuthScreen } from "./screens/Auth.tsx";
 import { ChooseBase } from "./screens/ChooseBase.tsx";
@@ -166,6 +167,9 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
     }
   }, [tab, sub, newestReport, seen, playerId]);
 
+  // Scrollposition je Ansicht (Reiter + Unterreiter); Planung, Handbuch, Forschung öffnen immer oben.
+  const mainScroll = useViewScroll(help ? "handbuch" : research ? "forschung" : plan ? "planung" : tab === "berichte" ? `berichte:${sub}` : tab);
+
   if (base.isLoading || !base.data) return <Loading />;
   if (!base.data.base) return <ChooseBase />;
   const b = base.data.base;
@@ -229,7 +233,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       <ResourceBar base={b} asOf={base.data.serverNow} now={now} onHelp={() => { setHelpView(null); setHelp((h) => !h); }} />
       {/* Kurszeile: auf der Börse immer (oben, außer „unten“ gewählt), sonst nach Einstellung. */}
       {(onMarket ? tickerPos !== "unten" : tickerPos === "oben") && <TickerBar onOpen={() => go("boerse")} />}
-      <main className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto overflow-x-hidden p-3 pb-8 scroll-pb-8"}`}><Suspense fallback={<Loading />}>{content}</Suspense></main>
+      <main ref={mainScroll.ref} onScroll={mainScroll.onScroll} className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto overflow-x-hidden p-3 pb-8 scroll-pb-8"}`}><Suspense fallback={<Loading />}>{content}</Suspense>{!fullBleed && <ActionBarHost />}</main>
       {tickerPos === "unten" && <TickerBar onOpen={() => go("boerse")} />}
       <nav className="grid grid-cols-5 bg-paper border-t-[3px] border-double border-ink" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {TABS.map((t) => {

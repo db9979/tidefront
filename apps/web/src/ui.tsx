@@ -1,18 +1,51 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { countLabel, fmtNum, label } from "./lib/names.ts";
 import { Icon } from "./icons.tsx";
 import { useBackLayer } from "./lib/back.ts";
 
-export function Card({ title, children, right }: { title?: ReactNode; children: ReactNode; right?: ReactNode }) {
+/** Auf-/Zu-Zustand, auf Wunsch in localStorage gemerkt (Schlüssel „tf-open:…“). */
+export function useStoredOpen(storageKey: string | undefined, defaultOpen: boolean): [boolean, (v: boolean) => void] {
+  const [open, setOpenState] = useState(() => {
+    if (!storageKey) return defaultOpen;
+    const v = localStorage.getItem(`tf-open:${storageKey}`);
+    return v === null ? defaultOpen : v === "1";
+  });
+  const setOpen = (v: boolean) => {
+    setOpenState(v);
+    if (storageKey) localStorage.setItem(`tf-open:${storageKey}`, v ? "1" : "0");
+  };
+  return [open, setOpen];
+}
+
+/**
+ * Karte mit Kopfzeile. collapsible: Kopf wird zum Knopf (▾/▴), zugeklappt steht nur summary unter dem Titel;
+ * storageKey merkt den Zustand geräteweit, defaultOpen gilt ohne gemerkten Zustand.
+ */
+export function Card({ title, children, right, collapsible, summary, storageKey, defaultOpen = true, id }: {
+  title?: ReactNode; children: ReactNode; right?: ReactNode;
+  collapsible?: boolean; summary?: ReactNode; storageKey?: string; defaultOpen?: boolean; id?: string;
+}) {
+  const [stored, setOpen] = useStoredOpen(collapsible ? storageKey : undefined, defaultOpen);
+  const open = !collapsible || stored;
+  const h2 = "font-display text-[11px] uppercase text-ink2 tracking-[0.16em] flex items-center gap-2 min-w-0";
   return (
-    <section className="panel rounded-xl p-3.5 mb-3">
-      {title !== undefined && (
-        <div className="flex items-center justify-between mb-2 gap-2">
-          <h2 className="font-display text-[11px] uppercase text-ink2 tracking-[0.16em] flex items-center gap-2 min-w-0">{title}</h2>
+    <section id={id} className="panel rounded-xl p-3.5 mb-3">
+      {title !== undefined && (collapsible ? (
+        <div className={`flex items-start justify-between gap-2 ${open ? "mb-2" : ""}`}>
+          <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="tap -my-2 py-2 flex-1 min-w-0 text-left">
+            <h2 className={h2}>{title}<span aria-hidden className="ml-auto text-ink2 text-[13px] leading-none">{open ? "▴" : "▾"}</span></h2>
+            {!open && summary !== undefined && <div className="mt-1 text-sm text-ink normal-case tracking-normal font-sans">{summary}</div>}
+          </button>
           {right}
         </div>
-      )}
-      {children}
+      ) : (
+        <div className="flex items-center justify-between mb-2 gap-2">
+          <h2 className={h2}>{title}</h2>
+          {right}
+        </div>
+      ))}
+      {open && children}
     </section>
   );
 }
@@ -63,15 +96,16 @@ export function Cost({ cost, have }: { cost: Record<string, number> | null | und
   );
 }
 
-/** Ganzzahl-Eingabe; max zeigt „alle“, limit begrenzt nur (z. B. auf das Bezahlbare). */
-export function Stepper({ value, onChange, max, limit }: { value: number; onChange: (v: number) => void; max?: number; limit?: number }) {
+/** Ganzzahl-Eingabe; max zeigt „alle“, limit begrenzt nur (z. B. auf das Bezahlbare); compact: schmales Feld für Listenzeilen. */
+export function Stepper({ value, onChange, max, limit, compact = false }: { value: number; onChange: (v: number) => void; max?: number; limit?: number; compact?: boolean }) {
   const clamp = (v: number) => Math.max(0, Math.min(max ?? Infinity, limit ?? Infinity, Math.floor(v || 0)));
   return (
-    <div className="flex items-center gap-1">
+    <div className={`flex items-center ${compact ? "gap-0.5 shrink-0" : "gap-1"}`}>
       <button type="button" className="tap rounded-lg btn-secondary text-lg" onClick={() => onChange(clamp(value - 1))} aria-label="weniger">−</button>
       <input
         inputMode="numeric"
-        className="w-16 h-11 rounded-lg field text-center mono"
+        aria-label="Anzahl"
+        className={`${compact ? "w-11" : "w-16"} h-11 rounded-lg field text-center mono`}
         maxLength={8}
         value={value}
         // Nur der ganzzahlige Teil zählt: „1.5“ wird 1, nicht 15.
@@ -221,4 +255,56 @@ export function UnitChips({ counts }: { counts: Record<string, number> | null | 
       ))}
     </span>
   );
+}
+
+/**
+ * Segment-Schalter (Unterreiter) im Muster von Meldungen: klebt oben, rote Linie unter dem gewählten.
+ * Wahl wird mit storageKey geräteweit gemerkt (useSegment).
+ */
+export function Segments<T extends string>({ items, value, onChange, label: aria }: { items: { id: T; label: ReactNode; badge?: number }[]; value: T; onChange: (v: T) => void; label: string }) {
+  return (
+    <div className="mb-3 sticky -top-3 -mx-3 z-10 bg-paper border-b border-rule">
+      <div className="flex gap-1 overflow-x-auto px-3 pt-1 [scrollbar-width:none]" role="tablist" aria-label={aria}>
+        {items.map((t) => (
+          <button key={t.id} type="button" role="tab" aria-selected={value === t.id} onClick={() => onChange(t.id)}
+            className={`tap flex-auto shrink-0 px-3 whitespace-nowrap text-[14px] font-serif flex items-center justify-center gap-1.5 border-b-[3px] -mb-px ${value === t.id ? "border-siegel text-ink" : "border-transparent text-ink2"}`}>
+            <span>{t.label}</span>
+            {!!t.badge && <span className="shrink-0 min-w-5 h-5 px-1 rounded-full bg-siegel text-white text-[11px] font-sans mono grid place-items-center">{t.badge}</span>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Gewählter Unterreiter, in localStorage gemerkt („tf-seg:…“); unbekannte Werte fallen auf fallback zurück. */
+export function useSegment<T extends string>(storageKey: string, ids: readonly T[], fallback: T): [T, (v: T) => void] {
+  const [v, setV] = useState<T>(() => {
+    const s = localStorage.getItem(`tf-seg:${storageKey}`) as T | null;
+    return s && ids.includes(s) ? s : fallback;
+  });
+  return [v, (n: T) => { setV(n); localStorage.setItem(`tf-seg:${storageKey}`, n); }];
+}
+
+const ACTION_BAR_HOST = "tf-actionbar";
+
+/**
+ * Platz der Aktionsleiste: letztes Kind des gemeinsamen <main> (App.tsx), sticky am unteren Rand über der
+ * Navigation. -mx-3 für volle Breite, -bottom-8 gleicht das Polster (pb-8) aus; leer unsichtbar.
+ * Die Navigation darunter trägt bereits den Safe-Area-Abstand.
+ */
+export function ActionBarHost() {
+  return <div id={ACTION_BAR_HOST} className="sticky -bottom-8 z-20 -mx-3 mt-3 empty:hidden" />;
+}
+
+/**
+ * Fixierte Aktionsleiste (Auslaufen, Order, Angebot einstellen): bleibt beim Scrollen sichtbar, auch wenn die
+ * Komponente tief in einer Karte steckt – sie wird per Portal in ActionBarHost gezeichnet. Je Ansicht höchstens eine.
+ * Ohne Platz (z. B. außerhalb von <main>) erscheint sie an Ort und Stelle.
+ */
+export function ActionBar({ children }: { children: ReactNode }) {
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => setHost(document.getElementById(ACTION_BAR_HOST)), []);
+  const bar = <div className="px-3 py-2 bg-paper border-t-[3px] border-double border-ink">{children}</div>;
+  return host ? createPortal(bar, host) : <div className="mt-3">{bar}</div>;
 }

@@ -19,6 +19,25 @@ const NAVAL_KINDS = ["minen", "blockade", "blockadekampf", "konvoi"]; // See: ke
 
 type Counts = Record<string, number>;
 
+/** Filter-Chips der Berichtsliste; unbekannte Arten landen in „Sonstiges“. */
+type Filter = "alle" | "kampf" | "aufklaerung" | "handel" | "sonstiges";
+const FILTERS: { id: Filter; label: string }[] = [
+  { id: "alle", label: "Alle" },
+  { id: "kampf", label: "Kämpfe" },
+  { id: "aufklaerung", label: "Aufklärung" },
+  { id: "handel", label: "Handel" },
+  { id: "sonstiges", label: "Sonstiges" },
+];
+const KIND_FILTER: Record<string, Filter> = {
+  ueberfall: "kampf", kartell: "kampf", leer: "kampf", abgewiesen: "kampf", weltereignis: "kampf", weltereignis_leer: "kampf",
+  sammelangriff: "kampf", blockadekampf: "kampf", konvoi: "kampf",
+  aufklaerung: "aufklaerung", spionage: "aufklaerung", sabotage: "aufklaerung",
+  transport: "handel",
+};
+const filterOf = (kind: string): Filter => KIND_FILTER[kind] ?? "sonstiges";
+/** Berichte je Seite; „Weitere laden“ hängt die nächsten an. */
+const PAGE = 20;
+
 /** Zeile unter dem Titel: aus Sicht des Lesers. */
 function roleText(role: string, kind: string): string {
   if (kind === "sammelangriff") return role === "defender" ? "Sammelangriff auf dich" : "Sammelangriff deiner Allianz"; // Allianz-Ops
@@ -32,13 +51,27 @@ function roleText(role: string, kind: string): string {
 
 export function ReportsScreen() {
   const [open, setOpen] = useState<number | null>(null);
+  const [filter, setFilter] = useState<Filter>("alle");
+  const [limit, setLimit] = useState(PAGE);
   const list = useQuery(trpc.report.list.queryOptions());
   // Zurück-Taste schließt den geöffneten Bericht.
   useBackLayer(open !== null, () => setOpen(null), 2);
   if (open !== null) return <ReportDetail id={open} onBack={() => setOpen(null)} />;
   if (!list.data) return <Loading />;
+  const matching = list.data.filter((r) => filter === "alle" || filterOf(r.kind) === filter);
+  const count = (f: Filter) => f === "alle" ? list.data.length : list.data.filter((r) => filterOf(r.kind) === f).length;
   return (
     <div>
+      {list.data.length > 0 && (
+        <div className="flex gap-1.5 overflow-x-auto mb-2 [scrollbar-width:none]" role="radiogroup" aria-label="Berichte filtern">
+          {FILTERS.map((f) => (
+            <button key={f.id} type="button" role="radio" aria-checked={filter === f.id} onClick={() => { setFilter(f.id); setLimit(PAGE); }}
+              className={`tap shrink-0 rounded-full border px-3 text-[13px] ${filter === f.id ? "bg-ink text-paper border-ink" : "bg-card text-ink2 border-rule"}`}>
+              {f.label} <span className="mono text-[11px] opacity-75">{count(f.id)}</span>
+            </button>
+          ))}
+        </div>
+      )}
       {list.data.length === 0 && (
         <div className="panel rounded-xl p-5 text-center text-ink2">
           <Icon id="nav-bericht" size={48} className="mx-auto mb-2 text-slate-500" />
@@ -46,7 +79,7 @@ export function ReportsScreen() {
         </div>
       )}
       <ul className="space-y-2">
-        {list.data.map((r) => (
+        {matching.slice(0, limit).map((r) => (
           <li key={r.id}>
             <button type="button" onClick={() => setOpen(r.id)} className={`tap w-full text-left panel rounded-xl p-3 flex items-center gap-3 border-l-4 ${r.won === null ? "!border-l-see" : r.won ? "!border-l-moos" : "!border-l-siegel"}`}>
               <Icon id={KIND_ICON[r.kind] ?? "nav-bericht"} size={36} />
@@ -61,6 +94,10 @@ export function ReportsScreen() {
           </li>
         ))}
       </ul>
+      {list.data.length > 0 && matching.length === 0 && <p className="text-sm text-ink2 text-center py-4">Keine Berichte in dieser Auswahl.</p>}
+      {matching.length > limit && (
+        <Button kind="secondary" className="w-full mt-3" onClick={() => setLimit((n) => n + PAGE)}>Weitere laden ({matching.length - limit})</Button>
+      )}
     </div>
   );
 }

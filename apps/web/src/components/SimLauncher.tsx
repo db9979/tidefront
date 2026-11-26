@@ -31,8 +31,24 @@ export function ProbeCard({ balance, base, units, target, onScout }: { balance: 
 }
 
 /** Truppen: freier Simulator mit beliebigen Verbänden beider Seiten. */
-export function FreeSimCard({ balance, base }: { balance: Balance; base: BaseData }) {
+/** asLink: nur ein Link „Kampfsimulator öffnen“ (Truppen → Einsatz) statt einer ganzen Karte. */
+export function FreeSimCard({ balance, base, asLink = false }: { balance: Balance; base: BaseData; asLink?: boolean }) {
   const [open, setOpen] = useState(false);
+  const sheet = (
+    <Sheet open={open} onClose={() => setOpen(false)} title="Kampfsimulator" icon={<Icon id="korvette" size={40} />}>
+      <Suspense fallback={<Wait />}>
+        <FreeSim balance={balance} base={base} />
+      </Suspense>
+    </Sheet>
+  );
+  if (asLink) return (
+    <>
+      <button type="button" className="tap flex items-center gap-2 text-sm text-see underline underline-offset-4" onClick={() => setOpen(true)}>
+        <Icon id="korvette" size={22} /> Kampfsimulator öffnen
+      </button>
+      {sheet}
+    </>
+  );
   return (
     <Card title="Kampfsimulator">
       <div className="flex items-center gap-3">
@@ -40,11 +56,7 @@ export function FreeSimCard({ balance, base }: { balance: Balance; base: BaseDat
         <p className="text-sm text-ink2 flex-1">Beliebige Verbände gegeneinander antreten lassen – auch das Kartell gegen deinen Hafen.</p>
         <Button kind="secondary" onClick={() => setOpen(true)}>Öffnen</Button>
       </div>
-      <Sheet open={open} onClose={() => setOpen(false)} title="Kampfsimulator" icon={<Icon id="korvette" size={40} />}>
-        <Suspense fallback={<Wait />}>
-          <FreeSim balance={balance} base={base} />
-        </Suspense>
-      </Sheet>
+      {sheet}
     </Card>
   );
 }

@@ -1,5 +1,5 @@
 // Handbuch: Spielziel, Ablauf und Regeln in kurzen Kapiteln; Einheitentabelle aus der Balance.
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useBackLayer } from "../lib/back.ts";
 import { ChangelogSheet, VersionLine } from "../components/Changelog.tsx";
 import { useQuery } from "@tanstack/react-query";
@@ -38,7 +38,14 @@ function P({ children }: { children: ReactNode }) {
 
 export function Handbook({ onClose, onLogout, playerName, initialView, onView }: { onClose: () => void; onLogout: () => void; playerName: string; initialView?: "settings" | "admin" | null; onView?: (v: "settings" | "admin" | null) => void }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
-  const [open, setOpen] = useState<string | null>("ziel");
+  // Alle Kapitel zu: die Sprungleiste oben ist die Übersicht (vorher war „Worum es geht“ offen).
+  const [open, setOpen] = useState<string | null>(null);
+  // Beim Öffnen eines Kapitels (Kopf oder Sprungleiste) dessen Anfang ins Bild holen – nicht beim ersten Anzeigen.
+  const opened = useRef(false);
+  useEffect(() => {
+    if (!opened.current) { opened.current = true; return; }
+    if (open) setTimeout(() => document.getElementById(`hb-${open}`)?.scrollIntoView?.({ block: "start", behavior: "smooth" }), 0);
+  }, [open]);
   const [view, setViewState] = useState(initialView ?? null);
   // Ansicht an die App melden (Adresse ?view=…); Zurück schließt die Einstellungen.
   const setView = (v: "settings" | "admin" | null) => { setViewState(v); onView?.(v); };
@@ -294,8 +301,19 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
         <QuickButton onClick={() => setView("settings")} icon="zahnrad" title="Einstellungen" />
         <QuickButton onClick={() => setNews(true)} icon="uhr" title="Was ist neu?" />
       </div>
+      {/* Sprungleiste: klebt oben, ein Tipp öffnet das Kapitel und springt hin. */}
+      <nav className="sticky -top-3 z-10 -mx-3 mb-2 px-3 py-1.5 bg-paper border-b border-rule" aria-label="Kapitel">
+        <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
+          {chapters.map((c) => (
+            <button key={c.id} type="button" onClick={() => setOpen(c.id)} aria-current={open === c.id ? "true" : undefined}
+              className={`shrink-0 h-8 rounded-full border px-3 text-[12.5px] whitespace-nowrap ${open === c.id ? "bg-ink text-paper border-ink" : "bg-card text-ink2 border-rule"}`}>
+              {c.title}
+            </button>
+          ))}
+        </div>
+      </nav>
       {chapters.map((c) => (
-        <section key={c.id} className="panel rounded-xl mb-2 overflow-hidden">
+        <section key={c.id} id={`hb-${c.id}`} className="panel rounded-xl mb-2 overflow-hidden scroll-mt-14">
           <button type="button" className="tap w-full flex items-center gap-3 p-3 text-left" onClick={() => setOpen(open === c.id ? null : c.id)} aria-expanded={open === c.id}>
             <Icon id={c.icon} size={30} />
             <span className="font-serif text-[18px] flex-1">{c.title}</span>

@@ -91,7 +91,9 @@ export function MissionPanel({ mission, now, home, onClose, onShowTarget }: {
   const total = Object.values(units ?? {}).reduce((a, b) => a + b, 0);
   const at = missionHex(m, home, now);
   return (
-    <div className="p-3 pt-2.5 bg-card border-t-[3px] border-double border-ink shadow-[0_-8px_24px_rgba(24,39,58,0.12)] text-sm max-h-[55vh] overflow-y-auto">
+    // Missionsleiste auf der Karte: höchstens 45 % der Höhe, Inhalt scrollt, Knöpfe fest unten.
+    <div className="shrink-0 max-h-[45%] min-h-0 flex flex-col bg-card border-t-[3px] border-double border-ink shadow-[0_-8px_24px_rgba(24,39,58,0.12)] text-sm">
+      <div className="min-h-0 overflow-y-auto overscroll-contain px-3 pt-2.5 pb-1">
       <div className="flex items-start gap-2">
         <Icon id={m.type} size={36} />
         <div className="flex-1 min-w-0">
@@ -124,7 +126,8 @@ export function MissionPanel({ mission, now, home, onClose, onShowTarget }: {
           {m.reportId && <span className="col-span-2 text-slate-400">Der Bericht liegt unter Meldungen.</span>}
         </div>
       )}
-      <div className="flex flex-wrap gap-2 mt-2">
+      </div>
+      <div className="shrink-0 flex flex-wrap gap-2 px-3 pb-3 pt-2 border-t border-rule">
         <Button kind="secondary" className="flex-1" onClick={() => setMore((v) => !v)}>{more ? "Weniger" : "Zeiten"}</Button>
         {onShowTarget && m.target.kind !== "kartell" && <Button kind="secondary" className="flex-1" onClick={() => onShowTarget({ col: m.target.col, row: m.target.row })}>Ziel zeigen</Button>}
         {ph.outbound && m.arriveAtMs > now && <Button kind="secondary" className="flex-1" onClick={() => setRecall(true)}>Zurückrufen</Button>}

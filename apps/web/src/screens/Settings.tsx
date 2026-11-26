@@ -227,7 +227,8 @@ export function SettingsScreen({ onClose, initialAdmin = false, onAdmin }: { onC
       </Card>
       <PushCard isAdmin={isAdmin} />
       <EmailCard isAdmin={isAdmin} />
-      <Card title="Freunde einladen"><InvitePanel playerName={me.data?.player?.name} /></Card>
+      {/* Einklappbar: selten gebraucht, aber lang. */}
+      <Card title="Freunde einladen" collapsible storageKey="einstellungen-einladen" defaultOpen={false} summary="Einladungslink oder E-Mail an Freunde schicken."><InvitePanel playerName={me.data?.player?.name} /></Card>
       <SummaryCard />
       <PasswordCard />
       <Card title="Fehler melden">

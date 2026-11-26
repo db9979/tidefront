@@ -127,10 +127,13 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
           />
         ) : null;
       })()}
+      {/* Infopanel: höchstens 45 % der Höhe (Karte bleibt ≥ 55 % sichtbar), Inhalt scrollt, Knöpfe und ✕ fest.
+          Neue Abschnitte zum Feld (z. B. Felder) in den Scrollbereich, neue Aktionen in die Knopfleiste unten. */}
       {missionId === null && sel && info && (
-        <div className="p-3 pt-2.5 bg-card border-t-[3px] border-double border-ink shadow-[0_-8px_24px_rgba(24,39,58,0.12)]">
-          <div className="flex items-start justify-between gap-2">
-            <div className="text-sm min-w-0 flex-1">
+        <div className="relative shrink-0 max-h-[45%] min-h-0 flex flex-col bg-card border-t-[3px] border-double border-ink shadow-[0_-8px_24px_rgba(24,39,58,0.12)]">
+          <button type="button" className="tap absolute right-3 top-2.5 z-10 rounded-[4px] border border-navy-600 bg-card text-slate-300" onClick={() => setSel(null)} aria-label="Schließen">✕</button>
+          <div className="min-h-0 overflow-y-auto overscroll-contain px-3 pt-2.5 pb-1">
+            <div className="text-sm min-w-0 pr-12">
               <div className="text-[11px] mono tracking-wide text-ink2">
                 {TERRAIN[terrainAt(sel.col, sel.row) ?? "sea"]} · Feld {sel.col}/{sel.row}
                 {!isHome && ` · ${fmtNum(dist)} km`}
@@ -189,13 +192,16 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
                 <div className="text-xs text-slate-400 mt-1">Fahrzeit etwa: Korvette {eta("korvette")}, Landungsschiff {eta("landungsschiff")}</div>
               )}
             </div>
-            <button type="button" className="tap rounded-[4px] border border-navy-600 text-slate-300" onClick={() => setSel(null)} aria-label="Schließen">✕</button>
           </div>
-          {(info.nest || (info.base && !info.base.own)) && (
-            <Button className="w-full mt-2" onClick={() => onPlan(sel)}>Mission planen</Button>
-          )}
-          {!info.base && !info.nest && terrainAt(sel.col, sel.row) === "sea" && naval.data?.rules.mines && hexDistanceKm(home, sel) <= naval.data.rules.mines.layRadiusKm && (
-            <Button kind="secondary" className="w-full mt-2" onClick={() => onPlan({ ...sel, naval: "minen" })}>Minen legen</Button>
+          {((info.nest || (info.base && !info.base.own)) || (!info.base && !info.nest && terrainAt(sel.col, sel.row) === "sea" && naval.data?.rules.mines && hexDistanceKm(home, sel) <= naval.data.rules.mines.layRadiusKm)) && (
+            <div className="shrink-0 px-3 pb-3 pt-2 border-t border-rule flex gap-2">
+              {(info.nest || (info.base && !info.base.own)) && (
+                <Button className="flex-1" onClick={() => onPlan(sel)}>Mission planen</Button>
+              )}
+              {!info.base && !info.nest && terrainAt(sel.col, sel.row) === "sea" && naval.data?.rules.mines && hexDistanceKm(home, sel) <= naval.data.rules.mines.layRadiusKm && (
+                <Button kind="secondary" className="flex-1" onClick={() => onPlan({ ...sel, naval: "minen" })}>Minen legen</Button>
+              )}
+            </div>
           )}
         </div>
       )}

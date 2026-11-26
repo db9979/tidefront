@@ -1,65 +1,60 @@
+// Truppen mit Segment-Schalter (Muster wie Meldungen), Wahl geräteweit gemerkt:
+//   Einsatz   – Mission planen, laufende Missionen, Gäste, Admirale (eingeklappt), zuletzt heimgekehrt, Simulator-Link
+//   Ausbilden – Werft, Kaserne, Flugfeld, Nachrichtendienst (components/TrainRow.tsx)
+//   Abwehr    – Verteidigungsanlagen
+// Forschung ist ein Knopf im Kopf. Neue Karten: Missionsbezogenes nach „Einsatz“, Einheiten nach „Ausbilden“.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { trpc, trpcClient, type BaseData, type Balance, type MapData } from "../lib/trpc.ts";
-import { useCommand } from "../lib/command.ts";
-import { fmtNum, label } from "../lib/names.ts";
-import { fmtDuration, fmtSeconds, fmtTime, useNow } from "../lib/time.ts";
+import { trpc, type BaseData } from "../lib/trpc.ts";
+import { label } from "../lib/names.ts";
+import { fmtDuration, useNow } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
-import { Button, Card, Cost, ErrorLine, Loading, Sheet, StatTable, Stepper, UnitChips } from "../ui.tsx";
-import { Icon, IconTile } from "../icons.tsx";
-import { cancelLoss, cancelQuestion, unitStats, unitText, unitTone } from "../lib/info.ts";
-import { Progress } from "./Base.tsx";
+import { Button, Card, Loading, Segments, UnitChips, useSegment } from "../ui.tsx";
+import { Icon } from "../icons.tsx";
 import { RecentMissions } from "../components/Repeat.tsx";
 import { FreeSimCard } from "../components/SimLauncher.tsx";
-import { TECH, techName } from "../lib/research.ts";
-import { unitBreakdown } from "../lib/breakdown.ts";
-import { Breakdown, RankBadge, VeteranLine } from "../components/Breakdown.tsx";
 import { spyKindText } from "../components/SpyPlan.tsx"; // Nachrichtendienst
 import { RecallSheet, missionHex, targetName } from "../components/MissionSheet.tsx";
 export { targetName };
 import { AdmiralsCard } from "../components/Admirals.tsx"; // Admirale
 import { OpsMissionLine, StationedGuestsCard } from "../components/AllianceOps.tsx"; // Allianz-Ops
 import { LiftBlockade } from "../components/Naval.tsx"; // See: Blockade aufheben
+import { TrainGroup } from "../components/TrainRow.tsx";
 
-/** Werte, die die Aufschlüsselung zeigt (aus der festen Werte-Tabelle ausgeblendet). */
-const BROKEN_DOWN = /^(Lebenspunkte|Angriff|U-Jagd|Tempo|Ladung|Treibstoff)/;
-
-const invalidateBase = () => [trpc.base.pathFilter().queryKey];
-const GROUPS: { builtIn: string; title: string }[] = [
+type Seg = "einsatz" | "ausbilden" | "abwehr";
+const SEGS: { id: Seg; label: string }[] = [
+  { id: "einsatz", label: "Einsatz" },
+  { id: "ausbilden", label: "Ausbilden" },
+  { id: "abwehr", label: "Abwehr" },
+];
+const TRAIN_GROUPS: { builtIn: string; title: string }[] = [
   { builtIn: "werft", title: "Werft" },
   { builtIn: "kaserne", title: "Kaserne" },
   { builtIn: "flugfeld", title: "Flugfeld" },
   { builtIn: "nachrichtendienst", title: "Nachrichtendienst" },
-  { builtIn: "anlagen", title: "Verteidigungsanlagen" },
 ];
-
-/** Höchstmenge je Ausbildungsauftrag (wie im Server). */
-const MAX_TRAIN = 10000;
-
-/** Name eines Missionsziels aus der Karte: Hafen oder Nest mit Stufe, sonst Koordinaten. */
-
-function scale(cost: Record<string, number> | undefined, n: number): Record<string, number> {
-  const out: Record<string, number> = {};
-  for (const [r, v] of Object.entries(cost ?? {})) out[r] = v * n;
-  return out;
-}
 
 export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: BaseData; onPlan: () => void; onShowOnMap: (t: Target) => void; onResearch: () => void }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const now = useNow();
-  const cancel = useCommand((i: { key: string; builtIn: string }) => trpcClient.base.cancelTraining.mutate(i), invalidateBase);
   const map = useQuery(trpc.world.map.queryOptions());
   const [recallId, setRecallId] = useState<number | null>(null);
+  const [seg, setSeg] = useSegment<Seg>("truppen", SEGS.map((x) => x.id), "einsatz");
   if (!meta.data) return <Loading />;
   const balance = meta.data.balance;
+  const training = (ids: string[]) => base.trainingQueue.filter((o) => ids.includes(o.builtIn)).length;
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between gap-2 mb-2">
         <h1 className="font-display text-xl font-bold uppercase">Truppen</h1>
-        <Button onClick={onPlan}>Mission planen</Button>
+        <ResearchButton base={base} now={now} onOpen={onResearch} />
       </div>
+      <Segments label="Truppen" value={seg} onChange={setSeg}
+        items={SEGS.map((x) => ({ ...x, badge: x.id === "ausbilden" ? training(TRAIN_GROUPS.map((g) => g.builtIn)) : x.id === "abwehr" ? training(["anlagen"]) : 0 }))} />
 
+      {seg === "einsatz" && <>
+      <Button className="w-full mb-3" onClick={onPlan}>Mission planen</Button>
       <Card title={`Missionen ${base.activeMissions}/${base.missionSlots}`}>
         {base.missions.length === 0 && <p className="text-sm text-slate-400">Keine laufenden Missionen. Plane einen Überfall auf ein Piratennest über die Karte oder „Mission planen“.</p>}
         <ul className="divide-y divide-navy-700">
@@ -99,164 +94,33 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
         </ul>
       </Card>
       <StationedGuestsCard base={base} now={now} />
-      <ResearchCard base={base} now={now} onOpen={onResearch} />
       <AdmiralsCard />
       <RecentMissions />
-      <FreeSimCard balance={balance} base={base} />
+      <div className="mb-3"><FreeSimCard balance={balance} base={base} asLink /></div>
+      </>}
       {(() => {
         const m = base.missions.find((x) => x.id === recallId && x.status === "outbound");
         return m ? <RecallSheet mission={m} name={targetName(map.data, m.target.col, m.target.row)} now={now} onClose={() => setRecallId(null)} /> : null;
       })()}
 
-      <ErrorLine text={cancel.error} />
-      {GROUPS.map((g) => {
-        const order = base.trainingQueue.find((o) => o.builtIn === g.builtIn);
-        const level = g.builtIn === "anlagen" ? 1 : base.buildings.find((b) => b.id === g.builtIn)?.level ?? 0;
-        return (
-          <Card key={g.builtIn} title={<span className="flex items-center gap-2"><Icon id={g.builtIn === "anlagen" ? "kuestenbatterie" : g.builtIn} size={22} />{g.title}</span>} right={g.builtIn !== "anlagen" ? <span className="text-xs text-slate-400">Stufe {level}</span> : undefined}>
-            {g.builtIn === "flugfeld" && <p className="text-xs text-slate-400 mb-1">Stellplätze {base.aircraftSlots.used}/{base.aircraftSlots.total}</p>}
-            {g.builtIn === "nachrichtendienst" && base.intel && level > 0 && <p className="text-xs text-slate-400 mb-1">Spione {base.intel.spies.home + base.intel.spies.away + base.intel.spies.training}/{base.intel.cap} · Aufträge über „Mission planen“ → Spionage</p>}
-            {order && (
-              <div className="rounded-lg bg-paper border border-rule p-2 mb-2 flex items-center justify-between gap-2">
-                <div className="text-sm">
-                  {fmtNum(order.count)} × {label(order.id)}
-                  <div className="text-sea-300">{order.finishesAt <= now ? "wird abgeschlossen …" : `noch ${fmtDuration(order.finishesAt - now)}`}</div>
-                  <Progress start={order.startedAt} end={order.finishesAt} now={now} />
-                </div>
-                <Button
-                  kind="danger"
-                  disabled={cancel.busy || order.finishesAt <= now}
-                  onClick={() => {
-                    const def = balance.units[order.id] ?? balance.defenses[order.id];
-                    const loss = cancelLoss(scale(def?.cost, order.count), order.startedAt, order.finishesAt, Date.now());
-                    if (confirm(cancelQuestion(`Ausbildung von ${fmtNum(order.count)} × ${label(order.id)}`, loss))) void cancel.run({ builtIn: g.builtIn });
-                  }}
-                >Abbruch</Button>
-              </div>
-            )}
-            {level < 1 ? (
-              <>
-                <div className="text-sm text-slate-400 flex items-center gap-2"><IconTile id={g.builtIn} size={36} /> Erst {label(g.builtIn)} bauen (Basis → {g.title}).</div>
-                {base.units.some((u) => u.builtIn === g.builtIn && u.home + u.away > 0) && (
-                  <p className="text-sm mt-1">
-                    Vorhanden: <UnitChips counts={Object.fromEntries(base.units.filter((u) => u.builtIn === g.builtIn).map((u) => [u.id, u.home + u.away]))} />
-                  </p>
-                )}
-              </>
-            ) : (
-              <ul className="divide-y divide-navy-700">
-                {g.builtIn === "anlagen"
-                  ? base.defenses.map((d) => (
-                      <TrainRow key={d.id} id={d.id} have={d.count} away={0} base={base} balance={balance} busy={!!order} secondsEach={balance.defenses[d.id].seconds} cost={balance.defenses[d.id].cost} />
-                    ))
-                  : base.units.filter((u) => u.builtIn === g.builtIn).map((u) => (
-                      <TrainRow key={u.id} id={u.id} have={u.home} away={u.away} base={base} balance={balance} busy={!!order} secondsEach={u.secondsEach} cost={balance.units[u.id].cost} needLevel={(balance.units[u.id].requiresLevel ?? 1) > level ? balance.units[u.id].requiresLevel : undefined} />
-                    ))}
-              </ul>
-            )}
-          </Card>
-        );
-      })}
+      {seg === "ausbilden" && TRAIN_GROUPS.map((g) => <TrainGroup key={g.builtIn} builtIn={g.builtIn} title={g.title} base={base} balance={balance} now={now} />)}
+      {seg === "abwehr" && <TrainGroup builtIn="anlagen" title="Verteidigungsanlagen" base={base} balance={balance} now={now} />}
     </div>
   );
 }
 
-/** needLevel: Baugebäude ist noch unter der Mindeststufe der Einheit (requiresLevel). */
-function TrainRow(props: { id: string; have: number; away: number; base: BaseData; balance: Balance; busy: boolean; secondsEach: number | null; cost: Record<string, number> | undefined; needLevel?: number }) {
-  const [n, setN] = useState(1);
-  const cmd = useCommand((i: { key: string; id: string; count: number }) => trpcClient.base.train.mutate(i), invalidateBase);
-  const [info, setInfo] = useState(false);
-  const vet = props.base.veterans?.find((v) => v.id === props.id);
-  // Bezahlbare Höchstmenge: begrenzt die Eingabe, damit Kosten und Bauzeit sinnvoll bleiben.
-  const afford = Object.entries(props.cost ?? {}).reduce(
-    (m, [r, v]) => (v > 0 ? Math.min(m, Math.floor((props.base.resources[r] ?? 0) / v)) : m),
-    MAX_TRAIN,
-  );
-  // Menge 0 ist kein Fehler: nur „Bauen“ gesperrt, Hinweis neutral, Kosten je Stück statt „kostenlos“.
-  const why = props.busy
-    ? "Hier läuft schon ein Auftrag (oben) – neue Ausbildung erst nach Abschluss oder Abbruch."
-    : props.base.versorgungsmangel ? "Versorgungsmangel: keine Ausbildung möglich."
-    : afford < 1 ? "Nicht genug Ressourcen für ein Stück."
-    : n > afford ? `Nicht genug Ressourcen (höchstens ${fmtNum(afford)}).` : null;
-  return (
-    <li className="py-2">
-      <div className="flex gap-3 items-start">
-        <button type="button" onClick={() => setInfo(true)} aria-label={`${label(props.id)}: Info`}><IconTile id={props.id} size={52} tone={unitTone(props.balance, props.id)} /></button>
-        <div className="min-w-0 flex-1">
-          <div className="flex justify-between gap-2">
-            <button type="button" className="font-serif text-[17px] leading-tight text-left min-h-[44px] -my-2" onClick={() => setInfo(true)}>{label(props.id)} <span className="text-sea-300 text-xs">ⓘ</span>{vet && vet.rank !== "rekrut" && <> <RankBadge vet={vet} /></>}</button>
-            <div className="text-sm tabular-nums"><strong>{fmtNum(props.have)}</strong>{props.away > 0 ? <span className="text-slate-400"> +{fmtNum(props.away)} unterwegs</span> : ""}</div>
-          </div>
-          <div className="text-xs text-slate-400">{unitText(props.balance, props.id)}</div>
-        </div>
-      </div>
-      <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
-        {props.needLevel ? (
-          <span className="text-xs text-brass-300">Bau ab {label(props.balance.units[props.id]?.builtIn ?? "")} Stufe {props.needLevel}</span>
-        ) : (
-          <>
-            <Stepper value={n} onChange={setN} limit={Math.max(1, afford)} />
-            <Button kind="secondary" disabled={!!why || cmd.busy || n < 1} onClick={() => void cmd.run({ id: props.id, count: n })}>
-              Bauen
-            </Button>
-          </>
-        )}
-      </div>
-      <div className="flex justify-between gap-2 mt-1">
-        {n >= 1 ? (
-          <>
-            <Cost cost={scale(props.cost, n)} have={props.base.resources} />
-            {props.secondsEach !== null && <span className="text-xs text-slate-400 flex items-center gap-1"><Icon id="uhr" size={14} /> {fmtSeconds(props.secondsEach * n)}</span>}
-          </>
-        ) : (
-          <>
-            <span className="text-xs text-slate-400 flex flex-wrap items-center gap-x-1">je Stück: <Cost cost={props.cost} have={props.base.resources} /></span>
-            {props.secondsEach !== null && <span className="text-xs text-slate-400 flex items-center gap-1"><Icon id="uhr" size={14} /> {fmtSeconds(props.secondsEach)} je Stück</span>}
-          </>
-        )}
-      </div>
-      {why && !props.needLevel && <p className="text-xs text-brass-300 mt-1">{why}</p>}
-      {!why && n < 1 && !props.needLevel && <p className="text-xs text-slate-400 mt-1">Anzahl wählen (bezahlbar: bis {fmtNum(afford)}).</p>}
-      <ErrorLine text={cmd.error} />
-      <Sheet open={info} onClose={() => setInfo(false)} title={label(props.id)} icon={<IconTile id={props.id} size={56} tone={unitTone(props.balance, props.id)} />}>
-        <p className="text-sm text-slate-200 mb-3">{unitText(props.balance, props.id)}</p>
-        {/* Wirksame Werte mit Aufschlüsselung (Grundwert · Forschung · Veteranen …), dann die übrigen festen Werte. */}
-        <Breakdown rows={unitBreakdown(props.balance, props.base.modifierSources, props.id)} />
-        <VeteranLine vet={vet} />
-        <div className="mt-2">
-          <StatTable rows={unitStats(props.balance, props.id).filter(([k]) => !BROKEN_DOWN.test(k)).map(([k, v]) => [k.replace(/^Bonus gegen (.*)$/, (_m, t: string) => `Bonus gegen ${label(t)}`), v])} />
-        </div>
-        <div className="mt-3 text-sm"><span className="text-slate-400">Kosten je Stück: </span><Cost cost={props.cost} /></div>
-      </Sheet>
-    </li>
-  );
-}
-
-/** Forschung als Abschnitt in Truppen: laufende Forschung und Weg in den Technikbaum. */
-function ResearchCard({ base, now, onOpen }: { base: BaseData; now: number; onOpen: () => void }) {
+/** Forschung im Kopf: Knopf mit Kurzstatus (läuft noch …, Durchbruch als Siegel). */
+function ResearchButton({ base, now, onOpen }: { base: BaseData; now: number; onOpen: () => void }) {
   const r = base.research;
   if (!r) return null;
   const o = r.order;
   return (
-    <Card title={<span className="flex items-center gap-2"><Icon id="forschungsamt" size={22} />Forschung</span>} right={<span className="text-xs text-slate-400">Forschungsamt {r.buildingLevel}</span>}>
-      <div className="flex items-center gap-3">
-        {o ? <IconTile id={TECH[o.techId]?.icon ?? "forschungsamt"} size={44} /> : <Icon id="wuerfel" size={36} />}
-        <div className="flex-1 min-w-0 text-sm">
-          {o ? (
-            <>
-              <div>{techName(o.techId)} · Stufe {o.targetLevel}</div>
-              <div className="text-sea-300">{o.finishesAt <= now ? "wird abgeschlossen …" : `noch ${fmtDuration(o.finishesAt - now)}`}</div>
-              <Progress start={o.startedAt} end={o.finishesAt} now={now} />
-            </>
-          ) : r.pendingChoice ? (
-            <div className="text-siegel">Durchbruch! Belohnung wählen.</div>
-          ) : (
-            <div className="text-slate-400">{r.buildingLevel < 1 ? "Erst das Forschungsamt bauen (Basis → Führung und Schutz)." : "Keine Forschung läuft."}</div>
-          )}
-        </div>
-        <Button kind="secondary" onClick={onOpen}>Technikbaum</Button>
-      </div>
-    </Card>
+    <button type="button" onClick={onOpen} className="tap relative rounded-lg btn-secondary px-3 flex items-center gap-1.5 text-sm">
+      <Icon id="forschungsamt" size={22} />
+      <span className="font-display uppercase text-[12px] tracking-[0.1em]">Forschung</span>
+      {o && <span className="mono text-[11px] text-ink2">{o.finishesAt <= now ? "fertig" : fmtDuration(o.finishesAt - now)}</span>}
+      {r.pendingChoice && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rotate-45 bg-siegel" title="Durchbruch: Belohnung wählen" />}
+    </button>
   );
 }
 
