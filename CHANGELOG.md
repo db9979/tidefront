@@ -2,6 +2,18 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.8.2 – 27.11.2026
+- Verständliche Meldungen bei ungültigen Eingaben (z. B. „Menge zu klein“) statt „Keine Verbindung“.
+- **Nachtschild**: Änderungen wirken erst nach 24 Stunden – kein Ausweichen mehr vor einem bereits gemeldeten Angriff.
+- Kampfbericht aus deiner Sicht: „Erbeutet“ in Grün, „Geplündert“ in Rot, dazu der Schutz durch deinen Tiefbunker.
+- Transporte erscheinen beim Empfänger als „Lieferung von …“.
+- Begrüßung und Gelesen-Zähler gelten je Spieler; nach Abmelden beginnt alles frisch.
+- Handbuch und Auftragsbuch auf dem aktuellen Stand (Bauschlange, Rückruf, Beuteregeln, Kartell); das Kraftwerk kommt jetzt vor dem Stahlwerk.
+- Rückfrage vor jedem Abbruch, „Bauen“ nur wenn bezahlbar, Börse warnt vor zu großer Kurswirkung.
+- Die Zurück-Taste am Handy schließt Blätter und Ansichten; der aktuelle Reiter bleibt beim Neuladen erhalten.
+- Push meldet blockierte Berechtigungen, Fehlermeldungen erscheinen dort, wo sie entstehen, Einladungscodes ohne Groß-/Kleinschreibung.
+- Der Morgenbericht enthält deine Tagesbefehle.
+
 ## 0.8.1 – 27.11.2026
 - Das Handbuch lässt sich nicht mehr seitlich verschieben; kein Bildschirm scrollt mehr nach links oder rechts.
 
