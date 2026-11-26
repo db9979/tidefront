@@ -16,6 +16,8 @@ await build({
   target: "node22",
   format: "esm",
   sourcemap: true,
+  // Zeitpunkt des Builds für die Versionsanzeige
+  define: { "process.env.TF_BUILD_TIME": JSON.stringify(new Date().toISOString()) },
   logLevel: "info",
   // Einige Abhängigkeiten sind CommonJS und rufen require() auf.
   banner: {

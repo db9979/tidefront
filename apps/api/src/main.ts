@@ -1,5 +1,6 @@
 // API-Server: tRPC über HTTP, WebSocket für Änderungsmeldungen, Auslieferung der Oberfläche. Ein Port.
 import { existsSync } from "node:fs";
+import { APP_VERSION, BUILD_TIME } from "./version.ts";
 import { resolve } from "node:path";
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
@@ -117,6 +118,8 @@ await app.register(fastifyTRPCPlugin, {
 registerMailLinks(app, engine, rateLimit);
 
 // ---------------------------------------------------------------- Gesundheit und Oberfläche
+app.get("/version", async () => ({ version: APP_VERSION, builtAt: BUILD_TIME }));
+
 app.get("/healthz", async (_req, reply) => {
   try {
     await db.execute(sql`select 1`);

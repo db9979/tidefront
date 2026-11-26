@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChangelogSheet, VersionLine } from "../components/Changelog.tsx";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
 import { errorText } from "../lib/names.ts";
@@ -163,6 +164,17 @@ export function AuthScreen() {
           )}
         </form>
       )}
+      <AuthVersion />
+    </div>
+  );
+}
+
+function AuthVersion() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-6">
+      <VersionLine onOpen={() => setOpen(true)} />
+      <ChangelogSheet open={open} onClose={() => setOpen(false)} />
     </div>
   );
 }

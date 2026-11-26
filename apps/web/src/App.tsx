@@ -17,6 +17,7 @@ import { MarketScreen } from "./screens/Market.tsx";
 import { Handbook } from "./screens/Handbook.tsx";
 import { ResourceBar } from "./components/ResourceBar.tsx";
 import { Welcome } from "./components/Welcome.tsx";
+import { UpdateNotices } from "./components/Changelog.tsx";
 import type { GuideAction } from "./components/Guide.tsx";
 import { parseOpenUrl, type OpenTarget } from "./lib/push.ts";
 
@@ -156,6 +157,7 @@ export function App() {
         })}
       </nav>
       <Welcome />
+      <UpdateNotices playerId={me.data!.player!.id} />
     </div>
   );
 }

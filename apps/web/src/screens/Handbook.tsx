@@ -1,5 +1,6 @@
 // Handbuch: Spielziel, Ablauf und Regeln in kurzen Kapiteln; Einheitentabelle aus der Balance.
 import { useState, type ReactNode } from "react";
+import { ChangelogSheet, VersionLine } from "../components/Changelog.tsx";
 import { useQuery } from "@tanstack/react-query";
 import { trpc } from "../lib/trpc.ts";
 import { label, fmtNum } from "../lib/names.ts";
@@ -18,6 +19,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const [open, setOpen] = useState<string | null>("ziel");
   const [view, setView] = useState(initialView ?? null);
+  const [news, setNews] = useState(false);
   const b = meta.data?.balance;
 
   const chapters: Chapter[] = [
@@ -186,6 +188,8 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
           <Button kind="secondary" onClick={onLogout}>Abmelden</Button>
         </div>
       </div>
+      <VersionLine onOpen={() => setNews(true)} />
+      <ChangelogSheet open={news} onClose={() => setNews(false)} />
     </div>
   );
 }

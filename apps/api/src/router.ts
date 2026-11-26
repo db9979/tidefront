@@ -1,5 +1,6 @@
 // tRPC-Router: der Client sendet nur Absichten, der Server entscheidet.
 import { z } from "zod";
+import { APP_VERSION, BUILD_TIME } from "./version.ts";
 import {
   balance,
   baseView,
@@ -35,7 +36,7 @@ const resources = z.record(z.string().max(20), z.number().int().min(0).max(100_0
 const field = { col: z.number().int().min(0).max(500), row: z.number().int().min(0).max(500) };
 
 export const appRouter = t.router({
-  meta: t.procedure.query(() => ({ balance, serverNow: Date.now() })),
+  meta: t.procedure.query(() => ({ balance, serverNow: Date.now(), version: APP_VERSION, builtAt: BUILD_TIME })),
 
   auth: t.router({
     me: t.procedure.query(({ ctx }) => ({ player: ctx.player })),
