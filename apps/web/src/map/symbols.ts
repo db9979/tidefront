@@ -100,6 +100,16 @@ export function wreckSymbol(): Container {
   return c;
 }
 
+/** Übersichtspunkt: kleiner Kreis mit Papierrand (Bildschirm-Pixel), z. B. für Nester und fremde Häfen. */
+export function dotSymbol(color: number, r: number, alpha = 1, hollow = false): Container {
+  const c = new Container();
+  const g = new Graphics();
+  if (hollow) g.circle(0, 0, r).fill({ color: PAPER }).stroke({ color, width: 1.2, alpha });
+  else g.circle(0, 0, r + 0.9).fill({ color: PAPER, alpha: 0.9 }).circle(0, 0, r).fill({ color, alpha });
+  c.addChild(g);
+  return c;
+}
+
 /** Handelshafen: kleiner Tintenanker im Papierkreis. */
 export function portSymbol(): Container {
   const c = new Container();

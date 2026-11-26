@@ -2,7 +2,7 @@
 // Meer als helles Papier mit blau getönten Flachwasserstufen und Tiefenlinien (Isobathen). Landmaske aus
 // den Küstenlinien gerastert; einmal je Sitzung berechnet und als Textur wiederverwendet.
 // Darüber: Tintenküste und ein zartes Hexraster.
-import { Container, Graphics, Sprite, Texture } from "pixi.js";
+import { CanvasSource, Container, Graphics, Sprite, Texture } from "pixi.js";
 import {
   COLS, HEX_SIZE_KM, HEX_W, ISLANDS, KM_PER_DEG_LAT, KM_PER_DEG_LON, LAND, LAT1, LON0, ROWS, ROW_H, WATER, hexCenterXY,
 } from "@tidefront/world";
@@ -227,12 +227,16 @@ export interface TerrainLayers {
   root: Container;
   /** Zartes Hexraster; Deckkraft je Zoom setzt der Aufrufer. */
   grid: Graphics;
+  /** Küste je Zoom anpassen: in der Übersicht feine Haarlinie statt Tintenstrich mit Saum. */
+  setOverview: (scale: number) => void;
 }
 
 /** Reliefbild, Küstenlinie und Hexraster in Weltkoordinaten (km). */
 export function buildTerrain(): TerrainLayers {
   const root = new Container();
-  const sprite = new Sprite(Texture.from(terrainCanvas()));
+  // Mipmaps: in der Übersicht wird das Relief sauber verkleinert statt flimmernder Schraffur-Moiré.
+  const source = new CanvasSource({ resource: terrainCanvas(), autoGenerateMipmaps: true, scaleMode: "linear", mipmapFilter: "linear", maxAnisotropy: 4 });
+  const sprite = new Sprite(new Texture({ source }));
   sprite.position.set(X0, Y0);
   sprite.scale.set(KM_PX);
   root.addChild(sprite);
@@ -249,7 +253,17 @@ export function buildTerrain(): TerrainLayers {
   }
   glow.stroke({ color: 0xf4f1e7, width: 7, alpha: 0.55, join: "round" });
   coast.stroke({ color: 0x18273a, width: 1.8, alpha: 0.9, join: "round" });
-  root.addChild(glow, coast);
+  // Übersicht: dieselbe Küste als 1-px-Haarlinie (die Weltbreite würde dort zu Grau verschwimmen)
+  const hair = new Graphics();
+  for (const ring of [...LAND, ...WATER]) {
+    ring.forEach(([lon, lat], i) => {
+      const p = xyOf(lon, lat);
+      if (i === 0) hair.moveTo(p.x, p.y); else hair.lineTo(p.x, p.y);
+    });
+    hair.closePath();
+  }
+  hair.stroke({ color: 0x18273a, width: 1, pixelLine: true, alpha: 0.7 });
+  root.addChild(glow, coast, hair);
 
   const grid = new Graphics();
   for (let row = 0; row < ROWS; row++) for (let col = 0; col < COLS; col++) {
@@ -259,5 +273,14 @@ export function buildTerrain(): TerrainLayers {
   grid.stroke({ color: 0x18273a, width: 1.2, alpha: 1 });
   grid.alpha = 0;
   root.addChild(grid);
-  return { root, grid };
+  const setOverview = (scale: number) => {
+    // Unterhalb ~0,45 ist der Weltstrich dünner als ein Pixel: dann Haarlinie, darüber Tintenstrich
+    const t = Math.max(0, Math.min(1, (scale - 0.35) / 0.2));
+    coast.alpha = t;
+    coast.visible = t > 0.01;
+    hair.alpha = 1 - t;
+    hair.visible = t < 0.99;
+    glow.alpha = 0.4 + 0.6 * t;
+  };
+  return { root, grid, setOverview };
 }
