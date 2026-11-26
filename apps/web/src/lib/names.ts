@@ -21,6 +21,8 @@ const NAMES: Record<string, string> = {
   abfangen: "Konvoi abfangen", geleit: "Geleitschutz", konvoi: "Konvoi", blockadekampf: "Blockadekampf", mine: "Minenfeld",
   // Felder: Rohstofffelder
   besetzen: "Besetzen", feld: "Rohstofffeld", oelfeld: "Ölfeld", erzbucht: "Erzbucht", fischgrund: "Fischgrund", elektronikwrack: "Elektronik-Wrack",
+  // Mehrere Häfen
+  kolonieschiff: "Kolonieschiff", gruendung: "Gründung", verlegung: "Verlegung", heimathafen: "Heimathafen", aussenposten: "Außenposten",
 };
 
 const PLURAL: Record<string, string> = {
@@ -28,6 +30,7 @@ const PLURAL: Record<string, string> = {
   kampfpanzer: "Kampfpanzer", abfangjaeger: "Abfangjäger", jagdbomber: "Jagdbomber", aufklaerungsdrohne: "Aufklärungsdrohnen",
   schnellboot: "Schnellboote", piratenmiliz: "Piratenmilizionäre", kuestenbatterie: "Küstenbatterien", flakstellung: "Flakstellungen",
   bunkerlinie: "Bunkerlinien", minensperre: "Minensperren", spion: "Spione", minenleger: "Minenleger", minenraeumer: "Minenräumer",
+  kolonieschiff: "Kolonieschiffe",
 };
 
 /** Name mit passender Zahlform für eine Menge. */
@@ -161,9 +164,9 @@ const ERRORS: Record<string, string> = {
   name_taken: "Der Name ist schon vergeben.",
   bad_login: "Name oder Passwort falsch.",
   not_coast: "Nur Küstenfelder sind erlaubt.",
-  field_taken: "Das Feld ist schon belegt.",
+  field_taken: "Das Feld ist schon belegt – oder jemand war schneller.",
   has_base: "Du hast schon einen Stützpunkt.",
-  no_base: "Noch kein Stützpunkt.",
+  no_base: "Dieser Hafen gehört dir nicht (mehr) – zurück zum Heimathafen.",
   rate_limited: "Zu viele Versuche. Bitte kurz warten.",
   network: "Keine Verbindung zum Server. Bitte erneut versuchen.",
   shield_cooldown: "Der Nachtschild lässt sich nur einmal je 24 Stunden umstellen.",
@@ -223,7 +226,7 @@ const ERRORS: Record<string, string> = {
   bad_spy_kind: "Unbekannte Auftragsart.",
   // See: Minen/Blockade/Konvoi
   not_sea: "Minen lassen sich nur auf offener See legen und räumen.",
-  too_far: "Zu weit vom eigenen Hafen entfernt.",
+  too_far: "Zu weit vom aktiven Hafen entfernt (Reichweite).",
   no_minelayer: "Zum Minenlegen gehört mindestens ein Minenleger in den Verband.",
   no_sweeper: "Zum Räumen gehört mindestens ein Minenräumer in den Verband.",
   too_many_fields: "Du hast schon die Höchstzahl an Minenfeldern ausgelegt.",
@@ -244,6 +247,14 @@ const ERRORS: Record<string, string> = {
   garrison_too_weak: "Zu schwach für eine Besatzung: bewaffnete Schiffe mit genug Kommandopunkten mitschicken.",
   intercept_needs_ships: "Zum Abfangen gehören Schiffe in den Verband.",
   escort_ships_only: "Geleitschutz stellen nur Schiffe.",
+  // Mehrere Häfen: Gründung und Verlegung
+  expansion_off: "Gründen und Verlegen sind auf diesem Server noch nicht freigeschaltet.",
+  base_limit: "Kein weiterer Hafen möglich: Höchstzahl erreicht oder die Kommandozentrale des Heimathafens ist noch zu klein.",
+  too_close: "Zu nah an einem anderen Hafen. Wähle ein Küstenfeld mit mehr Abstand.",
+  home_only: "Das geht nur im Heimathafen.",
+  harbor_level: "Dafür muss die Hafenkommandantur weiter ausgebaut sein.",
+  no_colony_ship: "Für die Gründung gehört ein Kolonieschiff in den Verband (Bau in der Werft).",
+  not_own_base: "Ziel muss einer deiner anderen Häfen sein.",
 };
 
 export function errorText(code: string): string {
@@ -257,6 +268,7 @@ export function errorText(code: string): string {
  */
 export function failText(err: unknown): string {
   const data = (err as { data?: { code?: string; inputError?: string | null } | null } | null)?.data;
+  if ((err as { message?: unknown } | null)?.message === "no_base") return errorText("no_base"); // Mehrere Häfen
   switch (data?.code) {
     case "BAD_REQUEST": return data.inputError ?? "Ungültige Eingabe. Bitte die Angaben prüfen.";
     case "TOO_MANY_REQUESTS": return errorText("rate");

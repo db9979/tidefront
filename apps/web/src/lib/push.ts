@@ -101,9 +101,9 @@ export async function disablePush(): Promise<void> {
   await sub.unsubscribe().catch(() => {});
 }
 
-export type OpenTarget = { tab?: "basis" | "karte" | "truppen" | "berichte" | "boerse"; view?: "settings" | "admin" };
+export type OpenTarget = { tab?: "basis" | "karte" | "truppen" | "berichte" | "boerse"; view?: "settings" | "admin"; /** Mehrere Häfen: diesen Hafen aktiv machen. */ base?: number };
 
-/** Ziel aus einer App-Adresse (Benachrichtigung): ?tab=berichte oder ?view=admin. */
+/** Ziel aus einer App-Adresse (Benachrichtigung): ?tab=berichte, ?view=admin, ?base=12 (Hafen). */
 export function parseOpenUrl(url: string): OpenTarget {
   const q = new URL(url, location.origin).searchParams;
   const tab = q.get("tab");
@@ -111,5 +111,6 @@ export function parseOpenUrl(url: string): OpenTarget {
   return {
     tab: tab && ["basis", "karte", "truppen", "berichte", "boerse"].includes(tab) ? (tab as OpenTarget["tab"]) : undefined,
     view: view === "admin" || view === "settings" ? view : undefined,
+    base: /^\d{1,9}$/.test(q.get("base") ?? "") ? Number(q.get("base")) : undefined,
   };
 }

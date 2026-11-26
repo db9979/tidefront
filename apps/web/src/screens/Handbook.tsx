@@ -15,6 +15,7 @@ import { AchievementsChapter } from "../components/AchievementsChapter.tsx"; // 
 import { AllianceOpsChapter } from "../components/AllianceOps.tsx"; // Allianz-Ops
 import { NavalChapter } from "../components/NavalChapter.tsx"; // See: Minen/Blockade/Konvoi
 import { FieldsChapter } from "../components/FieldsChapter.tsx"; // Felder
+import { HarborsChapter } from "../components/HarborsChapter.tsx"; // Mehrere Häfen
 import { requestBugReport } from "../lib/bug-log.ts";
 
 /** Kachel im Schnellzugriff oben im Handbuch. */
@@ -194,6 +195,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
     { id: "admirale", icon: "admiral", title: "Admirale", body: <AdmiralChapter b={b} /> },
     { id: "see", icon: "mine", title: "Minen, Blockade, Konvois", body: <NavalChapter b={b} /> }, // See
     { id: "felder", icon: "oelfeld", title: "Rohstofffelder", body: <FieldsChapter b={b} /> }, // Felder
+    { id: "haefen", icon: "gruendung", title: "Mehrere Häfen", body: <HarborsChapter b={b} /> }, // Mehrere Häfen
     {
       id: "tagesbefehle", icon: "uhr", title: "Tagesbefehle",
       body: (

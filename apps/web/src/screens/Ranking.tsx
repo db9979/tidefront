@@ -90,7 +90,7 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
                   <span className="w-7 text-right font-mono tabular-nums text-slate-400">{sort === "total" ? r.rank : i + 1}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold">{tag(r.playerId) && <span className="mono text-ink2 font-normal">[{tag(r.playerId)}] </span>}{r.name}{r.hafenmeister && <Hafenmeister />}<Badges badges={r.badges} />{r.own && <span className="text-sea-300 font-normal"> (du)</span>}</span>
-                    <span className="block truncate text-xs text-slate-400">{r.base ? r.base.name : "kein Hafen"}</span>
+                    <span className="block truncate text-xs text-slate-400">{r.base ? r.base.name : "kein Hafen"}{r.bases > 1 ? ` · ${r.bases} Häfen` : ""}</span>
                   </span>
                   {r.base?.protection && <Icon id="schild" size={16} className="shrink-0 opacity-70" />}
                   <span className="w-16 text-right font-mono tabular-nums">{fmtNum(r[sort])}</span>
@@ -151,8 +151,9 @@ function PlayerDetail({ r, dir, ownId, onCompose, onShowOnMap }: { r: Row; dir: 
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm">
-          <span className="text-slate-400">Hafen </span><strong>{r.base?.name ?? "–"}</strong>
+          <span className="text-slate-400">{r.bases > 1 ? "Heimathafen " : "Hafen "}</span><strong>{r.base?.name ?? "–"}</strong>
           {r.base && <span className="text-slate-400 font-mono tabular-nums"> · Feld {r.base.col}/{r.base.row}</span>}
+          {r.bases > 1 && <span className="block text-xs text-slate-400">{r.bases} Häfen – Punkte über alle Häfen zusammen</span>}
         </span>
         {r.base && <ProtectionBadge p={r.base.protection} />}
       </div>

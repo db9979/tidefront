@@ -28,6 +28,7 @@ import { buildSoundings } from "../map/soundings.ts";
 import { buildWorldEventLayer, type MapWorldEvent } from "../map/world-events.ts";
 import { buildNavalLayer, type MapNaval } from "../map/naval.ts"; // See: Minen/Blockade/Konvoi
 import { buildFieldLayer, type MapField } from "../map/fields.ts"; // Felder: Rohstofffelder und Allianzzonen
+import { drawSelection, type HarborOverlay } from "../map/selection.ts"; // Auswahl, aktiver Hafen, Reichweite
 
 /** Kartenschriften vor dem ersten Zeichnen laden (Pixi rastert Text über das Canvas). */
 const FONTS = ["600 12px Fraunces", "italic 600 12px Fraunces", "600 12px 'IBM Plex Sans'", "500 10px 'IBM Plex Mono'"];
@@ -66,6 +67,8 @@ export interface HexMapProps {
   fields?: { list: MapField[]; linkKm: number }; // Felder
   /** Wetterschicht (Wolken, Sturm, Nebel); fehlt sie, ist die Schicht aus. */
   weather?: WeatherBalance | null;
+  /** Mehrere Häfen: aktiven Hafen hervorheben, Reichweitenkreis der Gründung. */
+  harbors?: Omit<HarborOverlay, "multi"> | null;
 }
 
 interface Scene {
@@ -127,8 +130,10 @@ export function HexMap(props: HexMapProps) {
   onSelectRef.current = onSelect;
   const onMissionRef = useRef(props.onMissionTap);
   onMissionRef.current = props.onMissionTap;
-  const live = useRef({ selected, home, missions, alert, focus: props.focusMission ?? null });
-  live.current = { selected, home, missions, alert, focus: props.focusMission ?? null };
+  const ownCount = data.bases.filter((b) => b.own).length;
+  const harbors = props.harbors ? { ...props.harbors, multi: ownCount > 1 } : null;
+  const live = useRef({ selected, home, missions, alert, focus: props.focusMission ?? null, harbors });
+  live.current = { selected, home, missions, alert, focus: props.focusMission ?? null, harbors };
 
   // Aufbau (einmal)
   useEffect(() => {
@@ -234,7 +239,7 @@ export function HexMap(props: HexMapProps) {
             relayout(s);
             if (first) snap([s.pinnedStatic, s.pinnedMarkers]);
             fading = true;
-            drawSelection(s, live.current.selected);
+            drawSelection(s.selection, sc, live.current.selected, live.current.harbors);
             s.graticule.redraw(sc);
             // Hexraster erst in der Nahansicht und nur zart; in der Übersicht ganz aus
             s.grid.alpha = Math.max(0, Math.min(0.16, (sc - 0.3) * 0.5));
@@ -403,8 +408,8 @@ export function HexMap(props: HexMapProps) {
   // Auswahl
   useEffect(() => {
     const s = scene.current;
-    if (ready && s) drawSelection(s, selected);
-  }, [ready, selected]);
+    if (ready && s) drawSelection(s.selection, s.world.scale.x, selected, live.current.harbors);
+  }, [ready, selected, harbors?.active?.col, harbors?.active?.row, harbors?.rangeKm, harbors?.multi]);
 
   const zoomBy = (f: number) => {
     const s = scene.current;
@@ -421,23 +426,6 @@ export function HexMap(props: HexMapProps) {
       </div>
     </div>
   );
-}
-
-function drawSelection(s: Scene, selected: { col: number; row: number } | null | undefined): void {
-  s.selection.clear();
-  if (!selected) return;
-  const { x, y } = hexCenterXY(selected.col, selected.row);
-  const sc = s.world.scale.x;
-  // Zielmarke: Eckwinkel um das Feld, mindestens 22 px Halbmesser am Bildschirm
-  const h = Math.max(HEX_SIZE_KM * 1.05, 22 / sc);
-  const l = h * 0.42;
-  const g = s.selection;
-  g.poly(hexPoints(x, y, HEX_SIZE_KM)).fill({ color: SIEGEL, alpha: 0.06 }).stroke({ color: SIEGEL, width: 1 / sc, alpha: 0.6 });
-  for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-    g.moveTo(x + sx * h, y + sy * (h - l)).lineTo(x + sx * h, y + sy * h).lineTo(x + sx * (h - l), y + sy * h);
-  }
-  g.stroke({ color: SIEGEL, width: 2 / sc, cap: "square" });
-  g.circle(x, y, 1.6 / sc).fill({ color: SIEGEL });
 }
 
 /** Routen, Schiffe und Warnring; läuft gedrosselt im Ticker. */
