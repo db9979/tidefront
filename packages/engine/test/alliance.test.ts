@@ -17,6 +17,7 @@ import {
   cancelPact,
   chooseBase,
   clearRankingCache,
+  clearTradeStatsCache,
   createAlliance,
   createOffer,
   declareWar,
@@ -28,6 +29,7 @@ import {
   launchMission,
   leaveAlliance,
   makePeace,
+  playerTradeStats,
   offersView,
   processDue,
   proposePact,
@@ -326,6 +328,35 @@ test("Gleichzeitigkeit: zwei Annahmen desselben Angebots, nur eine gelingt", asy
   assert.ok(res.filter((r) => !r.ok).every((r) => (r as { code: string }).code === "offer_gone"));
   const dels = await db.select().from(tables.delivery).where(sql`${tables.delivery.id} like ${`po-${id}-%`}`);
   assert.equal(dels.length, 2);
+  assert.equal((await auditLedger(engine)).ok, true);
+});
+
+test("Handelsstatistik: angenommene Angebote der letzten 7 Tage je Paar, zwischengespeichert", async () => {
+  clearTradeStatsCache();
+  const st = await playerTradeStats(engine);
+  const pair = (a: string, b: string) => st.pairs.find((p) => p.a === a && p.b === b);
+  // Aus den Tests oben: Stahl 1000 gegen Elektronik 200, Proviant 500 gegen 100 Kredite, Treibstoff 300 gegen Stahl 300.
+  assert.deepEqual(pair("stahl", "elektronik"), { a: "stahl", b: "elektronik", count: 1, qtyA: 1000, qtyB: 200 });
+  assert.deepEqual(pair("proviant", "credits"), { a: "proviant", b: "credits", count: 1, qtyA: 500, qtyB: 100 });
+  // Gleiche Paare in umgekehrter Richtung werden zusammengefasst (Reihenfolge wie die Ressourcenliste).
+  assert.deepEqual(pair("stahl", "treibstoff"), { a: "stahl", b: "treibstoff", count: 1, qtyA: 300, qtyB: 300 });
+  assert.equal(st.pairs.length, 3);
+  // Zurückgezogene und offene Angebote zählen nicht; ältere als 7 Tage auch nicht.
+  const o = await createOffer(engine, C.playerId, key(), { give: "credits", giveQty: 1, want: "stahl", wantQty: 1, visibility: "public" });
+  const mk = await createOffer(engine, E.playerId, key(), { give: "elektronik", giveQty: 10, want: "stahl", wantQty: 70, visibility: "public" });
+  assert.equal(mk.ok, true, JSON.stringify(mk));
+  const acc = await acceptOffer(engine, F.playerId, key(), (mk as { offerId: number }).offerId);
+  assert.equal(acc.ok, true, JSON.stringify(acc));
+  // Noch zwischengespeichert: unverändert.
+  assert.equal((await playerTradeStats(engine)).pairs.find((p) => p.a === "stahl" && p.b === "elektronik")!.count, 1);
+  clearTradeStatsCache();
+  assert.deepEqual((await playerTradeStats(engine)).pairs.find((p) => p.a === "stahl" && p.b === "elektronik"),
+    { a: "stahl", b: "elektronik", count: 2, qtyA: 1070, qtyB: 210 });
+  await db.update(tables.playerOffer).set({ closedAt: new Date(Date.now() - 8 * 24 * 3600000) })
+    .where(eq(tables.playerOffer.id, (mk as { offerId: number }).offerId));
+  clearTradeStatsCache();
+  assert.equal((await playerTradeStats(engine)).pairs.find((p) => p.a === "stahl" && p.b === "elektronik")!.count, 1);
+  if (o.ok) await withdrawOffer(engine, C.playerId, key(), (o as { offerId: number }).offerId);
   assert.equal((await auditLedger(engine)).ok, true);
 });
 

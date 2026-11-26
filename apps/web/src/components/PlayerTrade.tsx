@@ -7,6 +7,7 @@ import { fmtNum, label } from "../lib/names.ts";
 import { fmtDuration } from "../lib/time.ts";
 import { Badge, Button, Card, ErrorLine, Loading } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
+import { readerValue, usePrices, ValueLine, type Prices } from "./TradeValue.tsx";
 
 type Offer = Outputs["playerTrade"]["list"]["open"][number];
 type Res = { ok: boolean; code?: string };
@@ -20,6 +21,7 @@ function Asset({ id, qty }: { id: string; qty: number }) {
 export function PlayerTrade({ base }: { base: BaseData }) {
   const list = useQuery({ ...trpc.playerTrade.list.queryOptions(), refetchInterval: 60000 });
   const me = useQuery(trpc.alliance.get.queryOptions());
+  const prices = usePrices();
   const [give, setGive] = useState("stahl");
   const [want, setWant] = useState("elektronik");
   const [giveQty, setGiveQty] = useState("1000");
@@ -60,6 +62,7 @@ export function PlayerTrade({ base }: { base: BaseData }) {
           </button>
         ))}
       </div>
+      {g > 0 && w > 0 && <div className="mb-2"><ValueLine v={readerValue(prices, give, g, want, w)} /></div>}
       <p className="text-xs text-ink2 mb-2">
         Bestand {fmtNum(have, give === "credits" ? 2 : 0)} · offene Angebote {ownOpen}/{maxOpen}. Die Ware geht sofort in Treuhand; Rückzug erstattet sie.
         Ressourcen reisen per Konvoi, Kredite werden sofort gutgeschrieben.
@@ -79,7 +82,7 @@ export function PlayerTrade({ base }: { base: BaseData }) {
       <h3 className="font-display text-[11px] uppercase text-ink2 tracking-[0.16em] mt-4 mb-1">Angebote ({open.length})</h3>
       {open.length === 0 ? <p className="text-sm text-ink2">Keine offenen Angebote.</p> : (
         <ul className="divide-y divide-navy-700">
-          {open.map((o) => <OfferRow key={o.id} o={o} fee={fee} base={base} busy={accept.busy || withdraw.busy}
+          {open.map((o) => <OfferRow key={o.id} o={o} fee={fee} base={base} prices={prices} busy={accept.busy || withdraw.busy}
             onAccept={() => void accept.run({ offerId: o.id })} onWithdraw={() => void withdraw.run({ offerId: o.id })} />)}
         </ul>
       )}
@@ -88,7 +91,10 @@ export function PlayerTrade({ base }: { base: BaseData }) {
   );
 }
 
-function OfferRow({ o, fee, base, busy, onAccept, onWithdraw }: { o: Offer; fee: number; base: BaseData; busy: boolean; onAccept: () => void; onWithdraw: () => void }) {
+function OfferRow({ o, fee, base, prices, busy, onAccept, onWithdraw }: { o: Offer; fee: number; base: BaseData; prices: Prices | null; busy: boolean; onAccept: () => void; onWithdraw: () => void }) {
+  const [confirm, setConfirm] = useState(false);
+  // Aus Sicht des Lesers: beim eigenen Angebot gibt er give, sonst gibt er want und bekommt give.
+  const v = o.own ? readerValue(prices, o.give, o.giveQty, o.want, o.wantQty) : readerValue(prices, o.want, o.wantQty, o.give, o.giveQty);
   const have = o.want === "credits" ? base.market.credits : base.resources[o.want] ?? 0;
   const net = o.give === "credits" ? Math.floor(o.giveQty * (1 - fee) * 100) / 100 : o.giveQty - Math.floor(o.giveQty * fee);
   return (
@@ -101,6 +107,7 @@ function OfferRow({ o, fee, base, busy, onAccept, onWithdraw }: { o: Offer; fee:
         <span className="text-ink2 text-xs">gibt</span><Asset id={o.give} qty={o.giveQty} />
         <span className="text-ink2 text-xs">für</span><Asset id={o.want} qty={o.wantQty} />
       </div>
+      {!confirm && <ValueLine v={v} />}
       <div className="flex items-center justify-between gap-2 mt-1">
         <span className="text-xs text-ink2">
           {o.own ? "Wartet auf Annahme." : `Du erhältst ${fmtNum(net, o.give === "credits" ? 2 : 0)}${o.give === "credits" ? " sofort" : o.travelMs ? ` in ${fmtDuration(o.travelMs)}` : ""}.`}
@@ -108,9 +115,23 @@ function OfferRow({ o, fee, base, busy, onAccept, onWithdraw }: { o: Offer; fee:
         {o.own ? (
           <Button kind="secondary" disabled={busy} onClick={onWithdraw}>Zurückziehen</Button>
         ) : (
-          <Button disabled={busy || !base.market.unlocked || have < o.wantQty} onClick={onAccept}>Annehmen</Button>
+          !confirm && <Button disabled={busy || !base.market.unlocked || have < o.wantQty} onClick={() => setConfirm(true)}>Annehmen</Button>
         )}
       </div>
+      {confirm && !o.own && (
+        <div className={`mt-2 rounded-lg border p-2 ${v?.strong ? "border-siegel" : "border-rule"}`} role="group" aria-label="Annahme bestätigen">
+          <div className="text-sm">Du zahlst sofort <strong className="mono">{fmtNum(o.wantQty, o.want === "credits" ? 2 : 0)}</strong> {label(o.want)} und erhältst <strong className="mono">{fmtNum(net, o.give === "credits" ? 2 : 0)}</strong> {label(o.give)} (nach Gebühr).</div>
+          <ValueLine v={v} />
+          {v?.strong && <p className="text-sm text-siegel font-semibold mt-1">Dieses Angebot weicht um mehr als 20 % vom Börsenwert ab. Wirklich annehmen?</p>}
+          <div className="flex gap-2 mt-2">
+            <Button kind="secondary" className="flex-1" onClick={() => setConfirm(false)}>Abbrechen</Button>
+            <Button kind={v?.strong ? "danger" : "primary"} className="flex-1" disabled={busy || !base.market.unlocked || have < o.wantQty}
+              onClick={() => { setConfirm(false); onAccept(); }}>
+              {v?.strong ? "Trotzdem annehmen" : "Annehmen bestätigen"}
+            </Button>
+          </div>
+        </div>
+      )}
     </li>
   );
 }
