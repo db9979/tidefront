@@ -1,5 +1,5 @@
 // Verwaltung → Statistik: Aktivität, Registrierungen, Ressourcenfluss, Kampf (Balance), Nester, Wirtschaft,
-// Auffälligkeiten. Der Server rechnet und speichert 60 s zwischen; Zeitraum 7 oder 28 Tage.
+// Auffälligkeiten, Marktnachrichten. Der Server rechnet und speichert 60 s zwischen; Zeitraum 7 oder 28 Tage.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc } from "../lib/trpc.ts";
@@ -119,6 +119,24 @@ export function AdminStats() {
         <Sub>Gebäudestufen (Anzahl Häfen je Stufe)</Sub>
         <LevelGrid rows={s.economy.buildings.map((b) => ({ ...b, label: label(b.id) }))} />
       </Card>
+
+      {s.marketNews && (
+        <Card title="Marktnachrichten (jetzt)">
+          <ul className="text-sm space-y-1">
+            {s.marketNews.map((r) => (
+              <li key={r.id}>
+                <div className="flex justify-between gap-2">
+                  <span className="inline-flex items-center gap-1"><Icon id={r.id} size={16} /> {label(r.id)}</span>
+                  <span className="mono">{fmtNum(r.offset * 100, 1)} % <span className="text-ink2 text-xs">(Ziel {fmtNum(r.target * 100, 1)} %, Richtwert {fmtNum(r.effective, 3)})</span></span>
+                </div>
+                {r.influences.map((x, i) => (
+                  <div key={i} className="text-xs text-ink2 pl-6">{x.reason}: {fmtNum(x.now * 100, 1)} %</div>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Card title="Auffälligkeiten" right={anomalyCount ? <Badge tone="red">{anomalyCount}</Badge> : <Badge tone="green">keine</Badge>}>
         <Sub>Ressourcen weit über dem Median</Sub>

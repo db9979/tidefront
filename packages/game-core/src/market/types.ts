@@ -42,7 +42,39 @@ export interface MarketBalance {
     slippageTolerance: number;
     tradesPerMinute: number;
     convoySpeedKmh: number;
+    /** Marktnachrichten (seit v1.5); fehlt der Eintrag, gibt es keine. */
+    news?: MarketNewsBalance;
   };
+}
+
+/** Werte der Marktnachrichten (balance.json market.news), siehe news.ts und REGELN.md. */
+export interface MarketNewsBalance {
+  /** Summe aller Einflüsse je Ressource höchstens ± diesen Anteil am Grundrichtwert. */
+  maxTotal: number;
+  /** Der effektive Richtwert ändert sich höchstens um diesen Anteil des Grundrichtwerts je Stunde. */
+  maxChangePerHour: number;
+  /** Kleinere Wirkungen erzeugen keine Nachricht. */
+  minPct: number;
+  /** Push „Marktnachricht“ erst ab diesem Betrag. */
+  pushMinPct: number;
+  worldEvents: {
+    grossflotte: { pct: Record<string, number>; maxPct: number; fadeHours: number };
+    belagerung: { pct: Record<string, number>; fadeHours: number };
+    schatzschiffErbeutet: { pct: Record<string, number>; holdHours: number; fadeHours: number };
+    schatzschiffEntkommen: { pct: Record<string, number>; holdHours: number; fadeHours: number };
+  };
+  war: { resource: string; calm: number; perWar: number; perRaid: number; max: number; holdHours: number };
+  scarcity: {
+    max: number;
+    neutralFill: number;
+    fillWeight: number;
+    deficitWeight: number;
+    minBases: number;
+    window: number;
+    activeDays: number;
+    holdHours: number;
+  };
+  seasonEnd: { days: number; pct: Record<string, number> };
 }
 
 /** One point of the price history: the price right after a trade (or at market creation). */

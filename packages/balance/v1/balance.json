@@ -1,5 +1,5 @@
 {
-  "version": "v1.4",
+  "version": "v1.5",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -120,7 +120,25 @@
     "dailyLimitShareOfStorage": 0.2,
     "slippageTolerance": 0.01,
     "tradesPerMinute": 10,
-    "convoySpeedKmh": 45
+    "convoySpeedKmh": 45,
+    "news": {
+      "maxTotal": 0.25,
+      "maxChangePerHour": 0.05,
+      "minPct": 0.005,
+      "pushMinPct": 0.05,
+      "worldEvents": {
+        "grossflotte": { "pct": { "treibstoff": 0.12, "proviant": 0.12 }, "maxPct": 0.15, "fadeHours": 36 },
+        "belagerung": { "pct": { "proviant": 0.1 }, "fadeHours": 24 },
+        "schatzschiffErbeutet": { "pct": { "stahl": -0.1, "elektronik": -0.1 }, "holdHours": 6, "fadeHours": 36 },
+        "schatzschiffEntkommen": { "pct": { "stahl": 0.05, "elektronik": 0.05 }, "holdHours": 6, "fadeHours": 24 }
+      },
+      "war": { "resource": "treibstoff", "calm": -0.04, "perWar": 0.02, "perRaid": 0.004, "max": 0.08, "holdHours": 1 },
+      "scarcity": {
+        "max": 0.1, "neutralFill": 0.5, "fillWeight": 0.2, "deficitWeight": 0.1,
+        "minBases": 3, "window": 3, "activeDays": 7, "holdHours": 25
+      },
+      "seasonEnd": { "days": 7, "pct": { "stahl": 0.08, "elektronik": 0.08 } }
+    }
   },
   "worldEvents": {
     "spawnIntervalHours": [48, 96],

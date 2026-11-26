@@ -9,6 +9,7 @@ import { scheduleEvent } from "./store.ts";
 import { resetChallenges } from "./challenges.ts";
 import { expireOffers } from "./player-trade.ts";
 import { clearWorldEvents } from "./world-events.ts";
+import { clearMarketNews } from "./market-news.ts";
 
 const DAY_MS = 86400000;
 
@@ -148,6 +149,8 @@ export const seasonEnd: Handler = async (tx, ev, due) => {
   await tx.delete(tables.base);
   await resetChallenges(tx);
   await clearWorldEvents(tx);
+  // Marktnachrichten verfallen; die Börse steht wieder auf dem Grundrichtwert.
+  await clearMarketNews(tx);
   await tx.update(tables.nest).set({ defeatedAt: null });
   const market = marketCore.createMarketState(marketBalance, due);
   for (const [resource, state] of Object.entries(market)) {

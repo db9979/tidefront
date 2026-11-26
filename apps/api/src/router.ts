@@ -14,6 +14,7 @@ import {
   mapView,
   recallOwnMission,
   marketQuote,
+  marketNewsView,
   marketView,
   missionPreview,
   register,
@@ -153,6 +154,8 @@ export const appRouter = t.router({
     quote: authed
       .input(z.object({ side: z.enum(["buy", "sell"]), resource: z.string().max(20), qty: z.number().int().min(1).max(10_000_000) }))
       .query(({ ctx, input }) => marketQuote(ctx.engine, input)),
+    /** Marktnachrichten: wirkende und die der letzten 24 Stunden, dazu Grund- und effektiver Richtwert. */
+    news: authed.query(({ ctx }) => marketNewsView(ctx.engine.db)),
     trade: authed
       .input(z.object({
         key,

@@ -2,7 +2,7 @@
 
 Verbindlich für `packages/game-core`. Alle Zahlen stehen in `packages/balance/v1/balance.json`
 und werden dort geändert, nie im Code. Zahlen sind Startwerte; Kartell und Piratennester sind seit Balance v1.1
-per Simulation abgestimmt, U-Boote seit v1.2, Forschung seit v1.3 (`npm run sim`, Ergebnisse in `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt C).
+per Simulation abgestimmt, U-Boote seit v1.2, Forschung seit v1.3, Marktnachrichten seit v1.5 (`npm run sim`, Ergebnisse in `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt C).
 
 ## Grundsätze
 
@@ -270,6 +270,31 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
   Startet der Kurs am Richtwert, steigt außerdem sein zum Richtwert bewerteter Gesamtwert nicht.
   Ein Kauf unter Richtwert ist erlaubt: Das ist eine Wette auf die Rückkehr des Kurses, kein Gewinn aus dem Nichts.
 - Auslegungen des Börsenkerns stehen in `packages/game-core/src/market/ENTSCHEIDUNGEN.md` und gelten als Teil dieser Regeln.
+
+## Marktnachrichten
+
+Die Welt verschiebt vorübergehend den **Richtwert** je Ressource, nie den Kurs; der Kurs folgt über die Rückkehrformel.
+Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.ts`, Server `packages/engine/src/market-news*.ts`.
+
+- **Einfluss** = Nachricht (Ressource, Richtung, Prozent `pct` vom Grundrichtwert, Grund, Beginn, Ende): voll bis zum Ende,
+  danach linear abklingend. Unter `minPct` keine Nachricht. Ändert sich die Wirkung eines Anlasses, endet die alte sofort.
+- **Weltereignisse** (ab dem Entstehen, nach dem Ende `fadeHours` 24–36 h abklingend): Großflotte (angekündigt oder
+  laufend) Treibstoff und Proviant `pct × Stärkefaktor`, höchstens `maxPct` (12–15 %); Belagerung Proviant +10 %;
+  Schatzschiff erbeutet Stahl und Elektronik −10 %, entkommen +5 %, je `holdHours` voll ab dem Ausgang.
+- **Kriegslage** (Treibstoff): `calm + perWar × laufende Kriege + perRaid × Kartell-Überfälle (24 h)`, begrenzt auf
+  `[calm, max]` = −4 … +8 %, ganze Prozent.
+- **Knappheit** (je UTC-Tag; aktive Häfen = Spieler in `activeDays` Tagen gesehen): Tageswert = `fillWeight × (neutralFill −
+  Median Bestand / Median Lagerkapazität) + deficitWeight × Anteil Häfen mit negativer Netto-Produktion`, ±`max` (10 %);
+  Wirkung = Mittel der letzten `window` Tageswerte, ganze Prozent. Unter `minBases` (3) aktiven Häfen keine Wirkung.
+- **Saisonende:** letzte `days` (7) Tage Stahl und Elektronik tageweise je 1/7 bis +8 %. **Grenzen:** Summe je Ressource
+  ±`maxTotal` (25 %); effektiver Richtwert = Grundrichtwert × (1 + Versatz), der Versatz folgt der Summe ≤ `maxChangePerHour` (5 %) je Stunde.
+- **Schutzregeln:** Rückkehr, Angebot und Handel nutzen den effektiven Richtwert. `price_bounds` bleibt am
+  **Grundrichtwert** (Anlässe, die Spieler mit auslösen können, verschieben den harten Korridor nicht). Kursband und Pause
+  bleiben (Vergleich mit den tatsächlichen Kursen vor 1 h / 24 h); bei 5 %/h löst eine Nachricht allein keine Pause aus.
+  Die **Garantie** der Börse gilt mit dem effektiven Richtwert unverändert; ohne Nachrichten ist alles bit-gleich.
+- **Ablauf und Anzeige:** Weltereignisse schreiben ihre Nachricht bei Beginn und Ende; ein Worker-Job wertet alle 10 Minuten
+  die Lage aus (Knappheit täglich) und schreibt den Versatz fort. `market.news` zeigt wirkende Nachrichten und die der
+  letzten 24 h; Push „Marktnachricht“ (Vorgabe aus) ab `pushMinPct` (5 %). Saisonende: alles verfällt.
 
 ## Saison und Wertung
 

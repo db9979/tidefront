@@ -40,6 +40,10 @@ export { dailySummarySection } from "./daily-summary.ts";
 export { ensureWorldEventPlanner, siegeEffects, clearWorldEvents } from "./world-events.ts";
 export { spawnWorldEvent } from "./world-events-spawn.ts";
 export { worldEventsView } from "./world-events-view.ts";
+export {
+  clearMarketNews, effectiveMarketRefs, marketNewsAdmin, marketNewsView, marketRefs, pctText, upsertNews, REF_OFFSETS_KEY, SCARCITY_KEY,
+} from "./market-news.ts";
+export { runMarketNews, runMarketNewsTx, scarcityInput, warSituation, worldEventNews, worldEventSpecs } from "./market-news-sources.ts";
 export * from "./modifiers.ts";
 export * from "./battle-stats.ts";
 export { veteranView, withAttackExperience, type VeteranInfo } from "./veterans.ts";

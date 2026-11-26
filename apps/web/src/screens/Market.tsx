@@ -15,6 +15,7 @@ import { PriceBoard } from "../components/market/PriceBoard.tsx";
 import { PriceChart } from "../components/market/PriceChart.tsx";
 import { OrderTicket } from "../components/market/OrderTicket.tsx";
 import type { MarketCfg } from "../components/market/calc.ts";
+import { MarketNews } from "../components/MarketNews.tsx";
 
 export function MarketScreen({ base }: { base: BaseData }) {
   const m = useQuery({ ...trpc.market.get.queryOptions(), refetchInterval: 30000 });
@@ -54,6 +55,7 @@ export function MarketScreen({ base }: { base: BaseData }) {
     <div>
       <MarketHeader credits={credits} creditLimit={base.market.creditLimit} status={status} port={port} travelMs={travelMs} />
       <Ticker resources={m.data.resources} nowMs={now} halfLife={cfg.reversionHalfLifeHours} />
+      <MarketNews compact />
       <PriceBoard resources={m.data.resources} selected={sel.id} onSelect={setResource} nowMs={now} halfLife={cfg.reversionHalfLifeHours} />
 
       <Card title={<><Icon id={sel.id} size={18} /> Kursverlauf {label(sel.id)}</>}>
@@ -76,6 +78,10 @@ export function MarketScreen({ base }: { base: BaseData }) {
             </div>
           </div>
         )}
+      </Card>
+
+      <Card title={<><Icon id="nav-bericht" size={18} /> Marktnachrichten</>}>
+        <MarketNews limit={6} showRefs />
       </Card>
 
       <PlayerTrade base={base} />

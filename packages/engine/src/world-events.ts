@@ -7,6 +7,7 @@ import { pickKind, worldEventsBalance, type Counts, type ResourceMap, type Route
 import { tables, type Db, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, type Notice, type NoticeJob } from "./context.ts";
 import { scheduleEvent } from "./store.ts";
+import { worldEventNews } from "./market-news-sources.ts";
 
 const HOUR_MS = 3600000;
 
@@ -117,6 +118,8 @@ export async function endWorldEvent(tx: Tx, ev: WorldEventRow, outcome: string, 
     .update(tables.worldEvent)
     .set({ ...patch, status: "ended", outcome, endedAt: new Date(atMs), winnerPlayerId: winner })
     .where(eq(tables.worldEvent.id, ev.id));
+  // Marktnachrichten: Wirkung endet jetzt und klingt ab (Schatzschiff: Nachricht zum Ausgang).
+  await worldEventNews(tx, ev.id, atMs);
 }
 
 export function sumRes(m: ResourceMap | null | undefined): number {

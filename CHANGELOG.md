@@ -2,6 +2,21 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.10.0 – 27.11.2026
+- **Forschung**: neues Gebäude Forschungsamt mit 20 Techniken in vier Zweigen (Seefahrt, Heer, Luftfahrt, Wirtschaft). Jede abgeschlossene Forschung hat eine sichtbare **Durchbruch-Chance** – Würfelwurf mit Extra-Stufe oder halber Dauer für die nächste Forschung.
+- **Kriegsglück**: Jede Seite würfelt je Kampfphase einen W20 (−20 % bis +20 %), die Würfe stehen im Kampfbericht.
+- **Veteranen**: Einheiten werden durch überstandene Kämpfe stärker – bis zur Elite (+15 %).
+- **Wertaufschlüsselung** in den Info-Blättern (z. B. „40 → 46 · Forschung +10 % · Veteranen +5 %“) und ausgeteilter Schaden je Einheit im Kampfbericht.
+- **Bilanz** unter Meldungen: deine persönliche Kampfbilanz mit versenkter Tonnage, bester Einheit und Würfelglück.
+- **Probekampf** mit Verteilungsdiagramm.
+- **Auftragsbuch mit Belohnungen**: Ressourcenpaket je Auftrag, nach allen elf das Abzeichen **Hafenmeister** und eine Stunde weniger Bauzeit.
+- **Börse neu gestaltet**: Kurstafel, Tickerband, Kursdiagramm mit Richtwert und Kursband, Ordermaske mit Kurszettel und Sperrgründen vorab.
+- **Marktnachrichten**: Weltereignisse, Kriegslage, Knappheit und Saisonende verschieben die Richtwerte (höchstens ±25 %, sanft) – sichtbar im Tickerband und als Liste, auf Wunsch als Push.
+- **Spielerhandel** zeigt den Börsenwert jedes Angebots und eine Statistik der letzten 7 Tage.
+- **Karte** ganz herausgezoomt füllt den Bildschirm, ruhige Übersicht mit Punkten statt Rauten, Beschriftungen ohne Überlappung.
+- Die App startet schneller: selten genutzte Bildschirme werden erst bei Bedarf geladen.
+- Viele Korrekturen: Warnung vor Überfällen auf Verbündete schon in der Vorschau, Zurück-Taste überall, Blatt am Griff wegziehen, Meldungen-Reiter auf schmalen Handys, Nachricht bei Ende eines Pakts.
+
 ## 0.9.0 – 27.11.2026
 - **Weltereignisse des Kartells** – etwa alle 2–4 Tage, stärker mit dem Saisonfortschritt:
   - **Schatzschiff**: fährt 12–24 Stunden zu einem Piratennest. Wer es zuerst abfängt, erhält die große Beute.

@@ -81,16 +81,30 @@ export function createTraderState(
   };
 }
 
-/** Price of a resource at nowMs, after reversion to the reference price. */
+/**
+ * Effective reference prices (Marktnachrichten, news.ts): optional per resource. Missing, non-finite or
+ * non-positive values fall back to the base reference price of balance.json, so without them every
+ * result is bit-identical to the plain market.
+ */
+export type RefPrices = Readonly<Partial<Record<ResourceId, number>>>;
+
+/** Reference price the price reverts to: the effective one if given, else the base reference price. */
+export function referencePrice(resource: ResourceId, balance: MarketBalance, refPrices?: RefPrices): number {
+  const r = refPrices?.[resource];
+  return typeof r === "number" && Number.isFinite(r) && r > 0 ? r : balance.market.refPrice[resource];
+}
+
+/** Price of a resource at nowMs, after reversion to the (effective) reference price. */
 export function currentPrice(
   state: ResourceMarketState,
   resource: ResourceId,
   balance: MarketBalance,
   nowMs: number,
+  refPrices?: RefPrices,
 ): number {
   return revertToReference(
     state.price,
-    balance.market.refPrice[resource],
+    referencePrice(resource, balance, refPrices),
     nowMs - state.lastUpdateMs,
     balance.market.reversionHalfLifeHours,
   );
@@ -139,8 +153,9 @@ function buildQuote(
   qty: number,
   balance: MarketBalance,
   nowMs: number,
+  refPrices?: RefPrices,
 ): { quote: Quote; totalCents: number; baseCents: number; feeCents: number } {
-  const priceBefore = currentPrice(state, resource, balance, nowMs);
+  const priceBefore = currentPrice(state, resource, balance, nowMs, refPrices);
   const impact = priceImpact(qty, balance.market.depth[resource]);
   const priceAfter = priceAfterTrade(side, priceBefore, impact);
   const execPrice = executionPrice(priceBefore, priceAfter);
@@ -171,6 +186,7 @@ export function quote(
   request: { side: TradeSide; resource: ResourceId; qty: number },
   balance: MarketBalance,
   nowMs: number,
+  refPrices?: RefPrices,
 ): QuoteResult {
   if (
     (request.side !== "buy" && request.side !== "sell") ||
@@ -186,6 +202,7 @@ export function quote(
     request.qty,
     balance,
     nowMs,
+    refPrices,
   );
   return { ok: true, ...built.quote };
 }
@@ -198,7 +215,8 @@ function relativeDeviation(value: number, base: number): number {
  * Executes an instant buy or sell. Checks run in the order of REGELN.md:
  * locked, halted, bad_qty, impact, rate, daily_limit, under_attack,
  * credit_limit, funds, slippage, price_bounds, band.
- * Inputs are not mutated.
+ * Inputs are not mutated. With `refPrices` (Marktnachrichten) the price reverts to the effective reference
+ * price; the hard price bounds stay relative to the base reference price (ENTSCHEIDUNGEN.md, section E).
  */
 export function executeTrade(
   market: MarketState,
@@ -207,6 +225,7 @@ export function executeTrade(
   context: TradeContext,
   balance: MarketBalance,
   nowMs: number,
+  refPrices?: RefPrices,
 ): TradeResult {
   const cfg = balance.market;
   const harbor = balance.buildings.hafenkommandantur;
@@ -231,8 +250,9 @@ export function executeTrade(
   if (!validRequest || !isValidQty(qty)) return reject("bad_qty");
 
   const state = market[resource];
-  const refPrice = cfg.refPrice[resource];
-  const built = buildQuote(state, side, resource, qty, balance, nowMs);
+  const baseRef = cfg.refPrice[resource];
+  const refPrice = referencePrice(resource, balance, refPrices);
+  const built = buildQuote(state, side, resource, qty, balance, nowMs, refPrices);
   const q = built.quote;
 
   // 4. impact
@@ -277,8 +297,8 @@ export function executeTrade(
     return reject("slippage");
   }
 
-  // 11. price_bounds
-  if (q.priceAfter < cfg.floorFactor * refPrice || q.priceAfter > cfg.ceilFactor * refPrice) {
+  // 11. price_bounds: relative to the base reference price, not the effective one (news cannot move them)
+  if (q.priceAfter < cfg.floorFactor * baseRef || q.priceAfter > cfg.ceilFactor * baseRef) {
     return reject("price_bounds");
   }
 

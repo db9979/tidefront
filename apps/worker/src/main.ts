@@ -1,4 +1,4 @@
-// Worker: verarbeitet fällige Ereignisse, Prüflauf der Börse, Aufräumen, Betriebsalarm, gebündelte E-Mails.
+// Worker: verarbeitet fällige Ereignisse, Prüflauf der Börse, Marktnachrichten, Aufräumen, Betriebsalarm, gebündelte E-Mails.
 import { createServer } from "node:http";
 import Valkey from "iovalkey";
 import { createDb } from "@tidefront/db";
@@ -13,6 +13,7 @@ import {
   flushMailDigests,
   noticeHook,
   processDue,
+  runMarketNews,
   runMorningSummaries,
   type Engine,
   type OpsStatus,
@@ -58,6 +59,8 @@ async function loop() {
         await cleanup(engine, Date.now(), balance.combat.wreckHours);
         // Weltereignisse: nächstes Ereignis planen, falls keines ansteht (auch nach Saisonwechsel).
         await ensureWorldEventPlanner(db, Date.now()).catch((err) => log("world events planner", String(err)));
+        // Marktnachrichten: Lage auswerten (täglich Knappheit), effektiven Richtwert fortschreiben, Push.
+        await runMarketNews(engine, Date.now()).catch((err) => log("market news", String(err)));
       }
       if (Date.now() >= nextOps) {
         // Jede Minute: Kennzahlen, Alarm an Admins, gebündelte E-Mails.

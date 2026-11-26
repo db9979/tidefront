@@ -27,6 +27,7 @@ import { tables, type Tx } from "@tidefront/db";
 import { balance, type NoticeJob } from "./context.ts";
 import type { Handler, HandlerResult } from "./events.ts";
 import { randomSeed, scheduleEvent } from "./store.ts";
+import { worldEventNews } from "./market-news-sources.ts";
 import {
   KIND_TEXT, notice, openWorldEvents, playersWithBase, resText, runningSeasonRow, systemMessage,
   type ArmadaTarget, type Hex, type WorldEventData,
@@ -217,6 +218,8 @@ export async function spawnWorldEvent(
     })
     .returning({ id: tables.worldEvent.id });
   const payload = { eventId: row.id };
+  // Marktnachrichten: Großflotte und Belagerung verschieben den Richtwert ab dem Entstehen.
+  await worldEventNews(tx, row.id, due);
   if (d.kind === "grossflotte") await scheduleEvent(tx, "world_event_attack", d.activeAtMs, payload, null);
   else {
     await scheduleEvent(tx, "world_event_end", d.endsAtMs, payload, null);

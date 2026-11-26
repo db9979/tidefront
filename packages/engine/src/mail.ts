@@ -76,7 +76,7 @@ export function setMailSender(s: MailSender | null): void {
 
 /** Vorgaben je Art für E-Mail; Bau, Ausbildung, Verband, Lieferung nur gebündelt. */
 export const EMAIL_DEFAULTS: Record<NoticeKind, boolean> = {
-  attack: true, report: true, build: false, training: false, fleet: false, delivery: false, ops: true, test: true,
+  attack: true, report: true, build: false, training: false, fleet: false, delivery: false, ops: true, test: true, market: false,
 };
 export const DIGEST_KINDS: NoticeKind[] = ["build", "training", "fleet", "delivery"];
 export const DIGEST_INTERVAL_MS = 30 * 60000;

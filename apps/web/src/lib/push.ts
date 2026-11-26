@@ -9,6 +9,7 @@ export const KIND_LABEL: Record<string, string> = {
   fleet: "Verband zurück",
   delivery: "Lieferung angekommen",
   ops: "Betriebsalarm (Verwaltung)",
+  market: "Marktnachricht",
 };
 
 export function pushSupported(): boolean {

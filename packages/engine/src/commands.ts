@@ -34,6 +34,7 @@ import { diplomacyBlock } from "./alliance-core.ts"; // Allianzen/Diplomatie
 // Weltereignisse: Missionen gegen Ereignisse, Belagerung sperrt Börsenkäufe.
 import { launchAgainstEvent } from "./world-events-missions.ts";
 import { siegeEffects } from "./world-events.ts";
+import { effectiveMarketRefs } from "./market-news.ts";
 import { modifiersFor, modsOf } from "./modifiers.ts";
 import { applyPendingBoost } from "./guide.ts";
 
@@ -368,6 +369,8 @@ export function trade(
       },
       marketBalance,
       ctx.nowMs,
+      // Marktnachrichten: effektiver Richtwert (undefined ohne Verschiebung, dann bit-gleich wie vorher).
+      await effectiveMarketRefs(ctx.tx, ctx.nowMs),
     );
     const resource = request.resource as ResourceId;
     if (!result.ok) {

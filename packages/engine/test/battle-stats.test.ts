@@ -90,7 +90,7 @@ test("Kriegsglück: Würfe je Phase und Seite im gespeicherten Bericht; Veterane
   const p = await newPlayer("Wanda", 4);
   await patchBase(p.baseId, (s) => { s.units = { ...fleet }; s.resources = { ...rich }; });
   const { report, arrived } = await raidNest(p);
-  assert.equal(report.balanceVersion, "v1.4");
+  assert.equal(report.balanceVersion, balance.version);
   const battle = (report.report as { battle: BattleReport }).battle;
   assert.equal(battle.winner, "attacker");
   for (const ph of battle.phases) {

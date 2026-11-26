@@ -574,3 +574,29 @@ export const guideClaim = pgTable("guide_claim", {
   claimedAt: ts("claimed_at").notNull().defaultNow(),
   boostUsedAt: ts("boost_used_at"),
 }, (t) => [uniqueIndex("guide_claim_pk").on(t.playerId, t.seasonId, t.step)]);
+
+// ================================================================ Marktnachrichten
+// Einflüsse der Welt auf den Richtwert der Börse (REGELN.md, Abschnitt Marktnachrichten; Kern
+// packages/game-core/src/market/news.ts, Server packages/engine/src/market-news*.ts). Je Anlass und Ressource eine
+// Zeile: volle Wirkung pct von starts_at bis ends_at, danach linear abklingend über fade_minutes. Ändert sich die
+// Wirkung eines laufenden Anlasses, endet die alte Zeile sofort (fade 0) und eine neue beginnt. Der gesteuerte
+// effektive Versatz (höchstens maxChangePerHour) steht in server_setting "market_ref_offsets", die Tageswerte der
+// Knappheit in "market_scarcity". Die Tabelle wird am Saisonende geleert.
+
+export const marketNews = pgTable("market_news", {
+  id: serial("id").primaryKey(),
+  /** Anlass: "we:<Ereignis-ID>", "kriegslage", "knappheit", "saison". */
+  key: text("key").notNull(),
+  /** weltereignis | kriegslage | knappheit | saison */
+  source: text("source").notNull(),
+  resource: text("resource").notNull(),
+  /** Anteil am Grundrichtwert, z. B. 0.12 = +12 %. */
+  pct: doublePrecision("pct").notNull(),
+  reason: text("reason").notNull(),
+  startsAt: ts("starts_at").notNull(),
+  endsAt: ts("ends_at").notNull(),
+  fadeMinutes: integer("fade_minutes").notNull().default(0),
+  /** Push „Marktnachricht“ verschickt (oder bewusst übersprungen). */
+  pushedAt: ts("pushed_at"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [index("market_news_key").on(t.key, t.resource, t.id), index("market_news_ends").on(t.endsAt)]);
