@@ -2,6 +2,17 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.12.0 – 27.11.2026
+- **Admirale**: Ernenne bis zu drei Admirale (Truppen → Admirale). Sie führen einen Verband auf Mission oder als Hafenkommandant daheim die Verteidigung. Sechs Spezialisierungen (Angriff, Verteidigung, Logistik, Aufklärung, Beutemeister, U-Boot-Taktik), Erfahrung aus gewonnenen Kämpfen, Beförderung bis zum Admiral. Nach schweren Niederlagen entscheidet ein W20 über Verwundung, Gefangenschaft oder Tod.
+- **Sammelangriff**: Allianzmitglieder greifen gemeinsam an – alle Verbände kommen gleichzeitig an und kämpfen als eine Streitmacht. Die Beute wird nach Kampfbeitrag geteilt, höchstens so viel, wie der eigene Laderaum fasst. Eröffnen über die Missionsplanung, beitreten unter Allianz → Angriffe.
+- **Stationieren**: Truppen verteidigen den Hafen eines Verbündeten mit, bis du sie zurückrufst.
+- **Minen**: Minenleger legen Minenfelder auf See nahe dem eigenen Hafen; feindliche Verbände auf der Hinfahrt verlieren Schiffe. Minenräumer räumen Felder und schützen den Verband.
+- **Seeblockade**: Bewaffnete Schiffe blockieren einen fremden Hafen – Produktion −25 %, Lieferungen werden zurückgehalten, Börsenverkäufe gesperrt. Der Verteidiger und seine Verbündeten können die Blockade angreifen.
+- **Konvois**: Handelslieferungen und Transporte fahren als Konvoi. Das Kartell und Kriegsgegner können sie abfangen; Geleitschutz senkt die Verluste.
+- **Erfolge**: Zwölf Abzeichen in Bronze, Silber und Gold, die über alle Saisons bleiben – mit Belohnung je Stufe. Die besten drei stehen in der Rangliste neben deinem Namen (Meldungen → Erfolge).
+- **Wochenziele**: Jede Woche drei passende Ziele mit Belohnung und einem Wochenbonus für alle drei (Basis).
+- Neue Handbuch-Kapitel zu allen Neuerungen.
+
 ## 0.11.6 – 27.11.2026
 - Mission auf der Karte: Statt eines abdunkelnden Blatts erscheint unten eine kompakte Leiste – die Karte bleibt sichtbar, der Verband steht mittig und ist mit einem pulsierenden Ring markiert. Die Leiste zeigt, wo der Verband gerade ist („Jetzt bei Feld …“), Fortschritt, Truppen, auf Wunsch die Zeiten, und Knöpfe „Ziel zeigen“ und „Zurückrufen“.
 

@@ -74,7 +74,12 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
                 </button>
               </div>
               <div className="text-xs text-slate-300"><UnitChips counts={m.status === "returning" || m.status === "stationed" ? m.returning : m.units} /></div>
-              {m.status === "staged" || m.status === "stationed" ? <OpsMissionLine m={m} /> : (
+              {m.status === "staged" || m.status === "stationed" ? <OpsMissionLine m={m} /> : m.status === "holding" ? (
+                <>
+                  <div className="text-sea-300">Blockade läuft</div>
+                  <LiftBlockade missionId={m.id} />
+                </>
+              ) : (
               <button
                 type="button"
                 className="tap text-sea-300 text-left underline underline-offset-4 decoration-dotted"
@@ -82,11 +87,6 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
               >
                 {m.status === "outbound" ? `Ankunft in ${fmtDuration(m.arriveAtMs - now)}` : `Rückkehr in ${fmtDuration(m.returnAtMs - now)}`} · auf der Karte zeigen
               </button>)}
-              <div className="text-xs text-slate-300"><UnitChips counts={m.status === "returning" ? m.returning : m.units} /></div>
-              <div className="text-sea-300">
-                {m.status === "outbound" ? `Ankunft in ${fmtDuration(m.arriveAtMs - now)}` : m.status === "holding" ? "Blockade läuft" : `Rückkehr in ${fmtDuration(m.returnAtMs - now)}`}
-              </div>
-              {m.status === "holding" && <LiftBlockade missionId={m.id} />}
               {m.cargoHome && Object.values(m.cargoHome).some((v) => v > 0) && (
                 <div className="text-xs text-brass-400">Ladung: <UnitChips counts={m.cargoHome} /></div>
               )}
