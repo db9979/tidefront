@@ -4,7 +4,7 @@ import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, type BaseData, type Outputs } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
-import { errorText, fmtNum } from "../lib/names.ts";
+import { errorText, fmtNum, label } from "../lib/names.ts";
 import { fmtDuration, fmtSeconds, fmtTime, useNow } from "../lib/time.ts";
 import { Badge, Button, Card, ErrorLine, Loading, Stepper, UnitChips } from "../ui.tsx";
 import { Icon, IconTile } from "../icons.tsx";
@@ -58,8 +58,10 @@ function RaidCard({ r, base, now }: { r: Raid; base: BaseData | null; now: numbe
           <div className="mono">
             {r.status === "offen" ? "Ankunft voraussichtlich" : "Ankunft"} {fmtTime(r.arriveAtMs)}
             {r.status === "ausgelaufen" && r.arriveAtMs > now ? ` · in ${fmtDuration(r.arriveAtMs - now)}` : ""}
-            {r.arriveAtMs > r.desiredArriveAtMs + 60000 && <span className="text-messing"> · später als gewünscht ({fmtTime(r.desiredArriveAtMs)}): der langsamste Verband bestimmt</span>}
           </div>
+        )}
+        {(r.status === "offen" || r.status === "ausgelaufen") && r.arriveAtMs > r.desiredArriveAtMs + 60000 && (
+          <div className="text-xs text-messing">Später als gewünscht ({fmtTime(r.desiredArriveAtMs)}): der langsamste Verband bestimmt die Ankunft.</div>
         )}
         {r.reportId !== null && <div className="text-ink2">Gemeinsamer Kampfbericht unter <strong>Meldungen → Berichte</strong>.</div>}
       </div>
@@ -98,7 +100,7 @@ function JoinForm({ r, base, onDone }: { r: Raid; base: BaseData; onDone: () => 
       <ul className="divide-y divide-rule">
         {base.units.filter((u) => u.home > 0 && !balance?.units[u.id]?.covert).map((u) => (
           <li key={u.id} className="py-1.5 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0 flex-1"><IconTile id={u.id} size={32} /><div className="text-sm text-ink2 min-w-0">{fmtNum(u.home)} daheim</div></div>
+            <div className="flex items-center gap-2 min-w-0 flex-1"><IconTile id={u.id} size={32} /><div className="text-sm min-w-0 leading-tight">{label(u.id)}<div className="text-xs text-ink2">{fmtNum(u.home)} daheim</div></div></div>
             <Stepper value={units[u.id] ?? 0} max={u.home} onChange={(v) => setUnits({ ...units, [u.id]: v })} />
           </li>
         ))}

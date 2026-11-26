@@ -87,8 +87,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
 
   if (sent) {
     return (
-      <Card title="Mission gestartet">
-        <div className="flex items-center gap-3"><Icon id={sent.type} size={48} /><p>Der Verband hat abgelegt. Ankunft am Ziel {fmtTime(sent.arriveAtMs)}. {SENT_TEXT[sent.type] ?? ""}</p></div>
+      <Card title={sent.type === "sammelangriff" ? "Sammelangriff eröffnet" : "Mission gestartet"}>
+        <div className="flex items-center gap-3"><Icon id={sent.type} size={48} /><p>{sent.type === "sammelangriff" ? "Dein Verband ist gebunden. Ankunft frühestens" : "Der Verband hat abgelegt. Ankunft am Ziel"} {fmtTime(sent.arriveAtMs)}. {SENT_TEXT[sent.type] ?? ""}</p></div>
         <Button className="mt-3 w-full" onClick={onClose}>Fertig</Button>
       </Card>
     );

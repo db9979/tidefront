@@ -128,7 +128,7 @@ export function AllianceOpsReport({ d }: { d: Record<string, unknown> }) {
                 {raid.participants.map((p) => (
                   <tr key={p.playerId} className="border-t border-rule align-top">
                     <td className="py-1.5 pr-2 font-semibold">{p.name}</td>
-                    <td className="pr-2 text-right mono">{fmtNum(p.share, 1)} %</td>
+                    <td className="pr-2 text-right mono whitespace-nowrap">{fmtNum(p.share, 1)} %</td>
                     <td className="pr-2 text-xs">{lossSum(p.outcome.losses) > 0 ? <UnitChips counts={p.outcome.losses} /> : "–"}</td>
                     <td className="text-xs"><ResChips values={p.loot} /></td>
                   </tr>
