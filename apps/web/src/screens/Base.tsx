@@ -298,12 +298,16 @@ function Supply({ base }: { base: BaseData }) {
         <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-slate-300 [&>span:nth-child(even)]:mono">
           <span>Lager je Ressource</span><span className="text-right">{fmtNum(base.capacity)}<Note text={researchNote(base.modifiers, "storage")} /></span>
           <span>Bunkerschutz</span><span className="text-right">{fmtNum(base.bunkerProtection)}<Note text={researchNote(base.modifiers, "bunker")} /></span>
-          <span>Unterhalt</span><span className="text-right">{fmtNum(base.upkeepPerHour, 1)} Proviant/h</span>
+          <span>Proviant erzeugt</span><span className="text-right">+{fmtNum((base.rates.proviant ?? 0) + base.upkeepPerHour, 1)}/h</span>
+          <span>Truppen essen (Unterhalt)</span><span className="text-right">−{fmtNum(base.upkeepPerHour, 1)}/h</span>
+          <span className="font-semibold">Proviant-Saldo</span><span className={`text-right font-semibold ${(base.rates.proviant ?? 0) < 0 ? "text-siegel" : "text-[#3f6b3a]"}`}>{(base.rates.proviant ?? 0) >= 0 ? "+" : "−"}{fmtNum(Math.abs(base.rates.proviant ?? 0), 1)}/h</span>
           <span>Kommandopunkte</span><span className="text-right">{fmtNum(base.commandPoints)}</span>
           <span>Missionsplätze</span><span className="text-right">{base.activeMissions}/{base.missionSlots}</span>
           <span>Stellplätze Flugfeld</span><span className="text-right">{base.aircraftSlots.used}/{base.aircraftSlots.total}</span>
           <span>Radar-Vorwarnzeit</span><span className="text-right">{fmtNum(base.radarWarningMinutes, 1)} min<Note text={researchNote(base.modifierSources.find((m) => m.id === "forschung")?.mods, "radarWarning")} /><Note text={researchNote(base.modifierSources.find((m) => m.id === "wetter")?.mods, "radarWarning")?.replace("Forschung", "Nebel") ?? null} /></span>
         </div>
+        <p className="text-xs text-ink2">Jede Einheit isst Proviant, auch unterwegs. Der Saldo steht oben in der Leiste bei Proviant. Ist er negativ, schrumpft der Vorrat; bei 0 droht Versorgungsmangel.</p>
+        {(base.rates.proviant ?? 0) < 0 && !base.versorgungsmangel && <p className="text-siegel text-xs">Deine Truppen essen mehr, als du erzeugst: Vorrat reicht noch {fmtNum(Math.floor((base.resources.proviant ?? 0) / -(base.rates.proviant ?? -1)))} h. Versorgungshof ausbauen oder Proviant kaufen.</p>}
         {base.versorgungsmangel && <p className="text-red-300">Versorgungsmangel: keine Ausbildung, Angriffswert −20 %. Versorgungshof ausbauen oder Proviant kaufen.</p>}
         {base.deliveries.length > 0 && <DeliveryList base={base} />}
       </div>
