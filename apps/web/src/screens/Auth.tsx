@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ChangelogSheet, VersionLine } from "../components/Changelog.tsx";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
-import { errorText } from "../lib/names.ts";
+import { errorText, failText } from "../lib/names.ts";
 import { Button, ErrorLine } from "../ui.tsx";
 
 type Mode = "login" | "register" | "forgot";
@@ -34,14 +34,15 @@ function ForgotForm({ field, onDone }: { field: string; onDone: () => void }) {
     setMsg(null);
     try {
       await fn();
-    } catch {
-      setError("Eingaben prüfen: Rücksetzcode und neues Passwort (mind. 8 Zeichen).");
+    } catch (err) {
+      setError(failText(err));
     } finally {
       setBusy(false);
     }
   };
   const reset = (e: React.FormEvent) => {
     e.preventDefault();
+    if (password.length < 8) return setError("Passwort zu kurz (mindestens 8 Zeichen).");
     void wrap(async () => {
       const r = await trpcClient.auth.resetPassword.mutate({ name: name.trim() || undefined, code, password });
       if (!r.ok) return setError(errorText(r.code));
@@ -68,16 +69,16 @@ function ForgotForm({ field, onDone }: { field: string; onDone: () => void }) {
       )}
       <form onSubmit={reset}>
         <label className="text-sm text-slate-300" htmlFor="fg-name">Name{linkToken ? " (optional)" : ""}</label>
-        <input id="fg-name" className={field} value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" required={!linkToken} />
+        <input id="fg-name" className={field} maxLength={24} value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" required={!linkToken} />
         {!linkToken && (
           <>
             <Button kind="secondary" onClick={() => void requestMail()} disabled={busy} className="w-full mb-4">Link per E-Mail senden</Button>
             <label className="text-sm text-slate-300" htmlFor="fg-code">Rücksetzcode</label>
-            <input id="fg-code" className={field} value={code} onChange={(e) => setCode(e.target.value)} autoCapitalize="characters" autoComplete="one-time-code" required />
+            <input id="fg-code" className={field} maxLength={64} value={code} onChange={(e) => setCode(e.target.value)} autoCapitalize="characters" autoComplete="one-time-code" required />
           </>
         )}
         <label className="text-sm text-slate-300" htmlFor="fg-pw">Neues Passwort (mind. 8 Zeichen)</label>
-        <input id="fg-pw" className={field} type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required />
+        <input id="fg-pw" className={field} type="password" minLength={8} maxLength={200} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required />
         <Button type="submit" disabled={busy} className="w-full">Passwort neu setzen</Button>
       </form>
       {msg && <p className="text-sm text-emerald-300 mt-2">{msg}</p>}
@@ -100,8 +101,14 @@ export function AuthScreen() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBusy(true);
     setError(null);
+    if (mode === "register") {
+      const n = name.trim();
+      if (n.length < 3 || n.length > 24) return setError(`Name ${n.length < 3 ? "zu kurz (mindestens 3" : "zu lang (höchstens 24"} Zeichen).`);
+      if (!/^[\p{L}\p{N} _.-]+$/u.test(n)) return setError("Name: nur Buchstaben, Ziffern, Leerzeichen und _ . -");
+      if (password.length < 8) return setError("Passwort zu kurz (mindestens 8 Zeichen).");
+    }
+    setBusy(true);
     try {
       const r =
         mode === "login"
@@ -113,8 +120,7 @@ export function AuthScreen() {
         await queryClient.invalidateQueries(trpc.auth.pathFilter());
       }
     } catch (err) {
-      const msg = String((err as Error).message ?? "");
-      setError(msg.includes("password") || msg.includes("name") ? "Name (3–24 Zeichen) und Passwort (mind. 8 Zeichen) prüfen." : errorText("network"));
+      setError(failText(err));
     } finally {
       setBusy(false);
     }
@@ -147,14 +153,14 @@ export function AuthScreen() {
               <span className="text-sm">Eingeladen von <strong>{inviterName}</strong>. Wähle einen Namen und ein Passwort.</span>
             </div>
           )}
-          <label className="text-[11px] font-display uppercase tracking-wider text-slate-400">Name</label>
-          <input className={field} value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" required />
-          <label className="text-[11px] font-display uppercase tracking-wider text-slate-400">Passwort</label>
-          <input className={field} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === "login" ? "current-password" : "new-password"} required />
+          <label htmlFor="au-name" className="text-[11px] font-display uppercase tracking-wider text-slate-400">Name</label>
+          <input id="au-name" className={field} maxLength={24} value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" required />
+          <label htmlFor="au-pw" className="text-[11px] font-display uppercase tracking-wider text-slate-400">Passwort{mode === "register" ? " (mind. 8 Zeichen)" : ""}</label>
+          <input id="au-pw" className={field} maxLength={200} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === "login" ? "current-password" : "new-password"} required />
           {mode === "register" && (
             <>
-              <label className="text-[11px] font-display uppercase tracking-wider text-slate-400">Einladungscode</label>
-              <input className={field} value={invite} onChange={(e) => setInvite(e.target.value)} autoCapitalize="characters" required />
+              <label htmlFor="au-invite" className="text-[11px] font-display uppercase tracking-wider text-slate-400">Einladungscode</label>
+              <input id="au-invite" className={field} maxLength={64} value={invite} onChange={(e) => setInvite(e.target.value)} autoCapitalize="characters" required />
             </>
           )}
           <Button type="submit" disabled={busy} className="w-full">{mode === "login" ? "Anmelden" : "Konto anlegen"}</Button>

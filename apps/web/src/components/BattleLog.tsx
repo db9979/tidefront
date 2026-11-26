@@ -63,8 +63,16 @@ function Side({ name, before, after }: { name: string; before: Counts; after: Co
   );
 }
 
-export function BattleLog({ b, names, role }: { b: Battle; names: [string, string]; role: "attacker" | "defender" }) {
+export function BattleLog({ b, names, role, protectedPerResource = null }: {
+  b: Battle;
+  names: [string, string];
+  role: "attacker" | "defender";
+  /** Bunkerschutz je Ressource des Verteidigers (ältere Berichte: null). */
+  protectedPerResource?: number | null;
+}) {
   const won = (b.winner === "attacker") === (role === "attacker");
+  // Beute aus Sicht des Lesers: Angreifer erbeutet (+, grün), Verteidiger verliert (−, Siegelrot).
+  const gain = role === "attacker";
   const lootTotal = RES.reduce((s, r) => s + (b.loot[r] ?? 0), 0);
   const wreck = Object.entries(b.wreck ?? {}).filter(([, v]) => v > 0).map(([r, v]) => `${fmtNum(v)} ${label(r)}`).join(", ");
   let no = 0;
@@ -121,19 +129,26 @@ export function BattleLog({ b, names, role }: { b: Battle; names: [string, strin
 
       <section className="panel rounded-xl p-3.5 mb-3">
         <div className="flex justify-between gap-2 mb-2.5">
-          <h3 className="font-display text-[11px] uppercase tracking-[0.16em] text-ink2">Beute</h3>
+          <h3 className="font-display text-[11px] uppercase tracking-[0.16em] text-ink2">{gain ? "Erbeutet" : "Geplündert"}</h3>
           <span className="text-xs text-ink2 text-right">Wrackfeld: {wreck || "keins"}</span>
         </div>
-        {lootTotal === 0 ? <p className="text-sm text-ink2 mb-2">Keine Beute.</p> : (
+        {lootTotal === 0 ? <p className="text-sm text-ink2 mb-2">{gain ? "Keine Beute." : "Nichts geplündert."}</p> : (
           <div className="grid grid-cols-4 gap-1.5 mb-3">
             {RES.map((r) => (
               <div key={r} className="text-center border border-rule rounded-[3px] py-1.5">
                 <Icon id={r} size={24} className="mx-auto" />
-                <div className={`mono text-[13px] font-semibold ${(b.loot[r] ?? 0) > 0 ? "text-moos" : "text-ink2"}`}>+{fmtNum(b.loot[r] ?? 0)}</div>
+                <div className={`mono text-[13px] font-semibold ${(b.loot[r] ?? 0) > 0 ? (gain ? "text-moos" : "text-siegel") : "text-ink2"}`}>
+                  {(b.loot[r] ?? 0) > 0 ? (gain ? "+" : "−") : ""}{fmtNum(b.loot[r] ?? 0)}
+                </div>
                 <div className="text-[10px] text-ink2">{label(r)}</div>
               </div>
             ))}
           </div>
+        )}
+        {protectedPerResource !== null && (
+          <p className="text-xs text-ink2 mb-2">
+            Bunkerschutz {names[1]}: {fmtNum(protectedPerResource)} je Ressource {gain ? "waren nicht erreichbar" : "blieben sicher"}.
+          </p>
         )}
         <dl className="text-xs space-y-1.5">
           <div><dt className="text-ink2 inline">Verluste {names[0]}: </dt><dd className="inline"><UnitChips counts={b.attacker.losses} /></dd></div>

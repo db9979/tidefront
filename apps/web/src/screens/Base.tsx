@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { trpc, trpcClient, type BaseData } from "../lib/trpc.ts";
+import { trpc, trpcClient, type Balance, type BaseData } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { fmtDuration, fmtSeconds, fmtTime, useNow } from "../lib/time.ts";
 import { liveResources } from "../lib/live.res.ts";
-import { BUILDING_TEXT, buildingEffect } from "../lib/info.ts";
+import { buildingEffect, buildingText, cancelLoss, cancelQuestion } from "../lib/info.ts";
 import { Icon, IconTile } from "../icons.tsx";
 import { Badge, Bar, Button, Card, Cost, CountsLine, ErrorLine, Sheet } from "../ui.tsx";
 import { Guide, type GuideAction } from "../components/Guide.tsx";
@@ -102,7 +102,15 @@ function affordable(cost: Record<string, number> | null, res: Record<string, num
   return !!cost && Object.entries(cost).every(([r, v]) => (res[r] ?? 0) >= v);
 }
 
+/** Kosten des Ausbaus von Stufe L auf L+1 (wie im Regelkern: cost × costFactor^L, aufgerundet). */
+function levelCost(balance: Balance, id: string, level: number): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [r, v] of Object.entries(balance.buildings[id]?.cost ?? {})) out[r] = Math.ceil(v * balance.building.costFactor ** level);
+  return out;
+}
+
 function BuildYard({ base, now }: { base: BaseData; now: number }) {
+  const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const cancel = useCommand(
     (i: { key: string; buildingId: string; targetLevel: number }) => trpcClient.base.cancelUpgrade.mutate(i),
     invalidateBase,
@@ -135,7 +143,14 @@ function BuildYard({ base, now }: { base: BaseData; now: number }) {
                 <Button
                   kind="secondary"
                   disabled={cancel.busy || o.finishesAt <= now}
-                  onClick={() => void cancel.run({ buildingId: o.buildingId, targetLevel: o.targetLevel })}
+                  onClick={() => {
+                    const cost = meta.data ? levelCost(meta.data.balance, o.buildingId, o.targetLevel - 1) : {};
+                    const loss = cancelLoss(cost, o.startedAt, o.finishesAt, Date.now());
+                    const later = queue.some((x) => x.buildingId === o.buildingId && x.targetLevel > o.targetLevel);
+                    const q = cancelQuestion(`Ausbau ${label(o.buildingId)} auf Stufe ${o.targetLevel}`, loss)
+                      + (later ? " Spätere Stufen desselben Gebäudes fallen mit weg (voll erstattet)." : "");
+                    if (confirm(q)) void cancel.run({ buildingId: o.buildingId, targetLevel: o.targetLevel });
+                  }}
                 >
                   Abbruch
                 </Button>
@@ -189,7 +204,7 @@ function BuildingSheet({ b, base, res, onClose, onTroops }: { b: Building; base:
   const trains = ["werft", "kaserne", "flugfeld"].includes(b.id);
   return (
     <Sheet open onClose={onClose} title={<>{label(b.id)} <span className="text-ink2 font-sans text-sm mono">Stufe {b.level}</span></>} icon={<IconTile id={b.id} size={56} />}>
-      <p className="text-sm text-slate-200 mb-3">{BUILDING_TEXT[b.id]?.lang}</p>
+      <p className="text-sm text-slate-200 mb-3">{buildingText(balance, b.id)}</p>
       {(now || next) && (
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="rounded-xl bg-paper border border-rule p-2">
@@ -264,13 +279,21 @@ export function Progress({ start, end, now }: { start: number; end: number; now:
 
 function Protection({ base, now }: { base: BaseData; now: number }) {
   const p = base.protection;
-  const [hour, setHour] = useState<number | null>(p.nightShieldStartHour);
+  const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
+  const prot = meta.data?.balance.protection;
+  // Vorgemerkte Einstellung gilt erst ab fromMs; Änderungen höchstens einmal je Frist.
+  const next = p.nightShieldNext && p.nightShieldNext.fromMs > now ? p.nightShieldNext : null;
+  const chosen = next ? next.startHour : p.nightShieldStartHour;
+  const [hour, setHour] = useState<number | null>(chosen);
   const save = useCommand(
     (i: { key: string; startHour: number | null; tzOffsetMinutes: number }) => trpcClient.base.nightShield.mutate(i),
     invalidateBase,
   );
+  const changeH = prot?.nightShieldChangeHours ?? 24;
+  const lockedUntil = p.nightShieldChangedAtMs !== undefined ? p.nightShieldChangedAtMs + changeH * 3600000 : 0;
+  const locked = lockedUntil > now;
   const win = p.nightWindow;
-  const beginnerEnd = p.createdAtMs + 7 * 86400000;
+  const beginnerEnd = p.createdAtMs + (prot?.beginnerDays ?? 7) * 86400000;
   return (
     <Card title="Schutz">
       <div className="flex items-start gap-3">
@@ -287,16 +310,26 @@ function Protection({ base, now }: { base: BaseData; now: number }) {
           )}
         </div>
       </div>
-      <label className="block text-xs text-slate-400 mt-3 mb-1">Nachtschild (8 Stunden täglich) beginnt</label>
+      {next && (
+        <p className="text-xs text-sea-300 mt-2">
+          Neue Einstellung ab {fmtTime(next.fromMs)}: {next.startHour === null ? "kein Nachtschild" : `Beginn um ${next.startHour}:00 Uhr`}.
+        </p>
+      )}
+      <label className="block text-xs text-slate-400 mt-3 mb-1" htmlFor="tf-night">Nachtschild ({prot?.nightShieldHours ?? 8} Stunden täglich) beginnt</label>
       <div className="flex items-center gap-2">
-        <select className="h-11 flex-1 rounded-lg field px-2" value={hour ?? ""} onChange={(e) => setHour(e.target.value === "" ? null : Number(e.target.value))}>
+        <select id="tf-night" disabled={locked} className="h-11 flex-1 rounded-lg field px-2" value={hour ?? ""} onChange={(e) => setHour(e.target.value === "" ? null : Number(e.target.value))}>
           <option value="">kein Nachtschild</option>
           {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>um {h}:00 Uhr</option>)}
         </select>
-        <Button kind="secondary" disabled={save.busy || hour === p.nightShieldStartHour} onClick={() => void save.run({ startHour: hour, tzOffsetMinutes: -new Date().getTimezoneOffset() })}>
+        <Button kind="secondary" disabled={save.busy || locked || hour === chosen} onClick={() => void save.run({ startHour: hour, tzOffsetMinutes: -new Date().getTimezoneOffset() })}>
           Speichern
         </Button>
       </div>
+      <p className="text-xs text-slate-400 mt-1">
+        {locked
+          ? `Nächste Änderung ab ${fmtTime(lockedUntil)} möglich.`
+          : `Eine Änderung gilt erst nach ${changeH} Stunden und ist danach ${changeH} Stunden gesperrt – den Schild gegen einen schon gemeldeten Angriff einzuschalten geht nicht.`}
+      </p>
       <ErrorLine text={save.error} />
     </Card>
   );

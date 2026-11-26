@@ -201,7 +201,8 @@ const missionArrive: Handler = async (tx, ev, due) => {
       // Diplomatie: im Krieg (nach Vorlauf) entfällt die Schwachziel-Kürzung der Beute.
       if (attacker.weakTarget && (await atWar(tx, m.playerId!, target.playerId, due))) attacker.weakTarget = false;
       const seed = randomSeed();
-      const res = resolveBattle(attacker, defenderFromBase(defenderBase, balance), balance, seed);
+      const defender = defenderFromBase(defenderBase, balance);
+      const res = resolveBattle(attacker, defender, balance, seed);
       if (!res.ok) throw new Error(`battle: ${res.code}`);
       const report = res.report;
       await saveBase(tx, target.id, applyDefenseResult(defenderBase, report, due, balance));
@@ -213,7 +214,7 @@ const missionArrive: Handler = async (tx, ev, due) => {
         title: `Überfall auf ${target.name}`,
         attackerPlayerId: m.playerId, defenderPlayerId: target.playerId, attackerBaseId: m.baseId,
         defenderBaseId: target.id, nestId: null, winner: report.winner, seed, atMs: due,
-        report: { battle: report, attackerName, defenderName: await playerName(tx, target.playerId), targetName: target.name, attacker },
+        report: { battle: report, attackerName, defenderName: await playerName(tx, target.playerId), targetName: target.name, attacker, protectedPerResource: defender.protectedPerResource ?? 0 },
       });
       notify.push([[target.playerId], "base"], [[target.playerId], "reports"]);
     }
@@ -327,12 +328,19 @@ const raidArrive: Handler = async (tx, ev, due) => {
   const plan = m.plan as { attacker: AttackerInput };
   const blocked = raidBlocked(b.state.protection, due, balance);
   if (blocked.blocked) {
-    await tx.update(tables.mission).set({ status: "done" }).where(eq(tables.mission.id, m.id));
-    return { notify: [[[b.playerId], "missions"]] };
+    // Sichtbarer Hinweis für den Verteidiger: der Verband traf auf den Schutz und drehte ab.
+    const reportId = await storeReport(tx, {
+      kind: "abgewiesen", title: `Kartell-Überfall auf ${b.name} abgewiesen`, attackerPlayerId: null, defenderPlayerId: b.playerId,
+      attackerBaseId: null, defenderBaseId: b.id, nestId: null, winner: null, seed: null, atMs: due,
+      report: { reason: blocked.reason ?? null, targetName: b.name },
+    });
+    await tx.update(tables.mission).set({ status: "done", reportId }).where(eq(tables.mission.id, m.id));
+    return { notify: [[[b.playerId], "missions"], [[b.playerId], "reports"]] };
   }
   const state = settle(b.state, due, balance);
   const seed = randomSeed();
-  const res = resolveBattle(plan.attacker, defenderFromBase(state, balance), balance, seed);
+  const defender = defenderFromBase(state, balance);
+  const res = resolveBattle(plan.attacker, defender, balance, seed);
   if (!res.ok) throw new Error(`battle: ${res.code}`);
   const report: BattleReport = res.report;
   await saveBase(tx, b.id, applyDefenseResult(state, report, due, balance));
@@ -340,7 +348,7 @@ const raidArrive: Handler = async (tx, ev, due) => {
   const reportId = await storeReport(tx, {
     kind: "kartell", title: `Kartell überfällt ${b.name}`, attackerPlayerId: null, defenderPlayerId: b.playerId,
     attackerBaseId: null, defenderBaseId: b.id, nestId: null, winner: report.winner, seed, atMs: due,
-    report: { battle: report, attackerName: "Freibeuter-Kartell", defenderName: await playerName(tx, b.playerId), targetName: b.name, attacker: plan.attacker },
+    report: { battle: report, attackerName: "Freibeuter-Kartell", defenderName: await playerName(tx, b.playerId), targetName: b.name, attacker: plan.attacker, protectedPerResource: defender.protectedPerResource ?? 0 },
   });
   await tx.update(tables.mission).set({ status: "done", reportId }).where(eq(tables.mission.id, m.id));
   return { notify: [[[b.playerId], "base"], [[b.playerId], "reports"], [[b.playerId], "missions"]] };

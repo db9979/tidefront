@@ -4,7 +4,7 @@ import { ChangelogSheet, VersionLine } from "../components/Changelog.tsx";
 import { useQuery } from "@tanstack/react-query";
 import { trpc } from "../lib/trpc.ts";
 import { label, fmtNum } from "../lib/names.ts";
-import { BUILDING_TEXT, UNIT_TEXT, unitTone } from "../lib/info.ts";
+import { buildingText, unitText, unitTone } from "../lib/info.ts";
 import { Icon, IconTile } from "../icons.tsx";
 import { Button } from "../ui.tsx";
 import { SettingsScreen } from "./Settings.tsx";
@@ -21,6 +21,9 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
   const [view, setView] = useState(initialView ?? null);
   const [news, setNews] = useState(false);
   const b = meta.data?.balance;
+  const pct = (v: number | undefined, d: number) => `${Math.round((v ?? d) * 100)} %`;
+  const radar = b?.buildings.radarstation;
+  const lander = b?.units.landungsschiff;
 
   const chapters: Chapter[] = [
     {
@@ -39,7 +42,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
         <>
           <P>Vier Ressourcen: Stahl, Treibstoff, Elektronik und Proviant. Jeder Hafen erzeugt eine kleine Grundmenge; den Großteil liefern Stahlwerk, Raffinerie, Chipfabrik und Versorgungshof.</P>
           <P>Diese Gebäude brauchen <strong>Strom</strong> vom Kraftwerk. Reicht er nicht, sinkt ihre Produktion anteilig – der Blitz in der Basis zeigt Bedarf und Angebot.</P>
-          <P>Produktion füllt nur bis zur <strong>Lagerkapazität</strong> (Lagerkomplex). Beute und Lieferungen dürfen darüber liegen. Einheiten essen <strong>Proviant</strong>; fällt er auf 0, herrscht Versorgungsmangel: keine Ausbildung, Angriffskraft −20 %.</P>
+          <P>Produktion füllt nur bis zur <strong>Lagerkapazität</strong> (Lagerkomplex). Beute und Lieferungen dürfen darüber liegen. Einheiten essen <strong>Proviant</strong>. Versorgungsmangel herrscht erst, wenn der Bestand auf 0 fällt <em>und</em> die Netto-Rate (Produktion minus Unterhalt) negativ ist: keine Ausbildung, Angriffskraft −20 %.</P>
         </>
       ),
     },
@@ -47,14 +50,15 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
       id: "bauen", icon: "kommandozentrale", title: "Bauen und Ausbilden",
       body: (
         <>
-          <P>Es läuft immer genau ein Gebäudeausbau. Werft, Kaserne, Flugfeld und Anlagenbau arbeiten daneben jeweils an einem eigenen Auftrag. Abbrechen erstattet den Anteil der Restzeit.</P>
+          <P><strong>Bauschlange:</strong> bis zu {b?.building.queueSlots ?? 3} Ausbauten je Hafen, abgearbeitet nacheinander. Die Kosten zahlst du schon beim Einreihen. Werft, Kaserne, Flugfeld und Anlagenbau arbeiten daneben jeweils an einem eigenen Auftrag.</P>
+          <P><strong>Abbrechen</strong> (mit Rückfrage): Ein laufender Auftrag erstattet nur den Anteil der Restzeit, ein wartender alles. Spätere Stufen desselben Gebäudes in der Schlange fallen mit weg und werden voll erstattet.</P>
           <P>Kein Gebäude darf mehr als {b?.building.levelCapAboveCommand ?? 3} Stufen über der Kommandozentrale liegen.</P>
           {b && (
             <ul className="space-y-2 mt-2">
               {Object.keys(b.buildings).map((id) => (
                 <li key={id} className="flex gap-2 items-start">
                   <IconTile id={id} size={36} />
-                  <div className="text-sm"><strong>{label(id)}</strong> – {BUILDING_TEXT[id]?.lang}</div>
+                  <div className="text-sm"><strong>{label(id)}</strong> – {buildingText(b, id)}</div>
                 </li>
               ))}
             </ul>
@@ -70,7 +74,8 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
           <P><strong>Aufklärung:</strong> Lagebild ohne Kampf – Besatzung eines Nests oder Bestände, Gebäude und Truppen eines Spielers.</P>
           <P><strong>Transport:</strong> Ladung an einen anderen Spielerhafen.</P>
           <P>Treibstoff für Hin- und Rückweg wird beim Auslaufen bezahlt. Die Reisezeit richtet sich nach dem langsamsten Schiff. Wie viele Missionen gleichzeitig laufen, bestimmt die Hafenkommandantur; wie groß ein Verband sein darf, die Kommandopunkte.</P>
-          <P>Bodentruppen fahren nur auf Landungsschiffen (100 Plätze je Schiff, Panzer brauchen 10). Flugzeuge fliegen nur innerhalb ihrer Reichweite mit.</P>
+          <P>Bodentruppen fahren nur auf Landungsschiffen ({fmtNum(lander?.troopSpace ?? 100)} Plätze je Schiff, Panzer brauchen {b?.units.kampfpanzer?.size ?? 10}). Flugzeuge fliegen nur innerhalb ihrer Reichweite mit.</P>
+          <P><strong>Rückruf:</strong> Auf der Hinfahrt kannst du einen Verband unter Truppen zurückrufen. Er kehrt sofort um und ist nach der schon gefahrenen Zeit wieder daheim; am Ziel geschieht nichts. Treibstoff wird nicht erstattet, Transportgut kommt zurück.</P>
           <P>Auf Kampffeldern bleiben <strong>Wracks</strong>. Jede deiner Missionen, die dort ankommt, birgt Stahl und Elektronik mit freier Ladekapazität. Wracks zerfallen in {b?.combat.wreckHours ?? 48} Stunden.</P>
         </>
       ),
@@ -81,14 +86,15 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
         <>
           <P>Automatisch in fünf Phasen mit höchstens {b?.combat.maxRoundsPerPhase ?? 3} Runden:</P>
           <ol className="text-sm list-decimal pl-5 space-y-1 mb-2">
-            <li><strong>Luftkampf:</strong> Abfangjäger beider Seiten. Wer danach mehr Jäger hat, hat Luftüberlegenheit.</li>
-            <li><strong>Luftschlag:</strong> Flak und Schiffe schießen auf Bomber, dann treffen die Bomber Schiffe und Anlagen (mit Luftüberlegenheit stärker).</li>
+            <li><strong>Luftkampf:</strong> Abfangjäger beider Seiten. Wer danach mehr Jäger-Lebenspunkte hat, hat Luftüberlegenheit.</li>
+            <li><strong>Luftschlag:</strong> Flak und Schiffe schießen auf Bomber, dann treffen die Bomber Schiffe und Anlagen – mit eigener Luftüberlegenheit ×{fmtNum(b?.combat.airSuperiorityBomberBonus ?? 1.25, 2)}, gegen fremde Luftüberlegenheit nur ×{fmtNum(b?.combat.airSuperiorityBomberMalus ?? 0.75, 2)}.</li>
             <li><strong>U-Boot-Angriff:</strong> Getauchte U-Boote beider Seiten feuern eine Torpedosalve auf Schiffe über Wasser – ohne Gegenwehr.</li>
             <li><strong>Seegefecht:</strong> Schiffe gegeneinander, Küstenbatterien feuern mit. U-Boote schießen weiter, können aber nur von Schiffen mit <strong>U-Jagd</strong> (Korvette, Zerstörer) getroffen werden – nicht von Bombern, Batterien oder dem Kartell.</li>
-            <li><strong>Landung:</strong> Nur mit überlebenden Landungsschiffen. Minen treffen einmal (Pioniere halbieren), dann Bodenkampf gegen Truppen und Bunkerlinie.</li>
+            <li><strong>Landung:</strong> Nur mit überlebenden Landungsschiffen. Truppen, für die nach dem Seegefecht kein Platz mehr auf den Landungsschiffen ist, gehen verloren. Minen treffen einmal (Pioniere halbieren), dann Bodenkampf gegen Truppen und Bunkerlinie.</li>
           </ol>
           <P>Du gewinnst, wenn nach der Landung keine Verteidiger und keine Bunkerlinie mehr stehen und eigene Truppen leben. Schaden verteilt sich nach Lebenspunkten auf die Gegner; angefangener Schaden bleibt über Runden erhalten.</P>
-          <P>Nach dem Kampf kehren Verwundete zurück (Lazarett), beschädigte Flugzeuge werden repariert, zerstörte Anlagen teilweise wieder aufgebaut. Beute: {Math.round((b?.loot.maxShareOfUnprotected ?? 0.3) * 100)} % des ungeschützten Bestands, bei wiederholten Angriffen weniger.</P>
+          <P>Nach dem Kampf kehren Verwundete zurück (Lazarett), beschädigte Flugzeuge werden repariert, zerstörte Anlagen teilweise wieder aufgebaut.</P>
+          <P><strong>Beute</strong> (nur bei Sieg): {pct(b?.loot.maxShareOfUnprotected, 0.3)} des Bestands über dem Bunkerschutz, höchstens so viel, wie die überlebenden Landungsschiffe laden ({fmtNum(lander?.cargo ?? 4000)} je Schiff). Wiederholte Überfälle auf denselben Hafen binnen {b?.loot.repeatWindowHours ?? 24} Stunden bringen {(b?.loot.repeatFactors ?? [1, 0.5, 0.25, 0]).map((f) => `${Math.round(f * 100)} %`).join(" / ")}. Ist das Ziel schwächer als {pct(b?.loot.weakTargetBelowShare, 0.5)} deines Hafens (Summe der Gebäudestufen), gibt es nur ×{fmtNum(b?.loot.weakTargetLootFactor ?? 0.1, 1)}. Nester geben ihre feste Beute.</P>
         </>
       ),
     },
@@ -96,9 +102,9 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
       id: "schutz", icon: "schild", title: "Kartell und Schutz",
       body: (
         <>
-          <P>Das <strong>Freibeuter-Kartell</strong> greift jeden Hafen etwa alle {b?.pirates.raidIntervalHours ?? 18} Stunden an. Seine Stärke richtet sich nach deinen Schiffen und Anlagen; die Miliz landet auf den Schnellbooten. Bodentruppen daheim sind die beste Abwehr.</P>
-          <P><strong>Anfängerschutz:</strong> {b?.protection.beginnerDays ?? 7} Tage nach der Gründung. <strong>Nachtschild:</strong> täglich {b?.protection.nightShieldHours ?? 8} Stunden ab der Startstunde, die du in der Basis wählst – ein eigener Überfall hebt ihn für diese Nacht auf. <strong>Nach einer Niederlage:</strong> {b?.protection.afterDefeatShieldHours ?? 8} Stunden Schutz.</P>
-          <P>Das <strong>Radar</strong> zeigt anrückende Angriffe früher. Der <strong>Tiefbunker</strong> schützt einen Grundstock jeder Ressource.</P>
+          <P>Das <strong>Freibeuter-Kartell</strong> greift jeden Hafen etwa alle {b?.pirates.raidIntervalHours ?? 18} Stunden an. Seine Stärke richtet sich nach den Lebenspunkten deiner Schiffe, Bodentruppen und Anlagen daheim (Flugzeuge zählen nicht) und schwankt von Überfall zu Überfall um bis zu ±{pct(b?.pirates.raidStrengthSpread, 0.3)}. Die Miliz landet von den Schnellbooten. Bodentruppen, Bunkerlinie und Küstenbatterien sind die beste Abwehr.</P>
+          <P><strong>Anfängerschutz:</strong> {b?.protection.beginnerDays ?? 7} Tage nach der Gründung. <strong>Nachtschild:</strong> täglich {b?.protection.nightShieldHours ?? 8} Stunden ab der Startstunde, die du in der Basis wählst; ohne gewählte Stunde ist er aus. Eine Änderung gilt erst nach {b?.protection.nightShieldChangeHours ?? 24} Stunden und ist so lange auch gesperrt – den Schild gegen einen schon gemeldeten Angriff einzuschalten geht nicht. Ein eigener Überfall hebt ihn für diese Nacht auf. <strong>Nach einer Niederlage:</strong> {b?.protection.afterDefeatShieldHours ?? 8} Stunden Schutz.</P>
+          <P>Das <strong>Radar</strong> meldet anrückende Angriffe vor der Ankunft: {radar ? `${(radar.warningMinutesBase ?? 0) + (radar.warningMinutesPerLevel ?? 0)} Minuten auf Stufe 1, je Stufe ${radar.warningMinutesPerLevel ?? 0} mehr` : "je Stufe länger"}; ohne Radar siehst du einen Angriff erst bei Ankunft. Der <strong>Tiefbunker</strong> schützt einen Grundstock jeder Ressource vor Plünderung.</P>
         </>
       ),
     },
@@ -180,14 +186,19 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
             const u = b.units[id];
             const d = b.defenses[id];
             const a = u?.attack ?? d?.attack;
+            // Nur Werte, die der Kampf benutzt: Bomber treffen Schiffe und Anlagen, Jäger nur in der Luft.
+            const bomber = u?.branch === "luft" && !!a && (a.see > 0 || (a.anlage ?? 0) > 0);
+            const values = !a ? ""
+              : u?.branch === "luft" ? (bomber ? ` · Schiffe ${a.see} · Anlagen ${a.anlage ?? 0}` : a.luft > 0 ? ` · Luft ${a.luft}` : " · kämpft nicht")
+              : ` · See ${a.see} · Luft ${a.luft} · Land ${a.land}${a.anlage ? ` · Anlagen ${a.anlage}` : ""}`;
             return (
               <li key={id} className="flex gap-2 items-start">
                 <IconTile id={id} size={40} tone={unitTone(b, id)} />
                 <div className="text-sm min-w-0">
                   <strong>{label(id)}</strong> <span className="text-xs text-slate-400">{u ? `aus ${label(u.builtIn ?? "")}${(u.requiresLevel ?? 1) > 1 ? ` ab Stufe ${u.requiresLevel}` : ""}` : "Anlage"}</span>
-                  <div className="text-slate-300">{UNIT_TEXT[id]}</div>
+                  <div className="text-slate-300">{unitText(b, id)}</div>
                   <div className="text-xs text-slate-400 tabular-nums">
-                    HP {fmtNum(u?.hp ?? d?.hp ?? 0)}{a ? ` · See ${a.see} · Luft ${a.luft} · Land ${a.land}` : ""}{a?.uboot ? ` · U-Jagd ${a.uboot}` : ""}{u?.submerged ? " · getaucht" : ""}{u?.speedKmh ? ` · ${u.speedKmh} km/h` : ""}
+                    LP {fmtNum(u?.hp ?? d?.hp ?? 0)}{values}{a?.uboot ? ` · U-Jagd ${a.uboot}` : ""}{u?.submerged ? " · getaucht" : ""}{u?.speedKmh ? ` · ${u.speedKmh} km/h` : ""}
                   </div>
                 </div>
               </li>

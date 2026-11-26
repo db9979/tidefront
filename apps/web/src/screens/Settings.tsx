@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
-import { errorText } from "../lib/names.ts";
-import { currentEndpoint, disablePush, enablePush, isIos, isStandalone, KIND_LABEL, pushSupported } from "../lib/push.ts";
+import { errorText, failText } from "../lib/names.ts";
+import { currentEndpoint, DENIED_HINT, disablePush, enablePush, isIos, isStandalone, KIND_LABEL, pushDenied, pushSupported } from "../lib/push.ts";
 import { Badge, Button, Card, ErrorLine } from "../ui.tsx";
 import { AdminScreen } from "./Admin.tsx";
 import { Switch } from "../components/Switch.tsx";
@@ -34,8 +34,8 @@ function PushCard({ isAdmin }: { isAdmin: boolean }) {
     setMsg(null);
     try {
       await fn();
-    } catch {
-      setError(errorText("network"));
+    } catch (err) {
+      setError(failText(err));
     } finally {
       setBusy(false);
     }
@@ -75,6 +75,8 @@ function PushCard({ isAdmin }: { isAdmin: boolean }) {
       {pushSupported() && !s?.subscribed && (
         <>
           <p className="text-sm text-slate-300 mb-2">Meldungen auf diesem Gerät, auch wenn die App geschlossen ist: Angriffe, Kampfberichte, fertige Aufträge.</p>
+          {pushDenied() && !error && <p className="text-sm text-siegel mb-2">{DENIED_HINT}</p>}
+          {status.isError && <p className="text-sm text-siegel mb-2">{errorText("network")}</p>}
           <Button onClick={enable} disabled={busy || blockedIos || !s} className="w-full">Benachrichtigungen aktivieren</Button>
         </>
       )}
@@ -120,15 +122,15 @@ function EmailCard({ isAdmin }: { isAdmin: boolean }) {
         setMsg(remove ? "Adresse entfernt." : r.sent ? "Bestätigungslink gesendet. Bitte im Postfach öffnen (24 Stunden gültig)." : "Gespeichert, aber der Versand des Links ist fehlgeschlagen.");
       }
       await refresh();
-    } catch {
-      setError(errorText("network"));
+    } catch (err) {
+      setError(failText(err));
     } finally {
       setBusy(false);
     }
   };
   const toggle = async (kind: string, on: boolean) => {
     if (!e) return;
-    await trpcClient.account.setEmailPrefs.mutate({ prefs: { ...e.prefs, [kind]: on } }).catch(() => setError(errorText("network")));
+    await trpcClient.account.setEmailPrefs.mutate({ prefs: { ...e.prefs, [kind]: on } }).catch((err) => setError(failText(err)));
     await refresh();
   };
 
@@ -139,7 +141,7 @@ function EmailCard({ isAdmin }: { isAdmin: boolean }) {
         <>
           <p className="text-sm text-slate-300 mb-2">Optional. Angriffe und Kampfberichte kommen sofort, fertige Aufträge gesammelt (höchstens alle 30 Minuten). Mit bestätigter Adresse geht auch „Passwort vergessen“ per E-Mail.</p>
           <label className="text-sm text-slate-300" htmlFor="tf-email">Adresse</label>
-          <input id="tf-email" className={field} type="email" inputMode="email" autoComplete="email" value={value} onChange={(ev) => setAddr(ev.target.value)} />
+          <input id="tf-email" className={field} maxLength={254} type="email" inputMode="email" autoComplete="email" value={value} onChange={(ev) => setAddr(ev.target.value)} />
           <div className="flex gap-2 mb-2">
             <Button onClick={() => save()} disabled={busy || !value || (value === e.email && e.verified)} className="flex-1">
               {e.email && value === e.email && !e.verified ? "Link erneut senden" : "Speichern und bestätigen"}
@@ -169,9 +171,10 @@ function PasswordCard() {
   const [busy, setBusy] = useState(false);
   const submit = async (ev: React.FormEvent) => {
     ev.preventDefault();
-    setBusy(true);
     setError(null);
     setMsg(null);
+    if (newPw.length < 8) return setError("Neues Passwort zu kurz (mindestens 8 Zeichen).");
+    setBusy(true);
     try {
       const r = await trpcClient.account.changePassword.mutate({ oldPassword: oldPw, newPassword: newPw });
       if (!r.ok) setError(errorText(r.code));
@@ -180,8 +183,8 @@ function PasswordCard() {
         setNew("");
         setMsg("Passwort geändert. Andere Geräte sind abgemeldet.");
       }
-    } catch {
-      setError("Neues Passwort: mindestens 8 Zeichen.");
+    } catch (err) {
+      setError(failText(err));
     } finally {
       setBusy(false);
     }
@@ -190,9 +193,9 @@ function PasswordCard() {
     <Card title="Passwort ändern">
       <form onSubmit={submit}>
         <label className="text-sm text-slate-300" htmlFor="tf-old">Bisheriges Passwort</label>
-        <input id="tf-old" className={field} type="password" autoComplete="current-password" value={oldPw} onChange={(e) => setOld(e.target.value)} required />
+        <input id="tf-old" className={field} maxLength={200} type="password" autoComplete="current-password" value={oldPw} onChange={(e) => setOld(e.target.value)} required />
         <label className="text-sm text-slate-300" htmlFor="tf-new">Neues Passwort (mind. 8 Zeichen)</label>
-        <input id="tf-new" className={field} type="password" autoComplete="new-password" minLength={8} value={newPw} onChange={(e) => setNew(e.target.value)} required />
+        <input id="tf-new" className={field} type="password" autoComplete="new-password" minLength={8} maxLength={200} value={newPw} onChange={(e) => setNew(e.target.value)} required />
         <Button type="submit" disabled={busy} className="w-full">Passwort ändern</Button>
       </form>
       {msg && <p className="text-sm text-emerald-300 mt-2">{msg}</p>}

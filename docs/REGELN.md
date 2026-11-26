@@ -158,12 +158,18 @@ Nach dem Kampf:
     nicht der Kampf-Seed). Milizionäre = `Grundstärke * Faktor * raidMiliPerBoot`, gerundet, mindestens 1;
     Schnellboote = `Milizionäre / raidMiliPerBoot`, aufgerundet.
   - Das Kartell führt eigene Landungskapazität mit (`raidMiliPerBoot` je Schnellboot).
-- Kein Überfall während Nachtschild, Anfängerschutz oder Schutz nach Niederlage.
+- Kein Überfall während Nachtschild, Anfängerschutz oder Schutz nach Niederlage. Greift ein Schutz erst während der Anfahrt,
+  dreht der Verband bei Ankunft ohne Kampf ab; der Verteidiger erhält dazu einen Bericht (`abgewiesen`).
 - Kartell und Nester haben keine U-Boote und keine U-Jagd (v1.2): U-Boote sind für sie unverwundbar.
 
 ## Schutz
 
-- Nachtschild: `nightShieldHours` Stunden täglich, Startstunde wählt der Spieler. Eigene Angriffe heben ihn für diese Nacht auf.
+- Nachtschild: `nightShieldHours` Stunden täglich, Startstunde wählt der Spieler (ohne Wahl kein Nachtschild). Eigene Angriffe heben
+  ihn für diese Nacht auf.
+- Änderung von Startstunde oder Zeitzone (auch Ausschalten): Die neue Einstellung gilt erst `nightShieldChangeHours` Stunden nach
+  der Änderung; bis dahin gilt die alte, ein laufendes Fenster der alten endet spätestens dann. Die nächste Änderung ist ebenfalls
+  erst nach `nightShieldChangeHours` erlaubt (`shield_cooldown`). So lässt sich der Schild nicht nach einer Radarwarnung gegen einen
+  schon anrückenden Angriff einschalten. Die Wahl bei der Gründung gilt sofort. Zeitzone: −840 bis +840 Minuten.
 - Anfängerschutz `beginnerDays` Tage. Nach verlorener Verteidigung `afterDefeatShieldHours` Stunden Schutz.
 
 ## Börse Stufe 1

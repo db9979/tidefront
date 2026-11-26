@@ -133,6 +133,8 @@ export interface Balance {
     nightShieldHours: number;
     beginnerDays: number;
     afterDefeatShieldHours: number;
+    /** Neue Nachtschild-Einstellung gilt erst nach so vielen Stunden; ebenso lange bis zur nächsten Änderung. */
+    nightShieldChangeHours: number;
   };
   pirates: {
     nestLevels: Record<string, NestLevelDef>;
@@ -165,6 +167,10 @@ export interface ProtectionState {
   nightShieldSuspendedUntilMs: number;
   /** Schutz nach verlorener Verteidigung bis zu diesem Zeitpunkt. */
   defeatShieldUntilMs: number;
+  /** Vorgemerkte Nachtschild-Einstellung, gültig ab fromMs (fehlt in älteren Ständen). */
+  nightShieldNext?: { startHour: number | null; tzOffsetMinutes: number; fromMs: number } | null;
+  /** Zeitpunkt der letzten Änderung durch den Spieler (fehlt in älteren Ständen). */
+  nightShieldChangedAtMs?: number;
 }
 
 export interface BuildOrder {

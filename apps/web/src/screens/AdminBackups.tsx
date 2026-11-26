@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
-import { errorText, fmtNum } from "../lib/names.ts";
+import { errorText, failText, fmtNum } from "../lib/names.ts";
 import { Badge, Button, Card, ErrorLine } from "../ui.tsx";
 
 function when(v: string | null | undefined): string {
@@ -45,8 +45,8 @@ export function AdminBackups() {
       const r = await trpcClient.adminStats.backupNow.mutate();
       if (!r.ok) setError(errorText(r.code));
       await queryClient.invalidateQueries(trpc.adminStats.backups.pathFilter());
-    } catch {
-      setError(errorText("network"));
+    } catch (err) {
+      setError(failText(err));
     } finally {
       setBusy(null);
     }
@@ -69,8 +69,8 @@ export function AdminBackups() {
       document.body.appendChild(a);
       a.click();
       a.remove();
-    } catch {
-      setError(errorText("network"));
+    } catch (err) {
+      setError(failText(err));
     } finally {
       setBusy(null);
     }

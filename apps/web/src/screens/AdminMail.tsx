@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
-import { errorText } from "../lib/names.ts";
+import { errorText, failText } from "../lib/names.ts";
 import { Badge, Button, Card, ErrorLine } from "../ui.tsx";
 import { Switch } from "../components/Switch.tsx";
 
@@ -45,13 +45,24 @@ export function AdminMail() {
     try {
       await fn();
       await queryClient.invalidateQueries(trpc.admin.pathFilter());
-    } catch {
-      setError(errorText("network"));
+    } catch (err) {
+      setError(failText(err));
     } finally {
       setBusy(false);
     }
   };
+  /** Pflichtfelder vor dem Speichern prüfen (nur bei aktivem Versand; ausgeschaltet darf es unvollständig sein). */
+  const missing = (): string | null => {
+    if (!f.enabled) return null;
+    if (!f.host.trim()) return "Host fehlt.";
+    if (!Number.isInteger(f.port) || f.port < 1 || f.port > 65535) return "Port fehlt oder ist ungültig (1–65535).";
+    if (!f.user.trim()) return "Benutzer fehlt.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.fromAddress.trim())) return "Absenderadresse fehlt oder ist ungültig.";
+    return null;
+  };
   const save = (clearPassword = false) => run(async () => {
+    const m = missing();
+    if (m) return setError(m);
     const r = await trpcClient.admin.saveMail.mutate({ ...f, password: clearPassword ? "" : password || undefined });
     if (!r.ok) return setError(errorText(r.code));
     setPassword("");
@@ -83,14 +94,14 @@ export function AdminMail() {
         {f.provider === "custom" && (
           <>
             <label className="text-sm text-slate-300" htmlFor="smtp-host">Host</label>
-            <input id="smtp-host" className={input} value={f.host} onChange={(e) => set({ host: e.target.value })} autoCapitalize="none" />
+            <input id="smtp-host" className={input} maxLength={200} required value={f.host} onChange={(e) => set({ host: e.target.value })} autoCapitalize="none" />
           </>
         )}
         {f.provider !== "icloud" && (
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-sm text-slate-300" htmlFor="smtp-port">Port</label>
-              <input id="smtp-port" className={input} inputMode="numeric" value={f.port} onChange={(e) => set({ port: Number(e.target.value.replace(/\D/g, "")) || 0 })} />
+              <input id="smtp-port" className={input} inputMode="numeric" maxLength={5} required value={f.port || ""} onChange={(e) => set({ port: Number(e.target.value.replace(/\D/g, "").slice(0, 5)) || 0 })} />
             </div>
             <div>
               <label className="text-sm text-slate-300" htmlFor="smtp-sec">Verschlüsselung</label>
@@ -103,25 +114,25 @@ export function AdminMail() {
           </div>
         )}
         <label className="text-sm text-slate-300" htmlFor="smtp-user">Benutzer</label>
-        <input id="smtp-user" className={input} value={f.user} onChange={(e) => set({ user: e.target.value })} autoCapitalize="none" autoComplete="off" />
+        <input id="smtp-user" className={input} maxLength={200} required value={f.user} onChange={(e) => set({ user: e.target.value })} autoCapitalize="none" autoComplete="off" />
         <label className="text-sm text-slate-300" htmlFor="smtp-pass">Passwort {d.passwordSet && <span className="text-xs text-emerald-300">(gesetzt – leer lassen zum Behalten)</span>}</label>
-        <input id="smtp-pass" className={input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
+        <input id="smtp-pass" className={input} maxLength={500} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
         <label className="text-sm text-slate-300" htmlFor="smtp-name">Absendername</label>
-        <input id="smtp-name" className={input} value={f.fromName} onChange={(e) => set({ fromName: e.target.value })} />
+        <input id="smtp-name" className={input} maxLength={80} value={f.fromName} onChange={(e) => set({ fromName: e.target.value })} />
         <label className="text-sm text-slate-300" htmlFor="smtp-from">Absenderadresse</label>
-        <input id="smtp-from" className={input} type="email" value={f.fromAddress} onChange={(e) => set({ fromAddress: e.target.value })} autoCapitalize="none" />
+        <input id="smtp-from" className={input} type="email" maxLength={254} required value={f.fromAddress} onChange={(e) => set({ fromAddress: e.target.value })} autoCapitalize="none" />
         <div className="flex flex-wrap gap-2 mt-1">
           <Button onClick={() => save()} className="flex-1">Speichern</Button>
           <Button kind="secondary" onClick={test} className="flex-1">Test-E-Mail senden</Button>
           {d.passwordSet && <Button kind="ghost" onClick={() => save(true)}>Passwort löschen</Button>}
         </div>
+        <ErrorLine text={error} />
       </fieldset>
       <p className="text-xs text-slate-400 mt-2">
         Letzter Versand: {d.lastSentAt ? new Date(d.lastSentAt).toLocaleString("de-DE") : "–"}
         {d.lastError && <> · Letzter Fehler ({new Date(d.lastError.at).toLocaleString("de-DE")}): {d.lastError.message}</>}
       </p>
       {msg && <p className="text-sm text-emerald-300 mt-2">{msg}</p>}
-      <ErrorLine text={error} />
     </Card>
   );
 }

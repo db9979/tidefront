@@ -34,16 +34,33 @@ export async function createSession(db: Db, playerId: number): Promise<string> {
   return token;
 }
 
+/** Einladungscodes vergleicht der Server ohne Rücksicht auf Groß-/Kleinschreibung (neue Codes in Großbuchstaben). */
+export function normalizeInviteCode(code: string): string {
+  return code.trim().toUpperCase();
+}
+
 /** Registrierung: Einladungscode wird im selben Commit verbraucht. Codes: invite_invalid, name_taken.
  * Den Einladenden einer persönlichen Einladung benachrichtigt danach notifyInviter (invite.ts). */
 export async function register(db: Db, input: { inviteCode: string; name: string; password: string }) {
   const nowMs = Date.now();
   const playerId = await db.transaction(async (tx) => {
+    // Groß-/Kleinschreibung egal: gespeicherter Code mit gleicher Schreibweise ohne Rücksicht auf Groß/klein.
+    const [match] = await tx
+      .select({ code: tables.inviteCode.code })
+      .from(tables.inviteCode)
+      .where(and(
+        sql`upper(${tables.inviteCode.code}) = ${normalizeInviteCode(input.inviteCode)}`,
+        lt(tables.inviteCode.uses, tables.inviteCode.maxUses),
+        isNull(tables.inviteCode.disabledAt),
+      ))
+      .orderBy(tables.inviteCode.code)
+      .limit(1);
+    if (!match) throw new GameError("invite_invalid");
     const used = await tx
       .update(tables.inviteCode)
       .set({ uses: sql`${tables.inviteCode.uses} + 1` })
       .where(and(
-        eq(tables.inviteCode.code, input.inviteCode.trim()),
+        eq(tables.inviteCode.code, match.code),
         lt(tables.inviteCode.uses, tables.inviteCode.maxUses),
         isNull(tables.inviteCode.disabledAt),
       ))

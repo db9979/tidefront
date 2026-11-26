@@ -67,7 +67,7 @@ export function ChooseBase() {
           <h1 className="font-mono text-sm uppercase tracking-widest text-ink">Standort für deinen Hafen</h1>
           <button type="button" className="text-xs text-sea-300 underline min-h-[44px] -my-3 px-1" onClick={async () => { await trpcClient.auth.logout.mutate(); queryClient.clear(); location.reload(); }}>Abmelden</button>
         </div>
-        <p className="text-xs text-slate-300">Hell umrandete Felder sind freie Küste. Tippe eines an oder nimm einen Vorschlag.</p>
+        <p className="text-xs text-slate-300">Blau markierte Felder sind freie Küste. Tippe eines an oder nimm unten einen Vorschlag aus der Schnellwahl.</p>
         <NewSeasonNotice />
       </div>
       <div className="flex-1 min-h-0 relative">
@@ -96,8 +96,8 @@ export function ChooseBase() {
           ))}
         </div>
         <div className="p-3 pt-2">
-          {!sel && <p className="text-sm text-slate-300">Schnellwahl oben oder ein hell umrandetes Küstenfeld auf der Karte antippen.</p>}
-          {sel && !isFree && <p className="text-sm text-red-300">Dieses Feld ist keine freie Küste – wähle ein hell umrandetes Feld.</p>}
+          {!sel && <p className="text-sm text-slate-300">Einen Vorschlag aus der Schnellwahl direkt hier darüber oder ein blau markiertes Küstenfeld auf der Karte antippen.</p>}
+          {sel && !isFree && <p className="text-sm text-red-300">Dieses Feld ist keine freie Küste – wähle ein blau markiertes Feld.</p>}
           {sel && isFree && f && (
             <div className="space-y-2">
               <div className="text-xs text-slate-300 grid grid-cols-2 gap-x-2 gap-y-0.5 font-mono">
@@ -105,7 +105,7 @@ export function ChooseBase() {
                 <span className="flex items-center gap-1"><TacticalIcon kind="port" size={16} /> Handelshafen</span><span className="text-right">{f.port.name}, {fmtNum(f.port.distanceKm)} km</span>
                 <span className="flex items-center gap-1"><TacticalIcon kind="other" size={16} /> Nächster Spieler</span><span className="text-right">{f.other === undefined ? "keiner" : `${fmtNum(f.other)} km`}</span>
               </div>
-              <input className="w-full h-12 rounded-lg field px-3" placeholder="Name des Stützpunkts" value={name} onChange={(e) => setName(e.target.value)} />
+              <input aria-label="Name des Stützpunkts" maxLength={32} className="w-full h-12 rounded-lg field px-3" placeholder="Name des Stützpunkts (2–32 Zeichen)" value={name} onChange={(e) => setName(e.target.value)} />
               <label className="flex items-center gap-2 text-sm">
                 Nachtschild ab
                 <select className="h-11 rounded-lg field px-2" value={nightHour ?? ""} onChange={(e) => setNightHour(e.target.value === "" ? null : Number(e.target.value))}>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc.ts";
 import { useLive } from "./lib/live.ts";
@@ -34,11 +34,47 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "boerse", label: "Börse", icon: "nav-boerse" },
 ];
 
-const SEEN_KEY = "tf-reports-seen";
+/** Gelesen-Merker der Berichte je Spieler (höchste gesehene Berichts-ID). */
+const seenKey = (playerId: number) => `tf-reports-seen:${playerId}`;
+const LEGACY_SEEN_KEY = "tf-reports-seen";
+
+/** Adresse mit dem aktuellen Reiter, damit Neuladen dort bleibt. */
+function tabUrl(tab: Tab): string {
+  return tab === "basis" ? location.pathname : `${location.pathname}?tab=${tab}`;
+}
+
+/**
+ * Zurück-Taste (Handy, Browser) schließt eine offene Ansicht statt die App zu verlassen:
+ * beim Öffnen ein Verlaufseintrag, beim Zurück schließen; beim Schließen per Knopf den Eintrag wieder entfernen.
+ */
+function useBackCloses(open: boolean, close: () => void) {
+  const closeRef = useRef(close);
+  closeRef.current = close;
+  useEffect(() => {
+    if (!open) return;
+    history.pushState({ tfOverlay: true }, "", location.href);
+    const onPop = (e: PopStateEvent) => {
+      if (!(e.state as { tfOverlay?: boolean } | null)?.tfOverlay) closeRef.current();
+    };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      if ((history.state as { tfOverlay?: boolean } | null)?.tfOverlay) history.back();
+    };
+  }, [open]);
+}
 
 export function App() {
   const me = useQuery(trpc.auth.me.queryOptions());
-  const loggedIn = !!me.data?.player;
+  const player = me.data?.player;
+  if (me.isLoading) return <Loading />;
+  if (!player) return <AuthScreen />;
+  // Neuer Schlüssel je Spieler: nach Abmelden oder Spielerwechsel beginnen alle Ansichten frisch.
+  return <Game key={player.id} playerId={player.id} playerName={player.name} onLoggedOut={() => void me.refetch()} />;
+}
+
+function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerName: string; onLoggedOut: () => void }) {
+  const loggedIn = true;
   const base = useQuery({ ...trpc.base.get.queryOptions(), enabled: loggedIn, refetchInterval: 30000 });
   const hasBase = !!base.data?.base;
   const reports = useQuery({ ...trpc.report.list.queryOptions(), enabled: hasBase, refetchInterval: 60000 });
@@ -56,11 +92,20 @@ export function App() {
   const [help, setHelp] = useState(!!opened.view);
   const [helpView, setHelpView] = useState(opened.view ?? null);
   const [sheet, setSheet] = useState<string | null>(null);
-  const [seen, setSeen] = useState(() => Number(localStorage.getItem(SEEN_KEY) ?? 0));
+  const [seen, setSeen] = useState(() => Number(localStorage.getItem(seenKey(playerId)) ?? localStorage.getItem(LEGACY_SEEN_KEY) ?? 0));
   const [sub, setSub] = useState<MeldungenTab>("berichte");
+  useBackCloses(help || !!plan || !!sheet, () => {
+    setHelp(false);
+    setHelpView(null);
+    setPlan(null);
+    setSheet(null);
+  });
 
   useEffect(() => {
-    if (opened.tab || opened.view) history.replaceState(null, "", "/");
+    history.replaceState(history.state, "", tabUrl(tab));
+  }, [tab]);
+
+  useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       if (e.data?.type !== "open" || typeof e.data.url !== "string") return;
       const t = parseOpenUrl(e.data.url);
@@ -73,16 +118,15 @@ export function App() {
     return () => navigator.serviceWorker?.removeEventListener("message", onMsg);
   }, [opened]);
 
-  const newestReport = reports.data?.[0]?.id ?? 0;
+  // Höchste ID statt erster Zeile: bei gleichen Zeitpunkten ist die Reihenfolge der Liste nicht eindeutig.
+  const newestReport = (reports.data ?? []).reduce((m, r) => Math.max(m, r.id), 0);
   useEffect(() => {
     if (tab === "berichte" && sub === "berichte" && newestReport > seen) {
-      localStorage.setItem(SEEN_KEY, String(newestReport));
+      localStorage.setItem(seenKey(playerId), String(newestReport));
       setSeen(newestReport);
     }
-  }, [tab, sub, newestReport, seen]);
+  }, [tab, sub, newestReport, seen, playerId]);
 
-  if (me.isLoading) return <Loading />;
-  if (!loggedIn) return <AuthScreen />;
   if (base.isLoading || !base.data) return <Loading />;
   if (!base.data.base) return <ChooseBase />;
   const b = base.data.base;
@@ -92,7 +136,8 @@ export function App() {
   const logout = async () => {
     await trpcClient.auth.logout.mutate();
     queryClient.clear();
-    await me.refetch();
+    history.replaceState(null, "", location.pathname);
+    onLoggedOut();
   };
   const go = (t: Tab) => {
     // Meldungen öffnen dort, wo Neues liegt.
@@ -115,7 +160,7 @@ export function App() {
 
   const fullBleed = tab === "karte" && !plan && !help;
   const content = help ? (
-    <Handbook key={helpView ?? "h"} onClose={() => setHelp(false)} onLogout={logout} playerName={me.data!.player!.name} initialView={helpView} />
+    <Handbook key={helpView ?? "h"} onClose={() => setHelp(false)} onLogout={logout} playerName={playerName} initialView={helpView} />
   ) : plan ? (
     <MissionPlan key={plan.seq ?? 0} base={b} initialTarget={plan.target} preset={plan.preset} onClose={() => setPlan(null)} onPickOnMap={() => go("karte")} />
   ) : tab === "basis" ? (
@@ -136,7 +181,7 @@ export function App() {
   return (
     <div className="h-full flex flex-col max-w-xl mx-auto">
       <ResourceBar base={b} asOf={base.data.serverNow} now={now} onHelp={() => { setHelpView(null); setHelp((h) => !h); }} />
-      <main className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto overflow-x-hidden p-3"}`}>{content}</main>
+      <main className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto overflow-x-hidden p-3 pb-8 scroll-pb-8"}`}>{content}</main>
       <nav className="grid grid-cols-5 bg-paper border-t-[3px] border-double border-ink" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {TABS.map((t) => {
           const active = tab === t.id && !plan && !help;
@@ -164,8 +209,8 @@ export function App() {
           );
         })}
       </nav>
-      <Welcome />
-      <UpdateNotices playerId={me.data!.player!.id} />
+      <Welcome playerId={playerId} />
+      <UpdateNotices playerId={playerId} />
     </div>
   );
 }

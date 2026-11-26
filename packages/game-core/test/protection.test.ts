@@ -8,6 +8,8 @@ import {
   isNightShieldActive,
   nightShieldWindow,
   protectionStatus,
+  scheduleNightShieldChange,
+  settleNightShield,
   suspendNightShield,
 } from "../src/index.ts";
 import { DAY, HOUR, loadBalance } from "./helpers.ts";
@@ -96,4 +98,42 @@ test("Gesamtstatus nennt den Grund", () => {
   });
   assert.deepEqual(protectionStatus(old(22), at(10, 23), balance), { protected: true, reason: "nachtschild" });
   assert.deepEqual(protectionStatus(old(22), at(10, 12), balance), { protected: false, reason: null });
+});
+
+test("Nachtschild-Änderung gilt erst nach nightShieldChangeHours (kein Einschalten gegen erkannten Angriff)", () => {
+  const h = balance.protection.nightShieldChangeHours;
+  assert.ok(h >= 24);
+  // Kein Schild gewählt; um 22:30 kommt eine Radarwarnung, der Spieler wählt sofort 22 Uhr.
+  const now = at(10, 22, 30);
+  const r = scheduleNightShieldChange(old(null), 22, 0, now, balance);
+  assert.ok(r.ok);
+  if (!r.ok) return;
+  assert.equal(r.fromMs, now + h * HOUR);
+  assert.equal(isNightShieldActive(r.protection, at(10, 23, 0), balance), false);
+  assert.equal(isNightShieldActive(r.protection, at(11, 2, 0), balance), false);
+  // Ab der Frist gilt die neue Einstellung, das Fenster beginnt frühestens zur Frist.
+  assert.equal(isNightShieldActive(r.protection, at(11, 22, 29), balance), false);
+  assert.equal(isNightShieldActive(r.protection, at(11, 22, 30), balance), true);
+  assert.equal(isNightShieldActive(r.protection, at(12, 23, 0), balance), true);
+  // Ausschalten wirkt ebenfalls erst nach der Frist: der alte Schild schützt weiter.
+  const off = scheduleNightShieldChange(old(22), null, 0, at(10, 12), balance);
+  assert.ok(off.ok);
+  if (!off.ok) return;
+  assert.equal(isNightShieldActive(off.protection, at(10, 23), balance), true);
+  assert.equal(isNightShieldActive(off.protection, at(11, 23), balance), false);
+  assert.equal(settleNightShield(off.protection, at(11, 23)).nightShieldStartHour, null);
+});
+
+test("Nachtschild höchstens einmal je Frist änderbar; Zeitzone begrenzt", () => {
+  const h = balance.protection.nightShieldChangeHours;
+  const first = scheduleNightShieldChange(old(22), 1, 60, at(10, 12), balance);
+  assert.ok(first.ok);
+  if (!first.ok) return;
+  const again = scheduleNightShieldChange(first.protection, 3, 60, at(10, 13), balance);
+  assert.deepEqual(again, { ok: false, code: "shield_cooldown", untilMs: at(10, 12) + h * HOUR });
+  const later = scheduleNightShieldChange(first.protection, 3, 60, at(10, 12) + h * HOUR, balance);
+  assert.ok(later.ok);
+  assert.equal(scheduleNightShieldChange(old(22), 22, 0, at(10, 12), balance).ok, false);
+  assert.equal(scheduleNightShieldChange(old(22), 1, 900, at(10, 12), balance).ok, false);
+  assert.equal(scheduleNightShieldChange(old(22), 24, 0, at(10, 12), balance).ok, false);
 });
