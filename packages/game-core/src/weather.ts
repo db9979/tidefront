@@ -333,3 +333,12 @@ export function combatWeather(point: GeoPoint, ms: number, wb: WeatherBalance): 
 export function fogRadarFactor(fog: number, wb: WeatherBalance): number {
   return 1 - wb.fogRadarMax * clamp01(fog);
 }
+
+/** Für die Kartendarstellung: aktive Tiefs (sign +1) und Hochs (−1) zur Zeit `ms` mit Mittelpunkt und wirksamer Stärke. */
+export function weatherSystemsAt(ms: number, wb: WeatherBalance): { lat: number; lon: number; radiusKm: number; sign: number; strength: number }[] {
+  const h = ms / 3600000;
+  return activeSystems(h, wb).map(({ sys, env }) => {
+    const age = h - sys.bornH;
+    return { lat: sys.lat0 + sys.vLat * age, lon: sys.lon0 + sys.vLon * age, radiusKm: sys.radiusKm, sign: sys.sign, strength: sys.intensity * env };
+  });
+}

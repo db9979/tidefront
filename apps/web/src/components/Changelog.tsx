@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import changelogRaw from "../../../../CHANGELOG.md?raw";
 import { trpc } from "../lib/trpc.ts";
 import { Badge, Button, Sheet } from "../ui.tsx";
+import { useTickerPos } from "./market/TickerBar.tsx";
 
 export const APP_VERSION = __APP_VERSION__;
 export const BUILD_TIME = __BUILD_TIME__;
@@ -106,6 +107,7 @@ export function UpdateNotices({ playerId, paused = false }: { playerId: number; 
   const meta = useQuery({ ...trpc.meta.queryOptions(), refetchInterval: 5 * 60000 });
   const [seen, setSeen] = useState<string | null>(() => localStorage.getItem(seenKey(playerId)));
   const [open, setOpen] = useState(false);
+  const tickerBelow = useTickerPos() === "unten";
 
   useEffect(() => {
     const s = localStorage.getItem(seenKey(playerId));
@@ -131,7 +133,7 @@ export function UpdateNotices({ playerId, paused = false }: { playerId: number; 
   return (
     <>
       {outdated && (
-        <div className="fixed left-2 right-2 z-40 panel rounded-xl p-3 flex items-center gap-3" style={{ bottom: "calc(70px + env(safe-area-inset-bottom))" }} role="status">
+        <div className="fixed left-2 right-2 z-40 panel rounded-xl p-3 flex items-center gap-3" style={{ bottom: `calc(${tickerBelow ? 108 : 70}px + env(safe-area-inset-bottom))` }} role="status">
           <span className="text-sm flex-1">Version {serverVersion} ist online. Du nutzt noch {APP_VERSION}.</span>
           <Button onClick={() => void reloadApp()}>Neu laden</Button>
         </div>

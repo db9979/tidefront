@@ -3,7 +3,7 @@ import { fmtNum, label } from "../../lib/names.ts";
 import { Icon } from "../../icons.tsx";
 import { changePct, refPct, signed, trend, DAY, type MarketRes } from "./calc.ts";
 
-export function Ticker({ resources, nowMs, halfLife }: { resources: MarketRes[]; nowMs: number; halfLife: number }) {
+export function Ticker({ resources, nowMs, halfLife, bar = false }: { resources: MarketRes[]; nowMs: number; halfLife: number; bar?: boolean }) {
   const items = resources.map((r) => {
     const hasDay = r.history.length > 0;
     const pct = hasDay ? changePct(r, nowMs, DAY, halfLife) : refPct(r);
@@ -28,7 +28,7 @@ export function Ticker({ resources, nowMs, halfLife }: { resources: MarketRes[];
     </ul>
   );
   return (
-    <section className="ticker rounded-xl mb-3 overflow-hidden ticker-scroll border border-ink" aria-label="Kurszeile">
+    <section className={`ticker overflow-hidden ticker-scroll ${bar ? "border-y border-ink" : "rounded-xl mb-3 border border-ink"}`} aria-label="Kurszeile">
       <p className="sr-only">{summary}</p>
       <div className="ticker-track" aria-hidden="true">
         {row(true)}

@@ -11,6 +11,7 @@ import { Switch } from "../components/Switch.tsx";
 import { InvitePanel } from "../components/Invite.tsx";
 import { SummaryCard } from "../components/MorningSummary.tsx";
 import { requestBugReport } from "../lib/bug-log.ts";
+import { TickerSetting } from "../components/market/TickerBar.tsx";
 
 const field = "w-full h-12 rounded-lg field px-3 mb-3";
 
@@ -220,6 +221,10 @@ export function SettingsScreen({ onClose, initialAdmin = false, onAdmin }: { onC
         <h1 className="font-display text-2xl font-bold uppercase">Einstellungen</h1>
         <Button kind="secondary" onClick={onClose}>Zurück</Button>
       </div>
+      <Card title="Börsen-Kurszeile">
+        <p className="text-sm text-slate-300 mb-2">Die laufende Kurszeile der Börse auf allen Bildschirmen zeigen – fest oben unter den Ressourcen oder ganz unten über der Navigation. Antippen öffnet die Börse.</p>
+        <TickerSetting />
+      </Card>
       <PushCard isAdmin={isAdmin} />
       <EmailCard isAdmin={isAdmin} />
       <Card title="Freunde einladen"><InvitePanel playerName={me.data?.player?.name} /></Card>

@@ -2,6 +2,11 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.11.3 – 27.11.2026
+- **Verband antippen**: Ein Tipp auf ein eigenes Schiff auf der Karte öffnet die Mission im Detail – Auftrag, Ziel, Fortschritt, Abfahrt, Ankunft, Rückkehr, Truppen, Verluste und Ladung; auf der Hinfahrt mit „Zurückrufen“.
+- **Wetter wie auf einer Wetterkarte**: Tiefs (T) und Hochs (H) mit Isobaren, Windpfeile mit Fiedern je nach Stärke, Wolkenfelder mit Regen, Sturmzellen mit Blitz und Nebelschleier. Neu: ein Wetterkärtchen „Am Hafen“ mit Himmel und Windstärke in Beaufort.
+- **Börsen-Kurszeile überall**: In den Einstellungen wählbar – nur in der Börse, immer oben oder immer unten. Antippen öffnet die Börse.
+
 ## 0.11.2 – 27.11.2026
 - **Freund und Feind auf der Karte**: Häfen sind nach Beziehung gefärbt – eigener Hafen, Allianz (grün, Doppelring), Paktpartner (ocker), Kriegsgegner (rot), neutral (blau); auch in der weit herausgezoomten Übersicht. Die Legende ist neu gegliedert und erklärt die Übersichtspunkte.
 - **Proviant verständlich**: Die Versorgung zeigt Erzeugung, Unterhalt der Truppen und den Saldo; bei negativem Saldo steht, wie lange der Vorrat reicht.

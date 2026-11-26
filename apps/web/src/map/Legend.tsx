@@ -22,7 +22,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { icon: <TacticalIcon kind="nestEmpty" level={2} />, text: "Nest verlassen, wird neu besetzt" },
       { icon: <TacticalIcon kind="wreck" />, text: "Wrackfeld, bergbar" },
       { icon: <TacticalIcon kind="port" />, text: "Handelshafen der Börse" },
-      { icon: <><TacticalIcon kind="ship" size={22} /><TacticalIcon kind="shipBack" size={22} /></>, text: "Eigener Verband: Hinfahrt, Rückfahrt" },
+      { icon: <><TacticalIcon kind="ship" size={22} /><TacticalIcon kind="shipBack" size={22} /></>, text: "Eigener Verband: Hinfahrt, Rückfahrt – antippen für Details" },
     ],
   },
   {

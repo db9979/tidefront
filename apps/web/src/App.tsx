@@ -20,6 +20,7 @@ import { ResourceBar } from "./components/ResourceBar.tsx";
 import { Welcome, welcomeSeen } from "./components/Welcome.tsx";
 import { useBackLayer } from "./lib/back.ts";
 import { UpdateNotices } from "./components/Changelog.tsx";
+import { TickerBar, useTickerPos } from "./components/market/TickerBar.tsx";
 import { useGuide, type GuideAction } from "./components/Guide.tsx";
 import { useDaily } from "./components/Daily.tsx";
 import { parseOpenUrl, type OpenTarget } from "./lib/push.ts";
@@ -91,6 +92,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   // Ziel aus einer Benachrichtigung (?tab=…, ?view=…) beim Start und per Nachricht vom Service Worker.
   const [opened] = useState<OpenTarget>(() => parseOpenUrl(location.href));
   const [tab, setTab] = useState<Tab>(opened.tab ?? "basis");
+  const tickerPos = useTickerPos(); // Börsen-Kurszeile oben/unten (Einstellungen)
   const [plan, setPlan] = useState<{ target: Target | null; preset?: PlanPreset; seq?: number } | null>(null);
   // Forschung: Unterbildschirm (aus dem Forschungsamt oder Truppen), die untere Navigation bleibt bei fünf Zielen.
   const [research, setResearch] = useState(false);
@@ -223,7 +225,9 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   return (
     <div className="h-full flex flex-col max-w-xl mx-auto">
       <ResourceBar base={b} asOf={base.data.serverNow} now={now} onHelp={() => { setHelpView(null); setHelp((h) => !h); }} />
+      {tickerPos === "oben" && !(tab === "boerse" && !plan && !help) && <TickerBar onOpen={() => go("boerse")} />}
       <main className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto overflow-x-hidden p-3 pb-8 scroll-pb-8"}`}><Suspense fallback={<Loading />}>{content}</Suspense></main>
+      {tickerPos === "unten" && !(tab === "boerse" && !plan && !help) && <TickerBar onOpen={() => go("boerse")} />}
       <nav className="grid grid-cols-5 bg-paper border-t-[3px] border-double border-ink" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {TABS.map((t) => {
           const active = tab === t.id && !plan && !help;

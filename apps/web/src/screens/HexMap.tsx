@@ -43,6 +43,8 @@ export interface HexMapProps {
   data: MapData;
   selected: { col: number; row: number } | null;
   onSelect: (h: { col: number; row: number }) => void;
+  /** Tipp auf einen eigenen Verband (Schiffssymbol): Missions-ID. */
+  onMissionTap?: (missionId: number) => void;
   selectMode?: boolean;
   center?: { col: number; row: number } | null;
   /** Anfangszoom beim Zentrieren (Vorgabe 0,35). */
@@ -117,6 +119,8 @@ export function HexMap(props: HexMapProps) {
   const [ready, setReady] = useState(false);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  const onMissionRef = useRef(props.onMissionTap);
+  onMissionRef.current = props.onMissionTap;
   const live = useRef({ selected, home, missions, alert });
   live.current = { selected, home, missions, alert };
 
@@ -258,6 +262,18 @@ export function HexMap(props: HexMapProps) {
         app.ticker.maxFPS = 40;
         cleanups.push(() => app.ticker.remove(tick));
         cleanups.push(attachGestures(app.canvas, world, (x, y) => {
+          // Verbände liegen über den Feldern: zuerst das nächste Schiffssymbol im Tippradius prüfen.
+          const sc = world.scale.x;
+          const radius = Math.max(16 * pinScale(sc), 22 / sc);
+          let best: { id: number; d: number } | null = null;
+          for (const [key, ship] of s.ships) {
+            const d = Math.hypot(ship.x - x, ship.y - y);
+            if (d <= radius && (!best || d < best.d)) best = { id: Math.floor(key / 2), d };
+          }
+          if (best && onMissionRef.current) {
+            onMissionRef.current(best.id);
+            return;
+          }
           const h = hexAtXY(x, y);
           if (inGrid(h.col, h.row)) onSelectRef.current(h);
         }));
@@ -379,7 +395,7 @@ export function HexMap(props: HexMapProps) {
     weatherLayer.current = layer;
     return () => {
       weatherLayer.current = null;
-      layer.root.destroy();
+      layer.root.destroy({ children: true });
     };
   }, [ready, weather]);
 

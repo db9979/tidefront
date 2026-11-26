@@ -10,6 +10,8 @@ import { Button, Loading } from "../ui.tsx";
 import { MapLegend } from "../map/Legend.tsx";
 import { RELATION_HEX, TacticalIcon, relationKind } from "../map/TacticalIcon.tsx";
 import { fmtPosition } from "../map/coords.ts";
+import { MissionSheet } from "../components/MissionSheet.tsx";
+import { WeatherChip } from "../map/WeatherChip.tsx";
 // Weltereignisse
 import { WorldEventCard, useWorldEvents } from "../components/WorldEvents.tsx";
 
@@ -28,6 +30,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const worldEvents = useWorldEvents();
   const [sel, setSel] = useState<Target | null>(focus);
+  const [missionId, setMissionId] = useState<number | null>(null);
   const [recenter, setRecenter] = useState(0);
   const [centerOn, setCenterOn] = useState<Target>(focus ?? { col: base.col, row: base.row });
   // Wetterschicht (v1.6): abschaltbar, Wahl bleibt im Gerät.
@@ -59,6 +62,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
           data={map.data}
           selected={sel}
           onSelect={setSel}
+          onMissionTap={setMissionId}
           center={centerOn}
           recenter={recenter}
           home={home}
@@ -83,6 +87,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
           >
             Wetter {showWeather ? "an" : "aus"}
           </button>
+          {showWeather && meta.data?.balance.weather && <WeatherChip at={home} wb={meta.data.balance.weather} now={now} />}
           {alert && (
             <div className="rounded-[3px] bg-card border border-siegel border-l-4 text-siegel px-2 py-1 text-[11px] font-display uppercase tracking-wider">
               Feindkontakt – Angriff im Anmarsch
@@ -96,6 +101,18 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
         )}
         {!sel && <MapLegend />}
       </div>
+      {(() => {
+        const m = missionId !== null ? base.missions.find((x) => x.id === missionId) : undefined;
+        return m ? (
+          <MissionSheet
+            mission={m}
+            now={now}
+            home={home}
+            onClose={() => setMissionId(null)}
+            onShowTarget={(t) => { setSel(t); setCenterOn(t); setRecenter((n) => n + 1); }}
+          />
+        ) : null;
+      })()}
       {sel && info && (
         <div className="p-3 pt-2.5 bg-card border-t-[3px] border-double border-ink shadow-[0_-8px_24px_rgba(24,39,58,0.12)]">
           <div className="flex items-start justify-between gap-2">

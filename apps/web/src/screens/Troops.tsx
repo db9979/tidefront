@@ -15,6 +15,8 @@ import { TECH, techName } from "../lib/research.ts";
 import { unitBreakdown } from "../lib/breakdown.ts";
 import { Breakdown, RankBadge, VeteranLine } from "../components/Breakdown.tsx";
 import { spyKindText } from "../components/SpyPlan.tsx"; // Nachrichtendienst
+import { RecallSheet, targetName } from "../components/MissionSheet.tsx";
+export { targetName };
 
 /** Werte, die die Aufschlüsselung zeigt (aus der festen Werte-Tabelle ausgeblendet). */
 const BROKEN_DOWN = /^(Lebenspunkte|Angriff|U-Jagd|Tempo|Ladung|Treibstoff)/;
@@ -32,14 +34,6 @@ const GROUPS: { builtIn: string; title: string }[] = [
 const MAX_TRAIN = 10000;
 
 /** Name eines Missionsziels aus der Karte: Hafen oder Nest mit Stufe, sonst Koordinaten. */
-export function targetName(map: MapData | undefined, col: number, row: number): string {
-  const b = map?.bases.find((x) => x.col === col && x.row === row);
-  // Kein doppeltes „Hafen Hafen …“, wenn der Name schon so beginnt.
-  if (b) return /^hafen\b/i.test(b.name) ? b.name : `Hafen ${b.name}`;
-  const n = map?.nests.find((x) => x.col === col && x.row === row);
-  if (n) return `Nest Stufe ${n.level}`;
-  return `Feld ${col}/${row}`;
-}
 
 function scale(cost: Record<string, number> | undefined, n: number): Record<string, number> {
   const out: Record<string, number> = {};
@@ -253,31 +247,3 @@ function ResearchCard({ base, now, onOpen }: { base: BaseData; now: number; onOp
 
 type MissionData = BaseData["missions"][number];
 
-/** Bestätigung des Rückrufs: Rückkehr nach der bereits gefahrenen Zeit, Treibstoff ist verbraucht. */
-function RecallSheet({ mission, name, now, onClose }: { mission: MissionData; name: string; now: number; onClose: () => void }) {
-  const cmd = useCommand(
-    (i: { key: string; missionId: number }) => trpcClient.mission.recall.mutate(i),
-    () => [trpc.base.pathFilter().queryKey, trpc.world.pathFilter().queryKey],
-  );
-  const elapsed = Math.max(0, now - mission.departAtMs);
-  return (
-    <Sheet open onClose={onClose} title={`${label(mission.type)} zurückrufen?`} icon={<Icon id={mission.type} size={48} />}>
-      <div className="text-sm space-y-2 mb-3">
-        <p>Der Verband kehrt sofort um und ist nach der bereits gefahrenen Zeit wieder daheim.</p>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-xl bg-paper border border-rule p-2">
-          <span className="text-slate-400">Ziel</span><span className="text-right">{name}</span>
-          <span className="text-slate-400">Unterwegs seit</span><span className="text-right">{fmtDuration(elapsed)}</span>
-          <span className="text-slate-400">Wieder daheim</span><span className="text-right">etwa {fmtTime(now + elapsed)}</span>
-        </div>
-        <p className="text-brass-300">Der Treibstoff ist verbraucht und wird nicht erstattet.{mission.type === "ueberfall" ? " Der Nachtschild bleibt für diese Nacht aufgehoben." : ""}</p>
-      </div>
-      <ErrorLine text={cmd.error} />
-      <div className="flex gap-2">
-        <Button kind="secondary" className="flex-1" onClick={onClose}>Weiterfahren</Button>
-        <Button kind="danger" className="flex-1" disabled={cmd.busy} onClick={async () => { const r = await cmd.run({ missionId: mission.id }); if (r?.ok) onClose(); }}>
-          Zurückrufen
-        </Button>
-      </div>
-    </Sheet>
-  );
-}
