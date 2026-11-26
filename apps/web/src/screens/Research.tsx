@@ -1,5 +1,6 @@
 // Forschung: Technikbaum in vier Zweigen, laufender Auftrag mit Countdown und Abbruch, Info-Blatt je Technik,
 // Durchbruch-Würfel. Erreichbar aus dem Forschungsamt (Basis) und aus Truppen.
+// Die Zweige stehen als Segment-Schalter nebeneinander (Wahl gemerkt), es ist immer nur einer offen.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, type Balance, type BaseData } from "../lib/trpc.ts";
@@ -9,7 +10,7 @@ import { fmtDuration, fmtSeconds, useNow } from "../lib/time.ts";
 import { liveResources } from "../lib/live.res.ts";
 import { BRANCHES, TECH, modRows, pctText, roman, techEffectText, techName } from "../lib/research.ts";
 import { Icon, IconTile } from "../icons.tsx";
-import { Badge, Bar, Button, Card, Cost, ErrorLine, Loading, Sheet, StatTable } from "../ui.tsx";
+import { Badge, Bar, Button, Card, Cost, ErrorLine, Loading, Segments, Sheet, StatTable, useSegment } from "../ui.tsx";
 import { BreakthroughChoice, DiceRoll } from "../components/ResearchDice.tsx";
 
 type Research = NonNullable<BaseData["research"]>;
@@ -31,6 +32,7 @@ export function ResearchScreen({ base, asOf, onClose }: { base: BaseData; asOf: 
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const now = useNow();
   const [open, setOpen] = useState<string | null>(null);
+  const [branch, setBranch] = useSegment<string>("forschung", BRANCHES.map((b) => b.id), BRANCHES[0].id);
   const cancel = useCommand((i: { key: string }) => trpcClient.research.cancel.mutate(i), invalidateBase);
   const r = base.research;
   const balance = meta.data?.balance;
@@ -85,7 +87,9 @@ export function ResearchScreen({ base, asOf, onClose }: { base: BaseData; asOf: 
         )}
       </Card>
 
-      {BRANCHES.map((br) => {
+      <Segments label="Forschungszweige" value={branch} onChange={setBranch}
+        items={BRANCHES.map((b) => ({ id: b.id, label: <span className="flex items-center gap-1"><Icon id={b.icon} size={18} />{b.name}</span>, badge: o && defs[o.techId]?.branch === b.id ? 1 : 0 }))} />
+      {BRANCHES.filter((br) => br.id === branch).map((br) => {
         const ids = Object.keys(defs).filter((id) => defs[id].branch === br.id);
         const tiers = [...new Set(ids.map((id) => defs[id].requiresBuildingLevel ?? 1))].sort((a, b) => a - b);
         return (
@@ -109,7 +113,7 @@ export function ResearchScreen({ base, asOf, onClose }: { base: BaseData; asOf: 
         );
       })}
 
-      <Card title="Wirksame Boni">
+      <Card title="Wirksame Boni" collapsible storageKey="forschung-boni" defaultOpen={false} summary={bonuses.length === 0 ? "Noch keine." : `${bonuses.length} ${bonuses.length === 1 ? "Bonus" : "Boni"} aktiv`}>
         {bonuses.length === 0 ? <p className="text-sm text-ink2">Noch keine. Boni gelten bis zum Saisonende.</p> : <StatTable rows={bonuses} />}
       </Card>
 

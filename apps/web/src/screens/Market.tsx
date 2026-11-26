@@ -71,7 +71,7 @@ export function MarketScreen({ base }: { base: BaseData }) {
   const pick = (id: string) => {
     setResource(id);
     // Order steht direkt unter der Kurstafel: sichtbar machen, ohne die Tafel ganz wegzuschieben.
-    requestAnimationFrame(() => document.getElementById("tf-order")?.scrollIntoView?.({ block: "nearest", behavior: "smooth" }));
+    setTimeout(() => document.getElementById("tf-order")?.scrollIntoView?.({ block: "nearest", behavior: "smooth" }), 0);
   };
 
   return (
