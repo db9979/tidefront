@@ -1,7 +1,13 @@
 // Kleine Kupferstich-Vignette des eigenen Hafens (Leuchtturm, Mole, Speicher) für den Basis-Kopf.
+// Der Hafen wächst mit dem Gesamtausbau (Summe aller Gebäudestufen): Häuser, Kran, Schiffe, Schornstein, Licht, Flagge.
 import { INK, PAPER, SIEGEL } from "../icons-art.tsx";
 
-export function HarborVignette({ size = 96 }: { size?: number }) {
+const LIGHT = "#e8b64c";
+const ln = { fill: "none", stroke: INK, strokeWidth: 0.8, strokeLinejoin: "round" } as const;
+const pp = { fill: PAPER, stroke: INK, strokeWidth: 0.8, strokeLinejoin: "round" } as const;
+
+export function HarborVignette({ size = 96, levels = 0 }: { size?: number; levels?: number }) {
+  const at = (n: number) => levels >= n;
   return (
     <div className="shrink-0 border border-ink p-[3px] bg-card" aria-hidden="true">
       <svg viewBox="0 0 96 72" width={size} height={(size * 72) / 96} className="block">
@@ -11,6 +17,9 @@ export function HarborVignette({ size = 96 }: { size?: number }) {
         <rect width="96" height="72" fill="url(#vg-sky)" />
         <path d="M0 52 C20 49 40 54 60 51 C75 49 86 52 96 50 V72 H0 Z" fill={PAPER} stroke={INK} strokeWidth="0.8" />
         <path d="M8 58 H28 M40 62 H66 M70 57 H88" stroke={INK} strokeWidth="0.6" />
+        {at(120) && <><path d="M4 51 L5 28 H9 L10 51 Z" {...pp} /><path d="M7 26 c-1 -3 2 -4 1 -7 c-1 -2 2 -3 4 -4" {...ln} strokeWidth={0.6} strokeDasharray="1.2 1.6" /></>}
+        {at(15) && <path d="M2 51 V44 L7 40 L12 44 V51 Z" {...pp} />}
+        {at(40) && <path d="M40 51 V22 M36 22 H54 M40 18 L54 22 M40 18 L36 22 M52 22 V30" {...ln} />}
         <path d="M58 51 L60 22 H66 L68 51 Z" fill={PAPER} stroke={INK} />
         <path d="M59.3 32 H66.7 M58.8 40 H67.2" stroke={SIEGEL} strokeWidth="2.4" />
         <path d="M57 22 H69 L67 17 H59 Z" fill={INK} />
@@ -19,6 +28,10 @@ export function HarborVignette({ size = 96 }: { size?: number }) {
         <path d="M12 51 L14 40 H44 L46 51" fill={PAPER} stroke={INK} />
         <path d="M20 40 V32 H30 V40" fill={PAPER} stroke={INK} />
         <path d="M25 32 V24" stroke={INK} />
+        {at(180) && <path d="M18 44 h2.4 v2.4 h-2.4 Z M28 44 h2.4 v2.4 h-2.4 Z M38 44 h2.4 v2.4 h-2.4 Z M23.5 35 h3 v2.4 h-3 Z" fill={LIGHT} stroke={INK} strokeWidth="0.4" />}
+        {at(240) && <path d="M25 24 L31 25.5 L25 27 Z" fill={SIEGEL} stroke={INK} strokeWidth="0.4" />}
+        {at(80) && <><path d="M70 60 H92 L89 65 H73 Z" fill="url(#tf-h)" stroke={INK} strokeWidth="0.8" /><path d="M78 60 V56 H85 V60 M81 56 V50" {...ln} /></>}
+        {at(180) && <path d="M18 66 H32 L30 69 H20 Z M23 66 V61" {...ln} fill={PAPER} />}
       </svg>
     </div>
   );
