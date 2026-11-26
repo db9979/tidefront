@@ -38,9 +38,9 @@ const buildComplete: Handler = async (tx, ev, due) => {
   const b = await lockBase(tx, ev.baseId!);
   if (!b) return none();
   const order = b.state.buildQueue[0];
-  // Abgebrochen oder schon erledigt: nichts zu tun.
+  // Abgebrochen, verschoben oder schon erledigt: nichts zu tun. Sonst alle fälligen Aufträge abschließen.
   if (!order || order.finishesAt > due) return none();
-  const r = completeUpgrade(b.state, Math.max(due, order.finishesAt), balance);
+  const r = completeUpgrade(b.state, due, balance);
   if (!r.ok) return none();
   await saveBase(tx, b.id, r.base);
   return { notify: [[[b.playerId], "base"]] };

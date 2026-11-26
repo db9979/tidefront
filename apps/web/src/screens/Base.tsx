@@ -32,9 +32,9 @@ export function BaseScreen(props: {
   const now = useNow();
   const reports = useQuery(trpc.report.list.queryOptions());
   const wonRaid = (reports.data ?? []).some((r) => r.kind === "ueberfall" && r.role === "attacker" && r.won);
-  const cancel = useCommand((i: { key: string }) => trpcClient.base.cancelUpgrade.mutate(i), invalidateBase);
   const res = liveResources(base, asOf, now);
-  const order = base.buildQueue[0];
+  const queue = base.buildQueue;
+  const queueFull = queue.length >= base.buildQueueSlots;
   const byId = Object.fromEntries(base.buildings.map((b) => [b.id, b]));
 
   return (
@@ -68,27 +68,12 @@ export function BaseScreen(props: {
       <Guide base={base} wonRaid={wonRaid} onAction={props.onGuide} />
 
       {/* Bauschlange */}
-      <Card title="Bauhof">
-        {order ? (
-          <div className="flex items-center gap-3">
-            <IconTile id={order.buildingId} size={52} />
-            <div className="flex-1 min-w-0">
-              <div className="font-bold">{label(order.buildingId)} → Stufe {order.targetLevel}</div>
-              <div className="text-sm text-sea-300 mb-1">{order.finishesAt <= now ? "wird abgeschlossen …" : `noch ${fmtDuration(order.finishesAt - now)}`}</div>
-              <Bar value={(now - order.startedAt) / Math.max(1, order.finishesAt - order.startedAt)} />
-            </div>
-            <Button kind="danger" disabled={cancel.busy} onClick={() => void cancel.run({})}>Abbruch</Button>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-300 flex items-center gap-2"><Icon id="uhr" size={22} /> Der Bauhof ist frei. Tippe ein Gebäude an, um es auszubauen.</p>
-        )}
-        <ErrorLine text={cancel.error} />
-      </Card>
+      <BuildYard base={base} now={now} />
 
       {GROUPS.map((g) => (
         <Card key={g.title} title={g.title}>
           <div className="grid grid-cols-3 gap-2">
-            {g.ids.map((id) => byId[id] && <BuildingTile key={id} b={byId[id]} res={res} busy={!!order} building={order?.buildingId === id} onOpen={() => setSheet(id)} />)}
+            {g.ids.map((id) => byId[id] && <BuildingTile key={id} b={byId[id]} res={res} queueFull={queueFull} running={queue[0]?.buildingId === id} queued={queue.some((o) => o.buildingId === id)} onOpen={() => setSheet(id)} />)}
           </div>
         </Card>
       ))}
@@ -97,7 +82,7 @@ export function BaseScreen(props: {
       <Protection base={base} now={now} />
 
       {sheet && byId[sheet] && (
-        <BuildingSheet b={byId[sheet]} base={base} res={res} queueBusy={!!order} onClose={() => setSheet(null)} onTroops={props.onTroops} />
+        <BuildingSheet b={byId[sheet]} base={base} res={res} onClose={() => setSheet(null)} onTroops={props.onTroops} />
       )}
     </div>
   );
@@ -107,33 +92,88 @@ function affordable(cost: Record<string, number> | null, res: Record<string, num
   return !!cost && Object.entries(cost).every(([r, v]) => (res[r] ?? 0) >= v);
 }
 
-function BuildingTile({ b, res, busy, building, onOpen }: { b: Building; res: Record<string, number>; busy: boolean; building: boolean; onOpen: () => void }) {
-  const can = !busy && b.level < b.maxAllowed && affordable(b.cost, res);
+function BuildYard({ base, now }: { base: BaseData; now: number }) {
+  const cancel = useCommand(
+    (i: { key: string; buildingId: string; targetLevel: number }) => trpcClient.base.cancelUpgrade.mutate(i),
+    invalidateBase,
+  );
+  const queue = base.buildQueue;
+  return (
+    <Card title="Bauhof" right={<span className="text-xs text-slate-400 tabular-nums">Schlange {queue.length}/{base.buildQueueSlots}</span>}>
+      {queue.length === 0 ? (
+        <p className="text-sm text-slate-300 flex items-center gap-2"><Icon id="uhr" size={22} /> Der Bauhof ist frei. Tippe ein Gebäude an, um es auszubauen.</p>
+      ) : (
+        <ol className="divide-y divide-navy-700">
+          {queue.map((o, i) => {
+            const running = o.startedAt <= now;
+            return (
+              <li key={`${o.buildingId}:${o.targetLevel}`} className="py-2 flex items-center gap-3">
+                <IconTile id={o.buildingId} size={i === 0 ? 52 : 40} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold">{label(o.buildingId)} → Stufe {o.targetLevel}</div>
+                  {running ? (
+                    <>
+                      <div className="text-sm text-sea-300 mb-1">{o.finishesAt <= now ? "wird abgeschlossen …" : `noch ${fmtDuration(o.finishesAt - now)}`}</div>
+                      <Bar value={(now - o.startedAt) / Math.max(1, o.finishesAt - o.startedAt)} />
+                    </>
+                  ) : (
+                    <div className="text-xs text-slate-400">
+                      Platz {i + 1} · beginnt in {fmtDuration(o.startedAt - now)} · fertig {fmtTime(o.finishesAt)}
+                    </div>
+                  )}
+                </div>
+                <Button
+                  kind="danger"
+                  disabled={cancel.busy || o.finishesAt <= now}
+                  onClick={() => void cancel.run({ buildingId: o.buildingId, targetLevel: o.targetLevel })}
+                >
+                  Abbruch
+                </Button>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+      {queue.length > 1 && <p className="text-xs text-slate-400 mt-1">Abbruch: der laufende Auftrag nach Restzeit, wartende voll erstattet. Spätere Stufen desselben Gebäudes fallen mit weg.</p>}
+      <ErrorLine text={cancel.error} />
+    </Card>
+  );
+}
+
+function BuildingTile({ b, res, queueFull, running, queued, onOpen }: { b: Building; res: Record<string, number>; queueFull: boolean; running: boolean; queued: boolean; onOpen: () => void }) {
+  const can = !queueFull && b.planned < b.maxAllowed && affordable(b.cost, res);
   return (
     <button
       type="button"
       onClick={onOpen}
-      className={`relative rounded-xl p-2 flex flex-col items-center text-center border transition ${building ? "border-sea-400 bg-sea-400/10" : "border-white/10 bg-navy-900/70"} active:scale-95`}
+      className={`relative rounded-xl p-2 flex flex-col items-center text-center border transition ${queued ? "border-sea-400 bg-sea-400/10" : "border-white/10 bg-navy-900/70"} active:scale-95`}
     >
       <IconTile id={b.id} size={52} />
       <span className="w-full text-[11px] font-semibold mt-1 leading-tight break-words hyphens-auto" lang="de">{label(b.id).replace("kommandantur", "\u00ADkommandantur").replace("zentrale", "\u00ADzentrale")}</span>
       <span className={`absolute top-1 right-1 min-w-6 h-6 px-1 rounded-full grid place-items-center text-xs font-bold ${b.level > 0 ? "bg-brass-400 text-navy-950" : "bg-navy-700 text-slate-300"}`}>{b.level}</span>
       {can && <span className="absolute top-1 left-1 w-2.5 h-2.5 rounded-full bg-emerald-400" title="Ausbau möglich" />}
-      {building && <span className="text-[10px] text-sea-300">im Bau</span>}
+      {running ? <span className="text-[10px] text-sea-300">im Bau</span> : queued ? <span className="text-[10px] text-sea-300">eingereiht → {b.planned}</span> : null}
     </button>
   );
 }
 
-function BuildingSheet({ b, base, res, queueBusy, onClose, onTroops }: { b: Building; base: BaseData; res: Record<string, number>; queueBusy: boolean; onClose: () => void; onTroops: () => void }) {
+function BuildingSheet({ b, base, res, onClose, onTroops }: { b: Building; base: BaseData; res: Record<string, number>; onClose: () => void; onTroops: () => void }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const up = useCommand((i: { key: string; buildingId: string }) => trpcClient.base.upgrade.mutate(i), invalidateBase);
   const balance = meta.data?.balance;
-  const capped = b.level >= b.maxAllowed;
+  const capped = b.planned >= b.maxAllowed;
   const maxed = !b.cost;
   const enough = affordable(b.cost, res);
-  const reason = maxed ? "Höchststufe erreicht." : capped ? "Erst die Kommandozentrale ausbauen." : queueBusy ? "Es läuft schon ein Ausbau." : !enough ? "Noch nicht genug Ressourcen." : null;
+  const used = base.buildQueue.length;
+  const queueFull = used >= base.buildQueueSlots;
+  const target = b.planned + 1;
+  const reason = maxed
+    ? b.planned > b.level ? `Höchststufe eingereiht (Stufe ${b.planned}).` : "Höchststufe erreicht."
+    : capped ? "Erst die Kommandozentrale ausbauen."
+    : queueFull ? `Bauschlange voll (${used}/${base.buildQueueSlots}).`
+    : !enough ? "Noch nicht genug Ressourcen." : null;
   const now = balance ? buildingEffect(balance, b.id, b.level) : null;
-  const next = balance && !maxed ? buildingEffect(balance, b.id, b.level + 1) : null;
+  const next = balance && !maxed ? buildingEffect(balance, b.id, target) : null;
   const trains = ["werft", "kaserne", "flugfeld"].includes(b.id);
   return (
     <Sheet open onClose={onClose} title={<>{label(b.id)} <span className="text-brass-300">Stufe {b.level}</span></>} icon={<IconTile id={b.id} size={56} />}>
@@ -145,7 +185,7 @@ function BuildingSheet({ b, base, res, queueBusy, onClose, onTroops }: { b: Buil
             <div className="text-sm font-semibold">{now ?? "–"}</div>
           </div>
           <div className="rounded-xl bg-emerald-950/60 border border-emerald-700/50 p-2">
-            <div className="text-[11px] uppercase text-emerald-300">Stufe {b.level + 1}</div>
+            <div className="text-[11px] uppercase text-emerald-300">Stufe {target}</div>
             <div className="text-sm font-semibold">{next ?? "–"}</div>
           </div>
         </div>
@@ -157,12 +197,13 @@ function BuildingSheet({ b, base, res, queueBusy, onClose, onTroops }: { b: Buil
           {b.seconds !== null && <div className="text-sm mt-1 flex items-center gap-1"><Icon id="uhr" size={16} /> {fmtSeconds(b.seconds)}</div>}
         </div>
       )}
+      {b.planned > b.level && <p className="text-sm text-sea-300 mb-2">In der Bauschlange bis Stufe {b.planned}. Ein weiterer Ausbau wird dahinter eingereiht.</p>}
       {reason && <p className="text-sm text-brass-300 mb-2">{reason}</p>}
       <ErrorLine text={up.error} />
       <div className="flex gap-2">
         {trains && b.level > 0 && <Button kind="secondary" className="flex-1" onClick={() => { onClose(); onTroops(); }}>Ausbilden</Button>}
         <Button className="flex-1" disabled={!!reason || up.busy} onClick={async () => { const r = await up.run({ buildingId: b.id }); if (r?.ok) onClose(); }}>
-          Ausbau auf {b.level + 1}
+          {used > 0 ? `Einreihen: Stufe ${target}` : `Ausbau auf ${target}`}
         </Button>
       </div>
       {b.id === "hafenkommandantur" && <p className="text-xs text-slate-400 mt-2">Missionsplätze jetzt: {base.missionSlots}</p>}

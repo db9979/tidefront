@@ -175,3 +175,30 @@ export function planMission(
   };
   return { ok: true, base: next, mission };
 }
+
+/**
+ * Rückruf auf der Hinfahrt: Der Verband kehrt sofort um und ist nach der bereits gefahrenen Zeit wieder
+ * daheim (Rückkehr = jetzt + (jetzt - Abfahrt)). Treibstoff wird nicht erstattet; Transportgut kommt
+ * mit zurück (der Aufrufer bucht es bei der Rückkehr über returnMission). Ob die Mission noch auf der
+ * Hinfahrt ist und dem Spieler gehört, prüft der Aufrufer.
+ * Codes: already_recalled, already_arrived.
+ */
+export function recallMission(mission: Mission, nowMs: number): Result<{ mission: Mission; returnAtMs: number }> {
+  if (mission.recalledAtMs !== undefined) return { ok: false, code: "already_recalled" };
+  if (nowMs >= mission.arriveAtMs) return { ok: false, code: "already_arrived" };
+  const elapsed = Math.max(0, nowMs - mission.departAtMs);
+  const returnAtMs = nowMs + elapsed;
+  return {
+    ok: true,
+    returnAtMs,
+    mission: {
+      ...mission,
+      units: { ...mission.units },
+      origin: { ...mission.origin },
+      target: { ...mission.target },
+      cargo: { ...mission.cargo },
+      recalledAtMs: nowMs,
+      returnAtMs,
+    },
+  };
+}

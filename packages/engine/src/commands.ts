@@ -10,6 +10,7 @@ import {
   harborCreditLimit,
   isNestRespawned,
   planMission,
+  recallMission,
   settle,
   startTraining,
   startUpgrade,
@@ -17,6 +18,7 @@ import {
   market as marketCore,
   type BaseState,
   type Counts,
+  type Mission,
   type ResourceMap,
 } from "@tidefront/game-core";
 import { hexCenter, isCoast, nearestTradePort } from "@tidefront/world";
@@ -128,20 +130,34 @@ export function upgrade(engine: Engine, playerId: number, key: string, buildingI
     const r = startUpgrade(b.state, buildingId, ctx.nowMs, balance);
     if (!r.ok) return r;
     await saveBase(ctx.tx, b.id, r.base);
-    await scheduleEvent(ctx.tx, "build_complete", r.base.buildQueue[0].finishesAt, {}, b.id);
+    await scheduleEvent(ctx.tx, "build_complete", r.order.finishesAt, {}, b.id);
     ctx.notify.push([[playerId], "base"]);
     return { ok: true as const };
   });
 }
 
-export function cancelBuild(engine: Engine, playerId: number, key: string) {
-  return runCommand(engine, playerId, key, "cancelBuild", async (ctx) => {
+/**
+ * Bricht einen Auftrag der Bauschlange ab. Der Auftrag wird über Gebäude und Zielstufe benannt
+ * (eindeutig in der Schlange); ohne Angabe der laufende. Für nachgerückte Aufträge werden neue
+ * build_complete-Ereignisse geplant; die alten laufen ins Leere oder schließen nur Fälliges ab.
+ */
+export function cancelBuild(engine: Engine, playerId: number, key: string, order?: { buildingId: string; targetLevel: number }) {
+  return runCommand<{ ok: true; refund: ResourceMap; removed: number }>(engine, playerId, key, "cancelBuild", async (ctx) => {
     const b = await ownBaseLocked(ctx);
-    const r = cancelUpgrade(b.state, ctx.nowMs, balance);
+    const index = order
+      ? b.state.buildQueue.findIndex((o) => o.buildingId === order.buildingId && o.targetLevel === order.targetLevel)
+      : 0;
+    const r = cancelUpgrade(b.state, ctx.nowMs, balance, index);
     if (!r.ok) return r;
     await saveBase(ctx.tx, b.id, r.base);
+    const before = new Map(b.state.buildQueue.map((o) => [`${o.buildingId}:${o.targetLevel}`, o.finishesAt]));
+    for (const o of r.base.buildQueue) {
+      if (before.get(`${o.buildingId}:${o.targetLevel}`) !== o.finishesAt) {
+        await scheduleEvent(ctx.tx, "build_complete", o.finishesAt, {}, b.id);
+      }
+    }
     ctx.notify.push([[playerId], "base"]);
-    return { ok: true as const, refund: r.refund };
+    return { ok: true as const, refund: r.refund, removed: r.removed.length };
   });
 }
 
@@ -242,6 +258,40 @@ export function launchMission(
     ctx.notify.push([[playerId], "base"], [[playerId], "missions"]);
     if (target.kind === "base" && target.playerId !== null) ctx.notify.push([[target.playerId], "missions"]);
     return { ok: true as const, missionId: m.id, arriveAtMs: r.mission.arriveAtMs };
+  });
+}
+
+/**
+ * Ruft einen eigenen Verband auf der Hinfahrt zurück. Sperrt nur die Mission (Reihenfolge Ereignis →
+ * Mission → Stützpunkte bleibt gewahrt); der Stützpunkt ändert sich erst bei der Rückkehr. Das geplante
+ * mission_arrive läuft ins Leere (Handler prüft den Status), mission_return wird neu geplant.
+ * Codes: no_mission, not_outbound, already_recalled, already_arrived.
+ */
+export function recallOwnMission(engine: Engine, playerId: number, key: string, missionId: number) {
+  return runCommand<{ ok: true; returnAtMs: number }>(engine, playerId, key, "recall", async (ctx) => {
+    const [m] = await ctx.tx.select().from(tables.mission).where(eq(tables.mission.id, missionId)).for("update");
+    if (!m || m.playerId !== playerId || m.type === "kartell" || m.baseId === null) fail("no_mission");
+    if (m.status !== "outbound") fail("not_outbound");
+    const plan = m.plan as Mission;
+    const r = recallMission(plan, ctx.nowMs);
+    if (!r.ok) return r;
+    await ctx.tx
+      .update(tables.mission)
+      .set({
+        status: "returning",
+        plan: r.mission,
+        returning: { ...plan.units },
+        cargoHome: { ...(plan.cargo ?? {}) },
+        returnAt: new Date(r.returnAtMs),
+      })
+      .where(eq(tables.mission.id, m.id));
+    await scheduleEvent(ctx.tx, "mission_return", r.returnAtMs, { missionId: m.id }, m.baseId);
+    ctx.notify.push([[playerId], "base"], [[playerId], "missions"]);
+    if (m.targetKind === "base" && m.targetId !== null) {
+      const [t] = await ctx.tx.select({ playerId: tables.base.playerId }).from(tables.base).where(eq(tables.base.id, m.targetId));
+      if (t) ctx.notify.push([[t.playerId], "missions"], [[t.playerId], "base"]);
+    }
+    return { ok: true as const, returnAtMs: r.returnAtMs };
   });
 }
 

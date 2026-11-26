@@ -95,6 +95,8 @@ export interface Balance {
     maxBuildSeconds: number;
     levelCapAboveCommand: number;
     productionGrowth: number;
+    /** Höchstzahl der Aufträge in der Bauschlange eines Stützpunkts. */
+    queueSlots: number;
   };
   buildings: Record<string, BuildingDef>;
   units: Record<string, UnitDef>;
@@ -181,7 +183,7 @@ export interface BaseState {
   /** Einheiten dieses Stützpunkts, die auf Mission sind (zählen für Unterhalt und Stellplätze). */
   unitsAway: Counts;
   defenses: Counts;
-  /** Bauschlange; in Meilenstein 1 höchstens ein Auftrag. */
+  /** Bauschlange in Reihenfolge; höchstens building.queueSlots Aufträge, der erste läuft. */
   buildQueue: BuildOrder[];
   /** Ausbildungsaufträge; höchstens einer je ausführendem Gebäude. */
   trainingQueue: TrainingOrder[];
@@ -234,6 +236,8 @@ export interface Mission {
   departAtMs: number;
   arriveAtMs: number;
   returnAtMs: number;
+  /** Zeitpunkt des Rückrufs auf der Hinfahrt; fehlt, wenn der Verband nicht zurückgerufen wurde. */
+  recalledAtMs?: number;
 }
 
 export interface FleetCheck {

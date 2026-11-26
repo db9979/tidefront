@@ -34,7 +34,10 @@ Vier Ressourcen: `stahl`, `treibstoff`, `elektronik`, `proviant`. Strom ist eine
 - Bauzeit: `seconds * timeFactor^L`, höchstens `maxBuildSeconds`.
 - Höchststufe `maxLevel`. Kein Gebäude außer der Kommandozentrale darf höher sein als
   `Stufe Kommandozentrale + levelCapAboveCommand`.
-- Eine Bauschlange mit einem aktiven Auftrag pro Stützpunkt in Meilenstein 1.
+- Bauschlange: bis zu `building.queueSlots` Ausbauaufträge je Stützpunkt, abgearbeitet nacheinander. Die Kosten werden
+  beim Einreihen bezahlt. Die Zielstufe zählt bereits eingereihte Aufträge desselben Gebäudes mit; `maxLevel` und der
+  Deckel über die Kommandozentrale gelten für diese Zielstufe, eingereihte Stufen der Kommandozentrale zählen dabei mit.
+  Ein Auftrag beginnt, wenn der vorige fertig ist (frühestens beim Einreihen); seine Bauzeit richtet sich nach der Zielstufe.
 - Kommandopunkte eines Stützpunkts: `commandPointsBase + commandPointsPerLevel * L`.
 - Tiefbunker: schützt je Ressource `protectedBase * protectedGrowth^L` vor Plünderung.
 - Missionsplätze: `missionSlotsBase + floor(L / 2) * missionSlotsPerTwoLevels` (Hafenkommandantur).
@@ -69,6 +72,13 @@ Ablauf am Ziel:
 - `transport`: Bei Ankunft wird die Ladung dem Zielstützpunkt gutgeschrieben, auch über die Lagerkapazität. Ziel kann nur
   ein Spielerstützpunkt sein. Der Verband kehrt leer heim.
 
+Rückruf:
+
+- Ein eigener Verband auf der Hinfahrt kann zurückgerufen werden, auf der Rückfahrt nicht. Er kehrt sofort um und ist
+  nach der bereits gefahrenen Zeit wieder daheim: Rückkehr = Rückruf + (Rückruf − Abfahrt). Am Ziel geschieht nichts.
+- Treibstoff wird nicht erstattet. Transportgut kommt mit zurück. Ein durch den eigenen Überfall aufgehobener
+  Nachtschild bleibt aufgehoben. Beim Ziel verschwindet der Verband sofort aus den anrückenden Verbänden.
+
 ## Vorwarnung
 
 - Radarstation Stufe L ≥ 1: Vorwarnzeit `warningMinutesBase + warningMinutesPerLevel * L` Minuten, ohne Radar 0.
@@ -79,6 +89,10 @@ Ablauf am Ziel:
 
 - Ein laufender Ausbau oder Ausbildungsauftrag kann abgebrochen werden. Erstattet wird je Ressource
   `floor(Kosten * Restzeit / Gesamtdauer)`, auch über die Lagerkapazität. Der Bauplatz ist sofort frei.
+- In der Bauschlange ist jeder Auftrag einzeln abbrechbar. Ein noch nicht begonnener Auftrag wird voll erstattet.
+  Die Aufträge dahinter rücken nach (Start frühestens jetzt, gleiche Dauer). Hätte ein späterer Auftrag danach eine
+  ungültige Stufe (die vorige Stufe desselben Gebäudes fehlt oder der Deckel über die Kommandozentrale wäre
+  überschritten), wird er voll erstattet und entfernt, ebenso alle folgenden desselben Gebäudes.
 
 ## Kampf
 

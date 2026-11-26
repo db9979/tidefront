@@ -9,7 +9,8 @@
     "maxLevel": 20,
     "maxBuildSeconds": 432000,
     "levelCapAboveCommand": 3,
-    "productionGrowth": 1.15
+    "productionGrowth": 1.15,
+    "queueSlots": 3
   },
   "buildings": {
     "kommandozentrale": { "cost": { "stahl": 400, "treibstoff": 100, "elektronik": 100 }, "seconds": 120, "commandPointsBase": 60, "commandPointsPerLevel": 30 },

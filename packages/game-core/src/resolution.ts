@@ -1,6 +1,15 @@
 // Abläufe nach Ankunft und Kampf: Ergebnis auf Stützpunkte anwenden, Aufklärung, Transport,
 // Schwachziel, Wracks, Radar-Vorwarnzeit, Abbruch von Bau und Ausbildung.
-import type { Balance, BaseState, BattleReport, Counts, DefenderInput, ResourceMap, Result } from "./types.ts";
+import type {
+  Balance,
+  BaseState,
+  BattleReport,
+  BuildOrder,
+  Counts,
+  DefenderInput,
+  ResourceMap,
+  Result,
+} from "./types.ts";
 import { addResources, bunkerProtection, buildingLevel, settle } from "./economy.ts";
 import { upgradeCost } from "./buildings.ts";
 import { trainingCost } from "./units.ts";
@@ -187,23 +196,56 @@ function scaled(cost: ResourceMap, share: number): ResourceMap {
 }
 
 /**
- * Bricht den laufenden Ausbau ab. Erstattet wird der Anteil der Kosten, der der Restzeit entspricht
- * (abgerundet). Codes: no_order, already_finished.
+ * Bricht einen Auftrag der Bauschlange ab (Index, 0 = laufender Auftrag). Der laufende Auftrag wird
+ * nach Restzeit erstattet (abgerundet), ein noch nicht begonnener voll. Die Aufträge dahinter rücken nach
+ * (Start frühestens jetzt). Hätte ein späterer Auftrag danach eine ungültige Stufe (Stufenfolge oder
+ * Deckel über die Kommandozentrale), wird er ebenfalls voll erstattet und entfernt, ebenso alle
+ * folgenden desselben Gebäudes. Codes: no_order, already_finished.
  */
 export function cancelUpgrade(
   base: BaseState,
   nowMs: number,
   balance: Balance,
-): Result<{ base: BaseState; refund: ResourceMap }> {
-  const order = base.buildQueue[0];
+  index = 0,
+): Result<{ base: BaseState; refund: ResourceMap; removed: BuildOrder[] }> {
+  const order = Number.isInteger(index) && index >= 0 ? base.buildQueue[index] : undefined;
   if (order === undefined) return { ok: false, code: "no_order" };
   if (nowMs >= order.finishesAt) return { ok: false, code: "already_finished" };
   const cost = upgradeCost(order.buildingId, order.targetLevel - 1, balance);
-  const refund = scaled(cost, refundShare(order.startedAt, order.finishesAt, nowMs));
+  const share = order.startedAt <= nowMs ? refundShare(order.startedAt, order.finishesAt, nowMs) : 1;
+  let refund = scaled(cost, share);
+  const removed: BuildOrder[] = [{ ...order }];
+
   const next = settle(base, nowMs, balance);
-  next.buildQueue = next.buildQueue.slice(1);
+  const levels: Counts = { ...next.buildings };
+  const queue: BuildOrder[] = [];
+  let prevEnd: number | null = null;
+  next.buildQueue.forEach((o, i) => {
+    if (i === index) return;
+    const level = levels[o.buildingId] ?? 0;
+    const cap =
+      o.buildingId === "kommandozentrale"
+        ? balance.building.maxLevel
+        : Math.min(balance.building.maxLevel, (levels.kommandozentrale ?? 0) + balance.building.levelCapAboveCommand);
+    if (o.targetLevel !== level + 1 || o.targetLevel > cap) {
+      // Nicht mehr gültig: noch nicht begonnen, also voll erstatten.
+      refund = addResources(refund, upgradeCost(o.buildingId, o.targetLevel - 1, balance));
+      removed.push({ ...o });
+      return;
+    }
+    levels[o.buildingId] = o.targetLevel;
+    if (i > index) {
+      const duration = o.finishesAt - o.startedAt;
+      const startedAt = Math.max(nowMs, prevEnd ?? nowMs);
+      queue.push({ ...o, startedAt, finishesAt: startedAt + duration });
+    } else {
+      queue.push({ ...o });
+    }
+    prevEnd = queue[queue.length - 1].finishesAt;
+  });
+  next.buildQueue = queue;
   next.resources = addResources(next.resources, refund);
-  return { ok: true, base: next, refund };
+  return { ok: true, base: next, refund, removed };
 }
 
 /**
