@@ -28,6 +28,7 @@ import {
   type Hex, type WorldEventRow,
 } from "./world-events.ts";
 import { siegeTick } from "./world-events-run.ts";
+import { modifiersFor } from "./modifiers.ts";
 
 export interface EventMissionInput {
   type: string;
@@ -163,7 +164,9 @@ export async function eventMissionArrive(
     return { returning: { ...plan.units }, cargoHome: {}, reportId: r.id, notify, push };
   }
 
-  const attacker: AttackerInput = { units: plan.units, versorgungsmangel: origin?.state.versorgungsmangel ?? false };
+  // Modifikatoren des Spielers (Forschung, Veteranen) wirken wie bei jedem Überfall.
+  const modifiers = await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due });
+  const attacker: AttackerInput = { units: plan.units, versorgungsmangel: origin?.state.versorgungsmangel ?? false, modifiers };
   const seed = randomSeed();
   const res = resolveBattle(attacker, { units: activeUnits(ev.units), defenses: {} }, balance, seed);
   if (!res.ok) throw new Error(`battle: ${res.code}`);

@@ -27,6 +27,10 @@ export interface SimStats {
   attackerLostTotal: Range;
   loot: Record<string, Range>;
   lootTotal: Range;
+  /** Je Durchlauf: eigene Restkampfkraft (Lebenspunkte der Überlebenden / vorher, 0..1) und Sieg. */
+  runsDetail: { remaining: number; won: boolean }[];
+  /** Spannweite der Siegchance (Wilson-Intervall, 90 %) bei `runs` Durchläufen. */
+  winInterval: [number, number];
 }
 
 const core = (b: Balance) => b as unknown as CoreBalance;
@@ -62,13 +66,33 @@ function netLost(before: Counts, final: Counts): Counts {
   return out;
 }
 
-/** Rechnet den Kampf über `runs` Seeds; Fehlercode (unknown_unit, bad_count) statt Ausnahme. */
+/** Lebenspunkte einer Zählung (Grundwerte aus der Balance). */
+function hpOf(c: Counts, b: Balance): number {
+  let s = 0;
+  for (const [id, n] of Object.entries(c)) s += (b.units[id]?.hp ?? b.npcUnits[id]?.hp ?? b.defenses[id]?.hp ?? 0) * n;
+  return s;
+}
+
+/** Wilson-Intervall für eine Quote p aus n Versuchen (z = 1,645 für 90 %). */
+export function wilson(p: number, n: number, z = 1.645): [number, number] {
+  if (n <= 0) return [0, 1];
+  const z2 = z * z;
+  const mid = (p + z2 / (2 * n)) / (1 + z2 / n);
+  const half = (z * Math.sqrt((p * (1 - p)) / n + z2 / (4 * n * n))) / (1 + z2 / n);
+  return [Math.max(0, mid - half), Math.min(1, mid + half)];
+}
+
+/**
+ * Rechnet den Kampf über `runs` Seeds; Fehlercode (unknown_unit, bad_count) statt Ausnahme.
+ * Kriegsglück (W20 je Phase und Seite) steckt in resolveBattle und wirkt automatisch, sobald die Balance es enthält.
+ */
 export function simulate(attacker: AttackerInput, defender: DefenderInput, balance: Balance, runs = SIM_RUNS): { ok: true; stats: SimStats } | { ok: false; code: string } {
   const b = core(balance);
   const aLost: Counts[] = [];
   const dLost: Counts[] = [];
   const loot: Counts[] = [];
   let wins = 0, landed = 0;
+  const runsDetail: SimStats["runsDetail"] = [];
   for (let i = 0; i < runs; i++) {
     const r = resolveBattle(attacker, defender, b, simSeed(i));
     if (!r.ok) return { ok: false, code: r.code };
@@ -78,6 +102,8 @@ export function simulate(attacker: AttackerInput, defender: DefenderInput, balan
     aLost.push(netLost(rep.attacker.before, rep.attacker.final));
     dLost.push(netLost(rep.defender.before, rep.defender.final));
     loot.push(rep.loot);
+    const before = hpOf(rep.attacker.before, balance);
+    runsDetail.push({ remaining: before > 0 ? hpOf(rep.attacker.survivors, balance) / before : 0, won: rep.winner === "attacker" });
   }
   const aKeys = Object.keys(attacker.units);
   const dKeys = [...Object.keys(defender.units), ...Object.keys(defender.defenses)];
@@ -92,6 +118,8 @@ export function simulate(attacker: AttackerInput, defender: DefenderInput, balan
       attackerLostTotal: range(aLost.map((c) => Object.values(c).reduce((s, v) => s + v, 0))),
       loot: perKey(loot, balance.resources),
       lootTotal: range(loot.map((c) => Object.values(c).reduce((s, v) => s + v, 0))),
+      runsDetail,
+      winInterval: wilson(wins / runs, runs),
     },
   };
 }

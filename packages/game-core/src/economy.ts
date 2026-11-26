@@ -32,6 +32,7 @@ export function cloneBase(base: BaseState): BaseState {
     ...(base.research
       ? { research: cloneResearch(base.research) }
       : {}),
+    ...(base.veterancy ? { veterancy: { ...base.veterancy } } : {}),
   };
 }
 

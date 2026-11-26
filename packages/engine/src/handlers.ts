@@ -36,6 +36,7 @@ import { atWar } from "./alliance-core.ts"; // Diplomatie (Krieg)
 import { eventMissionArrive } from "./world-events-missions.ts";
 import { WORLD_EVENT_HANDLERS } from "./world-events-run.ts";
 import { modifiersFor, modsOf } from "./modifiers.ts";
+import { withAttackExperience } from "./veterans.ts";
 
 const HOUR_MS = 3600000;
 const none = (): HandlerResult => ({ notify: [] });
@@ -307,7 +308,8 @@ const missionReturn: Handler = async (tx, ev, due) => {
       balance,
       await modsOf(tx, b, due),
     );
-    await saveBase(tx, b.id, next);
+    // Veteranen: Erfahrung des heimgekehrten Verbands aus dem Kampfbericht der Mission.
+    await saveBase(tx, b.id, await withAttackExperience(tx, row.reportId, m.playerId, next));
   }
   await tx.update(tables.mission).set({ status: "done" }).where(eq(tables.mission.id, m.id));
   return { notify: [[[m.playerId!], "base"], [[m.playerId!], "missions"]] };

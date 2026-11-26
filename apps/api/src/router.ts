@@ -4,6 +4,7 @@ import { APP_VERSION, BUILD_TIME } from "./version.ts";
 import {
   balance,
   baseView,
+  battleStats,
   cancelBuild,
   cancelTrain,
   chooseBase,
@@ -142,6 +143,8 @@ export const appRouter = t.router({
     get: authed
       .input(z.object({ id: z.number().int().min(1) }))
       .query(({ ctx, input }) => reportGet(ctx.engine, ctx.player.id, input.id)),
+    /** Persönliche Kampfbilanz der Saison (kurz zwischengespeichert). */
+    stats: authed.query(({ ctx }) => battleStats(ctx.engine, ctx.player.id)),
   }),
 
   market: t.router({

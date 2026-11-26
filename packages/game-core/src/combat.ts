@@ -28,6 +28,7 @@ import {
 } from "./combat-stats.ts";
 import type { Modifiers } from "./modifiers.ts";
 import { modValue } from "./modifiers.ts";
+import { luckFactor, luckOf, luckRng, rollDie } from "./luck.ts";
 
 /** "Pioniere halbieren den Schaden" der Minensperren (REGELN.md, Abschnitt Kampf). */
 export const PIONEER_MINE_FACTOR = 0.5;
@@ -74,6 +75,9 @@ export function computeLoot(
  * Rein und deterministisch: gleicher Seed und gleiche Eingabe ergeben denselben Bericht.
  * Modifikatoren wirken je Seite getrennt (attacker.modifiers, defender.modifiers): Lebenspunkte und Angriff
  * über eine eigene Werte-Tabelle je Seite, Minenschaden und Ladung/Beute beim Angreifer.
+ * Kriegsglück (combat.luck): Vor jeder Phase würfeln Angreifer, dann Verteidiger je einen Würfel aus einem eigenen
+ * Strom (luckRng(seed)), auch für Phasen, die entfallen; der Faktor wirkt auf allen Schaden der Seite in der Phase
+ * (Salven, Flak, Bomben, Minen). Der Rundenzufall nutzt weiter den Strom mulberry32(seed) wie zuvor.
  * Codes: unknown_unit, bad_count.
  */
 export function resolveBattle(
@@ -114,10 +118,24 @@ export function resolveBattle(
     shooter.kind === "defense" ? value : value * morale;
 
   const phases: PhaseReport[] = [];
+  // Kriegsglück: ein Wurf je Phase und Seite (Reihenfolge fest: Phase für Phase, erst Angreifer, dann Verteidiger).
+  const luck = luckOf(balance);
+  const dice = luck ? luckRng(seed) : null;
+  const rollPhase = (): { attacker: number; defender: number } | null =>
+    luck && dice ? { attacker: rollDie(dice, luck.die), defender: rollDie(dice, luck.die) } : null;
+  const factorOf = (lk: { attacker: number; defender: number } | null, side: Side) => (lk && luck ? luckFactor(lk[side], luck) : 1);
+  const finish = (draft: ReturnType<typeof beginPhase>, skip: string | null, lk: { attacker: number; defender: number } | null) => {
+    const p = endPhase(draft, A, D, skip, table);
+    if (lk) p.luck = lk;
+    phases.push(p);
+  };
 
   // ------------------------------------------------------------ 1. Luftkampf
   {
     const draft = beginPhase("luftkampf", A, D);
+    const lk = rollPhase();
+    const fA = factorOf(lk, "attacker");
+    const fD = factorOf(lk, "defender");
     const isFighter = (s: Stat) => s.kind === "fighter";
     let skip: string | null = null;
     const hasA = pick(tA, A, isFighter).length > 0;
@@ -130,15 +148,15 @@ export function resolveBattle(
         const fd = pick(tD, D, isFighter);
         if (fa.length === 0 || fd.length === 0) break;
         draft.rounds++;
-        const ra = randomFactor(rng, spread);
-        const rd = randomFactor(rng, spread);
+        const ra = randomFactor(rng, spread) * fA;
+        const rd = randomFactor(rng, spread) * fD;
         const toD = volley(fa, fd, (s) => withMorale(moraleA, s.attack.luft, s), ra, draft.damage.attacker);
         const toA = volley(fd, fa, (s) => withMorale(moraleD, s.attack.luft, s), rd, draft.damage.defender);
         applyDamage(tD, D, toD, carryD);
         applyDamage(tA, A, toA, carryA);
       }
     }
-    phases.push(endPhase(draft, A, D, skip, table));
+    finish(draft, skip, lk);
   }
   const fighterHpA = totalHp(pick(tA, A, (s) => s.kind === "fighter"));
   const fighterHpD = totalHp(pick(tD, D, (s) => s.kind === "fighter"));
@@ -148,6 +166,9 @@ export function resolveBattle(
   // ------------------------------------------------------------ 2. Luftschlag
   {
     const draft = beginPhase("luftschlag", A, D);
+    const lk = rollPhase();
+    const fA = factorOf(lk, "attacker");
+    const fD = factorOf(lk, "defender");
     const isBomber = (s: Stat) => s.kind === "bomber";
     const firesAtAir = (s: Stat) => (s.kind === "ship" || s.kind === "defense") && s.attack.luft > 0;
     const strikeTarget = (s: Stat) => s.kind === "ship" || s.kind === "defense";
@@ -165,8 +186,8 @@ export function resolveBattle(
         if (!canA && !canD) break;
         draft.rounds++;
         // Zuerst die Flugabwehr (Flak und Schiffe) auf die Bomber.
-        const ra = randomFactor(rng, spread);
-        const rd = randomFactor(rng, spread);
+        const ra = randomFactor(rng, spread) * fA;
+        const rd = randomFactor(rng, spread) * fD;
         const flakOnA = volley(
           pick(tD, D, firesAtAir),
           pick(tA, A, isBomber),
@@ -184,8 +205,8 @@ export function resolveBattle(
         applyDamage(tA, A, flakOnA, carryA);
         applyDamage(tD, D, flakOnD, carryD);
         // Dann schlagen die überlebenden Bomber beider Seiten gleichzeitig zu.
-        const sa = randomFactor(rng, spread);
-        const sd = randomFactor(rng, spread);
+        const sa = randomFactor(rng, spread) * fA;
+        const sd = randomFactor(rng, spread) * fD;
         const strikeOnD = volley(
           pick(tA, A, isBomber),
           pick(tD, D, strikeTarget),
@@ -205,7 +226,7 @@ export function resolveBattle(
       }
       if (draft.rounds === 0) skip = "no_targets";
     }
-    phases.push(endPhase(draft, A, D, skip, table));
+    finish(draft, skip, lk);
   }
 
   // ------------------------------------------------------------ 3. U-Boot-Angriff
@@ -215,6 +236,9 @@ export function resolveBattle(
   const isSurface = (s: Stat) => s.kind === "ship";
   {
     const draft = beginPhase("ubootangriff", A, D);
+    const lk = rollPhase();
+    const fA = factorOf(lk, "attacker");
+    const fD = factorOf(lk, "defender");
     const salvos = balance.combat.torpedoSalvos ?? 1;
     let skip: string | null = null;
     if (pick(tA, A, isSub).length === 0 && pick(tD, D, isSub).length === 0) skip = "no_submarines";
@@ -224,8 +248,8 @@ export function resolveBattle(
         const canD = pick(tD, D, isSub).length > 0 && pick(tA, A, isSurface).length > 0;
         if (!canA && !canD) break;
         draft.rounds++;
-        const ra = randomFactor(rng, spread);
-        const rd = randomFactor(rng, spread);
+        const ra = randomFactor(rng, spread) * fA;
+        const rd = randomFactor(rng, spread) * fD;
         const toD = volley(pick(tA, A, isSub), pick(tD, D, isSurface), (s) => withMorale(moraleA, s.attack.see, s), ra, draft.damage.attacker);
         const toA = volley(pick(tD, D, isSub), pick(tA, A, isSurface), (s) => withMorale(moraleD, s.attack.see, s), rd, draft.damage.defender);
         applyDamage(tD, D, toD, carryD);
@@ -233,12 +257,15 @@ export function resolveBattle(
       }
       if (draft.rounds === 0) skip = "no_targets";
     }
-    phases.push(endPhase(draft, A, D, skip, table));
+    finish(draft, skip, lk);
   }
 
   // ------------------------------------------------------------ 4. Seegefecht
   {
     const draft = beginPhase("seegefecht", A, D);
+    const lk = rollPhase();
+    const fA = factorOf(lk, "attacker");
+    const fD = factorOf(lk, "defender");
     const isShip = (s: Stat) => s.kind === "ship" || s.kind === "sub";
     // Verteidiger: Schiffe und alle Anlagen mit See-Angriff (Küstenbatterien feuern mit).
     const defSea = (s: Stat) => isShip(s) || (s.kind === "defense" && s.attack.see > 0);
@@ -262,8 +289,8 @@ export function resolveBattle(
         const canHit = (from: typeof sa, to: typeof sa) => from.some(([s]) => to.some(([t]) => hitValue(s, t) > 0));
         if (!canHit(sa, sd) && !canHit(sd, sa)) break;
         draft.rounds++;
-        const ra = randomFactor(rng, spread);
-        const rd = randomFactor(rng, spread);
+        const ra = randomFactor(rng, spread) * fA;
+        const rd = randomFactor(rng, spread) * fD;
         const toD = volley(sa, pick(tD, D, (s) => defSea(s) && surfaceTarget(s)), (s, t) => withMorale(moraleA, seaValue(s, t), s), ra, draft.damage.attacker);
         const toA = volley(sd, pick(tA, A, surfaceTarget), (s) => withMorale(moraleD, s.attack.see, s), rd, draft.damage.defender);
         // Gleicher Zufallsfaktor wie die Salve über Wasser: ohne U-Boote ändert sich nichts am Zufallsstrom.
@@ -276,13 +303,16 @@ export function resolveBattle(
       }
       if (draft.rounds === 0) skip = "no_targets";
     }
-    phases.push(endPhase(draft, A, D, skip, table));
+    finish(draft, skip, lk);
   }
 
   // ------------------------------------------------------------ 5. Landung
   let landed = false;
   {
     const draft = beginPhase("landung", A, D);
+    const lk = rollPhase();
+    const fA = factorOf(lk, "attacker");
+    const fD = factorOf(lk, "defender");
     const isGround = (s: Stat) => s.kind === "ground";
     const defLand = (s: Stat) => s.kind === "ground" || s.id === "bunkerlinie";
     let skip: string | null = null;
@@ -307,7 +337,7 @@ export function resolveBattle(
       // Minensperren wirken einmal; Pioniere im Landungsverband halbieren den Schaden.
       let mineDamage = 0;
       for (const [s, n] of pick(tD, D, (x) => x.oneShot > 0)) {
-        const d = s.oneShot * n * ((A.pioniere ?? 0) > 0 ? PIONEER_MINE_FACTOR : 1) * modValue(attacker.modifiers, "mineDamage");
+        const d = s.oneShot * n * ((A.pioniere ?? 0) > 0 ? PIONEER_MINE_FACTOR : 1) * modValue(attacker.modifiers, "mineDamage") * fD;
         mineDamage += d;
         draft.damage.defender[s.id] = (draft.damage.defender[s.id] ?? 0) + d;
       }
@@ -327,8 +357,8 @@ export function resolveBattle(
         const gd = pick(tD, D, defLand);
         if (ga.length === 0 || gd.length === 0) break;
         draft.rounds++;
-        const ra = randomFactor(rng, spread);
-        const rd = randomFactor(rng, spread);
+        const ra = randomFactor(rng, spread) * fA;
+        const rd = randomFactor(rng, spread) * fD;
         const shootersD = [...gd, ...pick(tD, D, coastGuns)];
         const toD = volley(ga, gd, (s, t) => withMorale(moraleA, groundValue(s, t), s), ra, draft.damage.attacker);
         const toA = volley(shootersD, ga, (s) => withMorale(moraleD, s.attack.land, s), rd, draft.damage.defender);
@@ -336,7 +366,7 @@ export function resolveBattle(
         applyDamage(tA, A, toA, carryA);
       }
     }
-    phases.push(endPhase(draft, A, D, skip, table));
+    finish(draft, skip, lk);
   }
 
   // ------------------------------------------------------------ Ergebnis

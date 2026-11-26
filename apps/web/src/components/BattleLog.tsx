@@ -1,7 +1,9 @@
 // Kampfbericht als Logbuch: Siegel-Kopf, Phasen als Einträge an einer Tintenlinie, Beute als Tafel.
+// Je Phase seit v1.4 die W20-Würfe beider Seiten (Kriegsglück) und Balken des ausgeteilten Schadens.
 import { fmtNum, label } from "../lib/names.ts";
 import { Icon } from "../icons.tsx";
 import { UnitChips } from "../ui.tsx";
+import { DamageBars, PhaseDice } from "./BattleDice.tsx";
 
 type Counts = Record<string, number>;
 export interface Phase {
@@ -13,6 +15,12 @@ export interface Phase {
   after: { attacker: Counts; defender: Counts };
   entscheidend: string | null;
   entscheidendSide: "attacker" | "defender" | null;
+  /** Ausgeteilter Schaden je Einheitentyp (ältere Berichte: evtl. fehlend). */
+  damage?: { attacker: Record<string, number>; defender: Record<string, number> };
+  /** W20-Würfe des Kriegsglücks (seit v1.4; ältere Berichte ohne). */
+  luck?: { attacker: number; defender: number };
+  /** Faktor der Würfe (vom Server ergänzt, report.get). */
+  luckFactor?: { attacker: number; defender: number };
 }
 interface Outcome { before: Counts; survivors: Counts; losses: Counts; returned: Counts; final: Counts }
 export interface Battle {
@@ -117,6 +125,8 @@ export function BattleLog({ b, names, role, protectedPerResource = null }: {
                 <Side name={names[0]} before={p.before.attacker} after={p.after.attacker} />
                 <Side name={names[1]} before={p.before.defender} after={p.after.defender} />
               </div>
+              {p.luck && <PhaseDice luck={p.luck} names={names} factor={p.luckFactor ?? null} />}
+              {p.damage && <DamageBars damage={p.damage} names={names} />}
               {p.entscheidend && (
                 <p className="font-serif italic text-[13px] text-see mt-1.5">
                   Entscheidend: {label(p.entscheidend)} ({p.entscheidendSide === "attacker" ? names[0] : names[1]})

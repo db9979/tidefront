@@ -124,6 +124,8 @@ export interface Balance {
     aircraftDamagedShare: number;
     /** Salven des U-Boot-Angriffs aus dem Verborgenen vor dem Seegefecht (Vorgabe 1). */
     torpedoSalvos?: number;
+    /** Kriegsglück (seit v1.4): ein Würfel je Phase und Seite als Schadensfaktor; fehlt es, kein Würfel. */
+    luck?: LuckBalance;
   };
   loot: {
     maxShareOfUnprotected: number;
@@ -152,6 +154,41 @@ export interface Balance {
   market: MarketBalance;
   /** Forschung (seit v1.3); fehlt sie, gibt es keine Forschung. */
   research?: ResearchBalance;
+  /** Veteranen (seit v1.4); fehlt es, sammeln Einheiten keine Erfahrung. */
+  veterans?: VeteranBalance;
+}
+
+/** Würfel des Kriegsglücks: 1 = min, die = max, dazwischen linear innerMin … innerMax (luck.ts). */
+export interface LuckBalance {
+  die: number;
+  min: number;
+  max: number;
+  innerMin: number;
+  innerMax: number;
+}
+
+export interface VeteranRank {
+  id: string;
+  name: string;
+  /** Mindesterfahrung (Durchschnitt je Einheit des Typs). */
+  minXp: number;
+  /** Angriffsbonus (0,05 = +5 %). */
+  attackBonus: number;
+}
+
+export interface VeteranBalance {
+  /** Ränge aufsteigend nach minXp; der erste hat minXp 0 (Rekrut). */
+  ranks: VeteranRank[];
+  /** Erfahrung je überlebender Einheit nach einem Sieg bzw. einer Niederlage (vor dem Stärkefaktor). */
+  xpWin: number;
+  xpLoss: number;
+  /** Stärkefaktor = gegnerische / eigene Lebenspunkte vor dem Kampf, begrenzt auf [ratioMin, ratioMax]. */
+  ratioMin: number;
+  ratioMax: number;
+  /** Verluste: Erfahrung × (1 − lossPenalty × Anteil der verlorenen Einheiten am Bestand des Typs). */
+  lossPenalty: number;
+  /** Obergrenze der Erfahrung je Typ. */
+  maxXp: number;
 }
 
 // ---------------------------------------------------------------- Forschung
@@ -288,6 +325,8 @@ export interface BaseState {
   protection: ProtectionState;
   /** Forschung dieser Saison; fehlt sie, ist nichts erforscht. */
   research?: ResearchState;
+  /** Erfahrung je Einheitentyp (Durchschnitt je Einheit, Stützpunkt und Saison); fehlt sie, sind alle Rekruten. */
+  veterancy?: Record<string, number>;
 }
 
 export interface ProductionInfo {
@@ -397,6 +436,8 @@ export interface PhaseReport {
   /** Einheitentyp mit dem meisten ausgeteilten Schaden, null ohne Schaden. */
   entscheidend: string | null;
   entscheidendSide: Side | null;
+  /** Kriegsglück: W20-Wurf je Seite in dieser Phase (seit v1.4; fehlt in älteren Berichten). */
+  luck?: { attacker: number; defender: number };
 }
 
 export interface SideOutcome {

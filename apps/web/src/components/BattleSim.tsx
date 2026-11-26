@@ -10,6 +10,7 @@ import { unitTone } from "../lib/info.ts";
 import { nestAsDefender, positive, raidAgainst, simulate, splitDefender, type Counts, type Range, type SimStats } from "../lib/sim.ts";
 import { Icon, IconTile } from "../icons.tsx";
 import { Bar, Button, ResChips, Stepper } from "../ui.tsx";
+import { SimHistogram } from "./SimHistogram.tsx";
 
 const pct = (v: number) => `${fmtNum(v * 100)} %`;
 const rangeText = (r: Range) => `Ø ${fmtNum(r.avg, r.avg < 10 && r.avg % 1 !== 0 ? 1 : 0)} (${fmtNum(r.min)}–${fmtNum(r.max)})`;
@@ -46,8 +47,11 @@ export function SimResult({ stats, ownTitle = "Eigene Verluste", enemyTitle = "V
           <span className={`font-serif text-3xl ${color}`}>{pct(stats.winRate)}</span>
         </div>
         <Bar value={stats.winRate} tone={tone} />
-        <div className="text-xs text-ink2 mt-1">Landung in {pct(stats.landedRate)} der {stats.runs} Durchläufe · verlorene Einheiten {rangeText(stats.attackerLostTotal)}</div>
+        <div className="text-xs text-ink2 mt-1">
+          Spannweite {pct(stats.winInterval[0])}–{pct(stats.winInterval[1])} (90 %, Kriegsglück eingerechnet) · Landung in {pct(stats.landedRate)} der {stats.runs} Durchläufe · verlorene Einheiten {rangeText(stats.attackerLostTotal)}
+        </div>
       </div>
+      <SimHistogram stats={stats} />
       <LossRows title={ownTitle} rows={stats.attackerLost} />
       <LossRows title={enemyTitle} rows={stats.defenderLost} />
       {showLoot && (
@@ -75,9 +79,10 @@ export type ProbeTarget =
   | { kind: "base"; col: number; row: number; name: string };
 
 /** Probekampf in der Missionsplanung: gewählter Verband gegen Nest-Besatzung oder letztes Lagebild. */
-export function ProbeKampf({ balance, units, versorgungsmangel, target, onScout }: { balance: Balance; units: Counts; versorgungsmangel: boolean; target: ProbeTarget; onScout: () => void }) {
+export function ProbeKampf({ balance, units, versorgungsmangel, modifiers, target, onScout }: { balance: Balance; units: Counts; versorgungsmangel: boolean; modifiers?: BaseData["modifiers"]; target: ProbeTarget; onScout: () => void }) {
   const scout = useQuery({ ...trpc.comfort.scout.queryOptions(target.kind === "base" ? { col: target.col, row: target.row } : { col: 0, row: 0 }), enabled: target.kind === "base" });
-  const attacker = useMemo<AttackerInput>(() => ({ units: positive(units), versorgungsmangel }), [units, versorgungsmangel]);
+  // Eigene Modifikatoren (Forschung, Veteranen) rechnen mit; das Ziel ohne (sein Stand ist unbekannt).
+  const attacker = useMemo<AttackerInput>(() => ({ units: positive(units), versorgungsmangel, ...(modifiers ? { modifiers } : {}) }), [units, versorgungsmangel, modifiers]);
   const defender = useMemo<DefenderInput | null>(() => {
     if (target.kind === "nest") return nestAsDefender(target.level, balance);
     const s = scout.data;
@@ -166,13 +171,14 @@ export function FreeSim({ balance, base }: { balance: Balance; base: BaseData })
   const defIds = [...playerIds, ...Object.keys(balance.npcUnits), ...Object.keys(balance.defenses)];
   const split = useMemo(() => splitDefender(def, balance), [def, balance]);
   const attacker = useMemo<AttackerInput>(
-    () => (attMode === "kartell" ? raidAgainst(split.units, split.defenses, balance) : { units: positive(att), versorgungsmangel: attMode === "eigen" && base.versorgungsmangel }),
-    [attMode, att, split, balance, base.versorgungsmangel],
+    // Eigene Verbände rechnen mit den eigenen Modifikatoren (Forschung, Veteranen).
+    () => (attMode === "kartell" ? raidAgainst(split.units, split.defenses, balance) : { units: positive(att), versorgungsmangel: attMode === "eigen" && base.versorgungsmangel, ...(attMode === "eigen" ? { modifiers: base.modifiers } : {}) }),
+    [attMode, att, split, balance, base.versorgungsmangel, base.modifiers],
   );
   const defender = useMemo<DefenderInput>(() => {
     const nest = defPreset.startsWith("nest:") ? nestAsDefender(Number(defPreset.slice(5)), balance) : null;
     if (nest) return { ...split, fixedLoot: nest.fixedLoot };
-    if (defPreset === "hafen") return { ...split, resources: base.resources, protectedPerResource: base.bunkerProtection, versorgungsmangel: base.versorgungsmangel };
+    if (defPreset === "hafen") return { ...split, resources: base.resources, protectedPerResource: base.bunkerProtection, versorgungsmangel: base.versorgungsmangel, modifiers: base.modifiers };
     return split;
   }, [defPreset, split, balance, base]);
 

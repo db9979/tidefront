@@ -40,4 +40,6 @@ export { ensureWorldEventPlanner, siegeEffects, clearWorldEvents } from "./world
 export { spawnWorldEvent } from "./world-events-spawn.ts";
 export { worldEventsView } from "./world-events-view.ts";
 export * from "./modifiers.ts";
+export * from "./battle-stats.ts";
+export { veteranView, withAttackExperience, type VeteranInfo } from "./veterans.ts";
 export { researchStart, researchCancel, researchChoose, researchView, TECH_NAMES } from "./research.ts";

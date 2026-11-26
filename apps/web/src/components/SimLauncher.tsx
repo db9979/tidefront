@@ -23,7 +23,7 @@ export function ProbeCard({ balance, base, units, target, onScout }: { balance: 
         </div>
       ) : (
         <Suspense fallback={<Wait />}>
-          <ProbeKampf balance={balance} units={units} versorgungsmangel={base.versorgungsmangel} target={target} onScout={onScout} />
+          <ProbeKampf balance={balance} units={units} versorgungsmangel={base.versorgungsmangel} modifiers={base.modifiers} target={target} onScout={onScout} />
         </Suspense>
       )}
     </Card>

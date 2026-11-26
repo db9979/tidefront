@@ -38,7 +38,9 @@ import { activeMissionCount, baseOfPlayer } from "./store.ts";
 import { loadMarket, targetAt } from "./commands.ts";
 // Weltereignisse: Vorschau einer Mission gegen ein Ereignis.
 import { previewAgainstEvent } from "./world-events-missions.ts";
-import { modsOf } from "./modifiers.ts";
+import { modifierBreakdown, modsOf } from "./modifiers.ts";
+import { veteranView } from "./veterans.ts";
+import { withLuckFactors } from "./battle-stats.ts";
 import { researchView } from "./research.ts";
 
 /** Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband.) */
@@ -67,7 +69,7 @@ export async function baseView(engine: Engine, playerId: number) {
   if (!own) return { serverNow: nowMs, base: null };
   await processDueForBase(engine, own.id, nowMs);
   const row = (await baseOfPlayer(engine.db, playerId))!;
-  const mods = await modsOf(engine.db, row, nowMs);
+  const { total: mods, sources: modSources } = await modifierBreakdown(engine.db, row, nowMs);
   const s = settle(row.state, nowMs, balance, mods);
   const rates = productionRates(s, balance, mods);
   const buildings = Object.keys(balance.buildings).map((id) => {
@@ -175,6 +177,9 @@ export async function baseView(engine: Engine, playerId: number) {
       deliveries: deliveries.map((d) => ({ id: d.id, resource: d.resource, qty: d.qty, arriveAtMs: d.arriveAt.getTime() })),
       /** Alle wirksamen Modifikatoren (Forschung und weitere Quellen) für Info-Blätter. */
       modifiers: mods,
+      /** Dieselben Modifikatoren nach Quelle getrennt (Forschung, Veteranen, …) für die Wertaufschlüsselung. */
+      modifierSources: modSources.filter((x) => Object.keys(x.mods).length > 0),
+      veterans: veteranView(s),
       research: researchView(s, mods),
     },
   };
@@ -308,7 +313,8 @@ export async function reportGet(engine: Engine, playerId: number, id: number) {
     winner: r.winner,
     seed: r.seed,
     balanceVersion: r.balanceVersion,
-    data: r.report as Record<string, unknown>,
+    // Kampfberichte mit Würfen (v1.4) erhalten je Phase den Würfelfaktor für die Anzeige.
+    data: withLuckFactors(r.report as Record<string, unknown>),
   };
 }
 
