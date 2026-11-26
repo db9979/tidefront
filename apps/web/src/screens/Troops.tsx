@@ -15,6 +15,7 @@ import { TECH, techName } from "../lib/research.ts";
 import { unitBreakdown } from "../lib/breakdown.ts";
 import { Breakdown, RankBadge, VeteranLine } from "../components/Breakdown.tsx";
 import { spyKindText } from "../components/SpyPlan.tsx"; // Nachrichtendienst
+import { OpsMissionLine, StationedGuestsCard } from "../components/AllianceOps.tsx"; // Allianz-Ops
 
 /** Werte, die die Aufschlüsselung zeigt (aus der festen Werte-Tabelle ausgeblendet). */
 const BROKEN_DOWN = /^(Lebenspunkte|Angriff|U-Jagd|Tempo|Ladung|Treibstoff)/;
@@ -71,15 +72,16 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
               <Icon id={m.type} size={36} />
               <div className="flex-1 min-w-0">
               <div className="flex justify-between gap-2">
-                <strong>{m.spy ? spyKindText(m.spy.kind) : label(m.type)} {m.status === "returning" ? (m.recalled ? "· zurückgerufen" : "· Rückfahrt") : ""}</strong>
+                <strong>{m.spy ? spyKindText(m.spy.kind) : m.allianceRaidId ? label("sammelangriff") : label(m.type)} {m.status === "returning" ? (m.recalled ? "· zurückgerufen" : "· Rückfahrt") : ""}</strong>
                 <button type="button" className="tap text-sea-300 underline text-xs" onClick={() => onShowOnMap({ col: m.target.col, row: m.target.row })}>
                   {m.target.kind === "kartell" ? "Kartell-Informanten" : targetName(map.data, m.target.col, m.target.row)}
                 </button>
               </div>
-              <div className="text-xs text-slate-300"><UnitChips counts={m.status === "returning" ? m.returning : m.units} /></div>
+              <div className="text-xs text-slate-300"><UnitChips counts={m.status === "returning" || m.status === "stationed" ? m.returning : m.units} /></div>
+              {m.status === "staged" || m.status === "stationed" ? <OpsMissionLine m={m} /> : (
               <div className="text-sea-300">
                 {m.status === "outbound" ? `Ankunft in ${fmtDuration(m.arriveAtMs - now)}` : `Rückkehr in ${fmtDuration(m.returnAtMs - now)}`}
-              </div>
+              </div>)}
               {m.cargoHome && Object.values(m.cargoHome).some((v) => v > 0) && (
                 <div className="text-xs text-brass-400">Ladung: <UnitChips counts={m.cargoHome} /></div>
               )}
@@ -91,6 +93,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
           ))}
         </ul>
       </Card>
+      <StationedGuestsCard base={base} now={now} />
       <ResearchCard base={base} now={now} onOpen={onResearch} />
       <RecentMissions />
       <FreeSimCard balance={balance} base={base} />

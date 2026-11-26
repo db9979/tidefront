@@ -15,6 +15,7 @@ const NAMES: Record<string, string> = {
   nachrichtendienst: "Nachrichtendienst", spion: "Spion", spionage: "Spionage", sabotage: "Sabotage",
   erkunden: "Erkunden", desinformation: "Desinformation", bauschlange: "Bauschlange",
   anfaengerschutz: "Anfängerschutz", niederlage: "Schutz nach Niederlage", nachtschild: "Nachtschild",
+  sammelangriff: "Sammelangriff", stationierung: "Stationierung", // Allianz-Ops
 };
 
 const PLURAL: Record<string, string> = {
@@ -39,6 +40,20 @@ export function label(id: string): string {
 export const RES_ICON: Record<string, string> = { stahl: "⛓", treibstoff: "🛢", elektronik: "🔌", proviant: "🥫" };
 
 const ERRORS: Record<string, string> = {
+  // Allianz-Ops: Sammelangriff und Stationierung
+  station_not_ally: "Stationieren geht nur im Hafen eines Verbündeten (gleiche Allianz).",
+  station_full: "In diesem Hafen liegen schon so viele verbündete Verbände wie erlaubt.",
+  not_stationed: "Dieser Verband ist nicht stationiert.",
+  no_raid: "Diesen Sammelangriff gibt es nicht (mehr).",
+  raid_closed: "Die Beitrittsfrist ist vorbei.",
+  raid_launched: "Die Verbände sind schon ausgelaufen – nur noch ein Rückruf ist möglich.",
+  raid_other_alliance: "Dieser Sammelangriff gehört zu einer anderen Allianz.",
+  raid_joined: "Du bist bei diesem Sammelangriff schon dabei.",
+  raid_full: "Der Sammelangriff hat schon die Höchstzahl an Verbänden.",
+  raid_limit: "Deine Allianz hat schon so viele offene Sammelangriffe wie erlaubt.",
+  raid_bad_target: "Ein Sammelangriff braucht ein festes Ziel (Hafen, Nest, Großflotte oder Belagerung) – das Schatzschiff fährt.",
+  not_joined: "Du bist bei diesem Sammelangriff nicht dabei.",
+  bad_time: "Frist oder Ankunftszeit liegt außerhalb des erlaubten Rahmens.",
   // Weltereignisse
   no_event: "Dieses Weltereignis gibt es nicht (mehr).",
   event_over: "Dieses Weltereignis ist schon vorbei.",

@@ -39,6 +39,7 @@ import { researchRouter } from "./routers/research.ts";
 import { guideRouter } from "./routers/guide.ts";
 import { espionageRouter } from "./routers/espionage.ts";
 import { bugReportRouter } from "./routers/bug-report.ts";
+import { allianceOpsRouter } from "./routers/alliance-ops.ts"; // Allianz-Ops
 
 export type { Ctx };
 
@@ -180,6 +181,7 @@ export const appRouter = t.router({
   guide: guideRouter,
   espionage: espionageRouter,
   bugReport: bugReportRouter,
+  allianceOps: allianceOpsRouter, // Allianz-Ops: Sammelangriff, Stationierung
 });
 
 export type AppRouter = typeof appRouter;

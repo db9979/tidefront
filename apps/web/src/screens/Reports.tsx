@@ -10,13 +10,15 @@ import { RepeatButton } from "../components/Repeat.tsx";
 import { WorldEventReportNote } from "../components/WorldEvents.tsx";
 import { useBackLayer } from "../lib/back.ts";
 import { SabotageReport, SpyReport } from "../components/Intel.tsx";
+import { AllianceOpsReport } from "../components/AllianceOps.tsx"; // Allianz-Ops
 
-const KIND_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "kartell", aufklaerung: "aufklaerung", transport: "transport", leer: "kartell", abgewiesen: "schild", weltereignis: "kartell", weltereignis_leer: "kartell", spionage: "spionage", sabotage: "sabotage" };
+const KIND_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "kartell", aufklaerung: "aufklaerung", transport: "transport", leer: "kartell", abgewiesen: "schild", weltereignis: "kartell", weltereignis_leer: "kartell", spionage: "spionage", sabotage: "sabotage", sammelangriff: "sammelangriff" };
 
 type Counts = Record<string, number>;
 
 /** Zeile unter dem Titel: aus Sicht des Lesers. */
 function roleText(role: string, kind: string): string {
+  if (kind === "sammelangriff") return role === "defender" ? "Sammelangriff auf dich" : "Sammelangriff deiner Allianz"; // Allianz-Ops
   if (role === "recipient") return "Lieferung an dich";
   if (role === "defender") return "Angriff auf dich";
   if (kind === "transport") return "eigene Lieferung";
@@ -72,7 +74,7 @@ function ReportDetail({ id, onBack }: { id: number; onBack: () => void }) {
         <Button kind="secondary" onClick={onBack}>Zurück</Button>
       </div>
       <p className="text-xs mono text-slate-400 mb-3">{fmtTime(r.atMs)}</p>
-      {r.role === "attacker" && r.kind !== "kartell" && r.kind !== "spionage" && !r.kind.startsWith("weltereignis") && <RepeatButton reportId={r.id} />}
+      {r.role === "attacker" && r.kind !== "kartell" && r.kind !== "spionage" && r.kind !== "sammelangriff" && !d.allianceRaid && !r.kind.startsWith("weltereignis") && <RepeatButton reportId={r.id} />}
       {r.kind.startsWith("weltereignis") && <WorldEventReportNote kind={r.kind} data={d} />}
       {r.kind === "spionage" && d.spy ? <SpyReport d={d} role={r.role} /> : null}
       {r.kind === "sabotage" && d.sabotage ? <SabotageReport d={d} /> : null}
@@ -85,6 +87,7 @@ function ReportDetail({ id, onBack }: { id: number; onBack: () => void }) {
           salvage={d.salvage && typeof d.salvage === "object" ? (d.salvage as Counts) : null}
         />
       ) : null}
+      <AllianceOpsReport d={d} />
       {d.scout && r.kind !== "spionage" ? <ScoutView s={d.scout as Record<string, unknown>} owner={String(d.owner ?? "")} /> : null}
       {d.nest ? <NestScout n={d.nest as { level: number; empty: boolean; garrison: { units: Counts; defenses: Counts; loot: Counts } | null }} /> : null}
       {r.kind === "transport" && (

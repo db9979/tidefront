@@ -181,6 +181,8 @@ export interface Balance {
   espionage?: EspionageBalance;
   weather?: WeatherBalance; // Wetter (seit v1.6); fehlt es, rechnen Wind und Sonne mit 0
   power?: PowerBalance;
+  /** Allianz-Ops: Sammelangriff und Stationierung (alliance-ops.ts); fehlt es, gelten die Vorgaben. */
+  allianceOps?: import("./alliance-ops.ts").AllianceOpsBalance;
 }
 
 /** Würfel des Kriegsglücks: 1 = min, die = max, dazwischen linear innerMin … innerMax (luck.ts). */

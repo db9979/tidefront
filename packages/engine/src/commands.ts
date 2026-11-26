@@ -38,6 +38,7 @@ import { siegeEffects } from "./world-events.ts";
 import { effectiveMarketRefs } from "./market-news.ts";
 import { modifiersFor, modsOf } from "./modifiers.ts";
 import { applyPendingBoost } from "./guide.ts";
+import { STATION_TYPE, stationLaunch } from "./alliance-ops-station.ts"; // Allianz-Ops: Stationierung
 
 export type Rejected = { ok: false; code: string };
 type Draft<T> = T | (Rejected & { keepWrites?: boolean });
@@ -240,6 +241,7 @@ export function launchMission(
     const b = await ownBaseLocked(ctx);
     // Weltereignis als Ziel (world-events-missions.ts).
     if (input.eventId !== undefined) return launchAgainstEvent(ctx.tx, playerId, b, { ...input, eventId: input.eventId }, ctx.nowMs, ctx.notify);
+    if (input.type === STATION_TYPE) return stationLaunch(ctx.tx, playerId, b, input, ctx.nowMs, ctx.notify); // Allianz-Ops
     const target = await targetAt(ctx.tx, input.col, input.row);
     if (!target) fail("no_target");
     if (target.kind === "base" && target.playerId === playerId) fail("own_base");

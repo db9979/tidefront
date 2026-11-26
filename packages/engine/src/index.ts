@@ -53,3 +53,7 @@ export { guideView, claimGuideStep, claimGuideFinal, hafenmeisterIds, shortenQue
 export { spyPreview, spyLaunch, intelView, intelOwnView, type SpyInput } from "./espionage.ts";
 export { gridView, weatherModifiers, missionWeather, battleWeather } from "./weather.ts";
 export * from "./bug-report.ts";
+// Allianz-Ops: Sammelangriff und Stationierung
+export { openRaid, joinRaid, withdrawRaid, cancelRaid } from "./alliance-ops-raid.ts";
+export { stationRelease, STATION_TYPE } from "./alliance-ops-station.ts";
+export { allianceRaidsView } from "./alliance-ops-view.ts";

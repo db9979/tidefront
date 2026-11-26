@@ -15,7 +15,11 @@ export async function withAttackExperience(tx: DbOrTx, reportId: number | null, 
     .select({ report: tables.battleReport.report, attackerPlayerId: tables.battleReport.attackerPlayerId })
     .from(tables.battleReport)
     .where(eq(tables.battleReport.id, reportId));
-  const battle = (r?.report as { battle?: BattleReport } | undefined)?.battle;
+  const data = r?.report as { battle?: BattleReport; allianceRaid?: { participants: { playerId: number; outcome: BattleReport["attacker"] }[] } } | undefined;
+  const battle = data?.battle;
+  // Allianz-Ops: im Sammelangriff zählt der eigene Anteil der gemeinsamen Streitmacht.
+  const own = data?.allianceRaid?.participants.find((x) => x.playerId === playerId);
+  if (battle && own) return applyAttackExperience(state, { ...battle, attacker: own.outcome }, balance);
   if (!battle || r.attackerPlayerId !== playerId) return state;
   return applyAttackExperience(state, battle, balance);
 }

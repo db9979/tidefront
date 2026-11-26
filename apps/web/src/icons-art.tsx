@@ -109,6 +109,11 @@ export const ART: Record<string, ReactNode> = {
   hafenmeister: (<><path d="M20 4 L30 26 L24 30 L12 8 Z M44 4 L34 26 L40 30 L52 8 Z" {...hd} strokeWidth={1.8} /><circle cx="32" cy="41" r="18" {...h} /><circle cx="32" cy="41" r="12.5" {...p} strokeWidth={1.6} /><path d="M32 33 V50 M27 37 H37 M25 44 Q26 50 32 50 Q38 50 39 44" fill="none" stroke={MESSING} strokeWidth={2.4} strokeLinecap="round" /><circle cx="32" cy="31.5" r="1.8" fill={MESSING} /></>),
   anker: (<><circle cx="32" cy="11" r="5" {...p} /><path d="M32 16 V55 M21 25 H43 M11 38 Q15 55 32 55 Q49 55 53 38" {...ln} strokeWidth={3.6} /><path d="M7 41 L11 35 L15 41 M49 41 L53 35 L57 41" {...ln} strokeWidth={2.6} /></>),
 
+  // Allianz-Ops – Sammelangriff: drei Kurslinien laufen auf einer Zielscheibe zusammen (Siegel im Zentrum).
+  sammelangriff: (<><circle cx="42" cy="22" r="16" {...p} /><circle cx="42" cy="22" r="9" fill="url(#tf-h)" {...K} strokeWidth={1.6} /><circle cx="42" cy="22" r="4" {...red} /><path d="M4 60 L31 33 M4 30 L28 24 M28 62 L37 36" {...ln} strokeWidth={3} /><path d="M33 31 L25 33 L31 39 Z M30 23 L23 19 L23 28 Z M38 34 L31 38 L38 42 Z" fill={INK} /></>),
+  // Allianz-Ops – Stationierung: Schild mit Anker, dahinter ein Wimpel der Verbündeten.
+  stationierung: (<><path d="M46 4 V30" {...ln} strokeWidth={2} /><path d="M46 5 L60 9 L46 13 Z" {...red} /><path d="M28 10 L48 17 V33 C48 46 39 54 28 59 C17 54 8 46 8 33 V17 Z" {...p} /><path d="M28 10 L48 17 V33 C48 46 39 54 28 59 Z" fill="url(#tf-h)" stroke="none" /><path d="M28 10 L48 17 V33 C48 46 39 54 28 59 C17 54 8 46 8 33 V17 Z" {...ln} /><circle cx="28" cy="22" r="3.2" fill={PAPER} stroke={INK} strokeWidth={2} /><path d="M28 25 V49 M21 31 H35 M17 39 Q19 49 28 49 Q37 49 39 39" fill="none" stroke={INK} strokeWidth={3} strokeLinecap="round" /></>),
+
   // ---------------------------------------------------------------- Wetter (v1.6)
   wind: (<path d="M6 22 H40 Q50 22 50 14 Q50 7 43 8 M6 33 H52 Q60 33 60 41 Q60 48 53 47 M6 44 H30 Q37 44 37 50 Q37 56 31 55" {...ln} strokeWidth={3} />),
   sonne: (<><circle cx="32" cy="32" r="12" {...h} /><path d="M32 6 V13 M32 51 V58 M6 32 H13 M51 32 H58 M14 14 L19 19 M45 45 L50 50 M50 14 L45 19 M19 45 L14 50" {...ln} strokeWidth={2.6} /></>),

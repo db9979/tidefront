@@ -273,5 +273,9 @@
       "researchFactor": 2
     },
     "disinfo": { "hours": 24, "forceFactor": 1.5, "resourceFactor": 0.4 }
+  },
+  "allianceOps": {
+    "raid": { "minJoinMinutes": 15, "maxJoinHours": 24, "maxArriveHours": 48, "maxOpenPerAlliance": 3, "maxParticipants": 8 },
+    "station": { "maxPerBase": 3 }
   }
 }

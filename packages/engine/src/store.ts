@@ -71,7 +71,8 @@ export async function activeMissionCount(tx: DbOrTx, baseId: number): Promise<nu
   const [r] = await tx
     .select({ n: sql<number>`count(*)::int` })
     .from(tables.mission)
-    .where(and(eq(tables.mission.baseId, baseId), inArray(tables.mission.status, ["outbound", "returning"])));
+    // Allianz-Ops: gebundene (staged) und stationierte Verbände belegen ihren Missionsplatz.
+    .where(and(eq(tables.mission.baseId, baseId), inArray(tables.mission.status, ["outbound", "returning", "staged", "stationed"])));
   return r?.n ?? 0;
 }
 
