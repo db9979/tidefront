@@ -12,6 +12,7 @@ x-app: &app
     VALKEY_URL: redis://valkey:6379
     INVITE_CODES: ${INVITE_CODES:-}
     LOG_LEVEL: ${LOG_LEVEL:-info}
+    SEASON_DAYS: ${SEASON_DAYS:-28}
     TZ: ${TZ:-Europe/Berlin}
 
 services:

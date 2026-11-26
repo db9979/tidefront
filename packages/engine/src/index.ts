@@ -5,4 +5,7 @@ export * from "./views.ts";
 export * from "./auth.ts";
 export * from "./audit.ts";
 export * from "./seed.ts";
+export * from "./scoring.ts";
+export * from "./season.ts";
+export * from "./social.ts";
 export { baseOfPlayer } from "./store.ts";

@@ -158,3 +158,19 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
   Startet der Kurs am Richtwert, steigt außerdem sein zum Richtwert bewerteter Gesamtwert nicht.
   Ein Kauf unter Richtwert ist erlaubt: Das ist eine Wette auf die Rückkehr des Kurses, kein Gewinn aus dem Nichts.
 - Auslegungen des Börsenkerns stehen in `packages/game-core/src/market/ENTSCHEIDUNGEN.md` und gelten als Teil dieser Regeln.
+
+## Saison und Wertung
+
+- Eine Saison dauert `SEASON_DAYS` Tage (Betriebseinstellung, Vorgabe 28). Es läuft immer genau eine Saison.
+- Kostenwert = Summe aller Ressourcen der Baukosten. Punkte je Kategorie = `floor(Kostenwert / 100)`, Gesamt = Summe der Kategorien.
+  - **Ausbau:** Kosten aller gebauten Gebäudestufen.
+  - **Militär:** Einheiten und Anlagen des Stützpunkts einschließlich der Verbände unterwegs.
+  - **Kampf:** Kostenwert der gegnerischen Einheiten und Anlagen, die laut Kampfbericht der Saison vernichtet wurden
+    (als Angreifer und als Verteidiger, auch gegen Nester und Kartell). Schnellboot zählt 250, Piratenmiliz 40.
+  - **Beute:** Summe der Beute aus eigenen Überfällen der Saison.
+- Rang nach Gesamtpunkten; Punktgleiche teilen den Rang.
+- Am Saisonende: Gold, Silber und Bronze für Rang 1 bis 3 (mit Punkten), je Kategorie eine Auszeichnung für den Besten.
+  Jeder Spieler erhält eine Systemnachricht mit Platz und Auszeichnungen.
+- Danach wird die Welt zurückgesetzt: Stützpunkte, Missionen, Lieferungen, Wracks, Kampfberichte und Kredite verfallen,
+  Nester sind wieder besetzt, die Börse steht auf Richtwert. Konten, Nachrichten und die Ruhmeshalle bleiben.
+  Jeder Spieler wählt einen neuen Hafen und erhält erneut Anfängerschutz.

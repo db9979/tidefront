@@ -4,6 +4,7 @@ import { market as marketCore } from "@tidefront/game-core";
 import { nestSites } from "@tidefront/world";
 import { tables, type Db } from "@tidefront/db";
 import { marketBalance } from "./context.ts";
+import { ensureSeason } from "./season.ts";
 
 /** INVITE_CODES="CODE1:5,CODE2" -> Code mit Anzahl Nutzungen (Vorgabe 1). */
 export function parseInviteCodes(raw: string | undefined): { code: string; maxUses: number }[] {
@@ -17,7 +18,7 @@ export function parseInviteCodes(raw: string | undefined): { code: string; maxUs
     });
 }
 
-export async function seed(db: Db, inviteCodes: string | undefined): Promise<{ nests: number; invites: number }> {
+export async function seed(db: Db, inviteCodes: string | undefined): Promise<{ nests: number; invites: number; season: number }> {
   const sites = nestSites();
   await db
     .insert(tables.nest)
@@ -35,5 +36,6 @@ export async function seed(db: Db, inviteCodes: string | undefined): Promise<{ n
       .values(c)
       .onConflictDoUpdate({ target: tables.inviteCode.code, set: { maxUses: sql`greatest(${tables.inviteCode.maxUses}, ${c.maxUses})` } });
   }
-  return { nests: sites.length, invites: codes.length };
+  const season = await ensureSeason(db, Date.now());
+  return { nests: sites.length, invites: codes.length, season: season.number };
 }

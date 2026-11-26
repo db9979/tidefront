@@ -166,3 +166,50 @@ export const auditRun = pgTable("audit_run", {
   details: jsonb("details").notNull(),
   createdAt: ts("created_at").notNull().defaultNow(),
 });
+
+// ================================================================ Soziales und Saison (Punkte 5 und 6)
+
+/** Nachricht zwischen Spielern; fromPlayerId null = Systemnachricht (z. B. Saisonende). */
+export const message = pgTable("message", {
+  id: serial("id").primaryKey(),
+  fromPlayerId: integer("from_player_id").references(() => player.id, { onDelete: "set null" }),
+  toPlayerId: integer("to_player_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  subject: text("subject"),
+  body: text("body").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  readAt: ts("read_at"),
+}, (t) => [
+  index("message_to").on(t.toPlayerId, t.createdAt),
+  index("message_from").on(t.fromPlayerId, t.createdAt),
+]);
+
+/** Saison: genau eine läuft (status running), ihr Ende ist als Ereignis season_end geplant. */
+export const season = pgTable("season", {
+  id: serial("id").primaryKey(),
+  number: integer("number").notNull(),
+  startsAt: ts("starts_at").notNull(),
+  endsAt: ts("ends_at").notNull(),
+  /** running | finished */
+  status: text("status").notNull().default("running"),
+  finishedAt: ts("finished_at"),
+}, (t) => [uniqueIndex("season_number").on(t.number)]);
+
+/** Endstand eines Spielers in einer beendeten Saison. */
+export const seasonResult = pgTable("season_result", {
+  id: serial("id").primaryKey(),
+  seasonId: integer("season_id").notNull().references(() => season.id, { onDelete: "cascade" }),
+  playerId: integer("player_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  /** Name zum Saisonende. */
+  playerName: text("player_name").notNull(),
+  rank: integer("rank").notNull(),
+  ausbau: integer("ausbau").notNull(),
+  militaer: integer("militaer").notNull(),
+  kampf: integer("kampf").notNull(),
+  beute: integer("beute").notNull(),
+  total: integer("total").notNull(),
+  /** Auszeichnungen: gold, silber, bronze, best_ausbau, best_militaer, best_kampf, best_beute. */
+  awards: jsonb("awards").notNull(),
+}, (t) => [
+  uniqueIndex("season_result_player").on(t.seasonId, t.playerId),
+  index("season_result_rank").on(t.seasonId, t.rank),
+]);

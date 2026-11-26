@@ -45,6 +45,33 @@ Auslegungen stehen in `packages/game-core/ENTSCHEIDUNGEN.md` und `packages/game-
   Lieferungen (`audit_run`).
 - Einladungscodes kommen aus `INVITE_CODES` und werden bei jedem `migrate` ergänzt.
 
+## Festlegungen: Andere Spieler und Saison (Punkte 5 und 6)
+
+- Tabellen `message`, `season`, `season_result` (Abschnitt am Ende von `schema.ts`). Saisonlänge aus `SEASON_DAYS`
+  (Vorgabe 28). `migrate` legt Saison 1 an, wenn keine läuft (Start = jetzt), und plant `season_end` im `game_event`.
+- Rangliste (`packages/engine/src/scoring.ts`): Punkte = Kostenwert / 100, je Kategorie abgerundet; Gesamt = Summe.
+  Kostenwert = Summe aller vier Ressourcen der Baukosten.
+  - Ausbau: Kosten aller gebauten Gebäudestufen (`upgradeCost` von Stufe 0 bis L-1).
+  - Militär: Einheiten daheim und Anlagen plus laufende Missionen (ausfahrend: Plan, heimkehrend: `returning`).
+    Ausbildungsaufträge zählen erst nach Fertigstellung.
+  - Kampf: aus `battle_report` seit Saisonbeginn, nur Berichte mit `battle`: als Angreifer `battle.defender.losses`,
+    als Verteidiger `battle.attacker.losses` (Verluste laut Bericht, Rückkehrer werden nicht abgezogen).
+    NPC-Einheiten haben feste Werte: Schnellboot 250, Piratenmiliz 40; Anlagen der Nester zählen mit ihren Baukosten.
+  - Beute: Summe `battle.loot` der Berichte, in denen der Spieler Angreifer ist (Kartell-Beute zählt für niemanden).
+  - Rang nach Gesamtpunkten, gleiche Punkte gleicher Rang (1, 1, 3). Die Rangliste wird im API-Prozess 30 s zwischengespeichert.
+- Nachrichten: höchstens 2000 Zeichen, Betreff optional (80), 10 Nachrichten je 10 Minuten und Spieler (`ctx.rateLimit`).
+  Systemnachrichten haben `from_player_id = null`. Änderungen melden `messages` über WebSocket.
+- Saisonende (`season_end`, Handler in `season.ts`), eine Transaktion, idempotent über `season.status`:
+  Endstand in `season_result` (gewertet werden Spieler mit Hafen oder Punkten), Auszeichnungen Gold/Silber/Bronze
+  für Rang 1–3 (nur mit Punkten) und je Kategorie ein Bester; Systemnachricht an alle Spieler.
+  Danach Reset: offene Journalsalden von `player:*` und `delivery:*` werden gegen `season:<n>` ausgebucht
+  (Kredite und Lieferungen auf 0, der Prüflauf bleibt ok); gelöscht werden Lieferungen, Missionen, Wracks, Kampfberichte,
+  Befehlsprotokoll, ausstehende Ereignisse außer `season_end` und alle Stützpunkte. Nester ohne `defeated_at`, Markt auf
+  Richtwert, Händlerzustand der Spieler neu (Kredite 0). Spieler, Sitzungen, Nachrichten, `season_result`, Journal und
+  Einladungscodes bleiben. Danach wird die nächste Saison angelegt und ihr Ende geplant; Meldung `season` an alle.
+- Oberfläche: Der Reiter „Meldungen“ der unteren Leiste hat oben drei Reiter Berichte | Nachrichten | Rangliste
+  (mit Spielerübersicht und Ruhmeshalle). Ohne Stützpunkt landet der Spieler in der Hafenwahl, die den Saisonwechsel anzeigt.
+
 ## Festlegungen für den Betrieb
 
 - Ziel ist ein Raspberry Pi mit 64-Bit-System unter `speech@speech.local`; alle Images müssen für arm64 verfügbar sein.

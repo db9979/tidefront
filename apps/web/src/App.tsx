@@ -11,7 +11,8 @@ import { BaseScreen } from "./screens/Base.tsx";
 import { MapScreen } from "./screens/MapScreen.tsx";
 import { TroopsScreen } from "./screens/Troops.tsx";
 import { MissionPlan } from "./screens/MissionPlan.tsx";
-import { ReportsScreen } from "./screens/Reports.tsx";
+import { MeldungenScreen, type MeldungenTab } from "./screens/Meldungen.tsx";
+import { SeasonEndBanner } from "./components/Season.tsx";
 import { MarketScreen } from "./screens/Market.tsx";
 import { Handbook } from "./screens/Handbook.tsx";
 import { ResourceBar } from "./components/ResourceBar.tsx";
@@ -25,7 +26,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "basis", label: "Basis", icon: "nav-basis" },
   { id: "karte", label: "Karte", icon: "nav-karte" },
   { id: "truppen", label: "Truppen", icon: "nav-truppen" },
-  { id: "berichte", label: "Berichte", icon: "nav-bericht" },
+  { id: "berichte", label: "Meldungen", icon: "nav-bericht" },
   { id: "boerse", label: "Börse", icon: "nav-boerse" },
 ];
 
@@ -37,6 +38,7 @@ export function App() {
   const base = useQuery({ ...trpc.base.get.queryOptions(), enabled: loggedIn, refetchInterval: 30000 });
   const hasBase = !!base.data?.base;
   const reports = useQuery({ ...trpc.report.list.queryOptions(), enabled: hasBase, refetchInterval: 60000 });
+  const messages = useQuery({ ...trpc.social.messages.unread.queryOptions(), enabled: hasBase, refetchInterval: 60000 });
   useLive(loggedIn);
   const now = useNow();
   const [tab, setTab] = useState<Tab>("basis");
@@ -45,14 +47,15 @@ export function App() {
   const [help, setHelp] = useState(false);
   const [sheet, setSheet] = useState<string | null>(null);
   const [seen, setSeen] = useState(() => Number(localStorage.getItem(SEEN_KEY) ?? 0));
+  const [sub, setSub] = useState<MeldungenTab>("berichte");
 
   const newestReport = reports.data?.[0]?.id ?? 0;
   useEffect(() => {
-    if (tab === "berichte" && newestReport > seen) {
+    if (tab === "berichte" && sub === "berichte" && newestReport > seen) {
       localStorage.setItem(SEEN_KEY, String(newestReport));
       setSeen(newestReport);
     }
-  }, [tab, newestReport, seen]);
+  }, [tab, sub, newestReport, seen]);
 
   if (me.isLoading) return <Loading />;
   if (!loggedIn) return <AuthScreen />;
@@ -60,6 +63,7 @@ export function App() {
   if (!base.data.base) return <ChooseBase />;
   const b = base.data.base;
   const unread = (reports.data ?? []).filter((r) => r.id > seen).length;
+  const unreadMsgs = messages.data?.count ?? 0;
 
   const logout = async () => {
     await trpcClient.auth.logout.mutate();
@@ -67,6 +71,8 @@ export function App() {
     await me.refetch();
   };
   const go = (t: Tab) => {
+    // Meldungen öffnen dort, wo Neues liegt.
+    if (t === "berichte" && tab !== "berichte") setSub(unread === 0 && unreadMsgs > 0 ? "nachrichten" : "berichte");
     setPlan(null);
     setHelp(false);
     setTab(t);
@@ -88,13 +94,16 @@ export function App() {
   ) : plan ? (
     <MissionPlan base={b} initialTarget={plan.target} onClose={() => setPlan(null)} onPickOnMap={() => go("karte")} />
   ) : tab === "basis" ? (
-    <BaseScreen base={b} asOf={base.data.serverNow} sheet={sheet} setSheet={setSheet} onGuide={onGuide} onTroops={() => go("truppen")} />
+    <>
+      <SeasonEndBanner onOpen={() => { go("berichte"); setSub("rangliste"); }} />
+      <BaseScreen base={b} asOf={base.data.serverNow} sheet={sheet} setSheet={setSheet} onGuide={onGuide} onTroops={() => go("truppen")} />
+    </>
   ) : tab === "karte" ? (
     <MapScreen base={b} focus={mapFocus} onPlan={openPlan} />
   ) : tab === "truppen" ? (
     <TroopsScreen base={b} onPlan={() => openPlan(null)} onShowOnMap={(t) => { setMapFocus(t); go("karte"); }} />
   ) : tab === "berichte" ? (
-    <ReportsScreen />
+    <MeldungenScreen sub={sub} setSub={setSub} unread={{ berichte: unread, nachrichten: unreadMsgs }} onShowOnMap={(t) => { setMapFocus(t); go("karte"); }} />
   ) : (
     <MarketScreen base={b} />
   );
@@ -117,8 +126,8 @@ export function App() {
               {active && <span className="absolute top-0 inset-x-4 h-0.5 rounded-full bg-brass-400" />}
               <Icon id={t.icon} size={24} />
               <span className="mt-0.5">{t.label}</span>
-              {t.id === "berichte" && unread > 0 && (
-                <span className="absolute top-1 right-[22%] min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[11px] grid place-items-center">{unread}</span>
+              {t.id === "berichte" && unread + unreadMsgs > 0 && (
+                <span className="absolute top-1 right-[22%] min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[11px] grid place-items-center">{unread + unreadMsgs}</span>
               )}
               {t.id === "basis" && b.incoming.some((i) => i.type !== "transport") && (
                 <span className="absolute top-1 right-[22%] w-3 h-3 rounded-full bg-red-500 pulse" />

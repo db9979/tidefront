@@ -11,7 +11,7 @@ export const RAID_LEAD_MS = 60 * 60000;
 export const SESSION_DAYS = 30;
 export const MAX_EVENT_ATTEMPTS = 5;
 
-export type ChangeKind = "base" | "missions" | "reports" | "market" | "map";
+export type ChangeKind = "base" | "missions" | "reports" | "market" | "map" | "messages" | "season";
 
 export interface Engine {
   db: Db;

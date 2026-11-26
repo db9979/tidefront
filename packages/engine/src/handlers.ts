@@ -366,6 +366,7 @@ export const HANDLERS: Record<string, Handler> = {
   raid_launch: raidLaunch,
   raid_arrive: raidArrive,
   delivery_arrive: deliveryArrive,
+  season_end: (tx, ev, due) => import("./season.ts").then((m) => m.seasonEnd(tx, ev, due)),
 };
 
 // Für Tests

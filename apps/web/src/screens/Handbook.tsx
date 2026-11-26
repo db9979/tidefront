@@ -107,6 +107,24 @@ export function Handbook({ onClose, onLogout, playerName }: { onClose: () => voi
       ),
     },
     {
+      id: "saison", icon: "nav-bericht", title: "Saison und Wertung",
+      body: (
+        <>
+          <P>Gespielt wird in <strong>Saisons</strong> von einigen Wochen. Unter Meldungen → Rangliste siehst du, welche Saison läuft und wie viele Tage bleiben. In den letzten drei Tagen erscheint zusätzlich ein Hinweis auf der Basis.</P>
+          <P>Die <strong>Rangliste</strong> zählt vier Kategorien, je 100 Ressourcen Kostenwert ergeben einen Punkt:</P>
+          <ul className="text-sm list-disc pl-5 space-y-1 mb-2 text-slate-200">
+            <li><strong>Ausbau:</strong> Kosten aller gebauten Gebäudestufen.</li>
+            <li><strong>Militär:</strong> Kosten deiner Einheiten und Anlagen, auch der Verbände unterwegs.</li>
+            <li><strong>Kampf:</strong> Kostenwert der gegnerischen Einheiten und Anlagen, die du im Kampf vernichtest – auch Kartell und Nester.</li>
+            <li><strong>Beute:</strong> alle Ressourcen, die du erbeutest.</li>
+          </ul>
+          <P>Am Saisonende wird der Endstand festgehalten: Gold, Silber und Bronze für die ersten drei Plätze, dazu je eine Auszeichnung für den Besten jeder Kategorie. Jeder erhält eine Nachricht mit seinem Platz; die <strong>Ruhmeshalle</strong> zeigt alle vergangenen Saisons.</P>
+          <P>Danach beginnt die Welt neu: Häfen, Flotten, Berichte, Lieferungen und Kredite verfallen, Nester und Börse starten frisch. Dein Konto und deine Nachrichten bleiben – du wählst einfach einen neuen Hafen und hast wieder Anfängerschutz.</P>
+          <P>Unter Meldungen → Rangliste findest du auch alle Mitspieler. Tippe einen an, um ihm eine <strong>Nachricht</strong> zu schreiben oder seinen Hafen auf der Karte zu zeigen.</P>
+        </>
+      ),
+    },
+    {
       id: "einheiten", icon: "kampfpanzer", title: "Einheiten im Überblick",
       body: b ? (
         <ul className="space-y-2">
