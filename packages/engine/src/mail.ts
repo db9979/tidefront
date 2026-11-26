@@ -302,6 +302,8 @@ export async function unsubscribeEmail(db: Db, token: string): Promise<boolean> 
     .set({ prefs: off })
     .where(eq(tables.playerEmail.unsubscribeToken, token))
     .returning({ id: tables.playerEmail.playerId });
+  // Der Abmeldelink gilt auch für den Morgenbericht.
+  if (r.length > 0) await db.update(tables.morningSummary).set({ enabled: false }).where(eq(tables.morningSummary.playerId, r[0].id));
   return r.length > 0;
 }
 

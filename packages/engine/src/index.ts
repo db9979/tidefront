@@ -24,3 +24,5 @@ export { trackProgress, challengePoints, ensureAssigned } from "./challenges.ts"
 export { dayKey, dayStartMs, nextDayStartMs, addDays, KINDS as CHALLENGE_KINDS, drawDay, poolContext, streakBonus } from "./challenge-pool.ts";
 export * from "./backups.ts";
 export * from "./adminstats.ts";
+export * from "./comfort.ts";
+export * from "./summary.ts";

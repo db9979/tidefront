@@ -9,6 +9,8 @@ import { Button, Card, Cost, ErrorLine, Loading, Sheet, StatTable, Stepper, Unit
 import { Icon, IconTile } from "../icons.tsx";
 import { UNIT_TEXT, unitStats, unitTone } from "../lib/info.ts";
 import { Progress } from "./Base.tsx";
+import { RecentMissions } from "../components/Repeat.tsx";
+import { FreeSimCard } from "../components/SimLauncher.tsx";
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 const GROUPS: { builtIn: string; title: string }[] = [
@@ -67,6 +69,8 @@ export function TroopsScreen({ base, onPlan, onShowOnMap }: { base: BaseData; on
           ))}
         </ul>
       </Card>
+      <RecentMissions />
+      <FreeSimCard balance={balance} base={base} />
       {(() => {
         const m = base.missions.find((x) => x.id === recallId && x.status === "outbound");
         return m ? <RecallSheet mission={m} now={now} onClose={() => setRecallId(null)} /> : null;

@@ -402,3 +402,42 @@ export const backupDownloadToken = pgTable("backup_download_token", {
   usedAt: ts("used_at"),
   createdAt: ts("created_at").notNull().defaultNow(),
 });
+
+// ================================================================ Komfort: Verbandsvorlagen und Morgenbericht
+
+/** Gespeicherter Verband eines Spielers (Einheiten und Anzahlen, optional Missionsart); Name je Spieler eindeutig. */
+export const formationTemplate = pgTable("formation_template", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  /** Einheit -> Anzahl (nur positive Anzahlen). */
+  units: jsonb("units").notNull(),
+  /** ueberfall | aufklaerung | transport oder null. */
+  missionType: text("mission_type"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+}, (t) => [uniqueIndex("formation_template_name").on(t.playerId, sql`lower(${t.name})`)]);
+
+/** Morgenbericht je Spieler; lastSentDay (JJJJ-MM-TT in timeZone) macht den Versand je Tag idempotent. */
+export const morningSummary = pgTable("morning_summary", {
+  playerId: integer("player_id").primaryKey().references(() => player.id, { onDelete: "cascade" }),
+  enabled: boolean("enabled").notNull().default(false),
+  /** Uhrzeit als Minute des Tages (Vorgabe 7:00). */
+  minuteOfDay: integer("minute_of_day").notNull().default(420),
+  timeZone: text("time_zone").notNull().default("Europe/Berlin"),
+  /** Zusätzlich als Push. */
+  push: boolean("push").notNull().default(false),
+  lastSentDay: text("last_sent_day"),
+  lastSentAt: ts("last_sent_at"),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+/** Erledigte Aufträge und Lieferungen für den Morgenbericht (nur bei aktiviertem Bericht, 3 Tage aufbewahrt). */
+export const summaryEntry = pgTable("summary_entry", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [index("summary_entry_player").on(t.playerId, t.createdAt)]);

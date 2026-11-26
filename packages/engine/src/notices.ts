@@ -4,6 +4,7 @@ import { tables } from "@tidefront/db";
 import type { Engine, Notice, NoticeJob } from "./context.ts";
 import { mailNotice } from "./mail.ts";
 import { pushToPlayer } from "./push.ts";
+import { recordSummaryEntry } from "./comfort.ts";
 
 export async function deliverNotice(engine: Engine, playerId: number, notice: Notice): Promise<void> {
   try {
@@ -16,6 +17,8 @@ export async function deliverNotice(engine: Engine, playerId: number, notice: No
   } catch (err) {
     engine.log("mail error", String(err));
   }
+  // Morgenbericht: erledigte Aufträge und Lieferungen mitschreiben.
+  await recordSummaryEntry(engine, playerId, notice).catch((err) => engine.log("summary entry", String(err)));
 }
 
 export async function deliverNotices(engine: Engine, jobs: NoticeJob[]): Promise<void> {

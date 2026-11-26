@@ -12,6 +12,7 @@ import {
   flushMailDigests,
   noticeHook,
   processDue,
+  runMorningSummaries,
   type Engine,
   type OpsStatus,
 } from "@tidefront/engine";
@@ -62,6 +63,8 @@ async function loop() {
           ops = await checkOps(engine, alerts);
           const mails = await flushMailDigests(engine, Date.now());
           if (mails > 0) log("digest mails", { sent: mails });
+          const summaries = await runMorningSummaries(engine, Date.now());
+          if (summaries > 0) log("morning summaries", { sent: summaries });
         } catch (err) {
           log("ops check failed", String(err));
         }

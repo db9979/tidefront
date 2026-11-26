@@ -119,6 +119,8 @@ const ERRORS: Record<string, string> = {
   no_base: "Noch kein Stützpunkt.",
   rate_limited: "Zu viele Versuche. Bitte kurz warten.",
   network: "Keine Verbindung zum Server. Bitte erneut versuchen.",
+  bad_name: "Name: 1–32 Zeichen.",
+  template_limit: "Höchstens 20 Vorlagen. Bitte erst eine löschen.",
 };
 
 export function errorText(code: string): string {
