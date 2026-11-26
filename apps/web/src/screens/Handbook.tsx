@@ -34,7 +34,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
         <>
           <P>Du führst einen Hafen an der Küste des Nordatlantiks oder des Mittelmeers. Baue deine Wirtschaft auf, stelle eine Flotte mit Truppen auf, überfalle die Nester des Freibeuter-Kartells und halte deinen Hafen gegen Überfälle.</P>
           <P>Alles läuft in Echtzeit weiter, auch wenn die App geschlossen ist: Bauaufträge werden fertig, Flotten fahren, das Kartell greift an. Schau ein paar Mal am Tag vorbei.</P>
-          <P>Das <strong>Auftragsbuch</strong> auf der Basis führt dich Schritt für Schritt durch die ersten Tage.</P>
+          <P>Das <strong>Auftragsbuch</strong> auf der Basis führt dich Schritt für Schritt durch die ersten Tage. Jeder erfüllte Auftrag bringt ein Ressourcenpaket für den nächsten Schritt – tippe auf <strong>Abholen</strong>, auch für Aufträge, die du schon früher erledigt hast. Nach allen elf gibt es ein großes Paket, einmalig eine Stunde weniger Bauzeit für den laufenden (sonst den nächsten) Ausbau und das Abzeichen <strong>Hafenmeister</strong>, das diese Saison in der Rangliste neben deinem Namen steht. In jeder neuen Saison beginnt das Auftragsbuch von vorn.</P>
         </>
       ),
     },

@@ -26,6 +26,11 @@ const SORTS: { id: Sort; label: string }[] = [
   { id: "befehle", label: "Befehle" },
 ];
 
+/** Abzeichen aus dem Auftragsbuch (diese Saison alle Grundaufträge erledigt). */
+function Hafenmeister() {
+  return <span title="Hafenmeister: alle Aufträge des Auftragsbuchs erledigt" aria-label="Hafenmeister"><Icon id="hafenmeister" size={16} className="inline-block align-[-3px] ml-1" /></span>;
+}
+
 function ProtectionBadge({ p }: { p: string | null }) {
   if (!p) return <Badge tone="slate">ungeschützt</Badge>;
   return <Badge tone={p === "nachtschild" ? "sea" : "green"}>{label(p)}</Badge>;
@@ -65,7 +70,7 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
                   className={`tap w-full flex items-center gap-2 px-1 py-2 text-left ${r.own ? "bg-sea-400/10 rounded-lg" : ""}`}>
                   <span className="w-7 text-right font-mono tabular-nums text-slate-400">{sort === "total" ? r.rank : i + 1}</span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">{tag(r.playerId) && <span className="mono text-ink2 font-normal">[{tag(r.playerId)}] </span>}{r.name}{r.own && <span className="text-sea-300 font-normal"> (du)</span>}</span>
+                    <span className="block truncate text-sm font-semibold">{tag(r.playerId) && <span className="mono text-ink2 font-normal">[{tag(r.playerId)}] </span>}{r.name}{r.hafenmeister && <Hafenmeister />}{r.own && <span className="text-sea-300 font-normal"> (du)</span>}</span>
                     <span className="block truncate text-xs text-slate-400">{r.base ? r.base.name : "kein Hafen"}</span>
                   </span>
                   {r.base?.protection && <Icon id="schild" size={16} className="shrink-0 opacity-70" />}
@@ -131,6 +136,7 @@ function PlayerDetail({ r, dir, ownId, onCompose, onShowOnMap }: { r: Row; dir: 
         <span><span className="text-slate-400">Allianz </span><strong>{alliance ? `[${alliance.tag}] ${alliance.name}` : "–"}</strong></span>
         {rel && <Badge tone={RELATION_TEXT[rel].tone}>{RELATION_TEXT[rel].text}</Badge>}
       </div>
+      {r.hafenmeister && <p className="flex items-center gap-2 text-sm"><Icon id="hafenmeister" size={24} /> Abzeichen „Hafenmeister“ dieser Saison</p>}
       <StatTable rows={[
         ["Rang", String(r.rank)],
         ["Ausbau", fmtNum(r.ausbau)],

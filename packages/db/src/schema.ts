@@ -561,3 +561,16 @@ export const worldEventDamage = pgTable("world_event_damage", {
   loot: jsonb("loot").notNull().default({}),
   attacks: integer("attacks").notNull().default(0),
 }, (t) => [uniqueIndex("world_event_damage_pk").on(t.eventId, t.playerId)]);
+
+// ================================================================ Auftragsbuch: abgeholte Belohnungen
+// Je Spieler, Saison und Auftrag eine Zeile (step = Schritt-ID oder "final" für die Abschlussbelohnung).
+// Durch season_id bleibt jede Saison getrennt; in einer neuen Saison sind alle Aufträge wieder offen.
+// boost_used_at (nur bei "final"): wann die einmalige Bauzeitverkürzung angewendet wurde; null = steht noch aus.
+
+export const guideClaim = pgTable("guide_claim", {
+  playerId: integer("player_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  seasonId: integer("season_id").notNull().references(() => season.id, { onDelete: "cascade" }),
+  step: text("step").notNull(),
+  claimedAt: ts("claimed_at").notNull().defaultNow(),
+  boostUsedAt: ts("boost_used_at"),
+}, (t) => [uniqueIndex("guide_claim_pk").on(t.playerId, t.seasonId, t.step)]);

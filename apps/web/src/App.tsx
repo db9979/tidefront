@@ -18,7 +18,7 @@ import { Handbook } from "./screens/Handbook.tsx";
 import { ResourceBar } from "./components/ResourceBar.tsx";
 import { Welcome } from "./components/Welcome.tsx";
 import { UpdateNotices } from "./components/Changelog.tsx";
-import type { GuideAction } from "./components/Guide.tsx";
+import { useGuide, type GuideAction } from "./components/Guide.tsx";
 import { useDaily } from "./components/Daily.tsx";
 import { parseOpenUrl, type OpenTarget } from "./lib/push.ts";
 import { usePlanRequests, type PlanPreset } from "./lib/plan-request.ts";
@@ -83,6 +83,9 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const reports = useQuery({ ...trpc.report.list.queryOptions(), enabled: hasBase, refetchInterval: 60000 });
   const messages = useQuery({ ...trpc.social.messages.unread.queryOptions(), enabled: hasBase, refetchInterval: 60000 });
   const daily = useDaily(hasBase);
+  const guide = useGuide(hasBase);
+  // Abholbereit: Tagesbefehle und Auftragsbuch zusammen an „Basis“.
+  const claimable = (daily.data?.claimable ?? 0) + (guide.data?.claimable ?? 0);
   useLive(loggedIn);
   const now = useNow();
   // Ziel aus einer Benachrichtigung (?tab=…, ?view=…) beim Start und per Nachricht vom Service Worker.
@@ -209,8 +212,8 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
               {t.id === "berichte" && unread + unreadMsgs > 0 && (
                 <span className="absolute top-1 right-[18%] min-w-5 h-5 px-1 rounded-full bg-siegel text-white text-[11px] mono grid place-items-center">{unread + unreadMsgs}</span>
               )}
-              {t.id === "basis" && (daily.data?.claimable ?? 0) > 0 && (
-                <span className="absolute top-1 left-[18%] min-w-5 h-5 px-1 rounded-full bg-moos text-white text-[11px] mono grid place-items-center" title="Tagesbefehl abholbereit">{daily.data!.claimable}</span>
+              {t.id === "basis" && claimable > 0 && (
+                <span className="absolute top-1 left-[18%] min-w-5 h-5 px-1 rounded-full bg-moos text-white text-[11px] mono grid place-items-center" title="Belohnung abholbereit">{claimable}</span>
               )}
               {t.id === "basis" && b.incoming.some((i) => i.type !== "transport") && (
                 <span className="absolute top-1.5 right-[24%] w-3 h-3 rotate-45 bg-siegel pulse" />

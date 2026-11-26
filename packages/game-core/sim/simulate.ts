@@ -20,6 +20,7 @@ import {
 import type { BotSnapshot } from "./bot.ts";
 import { MILITARY_SHARE, UBOOT_DOCTRINE, UBOOT_HEAVY_DOCTRINE, runBot, value } from "./bot.ts";
 import { runResearchSim } from "./research.ts";
+import { runGuideSim } from "./guide.ts";
 
 const balance = JSON.parse(
   readFileSync(new URL("../../balance/v1/balance.json", import.meta.url), "utf8"),
@@ -247,6 +248,9 @@ for (const day of [7, 28]) {
 
 // Forschung (v1.3): eigene Fälle, die bisherigen Zahlen oben bleiben unverändert.
 runResearchSim(balance, snaps);
+
+// Auftragsbuch: Belohnungen beschleunigen den Start, ohne Vorsprung über die Saison.
+runGuideSim(balance);
 
 /** Der Bot schickt alles, was daheim steht (die Doktrin hält ihn innerhalb der Kommandopunkte). */
 function sentFleet(s: BotSnapshot): Counts {

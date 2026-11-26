@@ -42,3 +42,4 @@ export { spawnWorldEvent } from "./world-events-spawn.ts";
 export { worldEventsView } from "./world-events-view.ts";
 export * from "./modifiers.ts";
 export { researchStart, researchCancel, researchChoose, researchView, TECH_NAMES } from "./research.ts";
+export { guideView, claimGuideStep, claimGuideFinal, hafenmeisterIds, shortenQueue, GUIDE_STEPS, GUIDE_FINAL } from "./guide.ts";

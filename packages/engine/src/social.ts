@@ -5,6 +5,7 @@ import { tables } from "@tidefront/db";
 import { GameError, type Engine } from "./context.ts";
 import { computeStandings, type Standing } from "./scoring.ts";
 import { runningSeason } from "./season.ts";
+import { hafenmeisterIds } from "./guide.ts";
 
 // ---------------------------------------------------------------- Rangliste
 
@@ -25,11 +26,12 @@ export async function rankingView(engine: Engine, playerId: number) {
     const rows = await computeStandings(engine.db, s ? s.startsAt.getTime() : 0, nowMs);
     cache = { at: nowMs, seasonId, rows };
   }
+  const hafenmeister = await hafenmeisterIds(engine.db, seasonId); // Abzeichen aus dem Auftragsbuch
   return {
     serverNow: nowMs,
     computedAtMs: cache.at,
     season: s ? { number: s.number, startsAtMs: s.startsAt.getTime(), endsAtMs: s.endsAt.getTime() } : null,
-    rows: cache.rows.map((r) => ({ ...r, own: r.playerId === playerId })),
+    rows: cache.rows.map((r) => ({ ...r, own: r.playerId === playerId, hafenmeister: hafenmeister.has(r.playerId) })),
   };
 }
 

@@ -37,8 +37,6 @@ export function BaseScreen(props: {
 }) {
   const { base, asOf, sheet, setSheet } = props;
   const now = useNow();
-  const reports = useQuery(trpc.report.list.queryOptions());
-  const wonRaid = (reports.data ?? []).some((r) => r.kind === "ueberfall" && r.role === "attacker" && r.won);
   const res = liveResources(base, asOf, now);
   const queue = base.buildQueue;
   const queueFull = queue.length >= base.buildQueueSlots;
@@ -72,7 +70,7 @@ export function BaseScreen(props: {
       ))}
 
       <WorldEventBanner onMap={() => props.onGuide({ kind: "tab", tab: "karte" })} />
-      <Guide base={base} wonRaid={wonRaid} onAction={props.onGuide} />
+      <Guide base={base} onAction={props.onGuide} />
       <DailyOrders />
       <Timeline base={base} />
 
