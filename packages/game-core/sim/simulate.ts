@@ -24,6 +24,7 @@ import { runGuideSim } from "./guide.ts";
 import { runLuckSim } from "./luck.ts";
 import { runPowerSim } from "./power.ts";
 import { runEspionageSim } from "./espionage.ts";
+import { runNavalSim } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 
 const balance = JSON.parse(
   readFileSync(new URL("../../balance/v1/balance.json", import.meta.url), "utf8"),
@@ -259,6 +260,8 @@ runLuckSim(balance);
 runPowerSim(balance);
 // Nachrichtendienst (v1.7): Chancen über typische Spielverläufe, Sabotage, Desinformation.
 runEspionageSim(balance, snaps);
+// See: Minenverluste, Blockade-Wirkung, Konvoi-Verlustquote.
+runNavalSim(balance, snaps);
 
 /** Der Bot schickt alles, was daheim steht (die Doktrin hält ihn innerhalb der Kommandopunkte). */
 function sentFleet(s: BotSnapshot): Counts {

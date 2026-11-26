@@ -53,3 +53,5 @@ export { guideView, claimGuideStep, claimGuideFinal, hafenmeisterIds, shortenQue
 export { spyPreview, spyLaunch, intelView, intelOwnView, type SpyInput } from "./espionage.ts";
 export { gridView, weatherModifiers, missionWeather, battleWeather } from "./weather.ts";
 export * from "./bug-report.ts";
+// See: Minen, Blockade und Konvois
+export { navalView, navalRouteMines, liftBlockade, clearNaval, NAVAL_TYPES } from "./naval.ts";

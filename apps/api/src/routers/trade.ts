@@ -15,8 +15,9 @@ export const playerTradeRouter = t.router({
     .input(z.object({ key, give: asset, giveQty: qty, want: asset, wantQty: qty, visibility: z.enum(["public", "alliance"]) }))
     .mutation(({ ctx, input }) => createOffer(ctx.engine, ctx.player.id, input.key, input)),
   accept: authed
-    .input(z.object({ key, offerId: z.number().int().min(1) }))
-    .mutation(({ ctx, input }) => acceptOffer(ctx.engine, ctx.player.id, input.key, input.offerId)),
+    // See: Konvoi – optionaler Geleitschutz (eigene Schiffe) für die eingehende Ware.
+    .input(z.object({ key, offerId: z.number().int().min(1), escort: z.record(z.string().max(40), z.number().int().min(0).max(100_000)).optional() }))
+    .mutation(({ ctx, input }) => acceptOffer(ctx.engine, ctx.player.id, input.key, input.offerId, input.escort)),
   withdraw: authed
     .input(z.object({ key, offerId: z.number().int().min(1) }))
     .mutation(({ ctx, input }) => withdrawOffer(ctx.engine, ctx.player.id, input.key, input.offerId)),

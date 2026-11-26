@@ -17,4 +17,5 @@ export * from "./veterans.ts";
 export * from "./espionage.ts";
 export * from "./weather.ts";
 export * from "./power.ts";
+export * from "./naval.ts"; // See: Minen/Blockade/Konvoi
 export * as market from "./market/index.ts";

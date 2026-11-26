@@ -33,7 +33,7 @@ const BugReportSheet = lazy(() => import("./components/BugReport.tsx").then((m) 
 
 export type Tab = "basis" | "karte" | "truppen" | "berichte" | "boerse";
 /** Missionsziel; eventId: Weltereignis (Schatzschiff, Großflotte, Belagerung). */
-export interface Target { col: number; row: number; eventId?: number }
+export interface Target { col: number; row: number; eventId?: number; blockadeId?: number; convoyId?: number; naval?: "minen" | "raeumen" | "blockade" } // See: Seeziele
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "basis", label: "Basis", icon: "nav-basis" },

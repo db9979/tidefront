@@ -12,6 +12,7 @@ import { RELATION_HEX, TacticalIcon, relationKind } from "../map/TacticalIcon.ts
 import { fmtPosition } from "../map/coords.ts";
 // Weltereignisse
 import { WorldEventCard, useWorldEvents } from "../components/WorldEvents.tsx";
+import { NavalSheet, navalAt, useNaval } from "../components/Naval.tsx"; // See: Minen/Blockade/Konvoi
 
 const TERRAIN: Record<string, string> = { sea: "Offene See", coast: "Küste", land: "Binnenland" };
 const RELATION_TEXT: Record<string, string> = {
@@ -27,6 +28,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
   const map = useQuery({ ...trpc.world.map.queryOptions(), refetchInterval: 60000 });
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const worldEvents = useWorldEvents();
+  const naval = useNaval();
   const [sel, setSel] = useState<Target | null>(focus);
   const [recenter, setRecenter] = useState(0);
   const [centerOn, setCenterOn] = useState<Target>(focus ?? { col: base.col, row: base.row });
@@ -41,6 +43,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
     nest: map.data.nests.find((n) => n.col === t.col && n.row === t.row),
     wreck: map.data.wrecks.find((w) => w.col === t.col && w.row === t.row),
     event: worldEvents.data?.events.find((e) => e.col === t.col && e.row === t.row),
+    naval: (() => { const n = navalAt(naval.data, t); return n.mines.length > 0 || !!n.blockade || n.convoys.length > 0; })(),
   });
   const info = sel ? at(sel) : null;
   const units = meta.data?.balance.units;
@@ -65,6 +68,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
           missions={base.missions}
           alert={alert}
           events={worldEvents.data?.events}
+          naval={naval.data}
           weather={showWeather ? meta.data?.balance.weather : null}
         />
         <div className="absolute left-2 top-6 flex flex-col gap-1.5 items-start">
@@ -149,7 +153,8 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
               {info.event && (
                 <WorldEventCard e={info.event} onPlan={() => onPlan({ col: info.event!.col, row: info.event!.row, eventId: info.event!.id })} />
               )}
-              {!info.base && !info.nest && !info.wreck && !info.event && (
+              <NavalSheet data={naval.data} sel={sel} onPlan={onPlan} />
+              {!info.base && !info.nest && !info.wreck && !info.event && !info.naval && (
                 <div className="text-slate-400 mt-1">Hier ist nichts. Ziele sind Piratennester (rote Raute) und fremde Stützpunkte.</div>
               )}
               {!isHome && (info.base || info.nest) && (
@@ -160,6 +165,9 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
           </div>
           {(info.nest || (info.base && !info.base.own)) && (
             <Button className="w-full mt-2" onClick={() => onPlan(sel)}>Mission planen</Button>
+          )}
+          {!info.base && !info.nest && terrainAt(sel.col, sel.row) === "sea" && naval.data?.rules.mines && hexDistanceKm(home, sel) <= naval.data.rules.mines.layRadiusKm && (
+            <Button kind="secondary" className="w-full mt-2" onClick={() => onPlan({ ...sel, naval: "minen" })}>Minen legen</Button>
           )}
         </div>
       )}

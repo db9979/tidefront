@@ -71,7 +71,7 @@ export async function activeMissionCount(tx: DbOrTx, baseId: number): Promise<nu
   const [r] = await tx
     .select({ n: sql<number>`count(*)::int` })
     .from(tables.mission)
-    .where(and(eq(tables.mission.baseId, baseId), inArray(tables.mission.status, ["outbound", "returning"])));
+    .where(and(eq(tables.mission.baseId, baseId), inArray(tables.mission.status, ["outbound", "returning", "holding"]))); // See: holding = Blockade
   return r?.n ?? 0;
 }
 

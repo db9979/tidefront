@@ -486,3 +486,30 @@ der Angreifer 50 % gewinnt; links ohne Würfel wie v1.3, rechts mit):
    Tag 7 12 / 9 / 8 %, Tag 14 13 / 12 / 11 %, Tag 28 13 / 12 / 11 % (Gewicht 1 überzieht: 17–22 %).
    **Offen:** Der Server übergibt die Modifikatoren noch nicht (`packages/engine/src/handlers.ts`, `raidLaunch`:
    `composeRaid(state.units, state.defenses, balance, randomSeed(), mods)`); bis dahin rechnet das Spiel wie v1.6.
+
+## H. Minen, Seeblockade und Konvois (Welle 2, Balance-Blöcke `mines`, `blockade`, `convoys`)
+
+Regeln in `docs/REGELN-SEE.md`, Simulation `sim/naval.ts` (`npm run sim`, Abschnitt „See“, 400 feste Seeds).
+
+1. **Minen.** Ø Verlust (Wert) je Durchfahrt nach Feldstärke 25 / 50 / 100 / 150:
+   Überfall-Verband 20 Korvetten + 4 Landungsschiffe + 300 Schützen 2,2 / 4,4 / 9,0 / 13,5 %; mit 4 Minenräumern
+   1,5 / 2,9 / 5,8 / 8,8 %; 12 U-Boote 1,5 / 2,9 / 6,1 / 9,1 %; 10 Zerstörer 3,7 / 7,7 / 15,0 / 22,5 %.
+   Ein volles Feld (150, sechs Minenleger) kostet 2550 Stahl-Äquivalent an Minen und versenkt bei einem solchen Verband
+   Ø 4263. Erster Entwurf (0,002 je Stärke, höchstens 30 %, 2 Stärke je Treffer) ließ ein Feld acht Verbände treffen und
+   10 Zerstörer 30 % verlieren – zu stark für eine rein defensive Waffe. Jetzt 0,0015, höchstens 25 %, 4 Stärke je
+   Treffer: ein volles Feld trifft drei bis vier Verbände merklich. Minen bleiben Verteidigung nahe dem eigenen Hafen
+   (Legeradius 300 km), nur die Hinfahrt zählt; Räumer und U-Boote sind die Antwort.
+2. **Blockade.** Produktion × 0,75 kostet den Bot-Hafen an Tag 7 / 14 / 28 über 12 h 1859 / 2458 / 3631
+   Stahl-Äquivalent (2 h: 310 / 410 / 605), dazu gesperrte Verkäufe und zurückgehaltene Lieferungen. Der kleinste
+   Blockadeverband (2 Zerstörer, 12 KP) ist 3900 wert. Brechen: 6 Korvetten 0 % (Ø 1 Zerstörer versenkt – die
+   Rundenzahl reicht nicht, Verluste bleiben, der zweite Angriff bricht), 12 Korvetten 100 %, 6 Zerstörer 100 %,
+   4 Jagdbomber + 6 Korvetten 99,5 %. Gewollt: Eine Blockade lohnt nur mit Druck dahinter und ist mit eigener Flotte
+   oder Allianzhilfe zu lösen.
+3. **Konvois (Kartell).** Chance / erwartete Verlustquote ohne Geleit / mit 2 Korvetten / mit 2 Zerstörern:
+   200 km, Wert 2000: 4,8 % / 1,4 / 0 / 0 %; 450 km, 5000: 8,5 % / 2,6 / 0 / 0 %; 700 km, 9000: 12 % / 3,6 / 0 / 0 %;
+   900 km, 20000: 12 % / 3,6 / 3,0 / 0 % (2 Korvetten halten dort nicht mehr). Die erwartete Verlustquote ohne Geleit
+   liegt unter der Börsengebühr (4 %) – Handel bleibt attraktiv, große Ladungen auf langen Wegen wollen Geleit.
+   Erster Entwurf: Verlust bei unterlegenem Geleit 50 % (> 30 % ohne Geleit) machte schwaches Geleit schädlich; jetzt
+   25 %. Kartellboote 0,8 je 1000 Warenwert (statt 1,2), höchstens 12.
+4. **Offen:** Rückfahrt und Handelskonvois laufen nicht durch Minen; Börsenlieferungen sind keine Konvois; Geleitschutz
+   beim Handel nur durch den Annehmenden (für die eingehende Ware), nicht durch den Anbieter beim Einstellen.

@@ -10,6 +10,7 @@ import { Icon, IconTile } from "../icons.tsx";
 import { Button } from "../ui.tsx";
 import { SettingsScreen } from "./Settings.tsx";
 import { IntelChapter } from "../components/IntelChapter.tsx";
+import { NavalChapter } from "../components/NavalChapter.tsx"; // See: Minen/Blockade/Konvoi
 import { requestBugReport } from "../lib/bug-log.ts";
 
 /** Kachel im Schnellzugriff oben im Handbuch. */
@@ -177,6 +178,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
     },
     // Nachrichtendienst und Spionage (components/Intel.tsx)
     { id: "nachrichtendienst", icon: "spion", title: "Nachrichtendienst", body: <IntelChapter b={b} /> },
+    { id: "see", icon: "mine", title: "Minen, Blockade, Konvois", body: <NavalChapter b={b} /> }, // See
     {
       id: "tagesbefehle", icon: "uhr", title: "Tagesbefehle",
       body: (

@@ -43,6 +43,8 @@ export const UNIT_TEXT: Record<string, string> = {
   abfangjaeger: "Kämpft um die Luftüberlegenheit. Wer sie hat, dessen Bomber treffen härter.",
   jagdbomber: "Greift im Luftschlag Schiffe und Anlagen an, bevor das Seegefecht beginnt. Am Bodenkampf nimmt er nicht teil.",
   aufklaerungsdrohne: "Kämpft nicht. Schnell und mit großer Reichweite – ideal für Aufklärung.",
+  minenleger: "Legt auf offener See nahe dem eigenen Hafen ein Minenfeld (Stärke {mineLayer} je Schiff). Fremde Verbände, die hindurchfahren, verlieren Schiffe.",
+  minenraeumer: "Räumt fremde Minenfelder (Stärke {mineSweeper} je Schiff) und schützt im Verband vor Minen. Hat U-Jagd.",
   spion: "Kämpft nicht und fährt in keinem Verband mit. Reist unauffällig und schnell zu Spionageaufträgen; wird er enttarnt, ist er verloren und das Ziel erfährt den Absender.",
   kuestenbatterie: "Feuert im Seegefecht schwer auf Schiffe und im Bodenkampf auf gelandete Truppen.",
   flakstellung: "Schießt im Luftschlag auf angreifende Bomber.",
@@ -58,6 +60,8 @@ function numbers(b: Balance | undefined): Record<string, string> {
   return {
     cap: String(b?.building.levelCapAboveCommand ?? 3),
     ubootLevel: String(b?.units.uboot?.requiresLevel ?? 3),
+    mineLayer: String((b?.units.minenleger as { mineLayer?: number } | undefined)?.mineLayer ?? 25), // See: Minen
+    mineSweeper: String((b?.units.minenraeumer as { mineSweeper?: number } | undefined)?.mineSweeper ?? 30),
     werftSpeed: `${Math.round((b?.buildings.werft?.buildSpeedPerLevel ?? 0.1) * 100)} %`,
     slots: String(b?.buildings.flugfeld?.slotsPerLevel ?? 6),
     radarFirst: String((radar?.warningMinutesBase ?? 10) + (radar?.warningMinutesPerLevel ?? 5)),

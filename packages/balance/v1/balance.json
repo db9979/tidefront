@@ -37,6 +37,8 @@
     "zerstoerer": { "branch": "see", "builtIn": "werft", "cost": { "stahl": 900, "treibstoff": 250, "elektronik": 200, "proviant": 0 }, "seconds": 720, "upkeepPerHour": 4, "commandPoints": 6, "hp": 450, "attack": { "see": 70, "luft": 60, "land": 0, "anlage": 30, "uboot": 60 }, "speedKmh": 55, "fuelPer100Km": 9, "cargo": 0, "troopSpace": 0, "bonus": { "korvette": 1.3 } },
     "landungsschiff": { "branch": "see", "builtIn": "werft", "cost": { "stahl": 600, "treibstoff": 200, "elektronik": 50, "proviant": 0 }, "seconds": 600, "upkeepPerHour": 3, "commandPoints": 5, "hp": 300, "attack": { "see": 5, "luft": 2, "land": 0, "anlage": 0 }, "speedKmh": 40, "fuelPer100Km": 12, "cargo": 4000, "troopSpace": 100, "bonus": {} },
     "uboot": { "branch": "see", "builtIn": "werft", "requiresLevel": 3, "submerged": true, "cost": { "stahl": 700, "treibstoff": 250, "elektronik": 250, "proviant": 0 }, "seconds": 900, "upkeepPerHour": 3, "commandPoints": 6, "hp": 250, "attack": { "see": 80, "luft": 0, "land": 0, "anlage": 0, "uboot": 0 }, "speedKmh": 45, "fuelPer100Km": 6, "cargo": 0, "troopSpace": 0, "bonus": { "landungsschiff": 1.5, "schnellboot": 0.5 } },
+    "minenleger": { "branch": "see", "builtIn": "werft", "requiresLevel": 4, "cost": { "stahl": 800, "treibstoff": 300, "elektronik": 250, "proviant": 0 }, "seconds": 900, "upkeepPerHour": 3, "commandPoints": 5, "hp": 300, "attack": { "see": 10, "luft": 5, "land": 0, "anlage": 0, "uboot": 0 }, "speedKmh": 40, "fuelPer100Km": 8, "cargo": 0, "troopSpace": 0, "bonus": {}, "mineLayer": 25 },
+    "minenraeumer": { "branch": "see", "builtIn": "werft", "requiresLevel": 2, "cost": { "stahl": 500, "treibstoff": 150, "elektronik": 150, "proviant": 0 }, "seconds": 480, "upkeepPerHour": 2, "commandPoints": 3, "hp": 220, "attack": { "see": 15, "luft": 5, "land": 0, "anlage": 0, "uboot": 20 }, "speedKmh": 50, "fuelPer100Km": 5, "cargo": 0, "troopSpace": 0, "bonus": {}, "mineSweeper": 30 },
     "schuetzen": { "branch": "land", "builtIn": "kaserne", "cost": { "stahl": 30, "treibstoff": 0, "elektronik": 0, "proviant": 20 }, "seconds": 30, "upkeepPerHour": 0.1, "commandPoints": 0.15, "hp": 20, "attack": { "see": 0, "luft": 0, "land": 6, "anlage": 2 }, "size": 1, "bonus": { "pioniere": 1.5 } },
     "pioniere": { "branch": "land", "builtIn": "kaserne", "cost": { "stahl": 60, "treibstoff": 0, "elektronik": 10, "proviant": 25 }, "seconds": 60, "upkeepPerHour": 0.15, "commandPoints": 0.3, "hp": 20, "attack": { "see": 0, "luft": 0, "land": 4, "anlage": 6 }, "size": 1, "bonus": { "bunkerlinie": 4, "minensperre": 4 } },
     "kampfpanzer": { "branch": "land", "builtIn": "kaserne", "cost": { "stahl": 500, "treibstoff": 100, "elektronik": 80, "proviant": 40 }, "seconds": 480, "upkeepPerHour": 1.5, "commandPoints": 4, "hp": 300, "attack": { "see": 0, "luft": 0, "land": 60, "anlage": 20 }, "size": 10, "bonus": { "schuetzen": 1.5, "piratenmiliz": 1.5 } },
@@ -184,6 +186,19 @@
     }
   },
   "power": { "stepMinutes": 30, "minSpeed": 0.25, "forecastHours": 24, "horizonHours": 336 },
+  "mines": {
+    "layRadiusKm": 300, "fieldRadiusKm": 35, "maxStrength": 150, "lifetimeHours": 72, "maxFieldsPerPlayer": 3,
+    "costPerStrength": { "stahl": 8, "elektronik": 3 },
+    "lossPerStrength": 0.0015, "maxLossShare": 0.25,
+    "typeFactor": { "uboot": 0.4, "minenraeumer": 0.25, "minenleger": 0.6 },
+    "shieldPerSweeperShare": 2, "maxShield": 0.75, "strengthPerHit": 4, "radarKmPerLevel": 40, "scoutRevealKm": 150
+  },
+  "blockade": { "minHours": 2, "maxHours": 12, "minCommandPoints": 12, "productionFactor": 0.75, "deliveryHoldMinutes": 60 },
+  "convoys": {
+    "cartelBaseChance": 0.02, "cartelChancePer100Km": 0.01, "cartelChancePer1000Value": 0.004, "cartelMaxChance": 0.12, "cartelMinDistanceKm": 150,
+    "cartelBoatsPer1000Value": 0.8, "cartelMinBoats": 2, "cartelMaxBoats": 12,
+    "lossShareUnescorted": 0.3, "lossShareEscortBeaten": 0.25, "plunderShare": 0.6
+  },
   "weather": {
     "seed": 1906,
     "systemEveryHours": 12,

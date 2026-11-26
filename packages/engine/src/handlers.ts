@@ -39,6 +39,7 @@ import { modifiersFor, modsOf } from "./modifiers.ts";
 import { withAttackExperience } from "./veterans.ts";
 import { scoutWithDisinfo } from "./espionage.ts"; // Nachrichtendienst (Desinformation)
 import { battleWeather, fogAt } from "./weather.ts"; // Wetter am Kampfort und Nebel (v1.6)
+import { holdDelivery, NAVAL_HANDLERS, navalArrive } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 
 const HOUR_MS = 3600000;
 const none = (): HandlerResult => ({ notify: [] });
@@ -160,9 +161,13 @@ async function storeReport(
 const missionArrive: Handler = async (tx, ev, due) => {
   const m = await lockMission(tx, Number(ev.payload.missionId));
   if (!m || m.status !== "outbound") return none();
-  const plan = m.plan as Mission;
+  let plan = m.plan as Mission;
   const notify: HandlerResult["notify"] = [[[m.playerId!], "missions"]];
   const push: NonNullable<HandlerResult["push"]> = [];
+  // See: Minen/Blockade/Konvoi – eigene Missionsarten, Minen auf der Hinfahrt, Transport-Konvoi (naval.ts).
+  const naval = await navalArrive(tx, m, plan, due, notify, push);
+  if (naval.done) return { notify: [...notify, [[m.playerId!], "reports"], [[m.playerId!], "base"]], push };
+  plan = naval.plan;
   const origin = await readBase(tx, m.baseId!);
   let returning: Counts = { ...plan.units };
   let cargoHome: ResourceMap = {};
@@ -395,6 +400,7 @@ const deliveryArrive: Handler = async (tx, ev, due) => {
     .where(eq(tables.delivery.id, String(ev.payload.deliveryId)))
     .for("update");
   if (!d || d.status !== "underway") return none();
+  if (await holdDelivery(tx, d, due)) return { notify: [[[d.playerId], "base"]] }; // See: Blockade hält Lieferungen zurück
   const b = await lockBase(tx, d.baseId);
   if (b) await saveBase(tx, b.id, deliverCargo(b.state, { [d.resource]: d.qty }, due, balance, await modsOf(tx, b, due)));
   // Journal: die Lieferung geht an den Spieler.
@@ -417,6 +423,7 @@ export const HANDLERS: Record<string, Handler> = {
   season_end: (tx, ev, due) => import("./season.ts").then((m) => m.seasonEnd(tx, ev, due)),
   attack_warning: attackWarning,
   ...WORLD_EVENT_HANDLERS,
+  ...NAVAL_HANDLERS, // See: Minen/Blockade/Konvoi (blockade_end, convoy_raid)
   pact_expire: (tx, _ev, due) => import("./alliance-core.ts").then(async (m) => {
     const notify: HandlerResult["notify"] = [];
     await m.purgeExpired(tx, due, notify);

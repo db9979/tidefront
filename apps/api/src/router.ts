@@ -39,6 +39,7 @@ import { researchRouter } from "./routers/research.ts";
 import { guideRouter } from "./routers/guide.ts";
 import { espionageRouter } from "./routers/espionage.ts";
 import { bugReportRouter } from "./routers/bug-report.ts";
+import { navalRouter } from "./routers/naval.ts"; // See: Minen/Blockade/Konvoi
 
 export type { Ctx };
 
@@ -46,6 +47,8 @@ const key = z.string().min(8).max(80);
 const counts = z.record(z.string().max(40), z.number().int().min(0).max(1_000_000));
 const resources = z.record(z.string().max(20), z.number().int().min(0).max(100_000_000));
 const field = { col: z.number().int().min(0).max(500), row: z.number().int().min(0).max(500) };
+// See: Minen/Blockade/Konvoi – Ziele und Haltezeit von Seemissionen.
+const navalTarget = { blockadeId: z.number().int().min(1).optional(), convoyId: z.number().int().min(1).optional(), holdHours: z.number().int().min(0).max(48).optional() };
 
 export const appRouter = t.router({
   meta: t.procedure.query(() => ({ balance, serverNow: Date.now(), version: APP_VERSION, builtAt: BUILD_TIME })),
@@ -132,10 +135,10 @@ export const appRouter = t.router({
 
   mission: t.router({
     preview: authed
-      .input(z.object({ type: z.string().max(20), units: counts, ...field, cargo: resources.optional(), eventId: z.number().int().min(1).optional() }))
+      .input(z.object({ type: z.string().max(20), units: counts, ...field, cargo: resources.optional(), eventId: z.number().int().min(1).optional(), ...navalTarget }))
       .query(({ ctx, input }) => missionPreview(ctx.engine, ctx.player.id, input)),
     launch: authed
-      .input(z.object({ key, type: z.string().max(20), units: counts, ...field, cargo: resources.optional(), eventId: z.number().int().min(1).optional() }))
+      .input(z.object({ key, type: z.string().max(20), units: counts, ...field, cargo: resources.optional(), eventId: z.number().int().min(1).optional(), ...navalTarget }))
       .mutation(({ ctx, input }) => launchMission(ctx.engine, ctx.player.id, input.key, input)),
     recall: authed
       .input(z.object({ key, missionId: z.number().int().min(1) }))
@@ -180,6 +183,7 @@ export const appRouter = t.router({
   guide: guideRouter,
   espionage: espionageRouter,
   bugReport: bugReportRouter,
+  naval: navalRouter, // See: Minen/Blockade/Konvoi
 });
 
 export type AppRouter = typeof appRouter;
