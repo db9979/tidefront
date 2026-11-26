@@ -289,7 +289,7 @@ export async function missionPreview(
   const distanceKm = hexDistanceKm(own, input);
   if (!target) return { ok: false as const, code: "no_target", distanceKm };
   // Dieselben Ablehnungen wie launchMission, schon in der Vorschau (Planung zeigt den Grund).
-  if (target.kind === "base" && target.playerId === playerId) return { ok: false as const, code: "own_base", distanceKm };
+  if (target.kind === "base" && target.playerId === playerId && (input.type !== "transport" || target.id === own.id)) return { ok: false as const, code: "own_base", distanceKm }; // Transport in eigenen Hafen erlaubt
   if (input.type === "ueberfall" && target.kind === "base" && target.playerId !== null) {
     const d = await diplomacyBlock(engine.db, playerId, target.playerId, nowMs);
     if (d) return { ok: false as const, code: d, distanceKm };

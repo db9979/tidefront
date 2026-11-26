@@ -612,3 +612,29 @@ Ziel: Felder sind Entscheidungen und Konflikte, kein passiver Mehrertrag.
 7. **Offen:** kein Geleitschutz für Ertragskonvois; keine Verstärkung einer Besatzung (Rückruf und neu besetzen);
    ein Admiral, der einen Besetzungsverband führt, bleibt bei der Besatzung; Wochenziel-Art für Felder nicht umgesetzt;
    kein Radar-Vorwarnung für Angriffe auf Felder (nur Push nach dem Kampf, beim Kartell vorab).
+
+## K. Mehrere Häfen: Gründung und Verlegung (Welle 3 „Expansion“, Teil 2, Block `expansion`, v1.11)
+
+1. **Freischaltung.** 2. Hafen ab Kommandozentrale 8, 3. ab 14 (Heimathafen), höchstens 3; laufende Gründungen zählen
+   mit. Der Wirtschafts-Bot erreicht in 28 Tagen nur Kommandozentrale 6–7 (gieriger Ausbau, billigstes zuerst); ein
+   Spieler, der gezielt die Kommandozentrale baut, erreicht 8 deutlich früher. Die Stufen sind eine Vorgabe des Plans
+   und bewusst eine Mittelspiel-Entscheidung, keine Startoption.
+2. **Kolonieschiff.** Kosten 6000 Stahl, 3000 Treibstoff, 2000 Elektronik, 2000 Proviant = 18 600 zum Richtwert; das
+   sind 27 / 24 / 21 Stunden Produktion des Bot-Hafens an Tag 10 / 14 / 21 (689 / 779 / 894 je Stunde). Bauzeit 3 h
+   (2 h bei Werft 6), Werft 6 und Hafenkommandantur 6, höchstens 0,2 je Werftstufe. Ladung 3000 für Startgüter.
+3. **Amortisation** (`sim/expansion.ts`): Der Bot baut den neuen Hafen ab dem Startbestand (1000/500/250/500) mit 20 %
+   Rüstungsanteil aus. Aufsummierte Nettoproduktion Tag 1/2/3/5/7: 1 559 / 10 128 / 22 362 / 49 588 / 80 444 →
+   **amortisiert nach 3 Tagen** (Kosten Schiff + 600 km Treibstoff 18 816). Mit voller Ladung (3000, gleich verteilt,
+   verlegt, nicht als Kosten gezählt) nach 2 Tagen. Nach 10 Tagen produziert die Kolonie 735/h (Kommandozentrale 4) –
+   etwa so viel wie der Heimathafen an Tag 10. Erster Entwurf (27 900 Richtwert) amortisierte nach 4 Tagen, kostete aber
+   31–41 Stunden Produktion; gesenkt auf 2/3, damit der Bau im Mittelspiel kein Tagewerk ist und die Amortisation
+   am unteren Rand des Ziels (3–5 Tage) bleibt.
+4. **Schutz.** Kolonien erben den Anfängerschutz des Heimathafens (kein neuer Anfängerschutz durch Gründen) und haben
+   24 h Gründungsschutz (eigener Schutzgrund `gruendungsschutz`); erster Kartell-Überfall nach 48 h.
+5. **Abstand.** Mindestens 4 Felder zu fremden, 3 zu eigenen Häfen, höchstens 900 km vom Heimathafen; kein Nest,
+   Handelshafen, Rohstofffeld. Wettlauf um ein Feld entscheidet der eindeutige Index `base_field`; der Verlierer fährt
+   mit Ladung heim.
+6. **Verlegung.** Nur Hinfahrt (Treibstoff einfach), dauerhaft; Veteranen gewichtet gemischt, Admiral wechselt den
+   Hafen. Transport in eigene Häfen ist erlaubt.
+7. **Offen:** „Kolonie aufgeben“ (P5); Umbenennen eines Hafens; Ortsname aus der Karte statt „<Name> II“; Auftragsbuch-
+   und Wochenziel-Schritt für Gründungen.

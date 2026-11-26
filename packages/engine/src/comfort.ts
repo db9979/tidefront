@@ -137,7 +137,7 @@ async function blockedFor(db: DbOrTx, playerId: number, type: string, col: numbe
     .from(tables.base)
     .where(and(eq(tables.base.col, col), eq(tables.base.row, row)));
   if (!b) return null;
-  if (b.playerId === playerId) return "own_base";
+  if (b.playerId === playerId) return type === "transport" ? null : "own_base"; // Transport in eigenen Hafen erlaubt
   if (type === "ueberfall") return diplomacyBlock(db, playerId, b.playerId, Date.now());
   return null;
 }

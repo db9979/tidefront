@@ -487,3 +487,8 @@ Spielern (Treuhand, Gebühr, Börsenwert, Handelsstatistik) stehen in `docs/REGE
   Wahl kann keine neue Forschung beginnen. Dieselbe Wahl erneut ändert nichts; eine andere wird abgelehnt.
   Durchbrüche kosten nichts und setzen nichts ein. Bei Durchbruch gibt es eine Systemnachricht und eine Benachrichtigung.
 - Forschung gilt **je Saison**: Mit dem Stützpunkt wird sie zum Saisonende gelöscht.
+
+## Mehrere Häfen
+
+Gründung von Außenposten per Kolonieschiff, Verlegung zwischen eigenen Häfen und Transport in eigene Häfen stehen in
+`docs/REGELN-EXPANSION.md` (Teil dieser Regeln).

@@ -496,7 +496,7 @@ test("Eigenschaftstest: viele Seeds und zufällige Verbände", () => {
       assert.ok(amount <= Math.max(0, (defender.resources?.[r] ?? 0) - (defender.protectedPerResource ?? 0)), context);
       lootSum += amount;
     }
-    const cargo = (report.attacker.survivors.landungsschiff ?? 0) * (balance.units.landungsschiff.cargo ?? 0);
+    const cargo = Object.entries(report.attacker.survivors).reduce((sum, [id, n]) => sum + n * (balance.units[id]?.cargo ?? 0), 0);
     assert.ok(lootSum <= cargo, context);
     if (report.winner === "attacker") {
       attackerWins++;

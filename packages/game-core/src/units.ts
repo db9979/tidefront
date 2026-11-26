@@ -53,7 +53,7 @@ export function aircraftSlotsUsed(base: BaseState, balance: Balance): number {
 /**
  * Startet die Ausbildung von Einheiten oder den Bau von Verteidigungsanlagen.
  * Codes: unknown_unit, bad_count, building_required, building_level (Stufe unter requiresLevel), supply_shortage, queue_busy,
- * no_aircraft_slots, insufficient_resources.
+ * no_aircraft_slots, harbor_level (Kolonieschiff: Hafenkommandantur unter expansion.harborLevelForShip), insufficient_resources.
  */
 export function startTraining(
   base: BaseState,
@@ -77,6 +77,8 @@ export function startTraining(
     const level = buildingLevel(base, builtIn);
     if (level < 1) return { ok: false, code: "building_required" };
     if (level < (def.requiresLevel ?? 1)) return { ok: false, code: "building_level" };
+    const exp = balance.expansion; // Mehrere Häfen: Kolonieschiff erst ab einer Stufe der Hafenkommandantur
+    if (exp && id === exp.colonyShip && buildingLevel(base, "hafenkommandantur") < exp.harborLevelForShip) return { ok: false, code: "harbor_level" };
     if (next.versorgungsmangel) return { ok: false, code: "supply_shortage" };
     secondsEach = trainingSecondsPerUnit(id, level, balance, mods);
   } else {

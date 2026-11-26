@@ -3,7 +3,7 @@ import type { Balance, ProtectionState } from "./types.ts";
 const HOUR_MS = 3600000;
 const DAY_MS = 24 * HOUR_MS;
 
-export type ProtectionReason = "nachtschild" | "anfaengerschutz" | "niederlage";
+export type ProtectionReason = "nachtschild" | "anfaengerschutz" | "niederlage" | "gruendungsschutz";
 
 export function createProtection(
   createdAtMs: number,
@@ -128,13 +128,19 @@ export function applyDefeatShield(
   return { ...p, defeatShieldUntilMs: Math.max(p.defeatShieldUntilMs, until) };
 }
 
-/** Gesamtstatus; bei mehreren Gründen in der Reihenfolge Anfängerschutz, Niederlage, Nachtschild. */
+/** Mehrere Häfen: Gründungsschutz einer neuen Kolonie (expansion.ts colonyProtection). */
+export function isFoundingShieldActive(p: ProtectionState, nowMs: number): boolean {
+  return nowMs < (p.foundingShieldUntilMs ?? 0);
+}
+
+/** Gesamtstatus; bei mehreren Gründen in der Reihenfolge Anfängerschutz, Gründungsschutz, Niederlage, Nachtschild. */
 export function protectionStatus(
   p: ProtectionState,
   nowMs: number,
   balance: Balance,
 ): { protected: boolean; reason: ProtectionReason | null } {
   if (isBeginnerProtected(p, nowMs, balance)) return { protected: true, reason: "anfaengerschutz" };
+  if (isFoundingShieldActive(p, nowMs)) return { protected: true, reason: "gruendungsschutz" };
   if (isDefeatShieldActive(p, nowMs)) return { protected: true, reason: "niederlage" };
   if (isNightShieldActive(p, nowMs, balance)) return { protected: true, reason: "nachtschild" };
   return { protected: false, reason: null };
