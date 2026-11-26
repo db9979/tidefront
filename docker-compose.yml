@@ -100,8 +100,8 @@ services:
       - ${BACKUP_DIR:-./backups}:/backups
       - ./scripts/backup.sh:/scripts/backup.sh:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "sh", "/scripts/backup.sh", "health"]
       interval: 5m
