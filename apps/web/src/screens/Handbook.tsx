@@ -1,5 +1,6 @@
 // Handbuch: Spielziel, Ablauf und Regeln in kurzen Kapiteln; Einheitentabelle aus der Balance.
 import { useState, type ReactNode } from "react";
+import { useBackLayer } from "../lib/back.ts";
 import { ChangelogSheet, VersionLine } from "../components/Changelog.tsx";
 import { useQuery } from "@tanstack/react-query";
 import { trpc } from "../lib/trpc.ts";
@@ -15,10 +16,13 @@ function P({ children }: { children: ReactNode }) {
   return <p className="text-sm text-slate-200 mb-2 leading-relaxed">{children}</p>;
 }
 
-export function Handbook({ onClose, onLogout, playerName, initialView }: { onClose: () => void; onLogout: () => void; playerName: string; initialView?: "settings" | "admin" | null }) {
+export function Handbook({ onClose, onLogout, playerName, initialView, onView }: { onClose: () => void; onLogout: () => void; playerName: string; initialView?: "settings" | "admin" | null; onView?: (v: "settings" | "admin" | null) => void }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const [open, setOpen] = useState<string | null>("ziel");
-  const [view, setView] = useState(initialView ?? null);
+  const [view, setViewState] = useState(initialView ?? null);
+  // Ansicht an die App melden (Adresse ?view=…); Zurück schließt die Einstellungen.
+  const setView = (v: "settings" | "admin" | null) => { setViewState(v); onView?.(v); };
+  useBackLayer(!!view, () => setView(null), 2);
   const [news, setNews] = useState(false);
   const b = meta.data?.balance;
   const pct = (v: number | undefined, d: number) => `${Math.round((v ?? d) * 100)} %`;
@@ -199,7 +203,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
         <>
           <P>Unter Meldungen → <strong>Allianz</strong> gründest du eine Allianz (Name und Kürzel aus 2–4 Zeichen) oder fragst bei einer an. Führung und Offiziere laden ein und nehmen Anfragen an; die Führung vergibt Rollen und kann die Allianz auflösen. Das Kürzel steht in der Rangliste vor deinem Namen, die <strong>Allianzwertung</strong> zählt die Punkte aller Mitglieder zusammen. Allianzen bleiben über das Saisonende bestehen.</P>
           <P><strong>Verbündete</strong> können sich nicht überfallen. Im Allianz-Chat sprecht ihr euch ab.</P>
-          <P><strong>Diplomatie</strong> gibt es zwischen Allianzen und Spielern ohne Allianz. Ein <strong>Nichtangriffspakt</strong> gilt, wenn beide Seiten zustimmen; danach sind gegenseitige Überfälle ausgeschlossen. Kündigen kann jede Seite, der Pakt gilt dann noch 24 Stunden. Eine <strong>Kriegserklärung</strong> wirkt nach 12 Stunden Vorlauf: Im Krieg entfällt die Schwachziel-Kürzung der Beute. Frieden gibt es, wenn beide Seiten ihn wollen.</P>
+          <P><strong>Diplomatie</strong> gibt es zwischen Allianzen und Spielern ohne Allianz. Ein <strong>Nichtangriffspakt</strong> gilt, wenn beide Seiten zustimmen; danach sind gegenseitige Überfälle ausgeschlossen. Kündigen kann jede Seite, der Pakt gilt dann noch 24 Stunden. Eine <strong>Kriegserklärung</strong> wirkt nach 12 Stunden Vorlauf; während des Vorlaufs kann die erklärende Seite sie noch zurückziehen. Im Krieg entfällt die Schwachziel-Kürzung der Beute. Frieden gibt es, wenn beide Seiten ihn wollen.</P>
           <P>In der Börse findest du den <strong>Handel mit Spielern</strong>: Biete eine Ressource oder Kredite gegen eine andere an, für alle oder nur für deine Allianz. Die Ware geht beim Einstellen in Treuhand und kommt beim Zurückziehen sofort zurück. Wer annimmt, zahlt sofort; Ressourcen reisen auf beiden Seiten per Konvoi nach Entfernung der Häfen, Kredite kommen sofort. Je Seite wird eine kleine Gebühr einbehalten. Offene Angebote verfallen am Saisonende.</P>
           <P>Spielerhandel verändert die Börsenkurse nicht; angezeigt wird der <strong>Börsenwert</strong> zur Orientierung: Jedes Angebot zeigt, was du gibst und bekommst, umgerechnet zum aktuellen Börsenkurs, und wie weit das darunter oder darüber liegt. Weicht ein Angebot um mehr als 20 % ab, warnt das Spiel und fragt vor der Annahme nach. Unter „Spielerhandel (7 Tage)“ siehst du, zu welchen Kursen andere Spieler zuletzt getauscht haben.</P>
         </>
@@ -236,7 +240,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
     },
   ];
 
-  if (view) return <SettingsScreen onClose={() => setView(null)} initialAdmin={view === "admin"} />;
+  if (view) return <SettingsScreen onClose={() => setView(null)} initialAdmin={view === "admin"} onAdmin={(a) => setView(a ? "admin" : "settings")} />;
   return (
     <div>
       <div className="flex items-center justify-between mb-3">

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc.ts";
 import { useLive } from "./lib/live.ts";
@@ -16,7 +16,8 @@ import { SeasonEndBanner } from "./components/Season.tsx";
 import { MarketScreen } from "./screens/Market.tsx";
 import { Handbook } from "./screens/Handbook.tsx";
 import { ResourceBar } from "./components/ResourceBar.tsx";
-import { Welcome } from "./components/Welcome.tsx";
+import { Welcome, welcomeSeen } from "./components/Welcome.tsx";
+import { useBackLayer } from "./lib/back.ts";
 import { UpdateNotices } from "./components/Changelog.tsx";
 import { useGuide, type GuideAction } from "./components/Guide.tsx";
 import { useDaily } from "./components/Daily.tsx";
@@ -41,30 +42,24 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 const seenKey = (playerId: number) => `tf-reports-seen:${playerId}`;
 const LEGACY_SEEN_KEY = "tf-reports-seen";
 
-/** Adresse mit dem aktuellen Reiter, damit Neuladen dort bleibt. */
-function tabUrl(tab: Tab): string {
-  return tab === "basis" ? location.pathname : `${location.pathname}?tab=${tab}`;
+/** Adresse mit dem aktuellen Reiter und der offenen Einstellungs-/Verwaltungsansicht, damit Neuladen dort bleibt. */
+function appUrl(tab: Tab, view: "settings" | "admin" | null): string {
+  const q = new URLSearchParams();
+  if (tab !== "basis") q.set("tab", tab);
+  if (view) q.set("view", view);
+  const s = q.toString();
+  return s ? `${location.pathname}?${s}` : location.pathname;
 }
 
-/**
- * Zurück-Taste (Handy, Browser) schließt eine offene Ansicht statt die App zu verlassen:
- * beim Öffnen ein Verlaufseintrag, beim Zurück schließen; beim Schließen per Knopf den Eintrag wieder entfernen.
- */
-function useBackCloses(open: boolean, close: () => void) {
-  const closeRef = useRef(close);
-  closeRef.current = close;
-  useEffect(() => {
-    if (!open) return;
-    history.pushState({ tfOverlay: true }, "", location.href);
-    const onPop = (e: PopStateEvent) => {
-      if (!(e.state as { tfOverlay?: boolean } | null)?.tfOverlay) closeRef.current();
-    };
-    window.addEventListener("popstate", onPop);
-    return () => {
-      window.removeEventListener("popstate", onPop);
-      if ((history.state as { tfOverlay?: boolean } | null)?.tfOverlay) history.back();
-    };
-  }, [open]);
+/** Alter, geräteweiter Gelesen-Merker: nur der erste Spieler übernimmt ihn, danach wird er gelöscht. */
+function initialSeen(playerId: number): number {
+  const own = localStorage.getItem(seenKey(playerId));
+  if (own !== null) return Number(own) || 0;
+  const legacy = localStorage.getItem(LEGACY_SEEN_KEY);
+  if (legacy === null) return 0;
+  localStorage.setItem(seenKey(playerId), legacy);
+  localStorage.removeItem(LEGACY_SEEN_KEY);
+  return Number(legacy) || 0;
 }
 
 export function App() {
@@ -99,19 +94,25 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const [mapFocus, setMapFocus] = useState<Target | null>(null);
   const [help, setHelp] = useState(!!opened.view);
   const [helpView, setHelpView] = useState(opened.view ?? null);
+  // Neu aufbauen, wenn eine Benachrichtigung eine andere Ansicht öffnet (Wechsel im Handbuch selbst meldet onView).
+  const [helpKey, setHelpKey] = useState(0);
   const [sheet, setSheet] = useState<string | null>(null);
-  const [seen, setSeen] = useState(() => Number(localStorage.getItem(seenKey(playerId)) ?? localStorage.getItem(LEGACY_SEEN_KEY) ?? 0));
+  const [seen, setSeen] = useState(() => initialSeen(playerId));
   const [sub, setSub] = useState<MeldungenTab>("berichte");
-  useBackCloses(help || !!plan || !!sheet, () => {
+  // Begrüßung hat Vorrang vor „Neu in Version“ (das erst danach erscheint).
+  const [welcome, setWelcome] = useState(() => !welcomeSeen(playerId));
+  // Zurück schließt die offene Ansicht (Handbuch, Planung, Forschung); Blätter haben eigene Ebenen.
+  useBackLayer(help || !!plan || research, () => {
     setHelp(false);
     setHelpView(null);
     setPlan(null);
-    setSheet(null);
-  });
+    setResearch(false);
+  }, 1);
 
+  // Nach der Zurück-Ebene, damit der neue Verlaufseintrag die neue Adresse trägt.
   useEffect(() => {
-    history.replaceState(history.state, "", tabUrl(tab));
-  }, [tab]);
+    history.replaceState(history.state, "", appUrl(tab, help ? helpView : null));
+  }, [tab, help, helpView]);
 
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
@@ -119,6 +120,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       const t = parseOpenUrl(e.data.url);
       setPlan(null);
       setHelpView(t.view ?? null);
+      setHelpKey((k) => k + 1);
       setHelp(!!t.view);
       if (t.tab) setTab(t.tab);
     };
@@ -171,7 +173,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const openResearch = () => { setPlan(null); setHelp(false); setResearch(true); };
   const fullBleed = tab === "karte" && !plan && !help && !research;
   const content = help ? (
-    <Handbook key={helpView ?? "h"} onClose={() => setHelp(false)} onLogout={logout} playerName={playerName} initialView={helpView} />
+    <Handbook key={helpKey} onClose={() => { setHelp(false); setHelpView(null); }} onLogout={logout} playerName={playerName} initialView={helpView} onView={setHelpView} />
   ) : research ? (
     <ResearchScreen base={b} asOf={base.data.serverNow} onClose={() => setResearch(false)} />
   ) : plan ? (
@@ -222,9 +224,9 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
           );
         })}
       </nav>
-      <Welcome playerId={playerId} />
+      {welcome && <Welcome playerId={playerId} onDone={() => setWelcome(false)} />}
       <ResearchRollPopup base={b} />
-      <UpdateNotices playerId={playerId} />
+      <UpdateNotices playerId={playerId} paused={welcome} />
     </div>
   );
 }

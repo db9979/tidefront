@@ -123,8 +123,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         {note && <p className="text-xs text-messing mb-1">{note}</p>}
         <ul className="divide-y divide-navy-700">
           {base.units.filter((u) => u.home > 0).map((u) => (
-            <li key={u.id} className="py-2 flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2"><IconTile id={u.id} size={36} tone={unitTone(balance, u.id)} /><div>{label(u.id)}<div className="text-xs text-slate-400">{fmtNum(u.home)} daheim</div></div></div>
+            <li key={u.id} className="py-2 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1"><IconTile id={u.id} size={36} tone={unitTone(balance, u.id)} /><div className="min-w-0 break-words leading-tight">{label(u.id)}<div className="text-xs text-slate-400">{fmtNum(u.home)} daheim</div></div></div>
               <Stepper value={units[u.id] ?? 0} max={u.home} onChange={(v) => setUnits({ ...units, [u.id]: v })} />
             </li>
           ))}
@@ -140,8 +140,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
       {type === "transport" && (
         <Card title="Ladung">
           {balance.resources.map((r) => (
-            <div key={r} className="py-1 flex items-center justify-between gap-2 flex-wrap">
-              <span className="flex items-center gap-1"><Icon id={r} size={20} /> {label(r)} <span className="text-xs text-slate-400">({fmtNum(base.resources[r] ?? 0)})</span></span>
+            <div key={r} className="py-1 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1 min-w-0 flex-1"><Icon id={r} size={20} /><span className="min-w-0 break-words leading-tight">{label(r)} <span className="text-xs text-slate-400 whitespace-nowrap">({fmtNum(base.resources[r] ?? 0)})</span></span></span>
               <Stepper value={cargo[r] ?? 0} max={Math.floor(base.resources[r] ?? 0)} onChange={(v) => setCargo({ ...cargo, [r]: v })} />
             </div>
           ))}

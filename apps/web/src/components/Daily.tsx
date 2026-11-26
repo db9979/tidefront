@@ -57,10 +57,10 @@ export function DailyOrders() {
         </span>
       </div>
 
-      <div className="flex items-center gap-2 text-sm mb-2 pb-2 border-b border-dotted border-rule">
-        <span className="font-serif text-[17px] leading-none">Serie {s.length} {s.length === 1 ? "Tag" : "Tage"}</span>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm mb-2 pb-2 border-b border-dotted border-rule">
+        <span className="font-serif text-[17px] leading-none whitespace-nowrap">Serie {s.length} {s.length === 1 ? "Tag" : "Tage"}</span>
         {s.todayDone && <Badge tone="green">heute erfüllt</Badge>}
-        <span className="text-xs text-ink2 ml-auto text-right">
+        <span className="text-xs text-ink2 ml-auto text-right whitespace-nowrap">
           Bonus an Tag {s.nextMilestone}: +{s.nextBonusPoints} Punkte
         </span>
       </div>

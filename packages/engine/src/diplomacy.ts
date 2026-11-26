@@ -4,6 +4,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { tables, type Tx } from "@tidefront/db";
 import type { Engine } from "./context.ts";
+import { scheduleEvent } from "./store.ts";
 import {
   act,
   fail,
@@ -133,6 +134,8 @@ export function cancelPact(engine: Engine, playerId: number, id: number) {
     if (p.endsAt) fail("already_cancelled");
     const endsAtMs = nowMs + PACT_NOTICE_MS;
     await tx.update(tables.diplomacy).set({ endsAt: new Date(endsAtMs) }).where(eq(tables.diplomacy.id, p.id));
+    // Erlöschen melden (purgeExpired); spätere Zugriffe räumen ebenfalls auf, gemeldet wird nur einmal.
+    await scheduleEvent(tx, "pact_expire", endsAtMs, { diplomacyId: p.id }, null);
     await tell(tx, notes, [own, other], "Diplomatie: Pakt gekündigt",
       `${ownName} hat den Nichtangriffspakt mit ${await partyName(tx, other)} gekündigt. Er gilt noch bis ${fmt(endsAtMs)} Uhr.`);
     return { ok: true as const, endsAtMs };

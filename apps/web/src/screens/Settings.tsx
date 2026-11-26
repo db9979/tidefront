@@ -6,6 +6,7 @@ import { errorText, failText } from "../lib/names.ts";
 import { currentEndpoint, DENIED_HINT, disablePush, enablePush, isIos, isStandalone, KIND_LABEL, pushDenied, pushSupported } from "../lib/push.ts";
 import { Badge, Button, Card, ErrorLine } from "../ui.tsx";
 import { AdminScreen } from "./Admin.tsx";
+import { useBackLayer } from "../lib/back.ts";
 import { Switch } from "../components/Switch.tsx";
 import { InvitePanel } from "../components/Invite.tsx";
 import { SummaryCard } from "../components/MorningSummary.tsx";
@@ -204,10 +205,12 @@ function PasswordCard() {
   );
 }
 
-export function SettingsScreen({ onClose, initialAdmin = false }: { onClose: () => void; initialAdmin?: boolean }) {
+export function SettingsScreen({ onClose, initialAdmin = false, onAdmin }: { onClose: () => void; initialAdmin?: boolean; onAdmin?: (open: boolean) => void }) {
   const me = useQuery(trpc.auth.me.queryOptions());
   const isAdmin = !!me.data?.player?.isAdmin;
-  const [admin, setAdmin] = useState(initialAdmin);
+  const [admin, setAdminState] = useState(initialAdmin);
+  const setAdmin = (a: boolean) => { setAdminState(a); onAdmin?.(a); };
+  useBackLayer(admin && isAdmin, () => setAdmin(false), 3);
   if (admin && isAdmin) return <AdminScreen onClose={() => setAdmin(false)} />;
   return (
     <div>

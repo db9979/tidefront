@@ -100,9 +100,25 @@ export function pair(x: string, y: string): [string, string] {
   return x < y ? [x, y] : [y, x];
 }
 
-/** Abgelaufene Pakte (Kündigungsfrist vorbei) entfernen. */
-export async function purgeExpired(tx: DbOrTx, nowMs: number): Promise<void> {
-  await tx.delete(tables.diplomacy).where(and(eq(tables.diplomacy.kind, "pakt"), lte(tables.diplomacy.endsAt, new Date(nowMs))));
+/**
+ * Abgelaufene Pakte (Kündigungsfrist vorbei) entfernen und beiden Seiten das Erlöschen melden. Idempotent:
+ * Nachricht nur für die Zeilen, die dieser Aufruf tatsächlich löscht (geplantes Ereignis pact_expire oder
+ * nächster Zugriff, je nachdem, was zuerst kommt).
+ */
+export async function purgeExpired(db: DbOrTx, nowMs: number, notes: Notes = []): Promise<void> {
+  await db.transaction(async (tx) => {
+    const gone = await tx
+      .delete(tables.diplomacy)
+      .where(and(eq(tables.diplomacy.kind, "pakt"), lte(tables.diplomacy.endsAt, new Date(nowMs))))
+      .returning({ partyA: tables.diplomacy.partyA, partyB: tables.diplomacy.partyB, status: tables.diplomacy.status });
+    for (const d of gone) {
+      if (d.status !== "aktiv") continue;
+      const ids = [...(await partyMembers(tx, d.partyA)), ...(await partyMembers(tx, d.partyB))];
+      await systemMessage(tx, notes, ids, "Diplomatie: Pakt erloschen",
+        `Der Nichtangriffspakt zwischen ${await partyName(tx, d.partyA)} und ${await partyName(tx, d.partyB)} ist erloschen. Überfälle sind wieder möglich.`);
+      notes.push([[...new Set(ids)], "alliance"]);
+    }
+  });
 }
 
 /** Systemnachricht (Absender null) an mehrere Spieler, in der laufenden Transaktion. */

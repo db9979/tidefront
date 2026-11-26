@@ -35,7 +35,7 @@ export function timelineItems(base: BaseData, nowMs: number, opts: { seasonEndMs
     const attack = i.type !== "transport";
     out.push({
       key: `i:${i.id}`, atMs: i.arriveAtMs, icon: i.type === "kartell" ? "kartell" : attack ? "ueberfall" : "transport",
-      text: attack ? `${label(i.type)}: Angriff trifft ein` : "Transport trifft ein", alert: attack,
+      text: attack ? `${label(i.type)}: Angriff trifft ein` : i.from ? `Transport von ${i.from} trifft ein` : "Transport trifft ein", alert: attack,
     });
   }
   for (const d of base.deliveries) {

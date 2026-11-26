@@ -5,6 +5,7 @@ import type { Counts, Mission } from "@tidefront/game-core";
 import { tables, type Db, type DbOrTx } from "@tidefront/db";
 import { balance, GameError, type Engine, type Notice } from "./context.ts";
 import { baseOfPlayer } from "./store.ts";
+import { diplomacyBlock } from "./alliance-core.ts";
 
 export const TEMPLATE_MAX = 20;
 export const TEMPLATE_NAME_MAX = 32;
@@ -125,11 +126,26 @@ export interface RepeatPlan {
   units: Counts;
   /** Gekürzt auf die Einheiten daheim. */
   fit: FitResult;
+  /** Vorab erkennbare Ablehnung (Fehlercode wie bei launchMission), sonst null. */
+  blocked: string | null;
 }
 
-function toRepeat(m: { type: string; targetCol: number; targetRow: number; plan: unknown }, home: Counts): RepeatPlan {
+/** Ablehnungen, die sich schon vor der Planung prüfen lassen: eigener Hafen, Verbündete, Paktpartner. */
+async function blockedFor(db: DbOrTx, playerId: number, type: string, col: number, row: number): Promise<string | null> {
+  const [b] = await db
+    .select({ playerId: tables.base.playerId })
+    .from(tables.base)
+    .where(and(eq(tables.base.col, col), eq(tables.base.row, row)));
+  if (!b) return null;
+  if (b.playerId === playerId) return "own_base";
+  if (type === "ueberfall") return diplomacyBlock(db, playerId, b.playerId, Date.now());
+  return null;
+}
+
+async function toRepeat(db: DbOrTx, playerId: number, m: { type: string; targetCol: number; targetRow: number; plan: unknown }, home: Counts): Promise<RepeatPlan> {
   const units = { ...((m.plan as Mission).units ?? {}) };
-  return { type: m.type, col: m.targetCol, row: m.targetRow, units, fit: fitTemplate(units, home) };
+  const blocked = await blockedFor(db, playerId, m.type, m.targetCol, m.targetRow);
+  return { type: m.type, col: m.targetCol, row: m.targetRow, units, fit: fitTemplate(units, home), blocked };
 }
 
 /** Ziel und Zusammensetzung der eigenen Mission zu einem Bericht; null, wenn es keine gibt. */
@@ -140,7 +156,7 @@ export async function repeatFromReport(db: DbOrTx, playerId: number, reportId: n
     .where(and(eq(tables.mission.reportId, reportId), eq(tables.mission.playerId, playerId)));
   if (!m || !(MISSION_TYPES as readonly string[]).includes(m.type)) return null;
   const own = await baseOfPlayer(db, playerId);
-  return toRepeat(m, own?.state.units ?? {});
+  return toRepeat(db, playerId, m, own?.state.units ?? {});
 }
 
 /** Zuletzt heimgekehrte eigene Missionen (neueste zuerst). */
@@ -157,13 +173,13 @@ export async function recentMissions(db: DbOrTx, playerId: number, limit = 5) {
     .limit(limit);
   const own = await baseOfPlayer(db, playerId);
   const home = own?.state.units ?? {};
-  return rows.map((m) => ({
+  return Promise.all(rows.map(async (m) => ({
     id: m.id,
     reportId: m.reportId,
     returnedAtMs: (m.returnAt ?? m.arriveAt).getTime(),
     recalled: (m.plan as Mission).recalledAtMs !== undefined,
-    ...toRepeat(m, home),
-  }));
+    ...(await toRepeat(db, playerId, m, home)),
+  })));
 }
 
 // ---------------------------------------------------------------- Letzte Aufklärung

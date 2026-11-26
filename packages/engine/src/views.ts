@@ -42,6 +42,7 @@ import { modifierBreakdown, modsOf } from "./modifiers.ts";
 import { veteranView } from "./veterans.ts";
 import { withLuckFactors } from "./battle-stats.ts";
 import { researchView } from "./research.ts";
+import { diplomacyBlock } from "./alliance-core.ts";
 
 /** Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband.) */
 export async function incomingDetected(tx: DbOrTx, baseId: number, state: BaseState, nowMs: number, mods?: Modifiers): Promise<boolean> {
@@ -109,6 +110,11 @@ export async function baseView(engine: Engine, playerId: number) {
       eq(tables.mission.status, "outbound"),
     ));
   const warn = radarWarningMinutes(s, balance, mods);
+  // Absender nur bei Transporten (Angreifer bleiben bis zum Kampf unbekannt).
+  const senderIds = incomingRows.filter((m) => m.type === "transport" && m.baseId !== null).map((m) => m.baseId!);
+  const senders = senderIds.length
+    ? new Map((await engine.db.select({ id: tables.base.id, name: tables.base.name }).from(tables.base).where(inArray(tables.base.id, senderIds))).map((r) => [r.id, r.name]))
+    : new Map<number, string>();
   const incoming = incomingRows
     .filter((m) => m.type === "transport" || isAttackDetected(m.arriveAt.getTime(), nowMs, warn * warnFactor(m.plan)))
     .map((m) => ({
@@ -116,6 +122,7 @@ export async function baseView(engine: Engine, playerId: number) {
       type: m.type,
       arriveAtMs: m.arriveAt.getTime(),
       units: m.type === "kartell" ? ((m.plan as { units: Counts }).units) : null,
+      from: m.type === "transport" && m.baseId !== null ? senders.get(m.baseId) ?? null : null,
     }));
   const deliveries = await engine.db
     .select()
@@ -231,6 +238,16 @@ export async function missionPreview(
   const target = await targetAt(engine.db as never, input.col, input.row);
   const distanceKm = hexDistanceKm(own, input);
   if (!target) return { ok: false as const, code: "no_target", distanceKm };
+  // Dieselben Ablehnungen wie launchMission, schon in der Vorschau (Planung zeigt den Grund).
+  if (target.kind === "base" && target.playerId === playerId) return { ok: false as const, code: "own_base", distanceKm };
+  if (input.type === "ueberfall" && target.kind === "base" && target.playerId !== null) {
+    const d = await diplomacyBlock(engine.db, playerId, target.playerId, nowMs);
+    if (d) return { ok: false as const, code: d, distanceKm };
+  }
+  if (input.type === "transport" && target.kind !== "base") return { ok: false as const, code: "transport_needs_base", distanceKm };
+  if (input.type === "ueberfall" && target.kind === "nest" && target.defeatedAt && !isNestRespawned(target.defeatedAt.getTime(), nowMs, balance)) {
+    return { ok: false as const, code: "nest_empty", distanceKm };
+  }
   const mods = await modsOf(engine.db, own, nowMs);
   const r = planMission(
     settle(own.state, nowMs, balance, mods),

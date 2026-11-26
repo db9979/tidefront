@@ -4,6 +4,17 @@ import { Icon } from "../icons.tsx";
 import { Button } from "../ui.tsx";
 
 const key = (playerId: number) => `tf-welcome-v1:${playerId}`;
+/** Früherer, geräteweiter Merker: übernimmt der erste Spieler, danach wird er gelöscht. */
+const LEGACY_KEY = "tf-welcome-v1";
+
+/** Hat dieser Spieler die Begrüßung schon gesehen? Übernimmt dabei den alten Merker. */
+export function welcomeSeen(playerId: number): boolean {
+  if (localStorage.getItem(key(playerId))) return true;
+  if (!localStorage.getItem(LEGACY_KEY)) return false;
+  localStorage.setItem(key(playerId), "1");
+  localStorage.removeItem(LEGACY_KEY);
+  return true;
+}
 
 const SLIDES = [
   { icon: "anker", title: "Dein Hafen steht", text: "Willkommen, Kommandant. Von hier aus baust du Wirtschaft und Flotte auf. Alles läuft in Echtzeit weiter, auch wenn die App geschlossen ist." },
@@ -12,14 +23,16 @@ const SLIDES = [
   { icon: "schild", title: "Sieben Tage Schonzeit", text: "In der ersten Woche bist du vor Angriffen geschützt. Danach schützt dich der Nachtschild jede Nacht acht Stunden – die Startzeit wählst du in der Basis. Fragen? Das „?“ oben rechts öffnet das Handbuch." },
 ];
 
-export function Welcome({ playerId }: { playerId: number }) {
-  const [step, setStep] = useState(() => (localStorage.getItem(key(playerId)) ? -1 : 0));
+/** Nur anzeigen, wenn welcomeSeen false lieferte; onDone nach dem Schließen. */
+export function Welcome({ playerId, onDone }: { playerId: number; onDone: () => void }) {
+  const [step, setStep] = useState(0);
   if (step < 0) return null;
   const s = SLIDES[step];
   const last = step === SLIDES.length - 1;
   const close = () => {
     localStorage.setItem(key(playerId), "1");
     setStep(-1);
+    onDone();
   };
   return (
     <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-ink/50" role="dialog" aria-modal="true">

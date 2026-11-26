@@ -324,7 +324,8 @@ export async function inviterForCode(db: Db, code: string, nowMs = Date.now()): 
     .innerJoin(tables.player, eq(tables.player.id, pi.inviterId))
     .innerJoin(tables.inviteCode, eq(tables.inviteCode.code, pi.code))
     .where(and(
-      eq(pi.code, c),
+      // Wie bei der Registrierung ohne Rücksicht auf Groß-/Kleinschreibung.
+      sql`upper(${pi.code}) = ${c.toUpperCase()}`,
       isNull(pi.acceptedAt),
       isNull(pi.revokedAt),
       gt(pi.expiresAt, new Date(nowMs)),

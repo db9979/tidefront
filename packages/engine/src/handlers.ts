@@ -280,7 +280,15 @@ const missionArrive: Handler = async (tx, ev, due) => {
   // Wrackgut bergen: freie Ladekapazität der heimkehrenden Schiffe nach der Beute.
   const free = fleetTotals(returning, balance, attackerMods).cargoCapacity - sumMap(cargoHome);
   const salvage = await salvageAt(tx, m.targetCol, m.targetRow, free, due);
-  if (salvage.stahl + salvage.elektronik > 0) cargoHome = addMaps(cargoHome, salvage);
+  if (salvage.stahl + salvage.elektronik > 0) {
+    cargoHome = addMaps(cargoHome, salvage);
+    // Im Bericht getrennt von der Beute ausweisen.
+    if (reportId !== null) {
+      await tx.update(tables.battleReport)
+        .set({ report: sql`${tables.battleReport.report} || ${JSON.stringify({ salvage })}::jsonb` })
+        .where(eq(tables.battleReport.id, reportId));
+    }
+  }
 
   const returnAt = (plan.returnAtMs ?? due) + Math.max(0, due - plan.arriveAtMs);
   await tx
@@ -406,6 +414,11 @@ export const HANDLERS: Record<string, Handler> = {
   season_end: (tx, ev, due) => import("./season.ts").then((m) => m.seasonEnd(tx, ev, due)),
   attack_warning: attackWarning,
   ...WORLD_EVENT_HANDLERS,
+  pact_expire: (tx, _ev, due) => import("./alliance-core.ts").then(async (m) => {
+    const notify: HandlerResult["notify"] = [];
+    await m.purgeExpired(tx, due, notify);
+    return { notify };
+  }),
   research_complete: (tx, ev, due) => import("./research.ts").then((m) => m.researchComplete(tx, ev, due)),
 };
 
