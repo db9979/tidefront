@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc.ts";
 import { useLive } from "./lib/live.ts";
@@ -8,13 +8,14 @@ import { Icon } from "./icons.tsx";
 import { AuthScreen } from "./screens/Auth.tsx";
 import { ChooseBase } from "./screens/ChooseBase.tsx";
 import { BaseScreen } from "./screens/Base.tsx";
-import { MapScreen } from "./screens/MapScreen.tsx";
-import { TroopsScreen } from "./screens/Troops.tsx";
-import { MissionPlan } from "./screens/MissionPlan.tsx";
-import { MeldungenScreen, type MeldungenTab } from "./screens/Meldungen.tsx";
+const MapScreen = lazy(() => import("./screens/MapScreen.tsx").then((m) => ({ default: m.MapScreen })));
+const TroopsScreen = lazy(() => import("./screens/Troops.tsx").then((m) => ({ default: m.TroopsScreen })));
+const MissionPlan = lazy(() => import("./screens/MissionPlan.tsx").then((m) => ({ default: m.MissionPlan })));
+import type { MeldungenTab } from "./screens/Meldungen.tsx";
+const MeldungenScreen = lazy(() => import("./screens/Meldungen.tsx").then((m) => ({ default: m.MeldungenScreen })));
 import { SeasonEndBanner } from "./components/Season.tsx";
-import { MarketScreen } from "./screens/Market.tsx";
-import { Handbook } from "./screens/Handbook.tsx";
+const MarketScreen = lazy(() => import("./screens/Market.tsx").then((m) => ({ default: m.MarketScreen })));
+const Handbook = lazy(() => import("./screens/Handbook.tsx").then((m) => ({ default: m.Handbook })));
 import { ResourceBar } from "./components/ResourceBar.tsx";
 import { Welcome, welcomeSeen } from "./components/Welcome.tsx";
 import { useBackLayer } from "./lib/back.ts";
@@ -23,7 +24,7 @@ import { useGuide, type GuideAction } from "./components/Guide.tsx";
 import { useDaily } from "./components/Daily.tsx";
 import { parseOpenUrl, type OpenTarget } from "./lib/push.ts";
 import { usePlanRequests, type PlanPreset } from "./lib/plan-request.ts";
-import { ResearchScreen } from "./screens/Research.tsx";
+const ResearchScreen = lazy(() => import("./screens/Research.tsx").then((m) => ({ default: m.ResearchScreen })));
 import { ResearchRollPopup } from "./components/ResearchDice.tsx";
 
 export type Tab = "basis" | "karte" | "truppen" | "berichte" | "boerse";
@@ -196,7 +197,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   return (
     <div className="h-full flex flex-col max-w-xl mx-auto">
       <ResourceBar base={b} asOf={base.data.serverNow} now={now} onHelp={() => { setHelpView(null); setHelp((h) => !h); }} />
-      <main className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto overflow-x-hidden p-3 pb-8 scroll-pb-8"}`}>{content}</main>
+      <main className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto overflow-x-hidden p-3 pb-8 scroll-pb-8"}`}><Suspense fallback={<Loading />}>{content}</Suspense></main>
       <nav className="grid grid-cols-5 bg-paper border-t-[3px] border-double border-ink" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {TABS.map((t) => {
           const active = tab === t.id && !plan && !help;

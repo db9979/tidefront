@@ -154,7 +154,7 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
   const [n, setN] = useState(1);
   const cmd = useCommand((i: { key: string; id: string; count: number }) => trpcClient.base.train.mutate(i), invalidateBase);
   const [info, setInfo] = useState(false);
-  const vet = props.base.veterans.find((v) => v.id === props.id);
+  const vet = props.base.veterans?.find((v) => v.id === props.id);
   // Bezahlbare Höchstmenge: begrenzt die Eingabe, damit Kosten und Bauzeit sinnvoll bleiben.
   const afford = Object.entries(props.cost ?? {}).reduce(
     (m, [r, v]) => (v > 0 ? Math.min(m, Math.floor((props.base.resources[r] ?? 0) / v)) : m),
