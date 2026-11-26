@@ -82,6 +82,17 @@ Auslegungen stehen in `packages/game-core/ENTSCHEIDUNGEN.md` und `packages/game-
 - Oberfläche: Der Reiter „Meldungen“ der unteren Leiste hat oben drei Reiter Berichte | Nachrichten | Rangliste
   (mit Spielerübersicht und Ruhmeshalle). Ohne Stützpunkt landet der Spieler in der Hafenwahl, die den Saisonwechsel anzeigt.
 
+## Festlegungen: Tagesbefehle
+
+- Regeln in `REGELN.md`, Abschnitt Tagesbefehle. Tabellen `daily_challenge` (Unique-Index Spieler/Tag/Slot) und
+  `daily_streak` am Ende von `schema.ts`; `season_result.befehle` hält die Punkte fest.
+- Pool und Spieltag rein in `engine/src/challenge-pool.ts`; Datenbankseite in `challenges.ts`: Vergabe
+  `ensureAssigned` (lazy, Doppelvergabe durch Unique-Index und deterministische Auswahl ausgeschlossen),
+  Fortschritts-Schnittstelle `trackProgress(tx, playerId, kind, amount, { atMs, param?, level?, mode? })` in einem
+  eigenen Savepoint (wirft nie). Aufrufe: `events.ts` (Vorher/Nachher um jeden Handler, `challengeSnapshot` und
+  `challengesAfter`), `commands.ts` (`upgrade`: Bauschlange, `trade`: Kredite). Abholen und Würfeln in `daily.ts` über
+  `runCommand`; Router `apps/api/src/routers/daily.ts`. Saisonende leert beide Tabellen.
+
 ## Festlegungen für den Betrieb
 
 - Ziel ist ein Raspberry Pi mit 64-Bit-System unter `speech@speech.local`; alle Images müssen für arm64 verfügbar sein.

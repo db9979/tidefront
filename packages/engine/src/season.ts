@@ -6,6 +6,7 @@ import { marketBalance } from "./context.ts";
 import type { Handler, HandlerResult } from "./events.ts";
 import { awardsFor, computeStandings } from "./scoring.ts";
 import { scheduleEvent } from "./store.ts";
+import { resetChallenges } from "./challenges.ts";
 
 const DAY_MS = 86400000;
 
@@ -62,6 +63,7 @@ const AWARD_TEXT: Record<string, string> = {
   best_militaer: "Stärkstes Militär",
   best_kampf: "Bester Kämpfer",
   best_beute: "Größte Beute",
+  best_befehle: "Pflichtbewusstester Kapitän",
 };
 
 export function awardText(a: string): string {
@@ -88,7 +90,8 @@ async function closeLedger(tx: Tx, number: number, atMs: number): Promise<void> 
 
 /**
  * Saisonende. Läuft in der Transaktion des Ereignisses; ein zweiter Lauf für dieselbe Saison tut nichts.
- * Spieler, Nachrichten, season_result und das Journal bleiben; alles andere der Welt wird zurückgesetzt.
+ * Spieler, Nachrichten, season_result und das Journal bleiben; alles andere der Welt wird zurückgesetzt,
+ * auch Tagesbefehle und Serien.
  */
 export const seasonEnd: Handler = async (tx, ev, due) => {
   const seasonId = Number(ev.payload.seasonId);
@@ -104,7 +107,7 @@ export const seasonEnd: Handler = async (tx, ev, due) => {
       .insert(tables.seasonResult)
       .values(ranked.map((r) => ({
         seasonId: s.id, playerId: r.playerId, playerName: r.name, rank: r.rank, ausbau: r.ausbau,
-        militaer: r.militaer, kampf: r.kampf, beute: r.beute, total: r.total, awards: awards.get(r.playerId) ?? [],
+        militaer: r.militaer, kampf: r.kampf, beute: r.beute, befehle: r.befehle, total: r.total, awards: awards.get(r.playerId) ?? [],
       })))
       .onConflictDoNothing();
   }
@@ -119,7 +122,7 @@ export const seasonEnd: Handler = async (tx, ev, due) => {
       if (winner && winner.total > 0) lines.push(`Sieger: ${winner.name} mit ${winner.total} Punkten.`);
       if (own) {
         lines.push(`Dein Platz: ${own.rank} von ${ranked.length} mit ${own.total} Punkten ` +
-          `(Ausbau ${own.ausbau}, Militär ${own.militaer}, Kampf ${own.kampf}, Beute ${own.beute}).`);
+          `(Ausbau ${own.ausbau}, Militär ${own.militaer}, Kampf ${own.kampf}, Beute ${own.beute}, Befehle ${own.befehle}).`);
         const a = awards.get(p.playerId) ?? [];
         if (a.length > 0) lines.push(`Deine Auszeichnungen: ${a.map(awardText).join(", ")}.`);
       } else lines.push("Du warst in dieser Saison nicht platziert.");
@@ -139,6 +142,7 @@ export const seasonEnd: Handler = async (tx, ev, due) => {
     .delete(tables.gameEvent)
     .where(and(eq(tables.gameEvent.status, "pending"), sql`${tables.gameEvent.type} <> 'season_end'`));
   await tx.delete(tables.base);
+  await resetChallenges(tx);
   await tx.update(tables.nest).set({ defeatedAt: null });
   const market = marketCore.createMarketState(marketBalance, due);
   for (const [resource, state] of Object.entries(market)) {
@@ -223,12 +227,12 @@ export async function hallOfFame(db: DbOrTx, playerId: number) {
       players: rows.length,
       podium: rows.filter((r) => r.rank <= 3 && r.total > 0).map(pick),
       best: Object.fromEntries(
-        ["best_ausbau", "best_militaer", "best_kampf", "best_beute"].map((a) => {
+        ["best_ausbau", "best_militaer", "best_kampf", "best_beute", "best_befehle"].map((a) => {
           const r = best(a);
           return [a, r ? { name: r.playerName, value: r[a.slice(5) as "ausbau"] } : null];
         }),
       ) as Record<string, { name: string; value: number } | null>,
-      own: own ? { ...pick(own), ausbau: own.ausbau, militaer: own.militaer, kampf: own.kampf, beute: own.beute } : null,
+      own: own ? { ...pick(own), ausbau: own.ausbau, militaer: own.militaer, kampf: own.kampf, beute: own.beute, befehle: own.befehle } : null,
     };
   });
 }

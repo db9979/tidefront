@@ -4,16 +4,17 @@ import { queryClient, trpc } from "./trpc.ts";
 import { noteServerTime } from "./time.ts";
 
 const FILTERS: Record<string, () => { queryKey: readonly unknown[] }[]> = {
-  base: () => [trpc.base.pathFilter()],
-  missions: () => [trpc.base.pathFilter()],
-  reports: () => [trpc.report.pathFilter(), trpc.base.pathFilter(), trpc.social.ranking.pathFilter()],
-  market: () => [trpc.market.pathFilter(), trpc.base.pathFilter()],
+  // Tagesbefehle: Fortschritt entsteht mit Ausbau, Ausbildung, Kampf, Handel und Nachrichten.
+  base: () => [trpc.base.pathFilter(), trpc.daily.pathFilter()],
+  missions: () => [trpc.base.pathFilter(), trpc.daily.pathFilter()],
+  reports: () => [trpc.report.pathFilter(), trpc.base.pathFilter(), trpc.social.ranking.pathFilter(), trpc.daily.pathFilter()],
+  market: () => [trpc.market.pathFilter(), trpc.base.pathFilter(), trpc.daily.pathFilter()],
   map: () => [trpc.world.pathFilter()],
-  messages: () => [trpc.social.messages.pathFilter()],
+  messages: () => [trpc.social.messages.pathFilter(), trpc.daily.pathFilter()],
   // Saisonwechsel: die ganze Welt ist neu.
   season: () => [
     trpc.season.pathFilter(), trpc.social.pathFilter(), trpc.base.pathFilter(), trpc.world.pathFilter(),
-    trpc.report.pathFilter(), trpc.market.pathFilter(),
+    trpc.report.pathFilter(), trpc.market.pathFilter(), trpc.daily.pathFilter(),
   ],
 };
 

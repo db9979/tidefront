@@ -28,6 +28,7 @@ import { processDueForBase } from "./events.ts";
 import { activeMissionCount, baseOfPlayer, lockBase, saveBase, scheduleEvent } from "./store.ts";
 import { incomingDetected } from "./views.ts";
 import { scheduleAttackWarning } from "./event-notices.ts";
+import { trackProgress } from "./challenges.ts";
 
 export type Rejected = { ok: false; code: string };
 type Draft<T> = T | (Rejected & { keepWrites?: boolean });
@@ -43,7 +44,7 @@ interface Ctx {
  * Führt einen Befehl genau einmal aus. Ein zweiter Aufruf mit demselben Schlüssel liefert die
  * gespeicherte Antwort (auch für abgelehnte Befehle).
  */
-async function runCommand<T extends { ok: true }>(
+export async function runCommand<T extends { ok: true }>(
   engine: Engine,
   playerId: number,
   key: string,
@@ -132,6 +133,7 @@ export function upgrade(engine: Engine, playerId: number, key: string, buildingI
     if (!r.ok) return r;
     await saveBase(ctx.tx, b.id, r.base);
     await scheduleEvent(ctx.tx, "build_complete", r.order.finishesAt, {}, b.id);
+    await trackProgress(ctx.tx, playerId, "bauschlange", r.base.buildQueue.length, { atMs: ctx.nowMs, mode: "max" });
     ctx.notify.push([[playerId], "base"]);
     return { ok: true as const };
   });
@@ -377,6 +379,7 @@ export function trade(
       });
       await scheduleEvent(ctx.tx, "delivery_arrive", d.arriveMs, { deliveryId: d.id }, b.id);
     }
+    await trackProgress(ctx.tx, playerId, "handel", result.quote.totalCredits, { atMs: ctx.nowMs });
     ctx.notify.push([[playerId], "base"], [null, "market"]);
     return { ok: true as const, quote: result.quote, delivery: result.delivery };
   });

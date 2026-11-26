@@ -25,6 +25,7 @@ import {
 import { seasonRouter, socialRouter } from "./routers/social.ts";
 import { authed, t, wrap, type Ctx } from "./trpc.ts";
 import { accountRouter, adminRouter, authExtras, pushRouter } from "./routers/ops.ts";
+import { dailyRouter } from "./routers/daily.ts";
 
 export type { Ctx };
 
@@ -150,6 +151,7 @@ export const appRouter = t.router({
 
   social: socialRouter,
   season: seasonRouter,
+  daily: dailyRouter,
 });
 
 export type AppRouter = typeof appRouter;

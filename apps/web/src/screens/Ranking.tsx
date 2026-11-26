@@ -12,7 +12,7 @@ import type { Draft } from "./Messages.tsx";
 import type { Target } from "../App.tsx";
 
 type Row = Outputs["social"]["ranking"]["rows"][number];
-type Sort = "total" | "ausbau" | "militaer" | "kampf" | "beute";
+type Sort = "total" | "ausbau" | "militaer" | "kampf" | "beute" | "befehle";
 
 const SORTS: { id: Sort; label: string }[] = [
   { id: "total", label: "Gesamt" },
@@ -20,6 +20,7 @@ const SORTS: { id: Sort; label: string }[] = [
   { id: "militaer", label: "Militär" },
   { id: "kampf", label: "Kampf" },
   { id: "beute", label: "Beute" },
+  { id: "befehle", label: "Befehle" },
 ];
 
 function ProtectionBadge({ p }: { p: string | null }) {
@@ -64,7 +65,7 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
             ))}
           </ol>
         )}
-        <p className="text-[11px] text-slate-500 mt-2">1 Punkt je 100 Ressourcen Kostenwert. Antippen für Details.</p>
+        <p className="text-[11px] text-slate-500 mt-2">1 Punkt je 100 Ressourcen Kostenwert, Befehle zählen ihre Punkte direkt. Antippen für Details.</p>
       </Card>
       <HallOfFame />
       <Sheet open={open !== null} onClose={() => setOpen(null)} title={open?.name ?? ""} icon={<Icon id="anker" size={28} />}>
@@ -90,6 +91,7 @@ function PlayerDetail({ r, onCompose, onShowOnMap }: { r: Row; onCompose: (d: Dr
         ["Militär", fmtNum(r.militaer)],
         ["Kampf", fmtNum(r.kampf)],
         ["Beute", fmtNum(r.beute)],
+        ["Befehle", fmtNum(r.befehle)],
         ["Gesamt", fmtNum(r.total)],
       ]} />
       <div className="grid grid-cols-2 gap-2">

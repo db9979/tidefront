@@ -109,16 +109,29 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
       ),
     },
     {
+      id: "tagesbefehle", icon: "uhr", title: "Tagesbefehle",
+      body: (
+        <>
+          <P>Jeden Tag um <strong>0:00 Uhr</strong> (deutsche Zeit) erhältst du auf der Basis drei <strong>Tagesbefehle</strong>: einen leichten, einen mittleren und einen schweren. Sie passen zu deinem Stand – ein Nest-Überfall wird erst verlangt, wenn du Werft und Kaserne hast, und die Ziele wachsen mit deiner Kommandozentrale.</P>
+          <P>Mögliche Befehle: Ausbauten abschließen, die Bauschlange füllen, Bodentruppen, Schiffe oder Flugzeuge ausbilden, Anlagen errichten, einen Vorrat anlegen, die Produktion steigern, die Kommandozentrale ausbauen, ein Nest besiegen, einen Kartell-Überfall abwehren, Aufklärung, Transporte, Börsenhandel, Wrackgut bergen, Beute machen, ohne Verluste siegen oder einem Mitspieler schreiben.</P>
+          <P>Der Balken zeigt den Fortschritt. Ist ein Befehl erfüllt, holst du die Belohnung mit <strong>Abholen</strong> ab: Ressourcen (auch über die Lagerkapazität) und Punkte für die Kategorie Befehle – leicht 3, mittel 6, schwer 12. Erfüllte Befehle kannst du auch später noch abholen, bis die Saison endet. Ein grüner Zähler an der Basis zeigt, was bereitliegt.</P>
+          <P>Einmal am Tag darfst du einen offenen Befehl kostenlos <strong>neu würfeln</strong>; der neue hat dieselbe Schwierigkeit, sein Fortschritt beginnt bei null.</P>
+          <P><strong>Serie:</strong> Holst du an aufeinanderfolgenden Tagen alle drei Befehle ab, wächst deine Serie. Am 3. Tag gibt es 10 Punkte Bonus, am 7. Tag 25, an jedem weiteren 7. Tag 10 mehr – jeweils mit Nachschub. Ein ausgelassener Tag beginnt die Serie von vorn. Zum Saisonende verfallen Befehle und Serie.</P>
+        </>
+      ),
+    },
+    {
       id: "saison", icon: "nav-bericht", title: "Saison und Wertung",
       body: (
         <>
           <P>Gespielt wird in <strong>Saisons</strong> von einigen Wochen. Unter Meldungen → Rangliste siehst du, welche Saison läuft und wie viele Tage bleiben. In den letzten drei Tagen erscheint zusätzlich ein Hinweis auf der Basis.</P>
-          <P>Die <strong>Rangliste</strong> zählt vier Kategorien, je 100 Ressourcen Kostenwert ergeben einen Punkt:</P>
+          <P>Die <strong>Rangliste</strong> zählt fünf Kategorien; in den ersten vier ergeben je 100 Ressourcen Kostenwert einen Punkt:</P>
           <ul className="text-sm list-disc pl-5 space-y-1 mb-2 text-slate-200">
             <li><strong>Ausbau:</strong> Kosten aller gebauten Gebäudestufen.</li>
             <li><strong>Militär:</strong> Kosten deiner Einheiten und Anlagen, auch der Verbände unterwegs.</li>
             <li><strong>Kampf:</strong> Kostenwert der gegnerischen Einheiten und Anlagen, die du im Kampf vernichtest – auch Kartell und Nester.</li>
             <li><strong>Beute:</strong> alle Ressourcen, die du erbeutest.</li>
+            <li><strong>Befehle:</strong> Punkte aus abgeholten Tagesbefehlen samt Serienbonus.</li>
           </ul>
           <P>Am Saisonende wird der Endstand festgehalten: Gold, Silber und Bronze für die ersten drei Plätze, dazu je eine Auszeichnung für den Besten jeder Kategorie. Jeder erhält eine Nachricht mit seinem Platz; die <strong>Ruhmeshalle</strong> zeigt alle vergangenen Saisons.</P>
           <P>Danach beginnt die Welt neu: Häfen, Flotten, Berichte, Lieferungen und Kredite verfallen, Nester und Börse starten frisch. Dein Konto und deine Nachrichten bleiben – du wählst einfach einen neuen Hafen und hast wieder Anfängerschutz.</P>

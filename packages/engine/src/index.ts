@@ -17,3 +17,6 @@ export * from "./mail-templates.ts";
 export * from "./notices.ts";
 export * from "./settings.ts";
 export { scheduleAttackWarning } from "./event-notices.ts";
+export * from "./daily.ts";
+export { trackProgress, challengePoints, ensureAssigned } from "./challenges.ts";
+export { dayKey, dayStartMs, nextDayStartMs, addDays, KINDS as CHALLENGE_KINDS, drawDay, poolContext, streakBonus } from "./challenge-pool.ts";

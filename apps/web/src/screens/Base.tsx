@@ -9,6 +9,7 @@ import { BUILDING_TEXT, buildingEffect } from "../lib/info.ts";
 import { Icon, IconTile } from "../icons.tsx";
 import { Badge, Bar, Button, Card, Cost, CountsLine, ErrorLine, Sheet } from "../ui.tsx";
 import { Guide, type GuideAction } from "../components/Guide.tsx";
+import { DailyOrders } from "../components/Daily.tsx";
 import { HarborVignette, fmtDeg } from "../components/Vignette.tsx";
 import { hexCenter } from "@tidefront/world";
 
@@ -67,6 +68,7 @@ export function BaseScreen(props: {
       ))}
 
       <Guide base={base} wonRaid={wonRaid} onAction={props.onGuide} />
+      <DailyOrders />
 
       {/* Bauschlange */}
       <BuildYard base={base} now={now} />

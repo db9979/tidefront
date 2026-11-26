@@ -213,8 +213,10 @@ export const seasonResult = pgTable("season_result", {
   militaer: integer("militaer").notNull(),
   kampf: integer("kampf").notNull(),
   beute: integer("beute").notNull(),
+  /** Punkte aus Tagesbefehlen (siehe Abschnitt Tagesbefehle). */
+  befehle: integer("befehle").notNull().default(0),
   total: integer("total").notNull(),
-  /** Auszeichnungen: gold, silber, bronze, best_ausbau, best_militaer, best_kampf, best_beute. */
+  /** Auszeichnungen: gold, silber, bronze, best_ausbau, best_militaer, best_kampf, best_beute, best_befehle. */
   awards: jsonb("awards").notNull(),
 }, (t) => [
   uniqueIndex("season_result_player").on(t.seasonId, t.playerId),
@@ -286,3 +288,46 @@ export const mailDigest = pgTable("mail_digest", {
   createdAt: ts("created_at").notNull().defaultNow(),
   sentAt: ts("sent_at"),
 }, (t) => [index("mail_digest_open").on(t.sentAt, t.playerId)]);
+
+// ================================================================ Tagesbefehle (tägliche Herausforderungen)
+// Je Spieler und Tag (Tageswechsel 0:00 Uhr in TZ, Vorgabe Europe/Berlin) drei Befehle: Slot 0 leicht, 1 mittel,
+// 2 schwer. Vergabe lazy beim ersten Abruf des Tages; der Unique-Index verhindert Doppelvergabe. Fortschritt
+// schreibt packages/engine/src/challenges.ts fort. Beide Tabellen werden am Saisonende geleert.
+
+/** Ein Tagesbefehl. reward: Ressourcen; points: Saisonpunkte der Kategorie Befehle. */
+export const dailyChallenge = pgTable("daily_challenge", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  /** Kalendertag in der Spielzeitzone, z. B. 2026-11-26. */
+  day: text("day").notNull(),
+  /** 0 leicht, 1 mittel, 2 schwer. */
+  slot: integer("slot").notNull(),
+  /** Art aus dem Pool (challenge-pool.ts). */
+  kind: text("kind").notNull(),
+  /** Zusatz der Art, z. B. Ressource oder Mindeststufe eines Nests. */
+  param: text("param"),
+  target: integer("target").notNull(),
+  progress: integer("progress").notNull().default(0),
+  reward: jsonb("reward").notNull(),
+  points: integer("points").notNull(),
+  /** Serienbonus, gutgeschrieben mit dem letzten abgeholten Befehl eines Tages. */
+  bonusPoints: integer("bonus_points").notNull().default(0),
+  /** Dieser Befehl wurde neu gewürfelt (höchstens einer je Tag). */
+  rerolled: boolean("rerolled").notNull().default(false),
+  completedAt: ts("completed_at"),
+  claimedAt: ts("claimed_at"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("daily_challenge_slot").on(t.playerId, t.day, t.slot),
+  index("daily_challenge_open").on(t.playerId, t.claimedAt),
+]);
+
+/** Serie: Anzahl aufeinanderfolgender Tage, an denen alle drei Befehle abgeholt wurden. */
+export const dailyStreak = pgTable("daily_streak", {
+  playerId: integer("player_id").primaryKey().references(() => player.id, { onDelete: "cascade" }),
+  /** Letzter vollständig abgeschlossener Tag. */
+  lastDay: text("last_day").notNull(),
+  length: integer("length").notNull(),
+  best: integer("best").notNull().default(0),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
