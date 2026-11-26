@@ -4,7 +4,7 @@ import { routePosition, worldEventsBalance, type Counts, type ResourceMap } from
 import { hexAtLonLat, hexDistanceKm } from "@tidefront/world";
 import { tables } from "@tidefront/db";
 import { balance, type Engine } from "./context.ts";
-import { baseOfPlayer } from "./store.ts";
+import { ownBase } from "./store.ts";
 import { openWorldEvents, siegeEffects, type WorldEventRow } from "./world-events.ts";
 
 const HOUR_MS = 3600000;
@@ -25,7 +25,7 @@ function position(ev: WorldEventRow, nowMs: number): { col: number; row: number 
   return { col: ev.col, row: ev.row };
 }
 
-export async function worldEventsView(engine: Engine, playerId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
+export async function worldEventsView(engine: Engine, playerId: number, baseId?: number) { // Entfernung/Belagerung: aktiver Hafen
   const nowMs = Date.now();
   const w = worldEventsBalance(balance);
   const open = await openWorldEvents(engine.db);
@@ -37,7 +37,10 @@ export async function worldEventsView(engine: Engine, playerId: number, baseId?:
     .orderBy(desc(tables.worldEvent.endedAt))
     .limit(5)) as WorldEventRow[];
   const all = [...open, ...recent.filter((r) => r.status === "ended")];
-  const own = await baseOfPlayer(engine.db, playerId);
+  const own = await ownBase(engine.db, playerId, baseId).catch((err: unknown) => {
+    if (baseId !== undefined) throw err; // fremder Hafen: no_base
+    return null;
+  });
   const ids = all.map((e) => e.id);
   const damage = ids.length === 0 ? [] : await engine.db
     .select({ eventId: tables.worldEventDamage.eventId, playerId: tables.worldEventDamage.playerId, hp: tables.worldEventDamage.hp, attacks: tables.worldEventDamage.attacks, name: tables.player.name })

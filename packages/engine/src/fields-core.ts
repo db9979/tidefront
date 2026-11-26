@@ -1,6 +1,7 @@
 // Felder: Rohstofffelder auf See (docs/REGELN-FELDER.md) – Auswahl der aktiven Felder aus der festen Kandidatenliste,
 // gemeinsame Abfragen (Rang, Zonen, Allianz) und das Lesemodell für Karte und „Meine Felder“.
-// Felder hängen am Spieler UND an einem Heimathafen (baseId): Ziel der Ertragskonvois (vorbereitet für mehrere Häfen).
+// Felder hängen am Spieler UND an dem Hafen, der sie genommen hat (baseId): Ziel der Ertragskonvois. Die Höchstzahl
+// ist spielerweit (höchste Hafenkommandantur aller Häfen).
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import {
   fieldBaseYield, fieldsOf, fieldYield, fieldZones, maxFieldsFor, yieldFactor,
@@ -9,7 +10,9 @@ import {
 import { fieldSites, hexCenter, hexDistanceKm, type FieldSite } from "@tidefront/world";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance, type Engine } from "./context.ts";
-import { baseOfPlayer } from "./store.ts";
+import { basesOfPlayer, readBase, type BaseRow } from "./store.ts";
+import { modifiersFor, modsOf } from "./modifiers.ts";
+import { maxHarborLevelOf } from "./player-wide.ts";
 import { relationsOf } from "./alliance-core.ts";
 
 export const FIELD_TYPE = "besetzen";
@@ -58,9 +61,22 @@ export async function ownedBy(db: DbOrTx, playerId: number): Promise<FieldRow[]>
   return (rows as FieldRow[]).sort((a, b) => (a.capturedAt?.getTime() ?? 0) - (b.capturedAt?.getTime() ?? 0) || a.id - b.id);
 }
 
-/** Höchstzahl eigener Felder nach Stufe der Hafenkommandantur des Heimathafens. */
+/** Höchstzahl eigener Felder nach Stufe einer Hafenkommandantur. */
 export function maxFieldsOf(state: { buildings: Record<string, number> }): number {
   return maxFieldsFor(state.buildings.hafenkommandantur ?? 0, balance);
+}
+
+/** Mehrere Häfen: Höchstzahl nach der höchsten Hafenkommandantur aller Häfen (`known`: bereits geladener Stand). */
+export async function maxFieldsOfPlayer(db: DbOrTx, playerId: number, known?: BaseRow | null): Promise<number> {
+  const bases = await basesOfPlayer(db, playerId);
+  return bases.length === 0 ? 0 : maxFieldsFor(maxHarborLevelOf(bases, known ?? undefined), balance);
+}
+
+/** Modifikatoren einer Besatzung: die ihres Hafens (field.baseId), sonst die des Besitzers. */
+export async function garrisonMods(db: DbOrTx, f: { ownerId: number | null; baseId: number | null }, nowMs: number) {
+  if (f.ownerId === null) return {};
+  const b = f.baseId !== null ? await readBase(db, f.baseId) : null;
+  return b && b.playerId === f.ownerId ? modsOf(db, b, nowMs) : modifiersFor(db, f.ownerId, { nowMs });
 }
 
 /** Allianz je Spieler (nur Mitglieder). */
@@ -160,7 +176,7 @@ export async function nextTickMs(db: DbOrTx): Promise<number | null> {
 }
 
 /** Karte und „Meine Felder“: alle Felder mit Besitzerfarbe, bekannte Besatzung, Zonen; eigene mit Ertrag. */
-export async function fieldsView(engine: Engine, playerId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
+export async function fieldsView(engine: Engine, playerId: number, _baseId?: number) { // spielerweit: alle eigenen Felder
   const nowMs = Date.now();
   const f = rules();
   if (!f) return null;
@@ -172,7 +188,8 @@ export async function fieldsView(engine: Engine, playerId: number, baseId?: numb
   const zones = await zonesOf(db, rows);
   const intel = await intelOf(db, playerId);
   const garrison = await garrisons(db, rows.filter((r) => r.missionId !== null).map((r) => r.missionId!));
-  const own = await baseOfPlayer(db, playerId);
+  const ownBases = await basesOfPlayer(db, playerId);
+  const baseNames = new Map(ownBases.map((b) => [b.id, b.name]));
   const mine = await ownedBy(db, playerId);
   const rank = new Map(mine.map((m, i) => [m.id, i]));
   const next = await nextTickMs(db);
@@ -203,7 +220,9 @@ export async function fieldsView(engine: Engine, playerId: number, baseId?: numb
       factor: yieldFactor(i, balance), zoneBonus: !!z?.bonus,
       yieldPerHour: fieldYield(m.kind, m.tier, 1, i, !!z?.bonus, balance) as ResourceMap,
       upkeepPerHour: f.upkeepProviantPerHour[m.tier - 1] ?? 0,
-      home: m.baseId === own?.id ? own?.name ?? null : null,
+      /** Hafen, der das Feld genommen hat und den Ertrag erhält. */
+      baseId: m.baseId,
+      home: m.baseId !== null ? baseNames.get(m.baseId) ?? null : null,
       capturedAtMs: m.capturedAt?.getTime() ?? null,
     };
   });
@@ -212,7 +231,7 @@ export async function fieldsView(engine: Engine, playerId: number, baseId?: numb
   const [score] = myAlliance !== undefined ? await db.select().from(tables.fieldScore).where(eq(tables.fieldScore.allianceId, myAlliance)) : [];
   return {
     serverNow: nowMs,
-    maxFields: own ? maxFieldsOf(own.state) : 0,
+    maxFields: ownBases.length > 0 ? maxFieldsFor(maxHarborLevelOf(ownBases), balance) : 0,
     nextDeliveryAtMs: next,
     fields,
     mine: minePart,

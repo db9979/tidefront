@@ -26,6 +26,7 @@ import {
   withdrawRaid,
   type Engine,
 } from "../src/index.ts";
+import { addSecondHarbor } from "./multi-base.ts";
 
 const url = process.env.TEST_DATABASE_URL;
 const { db, client } = createDb(url ?? "postgres://invalid", 10);
@@ -312,4 +313,44 @@ test("Sammelangriff auf ein Weltereignis (Belagerung): ein Sieger, Schaden und B
     const dmg = await db.select().from(tables.worldEventDamage).where(eq(tables.worldEventDamage.eventId, ev.id));
     assert.deepEqual(new Set(dmg.map((d) => d.playerId)), new Set([A.playerId, B.playerId]));
   }
+});
+
+test("Mehrere Häfen: Stationierung im eigenen Hafen ohne Allianz; Sammelangriff aus dem zweiten Hafen", async () => {
+  const S = await newPlayer("Spiere", 23);
+  await ready(S);
+  const fill = (s: BaseState) => {
+    s.units = { korvette: 4, landungsschiff: 2, schuetzen: 120 };
+    s.buildings.hafenkommandantur = 4;
+    s.protection.createdAtMs = 0;
+  };
+  const S2 = await addSecondHarbor(db, S.playerId, { near: S, minKm: 60, maxKm: 300, patch: fill });
+  // Ausgangshafen selbst bleibt ausgeschlossen, der andere eigene Hafen ist erlaubt (ohne Allianz).
+  assert.equal(await code(launchMission(engine, S.playerId, key(), { type: "stationierung", units: { korvette: 1 }, col: S.col, row: S.row })), "own_base");
+  const prev = await missionPreview(engine, S.playerId, { type: "stationierung", units: { korvette: 1 }, col: S2.col, row: S2.row });
+  assert.equal(prev.ok, true, JSON.stringify(prev));
+  const r = await launchMission(engine, S.playerId, key(), { type: "stationierung", units: { korvette: 2 }, col: S2.col, row: S2.row });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  const id = (r as { missionId: number }).missionId;
+  await processDue(engine, (await mission(id)).arriveAt.getTime() + 1);
+  assert.equal((await mission(id)).status, "stationed", "eigener Hafen nimmt immer auf");
+  // Allianzaustritt-Regel greift nicht (kein Bündnis nötig); Rückruf durch den Besitzer.
+  assert.equal(await code(stationRelease(engine, S.playerId, key(), id)), "ok");
+  assert.equal((await mission(id)).status, "returning");
+
+  // Sammelangriff: A tritt aus seinem zweiten Hafen an; Abbruch bringt die Einheiten dorthin zurück.
+  const P = await newPlayer("Pricke", 22);
+  await ready(P);
+  const A2 = await addSecondHarbor(db, A.playerId, { near: P, minKm: 60, maxKm: 300, patch: fill });
+  const homeBefore = { ...(await stateOf(A.baseId)).units };
+  const o = await openRaid(engine, A.playerId, key(), { col: P.col, row: P.row, units: { korvette: 1 }, joinMinutes: 15, arriveMinutes: 15, baseId: A2.baseId });
+  assert.equal(o.ok, true, JSON.stringify(o));
+  const raid = o as { raidId: number; missionId: number };
+  assert.equal((await mission(raid.missionId)).baseId, A2.baseId);
+  assert.equal((await stateOf(A2.baseId)).units.korvette, 3);
+  assert.deepEqual((await stateOf(A.baseId)).units, homeBefore, "Heimathafen unberührt");
+  const view = await allianceRaidsView(engine, A.playerId);
+  assert.equal(view.raids.find((x) => x.id === raid.raidId)?.joinedBaseId, A2.baseId);
+  assert.equal(await code(joinRaid(engine, B.playerId, key(), { raidId: raid.raidId, units: { korvette: 1 }, baseId: A2.baseId })), "no_base");
+  assert.equal(await code(cancelRaid(engine, A.playerId, key(), raid.raidId)), "ok");
+  assert.equal((await stateOf(A2.baseId)).units.korvette, 4, "zurück in den zweiten Hafen");
 });

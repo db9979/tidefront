@@ -22,8 +22,10 @@ import {
   seed,
   spyLaunch,
   spyPreview,
+  intelOwnView,
   type Engine,
 } from "../src/index.ts";
+import { addSecondHarbor } from "./multi-base.ts";
 
 const url = process.env.TEST_DATABASE_URL;
 const { db, client } = createDb(url ?? "postgres://invalid", 10);
@@ -218,4 +220,26 @@ test("Kartell-Aufklärung: feste Dauer, Dossier der Weltereignisse", async () =>
   const rep = await reportGet(engine, A.playerId, mission.reportId!);
   const d = rep!.data as { cartel: { events: unknown[]; next: unknown } };
   assert.ok(Array.isArray(d.cartel.events));
+});
+
+test("Mehrere Häfen: Spionage aus dem zweiten Hafen, Lagebild je Hafen, fremde baseId abgelehnt", async () => {
+  const second = await addSecondHarbor(db, A.playerId, { patch: (s) => { s.buildings.nachrichtendienst = 2; s.units = { spion: 3 }; } });
+  const at = { col: B.col, row: B.row };
+  // Eigener zweiter Hafen ist kein Ziel.
+  assert.equal((await spyPreview(engine, A.playerId, { kind: "erkunden", col: second.col, row: second.row })).code, "own_base");
+  // Fremde baseId: no_base (Vorschau, Start, Lagebild).
+  assert.equal((await spyPreview(engine, A.playerId, { kind: "erkunden", ...at, baseId: B.baseId })).code, "no_base");
+  const bad = await spyLaunch(engine, A.playerId, key(), { kind: "erkunden", ...at, baseId: B.baseId });
+  assert.equal((bad as { code?: string }).code, "no_base");
+  await assert.rejects(intelOwnView(engine, A.playerId, B.baseId), /no_base/);
+  // Lagebild je Hafen.
+  assert.equal((await intelOwnView(engine, A.playerId, second.baseId))!.level, 2);
+  assert.equal((await intelOwnView(engine, A.playerId))!.level, 4);
+  const before = (await stateOf(A.baseId)).units.spion ?? 0;
+  const r = await spyLaunch(engine, A.playerId, key(), { kind: "erkunden", ...at, baseId: second.baseId });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  const [m] = await db.select().from(tables.mission).where(eq(tables.mission.id, (r as { missionId: number }).missionId));
+  assert.equal(m.baseId, second.baseId, "Mission läuft aus dem zweiten Hafen");
+  assert.ok(((await stateOf(second.baseId)).units.spion ?? 0) < 3, "Spione aus dem zweiten Hafen");
+  assert.equal((await stateOf(A.baseId)).units.spion ?? 0, before, "Heimathafen unberührt");
 });

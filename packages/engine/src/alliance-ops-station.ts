@@ -4,7 +4,7 @@
 // bleiben in unitsAway des Besitzers – der Unterhalt läuft dort weiter. Verluste trägt der Besitzer.
 // Eingehängt über markierte Eingriffe in commands.ts (launchMission), views.ts (missionPreview, baseView) und
 // handlers.ts (missionArrive, Verteidigung).
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import {
   activeUnits,
   allianceOpsOf,
@@ -47,22 +47,29 @@ export async function sameAlliance(db: DbOrTx, a: number, b: number): Promise<bo
   return !!y && x.allianceId === y.allianceId;
 }
 
-/** Stationierte und anfahrende fremde Verbände an einem Hafen. */
-async function hostLoad(db: DbOrTx, baseId: number): Promise<number> {
+/** Stationierte und anfahrende fremde Verbände an einem Hafen (eigene des Gastgebers zählen nicht). */
+async function hostLoad(db: DbOrTx, baseId: number, hostPlayerId: number): Promise<number> {
   const rows = await db
     .select({ id: tables.mission.id })
     .from(tables.mission)
-    .where(and(eq(tables.mission.type, STATION_TYPE), eq(tables.mission.targetId, baseId), inArray(tables.mission.status, ["outbound", "stationed"])));
+    .where(and(
+      eq(tables.mission.type, STATION_TYPE), eq(tables.mission.targetId, baseId), inArray(tables.mission.status, ["outbound", "stationed"]),
+      ne(tables.mission.playerId, hostPlayerId),
+    ));
   return rows.length;
 }
 
-/** Gastgeber prüfen. Codes: no_target, own_base, station_not_ally, station_full. */
-async function hostAt(db: DbOrTx, playerId: number, col: number, row: number) {
+/**
+ * Gastgeber prüfen. Mehrere Häfen: ein anderer eigener Hafen ist erlaubt (ohne Allianzprüfung und Liegeplatzgrenze),
+ * nur der Ausgangshafen selbst nicht. Codes: no_target, own_base, station_not_ally, station_full.
+ */
+async function hostAt(db: DbOrTx, playerId: number, originId: number, col: number, row: number) {
   const [h] = await db.select().from(tables.base).where(and(eq(tables.base.col, col), eq(tables.base.row, row)));
   if (!h) throw new GameError("no_target");
-  if (h.playerId === playerId) throw new GameError("own_base");
+  if (h.id === originId) throw new GameError("own_base");
+  if (h.playerId === playerId) return h;
   if (!(await sameAlliance(db, playerId, h.playerId))) throw new GameError("station_not_ally");
-  if ((await hostLoad(db, h.id)) >= allianceOpsOf(balance).station.maxPerBase) throw new GameError("station_full");
+  if ((await hostLoad(db, h.id, h.playerId)) >= allianceOpsOf(balance).station.maxPerBase) throw new GameError("station_full");
   return h;
 }
 
@@ -86,8 +93,9 @@ async function planStation(db: DbOrTx, own: BaseRow, units: Counts, host: { col:
 /** missionPreview mit type "stationierung". */
 export async function stationPreview(db: DbOrTx, playerId: number, own: BaseRow, input: { units: Counts; col: number; row: number }, nowMs: number) {
   const distanceKm = hexDistanceKm(own, input);
+  let ownHost = false;
   try {
-    await hostAt(db, playerId, input.col, input.row);
+    ownHost = (await hostAt(db, playerId, own.id, input.col, input.row)).playerId === playerId;
   } catch (err) {
     if (err instanceof GameError) return { ok: false as const, code: err.code, distanceKm };
     throw err;
@@ -98,13 +106,13 @@ export async function stationPreview(db: DbOrTx, playerId: number, own: BaseRow,
   if (!r.ok) return { ok: false as const, code: r.code, distanceKm, weather };
   return {
     ok: true as const, distanceKm, travelSeconds: r.mission.travelSeconds, fuelCost: r.mission.fuelCost, arriveAtMs: r.mission.arriveAtMs,
-    returnAtMs: r.mission.returnAtMs, target: { kind: "base", own: false }, intercept: null, weather: withArrival(weather, input.col, input.row, r.mission.arriveAtMs), weatherFactor: r.mission.weather?.shipFactor ?? 1,
+    returnAtMs: r.mission.returnAtMs, target: { kind: "base", own: ownHost }, intercept: null, weather: withArrival(weather, input.col, input.row, r.mission.arriveAtMs), weatherFactor: r.mission.weather?.shipFactor ?? 1,
   };
 }
 
 /** launchMission mit type "stationierung" (Stützpunkt bereits gesperrt). */
 export async function stationLaunch(tx: Tx, playerId: number, own: BaseRow, input: { units: Counts; col: number; row: number }, nowMs: number, notify: Notify) {
-  const host = await hostAt(tx, playerId, input.col, input.row);
+  const host = await hostAt(tx, playerId, own.id, input.col, input.row);
   const r = await planStation(tx, own, input.units, host, nowMs);
   if (!r.ok) return r;
   await saveBase(tx, own.id, r.base);
@@ -149,7 +157,8 @@ export async function stationArrive(tx: Tx, m: MissionRow, due: number): Promise
   const [host] = m.targetId !== null ? await tx.select().from(tables.base).where(eq(tables.base.id, m.targetId)) : [];
   const plan = m.plan as Mission;
   const owner = m.playerId!;
-  const ok = !!host && (await sameAlliance(tx, owner, host.playerId)) && (await hostLoad(tx, host.id)) <= allianceOpsOf(balance).station.maxPerBase;
+  const ownHost = !!host && host.playerId === owner; // eigener Hafen: immer erlaubt
+  const ok = !!host && (ownHost || ((await sameAlliance(tx, owner, host.playerId)) && (await hostLoad(tx, host.id, host.playerId)) <= allianceOpsOf(balance).station.maxPerBase));
   const notes: Notes = [];
   if (!ok) {
     const returnAt = due + Math.max(0, plan.arriveAtMs - plan.departAtMs);
@@ -159,6 +168,10 @@ export async function stationArrive(tx: Tx, m: MissionRow, due: number): Promise
     return { notify: [...notes, [[owner], "missions"]] };
   }
   await tx.update(tables.mission).set({ status: "stationed", returning: { ...plan.units } }).where(eq(tables.mission.id, m.id));
+  if (ownHost) {
+    await systemMessage(tx, notes, [owner], "Stationierung angekommen", `Dein Verband liegt jetzt in ${host.name} und verteidigt dort mit, bis du ihn zurückrufst.`);
+    return { notify: [...notes, [[owner], "missions"], [[owner], "base"]] };
+  }
   const ownerName = await nameOf(tx, owner);
   await systemMessage(tx, notes, [owner], "Stationierung angekommen", `Dein Verband liegt jetzt in ${host.name} und verteidigt dort mit, bis du ihn zurückrufst.`);
   await systemMessage(tx, notes, [host.playerId], "Verbündete Truppen eingetroffen", `${ownerName} hat Truppen in deinem Hafen stationiert. Sie verteidigen mit; du kannst sie jederzeit heimschicken.`);
@@ -168,7 +181,7 @@ export async function stationArrive(tx: Tx, m: MissionRow, due: number): Promise
 }
 
 /** Rückruf durch den Besitzer oder Heimschicken durch den Gastgeber. Codes: no_mission, not_stationed. */
-export function stationRelease(engine: Engine, playerId: number, key: string, missionId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
+export function stationRelease(engine: Engine, playerId: number, key: string, missionId: number, _baseId?: number) { // Besitz über Mission/Gastgeber
   return runCommand<{ ok: true; returnAtMs: number }>(engine, playerId, key, "stationRelease", async (ctx) => {
     const [m] = await ctx.tx.select().from(tables.mission).where(eq(tables.mission.id, missionId)).for("update");
     if (!m || m.type !== STATION_TYPE) throw new GameError("no_mission");
@@ -176,7 +189,7 @@ export function stationRelease(engine: Engine, playerId: number, key: string, mi
     if (m.playerId !== playerId && host?.playerId !== playerId) throw new GameError("no_mission");
     if (m.status !== "stationed" && !(m.status === "outbound" && m.playerId === playerId)) throw new GameError("not_stationed");
     const returnAtMs = await sendHome(ctx.tx, m, ctx.nowMs);
-    if (m.playerId !== playerId) {
+    if (m.playerId !== playerId && host?.playerId === playerId) {
       await systemMessage(ctx.tx, ctx.notify, [m.playerId!], "Stationierung beendet", `${host?.name ?? "Der Gastgeber"} hat deine Truppen heimgeschickt.`);
     }
     ctx.notify.push([[m.playerId!], "missions"], [[m.playerId!], "base"]);
@@ -274,7 +287,7 @@ export async function stationsAfterExit(tx: Tx, notes: Notes, playerIds: number[
   for (const m of rows) {
     if (!playerIds.includes(m.playerId!) && !hostIds.has(m.targetId!)) continue;
     const [host] = await tx.select({ playerId: tables.base.playerId, name: tables.base.name }).from(tables.base).where(eq(tables.base.id, m.targetId!));
-    if (host && (await sameAlliance(tx, m.playerId!, host.playerId))) continue;
+    if (host && (host.playerId === m.playerId || (await sameAlliance(tx, m.playerId!, host.playerId)))) continue; // eigener Hafen bleibt
     await sendHome(tx, m, nowMs);
     await systemMessage(tx, notes, [m.playerId!], "Stationierung beendet", `Ihr gehört nicht mehr derselben Allianz an: deine Truppen ${host ? `in ${host.name} ` : ""}fahren heim.`);
     notes.push([[m.playerId!], "missions"], [[m.playerId!], "base"]);

@@ -29,7 +29,7 @@ const dc = tables.dailyChallenge;
 
 /** Kontext für die Auswahl aus dem Stützpunkt des Spielers; null ohne Hafen. */
 export async function contextFor(tx: DbOrTx, playerId: number, atMs: number): Promise<PoolContext | null> {
-  const b = await baseOfPlayer(tx, playerId);
+  const b = await baseOfPlayer(tx, playerId); // Mehrere Häfen: bewusst Heimathafen (Auswahl nach Heimathafen)
   if (!b) return null;
   const mods = await modsOf(tx, b, atMs);
   const state = settle(b.state, atMs, balance, mods);

@@ -33,7 +33,9 @@ import {
   unsubscribeEmail,
   type Engine,
   type OutgoingMail,
+  setNightShield,
 } from "../src/index.ts";
+import { addSecondHarbor, harborState } from "./multi-base.ts";
 
 const url = process.env.TEST_DATABASE_URL;
 const { db, client } = createDb(url ?? "postgres://invalid", 10);
@@ -154,6 +156,24 @@ test("Wiederholen: Bericht und heimgekehrte Mission liefern Ziel und Zusammenset
   assert.deepEqual(recent[0].units, SENT);
   assert.equal(recent[0].col, near.col);
   assert.ok(Object.keys(recent[0].fit.units).length > 0, "Überlebende sind wieder daheim");
+});
+
+test("Mehrere Häfen: Vorlagen und Wiederholen mit den Einheiten des aktiven Hafens; letzte Missionen je Hafen; Nachtschild für alle", async () => {
+  const e2 = await addSecondHarbor(db, emil.playerId, { patch: (s) => { s.units = { korvette: 1, schuetzen: 10 }; } });
+  const tpl = (await listTemplates(db, emil.playerId, e2.baseId)).find((t) => t.name === "NESTJÄGER")!;
+  assert.deepEqual(tpl.fit.units, { korvette: 1, schuetzen: 10 }, "gekürzt auf den aktiven Hafen");
+  await assert.rejects(listTemplates(db, emil.playerId, frieda.baseId), /no_base/);
+  assert.equal((await recentMissions(db, emil.playerId)).length, 1, "Heimathafen: die heimgekehrte Mission");
+  assert.deepEqual(await recentMissions(db, emil.playerId, 5, e2.baseId), [], "zweiter Hafen: keine eigenen Missionen");
+  const rep = await repeatFromReport(db, emil.playerId, raidReportId, e2.baseId);
+  assert.deepEqual(rep!.fit.units, { korvette: 1, schuetzen: 10 });
+  // Nachtschild: Einstellung im zweiten Hafen gilt für alle eigenen Häfen.
+  const r = await setNightShield(engine, emil.playerId, key(), 22, 60, e2.baseId);
+  assert.equal(r.ok, true, JSON.stringify(r));
+  for (const id of [emil.baseId, e2.baseId]) {
+    assert.deepEqual((await harborState(db, id)).protection.nightShieldNext, { startHour: 22, tzOffsetMinutes: 60, fromMs: (r as { fromMs: number }).fromMs });
+  }
+  assert.equal((await setNightShield(engine, emil.playerId, key(), 21, 60, frieda.baseId)).ok, false, "fremder Hafen");
 });
 
 test("Letzte Aufklärung eines Spielerhafens für den Probekampf", async () => {

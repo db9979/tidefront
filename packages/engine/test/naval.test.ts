@@ -10,6 +10,8 @@ import {
   processDue, register, seed, trade, type Engine,
 } from "../src/index.ts";
 import { pair } from "../src/alliance-core.ts";
+import { modsOf } from "../src/modifiers.ts";
+import { addSecondHarbor } from "./multi-base.ts";
 
 const url = process.env.TEST_DATABASE_URL;
 const HOUR = 3600000;
@@ -254,4 +256,36 @@ test("Konvois: Kartell fängt einen Transport ab, Kriegsgegner bringt eine Hande
   assert.equal(del.qty, (dc.cargo as Record<string, number>).stahl - ev.lost.stahl);
   const [im] = await db.select().from(tables.mission).where(eq(tables.mission.id, (ic as { missionId: number }).missionId));
   assert.deepEqual(im.cargoHome, {}, "Zerstörer haben keinen Laderaum: die Ladung sinkt");
+});
+
+test("Mehrere Häfen: Blockade wirkt nur auf ihren Hafen; Radar-Sicht aus allen Häfen; Minenwarnung ab aktivem Hafen", async () => {
+  const a = await newPlayer("Doppelhafen", coastNear(null));
+  const b = await newPlayer("Sperrer", coastNear(a));
+  const a2 = await addSecondHarbor(db, a.playerId, { patch: (s) => { s.buildings.radarstation = 6; s.buildings.hafenkommandantur = 10; s.protection.createdAtMs = 0; } });
+  await patchBase(a.baseId, (s) => { s.buildings.radarstation = 0; });
+  const now = Date.now();
+  await db.insert(tables.blockade).values({
+    missionId: 0, attackerId: b.playerId, attackerBaseId: b.baseId, targetBaseId: a2.baseId, targetPlayerId: a.playerId,
+    col: a2.col, row: a2.row, units: { zerstoerer: 5 }, startsAt: new Date(now - 1000), endsAt: new Date(now + HOUR),
+  });
+  // Produktion: nur der blockierte Hafen.
+  const homeMods = await modifiersFor(db, a.playerId, { nowMs: now });
+  assert.equal(homeMods.production?.stahl, undefined, "Heimathafen frei");
+  const colMods = await modsOf(db, { playerId: a.playerId, state: await stateOf(a2.baseId), id: a2.baseId, isHome: false }, now);
+  assert.equal(colMods.production?.stahl, balance.blockade!.productionFactor);
+  // Lesemodell und Börse je Hafen.
+  assert.equal((await navalView(engine, a.playerId)).ownBlockade, null);
+  assert.ok((await navalView(engine, a.playerId, a2.baseId)).ownBlockade);
+  await assert.rejects(navalView(engine, a.playerId, b.baseId), /no_base/);
+  const sold = await trade(engine, a.playerId, key(), { side: "sell", resource: "stahl", qty: 10, expectedPrice: 1, baseId: a2.baseId });
+  assert.deepEqual(sold, { ok: false, code: "blockade" });
+  const home = await trade(engine, a.playerId, key(), { side: "sell", resource: "stahl", qty: 10, expectedPrice: 1 });
+  assert.notEqual((home as { code?: string }).code, "blockade");
+  // Radar: fremdes Feld vor dem zweiten Hafen ist sichtbar, obwohl der Heimathafen kein Radar hat.
+  await db.insert(tables.minefield).values({ ownerId: b.playerId, baseId: b.baseId, col: a2.col, row: a2.row, strength: 10, maxStrength: 10, createdAt: new Date(), expiresAt: new Date(now + DAY) });
+  const seen = (await navalView(engine, a.playerId)).minefields.find((f) => f.col === a2.col && f.row === a2.row);
+  assert.equal(seen?.via, "radar");
+  // Minenwarnung: die Route ab dem Heimathafen zum zweiten Hafen endet im bekannten Feld.
+  assert.equal((await navalRouteMines(engine, a.playerId, a2.col, a2.row)).length >= 1, true);
+  await db.delete(tables.blockade).where(eq(tables.blockade.targetBaseId, a2.baseId));
 });

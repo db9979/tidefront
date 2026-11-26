@@ -4,7 +4,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Counts, Mission } from "@tidefront/game-core";
 import { tables, type Db, type DbOrTx } from "@tidefront/db";
 import { balance, GameError, type Engine, type Notice } from "./context.ts";
-import { baseOfPlayer } from "./store.ts";
+import { ownBase, type BaseRow } from "./store.ts";
 import { diplomacyBlock } from "./alliance-core.ts";
 
 export const TEMPLATE_MAX = 20;
@@ -44,14 +44,22 @@ export function fitTemplate(units: Counts, home: Counts): FitResult {
   return { units: out, short };
 }
 
-/** Vorlagen des Spielers mit Kürzung auf die Einheiten daheim. */
-export async function listTemplates(db: DbOrTx, playerId: number) {
+/** Aktiver eigener Hafen (fehlt baseId: Heimathafen, null ohne Hafen); fremde baseId → GameError "no_base". */
+async function activeBase(db: DbOrTx, playerId: number, baseId?: number): Promise<BaseRow | null> {
+  return ownBase(db, playerId, baseId).catch((err: unknown) => {
+    if (baseId !== undefined) throw err;
+    return null;
+  });
+}
+
+/** Vorlagen des Spielers (spielerweit) mit Kürzung auf die Einheiten daheim im aktiven Hafen. */
+export async function listTemplates(db: DbOrTx, playerId: number, baseId?: number) {
   const rows = await db
     .select()
     .from(tables.formationTemplate)
     .where(eq(tables.formationTemplate.playerId, playerId))
     .orderBy(sql`lower(${tables.formationTemplate.name})`);
-  const own = await baseOfPlayer(db, playerId);
+  const own = await activeBase(db, playerId, baseId);
   const home = own?.state.units ?? {};
   return rows.map((r) => ({
     id: r.id,
@@ -149,30 +157,32 @@ async function toRepeat(db: DbOrTx, playerId: number, m: { type: string; targetC
 }
 
 /** Ziel und Zusammensetzung der eigenen Mission zu einem Bericht; null, wenn es keine gibt. */
-export async function repeatFromReport(db: DbOrTx, playerId: number, reportId: number, baseId?: number): Promise<RepeatPlan | null> { // P2: Hafen baseId, noch Heimathafen
+export async function repeatFromReport(db: DbOrTx, playerId: number, reportId: number, baseId?: number): Promise<RepeatPlan | null> { // fit: Einheiten des aktiven Hafens
   const [m] = await db
     .select()
     .from(tables.mission)
     .where(and(eq(tables.mission.reportId, reportId), eq(tables.mission.playerId, playerId)));
   if (!m || !(MISSION_TYPES as readonly string[]).includes(m.type)) return null;
-  const own = await baseOfPlayer(db, playerId);
+  const own = await activeBase(db, playerId, baseId);
   return toRepeat(db, playerId, m, own?.state.units ?? {});
 }
 
-/** Zuletzt heimgekehrte eigene Missionen (neueste zuerst). */
-export async function recentMissions(db: DbOrTx, playerId: number, limit = 5, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
+/** Zuletzt heimgekehrte eigene Missionen des aktiven Hafens (neueste zuerst). */
+export async function recentMissions(db: DbOrTx, playerId: number, limit = 5, baseId?: number) {
+  const own = await activeBase(db, playerId, baseId);
+  if (!own) return [];
   const rows = await db
     .select()
     .from(tables.mission)
     .where(and(
       eq(tables.mission.playerId, playerId),
+      eq(tables.mission.baseId, own.id),
       eq(tables.mission.status, "done"),
       inArray(tables.mission.type, [...MISSION_TYPES]),
     ))
     .orderBy(desc(tables.mission.returnAt), desc(tables.mission.id))
     .limit(limit);
-  const own = await baseOfPlayer(db, playerId);
-  const home = own?.state.units ?? {};
+  const home = own.state.units ?? {};
   return Promise.all(rows.map(async (m) => ({
     id: m.id,
     reportId: m.reportId,

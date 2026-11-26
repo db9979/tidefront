@@ -19,7 +19,7 @@ const counts = z.record(z.string().max(40), z.number().int().min(0).max(1_000_00
 const rate = { ok: false as const, code: "rate" };
 
 export const comfortRouter = t.router({
-  templates: authed.query(({ ctx }) => listTemplates(ctx.engine.db, ctx.player.id)),
+  templates: authed.input(baseInput).query(({ ctx, input }) => listTemplates(ctx.engine.db, ctx.player.id, input?.baseId)),
   saveTemplate: authed
     .input(z.object({
       name: z.string().trim().min(1).max(TEMPLATE_NAME_MAX),

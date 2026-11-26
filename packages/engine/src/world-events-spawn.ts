@@ -46,6 +46,20 @@ interface Candidate extends Hex {
 
 type Rng = () => number;
 const pick = <T>(rng: Rng, list: T[]): T => list[Math.floor(rng() * list.length)];
+
+/**
+ * Mehrere Häfen: Hafen auswählen, gewichtet je Spieler (nicht je Hafen) – erst ein Spieler gleichverteilt, dann einer
+ * seiner Häfen. Mit einem Hafen je Spieler identisch zu pick (gleicher Zufallswert für die Spielerwahl).
+ */
+function pickPerPlayer<T extends { playerId: number }>(rng: Rng, list: T[]): T {
+  const players = [...new Set(list.map((c) => c.playerId))];
+  if (players.length === list.length) return pick(rng, list);
+  const p = pick(rng, players);
+  return pick(rng, list.filter((c) => c.playerId === p));
+}
+
+/** Ein Eintrag je Spieler (Pushes nicht doppelt). */
+const onePerPlayer = <T extends { playerId: number }>(list: T[]): T[] => list.filter((c, i) => list.findIndex((x) => x.playerId === c.playerId) === i);
 const isSea = (h: Hex) => terrainAt(h.col, h.row) === "sea";
 const key = (h: Hex) => `${h.col},${h.row}`;
 
@@ -100,7 +114,7 @@ async function draftTreasure(tx: Tx, rng: Rng, due: number, cands: Candidate[], 
   if (focus.length === 0) return null;
   const nests = await tx.select({ col: tables.nest.col, row: tables.nest.row }).from(tables.nest);
   for (let attempt = 0; attempt < 6; attempt++) {
-    const near = pick(rng, focus);
+    const near = pickPerPlayer(rng, focus);
     const around = [...seaBfs(near, 6).values()].map((v) => v.hex)
       .filter((h) => { const d = hexDistanceKm(near, h); return d >= t.spawnKmFromBase[0] && d <= t.spawnKmFromBase[1]; });
     if (around.length === 0) continue;
@@ -131,7 +145,7 @@ async function draftTreasure(tx: Tx, rng: Rng, due: number, cands: Candidate[], 
       body: `Ein Schatzschiff des Kartells läuft mit ${comp.units.schnellboot} Schnellbooten Begleitschutz in ${hours} Stunden ` +
         `in einen Kartellhafen ein. An Bord: ${resText(comp.loot)}. Nur der erste Verband, der den Begleitschutz versenkt, ` +
         "erhält die Beute. Plane auf der Karte eine Mission – der Abfangpunkt wird beim Planen berechnet.",
-      pushes: nearby.map((c) => [c.playerId, "fleet", "Ein Schatzschiff fährt in deiner Nähe."]),
+      pushes: onePerPlayer(nearby).map((c) => [c.playerId, "fleet", `Ein Schatzschiff fährt in der Nähe von ${c.name}.`]),
     };
   }
   return null;
@@ -140,7 +154,7 @@ async function draftTreasure(tx: Tx, rng: Rng, due: number, cands: Candidate[], 
 function draftArmada(rng: Rng, due: number, cands: Candidate[], progress: number, focus: Candidate[]): Draft | null {
   const g = worldEventsBalance(balance).grossflotte;
   if (focus.length === 0) return null;
-  const center = pick(rng, focus);
+  const center = pickPerPlayer(rng, focus);
   const inRegion = cands
     .map((c) => ({ c, d: hexDistanceKm(center, c) }))
     .filter((x) => x.d <= g.regionRadiusKm)
@@ -164,7 +178,11 @@ function draftArmada(rng: Rng, due: number, cands: Candidate[], progress: number
     body: `Das Kartell sammelt eine Großflotte (${comp.units.schnellboot} Schnellboote, ${comp.units.piratenmiliz} Milizionäre). ` +
       `In ${g.announceHours} Stunden läuft sie aus und greift nacheinander diese Häfen an: ${names}. ` +
       "Jeder Verband, der sie vorher auf See angreift, schwächt sie dauerhaft und erhält Beute anteilig zum Schaden.",
-    pushes: targets.map((x) => [x.playerId, "attack", `Die Großflotte greift in ${g.announceHours} Stunden deinen Hafen an.`]),
+    pushes: onePerPlayer(targets).map((x) => {
+      const mine = targets.filter((y) => y.playerId === x.playerId).map((y) => y.name);
+      const what = mine.length > 1 ? `deine Häfen ${mine.join(", ")}` : `deinen Hafen ${mine[0]}`;
+      return [x.playerId, "attack", `Die Großflotte greift in ${g.announceHours} Stunden ${what} an.`] as [number, "attack", string];
+    }),
   };
 }
 
@@ -172,7 +190,7 @@ async function draftSiege(rng: Rng, due: number, focus: Candidate[], progress: n
   const s = worldEventsBalance(balance).belagerung;
   const open = focus.filter((c) => !protectionStatus(c.state.protection, due, balance).protected && !besieged.has(c.baseId));
   if (open.length === 0) return null;
-  const target = pick(rng, open);
+  const target = pickPerPlayer(rng, open);
   const comp = composeSiege(target.hp, progress, balance);
   return {
     kind: "belagerung", col: target.col, row: target.row, targetBaseId: target.baseId, units: comp.units, activeAtMs: due,

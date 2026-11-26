@@ -25,14 +25,14 @@ import { modsOf } from "./modifiers.ts";
 import { trackProgress } from "./challenges.ts";
 
 async function ownLocked(tx: Parameters<Handler>[0], playerId: number) {
-  const own = await baseOfPlayer(tx, playerId);
+  const own = await baseOfPlayer(tx, playerId); // Mehrere Häfen: bewusst Heimathafen (Forschung spielerweit, Forschungsamt nur dort)
   const b = own ? await lockBase(tx, own.id) : null;
   if (!b) throw new GameError("no_base");
   return b;
 }
 
 /** Startet die nächste Stufe einer Technik. Codes: siehe startResearch im Kern. */
-export function researchStart(engine: Engine, playerId: number, key: string, techId: string, baseId?: number) { // Forschung spielerweit im Heimathafen; baseId für P2
+export function researchStart(engine: Engine, playerId: number, key: string, techId: string, baseId?: number) { // Forschung spielerweit im Heimathafen; baseId wird bewusst ignoriert
   return runCommand<{ ok: true; finishesAt: number }>(engine, playerId, key, "researchStart", async (ctx) => {
     const b = await ownLocked(ctx.tx, playerId);
     const r = startResearch(b.state, techId, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs), randomSeed());

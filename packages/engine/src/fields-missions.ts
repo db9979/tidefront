@@ -20,7 +20,7 @@ import {
   activeCounts, hasShips, insertMission, planNaval, playerName, pushNotice, sendHome, storeNavalReport,
   type MissionRowLike, type Notes,
 } from "./naval-common.ts";
-import { FIELD_TYPE, HOUR_MS, fieldById, fieldName, guarded, maxFieldsOf, ownedBy, rules, type FieldRow } from "./fields-core.ts";
+import { FIELD_TYPE, HOUR_MS, fieldById, fieldName, garrisonMods, guarded, maxFieldsOfPlayer, ownedBy, rules, type FieldRow } from "./fields-core.ts";
 import { settleField } from "./fields-run.ts";
 
 export interface FieldInput {
@@ -42,7 +42,7 @@ async function planField(db: DbOrTx, playerId: number, own: BaseRow, input: Fiel
     if (field.ownerId === playerId) throw new GameError("own_field");
     const g = garrisonCheck(activeCounts(input.units), balance);
     if (!g.ok) throw new GameError(g.code);
-    if ((await ownedBy(db, playerId)).length >= maxFieldsOf(own.state)) throw new GameError("field_limit");
+    if ((await ownedBy(db, playerId)).length >= (await maxFieldsOfPlayer(db, playerId, own))) throw new GameError("field_limit");
     if (field.ownerId !== null) {
       const d = await diplomacyBlock(db, playerId, field.ownerId, nowMs);
       if (d) throw new GameError(d);
@@ -172,7 +172,7 @@ export async function fieldArrive(tx: Tx, m: MissionRowLike, plan: Mission, orig
   if (Object.keys(defenderUnits).length > 0) {
     seed = randomSeed();
     const defender: DefenderInput = field.ownerId !== null
-      ? { units: defenderUnits, defenses: {}, modifiers: await modifiersFor(tx, field.ownerId, { nowMs: due }) }
+      ? { units: defenderUnits, defenses: {}, modifiers: await garrisonMods(tx, field, due) }
       : guardDefender(defenderUnits);
     const res = resolveBattle(attacker, defender, balance, seed, battleWeather(field.col, field.row, due));
     if (!res.ok) throw new Error(`battle: ${res.code}`);
@@ -188,7 +188,7 @@ export async function fieldArrive(tx: Tx, m: MissionRowLike, plan: Mission, orig
   if (destroyed) {
     if (prevOwner !== null) await endGarrison(tx, field.missionId, {}, due);
     const split = splitGarrison(survivors, !!(plan as { stayAll?: boolean }).stayAll, balance);
-    const limit = origin ? maxFieldsOf(origin.state) : 0;
+    const limit = origin ? await maxFieldsOfPlayer(tx, pid, origin) : 0;
     if (split && origin && (await ownedBy(tx, pid)).length < limit) {
       await tx.update(tables.resourceField).set({
         ownerId: pid, baseId: origin.id, missionId: m.id, guard: {}, guardAt: null, capturedAt: new Date(due), lastTickAt: new Date(due),
@@ -234,7 +234,7 @@ export async function fieldArrive(tx: Tx, m: MissionRowLike, plan: Mission, orig
 }
 
 /** Besatzung zurückrufen: Feld wird neutral, angefangener Ertrag geht noch als Konvoi heim. Codes: no_field. */
-export function fieldRecall(engine: Engine, playerId: number, key: string, fieldId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
+export function fieldRecall(engine: Engine, playerId: number, key: string, fieldId: number, _baseId?: number) { // jedes eigene Feld; Rückkehr in seinen Hafen
   return runCommand<{ ok: true; returnAtMs: number }>(engine, playerId, key, "fieldRecall", async (ctx) => {
     const field = await fieldById(ctx.tx, fieldId, true); // Reihenfolge: Feld vor Besatzung
     if (!field || field.ownerId !== playerId) throw new GameError("no_field");

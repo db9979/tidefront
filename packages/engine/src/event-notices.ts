@@ -19,6 +19,13 @@ export type Snapshot =
 
 const MISSION_EVENTS = new Set(["mission_arrive", "mission_return", "raid_arrive"]);
 
+/** Mehrere Häfen: Hafenname für Meldungen, nur wenn der Spieler mehr als einen Hafen hat (sonst null). */
+async function harborName(tx: Tx, playerId: number, baseId: number | null): Promise<string | null> {
+  if (baseId === null) return null;
+  const rows = await tx.select({ id: tables.base.id, name: tables.base.name }).from(tables.base).where(eq(tables.base.playerId, playerId));
+  return rows.length > 1 ? rows.find((r) => r.id === baseId)?.name ?? null : null;
+}
+
 /** Zustand vor dem Handler, soweit für die Meldung nötig. Sperrt in der üblichen Reihenfolge. */
 export async function noticeSnapshot(tx: Tx, ev: EventRow): Promise<Snapshot> {
   if (ev.type === "build_complete" && ev.baseId) {
@@ -68,7 +75,7 @@ async function reportNotices(tx: Tx, reportId: number): Promise<NoticeJob[]> {
       const attacker = r.kind === "kartell" ? "Freibeuter-Kartell" : (data.attackerName ?? "Ein Gegner");
       out.push({ playerId: r.defenderPlayerId, notice: {
         kind: "report", url, tag, title: `Kampfbericht: ${data.targetName ?? "Dein Hafen"} angegriffen`,
-        body: held ? `${attacker} wurde abgewehrt.` : `${attacker} hat deinen Hafen überwunden. Verlust: ${loot}.`,
+        body: held ? `${attacker} wurde abgewehrt.` : `${attacker} hat ${(await harborName(tx, r.defenderPlayerId, r.defenderBaseId)) ?? "deinen Hafen"} überwunden. Verlust: ${loot}.`,
         facts: [["Angreifer", attacker], ["Ergebnis", held ? "Abgewehrt" : "Verloren"], ["Beute des Gegners", loot]],
       } });
     }
@@ -93,9 +100,10 @@ export async function noticesAfter(tx: Tx, ev: EventRow, due: number, snap: Snap
     const b = await readBase(tx, ev.baseId!);
     if (!b || (b.state.buildings[snap.order.buildingId] ?? 0) < snap.order.targetLevel) return [];
     const name = nameOf(snap.order.buildingId);
+    const where = await harborName(tx, b.playerId, b.id);
     return [{ playerId: b.playerId, notice: {
       kind: "build", url: "/?tab=basis", tag: `build-${b.id}`, title: "Ausbau fertig",
-      body: `${name} ist jetzt auf Stufe ${snap.order.targetLevel}.`,
+      body: `${name}${where ? ` in ${where}` : ""} ist jetzt auf Stufe ${snap.order.targetLevel}.`,
       facts: [["Gebäude", name], ["Stufe", String(snap.order.targetLevel)]],
     } }];
   }
@@ -106,8 +114,9 @@ export async function noticesAfter(tx: Tx, ev: EventRow, due: number, snap: Snap
     const done = snap.orders.filter((o) => o.finishesAt <= due && !left.has(`${o.builtIn}|${o.id}|${o.finishesAt}`));
     if (done.length === 0) return [];
     const what = done.map((o) => `${fmtInt(o.count)} ${nameOf(o.id)}`).join(", ");
+    const where = await harborName(tx, b.playerId, b.id);
     return [{ playerId: b.playerId, notice: {
-      kind: "training", url: "/?tab=truppen", tag: `training-${b.id}`, title: "Ausbildung fertig", body: `Bereit: ${what}.`,
+      kind: "training", url: "/?tab=truppen", tag: `training-${b.id}`, title: "Ausbildung fertig", body: `Bereit${where ? ` in ${where}` : ""}: ${what}.`,
     } }];
   }
   if (snap.kind === "delivery") {
@@ -116,7 +125,7 @@ export async function noticesAfter(tx: Tx, ev: EventRow, due: number, snap: Snap
     if (!d || d.status !== "delivered") return [];
     return [{ playerId: d.playerId, notice: {
       kind: "delivery", url: "/?tab=boerse", tag: `delivery-${d.id}`, title: "Lieferung angekommen",
-      body: `${fmtInt(d.qty)} ${nameOf(d.resource)} sind im Hafen eingetroffen.`,
+      body: `${fmtInt(d.qty)} ${nameOf(d.resource)} sind ${await harborName(tx, d.playerId, d.baseId).then((n) => (n ? `in ${n}` : "im Hafen"))} eingetroffen.`,
     } }];
   }
   // Missionen: nur bei einem Statuswechsel durch den Handler.
@@ -126,9 +135,10 @@ export async function noticesAfter(tx: Tx, ev: EventRow, due: number, snap: Snap
   if (ev.type === "mission_return" && m.status === "done" && m.playerId !== null && m.type === "spionage") return spyReturnNotice(tx, m);
   if (ev.type === "mission_return" && m.status === "done" && m.playerId !== null) {
     const cargo = amounts(m.cargoHome as Record<string, number>);
+    const where = await harborName(tx, m.playerId, m.baseId);
     return [{ playerId: m.playerId, notice: {
       kind: "fleet", url: "/?tab=truppen", tag: `fleet-${m.id}`, title: "Verband zurück",
-      body: `Der Verband ist heimgekehrt. Ladung: ${cargo}.`, facts: [["Ladung", cargo]],
+      body: `Der Verband ist ${where ? `nach ${where} ` : ""}heimgekehrt. Ladung: ${cargo}.`, facts: [["Ladung", cargo]],
     } }];
   }
   if ((ev.type === "mission_arrive" || ev.type === "raid_arrive") && m.reportId) return reportNotices(tx, m.reportId);

@@ -39,9 +39,9 @@ export async function missionAdmiral(tx: Tx, plan: Mission, missionId: number, p
   return toBattle(a, "mission");
 }
 
-/** Stationierter, bereiter Hafenkommandant des Verteidigers, oder null (Kartell, Nester, kein Admiral). */
-export async function defenseAdmiral(tx: Tx, playerId: number | null, nowMs: number): Promise<BattleAdmiral | null> {
-  const a = await readyHarborAdmiral(tx, playerId, nowMs);
+/** Stationierter, bereiter Hafenkommandant des angegriffenen Hafens, oder null (Kartell, Nester, kein Admiral). */
+export async function defenseAdmiral(tx: Tx, playerId: number | null, baseId: number, nowMs: number): Promise<BattleAdmiral | null> {
+  const a = await readyHarborAdmiral(tx, playerId, baseId, nowMs);
   if (!a) return null;
   const [locked] = await tx.select().from(tables.admiral).where(eq(tables.admiral.id, a.id)).for("update");
   return locked ? toBattle(locked, "defense") : null;

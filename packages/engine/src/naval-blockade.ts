@@ -16,7 +16,7 @@ import {
 } from "@tidefront/game-core";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError, type Engine, type NoticeJob } from "./context.ts";
-import { activeMissionCount, randomSeed, saveBase, scheduleEvent, withSite, type BaseRow } from "./store.ts";
+import { activeMissionCount, homeBaseOf, randomSeed, readBase, saveBase, scheduleEvent, withSite, type BaseRow } from "./store.ts";
 import { modifiersFor, modsOf, registerModifierSource } from "./modifiers.ts";
 import { battleWeather } from "./weather.ts";
 import { diplomacyBlock } from "./alliance-core.ts";
@@ -44,15 +44,15 @@ export interface BlockadeRow {
   endedAt: Date | null;
 }
 
-/** Laufende Blockade eines Hafens zum Zeitpunkt nowMs (die zuerst endende), null ohne. */
-export async function activeBlockade(db: DbOrTx, where: { baseId?: number; playerId?: number }, nowMs: number): Promise<BlockadeRow | null> {
+/** Laufende Blockade eines Hafens zum Zeitpunkt nowMs (die zuerst endende), null ohne. Mehrere Häfen: je Hafen. */
+export async function activeBlockade(db: DbOrTx, where: { baseId: number }, nowMs: number): Promise<BlockadeRow | null> {
   const t = tables.blockade;
   const rows = await db
     .select()
     .from(t)
     .where(and(
       eq(t.status, "active"),
-      where.baseId !== undefined ? eq(t.targetBaseId, where.baseId) : eq(t.targetPlayerId, where.playerId!),
+      eq(t.targetBaseId, where.baseId),
       lte(t.startsAt, new Date(nowMs)),
       gt(t.endsAt, new Date(nowMs)),
     ))
@@ -61,10 +61,12 @@ export async function activeBlockade(db: DbOrTx, where: { baseId?: number; playe
   return (rows[0] as BlockadeRow) ?? null;
 }
 
-// Modifikator-Quelle „Blockade“: Gebäudeproduktion des blockierten Hafens mal productionFactor.
+// Modifikator-Quelle „Blockade“: Gebäudeproduktion des blockierten Hafens mal productionFactor. Mehrere Häfen: nur
+// der Hafen, für den gerechnet wird (ctx.baseId; ohne Angabe der Heimathafen) – andere Häfen bleiben unberührt.
 registerModifierSource(async (db, playerId, ctx) => {
   if (!blockadeOf(balance)) return null;
-  if (!(await activeBlockade(db, { playerId }, ctx.nowMs))) return null;
+  const baseId = ctx.baseId ?? (await homeBaseOf(db, playerId))?.id;
+  if (baseId === undefined || !(await activeBlockade(db, { baseId }, ctx.nowMs))) return null;
   const f = blockadeProductionFactor(balance);
   return { production: Object.fromEntries(balance.resources.map((r) => [r, f])) } satisfies Modifiers;
 }, "blockade", "Blockade");
@@ -147,8 +149,8 @@ export async function blockadeArrive(tx: Tx, m: MissionRowLike, plan: Mission & 
     report: { blockade: { id: b.id, targetName: target.name, attackerName: who, units: activeUnits(units), endsAtMs: endsAt, factor: blockadeProductionFactor(balance) } }, atMs: due,
   });
   await systemMessage(tx, [target.playerId], `Seeblockade vor ${target.name}`,
-    `${who} blockiert deinen Hafen bis ${fmtClock(endsAt)}. Produktion −${Math.round((1 - blockadeProductionFactor(balance)) * 100)} %, eingehende Lieferungen werden zurückgehalten, Börsenverkäufe sind gesperrt. Greife den Blockadeverband auf der Karte an, um die Blockade zu brechen.`, due);
-  push.push(pushNotice(target.playerId, "attack", `Seeblockade vor ${target.name}`, `${who} blockiert deinen Hafen bis ${fmtClock(endsAt)}.`));
+    `${who} blockiert deinen Hafen ${target.name} bis ${fmtClock(endsAt)}. Produktion −${Math.round((1 - blockadeProductionFactor(balance)) * 100)} %, eingehende Lieferungen werden zurückgehalten, Börsenverkäufe sind gesperrt. Greife den Blockadeverband auf der Karte an, um die Blockade zu brechen.`, due);
+  push.push(pushNotice(target.playerId, "attack", `Seeblockade vor ${target.name}`, `${who} blockiert deinen Hafen ${target.name} bis ${fmtClock(endsAt)}.`));
   notify.push([[target.playerId], "base"], [[target.playerId], "messages"], [[target.playerId], "reports"], [null, "map"]);
 }
 
@@ -183,7 +185,7 @@ export async function blockadeEndHandler(tx: Tx, payload: Record<string, unknown
 }
 
 /** Eigene Blockade aufheben (Rückruf). Codes: no_blockade. */
-export function liftBlockade(engine: Engine, playerId: number, key: string, blockadeId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
+export function liftBlockade(engine: Engine, playerId: number, key: string, blockadeId: number, _baseId?: number) { // Besitz über die Blockade
   return runCommand(engine, playerId, key, "liftBlockade", async (ctx) => {
     const b = await lockBlockade(ctx.tx, blockadeId);
     if (!b || b.attackerId !== playerId || b.status !== "active") throw new GameError("no_blockade");
@@ -236,7 +238,9 @@ export async function blockadeAttackArrive(tx: Tx, m: MissionRowLike, plan: Miss
     return;
   }
   const attacker: AttackerInput = { units, versorgungsmangel: origin?.state.versorgungsmangel ?? false, modifiers: await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due, baseId: origin?.id, isHome: origin?.isHome }) };
-  const defMods = await modifiersFor(tx, b.attackerId, { nowMs: due });
+  // Blockadeverband kämpft mit den Modifikatoren seines Ausgangshafens (mehrere Häfen).
+  const home = await readBase(tx, b.attackerBaseId);
+  const defMods = home && home.playerId === b.attackerId ? await modsOf(tx, home, due) : await modifiersFor(tx, b.attackerId, { nowMs: due });
   const seed = randomSeed();
   const res = resolveBattle(attacker, { units: activeUnits(b.units as Counts), defenses: {}, modifiers: defMods }, balance, seed, battleWeather(b.col, b.row, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);

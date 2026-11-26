@@ -28,7 +28,7 @@ import { hexCenter, hexDistanceKm } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError, type Engine } from "./context.ts";
 import { runCommand, targetAt, type MissionTarget } from "./commands.ts";
-import { activeMissionCount, baseOfPlayer, lockBase, randomSeed, saveBase, scheduleEvent, type BaseRow } from "./store.ts";
+import { activeMissionCount, lockOwnBase, ownBase, randomSeed, saveBase, scheduleEvent, type BaseRow } from "./store.ts";
 import { modsOf } from "./modifiers.ts";
 import { diplomacyBlock } from "./alliance-core.ts";
 import { processDueForBase } from "./events.ts";
@@ -117,8 +117,13 @@ function planFor(own: BaseRow, p: Prepared, input: SpyInput, active: number, now
 /** Vorschau: Reise, Spione, Erfolgswert, Abwehr, Zielzahl und Enttarnungs-Chance – oder der Ablehnungsgrund. */
 export async function spyPreview(engine: Engine, playerId: number, input: SpyInput) {
   const nowMs = Date.now();
-  const own = await baseOfPlayer(engine.db, playerId);
-  if (!own) return { ok: false as const, code: "no_base" };
+  let own: BaseRow;
+  try {
+    own = await ownBase(engine.db, playerId, input.baseId);
+  } catch (err) {
+    if (err instanceof GameError) return { ok: false as const, code: err.code };
+    throw err;
+  }
   const mods = await modsOf(engine.db, own, nowMs);
   const die = espionageOf(balance)?.die ?? 20;
   let p: Prepared;
@@ -146,9 +151,7 @@ export async function spyPreview(engine: Engine, playerId: number, input: SpyInp
 /** Spionageauftrag auslaufen lassen. Das Ziel erfährt nichts (kein Radar, keine Vorwarnung). */
 export function spyLaunch(engine: Engine, playerId: number, key: string, input: SpyInput) {
   return runCommand<{ ok: true; missionId: number; arriveAtMs: number; chance: number }>(engine, playerId, key, "spy", async (ctx) => {
-    const found = await baseOfPlayer(ctx.tx, playerId);
-    const own = found ? await lockBase(ctx.tx, found.id) : null;
-    if (!own) fail("no_base");
+    const own = await lockOwnBase(ctx.tx, playerId, input.baseId);
     const mods = await modsOf(ctx.tx, own, ctx.nowMs);
     const p = await prepare(ctx.tx, playerId, own, input, ctx.nowMs, mods);
     const r = planFor(own, p, input, await activeMissionCount(ctx.tx, own.id), ctx.nowMs, mods, randomSeed());
@@ -190,12 +193,15 @@ export function intelView(state: BaseState, mods: Modifiers, nowMs: number) {
 }
 
 /** Eigenes Lagebild der Spionage (Info-Blatt Nachrichtendienst): verarbeitet zuerst fällige Ereignisse. */
-export async function intelOwnView(engine: Engine, playerId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
+export async function intelOwnView(engine: Engine, playerId: number, baseId?: number) {
   const nowMs = Date.now();
-  const own = await baseOfPlayer(engine.db, playerId);
+  const own = await ownBase(engine.db, playerId, baseId).catch((err: unknown) => {
+    if (baseId !== undefined) throw err; // fremder Hafen: no_base
+    return null;
+  });
   if (!own) return null;
   await processDueForBase(engine, own.id, nowMs);
-  const row = (await baseOfPlayer(engine.db, playerId))!;
+  const row = await ownBase(engine.db, playerId, own.id);
   return intelView(row.state, await modsOf(engine.db, row, nowMs), nowMs);
 }
 

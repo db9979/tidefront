@@ -234,11 +234,14 @@ export async function flushMailDigests(engine: Engine, nowMs: number): Promise<n
       .where(and(eq(tables.mailDigest.playerId, p.playerId), isNull(tables.mailDigest.sentAt)))
       .orderBy(tables.mailDigest.id);
     if (rows.length === 0) continue;
+    // Mehrere Häfen: Sammelbetreff in der Mehrzahl.
+    const [nb] = await engine.db.select({ n: sql<number>`count(*)::int` }).from(tables.base).where(eq(tables.base.playerId, p.playerId));
+    const harbor = (nb?.n ?? 1) > 1 ? "deinen Häfen" : "deinem Hafen";
     const content: MailContent = rows.length === 1
       ? noticeMail({ kind: rows[0].kind as NoticeKind, title: rows[0].title, body: rows[0].body }, p.token)
       : {
-          subject: `${rows.length} Meldungen aus deinem Hafen`,
-          heading: "Neues aus deinem Hafen",
+          subject: `${rows.length} Meldungen aus ${harbor}`,
+          heading: `Neues aus ${harbor}`,
           paragraphs: ["Seit der letzten Nachricht ist Folgendes passiert:"],
           items: rows.map((r) => `${r.title}: ${r.body}`),
           button: { label: "Im Spiel öffnen", url: `${publicUrl()}/` },

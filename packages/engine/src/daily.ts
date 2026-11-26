@@ -100,7 +100,7 @@ export async function dailyView(engine: Engine, playerId: number) {
 export function claimChallenge(engine: Engine, playerId: number, key: string, challengeId: number) {
   return runCommand<{ ok: true; reward: ResourceMap; points: number; streak: number | null; bonus: { points: number; reward: ResourceMap } | null }>(
     engine, playerId, key, "dailyClaim", async (ctx) => {
-      const own = await baseOfPlayer(ctx.tx, playerId);
+      const own = await baseOfPlayer(ctx.tx, playerId); // Mehrere Häfen: bewusst Heimathafen (Belohnung dorthin)
       if (!own) fail("no_base");
       const b = await lockBase(ctx.tx, own.id);
       if (!b) fail("no_base");
