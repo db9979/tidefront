@@ -17,3 +17,5 @@ export * from "./mail-templates.ts";
 export * from "./notices.ts";
 export * from "./settings.ts";
 export { scheduleAttackWarning } from "./event-notices.ts";
+export * from "./backups.ts";
+export * from "./adminstats.ts";

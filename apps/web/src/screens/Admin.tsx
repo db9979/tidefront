@@ -1,10 +1,13 @@
-// Verwaltung (nur Admins; der Server prüft jede Anfrage): Systemzustand, Einladungscodes, Spieler, E-Mail-Versand.
+// Verwaltung (nur Admins; der Server prüft jede Anfrage): Systemzustand, Einladungscodes, Spieler, E-Mail-Versand,
+// Sicherungen und Statistik.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
 import { errorText } from "../lib/names.ts";
 import { Badge, Button, Card, ErrorLine, Loading, StatTable, Stepper } from "../ui.tsx";
 import { AdminMail } from "./AdminMail.tsx";
+import { AdminBackups } from "./AdminBackups.tsx";
+import { AdminStats } from "./AdminStats.tsx";
 
 function when(v: string | Date | null | undefined): string {
   if (!v) return "–";
@@ -140,6 +143,8 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
       </Card>
 
       <AdminMail />
+      <AdminBackups />
+      <AdminStats />
     </div>
   );
 }

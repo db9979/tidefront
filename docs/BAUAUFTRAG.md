@@ -82,6 +82,32 @@ Auslegungen stehen in `packages/game-core/ENTSCHEIDUNGEN.md` und `packages/game-
 - Oberfläche: Der Reiter „Meldungen“ der unteren Leiste hat oben drei Reiter Berichte | Nachrichten | Rangliste
   (mit Spielerübersicht und Ruhmeshalle). Ohne Stützpunkt landet der Spieler in der Hafenwahl, die den Saisonwechsel anzeigt.
 
+## Festlegungen: Sicherungen und Statistik in der Verwaltung
+
+- Tabellen `backup_request` und `backup_download_token` (Abschnitt am Ende von `schema.ts`). Logik in
+  `packages/engine/src/backups.ts` und `adminstats.ts`, tRPC-Teilrouter `apps/api/src/routers/adminstats.ts`
+  (`adminStats.*`, alle Prozeduren über `adminProc`), Download-Route in `apps/api/src/routers/backup-download.ts`.
+- Liste: der `api`-Dienst liest das Sicherungsverzeichnis schreibgeschützt (`/backups:ro`, `BACKUP_PATH` überschreibt
+  den Pfad). Gezeigt werden nur reguläre Dateien (keine Links, keine Ordner) nach `tidefront-[A-Za-z0-9_-]+.dump`;
+  zusätzlich muss der aufgelöste Pfad direkt im Verzeichnis liegen. Quelle „manuell“ am Zusatz `-manuell`.
+- Download `GET /api/admin/backups/:name?t=…`: Reihenfolge Name → Sitzung (401) → `is_admin` (403) → Token (403) → Datei
+  (404). Token: 24 Zufallsbytes, gespeichert als SHA-256, 60 s gültig, an Admin und Datei gebunden, wird beim ersten
+  Einlösen verbraucht (auch wenn Admin oder Datei nicht passen). Antwort gestreamt mit `Content-Disposition: attachment`
+  und `Cache-Control: no-store`.
+- „Jetzt sichern“: Auftrag in `backup_request` (`pending` → `running` → `done`/`failed`); höchstens einer offen, nach
+  15 Minuten gilt ein offener als verwaist. `scripts/backup.sh loop` prüft jede Minute (`BACKUP_POLL_SECONDS`) mit
+  `FOR UPDATE SKIP LOCKED`, sichert mit Zusatz `-manuell` und trägt `backup_run` ein; beim Start werden hängende
+  `running`-Aufträge als fehlgeschlagen abgeschlossen und Aufträge älter als 90 Tage gelöscht. Fehlt die Tabelle, tut
+  die Prüfung nichts. Aufräumen nach `BACKUP_KEEP_DAYS` gilt für tägliche und manuelle Dateien gleich.
+  Wiederherstellen bleibt Konsolensache.
+- Statistik (`adminStats(db, 7 | 28)`): eine SQL-Abfrage je Bereich (Gruppierung nach Kalendertag in `TZ`), nur die
+  Stützpunkt-Zustände werden in JS mit `settle`/`productionRates` fortgeschrieben. Kämpfe zählen nur Berichte mit
+  `battle` (`ueberfall`, `kartell`); Börsenumsatz = Konto `market` in Krediten (ohne Gebühr), Gebühren = Konto `fees`.
+  Auffällig: Ressourcen > 3 × Median (ab drei Häfen, mindestens 1000), ≥ 5 Überfälle an einem Tag auf dasselbe Ziel,
+  fehlgeschlagene Ereignisse. Ergebnis 60 s je Zeitraum im API-Prozess zwischengespeichert.
+- Integrationstests: `packages/engine/test/adminstats.test.ts`. Die Migration für die beiden Tabellen ist nicht
+  eingecheckt und wird bei der Zusammenführung mit `npm run db:generate` erzeugt.
+
 ## Festlegungen für den Betrieb
 
 - Ziel ist ein Raspberry Pi mit 64-Bit-System unter `speech@speech.local`; alle Images müssen für arm64 verfügbar sein.

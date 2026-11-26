@@ -12,6 +12,7 @@ import { createDb } from "@tidefront/db";
 import { noticeHook, playerForToken, touchLastSeen, type ChangeKind, type Engine } from "@tidefront/engine";
 import { appRouter, type AppRouter, type Ctx } from "./router.ts";
 import { registerMailLinks } from "./routers/mail-links.ts";
+import { registerBackupDownload } from "./routers/backup-download.ts";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://tidefront:tidefront@localhost:5432/tidefront";
@@ -115,6 +116,7 @@ await app.register(fastifyTRPCPlugin, {
 });
 
 registerMailLinks(app, engine, rateLimit);
+registerBackupDownload(app, engine, { cookieName: COOKIE, rateLimit });
 
 // ---------------------------------------------------------------- Gesundheit und Oberfläche
 app.get("/healthz", async (_req, reply) => {

@@ -25,6 +25,7 @@ import {
 import { seasonRouter, socialRouter } from "./routers/social.ts";
 import { authed, t, wrap, type Ctx } from "./trpc.ts";
 import { accountRouter, adminRouter, authExtras, pushRouter } from "./routers/ops.ts";
+import { adminStatsRouter } from "./routers/adminstats.ts";
 
 export type { Ctx };
 
@@ -73,6 +74,7 @@ export const appRouter = t.router({
   push: pushRouter,
   account: accountRouter,
   admin: adminRouter,
+  adminStats: adminStatsRouter,
 
   world: t.router({
     map: authed.query(({ ctx }) => mapView(ctx.engine, ctx.player.id)),
