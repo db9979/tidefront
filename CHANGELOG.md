@@ -2,9 +2,16 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.12.2 – 27.11.2026
+- **Wetter fachlich überarbeitet** (geprüft von einem Entwickler und einem Meteorologen): Tiefs ziehen nach Nordosten, der stärkste Wind liegt am Rand des Tiefs statt im Kern, Hochs halten länger. Der Norden ist nicht mehr dauernd stürmisch (Bergen im Winter ~8 % Sturm, im Sommer kaum), dafür gibt es Mistral, Meltemi, Bora und Wind in der Straße von Gibraltar. Nebel gibt es jetzt auch an Nordsee, Ärmelkanal und vor Portugal, am meisten bei Neufundland im Sommer.
+- **Wetterkarte**: Isobaren folgen dem Luftdruck, Windfahnen mit Fiedern nach Stärke, Sturmwimpel statt Blitz, Mond bei klarer Nacht.
+- **Wirkungen genau angezeigt**: Ein angetipptes Feld zeigt „Flugzeuge −X %“, „Schiffe langsamer (bis +X %)“, „Aufklärung ungenau“ und „Luftschlag −X %“ nach den echten Regeln; Startverbot und Radar-Verkürzung nur am eigenen Hafen. Die Missionsplanung zeigt das Wetter am Ziel zur Ankunft.
+- Windstärke in Beaufort mit richtigen Bezeichnungen (Sturm ab 9 Bft). Die Strom-Vorhersage beginnt zur vollen Stunde, die Sturmwarnung ist minutengenau.
+- Strom (Balance v1.9): Windpark 90 und Solarfeld 180 Strom je Stufe, damit die Erträge zum neuen Wetter passen.
+- Die Uhr im Spiel springt beim Nachladen nicht mehr kurz zurück.
+
 ## 0.12.1 – 27.11.2026
 - **Ressourcen antippen**: Ein Tipp auf Stahl, Treibstoff, Elektronik oder Proviant in der Kopfleiste öffnet ein Infoblatt – Art und Verwendung, Bestand und Lager mit Füllstand, „voll in …“ bzw. „leer in …“, Produktion nach Quellen (Gebäude, Grundproduktion, Verbrauch durch Truppen oder Kraftwerk), Strommangel und Wirkungen wie Blockade oder Sabotage, Bunkerschutz, Börsenkurs und Wert des Bestands.
-- Truppen: Doppelte Zeile in der Missionsliste entfernt.
 
 ## 0.12.0 – 27.11.2026
 - **Admirale**: Ernenne bis zu drei Admirale (Truppen → Admirale). Sie führen einen Verband auf Mission oder als Hafenkommandant daheim die Verteidigung. Sechs Spezialisierungen (Angriff, Verteidigung, Logistik, Aufklärung, Beutemeister, U-Boot-Taktik), Erfahrung aus gewonnenen Kämpfen, Beförderung bis zum Admiral. Nach schweren Niederlagen entscheidet ein W20 über Verwundung, Gefangenschaft oder Tod.
