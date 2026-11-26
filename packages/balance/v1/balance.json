@@ -1,5 +1,5 @@
 {
-  "version": "v1.3",
+  "version": "v1.4",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -61,7 +61,22 @@
     "hospitalShareDefender": 0.4,
     "hospitalShareAttacker": 0.2,
     "aircraftDamagedShare": 0.3,
-    "torpedoSalvos": 1
+    "torpedoSalvos": 1,
+    "luck": { "die": 20, "min": 0.8, "max": 1.2, "innerMin": 0.85, "innerMax": 1.15 }
+  },
+  "veterans": {
+    "ranks": [
+      { "id": "rekrut", "name": "Rekrut", "minXp": 0, "attackBonus": 0 },
+      { "id": "erprobt", "name": "Erprobt", "minXp": 15, "attackBonus": 0.05 },
+      { "id": "veteran", "name": "Veteran", "minXp": 40, "attackBonus": 0.10 },
+      { "id": "elite", "name": "Elite", "minXp": 80, "attackBonus": 0.15 }
+    ],
+    "xpWin": 10,
+    "xpLoss": 4,
+    "ratioMin": 0.5,
+    "ratioMax": 2,
+    "lossPenalty": 0.5,
+    "maxXp": 100
   },
   "loot": {
     "maxShareOfUnprotected": 0.3,

@@ -2,6 +2,7 @@ import type { Balance, BaseState, ResourceMap, Result, TrainingOrder } from "./t
 import { buildingLevel, hasResources, settle, subtractResources } from "./economy.ts";
 import type { Modifiers } from "./modifiers.ts";
 import { modEntry } from "./modifiers.ts";
+import { diluteBase } from "./veterans.ts";
 
 /** Pseudo-Bauplatz für Verteidigungsanlagen (haben in balance.json kein builtIn). */
 export const DEFENSE_SLOT = "anlagen";
@@ -121,6 +122,11 @@ export function completeTraining(
   let next = base;
   for (const order of due) {
     next = settle(next, order.finishesAt, balance, mods);
+    // Veteranen: neue Rekruten verwässern die Erfahrung des Typs (gewichteter Mittelwert).
+    if (order.kind === "unit") {
+      const v = diluteBase(next, order.id, order.count);
+      if (v) next.veterancy = v;
+    }
     const target = order.kind === "unit" ? next.units : next.defenses;
     target[order.id] = (target[order.id] ?? 0) + order.count;
     next.trainingQueue = next.trainingQueue.filter(

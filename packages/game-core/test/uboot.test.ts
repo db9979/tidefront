@@ -12,13 +12,14 @@ import {
   startTraining,
   travelSeconds,
 } from "../src/index.ts";
-import { T0, loadBalance, makeBase } from "./helpers.ts";
+import { T0, loadBalance, loadBalanceNoLuck, makeBase } from "./helpers.ts";
 
 const balance = loadBalance();
 const rich = { stahl: 1e7, treibstoff: 1e7, elektronik: 1e7, proviant: 1e7 };
 
-function fight(attacker: AttackerInput, defender: DefenderInput, seed = 1): BattleReport {
-  const res = resolveBattle(attacker, defender, balance, seed);
+const exact = loadBalanceNoLuck();
+function fight(attacker: AttackerInput, defender: DefenderInput, seed = 1, bal = balance): BattleReport {
+  const res = resolveBattle(attacker, defender, bal, seed);
   assert.ok(res.ok, "resolveBattle muss gelingen");
   return res.report;
 }
@@ -51,7 +52,7 @@ test("Bau erst ab Werft-Stufe requiresLevel", () => {
 
 test("U-Boot-Angriff: eine Torpedosalve aus dem Verborgenen, keine Gegenwehr", () => {
   // 2 U-Boote: 2 * 80 * 1,5 (Bonus) = 240 gegen Landungsschiffe (300 HP) -> noch kein Verlust, Rest bleibt
-  const r = fight({ units: { uboot: 2 } }, sea({ landungsschiff: 2, korvette: 0 }), 3);
+  const r = fight({ units: { uboot: 2 } }, sea({ landungsschiff: 2, korvette: 0 }), 3, exact);
   const amb = phase(r, "ubootangriff");
   assert.equal(amb.skipped, false);
   assert.equal(amb.rounds, balance.combat.torpedoSalvos ?? 1);
@@ -106,7 +107,7 @@ test("U-Jagd: Korvetten und Zerstörer versenken U-Boote im Seegefecht", () => {
 test("U-Jagd nachgerechnet: 4 Korvetten gegen 1 U-Boot", () => {
   // U-Boot-Angriff: 80 auf die Korvetten. Seegefecht: je Runde 4 * 40 = 160 Wasserbomben auf das U-Boot (250 HP),
   // das U-Boot schießt weiter 80. Runde 2: U-Boot versenkt (320), Korvetten haben 240 Schaden -> eine verloren.
-  const r = fight({ units: { korvette: 4 } }, sea({ uboot: 1 }), 7);
+  const r = fight({ units: { korvette: 4 } }, sea({ uboot: 1 }), 7, exact);
   const s = phase(r, "seegefecht");
   assert.equal(s.rounds, 2);
   assert.ok(s.damage.attacker.korvette >= 320 * 0.95 - 1e-9 && s.damage.attacker.korvette <= 320 * 1.05 + 1e-9);

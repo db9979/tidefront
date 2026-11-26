@@ -125,6 +125,13 @@ Schadensregeln:
 - Schaden einer Seite je Runde = Summe über ihre Einheitentypen `Angriff * Anzahl`, verteilt auf die gegnerischen Typen
   der Phase proportional zu deren gesamten Lebenspunkten. `bonus[zieltyp]` multipliziert den Anteil gegen diesen Typ.
 - Jede Runde wird der Schaden mit einem Zufallsfaktor aus `[1 - randomSpread, 1 + randomSpread]` multipliziert.
+- **Kriegsglück** (seit v1.4, `combat.luck`): Vor jeder Phase würfelt jede Seite einen W20 (`die`), zuerst der
+  Angreifer, dann der Verteidiger, Phase für Phase – auch für Phasen, die entfallen (feste Reihenfolge). Der Wurf ist ein
+  Faktor auf **allen** Schaden dieser Seite in dieser Phase (Salven, Flak, Bomben, Torpedos, U-Jagd, Minensperren), zusätzlich
+  zum Rundenzufall: 1 = Panne `min` (0,8 = −20 %), 20 = Volltreffer `max` (1,2 = +20 %), 2 bis 19 gleichmäßig von
+  `innerMin` (0,85) bis `innerMax` (1,15), also etwa 1,8 Prozentpunkte je Augenzahl. Im Mittel neutral: Die Faktoren der
+  Augen k und 21 − k ergeben zusammen genau 2, der Erwartungswert ist exakt 1. Die Würfe sind deterministisch aus dem
+  Kampf-Seed (eigener Strom, der Rundenzufall bleibt unverändert) und stehen im Bericht je Phase und Seite.
 - Beide Seiten schießen gleichzeitig. Verluste = `floor((Restschaden + Schaden) / hp)`. Der Restschaden unterhalb der
   Lebenspunkte einer Einheit wird je Einheitentyp und Seite über alle Runden und Phasen des Kampfs mitgeführt;
   er verfällt erst, wenn der Typ ausgelöscht ist oder der Kampf endet.
@@ -143,7 +150,25 @@ Nach dem Kampf:
   birgt Wrackgut bis zur freien Ladekapazität ihrer Schiffe (nach der Beute) und bringt es mit heim.
 - Verteidiger: `defenseRepairShare` der zerstörten Anlagen und `hospitalShareDefender` der Bodentruppen kehren zurück.
 - Angreifer: `hospitalShareAttacker` der Bodentruppen kehren zurück, nur bei Sieg. `aircraftDamagedShare` der verlorenen Flugzeuge beider Seiten gelten als beschädigt und kehren zurück.
-- Der Kampfbericht enthält je Phase: Bestände vorher und nachher beider Seiten und einen Schlüssel `entscheidend` (der Einheitentyp mit dem meisten ausgeteilten Schaden).
+- Der Kampfbericht enthält je Phase: Bestände vorher und nachher beider Seiten, den ausgeteilten Schaden je Einheitentyp,
+  die W20-Würfe beider Seiten (seit v1.4) und einen Schlüssel `entscheidend` (der Einheitentyp mit dem meisten ausgeteilten Schaden).
+
+## Veteranen
+
+- Jeder Stützpunkt führt je Einheitentyp eine **Erfahrung** (Durchschnitt je Einheit, `veterancy`), gültig für die
+  Saison. Rang aus der Erfahrung (`veterans.ranks`, v1.4): **Rekrut** ab 0, **Erprobt** ab 15 (Angriff +5 %),
+  **Veteran** ab 40 (+10 %), **Elite** ab 80 (+15 %); höchstens `maxXp` (100).
+- Der Rangbonus ist ein Modifikator `attackUnit.<Typ>` der Quelle „Veteranen“ und wirkt im Kampf nur auf Einheiten dieses
+  Typs (Angreifer und Verteidiger), multiplikativ mit Forschung. Anlagen, Kartell und Nester sammeln keine Erfahrung.
+- **Gewinn** nach jedem Kampf je Typ, der dabei war: Erfahrung je überlebender Einheit = `xpWin` (10) bei Sieg bzw.
+  `xpLoss` (4) bei Niederlage, mal Stärkefaktor = gegnerische / eigene Lebenspunkte vor dem Kampf, begrenzt auf
+  `ratioMin`–`ratioMax` (0,5–2). Der Gewinn verteilt sich auf den ganzen Bestand des Typs (daheim und unterwegs):
+  neu = alt + Überlebende × Gewinn / Bestand.
+- **Verluste** kosten anteilig: vor dem Gewinn alt × (1 − `lossPenalty` × verlorene / (Bestand + verlorene)), `lossPenalty`
+  0,5. Rückkehrer aus Lazarett, Reparatur und beschädigte Flugzeuge zählen nicht als verloren.
+- **Verwässerung:** Neu ausgebildete Einheiten sind Rekruten (0); der Schnitt sinkt als gewichteter Mittelwert
+  alt × Bestand / (Bestand + neue).
+- Der Verteidiger erhält seine Erfahrung sofort nach dem Kampf, der Angreifer, wenn sein Verband heimkehrt.
 
 ## Freibeuter-Kartell
 
@@ -418,7 +443,7 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
   Radar-Vorwarnzeit (`radarWarning`); Ladekapazität (`cargo`); Beute-Anteil (`loot`, nur Anteilsbeute, nicht feste
   Nestbeute); Minenschaden an den eigenen Landungstruppen (`mineDamage`); Tarnung (`stealth`: Faktor auf die
   Vorwarnzeit, die das Ziel gegen eigene Überfälle hat); Forschungsdauer (`researchTime`).
-- **Kombination:** Quellen (Forschung, künftig Wetter, Admirale, Ereignisse) werden je Wert **multipliziert**.
+- **Kombination:** Quellen (Forschung, Veteranen, künftig Wetter, Admirale, Ereignisse) werden je Wert **multipliziert**.
   Innerhalb einer Technik wirken Stufen additiv: Faktor = 1 + Wirkung je Stufe × Stufe.
 - Im Kampf gelten die Modifikatoren jeder Seite nur für ihre eigenen Einheiten und Anlagen (Lebenspunkte, Angriff);
   der Angreifer bringt Minenschaden, Ladung und Beute-Anteil mit, der Verteidiger seinen Bunkerschutz.

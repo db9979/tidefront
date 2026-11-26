@@ -315,3 +315,63 @@ ergibt rund ×1,46 gegen Überwasserschiffe (Gegenmittel Sonar +20 % U-Jagd). Be
 - Wetter, Admirale und Weltereignisse melden sich mit `registerModifierSource` im Server an (`packages/engine/src/modifiers.ts`).
 - Ob die Kartell-Stärke Forschung des Verteidigers berücksichtigen soll (D1), nach Spielerfahrung entscheiden.
 - Die Admin-Statistik rechnet Produktion ohne Modifikatoren.
+
+## E. Kriegsglück und Veteranen (v1.4)
+
+1. **Kriegsglück** (`src/luck.ts`, `combat.luck = { die: 20, min: 0.8, max: 1.2, innerMin: 0.85, innerMax: 1.15 }`): ein W20
+   je Phase und Seite als Faktor auf allen Schaden der Seite in der Phase (auch Minen). 1 → 0,8, 20 → 1,2, 2…19 linear
+   0,85…1,15. **Mittelwert exakt 1**: Die Augen k und 21 − k ergeben zusammen 2 (min + max = 2, innerMin + innerMax = 2),
+   die Summe aller 20 Faktoren ist 20 (Test `luck.test.ts`, Ausgabe in `npm run sim`).
+2. **Eigener Würfelstrom** `mulberry32(seed XOR 0x4C55434B)`: Der Rundenzufall (`randomSpread`) zieht weiter aus
+   `mulberry32(seed)` in derselben Reihenfolge wie v1.3. Gewürfelt wird für alle fünf Phasen, auch entfallene – so hängt
+   der Wurf einer Phase nur vom Seed ab, nicht vom Verlauf. Ohne `combat.luck` (alte Balance) rechnet der Kern bit-gleich
+   wie v1.3 und schreibt keine Würfe; Tests, die Schaden exakt nachrechnen, nutzen `loadBalanceNoLuck()`.
+3. **Bericht:** `PhaseReport.luck = { attacker, defender }` (optional). Alte Berichte ohne Würfe bleiben lesbar
+   (Oberfläche zeigt dann keine Würfel, die Kampfbilanz zählt sie nicht zum Würfelglück).
+4. **Veteranen** liegen wie die Forschung im `BaseState` (`veterancy: { [unitId]: xp }`, keine Migration, Saisonende
+   löscht sie mit dem Stützpunkt). Erfahrung ist ein Durchschnitt je Typ; Gewinn, Verlust und Verwässerung sind
+   gewichtete Mittelwerte über den ganzen Bestand des Typs (daheim + unterwegs). Kernfunktionen rein in `src/veterans.ts`:
+   `veteranRank`, `veteranModifiers`, `diluteXp` (in `completeTraining`), `nextXp`, `battleVeterancy`,
+   `applyDefenseResult` (Verteidiger sofort) und `applyAttackExperience` (Angreifer bei der Rückkehr; der Server liest dazu
+   den Kampfbericht der Mission – so bleibt die Sperrreihenfolge der Stützpunkte beim Kampf unverändert).
+5. **Wirkung** über das Modifikator-System: `attackUnit[Typ] = 1 + Rangbonus` als eigene Quelle „Veteranen“ in
+   `packages/engine/src/modifiers.ts` (eingebaut neben „Forschung“; weitere Quellen mit `registerModifierSource(fn, id,
+   label)`). `modifierBreakdown` liefert die Quellen getrennt für die Info-Blätter (`base.get.modifierSources`).
+   Weltereignis-Kämpfe (Angriff auf Ereignisse, Großflotte gegen Häfen) rechnen seit v1.4 ebenfalls mit den
+   Modifikatoren des Spielers.
+6. Werte v1.4: Ränge 15/40/80 Erfahrung für +5/+10/+15 % Angriff, `xpWin` 10, `xpLoss` 4, Stärkefaktor 0,5–2,
+   `lossPenalty` 0,5, höchstens 100. Ein voll eingesetzter Verband wird nach 2 ebenbürtigen Siegen „Erprobt“, nach
+   etwa 4 „Veteran“ (gegen doppelt Starke doppelt so schnell); wer viel nachbaut, verwässert.
+
+### E1. Simulation v1.4 (`npm run sim`)
+
+Kriegsglück gegen Überlegenheit (400 Seeds; Feuerkraft = Faktor auf alle Angriffswerte, bezogen auf den Punkt, an dem
+der Angreifer 50 % gewinnt; links ohne Würfel wie v1.3, rechts mit):
+
+| Gefecht | ×1,08 | ×1,15 | ×1,30 | ×1,50 |
+|---|---|---|---|---|
+| Seegefecht 10 Korvetten gegen 4 Zerstörer | 90 → 64 % | 100 → 73 % | 100 → 91 % | 100 → 99 % |
+| Landung 3 L, 5 Pz, 200 Sch. gegen 150 Sch., Bunker | 100 → 69 % | 100 → 85 % | 100 → 100 % | 100 → 100 % |
+| Nest 3 mit 4 Zerst., 3 L, 5 Pz, 200 Sch. | 89 → 71 % | 100 → 85 % | 100 → 97 % | 100 → 100 % |
+| Nest 5 mit 8 Zerst., 4 Jagdb., 5 L, 10 Pz, 300 Sch., 50 Pio. | 100 → 71 % | 100 → 87 % | 100 → 99 % | 100 → 100 % |
+
+- Klar überlegen (×1,5) gewinnt weiter 99–100 % (Ziel ≥ 95 %). Knapp überlegen: Ziel 60–75 % wird bei ×1,08 erreicht
+  (64–71 %); bei ×1,15 sind es 73–87 %. Mehr Streuung ginge nur mit Würfen über ±20 % hinaus (Probe mit 2…19 =
+  ±18 %: nur 2–5 Punkte weniger). Bewusst so belassen: Vorher entschied schon ein Vorteil von 8 % fast sicher.
+- Vorher/nachher übrige Fälle (200 Seeds): Nest-Fahrplan unverändert (erster Prüftag ≥ 70 %: Stufe 1 Tag 1, 2 Tag 3,
+  3 Tag 7, 4 Tag 14, 5 Tag 21 – alle im Zielfenster); knappe Prüftage streuen jetzt (Stufe 2 Tag 3: 100 → 79 %,
+  Stufe 3 Tag 7: 100 → 85 %, Stufe 4 Tag 14: 100 → 97 %, Stufe 5 Tag 18: 36 → 55 %, Tag 21: 100 → 99 %).
+  Rüstungsanteil 30 %: Stufe 3 erst Tag 14 statt 10 (Bot knapp unter 70 %).
+- Kartell (Richtwerte C3): Wache 20 Schützen 51 → 50 %, 30 Schützen 0 → 2 %, 2 Korvetten + 30 Sch. 17 → 11 %, 5 Korvetten +
+  3 Batterien 4 → 7 %, starke Verteidigungen weiter 0 %. Gegen den Bot-Hafen Tag 7 / 28: 7 → 12 % / 13 → 13 %.
+- Feste Nest-Verbände: 4 Zerstörer gegen Nest 3 51 → 37 %, großer Verband gegen Nest 4/5 100 → 97 % / 6 → 41 %.
+- Nötige Verbandsgröße für ≥ 70 % gegen den Bot-Hafen steigt leicht (Tag 28: ×1,70 → ×1,85), weil Glück auch dem
+  Verteidiger hilft; Forschung bleibt etwa 10–20 % Verband wert.
+
+### E2. Offene Punkte
+
+- Ob ±15 % (innen) für „knapp überlegen = 60–75 %“ zu zahm ist, nach Spielerfahrung entscheiden (Stellschraube
+  `innerMin`/`innerMax`, Mittel bleibt 1, solange beide um 1 symmetrisch sind).
+- Veteranen-Werte (Schwellen, Gewinn) sind geschätzt; die Kampfbilanz zeigt die Ränge, Admin-Statistik noch nicht.
+- Probekampf und freier Simulator rechnen mit den eigenen Modifikatoren (Forschung, Veteranen), das Ziel ohne
+  (Forschung und Erfahrung des Gegners zeigt die Aufklärung nicht).

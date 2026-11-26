@@ -2,12 +2,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { AttackerInput, BattleReport, Counts, DefenderInput } from "../src/index.ts";
 import { PHASE_NAMES, computeLoot, mulberry32, nestDefender, randomInt, resolveBattle } from "../src/index.ts";
-import { approx, loadBalance } from "./helpers.ts";
+import { approx, loadBalance, loadBalanceNoLuck } from "./helpers.ts";
 
 const balance = loadBalance();
+const exact = loadBalanceNoLuck(); // ohne Kriegsglück: Schaden exakt nachrechnen
 
-function fight(attacker: AttackerInput, defender: DefenderInput, seed = 1): BattleReport {
-  const res = resolveBattle(attacker, defender, balance, seed);
+function fight(attacker: AttackerInput, defender: DefenderInput, seed = 1, bal = balance): BattleReport {
+  const res = resolveBattle(attacker, defender, bal, seed);
   assert.ok(res.ok, "resolveBattle muss gelingen");
   return res.report;
 }
@@ -264,13 +265,13 @@ test("Schaden verteilt sich proportional zu den Lebenspunkten der Zieltypen", ()
 test("Restschaden wird über Runden mitgeführt", () => {
   // 4 Schnellboote: rund 72 Schaden je Runde gegen eine Korvette mit 200 HP -> nach 3 Runden versenkt.
   // Die Korvette: rund 60 Schaden je Runde (Bonus 1,5) gegen Boote mit 80 HP -> 2 Boote nach 3 Runden.
-  const report = fight({ units: { schnellboot: 4 } }, { units: { korvette: 1 }, defenses: {} });
+  const report = fight({ units: { schnellboot: 4 } }, { units: { korvette: 1 }, defenses: {} }, 1, exact);
   const sea = report.phases[3];
   assert.equal(sea.rounds, 3);
   assert.equal(report.defender.survivors.korvette, 0);
   assert.equal(report.attacker.survivors.schnellboot, 2);
   // Ein Zerstörer (450 HP) hält 3 Runden gegen 4 Boote aus, verliert aber nichts „umsonst“:
-  const big = fight({ units: { schnellboot: 4 } }, { units: { zerstoerer: 1 }, defenses: {} });
+  const big = fight({ units: { schnellboot: 4 } }, { units: { zerstoerer: 1 }, defenses: {} }, 1, exact);
   assert.equal(big.defender.survivors.zerstoerer, 1);
   assert.ok(big.attacker.survivors.schnellboot <= 2);
 });
@@ -299,7 +300,7 @@ test("Landung: Truppen über der verbliebenen Kapazität gehen verloren", () => 
 test("Minensperren wirken einmal, Pioniere halbieren den Schaden", () => {
   const mines: DefenderInput = { units: {}, defenses: { minensperre: 2 } };
   // 2 * 300 = 600 Schaden -> 30 Schützen
-  const plain = fight({ units: { landungsschiff: 1, schuetzen: 50 } }, mines);
+  const plain = fight({ units: { landungsschiff: 1, schuetzen: 50 } }, mines, 1, exact);
   assert.equal(plain.attacker.survivors.schuetzen, 20);
   assert.equal(plain.phases[4].entscheidend, "minensperre");
   assert.equal(plain.phases[4].rounds, 0);
@@ -310,7 +311,7 @@ test("Minensperren wirken einmal, Pioniere halbieren den Schaden", () => {
   assert.equal(plain.attacker.returned.schuetzen, 6);
   assert.equal(plain.attacker.final.schuetzen, 26);
   // mit Pionieren: 300 Schaden, nach HP verteilt (800 : 200) -> 12 Schützen, 3 Pioniere
-  const eng = fight({ units: { landungsschiff: 1, schuetzen: 40, pioniere: 10 } }, mines);
+  const eng = fight({ units: { landungsschiff: 1, schuetzen: 40, pioniere: 10 } }, mines, 1, exact);
   assert.equal(eng.attacker.survivors.schuetzen, 28);
   assert.equal(eng.attacker.survivors.pioniere, 7);
 });

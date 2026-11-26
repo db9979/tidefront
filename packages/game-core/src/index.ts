@@ -12,4 +12,6 @@ export * from "./resolution.ts";
 export * from "./world-events.ts";
 export * from "./modifiers.ts";
 export * from "./research.ts";
+export * from "./luck.ts";
+export * from "./veterans.ts";
 export * as market from "./market/index.ts";

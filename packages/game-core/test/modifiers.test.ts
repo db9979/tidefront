@@ -21,7 +21,7 @@ import {
   upgradeSeconds,
   warningMinutesAgainst,
 } from "../src/index.ts";
-import { HOUR, T0, approx, loadBalance, makeBase } from "./helpers.ts";
+import { HOUR, T0, approx, loadBalance, loadBalanceNoLuck, makeBase } from "./helpers.ts";
 
 const balance = loadBalance();
 
@@ -139,8 +139,10 @@ test("Kampf: U-Jagd, Einheitentyp, Minenschaden", () => {
   assert.ok(approx(torp.report.phases[2].damage.attacker.uboot, torpPlain.report.phases[2].damage.attacker.uboot * 1.24));
   const land = { units: { landungsschiff: 1, schuetzen: 50 } };
   const mined = { units: {}, defenses: { minensperre: 1 } };
-  const m1 = resolveBattle(land, mined, balance, 1);
-  const m2 = resolveBattle({ ...land, modifiers: { mineDamage: 0.76 } }, mined, balance, 1);
+  // Minenschaden exakt nachgerechnet: ohne Kriegsglück (sonst mal Würfelfaktor des Verteidigers).
+  const exact = loadBalanceNoLuck();
+  const m1 = resolveBattle(land, mined, exact, 1);
+  const m2 = resolveBattle({ ...land, modifiers: { mineDamage: 0.76 } }, mined, exact, 1);
   assert.ok(m1.ok && m2.ok);
   assert.equal(m1.report.phases[4].damage.defender.minensperre, 300);
   assert.ok(approx(m2.report.phases[4].damage.defender.minensperre, 228));

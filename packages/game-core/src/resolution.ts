@@ -14,6 +14,7 @@ import { addResources, bunkerProtection, buildingLevel, settle } from "./economy
 import { upgradeCost } from "./buildings.ts";
 import { trainingCost } from "./units.ts";
 import { applyDefeatShield } from "./protection.ts";
+import { battleVeterancy } from "./veterans.ts";
 import type { Modifiers } from "./modifiers.ts";
 import { modValue } from "./modifiers.ts";
 
@@ -65,6 +66,22 @@ export function applyDefenseResult(base: BaseState, report: BattleReport, nowMs:
   if (report.winner === "attacker") {
     next.protection = applyDefeatShield(next.protection, nowMs, balance);
   }
+  // Veteranen: Erfahrung der verteidigenden Einheiten (Bestand ist schon der Endbestand).
+  const v = battleVeterancy(next, report, "defender", balance);
+  if (v && Object.keys(v).length > 0) next.veterancy = v;
+  else delete next.veterancy;
+  return next;
+}
+
+/**
+ * Erfahrung des Angreifers nach der Rückkehr seines Verbands anwenden (`base` nach returnMission).
+ * Der Server ruft das mit dem gespeicherten Kampfbericht der Mission auf.
+ */
+export function applyAttackExperience(base: BaseState, report: BattleReport, balance: Balance): BaseState {
+  const v = battleVeterancy(base, report, "attacker", balance);
+  const next = { ...base };
+  if (v && Object.keys(v).length > 0) next.veterancy = v;
+  else delete next.veterancy;
   return next;
 }
 

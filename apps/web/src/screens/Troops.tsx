@@ -11,7 +11,12 @@ import { cancelLoss, cancelQuestion, unitStats, unitText, unitTone } from "../li
 import { Progress } from "./Base.tsx";
 import { RecentMissions } from "../components/Repeat.tsx";
 import { FreeSimCard } from "../components/SimLauncher.tsx";
-import { TECH, techName, unitResearchRows } from "../lib/research.ts";
+import { TECH, techName } from "../lib/research.ts";
+import { unitBreakdown } from "../lib/breakdown.ts";
+import { Breakdown, RankBadge, VeteranLine } from "../components/Breakdown.tsx";
+
+/** Werte, die die Aufschlüsselung zeigt (aus der festen Werte-Tabelle ausgeblendet). */
+const BROKEN_DOWN = /^(Lebenspunkte|Angriff|U-Jagd|Tempo|Ladung|Treibstoff)/;
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 const GROUPS: { builtIn: string; title: string }[] = [
@@ -148,6 +153,7 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
   const [n, setN] = useState(1);
   const cmd = useCommand((i: { key: string; id: string; count: number }) => trpcClient.base.train.mutate(i), invalidateBase);
   const [info, setInfo] = useState(false);
+  const vet = props.base.veterans.find((v) => v.id === props.id);
   // Bezahlbare Höchstmenge: begrenzt die Eingabe, damit Kosten und Bauzeit sinnvoll bleiben.
   const afford = Object.entries(props.cost ?? {}).reduce(
     (m, [r, v]) => (v > 0 ? Math.min(m, Math.floor((props.base.resources[r] ?? 0) / v)) : m),
@@ -165,7 +171,7 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
         <button type="button" onClick={() => setInfo(true)} aria-label={`${label(props.id)}: Info`}><IconTile id={props.id} size={52} tone={unitTone(props.balance, props.id)} /></button>
         <div className="min-w-0 flex-1">
           <div className="flex justify-between gap-2">
-            <button type="button" className="font-serif text-[17px] leading-tight text-left min-h-[44px] -my-2" onClick={() => setInfo(true)}>{label(props.id)} <span className="text-sea-300 text-xs">ⓘ</span></button>
+            <button type="button" className="font-serif text-[17px] leading-tight text-left min-h-[44px] -my-2" onClick={() => setInfo(true)}>{label(props.id)} <span className="text-sea-300 text-xs">ⓘ</span>{vet && vet.rank !== "rekrut" && <> <RankBadge vet={vet} /></>}</button>
             <div className="text-sm tabular-nums"><strong>{fmtNum(props.have)}</strong>{props.away > 0 ? <span className="text-slate-400"> +{fmtNum(props.away)} unterwegs</span> : ""}</div>
           </div>
           <div className="text-xs text-slate-400">{unitText(props.balance, props.id)}</div>
@@ -191,11 +197,12 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
       <ErrorLine text={cmd.error} />
       <Sheet open={info} onClose={() => setInfo(false)} title={label(props.id)} icon={<IconTile id={props.id} size={56} tone={unitTone(props.balance, props.id)} />}>
         <p className="text-sm text-slate-200 mb-3">{unitText(props.balance, props.id)}</p>
-        <StatTable rows={unitStats(props.balance, props.id).map(([k, v]) => [k.replace(/^Bonus gegen (.*)$/, (_m, t: string) => `Bonus gegen ${label(t)}`), v])} />
-        {(() => {
-          const rows = unitResearchRows(props.base.modifiers, props.balance.defenses[props.id] ? "anlage" : props.balance.units[props.id]?.branch ?? "", props.id);
-          return rows.length > 0 ? <div className="mt-2 text-emerald-300"><StatTable rows={rows} /></div> : null;
-        })()}
+        {/* Wirksame Werte mit Aufschlüsselung (Grundwert · Forschung · Veteranen …), dann die übrigen festen Werte. */}
+        <Breakdown rows={unitBreakdown(props.balance, props.base.modifierSources, props.id)} />
+        <VeteranLine vet={vet} />
+        <div className="mt-2">
+          <StatTable rows={unitStats(props.balance, props.id).filter(([k]) => !BROKEN_DOWN.test(k)).map(([k, v]) => [k.replace(/^Bonus gegen (.*)$/, (_m, t: string) => `Bonus gegen ${label(t)}`), v])} />
+        </div>
         <div className="mt-3 text-sm"><span className="text-slate-400">Kosten je Stück: </span><Cost cost={props.cost} /></div>
       </Sheet>
     </li>

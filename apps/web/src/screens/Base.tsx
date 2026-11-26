@@ -15,6 +15,8 @@ import { hexCenter } from "@tidefront/world";
 import { Timeline } from "../components/Timeline.tsx";
 import { WorldEventBanner } from "../components/WorldEvents.tsx";
 import { researchNote } from "../lib/research.ts";
+import { buildingBreakdown } from "../lib/breakdown.ts";
+import { Breakdown } from "../components/Breakdown.tsx";
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 
@@ -186,18 +188,6 @@ function BuildingTile({ b, res, queueFull, running, queued, onOpen }: { b: Build
   );
 }
 
-/** Wirkung der Forschung auf ein Gebäude (Produktion, Lager, Bunker, Radar, Ausbildung) als Hinweis. */
-function buildingResearchNote(base: BaseData, id: string, produces: string | undefined): string | null {
-  const [what, path] = produces
-    ? ["Produktion", `production.${produces}`]
-    : ({
-        lagerkomplex: ["Lagerkapazität", "storage"], tiefbunker: ["Bunkerschutz", "bunker"], radarstation: ["Vorwarnzeit", "radarWarning"],
-        werft: ["Bauzeit Schiffe", "trainingTime.werft"], kaserne: ["Ausbildungszeit", "trainingTime.kaserne"], flugfeld: ["Ausbildungszeit", "trainingTime.flugfeld"],
-      } as Record<string, [string, string]>)[id] ?? [null, null];
-  const note = path ? researchNote(base.modifiers, path) : null;
-  return note ? `${what} ${note}` : null;
-}
-
 function BuildingSheet({ b, base, res, onClose, onTroops, onResearch }: { b: Building; base: BaseData; res: Record<string, number>; onClose: () => void; onTroops: () => void; onResearch: () => void }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const up = useCommand((i: { key: string; buildingId: string }) => trpcClient.base.upgrade.mutate(i), invalidateBase);
@@ -216,7 +206,8 @@ function BuildingSheet({ b, base, res, onClose, onTroops, onResearch }: { b: Bui
   const now = balance ? buildingEffect(balance, b.id, b.level) : null;
   const next = balance && !maxed ? buildingEffect(balance, b.id, target) : null;
   const trains = ["werft", "kaserne", "flugfeld"].includes(b.id);
-  const note = buildingResearchNote(base, b.id, balance?.buildings[b.id]?.produces);
+  // Wirksame Werte mit Aufschlüsselung nach Quelle (nur, wenn eine Quelle wirkt).
+  const effective = balance ? buildingBreakdown(balance, base.modifierSources, b.id, b.level).filter((r) => r.parts.length > 1) : [];
   const buildNote = researchNote(base.modifiers, "buildTime");
   return (
     <Sheet open onClose={onClose} title={<>{label(b.id)} <span className="text-ink2 font-sans text-sm mono">Stufe {b.level}</span></>} icon={<IconTile id={b.id} size={56} />}>
@@ -233,7 +224,7 @@ function BuildingSheet({ b, base, res, onClose, onTroops, onResearch }: { b: Bui
           </div>
         </div>
       )}
-      {note && <p className="text-sm text-emerald-300 mb-3">{note}</p>}
+      {effective.length > 0 && <div className="mb-3"><Breakdown rows={effective} digits={0} /></div>}
       {!maxed && (
         <div className="rounded-xl bg-paper border border-rule p-2 mb-3">
           <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-1">Kosten</div>

@@ -25,3 +25,10 @@ export function makeBase(balance: Balance, patch: Partial<BaseState> = {}): Base
 export function approx(actual: number, expected: number, eps = 1e-6): boolean {
   return Math.abs(actual - expected) <= eps;
 }
+
+/** Balance ohne Kriegsglück (combat.luck): für Tests, die Schaden exakt nachrechnen (wie vor v1.4). */
+export function loadBalanceNoLuck(): Balance {
+  const b = loadBalance();
+  delete b.combat.luck;
+  return b;
+}

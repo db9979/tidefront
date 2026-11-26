@@ -26,6 +26,7 @@ import {
   type WorldEventRow,
 } from "./world-events.ts";
 import { worldEventSpawn } from "./world-events-spawn.ts";
+import { modsOf } from "./modifiers.ts";
 
 const HOUR_MS = 3600000;
 const none = (): HandlerResult => ({ notify: [] });
@@ -89,13 +90,15 @@ const worldEventAttack: Handler = async (tx, ev, due) => {
       await systemMessage(tx, [b.playerId], "Großflotte zieht vorbei", `Die Großflotte des Kartells zieht an ${b.name} vorbei – dein Hafen steht unter Schutz.`, due);
       notify.push([[b.playerId], "messages"]);
     } else {
-      const state = settle(b.state, due, balance);
+      // Modifikatoren des Verteidigers (Forschung, Veteranen) wie bei Kartell-Überfällen.
+      const mods = await modsOf(tx, b, due);
+      const state = settle(b.state, due, balance, mods);
       const attacker = armadaAttacker(units, balance);
       const seed = randomSeed();
-      const res = resolveBattle(attacker, defenderFromBase(state, balance), balance, seed);
+      const res = resolveBattle(attacker, defenderFromBase(state, balance, mods), balance, seed);
       if (!res.ok) throw new Error(`battle: ${res.code}`);
       const report = res.report;
-      await saveBase(tx, b.id, applyDefenseResult(state, report, due, balance));
+      await saveBase(tx, b.id, applyDefenseResult(state, report, due, balance, mods));
       if ((report.wreck.stahl ?? 0) + (report.wreck.elektronik ?? 0) > 0) {
         await tx.insert(tables.wreck).values({ col: b.col, row: b.row, stahl: report.wreck.stahl ?? 0, elektronik: report.wreck.elektronik ?? 0, createdAt: new Date(due) });
       }
