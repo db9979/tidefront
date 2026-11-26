@@ -1,18 +1,50 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { countLabel, fmtNum, label } from "./lib/names.ts";
 import { Icon } from "./icons.tsx";
 import { useBackLayer } from "./lib/back.ts";
 
-export function Card({ title, children, right }: { title?: ReactNode; children: ReactNode; right?: ReactNode }) {
+/** Auf-/Zu-Zustand, auf Wunsch in localStorage gemerkt (Schlüssel „tf-open:…“). */
+export function useStoredOpen(storageKey: string | undefined, defaultOpen: boolean): [boolean, (v: boolean) => void] {
+  const [open, setOpenState] = useState(() => {
+    if (!storageKey) return defaultOpen;
+    const v = localStorage.getItem(`tf-open:${storageKey}`);
+    return v === null ? defaultOpen : v === "1";
+  });
+  const setOpen = (v: boolean) => {
+    setOpenState(v);
+    if (storageKey) localStorage.setItem(`tf-open:${storageKey}`, v ? "1" : "0");
+  };
+  return [open, setOpen];
+}
+
+/**
+ * Karte mit Kopfzeile. collapsible: Kopf wird zum Knopf (▾/▴), zugeklappt steht nur summary unter dem Titel;
+ * storageKey merkt den Zustand geräteweit, defaultOpen gilt ohne gemerkten Zustand.
+ */
+export function Card({ title, children, right, collapsible, summary, storageKey, defaultOpen = true, id }: {
+  title?: ReactNode; children: ReactNode; right?: ReactNode;
+  collapsible?: boolean; summary?: ReactNode; storageKey?: string; defaultOpen?: boolean; id?: string;
+}) {
+  const [stored, setOpen] = useStoredOpen(collapsible ? storageKey : undefined, defaultOpen);
+  const open = !collapsible || stored;
+  const h2 = "font-display text-[11px] uppercase text-ink2 tracking-[0.16em] flex items-center gap-2 min-w-0";
   return (
-    <section className="panel rounded-xl p-3.5 mb-3">
-      {title !== undefined && (
-        <div className="flex items-center justify-between mb-2 gap-2">
-          <h2 className="font-display text-[11px] uppercase text-ink2 tracking-[0.16em] flex items-center gap-2 min-w-0">{title}</h2>
+    <section id={id} className="panel rounded-xl p-3.5 mb-3">
+      {title !== undefined && (collapsible ? (
+        <div className={`flex items-start justify-between gap-2 ${open ? "mb-2" : ""}`}>
+          <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="tap -my-2 py-2 flex-1 min-w-0 text-left">
+            <h2 className={h2}>{title}<span aria-hidden className="ml-auto text-ink2 text-[13px] leading-none">{open ? "▴" : "▾"}</span></h2>
+            {!open && summary !== undefined && <div className="mt-1 text-sm text-ink normal-case tracking-normal font-sans">{summary}</div>}
+          </button>
           {right}
         </div>
-      )}
-      {children}
+      ) : (
+        <div className="flex items-center justify-between mb-2 gap-2">
+          <h2 className={h2}>{title}</h2>
+          {right}
+        </div>
+      ))}
+      {open && children}
     </section>
   );
 }
