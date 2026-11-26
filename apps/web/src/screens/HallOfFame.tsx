@@ -19,7 +19,7 @@ export function HallOfFame() {
           {seasons.map((s) => (
             <li key={s.number} className="rounded-xl bg-navy-950/50 border border-navy-600 p-3">
               <div className="flex items-baseline justify-between gap-2 mb-2">
-                <strong className="font-display uppercase text-sm">Saison {s.number}</strong>
+                <strong className="font-serif text-base">Saison {s.number}</strong>
                 <span className="text-[11px] text-slate-400 tabular-nums">
                   {new Date(s.startsAtMs).toLocaleDateString("de-DE")} – {new Date(s.finishedAtMs).toLocaleDateString("de-DE")} · {s.players} Spieler
                 </span>

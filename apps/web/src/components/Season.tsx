@@ -29,9 +29,9 @@ export function SeasonBar({ season }: { season: { number: number; startsAtMs: nu
   if (!season) return null;
   const share = (now - season.startsAtMs) / Math.max(1, season.endsAtMs - season.startsAtMs);
   return (
-    <div className="panel rounded-2xl p-3 mb-3">
+    <div className="panel rounded-xl p-3 mb-3">
       <div className="flex items-baseline justify-between gap-2 mb-2">
-        <span className="font-display font-bold uppercase text-sm">Saison {season.number}</span>
+        <span className="font-serif text-lg">Saison {season.number}</span>
         <span className="text-xs text-slate-300 tabular-nums">
           {remaining(season.endsAtMs, now)} · Ende {new Date(season.endsAtMs).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
         </span>
@@ -48,7 +48,7 @@ export function SeasonEndBanner({ onOpen }: { onOpen: () => void }) {
   const s = q.data?.season;
   if (!s || s.endsAtMs - now >= 3 * DAY) return null;
   return (
-    <button type="button" onClick={onOpen} className="tap w-full text-left rounded-2xl p-3 mb-3 border border-red-500/60 bg-red-950/60 text-sm">
+    <button type="button" onClick={onOpen} className="tap w-full text-left rounded-xl p-3 mb-3 border border-siegel border-l-4 bg-red-950 text-sm">
       <strong>Saison {s.number} endet {remaining(s.endsAtMs, now).replace("noch ", "in ")}.</strong>{" "}
       <span className="text-slate-300">Danach wird die Welt zurückgesetzt. Zur Rangliste →</span>
     </button>
@@ -63,7 +63,7 @@ export function NewSeasonNotice() {
   const r = d.lastResult;
   if (!r && d.serverNow - d.season.startsAtMs > 3 * DAY) return null;
   return (
-    <div className="mt-2 rounded-lg border border-sea-400/50 bg-navy-950/70 p-2 text-xs text-slate-200" role="status">
+    <div className="mt-2 rounded-lg border border-see/50 bg-paper p-2 text-xs text-ink" role="status">
       <strong className="text-sea-300">Saison {d.season.number} hat begonnen.</strong>{" "}
       {r ? (
         <>Dein Platz in Saison {r.seasonNumber}: <strong className="tabular-nums">{r.rank} von {r.of}</strong> ({r.total} Punkte)

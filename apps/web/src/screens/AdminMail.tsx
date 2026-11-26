@@ -15,7 +15,7 @@ const PROVIDERS: { id: Provider; label: string; hint: string }[] = [
   { id: "custom", label: "Sonstiger SMTP", hint: "Host, Port und Verschlüsselung deines Anbieters." },
 ];
 
-const input = "w-full h-11 rounded-lg bg-navy-950 border border-navy-600 px-3 mb-2";
+const input = "w-full h-11 rounded-lg field px-3 mb-2";
 
 export function AdminMail() {
   const q = useQuery(trpc.admin.mail.queryOptions());

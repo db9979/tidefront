@@ -8,7 +8,7 @@ import { Badge, Button, Card, ErrorLine } from "../ui.tsx";
 import { AdminScreen } from "./Admin.tsx";
 import { Switch } from "../components/Switch.tsx";
 
-const field = "w-full h-12 rounded-lg bg-navy-950 border border-navy-600 px-3 mb-3";
+const field = "w-full h-12 rounded-lg field px-3 mb-3";
 
 function kinds(isAdmin: boolean): string[] {
   return Object.keys(KIND_LABEL).filter((k) => k !== "ops" || isAdmin);

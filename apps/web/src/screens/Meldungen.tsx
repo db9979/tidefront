@@ -23,14 +23,14 @@ export function MeldungenScreen(props: {
   const { sub, setSub } = props;
   return (
     <div>
-      <div className="flex rounded-xl bg-navy-950/70 p-0.5 mb-3 sticky top-0 z-10 backdrop-blur" role="tablist" aria-label="Meldungen">
+      <div className="flex mb-3 sticky -top-3 -mx-3 px-3 pt-1 z-10 bg-paper border-b border-rule" role="tablist" aria-label="Meldungen">
         {TABS.map((t) => {
           const n = t.id === "rangliste" ? 0 : props.unread[t.id];
           return (
             <button key={t.id} type="button" role="tab" aria-selected={sub === t.id} onClick={() => setSub(t.id)}
-              className={`tap flex-1 rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5 ${sub === t.id ? "bg-ink text-paper" : "text-slate-400"}`}>
+              className={`tap flex-1 text-[15px] font-serif flex items-center justify-center gap-1.5 border-b-[3px] -mb-px ${sub === t.id ? "border-siegel text-ink" : "border-transparent text-ink2"}`}>
               {t.label}
-              {n > 0 && <span className="min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[11px] grid place-items-center tabular-nums">{n}</span>}
+              {n > 0 && <span className="min-w-5 h-5 px-1 rounded-full bg-siegel text-white text-[11px] font-sans mono grid place-items-center">{n}</span>}
             </button>
           );
         })}

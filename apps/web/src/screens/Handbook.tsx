@@ -160,16 +160,16 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
         <Button kind="secondary" onClick={onClose}>Zurück</Button>
       </div>
       {chapters.map((c) => (
-        <section key={c.id} className="panel rounded-2xl mb-2 overflow-hidden">
+        <section key={c.id} className="panel rounded-xl mb-2 overflow-hidden">
           <button type="button" className="tap w-full flex items-center gap-3 p-3 text-left" onClick={() => setOpen(open === c.id ? null : c.id)} aria-expanded={open === c.id}>
             <Icon id={c.icon} size={30} />
-            <span className="font-display font-bold uppercase flex-1">{c.title}</span>
+            <span className="font-serif text-[18px] flex-1">{c.title}</span>
             <span className="text-slate-400">{open === c.id ? "▴" : "▾"}</span>
           </button>
           {open === c.id && <div className="px-3 pb-3">{c.body}</div>}
         </section>
       ))}
-      <div className="panel rounded-2xl p-3 mt-4 flex items-center justify-between gap-2">
+      <div className="panel rounded-xl p-3 mt-4 flex items-center justify-between gap-2">
         <span className="text-sm text-slate-300">Angemeldet als <strong>{playerName}</strong></span>
         <div className="flex gap-2">
           <Button kind="secondary" onClick={() => setView("settings")}>Einstellungen</Button>

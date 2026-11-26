@@ -75,7 +75,7 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
         <div className="flex flex-wrap items-end gap-2 mb-3">
           <div className="flex-1 min-w-36">
             <label className="text-sm text-slate-300" htmlFor="tf-code">Code (leer = zufällig)</label>
-            <input id="tf-code" className="w-full h-11 rounded-lg bg-navy-950 border border-navy-600 px-3" value={code} autoCapitalize="characters" onChange={(e) => setCode(e.target.value)} />
+            <input id="tf-code" className="w-full h-11 rounded-lg field px-3" value={code} autoCapitalize="characters" onChange={(e) => setCode(e.target.value)} />
           </div>
           <div>
             <span className="text-sm text-slate-300 block">Nutzungen</span>

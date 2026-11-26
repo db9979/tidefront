@@ -105,10 +105,10 @@ export function ChooseBase() {
                 <span className="flex items-center gap-1"><TacticalIcon kind="port" size={16} /> Handelshafen</span><span className="text-right">{f.port.name}, {fmtNum(f.port.distanceKm)} km</span>
                 <span className="flex items-center gap-1"><TacticalIcon kind="other" size={16} /> Nächster Spieler</span><span className="text-right">{f.other === undefined ? "keiner" : `${fmtNum(f.other)} km`}</span>
               </div>
-              <input className="w-full h-12 rounded-lg bg-navy-950 border border-navy-600 px-3" placeholder="Name des Stützpunkts" value={name} onChange={(e) => setName(e.target.value)} />
+              <input className="w-full h-12 rounded-lg field px-3" placeholder="Name des Stützpunkts" value={name} onChange={(e) => setName(e.target.value)} />
               <label className="flex items-center gap-2 text-sm">
                 Nachtschild ab
-                <select className="h-11 rounded-lg bg-navy-950 border border-navy-600 px-2" value={nightHour ?? ""} onChange={(e) => setNightHour(e.target.value === "" ? null : Number(e.target.value))}>
+                <select className="h-11 rounded-lg field px-2" value={nightHour ?? ""} onChange={(e) => setNightHour(e.target.value === "" ? null : Number(e.target.value))}>
                   <option value="">kein Nachtschild</option>
                   {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{h}:00 Uhr</option>)}
                 </select>

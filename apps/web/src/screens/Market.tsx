@@ -39,15 +39,15 @@ export function MarketScreen({ base }: { base: BaseData }) {
       <div className="flex items-center justify-between mb-3">
         <h1 className="font-display text-xl font-bold uppercase">Börse</h1>
         <div className="text-right">
-          <div className="text-lg mono text-brass-300 flex items-center gap-1 justify-end"><Icon id="credits" size={20} /> {fmtNum(m.data.credits, 2)} Kr</div>
+          <div className="text-lg mono text-messing flex items-center gap-1 justify-end"><Icon id="credits" size={20} /> {fmtNum(m.data.credits, 2)} Kr</div>
           <div className="text-xs text-slate-400">Limit {fmtNum(base.market.creditLimit)} Kr</div>
         </div>
       </div>
       {!base.market.unlocked && (
-        <div className="panel brass-edge rounded-2xl p-3 mb-3 text-sm flex gap-3 items-center" role="status">
+        <div className="panel rounded-xl p-3 mb-3 text-sm flex gap-3 items-center" role="status">
           <Icon id="hafenkommandantur" size={48} />
           <div>
-            <div className="font-bold">Börse noch geschlossen</div>
+            <div className="font-serif text-[17px]">Börse noch geschlossen</div>
             <div className="text-slate-300">Sie öffnet ab Hafenkommandantur Stufe 3. Deine hat Stufe {base.buildings.find((b) => b.id === "hafenkommandantur")?.level ?? 0}. Bis dahin kannst du Kurse beobachten.</div>
           </div>
         </div>
@@ -85,7 +85,7 @@ export function MarketScreen({ base }: { base: BaseData }) {
         <label className="text-sm text-slate-300">Menge</label>
         <input
           inputMode="numeric"
-          className="w-full h-12 rounded-lg bg-navy-950 border border-navy-600 px-3 mb-2"
+          className="w-full h-12 rounded-lg field px-3 mb-2"
           value={qtyText}
           onChange={(e) => setQtyText(e.target.value.replace(/\D/g, ""))}
         />

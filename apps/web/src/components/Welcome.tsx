@@ -22,15 +22,15 @@ export function Welcome() {
     setStep(-1);
   };
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/70" role="dialog" aria-modal="true">
-      <div className="panel brass-edge p-5 max-w-sm w-full text-center sheet-in">
-        <div className="mx-auto mb-3 w-24 h-24 bg-navy-900 border border-sea-400/40 grid place-items-center reticle">
+    <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-ink/50" role="dialog" aria-modal="true">
+      <div className="panel rounded-[6px] border-ink p-5 max-w-sm w-full text-center sheet-in">
+        <div className="mx-auto mb-3 w-24 h-24 bg-[#f6f1e5] border border-ink grid place-items-center">
           <Icon id={s.icon} size={64} />
         </div>
-        <h2 className="font-display text-xl font-bold uppercase mb-2">{s.title}</h2>
-        <p className="text-slate-200 leading-relaxed">{s.text}</p>
+        <h2 className="font-serif text-2xl mb-2">{s.title}</h2>
+        <p className="text-ink2 leading-relaxed">{s.text}</p>
         <div className="flex justify-center gap-1.5 my-4">
-          {SLIDES.map((_, i) => <span key={i} className={`h-1 ${i === step ? "w-6 bg-sea-400" : "w-3 bg-navy-600"}`} />)}
+          {SLIDES.map((_, i) => <span key={i} className={`diamond ${i === step ? "bg-siegel" : "bg-rule"}`} />)}
         </div>
         <div className="flex gap-2">
           <Button kind="secondary" className="flex-1" onClick={close}>Überspringen</Button>

@@ -54,7 +54,7 @@ export function MessagesScreen({ setCompose }: { setCompose: (d: Draft) => void 
         <Button kind="secondary" onClick={() => setCompose({ to: null, subject: "", body: "" })}>Neu</Button>
       </div>
       {!list.data ? <Loading /> : list.data.length === 0 ? (
-        <div className="panel rounded-2xl p-4 text-center text-slate-300 text-sm">
+        <div className="panel rounded-xl p-4 text-center text-slate-300 text-sm">
           {box === "inbox" ? "Keine Nachrichten. Mitspieler findest du in der Rangliste." : "Du hast noch nichts gesendet."}
         </div>
       ) : (
@@ -62,7 +62,7 @@ export function MessagesScreen({ setCompose }: { setCompose: (d: Draft) => void 
           {list.data.map((m) => (
             <li key={m.id}>
               <button type="button" onClick={() => void show(m)}
-                className={`tap w-full text-left panel rounded-2xl p-3 border-l-4 ${box === "inbox" && !m.read ? "!border-l-sea-400" : "!border-l-transparent"}`}>
+                className={`tap w-full text-left panel rounded-xl p-3 border-l-4 ${box === "inbox" && !m.read ? "!border-l-sea-400" : "!border-l-transparent"}`}>
                 <div className="flex justify-between gap-2 text-sm">
                   <strong className={`min-w-0 truncate ${box === "inbox" && !m.read ? "text-ink font-bold" : "text-slate-300"}`}>
                     {box === "sent" ? "an " : ""}{m.other?.name ?? SYSTEM}
@@ -128,15 +128,15 @@ export function ComposeSheet({ draft, onClose }: { draft: Draft; onClose: () => 
     <Sheet open onClose={onClose} title={draft.to ? `An ${draft.to.name}` : "Neue Nachricht"} icon={<Icon id="nav-bericht" size={28} />}>
       <div className="space-y-2">
         {draft.to === null && (
-          <select aria-label="Empfänger" className="w-full h-12 rounded-lg bg-navy-950 border border-navy-600 px-2" value={to ?? ""}
+          <select aria-label="Empfänger" className="w-full h-12 rounded-lg field px-2" value={to ?? ""}
             onChange={(e) => setTo(e.target.value === "" ? null : Number(e.target.value))}>
             <option value="">Empfänger wählen …</option>
             {others.map((r) => <option key={r.playerId} value={r.playerId}>{r.name}{r.base ? ` (${r.base.name})` : ""}</option>)}
           </select>
         )}
-        <input aria-label="Betreff" className="w-full h-12 rounded-lg bg-navy-950 border border-navy-600 px-3" placeholder="Betreff (optional)"
+        <input aria-label="Betreff" className="w-full h-12 rounded-lg field px-3" placeholder="Betreff (optional)"
           maxLength={80} value={subject} onChange={(e) => setSubject(e.target.value)} />
-        <textarea aria-label="Text" className="w-full min-h-36 rounded-lg bg-navy-950 border border-navy-600 p-3 text-sm" placeholder="Deine Nachricht"
+        <textarea aria-label="Text" className="w-full min-h-36 rounded-lg field p-3 text-sm" placeholder="Deine Nachricht"
           maxLength={MAX} value={body} onChange={(e) => setBody(e.target.value)} />
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs text-slate-400 tabular-nums">{body.length} / {MAX}</span>

@@ -105,22 +105,23 @@ export function AuthScreen() {
     }
   };
 
-  const field = "w-full h-12 rounded-lg bg-navy-950 border border-navy-600 px-3 mb-3";
+  const field = "w-full h-12 rounded-lg field px-3 mb-3";
   return (
     <div className="min-h-full flex flex-col justify-center p-5 max-w-sm mx-auto">
-      <img src="/icon.svg" alt="" className="w-16 h-16 mx-auto mb-4" />
-      <h1 className="font-display text-3xl font-bold text-center uppercase tracking-[0.4em] mb-1">Tidefront</h1>
-      <p className="text-center text-slate-500 mb-8 text-xs mono uppercase tracking-widest">Lagezentrum Nordatlantik · Mittelmeer</p>
-      <div className="grid grid-cols-2 mb-4 rounded-lg overflow-hidden border border-navy-600">
+      <img src="/icon.svg" alt="" className="w-20 h-20 mx-auto mb-4 rounded-[18px] border border-rule" />
+      <h1 className="font-serif !text-[38px] text-center !tracking-[0.18em] mb-1">TIDEFRONT</h1>
+      <div className="flex items-center gap-2 mx-8 mb-2" aria-hidden="true"><i className="flex-1 border-t-[3px] border-double border-ink" /><span className="diamond bg-siegel" /><i className="flex-1 border-t-[3px] border-double border-ink" /></div>
+      <p className="text-center text-ink2 mb-8 font-serif italic">Seekrieg auf Nordatlantik und Mittelmeer</p>
+      <div className="grid grid-cols-2 mb-4 rounded-[3px] overflow-hidden border border-ink">
         {(["login", "register"] as const).map((m) => (
-          <button key={m} type="button" onClick={() => setMode(m)} className={`tap font-display uppercase text-sm tracking-wider ${mode === m ? "bg-navy-700 text-sea-300 border-b-2 border-sea-400" : "bg-navy-900 text-slate-500"}`}>
+          <button key={m} type="button" onClick={() => setMode(m)} className={`tap font-display uppercase text-sm tracking-wider ${mode === m ? "bg-ink text-paper" : "bg-card text-ink2"}`}>
             {m === "login" ? "Anmelden" : "Registrieren"}
           </button>
         ))}
       </div>
       {mode === "forgot" ? (
         <>
-          <h2 className="font-display font-bold uppercase text-sea-300 mb-2">Passwort vergessen</h2>
+          <h2 className="font-serif text-xl mb-2">Passwort vergessen</h2>
           <ForgotForm field={field} onDone={() => setMode("login")} />
         </>
       ) : (
