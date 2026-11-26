@@ -1,1 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#0d131a"/><rect x="6" y="14" width="52" height="36" fill="#80c0ff" stroke="#0a1a2a" stroke-width="3"/><circle cx="32" cy="22" r="3" fill="none" stroke="#0a1a2a" stroke-width="2.5"/><path d="M32 25 V44 M26 30 H38 M22 37 Q24 44 32 44 Q40 44 42 37" stroke="#0a1a2a" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <pattern id="h" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="10" height="10" fill="#f4eee1"/><path d="M0 0 V10" stroke="#18273a" stroke-width="2.2"/></pattern>
+  </defs>
+  <rect width="512" height="512" fill="#f4eee1"/>
+  <circle cx="256" cy="256" r="178" fill="#fbf8f0" stroke="#18273a" stroke-width="7"/>
+  <circle cx="256" cy="256" r="152" fill="none" stroke="#18273a" stroke-width="3"/>
+  <g stroke="#18273a" stroke-width="3">
+    <path d="M256 104 V120 M256 392 V408 M104 256 H120 M392 256 H408"/>
+    <path d="M148.5 148.5 L159.8 159.8 M352.2 352.2 L363.5 363.5 M363.5 148.5 L352.2 159.8 M159.8 352.2 L148.5 363.5"/>
+  </g>
+  <path d="M256 256 L186 186 L256 230 Z M256 256 L326 326 L256 282 Z" fill="url(#h)" stroke="#18273a" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M256 256 L326 186 L282 256 Z M256 256 L186 326 L230 256 Z" fill="#fbf8f0" stroke="#18273a" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M256 92 L284 256 L256 420 L228 256 Z" fill="#18273a"/>
+  <path d="M92 256 L256 228 L420 256 L256 284 Z" fill="url(#h)" stroke="#18273a" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M256 92 L284 256 L228 256 Z" fill="#a8331f"/>
+  <circle cx="256" cy="256" r="15" fill="#fbf8f0" stroke="#18273a" stroke-width="5"/>
+</svg>

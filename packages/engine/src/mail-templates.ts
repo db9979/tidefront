@@ -4,26 +4,35 @@
 export const MAIL_THEME = {
   brand: "TIDEFRONT",
   tagline: "Nordatlantik · Mittelmeer",
-  font: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-  radius: "12px",
+  /** Stil „Seekarte“: Papier, marineblaue Tinte, Siegelrot. Schriften nur als Wunsch, Rückfall auf Systemschriften. */
+  font: "'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+  headingFont: "Fraunces, Georgia, 'Times New Roman', serif",
+  radius: "4px",
   /** Hell */
-  page: "#eef1f5",
-  panel: "#ffffff",
-  text: "#14202e",
-  muted: "#5b6878",
-  line: "#dde3ea",
-  header: "#0f1b2b",
-  headerText: "#e8c46a",
-  accent: "#c89b3c",
-  accentText: "#0f1b2b",
-  factBg: "#f5f7fa",
+  page: "#f4eee1",
+  panel: "#fffdf8",
+  text: "#18273a",
+  muted: "#4f5b69",
+  line: "#d5cab2",
+  header: "#18273a",
+  headerText: "#f4eee1",
+  headerMuted: "#c9cfd6",
+  /** Knopf: Tinte mit Papierschrift */
+  accent: "#18273a",
+  accentText: "#f4eee1",
+  /** Siegelrot für Aufzählungszeichen und Kennlinie */
+  seal: "#a8331f",
+  factBg: "#f7f2e7",
   /** Dunkel (prefers-color-scheme: dark) */
-  darkPage: "#0b1420",
-  darkPanel: "#13202f",
-  darkText: "#e6edf5",
-  darkMuted: "#9aa8b8",
-  darkLine: "#24364a",
-  darkFactBg: "#0f1b2b",
+  darkPage: "#11161d",
+  darkPanel: "#18202a",
+  darkText: "#ede6d6",
+  darkMuted: "#a9b2bd",
+  darkLine: "#2e3946",
+  darkFactBg: "#141b24",
+  darkAccent: "#ede6d6",
+  darkAccentText: "#11161d",
+  darkSeal: "#e58a73",
 };
 
 export type MailTheme = typeof MAIL_THEME;
@@ -60,18 +69,18 @@ export function renderMail(c: MailContent, theme: MailTheme = MAIL_THEME): Rende
   const p = (s: string) =>
     `<p class="tf-text" style="margin:0 0 14px 0;font-size:16px;line-height:24px;color:${t.text};">${esc(s)}</p>`;
   const facts = (c.facts ?? []).length
-    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="tf-facts" style="margin:6px 0 18px 0;background:${t.factBg};border-radius:${t.radius};border-collapse:separate;">
-${(c.facts ?? []).map(([k, v], i) => `<tr><td class="tf-muted" style="padding:10px 14px;font-size:13px;color:${t.muted};${i ? `border-top:1px solid ${t.line};` : ""}">${esc(k)}</td><td class="tf-text" align="right" style="padding:10px 14px;font-size:15px;font-weight:700;color:${t.text};${i ? `border-top:1px solid ${t.line};` : ""}">${esc(v)}</td></tr>`).join("\n")}
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="tf-facts" style="margin:6px 0 18px 0;background:${t.factBg};border:1px solid ${t.line};border-radius:${t.radius};border-collapse:separate;">
+${(c.facts ?? []).map(([k, v], i) => `<tr><td class="tf-muted" style="padding:10px 14px;font-size:13px;color:${t.muted};${i ? `border-top:1px solid ${t.line};` : ""}">${esc(k)}</td><td class="tf-text" align="right" style="padding:10px 14px;font-family:'IBM Plex Mono',Menlo,Consolas,monospace;font-size:15px;font-weight:600;color:${t.text};${i ? `border-top:1px solid ${t.line};` : ""}">${esc(v)}</td></tr>`).join("\n")}
 </table>`
     : "";
   const items = (c.items ?? []).length
     ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px 0;">
-${(c.items ?? []).map((s) => `<tr><td width="18" valign="top" style="padding:4px 0;color:${t.accent};font-size:16px;line-height:22px;">&#9679;</td><td class="tf-text" style="padding:4px 0;font-size:15px;line-height:22px;color:${t.text};">${esc(s)}</td></tr>`).join("\n")}
+${(c.items ?? []).map((s) => `<tr><td width="18" valign="top" class="tf-seal" style="padding:4px 0;color:${t.seal};font-size:13px;line-height:22px;">&#9670;</td><td class="tf-text" style="padding:4px 0;font-size:15px;line-height:22px;color:${t.text};">${esc(s)}</td></tr>`).join("\n")}
 </table>`
     : "";
   const button = c.button
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 6px 0;"><tr><td style="border-radius:${t.radius};background:${t.accent};">
-<a href="${esc(c.button.url)}" style="display:inline-block;padding:13px 24px;font-size:16px;font-weight:700;color:${t.accentText};text-decoration:none;border-radius:${t.radius};">${esc(c.button.label)}</a>
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 6px 0;"><tr><td class="tf-btn" style="border-radius:${t.radius};background:${t.accent};">
+<a href="${esc(c.button.url)}" class="tf-btn-a" style="display:inline-block;padding:14px 26px;font-size:14px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${t.accentText};text-decoration:none;border-radius:${t.radius};font-family:${t.font};">${esc(c.button.label)}</a>
 </td></tr></table>`
     : "";
   const footer = [
@@ -88,7 +97,9 @@ ${(c.items ?? []).map((s) => `<tr><td width="18" valign="top" style="padding:4px
 @media (prefers-color-scheme: dark){
  .tf-page{background:${t.darkPage}!important;} .tf-panel{background:${t.darkPanel}!important;}
  .tf-text{color:${t.darkText}!important;} .tf-muted{color:${t.darkMuted}!important;}
- .tf-facts{background:${t.darkFactBg}!important;} .tf-facts td{border-color:${t.darkLine}!important;}
+ .tf-facts{background:${t.darkFactBg}!important;border-color:${t.darkLine}!important;} .tf-facts td{border-color:${t.darkLine}!important;}
+ .tf-btn{background:${t.darkAccent}!important;} .tf-btn-a{color:${t.darkAccentText}!important;} .tf-seal{color:${t.darkSeal}!important;}
+ .tf-panel{border-color:${t.darkLine}!important;}
 }
 @media only screen and (max-width:620px){ .tf-wrap{width:100%!important;} .tf-pad{padding:20px 18px!important;} }
 </style></head>
@@ -98,11 +109,12 @@ ${(c.items ?? []).map((s) => `<tr><td width="18" valign="top" style="padding:4px
 <tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="tf-wrap" style="width:600px;max-width:600px;">
 <tr><td style="background:${t.header};border-radius:${t.radius} ${t.radius} 0 0;padding:18px 28px;font-family:${t.font};">
-<span style="font-size:18px;font-weight:800;letter-spacing:4px;color:${t.headerText};">${esc(t.brand)}</span>
-<span style="font-size:12px;color:#9fb0c4;padding-left:10px;">${esc(t.tagline)}</span>
+<span style="font-family:${t.headingFont};font-size:19px;font-weight:600;letter-spacing:5px;color:${t.headerText};">${esc(t.brand)}</span>
+<span style="font-size:12px;color:${t.headerMuted};padding-left:10px;">${esc(t.tagline)}</span>
 </td></tr>
-<tr><td class="tf-panel tf-pad" style="background:${t.panel};padding:28px;border-radius:0 0 ${t.radius} ${t.radius};font-family:${t.font};">
-<h1 class="tf-text" style="margin:0 0 16px 0;font-size:22px;line-height:28px;font-weight:800;color:${t.text};">${esc(c.heading)}</h1>
+<tr><td style="background:${t.header};padding:0 28px 12px 28px;font-size:0;line-height:0;"><div style="border-top:3px double ${t.headerText};opacity:0.55;">&nbsp;</div></td></tr>
+<tr><td class="tf-panel tf-pad" style="background:${t.panel};padding:28px;border:1px solid ${t.line};border-top:0;border-left:4px solid ${t.seal};border-radius:0 0 ${t.radius} ${t.radius};font-family:${t.font};">
+<h1 class="tf-text" style="margin:0 0 14px 0;font-family:${t.headingFont};font-size:25px;line-height:31px;font-weight:600;color:${t.text};">${esc(c.heading)}</h1>
 ${c.paragraphs.map(p).join("\n")}
 ${facts}
 ${items}

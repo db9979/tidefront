@@ -1,5 +1,5 @@
 // Einfacher Service Worker: App-Shell cachen, Navigation zuerst aus dem Netz, API nie cachen; Push-Benachrichtigungen.
-const CACHE = "tidefront-v1";
+const CACHE = "tidefront-v2";
 const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (e) => {
@@ -60,7 +60,7 @@ self.addEventListener("push", (e) => {
       tag: data.tag || undefined,
       renotify: !!data.tag,
       icon: "/icon-192.png",
-      badge: "/icon-192.png",
+      badge: "/badge-96.png",
       data: { url: data.url || "/" },
       requireInteraction: data.kind === "attack",
     }),
