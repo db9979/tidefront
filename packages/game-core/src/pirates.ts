@@ -11,6 +11,8 @@ import type {
 import type { ProtectionReason } from "./protection.ts";
 import { protectionStatus } from "./protection.ts";
 import { mulberry32, randomFactor } from "./rng.ts";
+import type { Modifiers } from "./modifiers.ts";
+import { modEntry } from "./modifiers.ts";
 
 const HOUR_MS = 3600000;
 
@@ -56,6 +58,27 @@ export function defenseHp(units: Counts, defenses: Counts, balance: Balance): nu
   return hp;
 }
 
+/**
+ * Lebenspunkte der Verteidigung, die das Kartell ansetzt (v1.7): die unmodifizierten Lebenspunkte, angehoben um den Anteil
+ * `raidResearchWeight` des Lebenspunkte-Zuwachses aus den Modifikatoren des Verteidigers (Forschung: hp je Gattung,
+ * Anlagen `anlage`). Ohne Modifikatoren oder mit Gewicht 0 genau `defenseHp`.
+ */
+export function raidDefenseHp(units: Counts, defenses: Counts, balance: Balance, mods?: Modifiers): number {
+  const raw = defenseHp(units, defenses, balance);
+  const w = balance.pirates.raidResearchWeight ?? 0;
+  if (!mods || w <= 0 || raw <= 0) return raw;
+  let boosted = 0;
+  for (const [id, n] of Object.entries(units)) {
+    const def = balance.units[id] ?? balance.npcUnits[id];
+    if (def !== undefined && def.branch !== "luft") boosted += def.hp * Math.max(0, n) * modEntry(mods, "hp", def.branch);
+  }
+  for (const [id, n] of Object.entries(defenses)) {
+    const def = balance.defenses[id];
+    if (def !== undefined) boosted += def.hp * Math.max(0, n) * modEntry(mods, "hp", "anlage");
+  }
+  return raw + w * (boosted - raw);
+}
+
 /** Schwankungsfaktor der Überfallstärke: gleichverteilt in [1 - raidStrengthSpread, 1 + raidStrengthSpread]; ohne Seed 1. */
 export function raidStrengthFactor(balance: Balance, seed?: number): number {
   if (seed === undefined) return 1;
@@ -68,10 +91,11 @@ export function raidStrengthFactor(balance: Balance, seed?: number): number {
  * geteilt durch die Lebenspunkte eines Schnellboots, mindestens raidMinSchnellboote. Mit Seed
  * schwankt sie um raidStrengthSpread. Miliz = Grundstärke * Faktor * raidMiliPerBoot (gerundet),
  * Boote = Miliz / raidMiliPerBoot (aufgerundet), damit jeder Milizionär einen Platz hat.
+ * `mods` (v1.7): Modifikatoren des Verteidigers; die Forschung hebt die Lebenspunkte anteilig an (`raidDefenseHp`).
  */
-export function composeRaid(units: Counts, defenses: Counts, balance: Balance, seed?: number): RaidForce {
+export function composeRaid(units: Counts, defenses: Counts, balance: Balance, seed?: number, mods?: Modifiers): RaidForce {
   const p = balance.pirates;
-  const hp = defenseHp(units, defenses, balance);
+  const hp = raidDefenseHp(units, defenses, balance, mods);
   const boatHp = balance.npcUnits.schnellboot.hp;
   const base = Math.max(p.raidMinSchnellboote, (hp * p.raidStrengthShareOfDefense) / boatHp);
   const factor = raidStrengthFactor(balance, seed);

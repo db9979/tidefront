@@ -435,3 +435,54 @@ der Angreifer 50 % gewinnt; links ohne Würfel wie v1.3, rechts mit):
 - Erkannte Angriffe werden mit der aktuellen Vorwarnzeit geprüft: Fällt der Strom des Radars nach der Erkennung aus,
   verschwindet die Anzeige wieder, bis der Angriff in die verkürzte Vorwarnzeit kommt.
 - Tagesbefehle zu Wetter und Strom sind nicht ergänzt.
+
+## G. Spionage, Kriegsglück und Kartell gegen Forschung (v1.7)
+
+1. **Spionage abgestimmt** (`sim/espionage.ts`; Chance exakt Zielzahl / 20). Typischer Stand: Tag 3 Stufe 2, Tag 7
+   Stufe 3, Tag 14 Stufe 5 + Forschung 1, Tag 28 Stufe 8 + Forschung 2; Erfahrung nach 0/3/8/20 gelungenen Aufträgen.
+   Geändert: Erkunden +2 → +4, Sabotage −3 → −2 und 2 → 1 Spion, `maxXpPoints` 3 → 2, Kartell-Abwehr 5 → 4,
+   Desinformation `forceFactor` 1,8 → 1,5. Grundwert 9 und je Stufe ±1 bleiben.
+
+| Gleich starker Gegner, Tag | Erkunden | Desinformation | Sabotage | Kartell-Aufklärung |
+|---|---|---|---|---|
+| 3 | 55 → 65 % | 45 → 45 % | – (ab Stufe 3) | 30 → 35 % |
+| 7 | 55 → 65 % | 45 → 45 % | 30 → 35 % | 35 → 40 % |
+| 14 | 60 → 70 % | 50 → 50 % | 35 → 40 % | 55 → 60 % |
+| 28 | 70 → 75 % | 60 → 55 % | 45 → 45 % | 85 → 85 % |
+
+- Abwehr wirkt voll (Stufe gegen Stufe): Angreifer Stufe 5 + F1 gegen Abwehr Stufe 8 + F2 Erkunden 50 %, Sabotage 20 %;
+  gegen Stufe 10 + F2 (Höchststufe bei KZ 7) 40 % / 10 %; gegen Endausbau 5 %. Die Untergrenze Zielzahl 1 hält jeden
+  Auftrag bei mindestens 5 % (geprüft über alle Paarungen). Ein Ziel ohne Nachrichtendienst ist offen (Erkunden 80–95 %).
+- **Sabotage:** Spionverlust je gelungener Sabotage = Spione × (1 − p) / p × 1760 Stahl-Äquivalent. Mit 2 Spionen
+  8213 / 6537 / 4302 (Tag 7/14/28) gegen 1859 / 2458 / 3631 Schaden einer Kraftwerk-Sabotage (6 h halbe
+  Gebäudeproduktion des Bots) – deutlich unwirtschaftlich. Mit 1 Spion 3269 / 2640 / 2151: früh ein taktisches Mittel
+  (Radar vor einem Angriff, Werft-Verzug), ab Mitte der Saison wirtschaftlich etwa gleichauf bis lohnend. Die Sperrfrist
+  24 h je Ziel verhindert Dauerbeschuss.
+- **Desinformation:** einmalig, nur das nächste Lagebild, Chance wie bisher 45–55 %. Mit ×1,8 sah ein 2,5:1 überlegener
+  Angreifer nur 1,39:1 und hätte abgebrochen – ein Wurf neutralisierte fast jede Überlegenheit. Mit ×1,5 bleibt 2,5:1 als
+  1,67:1 sichtbar überlegen; 1,5–2:1 wird verschleiert. Gegenmittel bleibt ein zweites Lagebild.
+
+2. **Kriegsglück** (Frage aus E2, `sim/luck.ts`, Varianten bezogen auf den Punkt „ohne Würfel 50 %“, 400 Seeds,
+   Spannen über die vier Gefechte; zweite Zahl = Anteil der Kämpfe, die der Würfel gegenüber ohne Würfel umdreht):
+
+| Würfel (innen / Rand) | ×1,08 | ×1,15 | ×1,30 | ×1,50 |
+|---|---|---|---|---|
+| ±10 % / ±15 % | 76–82 % (18–29) | 89–95 % (5–12) | 100 % (0–1) | 100 % (0) |
+| **±15 % / ±20 % (aktuell)** | 70–74 % (27–34) | 84–87 % (13–16) | 96–100 % (1–4) | 100 % (0) |
+| ±20 % / ±25 % | 64–72 % (30–36) | 78–79 % (21–22) | 93–95 % (5–7) | 99–100 % (0–2) |
+| ±25 % / ±30 % | 57–67 % (35–43) | 68–75 % (26–32) | 88–90 % (10–12) | 96–100 % (1–4) |
+
+   Alle Varianten halten ×1,5 ≥ 95 %. Der aktuelle Würfel kippt nur knappe Kämpfe (bei ×1,3 höchstens 4 %) und liegt bei
+   ×1,08 im Ziel 60–75 %; erst ×1,15 liegt darüber (84–87 %). ±20 % träfe ×1,15 besser, ließe aber schon bei ×1,3 jeden
+   20. Kampf kippen. **Nicht geändert** – die Daten sprechen nicht eindeutig dafür. Empfehlung: ±15 % behalten; wenn
+   Spieler Kämpfe als zu vorhersehbar empfinden, `innerMin`/`innerMax` 0,8/1,2 und `min`/`max` 0,75/1,25.
+
+3. **Kartell gegen Forschung:** Bis v1.6 bemaß das Kartell seine Stärke an unmodifizierten Lebenspunkten; Forschung
+   (LP +15–24 %) senkte seine Siegchance gegen den Bot-Hafen von 12–14 % auf 2 % (halbe Forschung 3–6 %). Mit der Saison
+   mitwachsen hülfe nicht gezielt: Ein fester Zuschlag (×1,1 auf `raidStrengthShareOfDefense`) hebt Unerforschte auf
+   24–31 %, Erforschte nur auf 9–15 %. Gewollt bleibt: Forschung schützt etwas, macht aber nicht immun. Neu
+   `pirates.raidResearchWeight` (0,5): Das Kartell zählt die Hälfte des LP-Zuwachses aus den Modifikatoren des
+   Verteidigers mit (`raidDefenseHp`, `composeRaid(…, mods)`). Kartell-Sieg ohne / halbe / volle Forschung:
+   Tag 7 12 / 9 / 8 %, Tag 14 13 / 12 / 11 %, Tag 28 13 / 12 / 11 % (Gewicht 1 überzieht: 17–22 %).
+   **Offen:** Der Server übergibt die Modifikatoren noch nicht (`packages/engine/src/handlers.ts`, `raidLaunch`:
+   `composeRaid(state.units, state.defenses, balance, randomSeed(), mods)`); bis dahin rechnet das Spiel wie v1.6.

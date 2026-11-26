@@ -23,6 +23,7 @@ import { runResearchSim } from "./research.ts";
 import { runGuideSim } from "./guide.ts";
 import { runLuckSim } from "./luck.ts";
 import { runPowerSim } from "./power.ts";
+import { runEspionageSim } from "./espionage.ts";
 
 const balance = JSON.parse(
   readFileSync(new URL("../../balance/v1/balance.json", import.meta.url), "utf8"),
@@ -256,6 +257,8 @@ runGuideSim(balance);
 // Kriegsglück (v1.4): Würfel gegen Überlegenheit.
 runLuckSim(balance);
 runPowerSim(balance);
+// Nachrichtendienst (v1.7): Chancen über typische Spielverläufe, Sabotage, Desinformation.
+runEspionageSim(balance, snaps);
 
 /** Der Bot schickt alles, was daheim steht (die Doktrin hält ihn innerhalb der Kommandopunkte). */
 function sentFleet(s: BotSnapshot): Counts {

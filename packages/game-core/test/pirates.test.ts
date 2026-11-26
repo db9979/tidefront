@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   applyDefeatShield,
   composeRaid,
+  raidDefenseHp,
   createProtection,
   defenseHp,
   isNestRespawned,
@@ -178,4 +179,24 @@ test("kein Überfall unter Schutz", () => {
   // Wer selbst angreift, verliert den Nachtschild für diese Nacht und kann überfallen werden.
   const aggressor = suspendNightShield(veteran, noon, balance);
   assert.deepEqual(raidBlocked(aggressor, night, balance), { blocked: false, reason: null });
+});
+
+test("Überfallstärke zählt den Forschungsanteil der Lebenspunkte mit (raidResearchWeight, v1.7)", () => {
+  const units = { korvette: 5, schuetzen: 100 };
+  const defenses = { kuestenbatterie: 3, bunkerlinie: 1 };
+  const raw = defenseHp(units, defenses, balance);
+  // ohne Modifikatoren unverändert
+  assert.equal(raidDefenseHp(units, defenses, balance), raw);
+  assert.equal(composeRaid(units, defenses, balance).defenseHp, raw);
+  // Korvetten 1000, Schützen 2000, Anlagen 1800: See +20 %, Land +10 %, Anlagen +30 % → Zuwachs 200 + 200 + 540 = 940
+  const mods = { hp: { see: 1.2, land: 1.1, anlage: 1.3 } };
+  const w = balance.pirates.raidResearchWeight ?? 0;
+  assert.ok(w > 0 && w <= 1);
+  assert.ok(Math.abs(raidDefenseHp(units, defenses, balance, mods) - (raw + w * 940)) < 1e-9);
+  assert.ok(Math.abs(composeRaid(units, defenses, balance, undefined, mods).defenseHp - (raw + w * 940)) < 1e-9);
+  // Gewicht 0: wie bis v1.6
+  const off = { ...balance, pirates: { ...balance.pirates, raidResearchWeight: 0 } };
+  assert.equal(raidDefenseHp(units, defenses, off, mods), raw);
+  // Flugzeuge zählen weiter nicht
+  assert.equal(raidDefenseHp({ jagdbomber: 5 }, {}, balance, mods), 0);
 });
