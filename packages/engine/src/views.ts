@@ -12,6 +12,7 @@ import {
   maxAllowedLevel,
   missionSlots,
   planMission,
+  plannedLevel,
   productionRates,
   protectionStatus,
   radarWarningMinutes,
@@ -60,12 +61,15 @@ export async function baseView(engine: Engine, playerId: number) {
   const rates = productionRates(s, balance);
   const buildings = Object.keys(balance.buildings).map((id) => {
     const level = s.buildings[id] ?? 0;
+    // Nächster Ausbau baut auf der geplanten Stufe auf (eingereihte Aufträge zählen mit).
+    const planned = plannedLevel(s, id);
     return {
       id,
       level,
+      planned,
       maxAllowed: maxAllowedLevel(s, id, balance),
-      cost: level < balance.building.maxLevel ? upgradeCost(id, level, balance) : null,
-      seconds: level < balance.building.maxLevel ? upgradeSeconds(id, level, balance) : null,
+      cost: planned < balance.building.maxLevel ? upgradeCost(id, planned, balance) : null,
+      seconds: planned < balance.building.maxLevel ? upgradeSeconds(id, planned, balance) : null,
     };
   });
   const units = Object.entries(balance.units).map(([id, def]) => {
@@ -121,6 +125,7 @@ export async function baseView(engine: Engine, playerId: number) {
       versorgungsmangel: s.versorgungsmangel,
       buildings,
       buildQueue: s.buildQueue,
+      buildQueueSlots: balance.building.queueSlots,
       trainingQueue: s.trainingQueue,
       units,
       defenses: Object.keys(balance.defenses).map((id) => ({ id, count: s.defenses[id] ?? 0 })),
@@ -149,6 +154,8 @@ export async function baseView(engine: Engine, playerId: number) {
         units: (m.plan as Mission).units,
         arriveAtMs: m.arriveAt.getTime(),
         returnAtMs: m.returnAt?.getTime() ?? (m.plan as Mission).returnAtMs,
+        departAtMs: (m.plan as Mission).departAtMs,
+        recalled: (m.plan as Mission).recalledAtMs !== undefined,
         returning: m.returning as Counts | null,
         cargoHome: m.cargoHome as ResourceMap | null,
         reportId: m.reportId,

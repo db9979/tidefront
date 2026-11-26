@@ -78,10 +78,16 @@ test("Ablehnung bei zu wenig Ressourcen", () => {
   });
 });
 
-test("nur ein aktiver Bauauftrag", () => {
-  const first = startUpgrade(makeBase(balance), "stahlwerk", T0, balance);
-  assert.ok(first.ok);
-  assert.deepEqual(startUpgrade(first.base, "kraftwerk", T0 + 1, balance), { ok: false, code: "queue_full" });
+test("Bauschlange: höchstens queueSlots Aufträge", () => {
+  const rich = { stahl: 1e6, treibstoff: 1e6, elektronik: 1e6, proviant: 1e6 };
+  let base = makeBase(balance, { resources: rich });
+  for (const id of ["stahlwerk", "kraftwerk", "raffinerie"]) {
+    const r = startUpgrade(base, id, T0, balance);
+    assert.ok(r.ok);
+    base = r.base;
+  }
+  assert.equal(base.buildQueue.length, balance.building.queueSlots);
+  assert.deepEqual(startUpgrade(base, "chipfabrik", T0 + 1, balance), { ok: false, code: "queue_full" });
 });
 
 test("unbekanntes Gebäude", () => {

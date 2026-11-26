@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, type BaseData, type Balance } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
-import { fmtDuration, fmtSeconds, useNow } from "../lib/time.ts";
+import { fmtDuration, fmtSeconds, fmtTime, useNow } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
 import { Button, Card, Cost, ErrorLine, Loading, Sheet, StatTable, Stepper, UnitChips } from "../ui.tsx";
 import { Icon, IconTile } from "../icons.tsx";
@@ -28,6 +28,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap }: { base: BaseData; on
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const now = useNow();
   const cancel = useCommand((i: { key: string; builtIn: string }) => trpcClient.base.cancelTraining.mutate(i), invalidateBase);
+  const [recallId, setRecallId] = useState<number | null>(null);
   if (!meta.data) return <Loading />;
   const balance = meta.data.balance;
 
@@ -46,7 +47,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap }: { base: BaseData; on
               <Icon id={m.type} size={36} />
               <div className="flex-1 min-w-0">
               <div className="flex justify-between gap-2">
-                <strong>{label(m.type)} {m.status === "returning" ? "· Rückfahrt" : ""}</strong>
+                <strong>{label(m.type)} {m.status === "returning" ? (m.recalled ? "· zurückgerufen" : "· Rückfahrt") : ""}</strong>
                 <button type="button" className="tap text-sea-300 underline text-xs" onClick={() => onShowOnMap({ col: m.target.col, row: m.target.row })}>
                   Ziel {m.target.col}/{m.target.row}
                 </button>
@@ -58,11 +59,18 @@ export function TroopsScreen({ base, onPlan, onShowOnMap }: { base: BaseData; on
               {m.cargoHome && Object.values(m.cargoHome).some((v) => v > 0) && (
                 <div className="text-xs text-brass-400">Ladung: <UnitChips counts={m.cargoHome} /></div>
               )}
+              {m.status === "outbound" && m.arriveAtMs > now && (
+                <div className="mt-1"><Button kind="secondary" onClick={() => setRecallId(m.id)}>Zurückrufen</Button></div>
+              )}
               </div>
             </li>
           ))}
         </ul>
       </Card>
+      {(() => {
+        const m = base.missions.find((x) => x.id === recallId && x.status === "outbound");
+        return m ? <RecallSheet mission={m} now={now} onClose={() => setRecallId(null)} /> : null;
+      })()}
 
       <ErrorLine text={cancel.error} />
       {GROUPS.map((g) => {
@@ -141,5 +149,36 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
         <div className="mt-3 text-sm"><span className="text-slate-400">Kosten je Stück: </span><Cost cost={props.cost} /></div>
       </Sheet>
     </li>
+  );
+}
+
+type MissionData = BaseData["missions"][number];
+
+/** Bestätigung des Rückrufs: Rückkehr nach der bereits gefahrenen Zeit, Treibstoff ist verbraucht. */
+function RecallSheet({ mission, now, onClose }: { mission: MissionData; now: number; onClose: () => void }) {
+  const cmd = useCommand(
+    (i: { key: string; missionId: number }) => trpcClient.mission.recall.mutate(i),
+    () => [trpc.base.pathFilter().queryKey, trpc.world.pathFilter().queryKey],
+  );
+  const elapsed = Math.max(0, now - mission.departAtMs);
+  return (
+    <Sheet open onClose={onClose} title={`${label(mission.type)} zurückrufen?`} icon={<Icon id={mission.type} size={48} />}>
+      <div className="text-sm space-y-2 mb-3">
+        <p>Der Verband kehrt sofort um und ist nach der bereits gefahrenen Zeit wieder daheim.</p>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-xl bg-navy-900 p-2">
+          <span className="text-slate-400">Ziel</span><span className="text-right">Feld {mission.target.col}/{mission.target.row}</span>
+          <span className="text-slate-400">Unterwegs seit</span><span className="text-right">{fmtDuration(elapsed)}</span>
+          <span className="text-slate-400">Wieder daheim</span><span className="text-right">etwa {fmtTime(now + elapsed)}</span>
+        </div>
+        <p className="text-brass-300">Der Treibstoff ist verbraucht und wird nicht erstattet.{mission.type === "ueberfall" ? " Der Nachtschild bleibt für diese Nacht aufgehoben." : ""}</p>
+      </div>
+      <ErrorLine text={cmd.error} />
+      <div className="flex gap-2">
+        <Button kind="secondary" className="flex-1" onClick={onClose}>Weiterfahren</Button>
+        <Button kind="danger" className="flex-1" disabled={cmd.busy} onClick={async () => { const r = await cmd.run({ missionId: mission.id }); if (r?.ok) onClose(); }}>
+          Zurückrufen
+        </Button>
+      </div>
+    </Sheet>
   );
 }

@@ -117,8 +117,11 @@ test("Gleichzeitige Befehle erzeugen nie negative Bestände", async () => {
   // Ebenso Ausbauten in Konkurrenz
   await patchBase(p.baseId, (st) => { st.resources.stahl = 5000; });
   const ups = await Promise.all(["stahlwerk", "raffinerie", "chipfabrik", "kraftwerk", "lagerkomplex"].map((b) => upgrade(engine, p.playerId, key(), b)));
-  assert.equal(ups.filter((r) => r.ok).length, 1);
-  for (const v of Object.values((await stateOf(p.baseId)).resources)) assert.ok(v >= 0);
+  // Bauschlange mit 3 Plätzen: genau so viele Aufträge wie Plätze, nie mehr.
+  const after = await stateOf(p.baseId);
+  assert.equal(ups.filter((r) => r.ok).length, 3);
+  assert.equal(after.buildQueue.length, 3);
+  for (const v of Object.values(after.resources)) assert.ok(v >= 0);
 });
 
 test("Überfall auf ein Piratennest: Abfahrt, Kampf, Beute, Rückkehr, Bericht", async () => {

@@ -37,7 +37,11 @@ export const RES_ICON: Record<string, string> = { stahl: "⛓", treibstoff: "�
 
 const ERRORS: Record<string, string> = {
   insufficient_resources: "Nicht genug Ressourcen.",
-  queue_full: "Es läuft schon ein Ausbau.",
+  queue_full: "Die Bauschlange ist voll.",
+  no_mission: "Diese Mission gibt es nicht (mehr).",
+  not_outbound: "Der Verband ist schon auf der Rückfahrt.",
+  already_recalled: "Der Verband wurde schon zurückgerufen.",
+  already_arrived: "Der Verband ist schon am Ziel angekommen.",
   queue_busy: "Dieses Gebäude bildet schon aus.",
   max_level: "Höchststufe erreicht.",
   command_cap: "Erst die Kommandozentrale ausbauen.",

@@ -7,6 +7,8 @@ import {
   fuelCost,
   isNightShieldActive,
   planMission,
+  recallMission,
+  returnMission,
   travelSeconds,
   validateFleet,
 } from "../src/index.ts";
@@ -194,4 +196,39 @@ test("planMission: geschütztes Ziel wird für Überfälle abgelehnt", () => {
     code: "target_protected",
   });
   assert.ok(planMission(base, input({ korvette: 1 }, 50, { targetProtection, type: "aufklaerung" }), T0, balance).ok);
+});
+
+test("Rückruf auf der Hinfahrt: Rückkehr nach der gefahrenen Zeit, Treibstoff weg, Nachtschild bleibt aufgehoben", () => {
+  const protection = { ...createProtection(T0 - 30 * DAY, 22, 0) };
+  const base = makeBase(balance, { units: { korvette: 2 }, resources: fuelRich, protection });
+  const planned = planMission(base, input({ korvette: 2 }, 500), T0, balance);
+  assert.ok(planned.ok);
+  const m = planned.mission;
+  const now = T0 + 20 * 60000;
+  assert.ok(now < m.arriveAtMs);
+  const r = recallMission(m, now);
+  assert.ok(r.ok);
+  assert.equal(r.returnAtMs, now + 20 * 60000);
+  assert.equal(r.mission.returnAtMs, r.returnAtMs);
+  assert.equal(r.mission.recalledAtMs, now);
+  assert.equal(r.mission.arriveAtMs, m.arriveAtMs);
+  assert.equal(m.recalledAtMs, undefined);
+  // Zweiter Rückruf und Rückruf nach Ankunft werden abgelehnt.
+  assert.deepEqual(recallMission(r.mission, now + 1), { ok: false, code: "already_recalled" });
+  assert.deepEqual(recallMission(m, m.arriveAtMs), { ok: false, code: "already_arrived" });
+  // Heimkehr: alle Einheiten zurück, Treibstoff bleibt verbraucht, Schild bleibt aufgehoben.
+  const home = returnMission(planned.base, m.units, m.units, {}, r.returnAtMs, balance);
+  assert.equal(home.units.korvette, 2);
+  assert.deepEqual(home.unitsAway, {});
+  assert.ok(home.resources.treibstoff < 1e6 - m.fuelCost + 1);
+  assert.equal(home.protection.nightShieldSuspendedUntilMs, planned.base.protection.nightShieldSuspendedUntilMs);
+});
+
+test("Rückruf direkt nach der Abfahrt: sofort wieder daheim", () => {
+  const base = makeBase(balance, { units: { korvette: 1 }, resources: fuelRich });
+  const planned = planMission(base, input({ korvette: 1 }, 300, { type: "aufklaerung" }), T0, balance);
+  assert.ok(planned.ok);
+  const r = recallMission(planned.mission, T0);
+  assert.ok(r.ok);
+  assert.equal(r.returnAtMs, T0);
 });

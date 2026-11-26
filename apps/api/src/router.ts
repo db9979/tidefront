@@ -12,6 +12,7 @@ import {
   login,
   logout,
   mapView,
+  recallOwnMission,
   marketQuote,
   marketView,
   missionPreview,
@@ -111,8 +112,16 @@ export const appRouter = t.router({
       .input(z.object({ key, buildingId: z.string().max(40) }))
       .mutation(({ ctx, input }) => upgrade(ctx.engine, ctx.player.id, input.key, input.buildingId)),
     cancelUpgrade: authed
-      .input(z.object({ key }))
-      .mutation(({ ctx, input }) => cancelBuild(ctx.engine, ctx.player.id, input.key)),
+      .input(z.object({ key, buildingId: z.string().max(40).optional(), targetLevel: z.number().int().min(1).max(100).optional() }))
+      .mutation(({ ctx, input }) =>
+        cancelBuild(
+          ctx.engine,
+          ctx.player.id,
+          input.key,
+          input.buildingId !== undefined && input.targetLevel !== undefined
+            ? { buildingId: input.buildingId, targetLevel: input.targetLevel }
+            : undefined,
+        )),
     train: authed
       .input(z.object({ key, id: z.string().max(40), count: z.number().int().min(1).max(10000) }))
       .mutation(({ ctx, input }) => train(ctx.engine, ctx.player.id, input.key, input.id, input.count)),
@@ -131,6 +140,9 @@ export const appRouter = t.router({
     launch: authed
       .input(z.object({ key, type: z.string().max(20), units: counts, ...field, cargo: resources.optional() }))
       .mutation(({ ctx, input }) => launchMission(ctx.engine, ctx.player.id, input.key, input)),
+    recall: authed
+      .input(z.object({ key, missionId: z.number().int().min(1) }))
+      .mutation(({ ctx, input }) => recallOwnMission(ctx.engine, ctx.player.id, input.key, input.missionId)),
   }),
 
   report: t.router({

@@ -62,9 +62,12 @@ export function Guide({ base, wonRaid, onAction }: { base: BaseData; wonRaid: bo
             <p className="text-sm text-slate-300">{current.why}</p>
             {(() => {
               const a = nextAction(current, base);
-              const inWork = a.kind === "building" && base.buildQueue[0]?.buildingId === a.id;
-              return inWork ? (
-                <p className="mt-2 text-sm text-sea-300">Wird gerade gebaut – gleich geht es weiter.</p>
+              // In Arbeit: das Gebäude steht in der Bauschlange (laufend oder eingereiht).
+              const pos = a.kind === "building" ? base.buildQueue.findIndex((o) => o.buildingId === a.id) : -1;
+              return pos >= 0 ? (
+                <p className="mt-2 text-sm text-sea-300">
+                  {pos === 0 ? "Wird gerade gebaut – gleich geht es weiter." : `In Arbeit: steht auf Platz ${pos + 1} der Bauschlange.`}
+                </p>
               ) : (
                 <Button className="mt-2 w-full" onClick={() => onAction(a)}>{current.actionText}</Button>
               );

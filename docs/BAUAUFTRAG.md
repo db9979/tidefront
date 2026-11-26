@@ -44,6 +44,16 @@ Auslegungen stehen in `packages/game-core/ENTSCHEIDUNGEN.md` und `packages/game-
   buchen bei Ankunft `delivery:<id>` an `player:<id>`. Der Worker prüft alle 10 Minuten das Journal gegen Kredite und offene
   Lieferungen (`audit_run`).
 - Einladungscodes kommen aus `INVITE_CODES` und werden bei jedem `migrate` ergänzt.
+- Bauschlange: Jeder eingereihte Auftrag plant beim Einreihen sein eigenes `build_complete`. Der Handler schließt alle
+  fälligen Aufträge ab und tut nichts, wenn der erste noch nicht fällig ist. Abbruch (`base.cancelUpgrade` mit
+  `buildingId` und `targetLevel`, ohne Angabe der laufende Auftrag) plant für nachgerückte Aufträge neue Ereignisse;
+  die alten laufen ins Leere. Die Basis-Ansicht liefert `buildQueue`, `buildQueueSlots` und je Gebäude `planned`
+  (Kosten und Bauzeit gelten für den nächsten Ausbau über der geplanten Stufe).
+- Rückruf (`mission.recall`): sperrt nur die Mission (`FOR UPDATE`, Sperrreihenfolge bleibt Ereignis → Mission →
+  Stützpunkte), setzt sie auf `returning` mit allen Einheiten und dem Transportgut als `cargoHome` und plant
+  `mission_return`. Das geplante `mission_arrive` bleibt stehen und wirkt nicht mehr (Handler prüft `outbound`).
+  Rückruf nach der geplanten Ankunft wird abgelehnt (`already_arrived`), auch wenn der Worker sie noch nicht verarbeitet hat.
+  Kartell-Verbände und fremde Missionen: `no_mission`; Rückfahrt: `not_outbound`.
 
 ## Festlegungen für den Betrieb
 
