@@ -2,6 +2,13 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.9.0 – 27.11.2026
+- **Weltereignisse des Kartells** – etwa alle 2–4 Tage, stärker mit dem Saisonfortschritt:
+  - **Schatzschiff**: fährt 12–24 Stunden zu einem Piratennest. Wer es zuerst abfängt, erhält die große Beute.
+  - **Großflotte**: 12 Stunden vorher angekündigt, greift danach nacheinander bis zu drei Häfen einer Region an. Schwäche sie vorher auf See – Beute gibt es anteilig zum Schaden.
+  - **Belagerung**: 24 Stunden keine Börsenkäufe und weniger Produktion. Andere Spieler können den Ring brechen.
+- Ereignisse erscheinen auf der Karte mit Route und Countdown, ein Banner auf der Basis warnt vor Ereignissen in der Nähe. Neues Handbuch-Kapitel.
+
 ## 0.8.2 – 27.11.2026
 - Verständliche Meldungen bei ungültigen Eingaben (z. B. „Menge zu klein“) statt „Keine Verbindung“.
 - **Nachtschild**: Änderungen wirken erst nach 24 Stunden – kein Ausweichen mehr vor einem bereits gemeldeten Angriff.
