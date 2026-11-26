@@ -14,6 +14,18 @@ const NAMES: Record<string, string> = {
   anfaengerschutz: "Anfängerschutz", niederlage: "Schutz nach Niederlage", nachtschild: "Nachtschild",
 };
 
+const PLURAL: Record<string, string> = {
+  korvette: "Korvetten", zerstoerer: "Zerstörer", landungsschiff: "Landungsschiffe", schuetzen: "Schützen", pioniere: "Pioniere",
+  kampfpanzer: "Kampfpanzer", abfangjaeger: "Abfangjäger", jagdbomber: "Jagdbomber", aufklaerungsdrohne: "Aufklärungsdrohnen",
+  schnellboot: "Schnellboote", piratenmiliz: "Piratenmilizionäre", kuestenbatterie: "Küstenbatterien", flakstellung: "Flakstellungen",
+  bunkerlinie: "Bunkerlinien", minensperre: "Minensperren",
+};
+
+/** Name mit passender Zahlform für eine Menge. */
+export function countLabel(id: string, n: number): string {
+  return n === 1 ? label(id) : PLURAL[id] ?? label(id);
+}
+
 /** Name aus einer ID; unbekannte IDs werden lesbar gemacht (ae → ä usw.). */
 export function label(id: string): string {
   if (NAMES[id]) return NAMES[id];

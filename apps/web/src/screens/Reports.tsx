@@ -3,7 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { trpc } from "../lib/trpc.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { fmtTime } from "../lib/time.ts";
-import { Button, Card, CountsLine, Loading } from "../ui.tsx";
+import { Button, Card, CountsLine, Loading, ResChips, UnitChips } from "../ui.tsx";
+import { Icon } from "../icons.tsx";
+
+const KIND_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "kartell", aufklaerung: "aufklaerung", transport: "transport", leer: "kartell" };
 
 type Counts = Record<string, number>;
 interface Phase {
@@ -28,6 +31,8 @@ interface Battle {
   wreck: Counts;
 }
 
+const PHASE_ICON: Record<string, string> = { luftkampf: "abfangjaeger", luftschlag: "jagdbomber", seegefecht: "zerstoerer", landung: "landungsschiff" };
+
 const SKIP: Record<string, string> = {
   no_fighters: "keine Jäger", no_opponent: "kein Gegner", no_bombers: "keine Bomber", no_targets: "keine Ziele",
   no_ships: "keine Schiffe", no_landing_ships: "keine Landungsschiffe", no_troops: "keine Truppen",
@@ -40,17 +45,25 @@ export function ReportsScreen() {
   if (!list.data) return <Loading />;
   return (
     <div>
-      <h1 className="text-xl font-bold mb-3">Berichte</h1>
-      {list.data.length === 0 && <p className="text-slate-400">Noch keine Berichte.</p>}
+      <h1 className="font-display text-2xl font-bold uppercase mb-3">Berichte</h1>
+      {list.data.length === 0 && (
+        <div className="panel rounded-2xl p-4 text-center text-slate-300">
+          <Icon id="nav-bericht" size={48} className="mx-auto mb-2 text-slate-500" />
+          Noch keine Berichte. Nach jedem Kampf, jeder Aufklärung und jedem Transport erscheint hier ein Bericht.
+        </div>
+      )}
       <ul className="space-y-2">
         {list.data.map((r) => (
           <li key={r.id}>
-            <button type="button" onClick={() => setOpen(r.id)} className="tap w-full text-left rounded-xl bg-navy-800 border border-navy-700 p-3">
-              <div className="flex justify-between gap-2">
-                <strong className="min-w-0">{r.title}</strong>
-                {r.won !== null && <span className={r.won ? "text-emerald-300" : "text-red-300"}>{r.won ? "Sieg" : "Niederlage"}</span>}
+            <button type="button" onClick={() => setOpen(r.id)} className={`tap w-full text-left panel rounded-2xl p-3 flex items-center gap-3 border-l-4 ${r.won === null ? "!border-l-sea-400" : r.won ? "!border-l-emerald-500" : "!border-l-red-500"}`}>
+              <Icon id={KIND_ICON[r.kind] ?? "nav-bericht"} size={36} />
+              <div className="min-w-0 flex-1">
+                <div className="flex justify-between gap-2">
+                  <strong className="min-w-0 truncate">{r.title}</strong>
+                  {r.won !== null && <span className={`text-xs font-bold uppercase ${r.won ? "text-emerald-300" : "text-red-300"}`}>{r.won ? "Sieg" : "Niederlage"}</span>}
+                </div>
+                <div className="text-xs text-slate-400">{fmtTime(r.atMs)} · {r.role === "attacker" ? "eigene Mission" : "Angriff auf dich"}</div>
               </div>
-              <div className="text-xs text-slate-400">{fmtTime(r.atMs)} · {label(r.kind)} · {r.role === "attacker" ? "Angreifer" : "Verteidiger"}</div>
             </button>
           </li>
         ))}
@@ -67,8 +80,8 @@ function Diff({ before, after }: { before: Counts; after: Counts }) {
       {ids.map((id) => {
         const lost = before[id] - (after[id] ?? 0);
         return (
-          <li key={id}>
-            {label(id)}: {fmtNum(before[id])} → {fmtNum(after[id] ?? 0)}
+          <li key={id} className="flex items-center gap-1">
+            <Icon id={id} size={18} /> {label(id)}: {fmtNum(before[id])} → {fmtNum(after[id] ?? 0)}
             {lost > 0 && <span className="text-red-300"> (−{fmtNum(lost)})</span>}
           </li>
         );
@@ -107,14 +120,15 @@ function BattleView({ b, names, role }: { b: Battle; names: [string, string]; ro
   const won = (b.winner === "attacker") === (role === "attacker");
   return (
     <>
-      <div className={`rounded-xl p-3 mb-3 ${won ? "bg-emerald-900/60 border border-emerald-600" : "bg-red-900/60 border border-red-600"}`}>
-        <strong>{won ? "Sieg" : "Niederlage"}</strong> – Angreifer {names[0]}, Verteidiger {names[1]}
+      <div className={`rounded-2xl p-3 mb-3 text-center ${won ? "bg-gradient-to-b from-emerald-800/80 to-emerald-950/80 border border-emerald-500" : "bg-gradient-to-b from-red-800/80 to-red-950/80 border border-red-500"}`}>
+        <div className="font-display text-3xl font-bold uppercase">{won ? "Sieg" : "Niederlage"}</div>
+        <div className="text-sm">{names[0]} <span className="text-slate-300">gegen</span> {names[1]}</div>
         <div className="text-xs">
           Luftüberlegenheit: {b.airSuperiority === null ? "keine" : b.airSuperiority === "attacker" ? names[0] : names[1]} · Landung: {b.landed ? "ja" : "nein"}
         </div>
       </div>
       {b.phases.map((p) => (
-        <Card key={p.phase} title={label(p.phase)} right={<span className="text-xs text-slate-400">{p.skipped ? `entfallen (${SKIP[p.skipReason ?? ""] ?? p.skipReason})` : `${p.rounds} Runden`}</span>}>
+        <Card key={p.phase} title={<span className="flex items-center gap-2"><Icon id={PHASE_ICON[p.phase] ?? "ueberfall"} size={22} />{label(p.phase)}</span>} right={<span className="text-xs text-slate-400">{p.skipped ? `entfallen (${SKIP[p.skipReason ?? ""] ?? p.skipReason})` : `${p.rounds} Runden`}</span>}>
           {!p.skipped && (
             <>
               <div className="grid grid-cols-2 gap-2 text-xs">
@@ -132,12 +146,12 @@ function BattleView({ b, names, role }: { b: Battle; names: [string, string]; ro
       ))}
       <Card title="Ergebnis">
         <div className="text-sm space-y-1">
-          <div><span className="text-slate-400">Beute:</span> <CountsLine counts={b.loot} /></div>
-          <div><span className="text-slate-400">Wrackfeld:</span> <CountsLine counts={b.wreck} /></div>
-          <div><span className="text-slate-400">Verluste {names[0]}:</span> <CountsLine counts={b.attacker.losses} /></div>
-          <div><span className="text-slate-400">Rückkehrer {names[0]}:</span> <CountsLine counts={b.attacker.returned} /></div>
-          <div><span className="text-slate-400">Verluste {names[1]}:</span> <CountsLine counts={b.defender.losses} /></div>
-          <div><span className="text-slate-400">Lazarett/Reparatur {names[1]}:</span> <CountsLine counts={b.defender.returned} /></div>
+          <div className="text-slate-400 text-xs uppercase">Beute</div><div><ResChips values={b.loot} empty="keine" /></div>
+          <div className="text-slate-400 text-xs uppercase mt-2">Wrackfeld</div><div><ResChips values={b.wreck} empty="keins" /></div>
+          <div className="text-slate-400 text-xs uppercase mt-2">Verluste {names[0]}</div><div><UnitChips counts={b.attacker.losses} /></div>
+          <div className="text-slate-400 text-xs uppercase mt-2">Rückkehrer {names[0]} (Lazarett, Reparatur)</div><div><UnitChips counts={b.attacker.returned} /></div>
+          <div className="text-slate-400 text-xs uppercase mt-2">Verluste {names[1]}</div><div><UnitChips counts={b.defender.losses} /></div>
+          <div className="text-slate-400 text-xs uppercase mt-2">Lazarett/Reparatur {names[1]}</div><div><UnitChips counts={b.defender.returned} /></div>
         </div>
       </Card>
     </>

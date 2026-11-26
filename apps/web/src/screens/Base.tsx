@@ -1,144 +1,212 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, type BaseData } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
-import { RES_ICON, fmtNum, label } from "../lib/names.ts";
+import { fmtNum, label } from "../lib/names.ts";
 import { fmtDuration, fmtSeconds, fmtTime, useNow } from "../lib/time.ts";
-import { Button, Card, Cost, CountsLine, ErrorLine } from "../ui.tsx";
-
-const INFO: Record<string, string> = {
-  kommandozentrale: "Kommandopunkte, Deckel für alle Gebäude",
-  stahlwerk: "Stahl je Stunde",
-  raffinerie: "Treibstoff je Stunde",
-  chipfabrik: "Elektronik je Stunde",
-  versorgungshof: "Proviant je Stunde",
-  kraftwerk: "Strom für die Produktion",
-  lagerkomplex: "Lagerkapazität",
-  tiefbunker: "Schutz vor Plünderung",
-  werft: "Schiffe bauen",
-  kaserne: "Bodentruppen ausbilden",
-  flugfeld: "Flugzeuge und Stellplätze",
-  radarstation: "Vorwarnzeit bei Angriffen",
-  hafenkommandantur: "Missionsplätze, Börse ab Stufe 3",
-};
+import { liveResources } from "../lib/live.res.ts";
+import { BUILDING_TEXT, buildingEffect } from "../lib/info.ts";
+import { Icon, IconTile } from "../icons.tsx";
+import { Badge, Bar, Button, Card, Cost, CountsLine, ErrorLine, Sheet } from "../ui.tsx";
+import { Guide, type GuideAction } from "../components/Guide.tsx";
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 
-const ORDER = ["stahl", "treibstoff", "elektronik", "proviant"];
+const GROUPS: { title: string; ids: string[] }[] = [
+  { title: "Wirtschaft", ids: ["stahlwerk", "raffinerie", "chipfabrik", "versorgungshof", "kraftwerk", "lagerkomplex"] },
+  { title: "Militär", ids: ["werft", "kaserne", "flugfeld"] },
+  { title: "Führung und Schutz", ids: ["kommandozentrale", "hafenkommandantur", "radarstation", "tiefbunker"] },
+];
 
-export function BaseScreen({ base, asOf, playerName, onLogout }: { base: BaseData; asOf: number; playerName: string; onLogout: () => void }) {
+type Building = BaseData["buildings"][number];
+
+export function BaseScreen(props: {
+  base: BaseData;
+  asOf: number;
+  sheet: string | null;
+  setSheet: (id: string | null) => void;
+  onGuide: (a: GuideAction) => void;
+  onTroops: () => void;
+}) {
+  const { base, asOf, sheet, setSheet } = props;
   const now = useNow();
-  const up = useCommand((i: { key: string; buildingId: string }) => trpcClient.base.upgrade.mutate(i), invalidateBase);
+  const reports = useQuery(trpc.report.list.queryOptions());
+  const wonRaid = (reports.data ?? []).some((r) => r.kind === "ueberfall" && r.role === "attacker" && r.won);
   const cancel = useCommand((i: { key: string }) => trpcClient.base.cancelUpgrade.mutate(i), invalidateBase);
+  const res = liveResources(base, asOf, now);
   const order = base.buildQueue[0];
-  const busy = base.buildQueue.length > 0;
+  const byId = Object.fromEntries(base.buildings.map((b) => [b.id, b]));
 
   return (
     <div>
-      <header className="flex items-center justify-between mb-3">
-        <div>
-          <h1 className="text-xl font-bold">{base.name}</h1>
-          <p className="text-xs text-slate-400">Kommandant {playerName} · Feld {base.col}/{base.row}</p>
+      {/* Hafen-Kopf */}
+      <section className="panel rounded-2xl p-3 mb-3 flex items-center gap-3">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brass-400 to-brass-500 grid place-items-center shadow-lg">
+          <Icon id="anker" size={40} className="[&_*]:!stroke-navy-950" />
         </div>
-        <Button kind="ghost" onClick={onLogout}>Abmelden</Button>
-      </header>
+        <div className="min-w-0 flex-1">
+          <h1 className="font-display text-2xl font-bold uppercase truncate">{base.name}</h1>
+          <div className="flex flex-wrap gap-1 mt-0.5">
+            {base.protection.status ? <Badge tone="green">🛡 {label(base.protection.status)}</Badge> : <Badge tone="red">ungeschützt</Badge>}
+            <Badge>Feld {base.col}/{base.row}</Badge>
+            <Badge>Hafen {base.market.port.name} {fmtNum(base.market.port.distanceKm)} km</Badge>
+          </div>
+        </div>
+      </section>
 
       {base.incoming.filter((i) => i.type !== "transport").map((i) => (
-        <div key={i.id} className="rounded-xl bg-red-900/70 border border-red-500 p-3 mb-3" role="alert">
-          <strong>⚠ {label(i.type)} im Anmarsch</strong> – Ankunft in {fmtDuration(i.arriveAtMs - now)}
-          {i.units && <div className="text-sm"><CountsLine counts={i.units} /></div>}
+        <div key={i.id} className="rounded-2xl bg-red-950/90 border-2 border-red-500 p-3 mb-3 flex gap-3 items-center" role="alert">
+          <Icon id={i.type === "kartell" ? "kartell" : "ueberfall"} size={40} />
+          <div className="text-sm">
+            <strong className="text-red-200 uppercase font-display">{label(i.type)} im Anmarsch</strong>
+            <div>Ankunft in <strong>{fmtDuration(i.arriveAtMs - now)}</strong></div>
+            {i.units && <div className="text-xs text-red-200"><CountsLine counts={i.units} /></div>}
+          </div>
         </div>
       ))}
 
-      <Card title="Ressourcen" right={<span className="text-xs text-slate-400">Lager je {fmtNum(base.capacity)}</span>}>
-        <div className="grid grid-cols-2 gap-2">
-          {ORDER.filter((r) => r in base.resources).map((r) => {
-            const rate = base.rates[r] ?? 0;
-            // Im Client fortschreiben: Produktion füllt nur bis zur Kapazität, Bestand nie unter 0.
-            const raw = base.resources[r];
-            const grown = raw + (rate * Math.max(0, now - asOf)) / 3600000;
-            const v = rate >= 0 ? (raw >= base.capacity ? raw : Math.min(base.capacity, grown)) : Math.max(0, grown);
-            const full = v >= base.capacity;
-            return (
-              <div key={r} className="rounded-lg bg-navy-900 p-2">
-                <div className="text-xs text-slate-400">{RES_ICON[r]} {label(r)}</div>
-                <div className={`text-lg font-semibold ${full ? "text-brass-400" : ""}`}>{fmtNum(v)}</div>
-                <div className={`text-xs ${rate < 0 ? "text-red-300" : "text-emerald-300"}`}>{rate >= 0 ? "+" : ""}{fmtNum(rate)}/h{full ? " · voll" : ""}</div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="text-xs text-slate-400 mt-2 flex flex-wrap gap-x-3">
-          <span>⚡ Strom {fmtNum(base.power.demand)}/{fmtNum(base.power.supply)}{base.power.factor < 1 ? ` – Drosselung auf ${fmtNum(base.power.factor * 100)} %` : ""}</span>
-          <span>Unterhalt {fmtNum(base.upkeepPerHour, 1)} Proviant/h</span>
-          <span>Bunkerschutz {fmtNum(base.bunkerProtection)} je Ressource</span>
-        </div>
-        {base.versorgungsmangel && <p className="text-red-300 text-sm mt-2">Versorgungsmangel: keine Ausbildung, Angriffswert −20 %.</p>}
-        {base.deliveries.length > 0 && (
-          <div className="text-xs mt-2 text-sea-300">
-            {base.deliveries.map((d) => <div key={d.id}>Lieferung {fmtNum(d.qty)} {label(d.resource)} in {fmtDuration(d.arriveAtMs - now)}</div>)}
-          </div>
-        )}
-      </Card>
+      <Guide base={base} wonRaid={wonRaid} onAction={props.onGuide} />
 
-      <Protection base={base} now={now} />
-
-      <Card title="Bauschlange">
+      {/* Bauschlange */}
+      <Card title="Bauhof">
         {order ? (
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <div>{label(order.buildingId)} → Stufe {order.targetLevel}</div>
-              <div className="text-sm text-sea-300">{order.finishesAt <= now ? "wird abgeschlossen …" : `noch ${fmtDuration(order.finishesAt - now)}`}</div>
-              <Progress start={order.startedAt} end={order.finishesAt} now={now} />
+          <div className="flex items-center gap-3">
+            <IconTile id={order.buildingId} size={52} />
+            <div className="flex-1 min-w-0">
+              <div className="font-bold">{label(order.buildingId)} → Stufe {order.targetLevel}</div>
+              <div className="text-sm text-sea-300 mb-1">{order.finishesAt <= now ? "wird abgeschlossen …" : `noch ${fmtDuration(order.finishesAt - now)}`}</div>
+              <Bar value={(now - order.startedAt) / Math.max(1, order.finishesAt - order.startedAt)} />
             </div>
             <Button kind="danger" disabled={cancel.busy} onClick={() => void cancel.run({})}>Abbruch</Button>
           </div>
         ) : (
-          <p className="text-sm text-slate-400">Kein Ausbau. Wähle ein Gebäude.</p>
+          <p className="text-sm text-slate-300 flex items-center gap-2"><Icon id="uhr" size={22} /> Der Bauhof ist frei. Tippe ein Gebäude an, um es auszubauen.</p>
         )}
         <ErrorLine text={cancel.error} />
       </Card>
 
-      <Card title="Gebäude">
-        <ErrorLine text={up.error} />
-        <ul className="divide-y divide-navy-700">
-          {base.buildings.map((b) => {
-            const capped = b.level >= b.maxAllowed;
-            return (
-              <li key={b.id} className="py-2 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="font-medium">{label(b.id)} <span className="text-slate-400 text-sm">Stufe {b.level}</span></div>
-                  <div className="text-xs text-slate-400">{INFO[b.id]}</div>
-                  {b.cost && <Cost cost={b.cost} have={base.resources} />}
-                  {b.seconds !== null && <div className="text-xs text-slate-400">⏱ {fmtSeconds(b.seconds)}{capped ? " · erst Kommandozentrale ausbauen" : ""}</div>}
-                </div>
-                <Button kind="secondary" disabled={busy || up.busy || capped || !b.cost} onClick={() => void up.run({ buildingId: b.id })}>
-                  Ausbau
-                </Button>
-              </li>
-            );
-          })}
-        </ul>
-      </Card>
+      {GROUPS.map((g) => (
+        <Card key={g.title} title={g.title}>
+          <div className="grid grid-cols-3 gap-2">
+            {g.ids.map((id) => byId[id] && <BuildingTile key={id} b={byId[id]} res={res} busy={!!order} building={order?.buildingId === id} onOpen={() => setSheet(id)} />)}
+          </div>
+        </Card>
+      ))}
 
-      <Card title="Kommando">
-        <div className="text-sm grid grid-cols-2 gap-1">
+      <Supply base={base} />
+      <Protection base={base} now={now} />
+
+      {sheet && byId[sheet] && (
+        <BuildingSheet b={byId[sheet]} base={base} res={res} queueBusy={!!order} onClose={() => setSheet(null)} onTroops={props.onTroops} />
+      )}
+    </div>
+  );
+}
+
+function affordable(cost: Record<string, number> | null, res: Record<string, number>): boolean {
+  return !!cost && Object.entries(cost).every(([r, v]) => (res[r] ?? 0) >= v);
+}
+
+function BuildingTile({ b, res, busy, building, onOpen }: { b: Building; res: Record<string, number>; busy: boolean; building: boolean; onOpen: () => void }) {
+  const can = !busy && b.level < b.maxAllowed && affordable(b.cost, res);
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`relative rounded-xl p-2 flex flex-col items-center text-center border transition ${building ? "border-sea-400 bg-sea-400/10" : "border-white/10 bg-navy-900/70"} active:scale-95`}
+    >
+      <IconTile id={b.id} size={52} />
+      <span className="w-full text-[11px] font-semibold mt-1 leading-tight break-words hyphens-auto" lang="de">{label(b.id).replace("kommandantur", "\u00ADkommandantur").replace("zentrale", "\u00ADzentrale")}</span>
+      <span className={`absolute top-1 right-1 min-w-6 h-6 px-1 rounded-full grid place-items-center text-xs font-bold ${b.level > 0 ? "bg-brass-400 text-navy-950" : "bg-navy-700 text-slate-300"}`}>{b.level}</span>
+      {can && <span className="absolute top-1 left-1 w-2.5 h-2.5 rounded-full bg-emerald-400" title="Ausbau möglich" />}
+      {building && <span className="text-[10px] text-sea-300">im Bau</span>}
+    </button>
+  );
+}
+
+function BuildingSheet({ b, base, res, queueBusy, onClose, onTroops }: { b: Building; base: BaseData; res: Record<string, number>; queueBusy: boolean; onClose: () => void; onTroops: () => void }) {
+  const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
+  const up = useCommand((i: { key: string; buildingId: string }) => trpcClient.base.upgrade.mutate(i), invalidateBase);
+  const balance = meta.data?.balance;
+  const capped = b.level >= b.maxAllowed;
+  const maxed = !b.cost;
+  const enough = affordable(b.cost, res);
+  const reason = maxed ? "Höchststufe erreicht." : capped ? "Erst die Kommandozentrale ausbauen." : queueBusy ? "Es läuft schon ein Ausbau." : !enough ? "Noch nicht genug Ressourcen." : null;
+  const now = balance ? buildingEffect(balance, b.id, b.level) : null;
+  const next = balance && !maxed ? buildingEffect(balance, b.id, b.level + 1) : null;
+  const trains = ["werft", "kaserne", "flugfeld"].includes(b.id);
+  return (
+    <Sheet open onClose={onClose} title={<>{label(b.id)} <span className="text-brass-300">Stufe {b.level}</span></>} icon={<IconTile id={b.id} size={56} />}>
+      <p className="text-sm text-slate-200 mb-3">{BUILDING_TEXT[b.id]?.lang}</p>
+      {(now || next) && (
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <div className="rounded-xl bg-navy-900 p-2">
+            <div className="text-[11px] uppercase text-slate-400">Jetzt</div>
+            <div className="text-sm font-semibold">{now ?? "–"}</div>
+          </div>
+          <div className="rounded-xl bg-emerald-950/60 border border-emerald-700/50 p-2">
+            <div className="text-[11px] uppercase text-emerald-300">Stufe {b.level + 1}</div>
+            <div className="text-sm font-semibold">{next ?? "–"}</div>
+          </div>
+        </div>
+      )}
+      {!maxed && (
+        <div className="rounded-xl bg-navy-900 p-2 mb-3">
+          <div className="text-[11px] uppercase text-slate-400 mb-1">Kosten</div>
+          <Cost cost={b.cost} have={res} />
+          {b.seconds !== null && <div className="text-sm mt-1 flex items-center gap-1"><Icon id="uhr" size={16} /> {fmtSeconds(b.seconds)}</div>}
+        </div>
+      )}
+      {reason && <p className="text-sm text-brass-300 mb-2">{reason}</p>}
+      <ErrorLine text={up.error} />
+      <div className="flex gap-2">
+        {trains && b.level > 0 && <Button kind="secondary" className="flex-1" onClick={() => { onClose(); onTroops(); }}>Ausbilden</Button>}
+        <Button className="flex-1" disabled={!!reason || up.busy} onClick={async () => { const r = await up.run({ buildingId: b.id }); if (r?.ok) onClose(); }}>
+          Ausbau auf {b.level + 1}
+        </Button>
+      </div>
+      {b.id === "hafenkommandantur" && <p className="text-xs text-slate-400 mt-2">Missionsplätze jetzt: {base.missionSlots}</p>}
+    </Sheet>
+  );
+}
+
+function Supply({ base }: { base: BaseData }) {
+  const short = base.power.factor < 1;
+  return (
+    <Card title="Versorgung">
+      <div className="space-y-2 text-sm">
+        <div>
+          <div className="flex justify-between"><span className="flex items-center gap-1"><Icon id="strom" size={16} /> Strom</span><span className={short ? "text-red-300" : ""}>{fmtNum(base.power.demand)} / {fmtNum(base.power.supply)}</span></div>
+          <Bar value={base.power.supply > 0 ? base.power.demand / base.power.supply : base.power.demand > 0 ? 1 : 0} tone={short ? "red" : "green"} />
+          {short && <p className="text-xs text-red-300 mt-1">Zu wenig Strom: Produktion läuft nur mit {fmtNum(base.power.factor * 100)} %. Kraftwerk ausbauen!</p>}
+        </div>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-slate-300">
+          <span>Lager je Ressource</span><span className="text-right">{fmtNum(base.capacity)}</span>
+          <span>Bunkerschutz</span><span className="text-right">{fmtNum(base.bunkerProtection)}</span>
+          <span>Unterhalt</span><span className="text-right">{fmtNum(base.upkeepPerHour, 1)} Proviant/h</span>
           <span>Kommandopunkte</span><span className="text-right">{fmtNum(base.commandPoints)}</span>
           <span>Missionsplätze</span><span className="text-right">{base.activeMissions}/{base.missionSlots}</span>
           <span>Stellplätze Flugfeld</span><span className="text-right">{base.aircraftSlots.used}/{base.aircraftSlots.total}</span>
           <span>Radar-Vorwarnzeit</span><span className="text-right">{base.radarWarningMinutes} min</span>
         </div>
-      </Card>
+        {base.versorgungsmangel && <p className="text-red-300">Versorgungsmangel: keine Ausbildung, Angriffswert −20 %. Versorgungshof ausbauen oder Proviant kaufen.</p>}
+        {base.deliveries.length > 0 && <DeliveryList base={base} />}
+      </div>
+    </Card>
+  );
+}
+
+function DeliveryList({ base }: { base: BaseData }) {
+  const now = useNow();
+  return (
+    <div className="text-sea-300">
+      {base.deliveries.map((d) => <div key={d.id}>Konvoi: {fmtNum(d.qty)} {label(d.resource)} in {fmtDuration(d.arriveAtMs - now)}</div>)}
     </div>
   );
 }
 
 export function Progress({ start, end, now }: { start: number; end: number; now: number }) {
-  const p = Math.max(0, Math.min(1, (now - start) / Math.max(1, end - start)));
-  return (
-    <div className="h-1.5 w-40 max-w-full rounded bg-navy-950 mt-1 overflow-hidden">
-      <div className="h-full bg-sea-400" style={{ width: `${p * 100}%` }} />
-    </div>
-  );
+  return <div className="w-40 max-w-full mt-1"><Bar value={(now - start) / Math.max(1, end - start)} /></div>;
 }
 
 function Protection({ base, now }: { base: BaseData; now: number }) {
@@ -149,27 +217,30 @@ function Protection({ base, now }: { base: BaseData; now: number }) {
     invalidateBase,
   );
   const win = p.nightWindow;
+  const beginnerEnd = p.createdAtMs + 7 * 86400000;
   return (
     <Card title="Schutz">
-      <p className="text-sm">
-        {p.status ? <span className="text-emerald-300">🛡 {label(p.status)} aktiv</span> : <span className="text-slate-300">Kein Schutz aktiv</span>}
-      </p>
-      {win && (
-        <p className="text-xs text-slate-400">
-          {now >= win.startMs && now < win.endMs ? `Nachtschild bis ${fmtTime(win.endMs)}` : `Nächster Nachtschild ${fmtTime(win.startMs)} – ${fmtTime(win.endMs)}`}
-          {p.nightShieldSuspendedUntilMs > now ? " (durch eigenen Angriff aufgehoben)" : ""}
-        </p>
-      )}
-      <div className="flex items-center gap-2 mt-2">
+      <div className="flex items-start gap-3">
+        <Icon id="schild" size={40} />
+        <div className="text-sm min-w-0">
+          {p.status ? <div className="text-emerald-300 font-semibold">{label(p.status)} aktiv</div> : <div className="text-red-300 font-semibold">Kein Schutz aktiv – das Kartell kann angreifen.</div>}
+          {p.status === "anfaengerschutz" && <div className="text-xs text-slate-400">endet {fmtTime(beginnerEnd)}</div>}
+          {p.defeatShieldUntilMs > now && <div className="text-xs text-slate-400">Schutz nach Niederlage bis {fmtTime(p.defeatShieldUntilMs)}</div>}
+          {win && (
+            <div className="text-xs text-slate-400">
+              {now >= win.startMs && now < win.endMs ? `Nachtschild bis ${fmtTime(win.endMs)}` : `Nächster Nachtschild ${fmtTime(win.startMs)} – ${fmtTime(win.endMs)}`}
+              {p.nightShieldSuspendedUntilMs > now ? " (durch eigenen Angriff aufgehoben)" : ""}
+            </div>
+          )}
+        </div>
+      </div>
+      <label className="block text-xs text-slate-400 mt-3 mb-1">Nachtschild (8 Stunden täglich) beginnt</label>
+      <div className="flex items-center gap-2">
         <select className="h-11 flex-1 rounded-lg bg-navy-950 border border-navy-600 px-2" value={hour ?? ""} onChange={(e) => setHour(e.target.value === "" ? null : Number(e.target.value))}>
           <option value="">kein Nachtschild</option>
-          {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>ab {h}:00 Uhr</option>)}
+          {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>um {h}:00 Uhr</option>)}
         </select>
-        <Button
-          kind="secondary"
-          disabled={save.busy || hour === p.nightShieldStartHour}
-          onClick={() => void save.run({ startHour: hour, tzOffsetMinutes: -new Date().getTimezoneOffset() })}
-        >
+        <Button kind="secondary" disabled={save.busy || hour === p.nightShieldStartHour} onClick={() => void save.run({ startHour: hour, tzOffsetMinutes: -new Date().getTimezoneOffset() })}>
           Speichern
         </Button>
       </div>

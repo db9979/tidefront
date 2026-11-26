@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, type BaseData } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
-import { RES_ICON, errorText, fmtNum, label } from "../lib/names.ts";
+import { errorText, fmtNum, label } from "../lib/names.ts";
+import { Icon } from "../icons.tsx";
 import { fmtDuration, useNow } from "../lib/time.ts";
 import { Button, Card, ErrorLine, Loading } from "../ui.tsx";
 
@@ -36,15 +37,19 @@ export function MarketScreen({ base }: { base: BaseData }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h1 className="text-xl font-bold">Börse</h1>
+        <h1 className="font-display text-2xl font-bold uppercase">Börse</h1>
         <div className="text-right">
-          <div className="text-lg font-semibold text-brass-400">{fmtNum(m.data.credits, 2)} Kr</div>
+          <div className="text-lg font-semibold text-brass-400 flex items-center gap-1 justify-end"><Icon id="credits" size={20} /> {fmtNum(m.data.credits, 2)} Kr</div>
           <div className="text-xs text-slate-400">Limit {fmtNum(base.market.creditLimit)} Kr</div>
         </div>
       </div>
       {!base.market.unlocked && (
-        <div className="rounded-xl bg-navy-800 border border-brass-400 p-3 mb-3 text-sm" role="status">
-          {errorText("locked")} Deine Hafenkommandantur hat Stufe {base.buildings.find((b) => b.id === "hafenkommandantur")?.level ?? 0}.
+        <div className="panel brass-edge rounded-2xl p-3 mb-3 text-sm flex gap-3 items-center" role="status">
+          <Icon id="hafenkommandantur" size={48} />
+          <div>
+            <div className="font-bold">Börse noch geschlossen</div>
+            <div className="text-slate-300">Sie öffnet ab Hafenkommandantur Stufe 3. Deine hat Stufe {base.buildings.find((b) => b.id === "hafenkommandantur")?.level ?? 0}. Bis dahin kannst du Kurse beobachten.</div>
+          </div>
         </div>
       )}
 
@@ -55,7 +60,8 @@ export function MarketScreen({ base }: { base: BaseData }) {
             return (
               <li key={r.id}>
                 <button type="button" onClick={() => setResource(r.id)} className={`tap w-full flex items-center justify-between py-2 px-1 rounded ${r.id === resource ? "bg-navy-700" : ""}`}>
-                  <span>{RES_ICON[r.id]} {label(r.id)}</span>
+                  <span className="flex items-center gap-2"><Icon id={r.id} size={28} /> {label(r.id)}</span>
+                  <Spark points={r.history.map((h) => h.price)} now={r.price} ref={r.ref} />
                   <span className="text-right">
                     <span className="font-semibold">{fmtNum(r.price, 3)}</span>
                     <span className={`text-xs ml-2 ${dev > 0 ? "text-red-300" : dev < 0 ? "text-emerald-300" : "text-slate-400"}`}>{dev >= 0 ? "+" : ""}{fmtNum(dev, 1)} %</span>
@@ -71,7 +77,7 @@ export function MarketScreen({ base }: { base: BaseData }) {
       <Card title={`Handel: ${label(resource)}`}>
         <div className="grid grid-cols-2 gap-2 mb-2">
           {(["buy", "sell"] as const).map((s) => (
-            <button key={s} type="button" onClick={() => setSide(s)} className={`tap rounded-lg ${side === s ? "bg-sea-400 text-navy-950 font-semibold" : "bg-navy-700"}`}>
+            <button key={s} type="button" onClick={() => setSide(s)} className={`tap rounded-lg font-semibold ${side === s ? (s === "buy" ? "bg-emerald-600 text-white" : "bg-red-700 text-white") : "bg-navy-700 text-slate-300"}`}>
               {s === "buy" ? "Kaufen" : "Verkaufen"}
             </button>
           ))}
@@ -112,5 +118,22 @@ export function MarketScreen({ base }: { base: BaseData }) {
         {done && <p className="text-emerald-300 text-sm mt-2">{done}</p>}
       </Card>
     </div>
+  );
+}
+
+/** Kleiner Kursverlauf (letzte Handelskurse plus aktueller Kurs), Richtwert gestrichelt. */
+function Spark({ points, now, ref }: { points: number[]; now: number; ref: number }) {
+  const data = [...points.slice(-20), now];
+  const lo = Math.min(ref, ...data) * 0.995;
+  const hi = Math.max(ref, ...data) * 1.005;
+  const y = (v: number) => 22 - ((v - lo) / Math.max(1e-9, hi - lo)) * 20;
+  const step = data.length > 1 ? 60 / (data.length - 1) : 60;
+  const d = data.map((v, i) => `${i === 0 ? "M" : "L"}${(i * step).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const up = now >= ref;
+  return (
+    <svg viewBox="0 0 60 24" width="60" height="24" aria-hidden="true" className="shrink-0">
+      <line x1="0" x2="60" y1={y(ref)} y2={y(ref)} stroke="#64748b" strokeDasharray="2 2" strokeWidth="1" />
+      {data.length > 1 ? <path d={d} fill="none" stroke={up ? "#fca5a5" : "#6ee7b7"} strokeWidth="1.8" /> : <circle cx="30" cy={y(now)} r="2" fill="#7cc6e8" />}
+    </svg>
   );
 }

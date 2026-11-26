@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc.ts";
 import { useLive } from "./lib/live.ts";
+import { useNow } from "./lib/time.ts";
 import { Loading } from "./ui.tsx";
+import { Icon } from "./icons.tsx";
 import { AuthScreen } from "./screens/Auth.tsx";
 import { ChooseBase } from "./screens/ChooseBase.tsx";
 import { BaseScreen } from "./screens/Base.tsx";
@@ -11,75 +13,121 @@ import { TroopsScreen } from "./screens/Troops.tsx";
 import { MissionPlan } from "./screens/MissionPlan.tsx";
 import { ReportsScreen } from "./screens/Reports.tsx";
 import { MarketScreen } from "./screens/Market.tsx";
+import { Handbook } from "./screens/Handbook.tsx";
+import { ResourceBar } from "./components/ResourceBar.tsx";
+import { Welcome } from "./components/Welcome.tsx";
+import type { GuideAction } from "./components/Guide.tsx";
 
 export type Tab = "basis" | "karte" | "truppen" | "berichte" | "boerse";
 export interface Target { col: number; row: number }
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: "basis", label: "Basis", icon: "⚓" },
-  { id: "karte", label: "Karte", icon: "🗺" },
-  { id: "truppen", label: "Truppen", icon: "🎖" },
-  { id: "berichte", label: "Berichte", icon: "📜" },
-  { id: "boerse", label: "Börse", icon: "⚖" },
+  { id: "basis", label: "Basis", icon: "nav-basis" },
+  { id: "karte", label: "Karte", icon: "nav-karte" },
+  { id: "truppen", label: "Truppen", icon: "nav-truppen" },
+  { id: "berichte", label: "Berichte", icon: "nav-bericht" },
+  { id: "boerse", label: "Börse", icon: "nav-boerse" },
 ];
+
+const SEEN_KEY = "tf-reports-seen";
 
 export function App() {
   const me = useQuery(trpc.auth.me.queryOptions());
   const loggedIn = !!me.data?.player;
   const base = useQuery({ ...trpc.base.get.queryOptions(), enabled: loggedIn, refetchInterval: 30000 });
+  const hasBase = !!base.data?.base;
+  const reports = useQuery({ ...trpc.report.list.queryOptions(), enabled: hasBase, refetchInterval: 60000 });
   useLive(loggedIn);
+  const now = useNow();
   const [tab, setTab] = useState<Tab>("basis");
   const [plan, setPlan] = useState<{ target: Target | null } | null>(null);
   const [mapFocus, setMapFocus] = useState<Target | null>(null);
+  const [help, setHelp] = useState(false);
+  const [sheet, setSheet] = useState<string | null>(null);
+  const [seen, setSeen] = useState(() => Number(localStorage.getItem(SEEN_KEY) ?? 0));
+
+  const newestReport = reports.data?.[0]?.id ?? 0;
+  useEffect(() => {
+    if (tab === "berichte" && newestReport > seen) {
+      localStorage.setItem(SEEN_KEY, String(newestReport));
+      setSeen(newestReport);
+    }
+  }, [tab, newestReport, seen]);
 
   if (me.isLoading) return <Loading />;
   if (!loggedIn) return <AuthScreen />;
   if (base.isLoading || !base.data) return <Loading />;
   if (!base.data.base) return <ChooseBase />;
+  const b = base.data.base;
+  const unread = (reports.data ?? []).filter((r) => r.id > seen).length;
 
   const logout = async () => {
     await trpcClient.auth.logout.mutate();
     queryClient.clear();
     await me.refetch();
   };
+  const go = (t: Tab) => {
+    setPlan(null);
+    setHelp(false);
+    setTab(t);
+  };
+  const onGuide = (a: GuideAction) => {
+    if (a.kind === "building") {
+      go("basis");
+      setSheet(a.id);
+    } else go(a.tab);
+  };
+  const openPlan = (target: Target | null) => {
+    setHelp(false);
+    setPlan({ target });
+  };
 
-  const openPlan = (target: Target | null) => setPlan({ target });
-  const content = plan ? (
-    <MissionPlan
-      base={base.data.base}
-      initialTarget={plan.target}
-      onClose={() => setPlan(null)}
-      onPickOnMap={() => { setPlan(null); setTab("karte"); }}
-    />
+  const fullBleed = tab === "karte" && !plan && !help;
+  const content = help ? (
+    <Handbook onClose={() => setHelp(false)} onLogout={logout} playerName={me.data!.player!.name} />
+  ) : plan ? (
+    <MissionPlan base={b} initialTarget={plan.target} onClose={() => setPlan(null)} onPickOnMap={() => go("karte")} />
   ) : tab === "basis" ? (
-    <BaseScreen base={base.data.base} asOf={base.data.serverNow} playerName={me.data!.player!.name} onLogout={logout} />
+    <BaseScreen base={b} asOf={base.data.serverNow} sheet={sheet} setSheet={setSheet} onGuide={onGuide} onTroops={() => go("truppen")} />
   ) : tab === "karte" ? (
-    <MapScreen base={base.data.base} focus={mapFocus} onPlan={openPlan} />
+    <MapScreen base={b} focus={mapFocus} onPlan={openPlan} />
   ) : tab === "truppen" ? (
-    <TroopsScreen base={base.data.base} onPlan={() => openPlan(null)} onShowOnMap={(t) => { setMapFocus(t); setTab("karte"); }} />
+    <TroopsScreen base={b} onPlan={() => openPlan(null)} onShowOnMap={(t) => { setMapFocus(t); go("karte"); }} />
   ) : tab === "berichte" ? (
     <ReportsScreen />
   ) : (
-    <MarketScreen base={base.data.base} />
+    <MarketScreen base={b} />
   );
 
   return (
     <div className="h-full flex flex-col max-w-xl mx-auto">
-      <main className={`flex-1 min-h-0 ${tab === "karte" && !plan ? "" : "overflow-y-auto p-3"}`}>{content}</main>
-      <nav className="grid grid-cols-5 bg-navy-900 border-t border-navy-700" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => { setPlan(null); setTab(t.id); }}
-            className={`tap flex flex-col items-center justify-center py-1 text-xs ${tab === t.id && !plan ? "text-brass-400" : "text-slate-300"}`}
-            aria-current={tab === t.id ? "page" : undefined}
-          >
-            <span className="text-lg leading-none">{t.icon}</span>
-            {t.label}
-          </button>
-        ))}
+      <ResourceBar base={b} asOf={base.data.serverNow} now={now} onHelp={() => setHelp((h) => !h)} />
+      <main className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto p-3"}`}>{content}</main>
+      <nav className="grid grid-cols-5 bg-navy-950/95 backdrop-blur border-t border-white/10" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+        {TABS.map((t) => {
+          const active = tab === t.id && !plan && !help;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => go(t.id)}
+              className={`tap relative flex flex-col items-center justify-center pt-1.5 pb-1 text-[11px] font-semibold ${active ? "text-brass-400" : "text-slate-400"}`}
+              aria-current={active ? "page" : undefined}
+            >
+              {active && <span className="absolute top-0 inset-x-4 h-0.5 rounded-full bg-brass-400" />}
+              <Icon id={t.icon} size={24} />
+              <span className="mt-0.5">{t.label}</span>
+              {t.id === "berichte" && unread > 0 && (
+                <span className="absolute top-1 right-[22%] min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[11px] grid place-items-center">{unread}</span>
+              )}
+              {t.id === "basis" && b.incoming.some((i) => i.type !== "transport") && (
+                <span className="absolute top-1 right-[22%] w-3 h-3 rounded-full bg-red-500 pulse" />
+              )}
+            </button>
+          );
+        })}
       </nav>
+      <Welcome />
     </div>
   );
 }

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { queryClient, trpc, trpcClient, type BaseData } from "../lib/trpc.ts";
+import { queryClient, trpc, trpcClient, type BaseData, type Balance } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
-import { RES_ICON, errorText, fmtNum, label } from "../lib/names.ts";
+import { errorText, fmtNum, label } from "../lib/names.ts";
+import { Icon, IconTile } from "../icons.tsx";
+import { unitTone } from "../lib/info.ts";
 import { fmtSeconds, fmtTime } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
 import { HexMap } from "./HexMap.tsx";
@@ -59,7 +61,7 @@ export function MissionPlan({ base, initialTarget, onClose }: { base: BaseData; 
   if (sent) {
     return (
       <Card title="Mission gestartet">
-        <p>Der Verband ist unterwegs. Ankunft {fmtTime(sent.arriveAtMs)}.</p>
+        <div className="flex items-center gap-3"><Icon id={type} size={48} /><p>Der Verband hat abgelegt. Ankunft am Ziel {fmtTime(sent.arriveAtMs)}. Den Kampfbericht findest du danach unter „Berichte“, die Fahrt auf der Karte.</p></div>
         <Button className="mt-3 w-full" onClick={onClose}>Fertig</Button>
       </Card>
     );
@@ -68,14 +70,15 @@ export function MissionPlan({ base, initialTarget, onClose }: { base: BaseData; 
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h1 className="text-xl font-bold">Mission planen</h1>
+        <h1 className="font-display text-2xl font-bold uppercase">Mission planen</h1>
         <Button kind="ghost" onClick={onClose}>Schließen</Button>
       </div>
 
       <Card title="Art">
         <div className="grid grid-cols-3 gap-2">
           {TYPES.map((t) => (
-            <button key={t.id} type="button" onClick={() => setType(t.id)} className={`tap rounded-lg px-1 py-2 text-sm ${type === t.id ? "bg-sea-400 text-navy-950 font-semibold" : "bg-navy-700"}`}>
+            <button key={t.id} type="button" onClick={() => setType(t.id)} className={`tap rounded-xl px-1 py-2 text-sm flex flex-col items-center gap-1 border ${type === t.id ? "border-brass-400 bg-brass-400/15 font-semibold" : "border-white/10 bg-navy-900"}`}>
+              <Icon id={t.id} size={32} />
               {t.text}
             </button>
           ))}
@@ -99,7 +102,7 @@ export function MissionPlan({ base, initialTarget, onClose }: { base: BaseData; 
         <ul className="divide-y divide-navy-700">
           {base.units.filter((u) => u.home > 0).map((u) => (
             <li key={u.id} className="py-2 flex items-center justify-between gap-2 flex-wrap">
-              <div>{label(u.id)} <span className="text-xs text-slate-400">({fmtNum(u.home)} daheim)</span></div>
+              <div className="flex items-center gap-2"><IconTile id={u.id} size={36} tone={unitTone(balance, u.id)} /><div>{label(u.id)}<div className="text-xs text-slate-400">{fmtNum(u.home)} daheim</div></div></div>
               <Stepper value={units[u.id] ?? 0} max={u.home} onChange={(v) => setUnits({ ...units, [u.id]: v })} />
             </li>
           ))}
@@ -116,11 +119,15 @@ export function MissionPlan({ base, initialTarget, onClose }: { base: BaseData; 
         <Card title="Ladung">
           {balance.resources.map((r) => (
             <div key={r} className="py-1 flex items-center justify-between gap-2 flex-wrap">
-              <span>{RES_ICON[r]} {label(r)} <span className="text-xs text-slate-400">({fmtNum(base.resources[r] ?? 0)})</span></span>
+              <span className="flex items-center gap-1"><Icon id={r} size={20} /> {label(r)} <span className="text-xs text-slate-400">({fmtNum(base.resources[r] ?? 0)})</span></span>
               <Stepper value={cargo[r] ?? 0} max={Math.floor(base.resources[r] ?? 0)} onChange={(v) => setCargo({ ...cargo, [r]: v })} />
             </div>
           ))}
         </Card>
+      )}
+
+      {type === "ueberfall" && tInfo?.nest && !tInfo.nest.empty && Object.keys(chosen).length > 0 && (
+        <Strength balance={balance} units={chosen} level={tInfo.nest.level} />
       )}
 
       <Card title="Vorschau">
@@ -156,5 +163,49 @@ export function MissionPlan({ base, initialTarget, onClose }: { base: BaseData; 
         <ErrorLine text={launch.error} />
       </Card>
     </div>
+  );
+}
+
+/** Grobe Einschätzung gegen ein Nest: Feuerkraft zur See und an Land im Vergleich (keine Simulation). */
+function Strength({ balance, units, level }: { balance: Balance; units: Record<string, number>; level: number }) {
+  const nest = balance.pirates.nestLevels[String(level)] as Record<string, unknown> | undefined;
+  if (!nest) return null;
+  const all = { ...balance.units, ...balance.npcUnits } as Balance["units"];
+  let sea = 0, land = 0, enemySea = 0, enemyLand = 0, space = 0, troops = 0;
+  for (const [id, n] of Object.entries(units)) {
+    const u = all[id];
+    if (!u) continue;
+    if (u.branch === "see") sea += u.attack.see * n;
+    if (u.branch === "land") { land += u.attack.land * n; troops += (u.size ?? 0) * n; }
+    space += (u.troopSpace ?? 0) * n;
+  }
+  for (const [id, v] of Object.entries(nest)) {
+    if (typeof v !== "number" || v <= 0) continue;
+    const u = all[id];
+    const d = balance.defenses[id];
+    if (u?.branch === "see") enemySea += u.attack.see * v;
+    if (u?.branch === "land") enemyLand += u.attack.land * v;
+    if (d?.attack) { enemySea += d.attack.see * v; enemyLand += d.attack.land * v; }
+  }
+  const rows: [string, number, number][] = [["See", sea, enemySea], ["Land", land, enemyLand]];
+  const noLanding = space === 0 || troops === 0;
+  const ratio = Math.min(enemySea > 0 ? sea / enemySea : 9, enemyLand > 0 ? land / enemyLand : 9);
+  const verdict = noLanding ? ["Ohne Landungsschiff und Truppen kein Sieg und keine Beute.", "text-red-300"] : ratio >= 1.6 ? ["Gute Aussichten.", "text-emerald-300"] : ratio >= 1 ? ["Knapp – mit Verlusten rechnen.", "text-brass-300"] : ["Riskant – der Verband ist wohl zu schwach.", "text-red-300"];
+  return (
+    <Card title="Einschätzung">
+      <div className="space-y-2 text-sm">
+        {rows.map(([name, own, enemy]) => (
+          <div key={name}>
+            <div className="flex justify-between text-xs text-slate-400"><span>Feuerkraft {name}</span><span className="tabular-nums">{fmtNum(own)} gegen {fmtNum(enemy)}</span></div>
+            <div className="flex h-2 rounded-full overflow-hidden bg-navy-950">
+              <div className="bg-sea-400" style={{ width: `${(own / Math.max(1, own + enemy)) * 100}%` }} />
+              <div className="bg-red-500 flex-1" />
+            </div>
+          </div>
+        ))}
+        <p className={`font-semibold ${verdict[1]}`}>{verdict[0]}</p>
+        <p className="text-xs text-slate-400">Grobe Schätzung aus den Angriffswerten, ohne Zufall, Boni und Lebenspunkte. Eine Aufklärung zeigt die Besatzung genau.</p>
+      </div>
+    </Card>
   );
 }
