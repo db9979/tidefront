@@ -161,6 +161,8 @@ export const diplomacy = pgTable("diplomacy", {
 export const playerOffer = pgTable("player_offer", {
   id: serial("id").primaryKey(),
   sellerId: integer("seller_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  /** Hafen, aus dem die Ware kam (mehrere Häfen; null bei älteren Angeboten = Heimathafen). */
+  sellerBaseId: integer("seller_base_id"),
   give: text("give").notNull(),
   giveQty: integer("give_qty").notNull(),
   want: text("want").notNull(),

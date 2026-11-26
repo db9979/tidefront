@@ -156,11 +156,13 @@ export async function listPlayers(db: Db) {
       createdAt: tables.player.createdAt,
       lastSeenAt: tables.player.lastSeenAt,
       baseName: tables.base.name,
+      /** Mehrere Häfen: Anzahl der Häfen (baseName = Heimathafen). */
+      baseCount: sql<number>`(select count(*)::int from base b2 where b2.player_id = ${tables.player.id})`,
       email: tables.playerEmail.email,
       emailVerified: sql<boolean>`${tables.playerEmail.verifiedAt} is not null`,
     })
     .from(tables.player)
-    .leftJoin(tables.base, eq(tables.base.playerId, tables.player.id))
+    .leftJoin(tables.base, and(eq(tables.base.playerId, tables.player.id), eq(tables.base.isHome, true)))
     .leftJoin(tables.playerEmail, eq(tables.playerEmail.playerId, tables.player.id))
     .orderBy(asc(tables.player.id));
 }

@@ -1,7 +1,7 @@
 // Router für den Nachrichtendienst: Vorschau und Auslaufen von Spionageaufträgen, eigenes Lagebild.
 import { z } from "zod";
 import { intelOwnView, spyLaunch, spyPreview } from "@tidefront/engine";
-import { authed, t } from "../trpc.ts";
+import { authed, baseInput, baseRef, t } from "../trpc.ts";
 
 const key = z.string().min(8).max(80);
 const spyInput = {
@@ -9,10 +9,11 @@ const spyInput = {
   col: z.number().int().min(0).max(500).optional(),
   row: z.number().int().min(0).max(500).optional(),
   building: z.string().min(1).max(40).optional(),
+  ...baseRef,
 };
 
 export const espionageRouter = t.router({
-  get: authed.query(({ ctx }) => intelOwnView(ctx.engine, ctx.player.id)),
+  get: authed.input(baseInput).query(({ ctx, input }) => intelOwnView(ctx.engine, ctx.player.id, input?.baseId)),
   preview: authed
     .input(z.object(spyInput))
     .query(({ ctx, input }) => spyPreview(ctx.engine, ctx.player.id, input)),

@@ -1,6 +1,6 @@
 // Wochenziele, Datenbankseite: Vergabe (lazy, deterministisch, idempotent) und Fortschritt. Der Fortschritt
 // kommt über recordAchievement (achievements.ts): derselbe Zähler schreibt Erfolge und Wochenziele fort.
-import { and, asc, count, eq, gte, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
+import { and, asc, count, countDistinct, eq, gte, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
 import { protectionStatus, settle } from "@tidefront/game-core";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance } from "./context.ts";
@@ -18,7 +18,7 @@ export async function weeklyContextFor(tx: DbOrTx, playerId: number, atMs: numbe
   if (!b) return null;
   const mods = await modsOf(tx, b, atMs);
   const state = settle(b.state, atMs, balance, mods);
-  const [o] = await tx.select({ n: count() }).from(tables.base).where(ne(tables.base.playerId, playerId));
+  const [o] = await tx.select({ n: countDistinct(tables.base.playerId) }).from(tables.base).where(ne(tables.base.playerId, playerId));
   const raidsPossible = protectionStatus(state.protection, atMs, balance).reason !== "anfaengerschutz";
   const [m] = await tx.select({ allianceId: tables.allianceMember.allianceId }).from(tables.allianceMember).where(eq(tables.allianceMember.playerId, playerId));
   let allied = false;

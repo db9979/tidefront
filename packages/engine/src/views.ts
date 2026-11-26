@@ -32,10 +32,10 @@ import {
 } from "@tidefront/game-core";
 import { hexCenter, hexDistanceKm, nearestTradePort } from "@tidefront/world";
 import { tables, type DbOrTx } from "@tidefront/db";
-import { balance, marketBalance, type Engine } from "./context.ts";
+import { balance, marketBalance, GameError, type Engine } from "./context.ts";
 import { processDueForBase } from "./events.ts";
-import { activeMissionCount, baseOfPlayer } from "./store.ts";
-import { loadMarket, targetAt } from "./commands.ts";
+import { activeMissionCount, basesOfPlayer, homeBaseOf, ownBase, type BaseRow } from "./store.ts";
+import { loadMarket, targetAt, type LaunchInput } from "./commands.ts";
 import { effectiveMarketRefs, marketRefs } from "./market-news.ts";
 // Weltereignisse: Vorschau einer Mission gegen ein Ereignis.
 import { previewAgainstEvent } from "./world-events-missions.ts";
@@ -53,6 +53,7 @@ import { STATION_TYPE, stationPreview, stationedView } from "./alliance-ops-stat
 import { sharedReportIds } from "./alliance-ops-view.ts";
 import { isNavalInput, previewNaval } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 import { previewField } from "./fields-missions.ts"; // Felder
+import { isExpansionType, previewExpansion } from "./expansion.ts"; // Mehrere Häfen
 
 /**
  * Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband;
@@ -72,12 +73,28 @@ export async function incomingDetected(tx: DbOrTx, baseId: number, state: BaseSt
   return (await detectIncoming(tx, rows, nowMs, warn)).length > 0;
 }
 
-export async function baseView(engine: Engine, playerId: number) {
+/**
+ * Mehrere Häfen: Kurzliste aller eigenen Häfen für die Hafenwahl. underAttack: ein vom Radar erfasster
+ * feindlicher Verband ist unterwegs (für den angezeigten Hafen aus `seenAttack`, sonst je Hafen geprüft).
+ */
+async function basesList(db: DbOrTx, rows: BaseRow[], shownId: number, seenAttack: boolean, nowMs: number) {
+  return Promise.all(rows.map(async (b) => ({
+    id: b.id,
+    name: b.name,
+    col: b.col,
+    row: b.row,
+    isHome: b.isHome,
+    underAttack: b.id === shownId ? seenAttack : await incomingDetected(db, b.id, b.state, nowMs, await modsOf(db, b, nowMs)),
+  })));
+}
+
+/** Hafenansicht; baseId wählt einen eigenen Hafen (fremd/unbekannt → GameError "no_base"), sonst Heimathafen. */
+export async function baseView(engine: Engine, playerId: number, baseId?: number) {
   const nowMs = Date.now();
-  const own = await baseOfPlayer(engine.db, playerId);
-  if (!own) return { serverNow: nowMs, base: null };
+  if (baseId === undefined && !(await homeBaseOf(engine.db, playerId))) return { serverNow: nowMs, base: null };
+  const own = await ownBase(engine.db, playerId, baseId);
   await processDueForBase(engine, own.id, nowMs);
-  const row = (await baseOfPlayer(engine.db, playerId))!;
+  const row = await ownBase(engine.db, playerId, own.id);
   const { total: mods, sources: modSources } = await modifierBreakdown(engine.db, row, nowMs);
   const s = settle(row.state, nowMs, balance, mods);
   const rates = productionRates(s, balance, mods);
@@ -141,6 +158,7 @@ export async function baseView(engine: Engine, playerId: number) {
     .where(and(eq(tables.delivery.baseId, own.id), eq(tables.delivery.status, "underway")));
   const [p] = await engine.db.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, playerId));
   const status = protectionStatus(s.protection, nowMs, balance);
+  const all = await basesOfPlayer(engine.db, playerId);
   return {
     serverNow: nowMs,
     base: {
@@ -148,6 +166,10 @@ export async function baseView(engine: Engine, playerId: number) {
       name: own.name,
       col: own.col,
       row: own.row,
+      /** Mehrere Häfen: dieser Hafen ist der Heimathafen. */
+      isHome: own.isHome,
+      /** Mehrere Häfen: alle eigenen Häfen (nach ID) für die Hafenwahl. */
+      bases: await basesList(engine.db, all, own.id, attacks.some((m) => seen.has(m.id)), nowMs),
       resources: s.resources,
       capacity: storageCapacity(s, balance, mods),
       rates: rates.perHour,
@@ -252,11 +274,13 @@ export async function mapView(engine: Engine, playerId: number) {
 export async function missionPreview(
   engine: Engine,
   playerId: number,
-  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number; admiralId?: number; blockadeId?: number; convoyId?: number; holdHours?: number; fieldId?: number; stayAll?: boolean },
+  input: LaunchInput,
 ) {
   const nowMs = Date.now();
-  const own = await baseOfPlayer(engine.db, playerId);
+  // Mehrere Häfen: Ausgangshafen input.baseId (Besitz geprüft), sonst Heimathafen.
+  const own = await ownBase(engine.db, playerId, input.baseId).catch((e: unknown) => { if (e instanceof GameError) return null; throw e; });
   if (!own) return { ok: false as const, code: "no_base" };
+  if (isExpansionType(input.type)) return previewExpansion(engine.db, playerId, own, input, nowMs); // Gründung/Verlegung
   if (input.fieldId !== undefined) return previewField(engine.db, playerId, own, { ...input, fieldId: input.fieldId }, nowMs); // Felder
   if (input.eventId !== undefined) return previewAgainstEvent(engine.db, playerId, own, { ...input, eventId: input.eventId }, nowMs);
   if (input.type === STATION_TYPE) return stationPreview(engine.db, playerId, own, input, nowMs); // Allianz-Ops
@@ -374,14 +398,15 @@ export async function reportGet(engine: Engine, playerId: number, id: number) {
   };
 }
 
-export async function marketView(engine: Engine, playerId: number) {
+export async function marketView(engine: Engine, playerId: number, baseId?: number) {
   const nowMs = Date.now();
   const m = await engine.db.transaction((tx) => loadMarket(tx));
   // Marktnachrichten: Kurs und Richtwert beziehen sich auf den effektiven Richtwert.
   const refs = await marketRefs(engine.db, nowMs);
   const [p] = await engine.db.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, playerId));
   const trader = p?.trader as Omit<marketCore.TraderState, "stock">;
-  const own = await baseOfPlayer(engine.db, playerId);
+  // Mehrere Häfen: Lager (Tageslimit) des gewählten Hafens; fremde baseId → "no_base".
+  const own = baseId === undefined ? await homeBaseOf(engine.db, playerId) : await ownBase(engine.db, playerId, baseId);
   const mods = own ? await modsOf(engine.db, own, nowMs) : undefined;
   const cap = own ? storageCapacity(settle(own.state, nowMs, balance, mods), balance, mods) : 0;
   const dayIndex = marketCore.utcDayIndex(nowMs);

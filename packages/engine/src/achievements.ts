@@ -115,12 +115,14 @@ export async function achievementsFromDaily(tx: DbOrTx, playerId: number, kind: 
 /** Bestwerte aus dem Zustand fortschreiben: Prachtbauten, vollständige Forschung, Serie, Saisonplatzierung. */
 export async function refreshAchievementState(tx: DbOrTx, playerId: number, nowMs: number): Promise<void> {
   if (!balance.achievements) return;
-  const [b] = await tx.select({ state: tables.base.state }).from(tables.base).where(eq(tables.base.playerId, playerId)).limit(1);
-  if (b) {
-    const s = b.state as { buildings?: Counts; research?: { levels?: Counts } };
-    const pracht = Object.values(s.buildings ?? {}).filter((l) => l >= PRACHTBAU_FROM).length;
+  // Mehrere Häfen: Prachtbauten als Maximum über alle Häfen, Forschung aus dem Heimathafen.
+  const rows = await tx.select({ state: tables.base.state, isHome: tables.base.isHome }).from(tables.base).where(eq(tables.base.playerId, playerId));
+  if (rows.length > 0) {
+    type S = { buildings?: Counts; research?: { levels?: Counts } };
+    const pracht = Math.max(...rows.map((r) => Object.values((r.state as S).buildings ?? {}).filter((l) => l >= PRACHTBAU_FROM).length));
+    const home = (rows.find((r) => r.isHome) ?? rows[0]).state as S;
     const techs = balance.research?.techs ?? {};
-    const full = Object.entries(s.research?.levels ?? {}).filter(([id, l]) => techs[id] && l >= techs[id].maxLevel).length;
+    const full = Object.entries(home.research?.levels ?? {}).filter(([id, l]) => techs[id] && l >= techs[id].maxLevel).length;
     await recordAchievement(tx, playerId, "prachtbau", pracht, { atMs: nowMs, mode: "max" });
     await recordAchievement(tx, playerId, "forschung_voll", full, { atMs: nowMs, mode: "max" });
   }

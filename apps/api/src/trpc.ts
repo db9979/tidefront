@@ -1,5 +1,6 @@
 // tRPC-Grundlagen (Kontext, Prozeduren), getrennt vom Router, damit Teil-Router sie ohne Kreisimport nutzen.
 import { initTRPC, TRPCError } from "@trpc/server";
+import { z } from "zod";
 import { GameError, inputErrorText, type Engine, type InputIssue } from "@tidefront/engine";
 
 export interface Ctx {
@@ -31,6 +32,14 @@ export const adminProc = authed.use(async ({ ctx, next }) => {
   if (!ctx.player.isAdmin) throw new TRPCError({ code: "FORBIDDEN" });
   return next({ ctx });
 });
+
+/**
+ * Mehrere Häfen: optionaler Hafen jeder hafenbezogenen Prozedur. Fehlt baseId, gilt der Heimathafen;
+ * die Engine prüft den Besitz (fremd/unbekannt → "no_base").
+ */
+export const baseRef = { baseId: z.number().int().min(1).optional() };
+/** Eingabe für Abfragen ohne weitere Parameter (Eingabe selbst optional, damit alte Aufrufe gültig bleiben). */
+export const baseInput = z.object(baseRef).optional();
 
 /** Fehler des Spiels als Rückgabewert statt Ausnahme. */
 export async function wrap<T>(fn: () => Promise<T>): Promise<T | { ok: false; code: string }> {

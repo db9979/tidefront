@@ -13,7 +13,7 @@ import {
   summarySettings,
   TEMPLATE_NAME_MAX,
 } from "@tidefront/engine";
-import { authed, t } from "../trpc.ts";
+import { authed, baseInput, baseRef, t } from "../trpc.ts";
 
 const counts = z.record(z.string().max(40), z.number().int().min(0).max(1_000_000));
 const rate = { ok: false as const, code: "rate" };
@@ -35,9 +35,9 @@ export const comfortRouter = t.router({
     .mutation(async ({ ctx, input }) => ({ ok: await deleteTemplate(ctx.engine.db, ctx.player.id, input.id) })),
 
   repeat: authed
-    .input(z.object({ reportId: z.number().int().min(1) }))
-    .query(({ ctx, input }) => repeatFromReport(ctx.engine.db, ctx.player.id, input.reportId)),
-  recentMissions: authed.query(({ ctx }) => recentMissions(ctx.engine.db, ctx.player.id)),
+    .input(z.object({ reportId: z.number().int().min(1), ...baseRef }))
+    .query(({ ctx, input }) => repeatFromReport(ctx.engine.db, ctx.player.id, input.reportId, input.baseId)),
+  recentMissions: authed.input(baseInput).query(({ ctx, input }) => recentMissions(ctx.engine.db, ctx.player.id, undefined, input?.baseId)),
 
   scout: authed
     .input(z.object({ col: z.number().int().min(0).max(500), row: z.number().int().min(0).max(500) }))

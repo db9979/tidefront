@@ -42,7 +42,13 @@ export const base = pgTable("base", {
   /** BaseState aus game-core (Zeitstempel in ms). */
   state: jsonb("state").notNull(),
   createdAt: ts("created_at").notNull().defaultNow(),
-}, (t) => [uniqueIndex("base_field").on(t.col, t.row), uniqueIndex("base_player").on(t.playerId)]);
+  /** Heimathafen des Spielers (genau einer je Spieler, Teil-Unique-Index); weitere Häfen sind Kolonien. */
+  isHome: boolean("is_home").notNull().default(false),
+}, (t) => [
+  uniqueIndex("base_field").on(t.col, t.row),
+  uniqueIndex("base_home").on(t.playerId).where(sql`${t.isHome}`),
+  index("base_player_idx").on(t.playerId),
+]);
 
 export const nest = pgTable("nest", {
   id: serial("id").primaryKey(),

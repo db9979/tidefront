@@ -160,7 +160,7 @@ export async function nextTickMs(db: DbOrTx): Promise<number | null> {
 }
 
 /** Karte und „Meine Felder“: alle Felder mit Besitzerfarbe, bekannte Besatzung, Zonen; eigene mit Ertrag. */
-export async function fieldsView(engine: Engine, playerId: number) {
+export async function fieldsView(engine: Engine, playerId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
   const nowMs = Date.now();
   const f = rules();
   if (!f) return null;

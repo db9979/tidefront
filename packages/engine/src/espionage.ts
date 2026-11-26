@@ -39,6 +39,8 @@ export interface SpyInput {
   row?: number;
   /** Sabotageziel (Gebäude oder "bauschlange"). */
   building?: string;
+  /** Mehrere Häfen: Ausgangshafen (P2; fehlt → Heimathafen). */
+  baseId?: number;
 }
 
 interface Prepared {
@@ -81,7 +83,7 @@ async function prepare(db: DbOrTx, playerId: number, own: BaseRow, input: SpyInp
       cooldownUntilMs = sabotageCooldownUntil(target.state!, balance);
       if (cooldownUntilMs > nowMs) fail("sabotage_cooldown");
     }
-    targetMods = await modsOf(db, { playerId: target.playerId, state: target.state! }, nowMs);
+    targetMods = await modsOf(db, { playerId: target.playerId, state: target.state!, id: target.id, isHome: target.isHome }, nowMs);
   }
   const success = spySuccessValue(own.state, kind, balance, ownMods);
   const defense = spyDefenseValue(target?.state ?? null, kind, balance, targetMods);
@@ -188,7 +190,7 @@ export function intelView(state: BaseState, mods: Modifiers, nowMs: number) {
 }
 
 /** Eigenes Lagebild der Spionage (Info-Blatt Nachrichtendienst): verarbeitet zuerst fällige Ereignisse. */
-export async function intelOwnView(engine: Engine, playerId: number) {
+export async function intelOwnView(engine: Engine, playerId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
   const nowMs = Date.now();
   const own = await baseOfPlayer(engine.db, playerId);
   if (!own) return null;

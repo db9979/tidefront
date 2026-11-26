@@ -23,7 +23,7 @@ export async function sharedReportIds(db: DbOrTx, playerId: number, onlyId?: num
 }
 
 /** Sammelangriffe der eigenen Allianz: offen, unterwegs und die der letzten 24 Stunden. */
-export async function allianceRaidsView(engine: Engine, playerId: number) {
+export async function allianceRaidsView(engine: Engine, playerId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
   const nowMs = Date.now();
   const ms = await membershipOf(engine.db, playerId);
   const cfg = allianceOpsOf(balance);

@@ -186,7 +186,7 @@ export async function eventMissionArrive(
   }
 
   // Modifikatoren des Spielers (Forschung, Veteranen) wirken wie bei jedem Überfall.
-  const modifiers = await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due });
+  const modifiers = await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due, baseId: origin?.id, isHome: origin?.isHome });
   const attacker: AttackerInput = { units: plan.units, versorgungsmangel: origin?.state.versorgungsmangel ?? false, modifiers };
   const seed = randomSeed();
   const res = resolveBattle(attacker, { units: activeUnits(ev.units), defenses: {} }, balance, seed, battleWeather(m.targetCol, m.targetRow, due));

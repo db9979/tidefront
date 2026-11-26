@@ -149,7 +149,7 @@ async function toRepeat(db: DbOrTx, playerId: number, m: { type: string; targetC
 }
 
 /** Ziel und Zusammensetzung der eigenen Mission zu einem Bericht; null, wenn es keine gibt. */
-export async function repeatFromReport(db: DbOrTx, playerId: number, reportId: number): Promise<RepeatPlan | null> {
+export async function repeatFromReport(db: DbOrTx, playerId: number, reportId: number, baseId?: number): Promise<RepeatPlan | null> { // P2: Hafen baseId, noch Heimathafen
   const [m] = await db
     .select()
     .from(tables.mission)
@@ -160,7 +160,7 @@ export async function repeatFromReport(db: DbOrTx, playerId: number, reportId: n
 }
 
 /** Zuletzt heimgekehrte eigene Missionen (neueste zuerst). */
-export async function recentMissions(db: DbOrTx, playerId: number, limit = 5) {
+export async function recentMissions(db: DbOrTx, playerId: number, limit = 5, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
   const rows = await db
     .select()
     .from(tables.mission)

@@ -187,22 +187,26 @@ export async function adminStats(db: Db, days: StatsDays, nowMs = Date.now(), tz
     group by p.id, p.name order by maxl desc nulls last, wins desc, p.name`);
 
   // ---------------------------------------------------------------- Wirtschaft (Stützpunkt-Zustände)
-  const bases = await db.execute<{ player_id: number; name: string; state: BaseState }>(sql`
-    select b.player_id, p.name, b.state from base b join player p on p.id = b.player_id order by b.id`);
+  const bases = await db.execute<{ id: number; player_id: number; name: string; state: BaseState; is_home: boolean }>(sql`
+    select b.id, b.player_id, p.name, b.state, b.is_home from base b join player p on p.id = b.player_id order by b.id`);
   const production: ResMap = {};
   const buildingIds = Object.keys(balance.buildings);
   const levels = new Map(buildingIds.map((id) => [id, [] as number[]]));
-  const totals: { playerId: number; name: string; total: number }[] = [];
+  // Mehrere Häfen: Bestände je Spieler über alle Häfen summiert (Gebäudestufen bleiben je Hafen).
+  const byPlayer = new Map<number, { playerId: number; name: string; total: number }>();
   for (const b of bases) {
     // Produktion über die Modifikatoren wie im Stützpunkt (Forschung, Sabotage, Strom, Wetter, Ereignisse).
-    const mods = await modsOf(db, { playerId: b.player_id, state: b.state }, nowMs);
+    const mods = await modsOf(db, { playerId: b.player_id, state: b.state, id: b.id, isHome: b.is_home }, nowMs);
     const s = settle(b.state, nowMs, balance, mods);
     for (const [r, v] of Object.entries(productionRates(s, balance, mods).perHour)) add(production, r, v);
     let total = 0;
     for (const r of balance.resources) total += s.resources[r] ?? 0;
-    totals.push({ playerId: b.player_id, name: b.name, total });
+    const t = byPlayer.get(b.player_id);
+    if (t) t.total += total;
+    else byPlayer.set(b.player_id, { playerId: b.player_id, name: b.name, total });
     for (const id of buildingIds) levels.get(id)!.push(s.buildings[id] ?? 0);
   }
+  const totals = [...byPlayer.values()];
   const buildings = buildingIds.map((id) => {
     const ls = levels.get(id)!;
     const max = ls.reduce((a, b) => Math.max(a, b), 0);

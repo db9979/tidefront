@@ -183,7 +183,7 @@ export async function blockadeEndHandler(tx: Tx, payload: Record<string, unknown
 }
 
 /** Eigene Blockade aufheben (Rückruf). Codes: no_blockade. */
-export function liftBlockade(engine: Engine, playerId: number, key: string, blockadeId: number) {
+export function liftBlockade(engine: Engine, playerId: number, key: string, blockadeId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
   return runCommand(engine, playerId, key, "liftBlockade", async (ctx) => {
     const b = await lockBlockade(ctx.tx, blockadeId);
     if (!b || b.attackerId !== playerId || b.status !== "active") throw new GameError("no_blockade");
@@ -235,7 +235,7 @@ export async function blockadeAttackArrive(tx: Tx, m: MissionRowLike, plan: Miss
     await sendHome(tx, m, plan, units, {}, reportId, due);
     return;
   }
-  const attacker: AttackerInput = { units, versorgungsmangel: origin?.state.versorgungsmangel ?? false, modifiers: await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due }) };
+  const attacker: AttackerInput = { units, versorgungsmangel: origin?.state.versorgungsmangel ?? false, modifiers: await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due, baseId: origin?.id, isHome: origin?.isHome }) };
   const defMods = await modifiersFor(tx, b.attackerId, { nowMs: due });
   const seed = randomSeed();
   const res = resolveBattle(attacker, { units: activeUnits(b.units as Counts), defenses: {}, modifiers: defMods }, balance, seed, battleWeather(b.col, b.row, due));

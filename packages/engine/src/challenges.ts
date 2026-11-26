@@ -1,7 +1,7 @@
 // Tagesbefehle, Datenbankseite: Vergabe (lazy, idempotent), Fortschritts-Schnittstelle trackProgress und
 // die Auswertung von Ereignissen (Vorher/Nachher um den Handler, aufgerufen aus events.ts).
 // Fehler hier dürfen Spielereignisse und Befehle nie blockieren: alles läuft in einem eigenen Savepoint.
-import { and, asc, count, eq, gte, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
+import { and, asc, count, countDistinct, eq, gte, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
 import { protectionStatus, settle, type Counts, type Mission, type ResourceMap, type TrainingOrder } from "@tidefront/game-core";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance } from "./context.ts";
@@ -33,7 +33,7 @@ export async function contextFor(tx: DbOrTx, playerId: number, atMs: number): Pr
   if (!b) return null;
   const mods = await modsOf(tx, b, atMs);
   const state = settle(b.state, atMs, balance, mods);
-  const [o] = await tx.select({ n: count() }).from(tables.base).where(ne(tables.base.playerId, playerId));
+  const [o] = await tx.select({ n: countDistinct(tables.base.playerId) }).from(tables.base).where(ne(tables.base.playerId, playerId));
   const raidsPossible = protectionStatus(state.protection, atMs, balance).reason !== "anfaengerschutz";
   return poolContext(state, { others: (o?.n ?? 0) > 0, raidsPossible }, mods);
 }

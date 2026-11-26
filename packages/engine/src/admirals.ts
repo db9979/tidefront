@@ -51,7 +51,7 @@ async function payCredits(ctx: Ctx, amount: number, tradeId: string): Promise<vo
  * Admiral ernennen. name: aus der Namensliste oder null (zufällig). Kosten: Kredite und Elektronik.
  * Codes: no_base, admiral_off, admiral_slots, admiral_name, admiral_spec, admiral_funds, insufficient_resources.
  */
-export function appointAdmiral(engine: Engine, playerId: number, key: string, input: { name: string | null; spec: string }) {
+export function appointAdmiral(engine: Engine, playerId: number, key: string, input: { name: string | null; spec: string; baseId?: number }) {
   return runCommand<{ ok: true; admiralId: number; name: string }>(engine, playerId, key, "admiralAppoint", async (ctx) => {
     const cfg = balance.admirals ?? fail("admiral_off");
     if (!Object.hasOwn(cfg.specs, input.spec)) fail("admiral_spec");
@@ -77,7 +77,7 @@ export function appointAdmiral(engine: Engine, playerId: number, key: string, in
 }
 
 /** Zweite Spezialisierung wählen (ab Rang secondSpecFromRank). Codes: admiral_unknown, admiral_rank, admiral_spec. */
-export function chooseAdmiralSpec(engine: Engine, playerId: number, key: string, input: { admiralId: number; spec: string }) {
+export function chooseAdmiralSpec(engine: Engine, playerId: number, key: string, input: { admiralId: number; spec: string; baseId?: number }) {
   return runCommand<{ ok: true }>(engine, playerId, key, "admiralSpec", async (ctx) => {
     const cfg = balance.admirals ?? fail("admiral_off");
     const a = await lockOwnAdmiral(ctx, input.admiralId);
@@ -91,7 +91,7 @@ export function chooseAdmiralSpec(engine: Engine, playerId: number, key: string,
 }
 
 /** Hafenkommandant festlegen (admiralId) oder abberufen (null). Höchstens einer je Spieler. */
-export function stationAdmiral(engine: Engine, playerId: number, key: string, input: { admiralId: number | null }) {
+export function stationAdmiral(engine: Engine, playerId: number, key: string, input: { admiralId: number | null; baseId?: number }) { // P2: Hafenkommandant je Hafen (baseId)
   return runCommand<{ ok: true }>(engine, playerId, key, "admiralStation", async (ctx) => {
     if (input.admiralId !== null) await lockOwnAdmiral(ctx, input.admiralId);
     await ctx.tx.update(tables.admiral).set({ stationed: false }).where(eq(tables.admiral.playerId, playerId));
@@ -102,7 +102,7 @@ export function stationAdmiral(engine: Engine, playerId: number, key: string, in
 }
 
 /** Lösegeld zahlen: gefangener Admiral kehrt sofort zurück. Codes: admiral_unknown, admiral_not_captive, admiral_funds. */
-export function ransomAdmiral(engine: Engine, playerId: number, key: string, input: { admiralId: number }) {
+export function ransomAdmiral(engine: Engine, playerId: number, key: string, input: { admiralId: number; baseId?: number }) {
   return runCommand<{ ok: true }>(engine, playerId, key, "admiralRansom", async (ctx) => {
     const cfg = balance.admirals ?? fail("admiral_off");
     const a = await lockOwnAdmiral(ctx, input.admiralId);
@@ -115,7 +115,7 @@ export function ransomAdmiral(engine: Engine, playerId: number, key: string, inp
 }
 
 /** Admiral entlassen (gibt den Platz frei, keine Erstattung). Nicht unterwegs. Codes: admiral_unknown, admiral_busy. */
-export function dismissAdmiral(engine: Engine, playerId: number, key: string, input: { admiralId: number }) {
+export function dismissAdmiral(engine: Engine, playerId: number, key: string, input: { admiralId: number; baseId?: number }) {
   return runCommand<{ ok: true }>(engine, playerId, key, "admiralDismiss", async (ctx) => {
     const a = await lockOwnAdmiral(ctx, input.admiralId);
     if (admiralStatus(a, await activeMissions(ctx.tx, [a]), ctx.nowMs).status === "unterwegs") fail("admiral_busy");
@@ -149,7 +149,7 @@ export interface AdmiralInfo {
 }
 
 /** Karte „Admirale“: Plätze, Kosten, Regeln und eigene Admirale. */
-export async function admiralView(engine: Engine, playerId: number) {
+export async function admiralView(engine: Engine, playerId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
   const cfg = balance.admirals;
   const own = await baseOfPlayer(engine.db, playerId);
   if (!cfg || !own) return null;

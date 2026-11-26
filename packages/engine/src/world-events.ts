@@ -101,9 +101,12 @@ export function notice(playerId: number, kind: Notice["kind"], title: string, bo
   return { playerId, notice: { kind, title, body, url: "/?tab=karte", tag: `weltereignis-${kind}` } };
 }
 
-/** Alle Spieler mit Hafen (Empfänger von Ankündigungen). */
+/** Alle Spieler mit Hafen (Empfänger von Ankündigungen), je Spieler einmal mit seinem Heimathafen. */
 export async function playersWithBase(tx: DbOrTx): Promise<{ playerId: number; baseId: number; col: number; row: number }[]> {
-  return tx.select({ playerId: tables.base.playerId, baseId: tables.base.id, col: tables.base.col, row: tables.base.row }).from(tables.base);
+  return tx
+    .select({ playerId: tables.base.playerId, baseId: tables.base.id, col: tables.base.col, row: tables.base.row })
+    .from(tables.base)
+    .where(eq(tables.base.isHome, true));
 }
 
 /** Beteiligte eines Ereignisses (Spieler mit Schaden). */

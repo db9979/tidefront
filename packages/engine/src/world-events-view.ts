@@ -25,7 +25,7 @@ function position(ev: WorldEventRow, nowMs: number): { col: number; row: number 
   return { col: ev.col, row: ev.row };
 }
 
-export async function worldEventsView(engine: Engine, playerId: number) {
+export async function worldEventsView(engine: Engine, playerId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
   const nowMs = Date.now();
   const w = worldEventsBalance(balance);
   const open = await openWorldEvents(engine.db);

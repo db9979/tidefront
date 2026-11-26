@@ -162,7 +162,7 @@ export async function fieldArrive(tx: Tx, m: MissionRowLike, plan: Mission, orig
     return;
   }
   const defenderUnits = field.ownerId !== null ? garrisonUnits : activeUnits(field.guard as Counts);
-  const attackerMods = await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due });
+  const attackerMods = await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due, baseId: origin?.id, isHome: origin?.isHome });
   const attacker: AttackerInput = { units, modifiers: attackerMods, versorgungsmangel: origin?.state.versorgungsmangel ?? false };
   let survivors = units;
   let destroyed = true;
@@ -234,7 +234,7 @@ export async function fieldArrive(tx: Tx, m: MissionRowLike, plan: Mission, orig
 }
 
 /** Besatzung zurückrufen: Feld wird neutral, angefangener Ertrag geht noch als Konvoi heim. Codes: no_field. */
-export function fieldRecall(engine: Engine, playerId: number, key: string, fieldId: number) {
+export function fieldRecall(engine: Engine, playerId: number, key: string, fieldId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
   return runCommand<{ ok: true; returnAtMs: number }>(engine, playerId, key, "fieldRecall", async (ctx) => {
     const field = await fieldById(ctx.tx, fieldId, true); // Reihenfolge: Feld vor Besatzung
     if (!field || field.ownerId !== playerId) throw new GameError("no_field");

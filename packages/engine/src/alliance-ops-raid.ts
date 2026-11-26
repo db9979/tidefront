@@ -166,7 +166,7 @@ export function openRaid(
   engine: Engine,
   playerId: number,
   key: string,
-  input: { col: number; row: number; eventId?: number; units: Counts; joinMinutes: number; arriveMinutes: number },
+  input: { col: number; row: number; eventId?: number; units: Counts; joinMinutes: number; arriveMinutes: number; baseId?: number }, // P2: baseId
 ) {
   const jobs: NoticeJob[] = [];
   return runCommand<{ ok: true; raidId: number; missionId: number }>(engine, playerId, key, "raidOpen", async (ctx) => {
@@ -207,7 +207,7 @@ export function openRaid(
 }
 
 /** Mit eigenem Verband beitreten. Codes: no_raid, raid_closed, raid_other_alliance, raid_joined, raid_full, Ziel- und Planungscodes. */
-export function joinRaid(engine: Engine, playerId: number, key: string, input: { raidId: number; units: Counts }) {
+export function joinRaid(engine: Engine, playerId: number, key: string, input: { raidId: number; units: Counts; baseId?: number }) { // P2: baseId
   const jobs: NoticeJob[] = [];
   return runCommand<{ ok: true; missionId: number }>(engine, playerId, key, "raidJoin", async (ctx) => {
     const raid = await lockRaid(ctx.tx, input.raidId);
@@ -229,7 +229,7 @@ export function joinRaid(engine: Engine, playerId: number, key: string, input: {
 }
 
 /** Vor dem Auslaufen zurückziehen: Verband und Treibstoff zurück. Codes: no_raid, raid_launched, not_joined. */
-export function withdrawRaid(engine: Engine, playerId: number, key: string, raidId: number) {
+export function withdrawRaid(engine: Engine, playerId: number, key: string, raidId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
   return runCommand<{ ok: true }>(engine, playerId, key, "raidWithdraw", async (ctx) => {
     const raid = await lockRaid(ctx.tx, raidId);
     if (!raid) fail("no_raid");
@@ -245,7 +245,7 @@ export function withdrawRaid(engine: Engine, playerId: number, key: string, raid
 }
 
 /** Abbrechen vor dem Auslaufen: Eröffner, Führung oder Offiziere. Codes: no_raid, raid_launched, no_rights. */
-export function cancelRaid(engine: Engine, playerId: number, key: string, raidId: number) {
+export function cancelRaid(engine: Engine, playerId: number, key: string, raidId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
   return runCommand<{ ok: true }>(engine, playerId, key, "raidCancel", async (ctx) => {
     const raid = await lockRaid(ctx.tx, raidId);
     if (!raid) fail("no_raid");
@@ -320,7 +320,7 @@ export const raidLaunch: Handler = async (tx, ev, due) => {
       continue;
     }
     const plan = mission.plan as Mission;
-    const mods = await modifiersFor(tx, m.playerId, { state: origin.state, nowMs: due });
+    const mods = await modifiersFor(tx, m.playerId, { state: origin.state, nowMs: due, baseId: origin.id, isHome: origin.isHome });
     const hasShips = Object.entries(plan.units).some(([id, n]) => n > 0 && balance.units[id]?.branch === "see");
     const w = missionWeather(origin.col, origin.row, raid.targetCol, raid.targetRow, due);
     const seconds = (travelSeconds(plan.units, plan.distanceKm, balance, mods) ?? 0) * (hasShips && w ? w.shipFactor : 1);
@@ -351,8 +351,8 @@ export const raidLaunch: Handler = async (tx, ev, due) => {
   await systemMessage(tx, notes, ids, `Sammelangriff läuft aus`, text);
   const result: HandlerResult = { notify: [...notes, [ids, "missions"], [await memberIds(tx, raid.allianceId), "alliance"]], push: pushAll(ids, "Sammelangriff läuft aus", text, `raid-${raid.id}`) };
   if (raid.targetKind === "base" && general.state) {
-    const [b] = await tx.select({ playerId: tables.base.playerId }).from(tables.base).where(eq(tables.base.id, raid.targetId));
-    const targetMods = await modifiersFor(tx, b.playerId, { state: general.state, nowMs: due });
+    const [b] = await tx.select({ playerId: tables.base.playerId, isHome: tables.base.isHome }).from(tables.base).where(eq(tables.base.id, raid.targetId));
+    const targetMods = await modifiersFor(tx, b.playerId, { state: general.state, nowMs: due, baseId: raid.targetId, isHome: b.isHome });
     await scheduleAttackWarning(tx, { missionId: keep[0].mission.id, targetBaseId: raid.targetId, targetState: general.state, arriveAtMs: sched.arriveAtMs, nowMs: due, targetMods, warningFactor });
     result.notify.push([[b.playerId], "missions"]);
   }

@@ -9,7 +9,8 @@ export * from "./scoring.ts";
 export * from "./season.ts";
 export * from "./season-alliances.ts";
 export * from "./social.ts";
-export { baseOfPlayer } from "./store.ts";
+export { baseOfPlayer, basesOfPlayer, homeBaseOf, lockOwnBase, ownBase, type BaseRow } from "./store.ts";
+export * from "./expansion.ts"; // Mehrere Häfen
 export * from "./account.ts";
 export * from "./ops.ts";
 export * from "./push.ts";

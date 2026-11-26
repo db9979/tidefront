@@ -207,7 +207,7 @@ export const raidArrive: Handler = async (tx, ev, due) => {
   for (const r of rows) {
     const origin = r.mission.baseId ? await readBase(tx, r.mission.baseId) : null;
     const plan = r.mission.plan as Mission;
-    const mods = await modifiersFor(tx, r.mission.playerId!, { state: origin?.state ?? null, nowMs: due });
+    const mods = await modifiersFor(tx, r.mission.playerId!, { state: origin?.state ?? null, nowMs: due, baseId: origin?.id, isHome: origin?.isHome });
     parts.push({ playerId: r.mission.playerId!, name: r.name, mission: r.mission, plan, mods, shortage: origin?.state.versorgungsmangel ?? false, value: combatValue(plan.units, balance, mods) });
   }
   const joint = combineForces(parts.map((p) => ({ units: p.plan.units, modifiers: p.mods, versorgungsmangel: p.shortage })), balance);

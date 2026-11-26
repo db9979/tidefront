@@ -46,6 +46,7 @@ import { STATION_TYPE, settleGuests, stationArrive, stationedGuests, withGuests 
 import { holdDelivery, NAVAL_HANDLERS, navalArrive } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 import { fieldArrive } from "./fields-missions.ts"; // Felder: Aufklärung/Besetzen
 import { FIELD_HANDLERS } from "./fields-run.ts"; // Felder: field_tick, field_delivery, field_raid
+import { expansionArrive, isExpansionType } from "./expansion.ts"; // Mehrere Häfen: Gründung/Verlegung
 
 const HOUR_MS = 3600000;
 const none = (): HandlerResult => ({ notify: [] });
@@ -168,6 +169,7 @@ const missionArrive: Handler = async (tx, ev, due) => {
   const m = await lockMission(tx, Number(ev.payload.missionId));
   if (!m || m.status !== "outbound") return none();
   if (m.type === STATION_TYPE) return stationArrive(tx, m, due); // Allianz-Ops: Stationierung
+  if (isExpansionType(m.type)) return expansionArrive(tx, m, due); // Mehrere Häfen
   let plan = m.plan as Mission;
   const notify: HandlerResult["notify"] = [[[m.playerId!], "missions"]];
   const push: NonNullable<HandlerResult["push"]> = [];
@@ -184,7 +186,7 @@ const missionArrive: Handler = async (tx, ev, due) => {
   // Modifikatoren des Angreifers (Kampf, Ladung) und je Ziel des Verteidigers.
   // Admirale: Führer des Verbands wirkt auf Kampf, Ladung und Beute dieses Verbands.
   const admA = await missionAdmiral(tx, plan, m.id, m.playerId);
-  const attackerMods = combineModifiers(await modifiersFor(tx, m.playerId, { state: origin?.state ?? null, nowMs: due }), admA?.mods);
+  const attackerMods = combineModifiers(await modifiersFor(tx, m.playerId, { state: origin?.state ?? null, nowMs: due, baseId: origin?.id, isHome: origin?.isHome }), admA?.mods);
 
   if (m.targetKind === "base") {
     const target = await lockBase(tx, m.targetId!);

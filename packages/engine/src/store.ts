@@ -4,6 +4,7 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { BaseState } from "@tidefront/game-core";
 import { hexCenter } from "@tidefront/world";
 import { tables, type DbOrTx } from "@tidefront/db";
+import { GameError } from "./context.ts";
 
 export interface BaseRow {
   id: number;
@@ -12,6 +13,8 @@ export interface BaseRow {
   col: number;
   row: number;
   state: BaseState;
+  /** Heimathafen (genau einer je Spieler); weitere Häfen sind Kolonien. */
+  isHome: boolean;
 }
 
 /** Zustand mit Lage des Hafens für das Wetter (v1.6; ältere Stände erhalten sie beim Lesen aus col/row). */
@@ -19,8 +22,8 @@ export function withSite(state: BaseState, col: number, row: number): BaseState 
   return state.site ? state : { ...state, site: hexCenter(col, row) };
 }
 
-function toRow(r: { id: number; playerId: number; name: string; col: number; row: number; state: unknown }): BaseRow {
-  return { ...r, state: withSite(r.state as BaseState, r.col, r.row) };
+function toRow(r: { id: number; playerId: number; name: string; col: number; row: number; state: unknown; isHome: boolean }): BaseRow {
+  return { id: r.id, playerId: r.playerId, name: r.name, col: r.col, row: r.row, isHome: r.isHome, state: withSite(r.state as BaseState, r.col, r.row) };
 }
 
 /** Sperrt Stützpunkte in aufsteigender ID und liefert sie als Map. */
@@ -47,9 +50,41 @@ export async function readBase(tx: DbOrTx, id: number): Promise<BaseRow | null> 
   return r ? toRow(r) : null;
 }
 
-export async function baseOfPlayer(tx: DbOrTx, playerId: number): Promise<BaseRow | null> {
-  const [r] = await tx.select().from(tables.base).where(eq(tables.base.playerId, playerId));
+/** Heimathafen des Spielers (is_home; höchstens einer, Teil-Unique-Index base_home). */
+export async function homeBaseOf(tx: DbOrTx, playerId: number): Promise<BaseRow | null> {
+  const [r] = await tx
+    .select()
+    .from(tables.base)
+    .where(and(eq(tables.base.playerId, playerId), eq(tables.base.isHome, true)));
   return r ? toRow(r) : null;
+}
+
+/** Alias auf homeBaseOf (mehrere Häfen: deterministisch der Heimathafen). */
+export const baseOfPlayer = homeBaseOf;
+
+/** Alle Häfen des Spielers, aufsteigend nach ID (der Heimathafen ist in der Regel der erste). */
+export async function basesOfPlayer(tx: DbOrTx, playerId: number): Promise<BaseRow[]> {
+  const rows = await tx.select().from(tables.base).where(eq(tables.base.playerId, playerId)).orderBy(asc(tables.base.id));
+  return rows.map(toRow);
+}
+
+/**
+ * Eigener Hafen ohne Sperre: mit baseId nur, wenn er dem Spieler gehört (sonst GameError "no_base"),
+ * ohne baseId der Heimathafen. Für Ansichten und Vorschauen.
+ */
+export async function ownBase(tx: DbOrTx, playerId: number, baseId?: number): Promise<BaseRow> {
+  const row = baseId === undefined ? await homeBaseOf(tx, playerId) : await readBase(tx, baseId);
+  if (!row || row.playerId !== playerId) throw new GameError("no_base");
+  return row;
+}
+
+/** Wie ownBase, aber gesperrt (FOR UPDATE); Besitz wird nach dem Sperren geprüft. */
+export async function lockOwnBase(tx: DbOrTx, playerId: number, baseId?: number): Promise<BaseRow> {
+  const id = baseId ?? (await homeBaseOf(tx, playerId))?.id;
+  if (id === undefined) throw new GameError("no_base");
+  const row = await lockBase(tx, id);
+  if (!row || row.playerId !== playerId) throw new GameError("no_base");
+  return row;
 }
 
 export async function saveBase(tx: DbOrTx, id: number, state: BaseState): Promise<void> {

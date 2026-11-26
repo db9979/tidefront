@@ -163,7 +163,7 @@ export async function clearNaval(tx: Tx): Promise<void> {
 }
 
 /** Lesemodell für Karte, Hafen und Börse. */
-export async function navalView(engine: Engine, playerId: number) {
+export async function navalView(engine: Engine, playerId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
   const nowMs = Date.now();
   const own = await baseOfPlayer(engine.db, playerId);
   const blockade = own ? await activeBlockade(engine.db, { baseId: own.id }, nowMs) : null;
@@ -178,7 +178,7 @@ export async function navalView(engine: Engine, playerId: number) {
 }
 
 /** Bekannte Minen auf der Route zum Feld (Warnung in der Missionsplanung). */
-export async function navalRouteMines(engine: Engine, playerId: number, col: number, row: number) {
+export async function navalRouteMines(engine: Engine, playerId: number, col: number, row: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
   return routeMines(engine.db, playerId, col, row, Date.now());
 }
 

@@ -253,7 +253,7 @@ export async function interceptArrive(tx: Tx, m: MissionRowLike, plan: Mission, 
     await sendHome(tx, m, plan, units, {}, reportId, due);
     return;
   }
-  const mods = await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due });
+  const mods = await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due, baseId: origin?.id, isHome: origin?.isHome });
   const escort = await liveEscort(tx, c);
   let held: boolean | null = null;
   let returning: Counts = { ...units };

@@ -1,5 +1,6 @@
-// Befehle der Spieler. Jeder Befehl: Idempotenz-Schlüssel, zuerst fällige Ereignisse des eigenen
-// Stützpunkts, dann eine Transaktion mit gesperrtem Stützpunkt.
+// Befehle der Spieler. Jeder Befehl: Idempotenz-Schlüssel, zuerst fällige Ereignisse der eigenen
+// Stützpunkte, dann eine Transaktion mit gesperrtem Stützpunkt. Mehrere Häfen: hafenbezogene Befehle
+// nehmen ein optionales baseId (Besitz wird geprüft); ohne baseId gilt der Heimathafen.
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import {
@@ -27,7 +28,7 @@ import { hexCenter, isCoast, nearestTradePort } from "@tidefront/world";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, marketBalance, GameError, type ChangeKind, type Engine } from "./context.ts";
 import { processDueForBase } from "./events.ts";
-import { activeMissionCount, baseOfPlayer, lockBase, saveBase, scheduleEvent, withSite } from "./store.ts";
+import { activeMissionCount, basesOfPlayer, homeBaseOf, lockOwnBase, saveBase, scheduleEvent, withSite } from "./store.ts";
 import { missionWeather } from "./weather.ts"; // Wetter (v1.6): Sturm auf der Route
 import { incomingDetected } from "./views.ts";
 import { scheduleAttackWarning } from "./event-notices.ts";
@@ -43,6 +44,7 @@ import { admiralForLaunch, assignAdmiral } from "./admirals-core.ts"; // Admiral
 import { STATION_TYPE, stationLaunch } from "./alliance-ops-station.ts"; // Allianz-Ops: Stationierung
 import { createConvoy, isNavalInput, launchNaval, tradeBlocked, transportConvoyRecall } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 import { launchField } from "./fields-missions.ts"; // Felder
+import { FOUNDING_TYPE, TRANSFER_TYPE, launchExpansion } from "./expansion.ts"; // Mehrere Häfen
 
 export type Rejected = { ok: false; code: string };
 type Draft<T> = T | (Rejected & { keepWrites?: boolean });
@@ -67,8 +69,8 @@ export async function runCommand<T extends { ok: true }>(
 ): Promise<T | Rejected> {
   const fullKey = `${playerId}:${key}`;
   const nowMs = Date.now();
-  const own = await baseOfPlayer(engine.db, playerId);
-  if (own) await processDueForBase(engine, own.id, nowMs);
+  // Mehrere Häfen: fällige Ereignisse aller eigenen Häfen (höchstens balance-maxBases, also wenige).
+  for (const own of (await basesOfPlayer(engine.db, playerId)).slice(0, MAX_DUE_BASES)) await processDueForBase(engine, own.id, nowMs);
   const notes: Ctx["notify"] = [];
   const result = await engine.db.transaction(async (tx) => {
     const inserted = await tx
@@ -102,12 +104,12 @@ export async function runCommand<T extends { ok: true }>(
   return result;
 }
 
-async function ownBaseLocked(ctx: Ctx) {
-  const own = await baseOfPlayer(ctx.tx, ctx.playerId);
-  if (!own) throw new GameError("no_base");
-  const b = await lockBase(ctx.tx, own.id);
-  if (!b) throw new GameError("no_base");
-  return b;
+/** Obergrenze der Häfen, deren fällige Ereignisse ein Befehl vorab verarbeitet. */
+const MAX_DUE_BASES = 3;
+
+/** Gesperrter eigener Hafen: baseId mit Besitzprüfung (sonst "no_base"), ohne baseId der Heimathafen. */
+export function ownBaseLocked(ctx: Ctx, baseId?: number) {
+  return lockOwnBase(ctx.tx, ctx.playerId, baseId);
 }
 
 function fail(code: string): never {
@@ -118,7 +120,7 @@ function fail(code: string): never {
 
 export function chooseBase(engine: Engine, playerId: number, key: string, input: { col: number; row: number; name: string; nightShieldStartHour: number | null; tzOffsetMinutes: number }) {
   return runCommand(engine, playerId, key, "chooseBase", async (ctx) => {
-    if (await baseOfPlayer(ctx.tx, playerId)) fail("has_base");
+    if (await homeBaseOf(ctx.tx, playerId)) fail("has_base");
     if (!isCoast(input.col, input.row)) fail("not_coast");
     const [occupiedNest] = await ctx.tx
       .select({ id: tables.nest.id })
@@ -129,7 +131,7 @@ export function chooseBase(engine: Engine, playerId: number, key: string, input:
     state.protection = createProtection(ctx.nowMs, input.nightShieldStartHour, input.tzOffsetMinutes);
     const inserted = await ctx.tx
       .insert(tables.base)
-      .values({ playerId, name: input.name, col: input.col, row: input.row, state })
+      .values({ playerId, name: input.name, col: input.col, row: input.row, state, isHome: true }) // erster Hafen = Heimathafen
       .onConflictDoNothing()
       .returning({ id: tables.base.id });
     if (inserted.length === 0) fail("field_taken");
@@ -140,9 +142,9 @@ export function chooseBase(engine: Engine, playerId: number, key: string, input:
   });
 }
 
-export function upgrade(engine: Engine, playerId: number, key: string, buildingId: string) {
+export function upgrade(engine: Engine, playerId: number, key: string, buildingId: string, baseId?: number) {
   return runCommand(engine, playerId, key, "upgrade", async (ctx) => {
-    const b = await ownBaseLocked(ctx);
+    const b = await ownBaseLocked(ctx, baseId);
     const r = startUpgrade(b.state, buildingId, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs));
     if (!r.ok) return r;
     const state = await applyPendingBoost(ctx.tx, playerId, r.base, ctx.nowMs); // Auftragsbuch: −1 Stunde Bauzeit
@@ -159,9 +161,9 @@ export function upgrade(engine: Engine, playerId: number, key: string, buildingI
  * (eindeutig in der Schlange); ohne Angabe der laufende. Für nachgerückte Aufträge werden neue
  * build_complete-Ereignisse geplant; die alten laufen ins Leere oder schließen nur Fälliges ab.
  */
-export function cancelBuild(engine: Engine, playerId: number, key: string, order?: { buildingId: string; targetLevel: number }) {
+export function cancelBuild(engine: Engine, playerId: number, key: string, order?: { buildingId: string; targetLevel: number }, baseId?: number) {
   return runCommand<{ ok: true; refund: ResourceMap; removed: number }>(engine, playerId, key, "cancelBuild", async (ctx) => {
-    const b = await ownBaseLocked(ctx);
+    const b = await ownBaseLocked(ctx, baseId);
     const index = order
       ? b.state.buildQueue.findIndex((o) => o.buildingId === order.buildingId && o.targetLevel === order.targetLevel)
       : 0;
@@ -179,9 +181,9 @@ export function cancelBuild(engine: Engine, playerId: number, key: string, order
   });
 }
 
-export function train(engine: Engine, playerId: number, key: string, id: string, count: number) {
+export function train(engine: Engine, playerId: number, key: string, id: string, count: number, baseId?: number) {
   return runCommand(engine, playerId, key, "train", async (ctx) => {
-    const b = await ownBaseLocked(ctx);
+    const b = await ownBaseLocked(ctx, baseId);
     const r = startTraining(b.state, id, count, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs));
     if (!r.ok) return r;
     await saveBase(ctx.tx, b.id, r.base);
@@ -191,9 +193,9 @@ export function train(engine: Engine, playerId: number, key: string, id: string,
   });
 }
 
-export function cancelTrain(engine: Engine, playerId: number, key: string, builtIn: string) {
+export function cancelTrain(engine: Engine, playerId: number, key: string, builtIn: string, baseId?: number) {
   return runCommand(engine, playerId, key, "cancelTrain", async (ctx) => {
-    const b = await ownBaseLocked(ctx);
+    const b = await ownBaseLocked(ctx, baseId);
     const r = cancelTraining(b.state, builtIn, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs));
     if (!r.ok) return r;
     await saveBase(ctx.tx, b.id, r.base);
@@ -202,9 +204,9 @@ export function cancelTrain(engine: Engine, playerId: number, key: string, built
   });
 }
 
-export function setNightShield(engine: Engine, playerId: number, key: string, startHour: number | null, tzOffsetMinutes: number) {
+export function setNightShield(engine: Engine, playerId: number, key: string, startHour: number | null, tzOffsetMinutes: number, baseId?: number) {
   return runCommand<{ ok: true; fromMs: number }>(engine, playerId, key, "nightShield", async (ctx) => {
-    const b = await ownBaseLocked(ctx);
+    const b = await ownBaseLocked(ctx, baseId); // P2: Nachtschild spielerweit (alle Häfen)
     const next = settle(b.state, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs));
     const r = scheduleNightShieldChange(next.protection, startHour, tzOffsetMinutes, ctx.nowMs, balance);
     if (!r.ok) return { ok: false as const, code: r.code };
@@ -217,6 +219,12 @@ export function setNightShield(engine: Engine, playerId: number, key: string, st
 
 // ---------------------------------------------------------------- Missionen
 
+/** Eingabe von mission.launch (baseId: Ausgangshafen, fehlt → Heimathafen). */
+export interface LaunchInput {
+  type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number; admiralId?: number;
+  blockadeId?: number; convoyId?: number; holdHours?: number; fieldId?: number; stayAll?: boolean; baseId?: number;
+}
+
 export interface MissionTarget {
   kind: "base" | "nest";
   id: number;
@@ -224,12 +232,14 @@ export interface MissionTarget {
   row: number;
   playerId: number | null;
   state?: BaseState;
+  /** Mehrere Häfen: Ziel ist ein Heimathafen (für Modifikatoren des Verteidigers). */
+  isHome?: boolean;
   defeatedAt?: Date | null;
 }
 
 export async function targetAt(tx: Tx, col: number, row: number): Promise<MissionTarget | null> {
   const [b] = await tx.select().from(tables.base).where(and(eq(tables.base.col, col), eq(tables.base.row, row)));
-  if (b) return { kind: "base", id: b.id, col, row, playerId: b.playerId, state: withSite(b.state as BaseState, col, row) };
+  if (b) return { kind: "base", id: b.id, col, row, playerId: b.playerId, isHome: b.isHome, state: withSite(b.state as BaseState, col, row) };
   const [n] = await tx.select().from(tables.nest).where(and(eq(tables.nest.col, col), eq(tables.nest.row, row)));
   if (n) return { kind: "nest", id: n.id, col, row, playerId: null, defeatedAt: n.defeatedAt };
   return null;
@@ -239,10 +249,11 @@ export function launchMission(
   engine: Engine,
   playerId: number,
   key: string,
-  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number; admiralId?: number; blockadeId?: number; convoyId?: number; holdHours?: number; fieldId?: number; stayAll?: boolean },
+  input: LaunchInput,
 ) {
   return runCommand<{ ok: true; missionId: number; arriveAtMs: number }>(engine, playerId, key, "mission", async (ctx) => {
-    const b = await ownBaseLocked(ctx);
+    const b = await ownBaseLocked(ctx, input.baseId);
+    if (input.type === FOUNDING_TYPE || input.type === TRANSFER_TYPE) return launchExpansion(ctx.tx, playerId, b, input, ctx.nowMs, ctx.notify); // Mehrere Häfen
     if (input.fieldId !== undefined) return launchField(ctx.tx, playerId, b, { ...input, fieldId: input.fieldId }, ctx.nowMs, ctx.notify); // Felder
     // Weltereignis als Ziel (world-events-missions.ts).
     if (input.eventId !== undefined) return launchAgainstEvent(ctx.tx, playerId, b, { ...input, eventId: input.eventId }, ctx.nowMs, ctx.notify);
@@ -294,7 +305,7 @@ export function launchMission(
       await createConvoy(ctx.tx, { kind: "transport", missionId: m.id, senderId: playerId, recipientId: target.playerId!, recipientBaseId: target.id, from: b, to: target, cargo: r.mission.cargo, escort: r.mission.units, departMs: ctx.nowMs, arriveMs: r.mission.arriveAtMs });
     }
     if (r.mission.type === "ueberfall" && target.kind === "base" && target.state) {
-      const targetMods = await modifiersFor(ctx.tx, target.playerId, { state: target.state, nowMs: ctx.nowMs });
+      const targetMods = await modifiersFor(ctx.tx, target.playerId, { state: target.state, nowMs: ctx.nowMs, baseId: target.id, isHome: target.isHome });
       await scheduleAttackWarning(ctx.tx, { missionId: m.id, targetBaseId: target.id, targetState: target.state, arriveAtMs: r.mission.arriveAtMs, nowMs: ctx.nowMs, targetMods, warningFactor: r.mission.warningFactor });
     }
     ctx.notify.push([[playerId], "base"], [[playerId], "missions"]);
@@ -355,10 +366,11 @@ export function trade(
   engine: Engine,
   playerId: number,
   key: string,
-  request: { side: "buy" | "sell"; resource: string; qty: number; expectedPrice: number },
+  input: { side: "buy" | "sell"; resource: string; qty: number; expectedPrice: number; baseId?: number },
 ) {
+  const request = { side: input.side, resource: input.resource, qty: input.qty, expectedPrice: input.expectedPrice };
   return runCommand(engine, playerId, key, "trade", async (ctx) => {
-    const b = await ownBaseLocked(ctx);
+    const b = await ownBaseLocked(ctx, input.baseId);
     const [p] = await ctx.tx.select().from(tables.player).where(eq(tables.player.id, playerId)).for("update");
     if (!balance.resources.includes(request.resource)) fail("bad_qty");
     // Weltereignis Belagerung: keine Börsenkäufe (Lieferungen) während des Belagerungsrings.

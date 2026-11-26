@@ -32,7 +32,7 @@ async function ownLocked(tx: Parameters<Handler>[0], playerId: number) {
 }
 
 /** Startet die nächste Stufe einer Technik. Codes: siehe startResearch im Kern. */
-export function researchStart(engine: Engine, playerId: number, key: string, techId: string) {
+export function researchStart(engine: Engine, playerId: number, key: string, techId: string, baseId?: number) { // Forschung spielerweit im Heimathafen; baseId für P2
   return runCommand<{ ok: true; finishesAt: number }>(engine, playerId, key, "researchStart", async (ctx) => {
     const b = await ownLocked(ctx.tx, playerId);
     const r = startResearch(b.state, techId, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs), randomSeed());
@@ -45,7 +45,7 @@ export function researchStart(engine: Engine, playerId: number, key: string, tec
 }
 
 /** Bricht die laufende Forschung ab (Erstattung nach Restzeit). Das geplante Ereignis läuft ins Leere. */
-export function researchCancel(engine: Engine, playerId: number, key: string) {
+export function researchCancel(engine: Engine, playerId: number, key: string, baseId?: number) { // s. researchStart
   return runCommand<{ ok: true; refund: ResourceMap }>(engine, playerId, key, "researchCancel", async (ctx) => {
     const b = await ownLocked(ctx.tx, playerId);
     const r = cancelResearch(b.state, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs));
@@ -57,7 +57,7 @@ export function researchCancel(engine: Engine, playerId: number, key: string) {
 }
 
 /** Wahl der Durchbruch-Belohnung ("level" oder "speed"); dieselbe Wahl erneut ist harmlos. */
-export function researchChoose(engine: Engine, playerId: number, key: string, choice: string) {
+export function researchChoose(engine: Engine, playerId: number, key: string, choice: string, baseId?: number) { // s. researchStart
   return runCommand<{ ok: true; choice: string }>(engine, playerId, key, "researchChoose", async (ctx) => {
     const b = await ownLocked(ctx.tx, playerId);
     const r = chooseBreakthrough(b.state, choice, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs));

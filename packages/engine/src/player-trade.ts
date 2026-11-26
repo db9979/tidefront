@@ -3,7 +3,7 @@
 // Ressourcen reisen beiderseits als Lieferung (delivery_arrive) mit Reisezeit nach Entfernung der Häfen, Kredite
 // werden sofort gutgeschrieben. Gebühr je empfangener Seite. Rückzug erstattet sofort.
 // Sperrreihenfolge: Angebot, Stützpunkte aufsteigend, Spieler aufsteigend.
-import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { harborMarketUnlocked, settle, deliverCargo, market as marketCore } from "@tidefront/game-core";
 import { hexDistanceKm } from "@tidefront/world";
 import { tables, type Tx } from "@tidefront/db";
@@ -67,6 +67,8 @@ export interface OfferInput {
   want: string;
   wantQty: number;
   visibility: "public" | "alliance";
+  /** Mehrere Häfen: Hafen, aus dem die Ware kommt (P2; fehlt → Heimathafen). */
+  baseId?: number;
 }
 
 /** Angebot einstellen. Codes: bad_offer, bad_qty, no_alliance, locked, too_many_offers, funds. */
@@ -118,7 +120,7 @@ export function createOffer(engine: Engine, playerId: number, key: string, input
  * Angebot annehmen. Das Angebot wird zuerst gesperrt: von zwei gleichzeitigen Annahmen gelingt genau eine.
  * Codes: offer_gone, own_offer, not_ally, no_base, seller_gone, locked, funds.
  */
-export function acceptOffer(engine: Engine, playerId: number, key: string, offerId: number, escort?: Record<string, number>) {
+export function acceptOffer(engine: Engine, playerId: number, key: string, offerId: number, escort?: Record<string, number>, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
   return runCommand<{ ok: true; arriveAtMs: number }>(engine, playerId, key, "offerAccept", async (ctx: Ctx) => {
     const [o] = await ctx.tx.select().from(tables.playerOffer).where(eq(tables.playerOffer.id, offerId)).for("update");
     if (!o || o.status !== "open") fail("offer_gone");
@@ -201,7 +203,7 @@ export function acceptOffer(engine: Engine, playerId: number, key: string, offer
 }
 
 /** Eigenes offenes Angebot zurückziehen; die Ware kommt sofort zurück. Codes: offer_gone, no_rights, no_base. */
-export function withdrawOffer(engine: Engine, playerId: number, key: string, offerId: number) {
+export function withdrawOffer(engine: Engine, playerId: number, key: string, offerId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
   return runCommand(engine, playerId, key, "offerWithdraw", async (ctx: Ctx) => {
     const [o] = await ctx.tx.select().from(tables.playerOffer).where(eq(tables.playerOffer.id, offerId)).for("update");
     if (!o || o.status !== "open") fail("offer_gone");
@@ -238,7 +240,7 @@ export async function expireOffers(tx: Tx, seasonNumber: number, atMs: number): 
 }
 
 /** Sichtbare offene Angebote (öffentlich oder aus der eigenen Allianz) und die eigenen der letzten Zeit. */
-export async function offersView(engine: Engine, playerId: number) {
+export async function offersView(engine: Engine, playerId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
   const nowMs = Date.now();
   const m = await membershipOf(engine.db, playerId);
   const visible = m
@@ -248,7 +250,11 @@ export async function offersView(engine: Engine, playerId: number) {
     .select({ o: tables.playerOffer, name: tables.player.name, col: tables.base.col, row: tables.base.row })
     .from(tables.playerOffer)
     .innerJoin(tables.player, eq(tables.player.id, tables.playerOffer.sellerId))
-    .leftJoin(tables.base, eq(tables.base.playerId, tables.playerOffer.sellerId))
+    // Mehrere Häfen: Hafen des Angebots (seller_base_id), bei älteren Angeboten der Heimathafen – je Angebot eine Zeile.
+    .leftJoin(tables.base, or(
+      eq(tables.base.id, tables.playerOffer.sellerBaseId),
+      and(isNull(tables.playerOffer.sellerBaseId), eq(tables.base.playerId, tables.playerOffer.sellerId), eq(tables.base.isHome, true)),
+    ))
     .where(and(eq(tables.playerOffer.status, "open"), visible))
     .orderBy(desc(tables.playerOffer.createdAt))
     .limit(100);

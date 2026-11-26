@@ -168,7 +168,7 @@ export async function stationArrive(tx: Tx, m: MissionRow, due: number): Promise
 }
 
 /** Rückruf durch den Besitzer oder Heimschicken durch den Gastgeber. Codes: no_mission, not_stationed. */
-export function stationRelease(engine: Engine, playerId: number, key: string, missionId: number) {
+export function stationRelease(engine: Engine, playerId: number, key: string, missionId: number, baseId?: number) { // P2: Hafen baseId, noch Heimathafen
   return runCommand<{ ok: true; returnAtMs: number }>(engine, playerId, key, "stationRelease", async (ctx) => {
     const [m] = await ctx.tx.select().from(tables.mission).where(eq(tables.mission.id, missionId)).for("update");
     if (!m || m.type !== STATION_TYPE) throw new GameError("no_mission");

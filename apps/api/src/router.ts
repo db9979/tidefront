@@ -26,7 +26,7 @@ import {
   upgrade,
 } from "@tidefront/engine";
 import { seasonRouter, socialRouter } from "./routers/social.ts";
-import { authed, t, wrap, type Ctx } from "./trpc.ts";
+import { authed, baseInput, baseRef, t, wrap, type Ctx } from "./trpc.ts";
 import { accountRouter, adminRouter, authExtras, pushRouter } from "./routers/ops.ts";
 import { afterRegister, inviteRouter } from "./routers/invite.ts";
 import { dailyRouter } from "./routers/daily.ts";
@@ -103,7 +103,7 @@ export const appRouter = t.router({
   }),
 
   base: t.router({
-    get: authed.query(({ ctx }) => baseView(ctx.engine, ctx.player.id)),
+    get: authed.input(baseInput).query(({ ctx, input }) => baseView(ctx.engine, ctx.player.id, input?.baseId)),
     choose: authed
       .input(z.object({
         key, ...field,
@@ -113,10 +113,10 @@ export const appRouter = t.router({
       }))
       .mutation(({ ctx, input }) => chooseBase(ctx.engine, ctx.player.id, input.key, input)),
     upgrade: authed
-      .input(z.object({ key, buildingId: z.string().max(40) }))
-      .mutation(({ ctx, input }) => upgrade(ctx.engine, ctx.player.id, input.key, input.buildingId)),
+      .input(z.object({ key, buildingId: z.string().max(40), ...baseRef }))
+      .mutation(({ ctx, input }) => upgrade(ctx.engine, ctx.player.id, input.key, input.buildingId, input.baseId)),
     cancelUpgrade: authed
-      .input(z.object({ key, buildingId: z.string().max(40).optional(), targetLevel: z.number().int().min(1).max(100).optional() }))
+      .input(z.object({ key, buildingId: z.string().max(40).optional(), targetLevel: z.number().int().min(1).max(100).optional(), ...baseRef }))
       .mutation(({ ctx, input }) =>
         cancelBuild(
           ctx.engine,
@@ -125,27 +125,28 @@ export const appRouter = t.router({
           input.buildingId !== undefined && input.targetLevel !== undefined
             ? { buildingId: input.buildingId, targetLevel: input.targetLevel }
             : undefined,
+          input.baseId,
         )),
     train: authed
-      .input(z.object({ key, id: z.string().max(40), count: z.number().int().min(1).max(10000) }))
-      .mutation(({ ctx, input }) => train(ctx.engine, ctx.player.id, input.key, input.id, input.count)),
+      .input(z.object({ key, id: z.string().max(40), count: z.number().int().min(1).max(10000), ...baseRef }))
+      .mutation(({ ctx, input }) => train(ctx.engine, ctx.player.id, input.key, input.id, input.count, input.baseId)),
     cancelTraining: authed
-      .input(z.object({ key, builtIn: z.string().max(40) }))
-      .mutation(({ ctx, input }) => cancelTrain(ctx.engine, ctx.player.id, input.key, input.builtIn)),
+      .input(z.object({ key, builtIn: z.string().max(40), ...baseRef }))
+      .mutation(({ ctx, input }) => cancelTrain(ctx.engine, ctx.player.id, input.key, input.builtIn, input.baseId)),
     nightShield: authed
-      .input(z.object({ key, startHour: z.number().int().min(0).max(23).nullable(), tzOffsetMinutes: z.number().int().min(-840).max(840) }))
-      .mutation(({ ctx, input }) => setNightShield(ctx.engine, ctx.player.id, input.key, input.startHour, input.tzOffsetMinutes)),
+      .input(z.object({ key, startHour: z.number().int().min(0).max(23).nullable(), tzOffsetMinutes: z.number().int().min(-840).max(840), ...baseRef }))
+      .mutation(({ ctx, input }) => setNightShield(ctx.engine, ctx.player.id, input.key, input.startHour, input.tzOffsetMinutes, input.baseId)),
   }),
 
   mission: t.router({
     preview: authed
-      .input(z.object({ type: z.string().max(20), units: counts, ...field, cargo: resources.optional(), eventId: z.number().int().min(1).optional(), admiralId: z.number().int().min(1).optional(), ...navalTarget }))
+      .input(z.object({ type: z.string().max(20), units: counts, ...field, cargo: resources.optional(), eventId: z.number().int().min(1).optional(), admiralId: z.number().int().min(1).optional(), ...navalTarget, ...baseRef }))
       .query(({ ctx, input }) => missionPreview(ctx.engine, ctx.player.id, input)),
     launch: authed
-      .input(z.object({ key, type: z.string().max(20), units: counts, ...field, cargo: resources.optional(), eventId: z.number().int().min(1).optional(), admiralId: z.number().int().min(1).optional(), ...navalTarget }))
+      .input(z.object({ key, type: z.string().max(20), units: counts, ...field, cargo: resources.optional(), eventId: z.number().int().min(1).optional(), admiralId: z.number().int().min(1).optional(), ...navalTarget, ...baseRef }))
       .mutation(({ ctx, input }) => launchMission(ctx.engine, ctx.player.id, input.key, input)),
     recall: authed
-      .input(z.object({ key, missionId: z.number().int().min(1) }))
+      .input(z.object({ key, missionId: z.number().int().min(1), ...baseRef })) // Rückruf über die Mission (baseId ohne Wirkung)
       .mutation(({ ctx, input }) => recallOwnMission(ctx.engine, ctx.player.id, input.key, input.missionId)),
   }),
 
@@ -159,7 +160,7 @@ export const appRouter = t.router({
   }),
 
   market: t.router({
-    get: authed.query(({ ctx }) => marketView(ctx.engine, ctx.player.id)),
+    get: authed.input(baseInput).query(({ ctx, input }) => marketView(ctx.engine, ctx.player.id, input?.baseId)),
     quote: authed
       .input(z.object({ side: z.enum(["buy", "sell"]), resource: z.string().max(20), qty: z.number().int().min(1).max(10_000_000) }))
       .query(({ ctx, input }) => marketQuote(ctx.engine, input)),
@@ -172,6 +173,7 @@ export const appRouter = t.router({
         resource: z.string().max(20),
         qty: z.number().int().min(1).max(10_000_000),
         expectedPrice: z.number().positive(),
+        ...baseRef,
       }))
       .mutation(({ ctx, input }) => trade(ctx.engine, ctx.player.id, input.key, input)),
   }),
