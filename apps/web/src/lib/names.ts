@@ -14,7 +14,7 @@ const NAMES: Record<string, string> = {
   weltereignis: "Weltereignis", weltereignis_leer: "Weltereignis",
   nachrichtendienst: "Nachrichtendienst", spion: "Spion", spionage: "Spionage", sabotage: "Sabotage",
   erkunden: "Erkunden", desinformation: "Desinformation", bauschlange: "Bauschlange",
-  anfaengerschutz: "Anfängerschutz", niederlage: "Schutz nach Niederlage", nachtschild: "Nachtschild",
+  anfaengerschutz: "Anfängerschutz", niederlage: "Schutz nach Niederlage", nachtschild: "Nachtschild", gruendungsschutz: "Gründungsschutz",
   sammelangriff: "Sammelangriff", stationierung: "Stationierung", // Allianz-Ops
   // See: Minen/Blockade/Konvoi
   minenleger: "Minenleger", minenraeumer: "Minenräumer", minen: "Minen legen", raeumen: "Minen räumen", blockade: "Blockade",
@@ -253,8 +253,14 @@ const ERRORS: Record<string, string> = {
   too_close: "Zu nah an einem anderen Hafen. Wähle ein Küstenfeld mit mehr Abstand.",
   home_only: "Das geht nur im Heimathafen.",
   harbor_level: "Dafür muss die Hafenkommandantur weiter ausgebaut sein.",
-  no_colony_ship: "Für die Gründung gehört ein Kolonieschiff in den Verband (Bau in der Werft).",
-  not_own_base: "Ziel muss einer deiner anderen Häfen sein.",
+  colony_ship: "Für die Gründung gehört genau ein Kolonieschiff in den Verband (Bau in der Werft ab Stufe 6).",
+  transfer_needs_own_base: "Ziel muss einer deiner anderen Häfen sein.",
+  command_level: "Die Kommandozentrale deines Heimathafens ist für einen weiteren Hafen noch zu klein.",
+  trade_port: "Hier liegt ein Handelshafen – dort kann man nicht gründen.",
+  resource_field: "Hier liegt ein Rohstofffeld – dort kann man nicht gründen.",
+  too_close_own: "Zu nah an einem deiner eigenen Häfen.",
+  same_base: "Ausgangs- und Zielhafen sind gleich.",
+  admiral_elsewhere: "Dieser Admiral gehört zu einem anderen Hafen.",
 };
 
 export function errorText(code: string): string {
