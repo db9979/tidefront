@@ -85,18 +85,20 @@ case "${1:-loop}" in
     psql -qAtc "update backup_request set status = 'failed', error = 'Sicherungsdienst neu gestartet', finished_at = now()
         where status = 'running'; delete from backup_request where created_at < now() - interval '90 days'" >/dev/null 2>&1 || true
     if [ "$(last_age)" -gt $((24 * 3600)) ]; then backup_once || echo "backup failed"; fi
-    target=$(next_daily)
-    while true; do
-      run_requests || echo "Auftrag fehlgeschlagen"
-      now=$(date +%s)
-      if [ "$now" -ge "$target" ]; then
-        backup_once || echo "backup failed"
-        target=$(next_daily)
-        continue
-      fi
-      wait_s=$((target - now))
-      [ "$wait_s" -gt "$POLL" ] && wait_s=$POLL
-      sleep "$wait_s"
-    done ;;
+    # Weiter im Takt: jede Runde lädt das Skript frisch (exec), damit Updates ohne Neustart des Dienstes wirken.
+    exec sh "$0" tick "$(next_daily)" ;;
+  tick)
+    target=${2:-$(next_daily)}
+    run_requests || echo "Auftrag fehlgeschlagen"
+    now=$(date +%s)
+    if [ "$now" -ge "$target" ]; then
+      backup_once || echo "backup failed"
+      target=$(next_daily)
+    fi
+    wait_s=$((target - $(date +%s)))
+    [ "$wait_s" -gt "$POLL" ] && wait_s=$POLL
+    [ "$wait_s" -lt 1 ] && wait_s=1
+    sleep "$wait_s"
+    exec sh "$0" tick "$target" ;;
   *) echo "unbekannt: $1" >&2; exit 2 ;;
 esac
