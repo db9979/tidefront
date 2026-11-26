@@ -24,7 +24,7 @@ Auslegungen stehen in `packages/game-core/ENTSCHEIDUNGEN.md` und `packages/game-
 - [x] Schwachziel-Regel, Wrack-Verfall und Bergung, Radar-Vorwarnzeit, Abbruch von Bau und Ausbildung: geregelt und umgesetzt.
 - [x] `anlage` der Bodentruppen wirkt gegen die Bunkerlinie, `kuestenbatterie.attack.land` feuert im Bodenkampf mit (A1, A3).
 - [x] Simulations-Runner: `npm run sim` (Kampf-Matrix und Bau-Bot). Ergebnisse und Balance-Hinweise in ENTSCHEIDUNGEN.md, Abschnitt C;
-  `balance.json` ist unverändert.
+  `balance.json` ist seit v1.1 angepasst (Kartell-Stärke mit Bodentruppen und Schwankung, Nest-Fahrplan über 28 Tage); siehe ENTSCHEIDUNGEN.md, Abschnitt C.
 - [x] Typprüfung: `npm run typecheck` (TypeScript mit `@types/node`) über alle Pakete und Tests.
 
 ## Festlegungen des Servers (Stand 2)
