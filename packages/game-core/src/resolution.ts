@@ -14,20 +14,23 @@ import { addResources, bunkerProtection, buildingLevel, settle } from "./economy
 import { upgradeCost } from "./buildings.ts";
 import { trainingCost } from "./units.ts";
 import { applyDefeatShield } from "./protection.ts";
+import type { Modifiers } from "./modifiers.ts";
+import { modValue } from "./modifiers.ts";
 
 const HOUR_MS = 3600000;
 const MINUTE_MS = 60000;
 
 // ---------------------------------------------------------------- Kampf vorbereiten
 
-/** Ein Stützpunkt als Verteidiger: Einheiten daheim, Anlagen, Bestände, Bunkerschutz. */
-export function defenderFromBase(base: BaseState, balance: Balance): DefenderInput {
+/** Ein Stützpunkt als Verteidiger: Einheiten daheim, Anlagen, Bestände, Bunkerschutz (mit `mods`, die auch im Kampf wirken). */
+export function defenderFromBase(base: BaseState, balance: Balance, mods?: Modifiers): DefenderInput {
   return {
     units: { ...base.units },
     defenses: { ...base.defenses },
     versorgungsmangel: base.versorgungsmangel,
     resources: { ...base.resources },
-    protectedPerResource: bunkerProtection(base, balance),
+    protectedPerResource: bunkerProtection(base, balance, mods),
+    ...(mods ? { modifiers: mods } : {}),
   };
 }
 
@@ -50,8 +53,8 @@ export function isWeakTarget(attackerStrength: number, targetStrength: number, b
  * Beute abziehen (nie unter 0), bei verlorener Verteidigung Schutz nach Niederlage.
  * Der Stützpunkt wird zuvor auf nowMs fortgeschrieben.
  */
-export function applyDefenseResult(base: BaseState, report: BattleReport, nowMs: number, balance: Balance): BaseState {
-  const next = settle(base, nowMs, balance);
+export function applyDefenseResult(base: BaseState, report: BattleReport, nowMs: number, balance: Balance, mods?: Modifiers): BaseState {
+  const next = settle(base, nowMs, balance, mods);
   for (const [id, n] of Object.entries(report.defender.final)) {
     if (Object.hasOwn(balance.defenses, id)) next.defenses[id] = n;
     else next.units[id] = n;
@@ -76,8 +79,9 @@ export function returnMission(
   cargo: ResourceMap,
   nowMs: number,
   balance: Balance,
+  mods?: Modifiers,
 ): BaseState {
-  const next = settle(base, nowMs, balance);
+  const next = settle(base, nowMs, balance, mods);
   for (const [id, n] of Object.entries(sent)) {
     next.unitsAway[id] = Math.max(0, (next.unitsAway[id] ?? 0) - n);
     if (next.unitsAway[id] === 0) delete next.unitsAway[id];
@@ -97,8 +101,8 @@ export function attackerReturning(report: BattleReport): Counts {
 }
 
 /** Transport am Ziel: Ladung wird dem Zielstützpunkt gutgeschrieben (auch über die Kapazität). */
-export function deliverCargo(base: BaseState, cargo: ResourceMap, nowMs: number, balance: Balance): BaseState {
-  const next = settle(base, nowMs, balance);
+export function deliverCargo(base: BaseState, cargo: ResourceMap, nowMs: number, balance: Balance, mods?: Modifiers): BaseState {
+  const next = settle(base, nowMs, balance, mods);
   next.resources = addResources(next.resources, cargo);
   return next;
 }
@@ -113,8 +117,8 @@ export interface ScoutReport {
 }
 
 /** Aufklärung am Ziel: Lagebild des fortgeschriebenen Zielstützpunkts. Bestände abgerundet. */
-export function scoutBase(target: BaseState, nowMs: number, balance: Balance): ScoutReport {
-  const s = settle(target, nowMs, balance);
+export function scoutBase(target: BaseState, nowMs: number, balance: Balance, targetMods?: Modifiers): ScoutReport {
+  const s = settle(target, nowMs, balance, targetMods);
   const resources: ResourceMap = {};
   for (const r of balance.resources) resources[r] = Math.floor(s.resources[r] ?? 0);
   return {
@@ -123,7 +127,7 @@ export function scoutBase(target: BaseState, nowMs: number, balance: Balance): S
     buildings: { ...s.buildings },
     units: { ...s.units },
     defenses: { ...s.defenses },
-    protectedPerResource: bunkerProtection(s, balance),
+    protectedPerResource: bunkerProtection(s, balance, targetMods),
   };
 }
 
@@ -168,12 +172,12 @@ export function salvageWreck(
 
 // ---------------------------------------------------------------- Radar
 
-/** Vorwarnzeit in Minuten: ohne Radarstation 0, sonst warningMinutesBase + warningMinutesPerLevel * L. */
-export function radarWarningMinutes(base: BaseState, balance: Balance): number {
+/** Vorwarnzeit in Minuten: ohne Radarstation 0, sonst (warningMinutesBase + warningMinutesPerLevel * L) mal `mods.radarWarning`. */
+export function radarWarningMinutes(base: BaseState, balance: Balance, mods?: Modifiers): number {
   const level = buildingLevel(base, "radarstation");
   if (level < 1) return 0;
   const def = balance.buildings.radarstation;
-  return (def.warningMinutesBase ?? 0) + (def.warningMinutesPerLevel ?? 0) * level;
+  return ((def.warningMinutesBase ?? 0) + (def.warningMinutesPerLevel ?? 0) * level) * modValue(mods, "radarWarning");
 }
 
 /** Ein anfliegender Angriff ist erkannt, sobald er innerhalb der Vorwarnzeit liegt (spätestens bei Ankunft). */
@@ -207,6 +211,7 @@ export function cancelUpgrade(
   nowMs: number,
   balance: Balance,
   index = 0,
+  mods?: Modifiers,
 ): Result<{ base: BaseState; refund: ResourceMap; removed: BuildOrder[] }> {
   const order = Number.isInteger(index) && index >= 0 ? base.buildQueue[index] : undefined;
   if (order === undefined) return { ok: false, code: "no_order" };
@@ -216,7 +221,7 @@ export function cancelUpgrade(
   let refund = scaled(cost, share);
   const removed: BuildOrder[] = [{ ...order }];
 
-  const next = settle(base, nowMs, balance);
+  const next = settle(base, nowMs, balance, mods);
   const levels: Counts = { ...next.buildings };
   const queue: BuildOrder[] = [];
   let prevEnd: number | null = null;
@@ -257,13 +262,14 @@ export function cancelTraining(
   builtIn: string,
   nowMs: number,
   balance: Balance,
+  mods?: Modifiers,
 ): Result<{ base: BaseState; refund: ResourceMap }> {
   const order = base.trainingQueue.find((o) => o.builtIn === builtIn);
   if (order === undefined) return { ok: false, code: "no_order" };
   if (nowMs >= order.finishesAt) return { ok: false, code: "already_finished" };
   const cost = trainingCost(order.id, order.count, balance);
   const refund = scaled(cost, refundShare(order.startedAt, order.finishesAt, nowMs));
-  const next = settle(base, nowMs, balance);
+  const next = settle(base, nowMs, balance, mods);
   next.trainingQueue = next.trainingQueue.filter((o) => o !== order && o.builtIn !== builtIn);
   next.resources = addResources(next.resources, refund);
   return { ok: true, base: next, refund };

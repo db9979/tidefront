@@ -2,7 +2,7 @@
 
 Verbindlich für `packages/game-core`. Alle Zahlen stehen in `packages/balance/v1/balance.json`
 und werden dort geändert, nie im Code. Zahlen sind Startwerte; Kartell und Piratennester sind seit Balance v1.1
-per Simulation abgestimmt, U-Boote seit v1.2 (`npm run sim`, Ergebnisse in `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt C).
+per Simulation abgestimmt, U-Boote seit v1.2, Forschung seit v1.3 (`npm run sim`, Ergebnisse in `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt C).
 
 ## Grundsätze
 
@@ -241,11 +241,12 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
   | Nachricht an Mitspieler | l | andere Spieler | 1 |
   | Beute machen | m/s | Werft und Kaserne | 1.500 / 4.000 × (1 + s/4) |
   | Überfall ohne eigene Verluste gewinnen | s | Werft und Kaserne | 1 |
+  | Forschung abschließen | m | Forschungsamt | 1 |
 
 - Fortschritt zählt nur für Geschehen am selben Spieltag (Zeitpunkt des Ereignisses) und nur nach der Vergabe:
   Ausbau, Ausbildung, Anlagen, Kampf, Aufklärung, Transport, Wrack und Beute aus den verarbeiteten Ereignissen,
   Börsenhandel (Kreditbetrag des Handels) und Bauschlange (höchste Länge) aus den Befehlen. Vorrat, Produktion,
-  Kommandozentrale und Nachrichten werden beim Abruf und beim Abholen aus dem Zustand gelesen.
+  Forschung zählt beim Abschluss (Ereignis). Kommandozentrale und Nachrichten werden beim Abruf und beim Abholen aus dem Zustand gelesen.
 - Belohnung je Befehl: Ressourcenpaket im Wert 400 / 1.000 / 2.500 × (1 + 0,3·s) (Stahl 40 %, Treibstoff 25 %,
   Elektronik 15 %, Proviant 20 %, auf 10 gerundet; s bei der Vergabe) und 3 / 6 / 12 Punkte der Kategorie Befehle.
   Abholen ist ein Befehl mit Idempotenz-Schlüssel und gelingt genau einmal; die Ressourcen werden auch über die
@@ -256,3 +257,69 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
   abgeschlossenen Tag an, wächst die Serie um 1, sonst beginnt sie bei 1. Serienbonus beim Abschluss: Tag 3 +10 Punkte,
   Tag 7 +25 Punkte, danach jeder 7. Tag 10 Punkte mehr (14: +35, 21: +45, …), dazu ein Ressourcenpaket im Wert
   Punkte × 150 × (1 + 0,3·s). Die Serie gilt als unterbrochen, wenn weder heute noch gestern abgeschlossen wurde.
+
+## Modifikatoren
+
+- Ein Modifikator ist ein Faktor auf einen Spielwert; fehlt er, gilt 1. Werte (Schlüssel in `Modifiers`):
+  Angriff je Gattung des Schützen (`attack.see|land|luft|anlage`), je verwendetem Angriffswert
+  (`attackVs.see|luft|land|anlage|uboot`, `uboot` = U-Jagd) und je Einheitentyp (`attackUnit.<id>`); Lebenspunkte je
+  Gattung (`hp.*`); Tempo je Gattung (`speed.see|luft`); Treibstoffverbrauch (`fuel`); Bauzeit Gebäude (`buildTime`);
+  Ausbildungszeit je ausführendem Gebäude (`trainingTime.werft|kaserne|flugfeld|anlagen`); Gebäudeproduktion je
+  Ressource (`production.*`, nicht die Grundrate); Lagerkapazität (`storage`); Bunkerschutz (`bunker`);
+  Radar-Vorwarnzeit (`radarWarning`); Ladekapazität (`cargo`); Beute-Anteil (`loot`, nur Anteilsbeute, nicht feste
+  Nestbeute); Minenschaden an den eigenen Landungstruppen (`mineDamage`); Tarnung (`stealth`: Faktor auf die
+  Vorwarnzeit, die das Ziel gegen eigene Überfälle hat); Forschungsdauer (`researchTime`).
+- **Kombination:** Quellen (Forschung, künftig Wetter, Admirale, Ereignisse) werden je Wert **multipliziert**.
+  Innerhalb einer Technik wirken Stufen additiv: Faktor = 1 + Wirkung je Stufe × Stufe.
+- Im Kampf gelten die Modifikatoren jeder Seite nur für ihre eigenen Einheiten und Anlagen (Lebenspunkte, Angriff);
+  der Angreifer bringt Minenschaden, Ladung und Beute-Anteil mit, der Verteidiger seinen Bunkerschutz.
+  Kartell und Piratennester haben keine Modifikatoren.
+- Reise: Tempo je Gattung vor der Wahl des langsamsten Schiffs (bzw. Flugzeugs); Treibstoff vor dem Aufrunden.
+- Bauzeit nach der Kappung durch `maxBuildSeconds`. Produktion und Lager wirken in der Fortschreibung; ändern sie
+  sich (Forschung fertig), wird zuvor bis zu diesem Zeitpunkt fortgeschrieben.
+
+## Forschung
+
+- Gebäude **Forschungsamt** (`research.building`). Es läuft höchstens **eine** Forschung je Stützpunkt.
+- Technik `t` von Stufe L auf L+1: Kosten `cost * research.costFactor^L` (je Ressource aufgerundet, beim Start bezahlt),
+  Dauer `seconds * research.timeFactor^L / (1 + researchSpeedPerLevel * (Stufe Forschungsamt − 1))`.
+- Voraussetzungen: Forschungsamt mindestens Stufe 1 bzw. `requiresBuildingLevel` (3 oder 5), Vorgänger-Techniken
+  mit Mindeststufe (`requires`), Höchststufe `maxLevel` (1–3). Wirkung je Stufe 5–12 %; voll erforscht höchstens
+  ±25 % in einem Bereich.
+- Abbruch: Erstattung nach Restzeit (abgerundet), wie beim Ausbau.
+- Zweige und Techniken (v1.3; Wirkung je Stufe × Höchststufe, Rang = nötige Stufe des Forschungsamts):
+
+  | Zweig | Technik | Wirkung je Stufe | Stufen | Rang | Voraussetzung |
+  |---|---|---|---|---|---|
+  | Seefahrt | Dampfturbinen | Tempo Schiffe +8 % | 3 | 1 | – |
+  | Seefahrt | Schiffspanzerung | Lebenspunkte Schiffe +6 % | 3 | 1 | – |
+  | Seefahrt | Sonar | U-Jagd +10 % | 2 | 3 | Dampfturbinen 1 |
+  | Seefahrt | Prisenrecht | Beute-Anteil +10 % | 2 | 3 | Schiffspanzerung 1 |
+  | Seefahrt | Torpedoleitsysteme | Angriff U-Boote +8 % | 3 | 5 | Sonar 1 |
+  | Heer | Infanteriewaffen | Angriff Bodentruppen +5 % | 2 | 1 | – |
+  | Heer | Drillausbildung | Ausbildungszeit Kaserne −10 % | 2 | 1 | – |
+  | Heer | Verbundpanzerung | Lebenspunkte Bodentruppen +5 % | 3 | 3 | Infanteriewaffen 1 |
+  | Heer | Pioniertechnik | Minenschaden −12 % | 2 | 3 | Drillausbildung 1 |
+  | Heer | Festungsbau | Lebenspunkte Anlagen +8 % | 3 | 5 | Pioniertechnik 1 |
+  | Luftfahrt | Funkmesstechnik | Radar-Vorwarnzeit +12 % | 2 | 1 | – |
+  | Luftfahrt | Strahltriebwerke | Tempo Flugzeuge +8 % | 3 | 1 | – |
+  | Luftfahrt | Luftkampftaktik | Angriff gegen Luftziele +6 % | 3 | 3 | Funkmesstechnik 1 |
+  | Luftfahrt | Tarnanstrich | Vorwarnzeit des Gegners −10 % | 2 | 3 | Funkmesstechnik 2 |
+  | Luftfahrt | Präzisionsbomben | Angriff Jagdbomber +8 % | 3 | 5 | Luftkampftaktik 1 |
+  | Wirtschaft | Hochofen | Stahlproduktion +8 % | 3 | 1 | – |
+  | Wirtschaft | Logistik | Treibstoff −8 %, Ladekapazität +8 % | 3 | 1 | – |
+  | Wirtschaft | Lagertechnik | Lagerkapazität +10 % | 2 | 1 | – |
+  | Wirtschaft | Fertigbau | Bauzeit Gebäude −8 % | 3 | 3 | Hochofen 1 |
+  | Wirtschaft | Stahlbetonbunker | Bunkerschutz +12 % | 2 | 3 | Lagertechnik 1 |
+
+- **Durchbruch-Würfel:** Jede abgeschlossene Forschung würfelt einen Prozentwurf (W100, 1–100). Die Chance steht vor
+  dem Start offen im Info-Blatt und wird beim Start festgehalten: `baseChance + perBuildingLevel * Stufe Forschungsamt`,
+  höchstens `maxChance` (v1.3: 10 % + 2 Punkte je Stufe, höchstens 25 %). Durchbruch, wenn der Wurf ≤ Chance × 100.
+  Der Wurf ist deterministisch aus einem beim Start gespeicherten Seed, wird beim Abschluss (Ereignis
+  `research_complete`) gezogen und mit Technik, Stufe, Chance und Ergebnis gespeichert.
+- Bei einem Durchbruch wählt der Spieler eine Belohnung: (a) die gerade erforschte Technik erhält eine Stufe zusätzlich,
+  sofern sie noch nicht auf Höchststufe ist, sonst automatisch (b); (b) die nächste gestartete Forschung dauert
+  `speedFactor` (0,5) so lange – genau einmal; wird diese Forschung abgebrochen, bleibt die Belohnung erhalten. Bis zur
+  Wahl kann keine neue Forschung beginnen. Dieselbe Wahl erneut ändert nichts; eine andere wird abgelehnt.
+  Durchbrüche kosten nichts und setzen nichts ein. Bei Durchbruch gibt es eine Systemnachricht und eine Benachrichtigung.
+- Forschung gilt **je Saison**: Mit dem Stützpunkt wird sie zum Saisonende gelöscht.

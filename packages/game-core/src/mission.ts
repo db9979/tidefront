@@ -13,6 +13,8 @@ import { hasResources, settle, subtractResources } from "./economy.ts";
 import { commandPoints, missionSlots } from "./buildings.ts";
 import { distanceKm } from "./geo.ts";
 import { protectionStatus, suspendNightShield } from "./protection.ts";
+import type { Modifiers } from "./modifiers.ts";
+import { modEntry, modValue } from "./modifiers.ts";
 
 export const MISSION_TYPES: readonly MissionType[] = ["ueberfall", "aufklaerung", "transport"];
 
@@ -23,8 +25,8 @@ function entries(units: Counts): [string, number][] {
   return Object.entries(units).filter(([, n]) => n !== 0);
 }
 
-/** Summen eines Verbands: Kommandopunkte, Truppengröße, Truppenraum, Ladekapazität. */
-export function fleetTotals(units: Counts, balance: Balance): Omit<FleetCheck, "commandPointsAvailable"> {
+/** Summen eines Verbands: Kommandopunkte, Truppengröße, Truppenraum, Ladekapazität (mal `mods.cargo`). */
+export function fleetTotals(units: Counts, balance: Balance, mods?: Modifiers): Omit<FleetCheck, "commandPointsAvailable"> {
   let commandPointsUsed = 0;
   let troopSize = 0;
   let troopSpace = 0;
@@ -37,7 +39,7 @@ export function fleetTotals(units: Counts, balance: Balance): Omit<FleetCheck, "
     troopSpace += (def.troopSpace ?? 0) * n;
     cargoCapacity += (def.cargo ?? 0) * n;
   }
-  return { commandPointsUsed, troopSize, troopSpace, cargoCapacity };
+  return { commandPointsUsed, troopSize, troopSpace, cargoCapacity: cargoCapacity * modValue(mods, "cargo") };
 }
 
 /**
@@ -50,6 +52,7 @@ export function validateFleet(
   units: Counts,
   distance: number,
   balance: Balance,
+  mods?: Modifiers,
 ): Result<{ check: FleetCheck }> {
   const list = entries(units);
   if (list.length === 0) return { ok: false, code: "empty_fleet" };
@@ -58,7 +61,7 @@ export function validateFleet(
     if (!Number.isInteger(n) || n < 0) return { ok: false, code: "bad_count" };
     if ((base.units[id] ?? 0) < n) return { ok: false, code: "units_unavailable" };
   }
-  const totals = fleetTotals(units, balance);
+  const totals = fleetTotals(units, balance, mods);
   const available = commandPoints(base, balance);
   // Kleine Toleranz gegen Gleitkomma-Summen (z. B. 0.15 * 400).
   if (totals.commandPointsUsed > available + 1e-9) return { ok: false, code: "command_points" };
@@ -73,35 +76,36 @@ export function validateFleet(
 
 /**
  * Maßgebliche Geschwindigkeit: das langsamste Schiff; ohne Schiffe das langsamste Flugzeug.
- * null, wenn der Verband weder Schiffe noch Flugzeuge enthält.
+ * null, wenn der Verband weder Schiffe noch Flugzeuge enthält. `mods.speed` je Gattung.
  */
-export function slowestSpeedKmh(units: Counts, balance: Balance): number | null {
+export function slowestSpeedKmh(units: Counts, balance: Balance, mods?: Modifiers): number | null {
   let ship: number | null = null;
   let air: number | null = null;
   for (const [id, n] of entries(units)) {
     const def = balance.units[id];
     if (def === undefined || n <= 0 || def.speedKmh === undefined) continue;
-    if (def.branch === "see") ship = ship === null ? def.speedKmh : Math.min(ship, def.speedKmh);
-    if (def.branch === "luft") air = air === null ? def.speedKmh : Math.min(air, def.speedKmh);
+    const v = def.speedKmh * modEntry(mods, "speed", def.branch);
+    if (def.branch === "see") ship = ship === null ? v : Math.min(ship, v);
+    if (def.branch === "luft") air = air === null ? v : Math.min(air, v);
   }
   return ship ?? air;
 }
 
 /** Reisezeit für eine Strecke in Sekunden; null ohne Schiffe und Flugzeuge. */
-export function travelSeconds(units: Counts, distance: number, balance: Balance): number | null {
-  const speed = slowestSpeedKmh(units, balance);
+export function travelSeconds(units: Counts, distance: number, balance: Balance, mods?: Modifiers): number | null {
+  const speed = slowestSpeedKmh(units, balance, mods);
   if (speed === null || speed <= 0) return null;
   return (distance / speed) * 3600;
 }
 
-/** Treibstoff für Hin- und Rückweg, aufgerundet. */
-export function fuelCost(units: Counts, distance: number, balance: Balance): number {
+/** Treibstoff für Hin- und Rückweg, aufgerundet (`mods.fuel` vor dem Aufrunden). */
+export function fuelCost(units: Counts, distance: number, balance: Balance, mods?: Modifiers): number {
   let sum = 0;
   for (const [id, n] of entries(units)) {
     sum += ((balance.units[id]?.fuelPer100Km ?? 0) * n * distance) / 100;
   }
   // Rundung auf 9 Nachkommastellen vor dem Aufrunden, damit 7.000000000001 nicht 8 kostet.
-  return Math.ceil(Math.round(sum * ROUND_TRIP_FACTOR * 1e9) / 1e9);
+  return Math.ceil(Math.round(sum * ROUND_TRIP_FACTOR * modValue(mods, "fuel") * 1e9) / 1e9);
 }
 
 /**
@@ -115,13 +119,14 @@ export function planMission(
   input: MissionInput,
   nowMs: number,
   balance: Balance,
+  mods?: Modifiers,
 ): Result<{ base: BaseState; mission: Mission }> {
   if (!(MISSION_TYPES as readonly string[]).includes(input.type)) return { ok: false, code: "bad_type" };
   const type = input.type as MissionType;
   if (input.activeMissions >= missionSlots(base, balance)) return { ok: false, code: "no_mission_slot" };
 
   const distance = distanceKm(input.origin, input.target);
-  const fleet = validateFleet(base, input.units, distance, balance);
+  const fleet = validateFleet(base, input.units, distance, balance, mods);
   if (!fleet.ok) return fleet;
 
   if (type === "ueberfall" && input.targetProtection !== undefined) {
@@ -141,8 +146,8 @@ export function planMission(
   }
   if (cargoTotal > fleet.check.cargoCapacity) return { ok: false, code: "cargo_capacity" };
 
-  const next = settle(base, nowMs, balance);
-  const fuel = fuelCost(input.units, distance, balance);
+  const next = settle(base, nowMs, balance, mods);
+  const fuel = fuelCost(input.units, distance, balance, mods);
   if ((next.resources.treibstoff ?? 0) < fuel) return { ok: false, code: "fuel" };
   next.resources = subtractResources(next.resources, { treibstoff: fuel });
   if (!hasResources(next.resources, cargo)) return { ok: false, code: "insufficient_resources" };
@@ -158,7 +163,7 @@ export function planMission(
     next.protection = suspendNightShield(next.protection, nowMs, balance);
   }
 
-  const seconds = travelSeconds(input.units, distance, balance) ?? 0;
+  const seconds = travelSeconds(input.units, distance, balance, mods) ?? 0;
   const travelMs = Math.ceil(seconds * 1000);
   const mission: Mission = {
     type,
@@ -172,6 +177,7 @@ export function planMission(
     departAtMs: nowMs,
     arriveAtMs: nowMs + travelMs,
     returnAtMs: nowMs + 2 * travelMs,
+    ...(mods?.stealth !== undefined && mods.stealth !== 1 ? { warningFactor: mods.stealth } : {}),
   };
   return { ok: true, base: next, mission };
 }

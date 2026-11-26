@@ -26,3 +26,5 @@ export * from "./backups.ts";
 export * from "./adminstats.ts";
 export * from "./comfort.ts";
 export * from "./summary.ts";
+export * from "./modifiers.ts";
+export { researchStart, researchCancel, researchChoose, researchView, TECH_NAMES } from "./research.ts";

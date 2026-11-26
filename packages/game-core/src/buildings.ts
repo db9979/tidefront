@@ -1,5 +1,7 @@
 import type { Balance, BaseState, BuildOrder, ResourceMap, Result } from "./types.ts";
 import { buildingLevel, hasResources, settle, subtractResources } from "./economy.ts";
+import type { Modifiers } from "./modifiers.ts";
+import { modValue } from "./modifiers.ts";
 
 /** Kosten für den Ausbau von Stufe `level` auf `level + 1`, je Ressource aufgerundet. */
 export function upgradeCost(buildingId: string, level: number, balance: Balance): ResourceMap {
@@ -11,10 +13,10 @@ export function upgradeCost(buildingId: string, level: number, balance: Balance)
   return cost;
 }
 
-/** Bauzeit in Sekunden für den Ausbau von Stufe `level` auf `level + 1`. */
-export function upgradeSeconds(buildingId: string, level: number, balance: Balance): number {
+/** Bauzeit in Sekunden für den Ausbau von Stufe `level` auf `level + 1` (`mods.buildTime` nach der Kappung). */
+export function upgradeSeconds(buildingId: string, level: number, balance: Balance, mods?: Modifiers): number {
   const def = balance.buildings[buildingId];
-  return Math.min(balance.building.maxBuildSeconds, def.seconds * balance.building.timeFactor ** level);
+  return Math.min(balance.building.maxBuildSeconds, def.seconds * balance.building.timeFactor ** level) * modValue(mods, "buildTime");
 }
 
 /** Stufe nach allen eingereihten Aufträgen dieses Gebäudes (ohne Auftrag: die aktuelle Stufe). */
@@ -60,8 +62,8 @@ export function harborCreditLimit(base: BaseState, balance: Balance): number {
 }
 
 /** Dauer eines Ausbauauftrags in Millisekunden (Bauzeit nach der Zielstufe). */
-export function upgradeDurationMs(buildingId: string, targetLevel: number, balance: Balance): number {
-  return Math.ceil(upgradeSeconds(buildingId, targetLevel - 1, balance) * 1000);
+export function upgradeDurationMs(buildingId: string, targetLevel: number, balance: Balance, mods?: Modifiers): number {
+  return Math.ceil(upgradeSeconds(buildingId, targetLevel - 1, balance, mods) * 1000);
 }
 
 /**
@@ -75,13 +77,14 @@ export function startUpgrade(
   buildingId: string,
   nowMs: number,
   balance: Balance,
+  mods?: Modifiers,
 ): Result<{ base: BaseState; order: BuildOrder }> {
   if (!Object.hasOwn(balance.buildings, buildingId)) return { ok: false, code: "unknown_building" };
   if (base.buildQueue.length >= balance.building.queueSlots) return { ok: false, code: "queue_full" };
   const level = plannedLevel(base, buildingId);
   if (level + 1 > balance.building.maxLevel) return { ok: false, code: "max_level" };
   if (level + 1 > maxAllowedLevel(base, buildingId, balance)) return { ok: false, code: "command_cap" };
-  const next = settle(base, nowMs, balance);
+  const next = settle(base, nowMs, balance, mods);
   const cost = upgradeCost(buildingId, level, balance);
   if (!hasResources(next.resources, cost)) return { ok: false, code: "insufficient_resources" };
   next.resources = subtractResources(next.resources, cost);
@@ -91,7 +94,7 @@ export function startUpgrade(
     buildingId,
     targetLevel: level + 1,
     startedAt,
-    finishesAt: startedAt + upgradeDurationMs(buildingId, level + 1, balance),
+    finishesAt: startedAt + upgradeDurationMs(buildingId, level + 1, balance, mods),
   };
   next.buildQueue = [...next.buildQueue, order];
   return { ok: true, base: next, order: { ...order } };
@@ -106,6 +109,7 @@ export function completeUpgrade(
   base: BaseState,
   nowMs: number,
   balance: Balance,
+  mods?: Modifiers,
 ): Result<{ base: BaseState; completed: BuildOrder[] }> {
   const first = base.buildQueue[0];
   if (first === undefined) return { ok: false, code: "no_order" };
@@ -114,11 +118,11 @@ export function completeUpgrade(
   const completed: BuildOrder[] = [];
   while (cur.buildQueue.length > 0 && cur.buildQueue[0].finishesAt <= nowMs) {
     const order = cur.buildQueue[0];
-    const atFinish = settle(cur, order.finishesAt, balance);
+    const atFinish = settle(cur, order.finishesAt, balance, mods);
     atFinish.buildings[order.buildingId] = Math.max(atFinish.buildings[order.buildingId] ?? 0, order.targetLevel);
     atFinish.buildQueue = atFinish.buildQueue.slice(1);
     completed.push({ ...order });
     cur = atFinish;
   }
-  return { ok: true, base: settle(cur, nowMs, balance), completed };
+  return { ok: true, base: settle(cur, nowMs, balance, mods), completed };
 }

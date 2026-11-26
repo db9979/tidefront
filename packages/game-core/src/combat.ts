@@ -24,7 +24,10 @@ import {
   pick,
   totalHp,
   volley,
+  withModifiers,
 } from "./combat-stats.ts";
+import type { Modifiers } from "./modifiers.ts";
+import { modValue } from "./modifiers.ts";
 
 /** "Pioniere halbieren den Schaden" der Minensperren (REGELN.md, Abschnitt Kampf). */
 export const PIONEER_MINE_FACTOR = 0.5;
@@ -34,7 +37,7 @@ export const PHASE_NAMES: readonly PhaseName[] = ["luftkampf", "luftschlag", "ub
 /**
  * Beute nach einem Sieg. Feste Beute (Piratennest) oder Anteil am ungeschützten Bestand mal
  * Wiederholungsfaktor (und bei Schwachzielen mal weakTargetLootFactor); insgesamt durch die Ladekapazität begrenzt, bei Knappheit proportional
- * gekürzt; je Ressource abgerundet.
+ * gekürzt; je Ressource abgerundet. `mods.loot` (Angreifer) wirkt auf den Anteil, nicht auf feste Beute.
  */
 export function computeLoot(
   defender: Pick<DefenderInput, "resources" | "protectedPerResource" | "fixedLoot">,
@@ -42,6 +45,7 @@ export function computeLoot(
   priorAttacksInWindow: number,
   balance: Balance,
   weakTarget = false,
+  mods?: Modifiers,
 ): ResourceMap {
   const raw: ResourceMap = {};
   let total = 0;
@@ -53,7 +57,7 @@ export function computeLoot(
       amount = defender.fixedLoot[r] ?? 0;
     } else {
       const unprotected = Math.max(0, (defender.resources?.[r] ?? 0) - (defender.protectedPerResource ?? 0));
-      amount = unprotected * balance.loot.maxShareOfUnprotected * repeat;
+      amount = unprotected * balance.loot.maxShareOfUnprotected * modValue(mods, "loot") * repeat;
       if (weakTarget) amount *= balance.loot.weakTargetLootFactor;
     }
     raw[r] = Math.max(0, amount);
@@ -68,6 +72,8 @@ export function computeLoot(
 /**
  * Trägt einen Kampf in fünf Phasen aus (Luftkampf, Luftschlag, U-Boot-Angriff, Seegefecht, Landung).
  * Rein und deterministisch: gleicher Seed und gleiche Eingabe ergeben denselben Bericht.
+ * Modifikatoren wirken je Seite getrennt (attacker.modifiers, defender.modifiers): Lebenspunkte und Angriff
+ * über eine eigene Werte-Tabelle je Seite, Minenschaden und Ladung/Beute beim Angreifer.
  * Codes: unknown_unit, bad_count.
  */
 export function resolveBattle(
@@ -77,6 +83,9 @@ export function resolveBattle(
   seed: number,
 ): Result<{ report: BattleReport }> {
   const table = buildStats(balance);
+  // Eine Werte-Tabelle je Seite; ohne Modifikatoren ist es dieselbe.
+  const tA = withModifiers(table, attacker.modifiers);
+  const tD = withModifiers(table, defender.modifiers);
   const isUnit = (id: string) => Object.hasOwn(table.byId, id) && table.byId[id].kind !== "defense";
   const isDefense = (id: string) => Object.hasOwn(table.byId, id) && table.byId[id].kind === "defense";
 
@@ -111,28 +120,28 @@ export function resolveBattle(
     const draft = beginPhase("luftkampf", A, D);
     const isFighter = (s: Stat) => s.kind === "fighter";
     let skip: string | null = null;
-    const hasA = pick(table, A, isFighter).length > 0;
-    const hasD = pick(table, D, isFighter).length > 0;
+    const hasA = pick(tA, A, isFighter).length > 0;
+    const hasD = pick(tD, D, isFighter).length > 0;
     if (!hasA && !hasD) skip = "no_fighters";
     else if (!hasA || !hasD) skip = "no_opponent";
     else {
       while (draft.rounds < maxRounds) {
-        const fa = pick(table, A, isFighter);
-        const fd = pick(table, D, isFighter);
+        const fa = pick(tA, A, isFighter);
+        const fd = pick(tD, D, isFighter);
         if (fa.length === 0 || fd.length === 0) break;
         draft.rounds++;
         const ra = randomFactor(rng, spread);
         const rd = randomFactor(rng, spread);
         const toD = volley(fa, fd, (s) => withMorale(moraleA, s.attack.luft, s), ra, draft.damage.attacker);
         const toA = volley(fd, fa, (s) => withMorale(moraleD, s.attack.luft, s), rd, draft.damage.defender);
-        applyDamage(table, D, toD, carryD);
-        applyDamage(table, A, toA, carryA);
+        applyDamage(tD, D, toD, carryD);
+        applyDamage(tA, A, toA, carryA);
       }
     }
     phases.push(endPhase(draft, A, D, skip, table));
   }
-  const fighterHpA = totalHp(pick(table, A, (s) => s.kind === "fighter"));
-  const fighterHpD = totalHp(pick(table, D, (s) => s.kind === "fighter"));
+  const fighterHpA = totalHp(pick(tA, A, (s) => s.kind === "fighter"));
+  const fighterHpD = totalHp(pick(tD, D, (s) => s.kind === "fighter"));
   const airSuperiority: Side | null =
     fighterHpA > fighterHpD ? "attacker" : fighterHpD > fighterHpA ? "defender" : null;
 
@@ -147,52 +156,52 @@ export function resolveBattle(
     const bomberFactor = (side: Side) =>
       airSuperiority === null ? 1 : airSuperiority === side ? c.airSuperiorityBomberBonus : c.airSuperiorityBomberMalus;
     let skip: string | null = null;
-    if (pick(table, A, isBomber).length === 0 && pick(table, D, isBomber).length === 0) {
+    if (pick(tA, A, isBomber).length === 0 && pick(tD, D, isBomber).length === 0) {
       skip = "no_bombers";
     } else {
       while (draft.rounds < maxRounds) {
-        const canA = pick(table, A, isBomber).length > 0 && pick(table, D, strikeTarget).length > 0;
-        const canD = pick(table, D, isBomber).length > 0 && pick(table, A, strikeTarget).length > 0;
+        const canA = pick(tA, A, isBomber).length > 0 && pick(tD, D, strikeTarget).length > 0;
+        const canD = pick(tD, D, isBomber).length > 0 && pick(tA, A, strikeTarget).length > 0;
         if (!canA && !canD) break;
         draft.rounds++;
         // Zuerst die Flugabwehr (Flak und Schiffe) auf die Bomber.
         const ra = randomFactor(rng, spread);
         const rd = randomFactor(rng, spread);
         const flakOnA = volley(
-          pick(table, D, firesAtAir),
-          pick(table, A, isBomber),
+          pick(tD, D, firesAtAir),
+          pick(tA, A, isBomber),
           (s) => withMorale(moraleD, s.attack.luft, s),
           rd,
           draft.damage.defender,
         );
         const flakOnD = volley(
-          pick(table, A, firesAtAir),
-          pick(table, D, isBomber),
+          pick(tA, A, firesAtAir),
+          pick(tD, D, isBomber),
           (s) => withMorale(moraleA, s.attack.luft, s),
           ra,
           draft.damage.attacker,
         );
-        applyDamage(table, A, flakOnA, carryA);
-        applyDamage(table, D, flakOnD, carryD);
+        applyDamage(tA, A, flakOnA, carryA);
+        applyDamage(tD, D, flakOnD, carryD);
         // Dann schlagen die überlebenden Bomber beider Seiten gleichzeitig zu.
         const sa = randomFactor(rng, spread);
         const sd = randomFactor(rng, spread);
         const strikeOnD = volley(
-          pick(table, A, isBomber),
-          pick(table, D, strikeTarget),
+          pick(tA, A, isBomber),
+          pick(tD, D, strikeTarget),
           (s, t) => withMorale(moraleA, strikeValue(s, t), s),
           sa * bomberFactor("attacker"),
           draft.damage.attacker,
         );
         const strikeOnA = volley(
-          pick(table, D, isBomber),
-          pick(table, A, strikeTarget),
+          pick(tD, D, isBomber),
+          pick(tA, A, strikeTarget),
           (s, t) => withMorale(moraleD, strikeValue(s, t), s),
           sd * bomberFactor("defender"),
           draft.damage.defender,
         );
-        applyDamage(table, D, strikeOnD, carryD);
-        applyDamage(table, A, strikeOnA, carryA);
+        applyDamage(tD, D, strikeOnD, carryD);
+        applyDamage(tA, A, strikeOnA, carryA);
       }
       if (draft.rounds === 0) skip = "no_targets";
     }
@@ -208,19 +217,19 @@ export function resolveBattle(
     const draft = beginPhase("ubootangriff", A, D);
     const salvos = balance.combat.torpedoSalvos ?? 1;
     let skip: string | null = null;
-    if (pick(table, A, isSub).length === 0 && pick(table, D, isSub).length === 0) skip = "no_submarines";
+    if (pick(tA, A, isSub).length === 0 && pick(tD, D, isSub).length === 0) skip = "no_submarines";
     else {
       while (draft.rounds < salvos) {
-        const canA = pick(table, A, isSub).length > 0 && pick(table, D, isSurface).length > 0;
-        const canD = pick(table, D, isSub).length > 0 && pick(table, A, isSurface).length > 0;
+        const canA = pick(tA, A, isSub).length > 0 && pick(tD, D, isSurface).length > 0;
+        const canD = pick(tD, D, isSub).length > 0 && pick(tA, A, isSurface).length > 0;
         if (!canA && !canD) break;
         draft.rounds++;
         const ra = randomFactor(rng, spread);
         const rd = randomFactor(rng, spread);
-        const toD = volley(pick(table, A, isSub), pick(table, D, isSurface), (s) => withMorale(moraleA, s.attack.see, s), ra, draft.damage.attacker);
-        const toA = volley(pick(table, D, isSub), pick(table, A, isSurface), (s) => withMorale(moraleD, s.attack.see, s), rd, draft.damage.defender);
-        applyDamage(table, D, toD, carryD);
-        applyDamage(table, A, toA, carryA);
+        const toD = volley(pick(tA, A, isSub), pick(tD, D, isSurface), (s) => withMorale(moraleA, s.attack.see, s), ra, draft.damage.attacker);
+        const toA = volley(pick(tD, D, isSub), pick(tA, A, isSurface), (s) => withMorale(moraleD, s.attack.see, s), rd, draft.damage.defender);
+        applyDamage(tD, D, toD, carryD);
+        applyDamage(tA, A, toA, carryA);
       }
       if (draft.rounds === 0) skip = "no_targets";
     }
@@ -239,14 +248,14 @@ export function resolveBattle(
     // U-Jagd: Wasserbomben (`uboot`) gegen getauchte U-Boote, zusätzlich zur Salve über Wasser.
     const hunter = (s: Stat) => s.attack.uboot > 0;
     let skip: string | null = null;
-    const hasA = pick(table, A, isShip).length > 0;
-    const hasD = pick(table, D, defSea).length > 0;
+    const hasA = pick(tA, A, isShip).length > 0;
+    const hasD = pick(tD, D, defSea).length > 0;
     if (!hasA && !hasD) skip = "no_ships";
     else if (!hasA || !hasD) skip = "no_opponent";
     else {
       while (draft.rounds < maxRounds) {
-        const sa = pick(table, A, isShip);
-        const sd = pick(table, D, defSea);
+        const sa = pick(tA, A, isShip);
+        const sd = pick(tD, D, defSea);
         if (sa.length === 0 || sd.length === 0) break;
         // Ende, wenn niemand mehr jemanden treffen kann (z. B. U-Boote gegen Küstenbatterien, keine U-Jagd).
         const hitValue = (s: Stat, t: Stat) => (isSub(t) ? s.attack.uboot : seaValue(s, t));
@@ -255,15 +264,15 @@ export function resolveBattle(
         draft.rounds++;
         const ra = randomFactor(rng, spread);
         const rd = randomFactor(rng, spread);
-        const toD = volley(sa, pick(table, D, (s) => defSea(s) && surfaceTarget(s)), (s, t) => withMorale(moraleA, seaValue(s, t), s), ra, draft.damage.attacker);
-        const toA = volley(sd, pick(table, A, surfaceTarget), (s) => withMorale(moraleD, s.attack.see, s), rd, draft.damage.defender);
+        const toD = volley(sa, pick(tD, D, (s) => defSea(s) && surfaceTarget(s)), (s, t) => withMorale(moraleA, seaValue(s, t), s), ra, draft.damage.attacker);
+        const toA = volley(sd, pick(tA, A, surfaceTarget), (s) => withMorale(moraleD, s.attack.see, s), rd, draft.damage.defender);
         // Gleicher Zufallsfaktor wie die Salve über Wasser: ohne U-Boote ändert sich nichts am Zufallsstrom.
         const asw = (from: typeof sa, to: typeof sa, morale: number, r: number, dealt: Record<string, number>) =>
           volley(from.filter(([s]) => hunter(s)), to.filter(([s]) => isSub(s)), (s) => withMorale(morale, s.attack.uboot, s), r, dealt);
         const subD = asw(sa, sd, moraleA, ra, draft.damage.attacker);
         const subA = asw(sd, sa, moraleD, rd, draft.damage.defender);
-        applyDamage(table, D, { ...toD, ...subD }, carryD);
-        applyDamage(table, A, { ...toA, ...subA }, carryA);
+        applyDamage(tD, D, { ...toD, ...subD }, carryD);
+        applyDamage(tA, A, { ...toA, ...subA }, carryA);
       }
       if (draft.rounds === 0) skip = "no_targets";
     }
@@ -285,54 +294,54 @@ export function resolveBattle(
       if (n > 0) capacity += (table.byId[id].troopSpace + (attacker.troopSpaceBonus?.[id] ?? 0)) * n;
     }
     let needed = 0;
-    for (const [s, n] of pick(table, A, isGround)) needed += s.size * n;
+    for (const [s, n] of pick(tA, A, isGround)) needed += s.size * n;
     if (needed > capacity) {
       const scale = capacity / needed;
-      for (const [s, n] of pick(table, A, isGround)) A[s.id] = Math.floor(n * scale + 1e-9);
+      for (const [s, n] of pick(tA, A, isGround)) A[s.id] = Math.floor(n * scale + 1e-9);
     }
 
     if (capacity <= 0) skip = "no_landing_ships";
-    else if (pick(table, A, isGround).length === 0) skip = "no_troops";
+    else if (pick(tA, A, isGround).length === 0) skip = "no_troops";
     else {
       landed = true;
       // Minensperren wirken einmal; Pioniere im Landungsverband halbieren den Schaden.
       let mineDamage = 0;
-      for (const [s, n] of pick(table, D, (x) => x.oneShot > 0)) {
-        const d = s.oneShot * n * ((A.pioniere ?? 0) > 0 ? PIONEER_MINE_FACTOR : 1);
+      for (const [s, n] of pick(tD, D, (x) => x.oneShot > 0)) {
+        const d = s.oneShot * n * ((A.pioniere ?? 0) > 0 ? PIONEER_MINE_FACTOR : 1) * modValue(attacker.modifiers, "mineDamage");
         mineDamage += d;
         draft.damage.defender[s.id] = (draft.damage.defender[s.id] ?? 0) + d;
       }
       if (mineDamage > 0) {
-        const troops = pick(table, A, isGround);
+        const troops = pick(tA, A, isGround);
         const hpSum = totalHp(troops);
         const dmg: Record<string, number> = {};
         for (const [s, n] of troops) dmg[s.id] = (mineDamage * s.hp * n) / hpSum;
-        applyDamage(table, A, dmg, carryA);
+        applyDamage(tA, A, dmg, carryA);
       }
       // Bodenkampf: Truppen treffen Bodentruppen mit "land" und die Bunkerlinie mit "anlage".
       // Küstenbatterien feuern mit "land" auf die gelandeten Truppen, sind aber kein Ziel.
       const groundValue = (s: Stat, t: Stat) => (t.kind === "defense" ? s.attack.anlage : s.attack.land);
       const coastGuns = (s: Stat) => s.kind === "defense" && s.id !== "bunkerlinie" && s.attack.land > 0;
       while (draft.rounds < maxRounds) {
-        const ga = pick(table, A, isGround);
-        const gd = pick(table, D, defLand);
+        const ga = pick(tA, A, isGround);
+        const gd = pick(tD, D, defLand);
         if (ga.length === 0 || gd.length === 0) break;
         draft.rounds++;
         const ra = randomFactor(rng, spread);
         const rd = randomFactor(rng, spread);
-        const shootersD = [...gd, ...pick(table, D, coastGuns)];
+        const shootersD = [...gd, ...pick(tD, D, coastGuns)];
         const toD = volley(ga, gd, (s, t) => withMorale(moraleA, groundValue(s, t), s), ra, draft.damage.attacker);
         const toA = volley(shootersD, ga, (s) => withMorale(moraleD, s.attack.land, s), rd, draft.damage.defender);
-        applyDamage(table, D, toD, carryD);
-        applyDamage(table, A, toA, carryA);
+        applyDamage(tD, D, toD, carryD);
+        applyDamage(tA, A, toA, carryA);
       }
     }
     phases.push(endPhase(draft, A, D, skip, table));
   }
 
   // ------------------------------------------------------------ Ergebnis
-  const attackerTroops = pick(table, A, (s) => s.kind === "ground").length > 0;
-  const defenderHolds = pick(table, D, (s) => s.kind === "ground" || s.id === "bunkerlinie").length > 0;
+  const attackerTroops = pick(tA, A, (s) => s.kind === "ground").length > 0;
+  const defenderHolds = pick(tD, D, (s) => s.kind === "ground" || s.id === "bunkerlinie").length > 0;
   const winner: Side = landed && attackerTroops && !defenderHolds ? "attacker" : "defender";
 
   const c = balance.combat;
@@ -367,9 +376,9 @@ export function resolveBattle(
   for (const r of balance.resources) loot[r] = 0;
   if (winner === "attacker") {
     let cargo = 0;
-    for (const id of table.ids) cargo += table.byId[id].cargo * (A[id] ?? 0);
+    for (const id of tA.ids) cargo += tA.byId[id].cargo * (A[id] ?? 0);
     if (attacker.unlimitedCargo) cargo = Infinity;
-    loot = computeLoot(defender, cargo, attacker.priorAttacksInWindow ?? 0, balance, attacker.weakTarget ?? false);
+    loot = computeLoot(defender, cargo, attacker.priorAttacksInWindow ?? 0, balance, attacker.weakTarget ?? false, attacker.modifiers);
   }
 
   return {

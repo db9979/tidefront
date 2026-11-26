@@ -257,3 +257,61 @@ Kartell-Konter (2 U-Boote, 30 Schützen: 0 %).
 - **U-Boote (v1.2):** Ob Nester der Stufen 3–5 oder das Kartell später U-Jagd bekommen, nach Spielerfahrung
   entscheiden (Mechanik vorhanden: jede NPC-Einheit oder Anlage mit `attack.uboot`). Aufklärung zeigt U-Boote wie jede
   andere Einheit; ein „getarntes“ Lagebild gibt es nicht.
+
+## D. Modifikatoren und Forschung (v1.3)
+
+1. **Modifikatoren sind Faktoren mit neutraler Vorgabe 1** (`src/modifiers.ts`). Jede betroffene Kernfunktion nimmt
+   optional `mods` als letzten Parameter (`resolveBattle` über `attacker.modifiers` und `defender.modifiers`). Ohne
+   Modifikatoren rechnet alles bit-gleich wie v1.2: überall wird mit `x * 1` multipliziert, an den bisherigen Stellen der
+   Rechnung; im Kampf wird ohne Modifikatoren dieselbe Werte-Tabelle benutzt. Bestehende Tests und alle v1.2-Zahlen von
+   `npm run sim` sind unverändert.
+2. **Kombination multiplikativ** je Schlüssel (`combineModifiers`), auch zwischen zwei Techniken auf denselben Wert.
+   Innerhalb einer Technik additiv (1 + Wirkung × Stufe). Begründung: Quellen sind unabhängig (Forschung, Wetter,
+   Admiral); ein Produkt ist reihenfolgeunabhängig und lässt neutrale Quellen (1) folgenlos.
+3. **Kampf je Seite:** Für jede Seite eine eigene Werte-Tabelle (`withModifiers`): Lebenspunkte × `hp[Gattung]`, jeder
+   Angriffswert × `attack[Gattung]` × `attackVs[Wert]` × `attackUnit[Typ]`, Ladung × `cargo`. Gattung der Anlagen ist
+   `anlage`. Minenschaden × `mineDamage` des Angreifers, Beute-Anteil × `loot` des Angreifers (feste Nestbeute nicht).
+   Der Bunkerschutz des Verteidigers steckt in `protectedPerResource` (`defenderFromBase(base, balance, mods)`).
+   Die Stärke des Kartells richtet sich weiter nach den unmodifizierten Lebenspunkten der Verteidigung.
+4. **Tarnung** (`stealth`) ist eine Eigenschaft des Angreifers: `planMission` speichert sie als `Mission.warningFactor`,
+   der Server multipliziert damit die Vorwarnzeit des Ziels (Ansicht, Börsensperre, Vorwarn-Ereignis).
+5. **Forschung liegt im `BaseState`** (`research: { levels, order, lastRoll, halfNext }`) statt in eigenen Tabellen:
+   Kosten werden aus den Beständen desselben gesperrten Stützpunkts bezahlt, der Abschluss läuft wie Bau und Ausbildung
+   über ein Ereignis mit `baseId`, das Saisonende löscht ihn mit dem Stützpunkt, und es braucht keine Migration. Ein
+   Spieler hat genau einen Stützpunkt; `modifiersFor(playerId)` liest dort.
+6. **Abschluss:** `completeResearch` schreibt nur bis zur Fertigstellung fort (`resUpdatedAt` = Fertigstellung), weil sich
+   danach die Modifikatoren ändern; der Aufrufer rechnet sie neu. Ebenso schreibt `chooseBreakthrough` vor der Wahl mit
+   den alten Modifikatoren fort.
+7. **Durchbruch:** Seed beim Start (Server: Zufalls-Seed, Kern: `seed`-Parameter, Vorgabe Startzeit), Chance beim Start
+   festgehalten und angezeigt (`order.chance`), Wurf `randomInt(mulberry32(seed), 1, 100)` beim Abschluss. Durchbruch auf
+   Höchststufe wählt automatisch die halbe Dauer. Bis zur Wahl ist keine neue Forschung möglich (`breakthrough_pending`),
+   damit die Belohnung „halbe Dauer“ eindeutig der nächsten Forschung gilt. Ein Abbruch gibt die eingelöste halbe Dauer
+   zurück. Chance literal nach Regel: 10 % + 2 Punkte je Stufe (Stufe 1: 12 %, ab Stufe 8: 25 %).
+8. **Forschungsamt** ist ein eigenes Gebäude (statt der Chipfabrik), damit Forschung eine bewusste Investition ist und die
+   Produktion nicht verdrängt. Es verbraucht keinen Strom und zählt wie jedes Gebäude zur Wertung (Ausbau). Die Bots der
+   Simulation bauen es nicht (fester Bauplan), daher bleiben die v1.2-Zahlen gleich.
+
+### D1. Simulation v1.3 (`npm run sim`, 200 Seeds je Fall)
+
+Voll erforscht (alle 20 Techniken auf Höchststufe): kein Bereich über ±24 % (Tempo See/Luft, LP Anlagen, Torpedos,
+Jagdbomber, Stahl, Treibstoff, Ladung, Bauzeit, Bunker, Radar, Minen), LP Schiffe +18 %, Bodentruppen Angriff +10 %
+und LP +15 %. Kampfkraft (Angriff × LP) damit meist bis etwa +27 %; Ausnahme U-Boote: Torpedos +24 % und LP +18 %
+ergibt rund ×1,46 gegen Überwasserschiffe (Gegenmittel Sonar +20 % U-Jagd). Bei Spielerfahrung beobachten.
+
+- Knappe Kämpfe kippen schon bei kleinen Vorteilen, weil der Zufall nur ±5 % streut (z. B. 4 Zerstörer gegen Nest 3:
+  51 % → 100 %). Aussagekräftiger ist die nötige Verbandsgröße für ≥ 70 % Sieg: voll erforscht spart der Angreifer
+  0–18 % des Verbands (Nest 5, Tag 28: ×0,85 → ×0,70; Bot-Hafen Tag 28: ×1,70 → ×1,50), ein voll erforschter
+  Verteidiger verlangt 12–14 % mehr (×1,70 → ×1,90). Erforschen beide Seiten, bleibt es beim Ausgangswert.
+  Forschung ist damit so viel wert wie ein etwa 10–20 % größerer Verband – spürbar, aber nicht spielentscheidend.
+- Kartell gegen den Bot-Hafen: 7 % / 13 % Sieg (Tag 7 / 28) ohne, 0 % mit voller Forschung des Verteidigers. Das Kartell
+  bemisst seine Stärke an den unmodifizierten Lebenspunkten; das ist gewollt (Forschung schützt), aber zu beobachten.
+- Wirtschaft Tag 28: Stahl 442 → 543/h, Reise zum Nest 600 → 484 min, Treibstoff 2016 → 1533.
+- Alles erforschen kostet etwa 65.300 Stahl, 19.000 Treibstoff, 37.300 Elektronik, 4.200 Proviant und 9,5 Tage reine
+  Forschungszeit bei Forschungsamt Stufe 5 (ohne Durchbrüche). In einer Saison von 28 Tagen ist das erreichbar, aber
+  nur mit spürbarem Verzicht auf Ausbau und Truppen.
+
+### D2. Offene Punkte
+
+- Wetter, Admirale und Weltereignisse melden sich mit `registerModifierSource` im Server an (`packages/engine/src/modifiers.ts`).
+- Ob die Kartell-Stärke Forschung des Verteidigers berücksichtigen soll (D1), nach Spielerfahrung entscheiden.
+- Die Admin-Statistik rechnet Produktion ohne Modifikatoren.

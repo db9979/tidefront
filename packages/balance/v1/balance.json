@@ -1,5 +1,5 @@
 {
-  "version": "v1.2",
+  "version": "v1.3",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -25,7 +25,8 @@
     "kaserne": { "cost": { "stahl": 200, "treibstoff": 20, "elektronik": 10 }, "seconds": 45, "buildSpeedPerLevel": 0.1 },
     "flugfeld": { "cost": { "stahl": 350, "treibstoff": 120, "elektronik": 120 }, "seconds": 90, "buildSpeedPerLevel": 0.1, "slotsPerLevel": 6 },
     "radarstation": { "cost": { "stahl": 200, "treibstoff": 40, "elektronik": 150 }, "seconds": 60, "warningMinutesBase": 10, "warningMinutesPerLevel": 5 },
-    "hafenkommandantur": { "cost": { "stahl": 300, "treibstoff": 80, "elektronik": 60 }, "seconds": 60, "missionSlotsBase": 1, "missionSlotsPerTwoLevels": 1, "marketFromLevel": 3, "creditLimitPerLevel": 5000 }
+    "hafenkommandantur": { "cost": { "stahl": 300, "treibstoff": 80, "elektronik": 60 }, "seconds": 60, "missionSlotsBase": 1, "missionSlotsPerTwoLevels": 1, "marketFromLevel": 3, "creditLimitPerLevel": 5000 },
+    "forschungsamt": { "cost": { "stahl": 300, "treibstoff": 80, "elektronik": 200 }, "seconds": 90, "researchSpeedPerLevel": 0.1 }
   },
   "units": {
     "korvette": { "branch": "see", "builtIn": "werft", "cost": { "stahl": 400, "treibstoff": 100, "elektronik": 50, "proviant": 0 }, "seconds": 300, "upkeepPerHour": 2, "commandPoints": 3, "hp": 200, "attack": { "see": 40, "luft": 5, "land": 0, "anlage": 15, "uboot": 40 }, "speedKmh": 60, "fuelPer100Km": 4, "cargo": 0, "troopSpace": 0, "bonus": { "schnellboot": 1.5 } },
@@ -104,5 +105,34 @@
     "slippageTolerance": 0.01,
     "tradesPerMinute": 10,
     "convoySpeedKmh": 45
+  },
+  "research": {
+    "building": "forschungsamt",
+    "costFactor": 2,
+    "timeFactor": 1.8,
+    "branches": ["seefahrt", "heer", "luftfahrt", "wirtschaft"],
+    "breakthrough": { "baseChance": 0.10, "perBuildingLevel": 0.02, "maxChance": 0.25, "speedFactor": 0.5 },
+    "techs": {
+      "dampfturbinen": { "branch": "seefahrt", "maxLevel": 3, "cost": { "stahl": 500, "treibstoff": 300, "elektronik": 200 }, "seconds": 7200, "effects": [{ "path": "speed.see", "perLevel": 0.08 }] },
+      "schiffspanzerung": { "branch": "seefahrt", "maxLevel": 3, "cost": { "stahl": 800, "treibstoff": 100, "elektronik": 200 }, "seconds": 7200, "effects": [{ "path": "hp.see", "perLevel": 0.06 }] },
+      "sonar": { "branch": "seefahrt", "maxLevel": 2, "cost": { "stahl": 400, "treibstoff": 100, "elektronik": 600 }, "seconds": 14400, "requiresBuildingLevel": 3, "requires": { "dampfturbinen": 1 }, "effects": [{ "path": "attackVs.uboot", "perLevel": 0.1 }] },
+      "prisenrecht": { "branch": "seefahrt", "maxLevel": 2, "cost": { "stahl": 600, "treibstoff": 300, "elektronik": 300, "proviant": 300 }, "seconds": 14400, "requiresBuildingLevel": 3, "requires": { "schiffspanzerung": 1 }, "effects": [{ "path": "loot", "perLevel": 0.1 }] },
+      "torpedoleitsysteme": { "branch": "seefahrt", "maxLevel": 3, "cost": { "stahl": 600, "treibstoff": 200, "elektronik": 900 }, "seconds": 21600, "requiresBuildingLevel": 5, "requires": { "sonar": 1 }, "effects": [{ "path": "attackUnit.uboot", "perLevel": 0.08 }] },
+      "infanteriewaffen": { "branch": "heer", "maxLevel": 2, "cost": { "stahl": 600, "treibstoff": 50, "elektronik": 150, "proviant": 300 }, "seconds": 7200, "effects": [{ "path": "attack.land", "perLevel": 0.05 }] },
+      "drillausbildung": { "branch": "heer", "maxLevel": 2, "cost": { "stahl": 400, "elektronik": 100, "proviant": 500 }, "seconds": 7200, "effects": [{ "path": "trainingTime.kaserne", "perLevel": -0.1 }] },
+      "verbundpanzerung": { "branch": "heer", "maxLevel": 3, "cost": { "stahl": 1000, "treibstoff": 100, "elektronik": 300 }, "seconds": 14400, "requiresBuildingLevel": 3, "requires": { "infanteriewaffen": 1 }, "effects": [{ "path": "hp.land", "perLevel": 0.05 }] },
+      "pioniertechnik": { "branch": "heer", "maxLevel": 2, "cost": { "stahl": 500, "treibstoff": 100, "elektronik": 200, "proviant": 300 }, "seconds": 14400, "requiresBuildingLevel": 3, "requires": { "drillausbildung": 1 }, "effects": [{ "path": "mineDamage", "perLevel": -0.12 }] },
+      "festungsbau": { "branch": "heer", "maxLevel": 3, "cost": { "stahl": 1200, "elektronik": 300 }, "seconds": 21600, "requiresBuildingLevel": 5, "requires": { "pioniertechnik": 1 }, "effects": [{ "path": "hp.anlage", "perLevel": 0.08 }] },
+      "funkmesstechnik": { "branch": "luftfahrt", "maxLevel": 2, "cost": { "stahl": 300, "treibstoff": 100, "elektronik": 500 }, "seconds": 7200, "effects": [{ "path": "radarWarning", "perLevel": 0.12 }] },
+      "strahltriebwerke": { "branch": "luftfahrt", "maxLevel": 3, "cost": { "stahl": 400, "treibstoff": 400, "elektronik": 300 }, "seconds": 7200, "effects": [{ "path": "speed.luft", "perLevel": 0.08 }] },
+      "luftkampftaktik": { "branch": "luftfahrt", "maxLevel": 3, "cost": { "stahl": 500, "treibstoff": 300, "elektronik": 500 }, "seconds": 14400, "requiresBuildingLevel": 3, "requires": { "funkmesstechnik": 1 }, "effects": [{ "path": "attackVs.luft", "perLevel": 0.06 }] },
+      "tarnanstrich": { "branch": "luftfahrt", "maxLevel": 2, "cost": { "stahl": 300, "treibstoff": 200, "elektronik": 600 }, "seconds": 14400, "requiresBuildingLevel": 3, "requires": { "funkmesstechnik": 2 }, "effects": [{ "path": "stealth", "perLevel": -0.1 }] },
+      "praezisionsbomben": { "branch": "luftfahrt", "maxLevel": 3, "cost": { "stahl": 600, "treibstoff": 300, "elektronik": 800 }, "seconds": 21600, "requiresBuildingLevel": 5, "requires": { "luftkampftaktik": 1 }, "effects": [{ "path": "attackUnit.jagdbomber", "perLevel": 0.08 }] },
+      "hochofen": { "branch": "wirtschaft", "maxLevel": 3, "cost": { "stahl": 600, "treibstoff": 150, "elektronik": 150 }, "seconds": 7200, "effects": [{ "path": "production.stahl", "perLevel": 0.08 }] },
+      "logistik": { "branch": "wirtschaft", "maxLevel": 3, "cost": { "stahl": 400, "treibstoff": 300, "elektronik": 200 }, "seconds": 7200, "effects": [{ "path": "fuel", "perLevel": -0.08 }, { "path": "cargo", "perLevel": 0.08 }] },
+      "lagertechnik": { "branch": "wirtschaft", "maxLevel": 2, "cost": { "stahl": 600, "elektronik": 100 }, "seconds": 7200, "effects": [{ "path": "storage", "perLevel": 0.1 }] },
+      "fertigbau": { "branch": "wirtschaft", "maxLevel": 3, "cost": { "stahl": 800, "treibstoff": 200, "elektronik": 300 }, "seconds": 14400, "requiresBuildingLevel": 3, "requires": { "hochofen": 1 }, "effects": [{ "path": "buildTime", "perLevel": -0.08 }] },
+      "stahlbetonbunker": { "branch": "wirtschaft", "maxLevel": 2, "cost": { "stahl": 800, "elektronik": 200 }, "seconds": 14400, "requiresBuildingLevel": 3, "requires": { "lagertechnik": 1 }, "effects": [{ "path": "bunker", "perLevel": 0.12 }] }
+    }
   }
 }

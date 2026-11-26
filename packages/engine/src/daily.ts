@@ -6,6 +6,7 @@ import { tables, type DbOrTx } from "@tidefront/db";
 import { balance, GameError, type Engine } from "./context.ts";
 import { runCommand } from "./commands.ts";
 import { baseOfPlayer, lockBase, saveBase } from "./store.ts";
+import { modsOf } from "./modifiers.ts";
 import {
   addDays,
   challengeIcon,
@@ -109,7 +110,8 @@ export function claimChallenge(engine: Engine, playerId: number, key: string, ch
       const [row] = await refreshDerived(ctx.tx, playerId, [found], ctx.nowMs);
       if (!row.completedAt) fail("not_done");
       const reward = row.reward as ResourceMap;
-      let state = deliverCargo(b.state, reward, ctx.nowMs, balance);
+      const mods = await modsOf(ctx.tx, b, ctx.nowMs);
+      let state = deliverCargo(b.state, reward, ctx.nowMs, balance, mods);
       await ctx.tx.update(dc).set({ claimedAt: new Date(ctx.nowMs) }).where(eq(dc.id, row.id));
 
       // Tagesabschluss: alle drei Befehle des Tages abgeholt.
@@ -127,7 +129,7 @@ export function claimChallenge(engine: Engine, playerId: number, key: string, ch
             .onConflictDoUpdate({ target: tables.dailyStreak.playerId, set: { lastDay: row.day, length: streak, best, updatedAt: new Date(ctx.nowMs) } });
           bonus = streakBonus(streak, b.state.buildings.kommandozentrale ?? 0);
           if (bonus) {
-            state = deliverCargo(state, bonus.reward, ctx.nowMs, balance);
+            state = deliverCargo(state, bonus.reward, ctx.nowMs, balance, mods);
             await ctx.tx.update(dc).set({ bonusPoints: bonus.points }).where(eq(dc.id, row.id));
           }
         }

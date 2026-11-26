@@ -141,6 +141,7 @@ export const seasonEnd: Handler = async (tx, ev, due) => {
   await tx
     .delete(tables.gameEvent)
     .where(and(eq(tables.gameEvent.status, "pending"), sql`${tables.gameEvent.type} <> 'season_end'`));
+  // Mit den Stützpunkten verschwindet auch die Forschung (BaseState.research): sie gilt je Saison.
   await tx.delete(tables.base);
   await resetChallenges(tx);
   await tx.update(tables.nest).set({ defeatedAt: null });

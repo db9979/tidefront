@@ -231,6 +231,11 @@ export const KINDS: Record<string, KindDef> = {
     spec: (t, c) => (t === 2 && canLand(c) ? { param: null, target: 1 } : null),
     text: () => "Gewinne einen Überfall ohne eigene Verluste",
   },
+  forschung: {
+    icon: "forschungsamt",
+    spec: (t, c) => (t === 1 && lvl(c, "forschungsamt") >= 1 ? { param: null, target: 1 } : null),
+    text: () => "Schließe eine Forschung ab",
+  },
 };
 
 /** Arten, deren Fortschritt aus dem Zustand gelesen wird (beim Abruf), nicht aus Ereignissen. */
