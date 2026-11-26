@@ -7,7 +7,7 @@ export function Card({ title, children, right }: { title?: ReactNode; children: 
     <section className="panel rounded-2xl p-3 mb-3">
       {title !== undefined && (
         <div className="flex items-center justify-between mb-2 gap-2">
-          <h2 className="font-display text-sm font-bold uppercase text-brass-300">{title}</h2>
+          <h2 className="font-display text-xs font-bold uppercase text-slate-300 flex items-center gap-2"><span className="w-1.5 h-3 bg-sea-400 inline-block" aria-hidden="true" />{title}</h2>
           {right}
         </div>
       )}
@@ -19,8 +19,8 @@ export function Card({ title, children, right }: { title?: ReactNode; children: 
 type BtnKind = "primary" | "secondary" | "danger" | "ghost";
 const KIND: Record<BtnKind, string> = {
   primary: "btn-primary font-bold",
-  secondary: "bg-navy-700 text-white active:bg-navy-600",
-  danger: "bg-red-700 text-white active:bg-red-600",
+  secondary: "bg-navy-700 text-slate-100 border border-white/10 active:bg-navy-600",
+  danger: "bg-red-900/80 text-red-100 border border-red-500/60 active:bg-red-800",
   ghost: "bg-transparent text-sea-300 underline",
 };
 
@@ -30,7 +30,7 @@ export function Button(props: { children: ReactNode; onClick?: () => void; disab
       type={props.type ?? "button"}
       onClick={props.onClick}
       disabled={props.disabled}
-      className={`tap rounded-lg px-4 py-2 disabled:opacity-40 ${KIND[props.kind ?? "primary"]} ${props.className ?? ""}`}
+      className={`tap rounded-lg px-4 py-2 font-display uppercase text-sm tracking-wider disabled:opacity-40 ${KIND[props.kind ?? "primary"]} ${props.className ?? ""}`}
     >
       {props.children}
     </button>
@@ -106,11 +106,11 @@ export function Sheet({ open, onClose, title, icon, children }: { open: boolean;
     <div className="fixed inset-0 z-50 flex items-end justify-center" role="dialog" aria-modal="true">
       <button type="button" aria-label="Schließen" className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="sheet-in relative w-full max-w-xl max-h-[88vh] overflow-y-auto rounded-t-3xl panel brass-edge p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
-        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/20" />
+        <div className="mx-auto mb-3 h-1 w-10 bg-white/20" />
         <div className="flex items-center gap-3 mb-3">
           {icon}
-          <h2 className="font-display text-xl font-bold flex-1 min-w-0">{title}</h2>
-          <button type="button" className="tap rounded-full bg-navy-700 text-lg" onClick={onClose} aria-label="Schließen">✕</button>
+          <h2 className="font-display text-lg font-bold uppercase flex-1 min-w-0">{title}</h2>
+          <button type="button" className="tap rounded-lg bg-navy-700 border border-white/10 text-lg" onClick={onClose} aria-label="Schließen">✕</button>
         </div>
         {children}
       </div>
@@ -133,10 +133,10 @@ export function StatTable({ rows }: { rows: [string, string][] }) {
 
 /** Fortschrittsbalken mit Streifen, solange er läuft. */
 export function Bar({ value, tone = "sea" }: { value: number; tone?: "sea" | "brass" | "red" | "green" }) {
-  const color = { sea: "bg-sea-400", brass: "bg-brass-400", red: "bg-red-500", green: "bg-emerald-400" }[tone];
+  const color = { sea: "bg-sea-400", brass: "bg-brass-400", red: "bg-red-500", green: "bg-emerald-500" }[tone];
   const v = Math.max(0, Math.min(1, value));
   return (
-    <div className="h-2 w-full rounded-full bg-navy-950/80 overflow-hidden border border-white/5">
+    <div className="h-1.5 w-full bg-navy-950 overflow-hidden border border-white/10">
       <div className={`h-full ${color} ${v > 0 && v < 1 ? "stripes" : ""}`} style={{ width: `${v * 100}%` }} />
     </div>
   );
@@ -144,13 +144,13 @@ export function Bar({ value, tone = "sea" }: { value: number; tone?: "sea" | "br
 
 export function Badge({ children, tone = "slate" }: { children: ReactNode; tone?: "slate" | "brass" | "green" | "red" | "sea" }) {
   const c = {
-    slate: "bg-navy-700 text-slate-200",
-    brass: "bg-brass-400 text-navy-950",
-    green: "bg-emerald-700 text-white",
-    red: "bg-red-700 text-white",
-    sea: "bg-sea-400 text-navy-950",
+    slate: "border-white/15 text-slate-300",
+    brass: "border-brass-400/60 text-brass-300",
+    green: "border-emerald-500/60 text-emerald-300",
+    red: "border-red-500/70 text-red-300",
+    sea: "border-sea-400/60 text-sea-300",
   }[tone];
-  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${c}`}>{children}</span>;
+  return <span className={`inline-flex items-center border bg-navy-950/60 px-1.5 py-0.5 text-[11px] font-display uppercase tracking-wider ${c}`}>{children}</span>;
 }
 
 /** Ressourcen als Symbol und Zahl. */

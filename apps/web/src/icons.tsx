@@ -1,387 +1,391 @@
-// Einheitlicher Icon-Satz als SVG (64×64). Farben: Rumpfgrau, Stahlblau, Messing, Akzent je Gattung.
+// Symbolsatz im Stil „Lagezentrum“: einfarbige Seitenrisse (Schiffe, Panzer), Draufsichten (Flugzeuge),
+// technische Piktogramme (Gebäude, Anlagen). Farbe nur als Signal. 64×64.
 import type { ReactNode } from "react";
 
-const HULL = "#9fb3c8";
-const DARK = "#1c2c3f";
-const STEEL = "#5f7a96";
-const BRASS = "#f2c14e";
-const SEA = "#3fa7d6";
-const RED = "#e5484d";
-const GREEN = "#6fbf73";
-const OLIVE = "#7d8f4a";
+const L = "#d5dde4"; // helle Fläche
+const M = "#8e9cab"; // mittlere Fläche
+const D = "#3d4a57"; // Schatten, Details
+const W = "#4fb3d9"; // Glas, Wasser, Signal freundlich
+const A = "#c08a3e"; // Signal Warnung, Messing
+const R = "#a84a44"; // Signal feindlich
+const G = "#6e9a7c"; // Signal Elektronik
+
+const WATER = <path d="M2 50 H62" stroke={W} strokeWidth="1" opacity="0.6" />;
 
 const P: Record<string, ReactNode> = {
-  // ---------------------------------------------------------- Ressourcen
+  // ---------------------------------------------------------- Ressourcen (Piktogramme mit Kennfarbe)
   stahl: (
     <>
-      <path d="M10 40 L22 28 H54 L42 40 Z" fill="#c9d6e3" />
-      <path d="M10 40 H42 V50 H10 Z" fill={STEEL} />
-      <path d="M42 40 L54 28 V38 L42 50 Z" fill="#46607a" />
-      <path d="M16 22 L26 12 H52 L42 22 Z" fill="#c9d6e3" opacity="0.7" />
+      <path d="M8 40 L20 30 H56 L44 40 Z" fill={L} />
+      <path d="M8 40 H44 V48 H8 Z" fill={M} />
+      <path d="M44 40 L56 30 V38 L44 48 Z" fill={D} />
+      <path d="M14 26 L24 18 H52 L42 26 Z" fill={M} opacity="0.7" />
     </>
   ),
   treibstoff: (
     <>
-      <rect x="16" y="10" width="32" height="44" rx="6" fill="#c0503c" />
-      <rect x="16" y="20" width="32" height="4" fill="#8a3326" />
-      <rect x="16" y="40" width="32" height="4" fill="#8a3326" />
-      <path d="M32 26 C27 33 26 36 32 39 C38 36 37 33 32 26 Z" fill={BRASS} />
+      <rect x="18" y="10" width="28" height="44" rx="3" fill={A} />
+      <path d="M18 20 H46 M18 32 H46 M18 44 H46" stroke="#6b4a1c" strokeWidth="2" />
+      <rect x="36" y="12" width="6" height="3" fill="#6b4a1c" />
     </>
   ),
   elektronik: (
     <>
-      <rect x="16" y="16" width="32" height="32" rx="4" fill="#2f6f5e" />
-      <rect x="24" y="24" width="16" height="16" rx="2" fill={GREEN} />
-      {[20, 28, 36, 44].map((v) => (
-        <g key={v} fill={BRASS}>
-          <rect x={v - 1.5} y="9" width="3" height="7" />
-          <rect x={v - 1.5} y="48" width="3" height="7" />
-          <rect x="9" y={v - 1.5} width="7" height="3" />
-          <rect x="48" y={v - 1.5} width="7" height="3" />
-        </g>
+      <rect x="16" y="16" width="32" height="32" fill="#2e4a3c" stroke={G} strokeWidth="1.5" />
+      <rect x="25" y="25" width="14" height="14" fill={G} />
+      {[22, 29, 36, 43].map((v) => (
+        <path key={v} d={`M${v - 1} 9 V16 M${v - 1} 48 V55 M9 ${v - 1} H16 M48 ${v - 1} H55`} stroke={M} strokeWidth="2" />
       ))}
     </>
   ),
   proviant: (
     <>
-      <path d="M10 26 L32 16 L54 26 L32 36 Z" fill="#d9b26b" />
-      <path d="M10 26 V44 L32 54 V36 Z" fill="#a67c3d" />
-      <path d="M54 26 V44 L32 54 V36 Z" fill="#8a6430" />
-      <path d="M21 21 L43 31 V38" stroke="#5c3f18" strokeWidth="3" fill="none" />
+      <path d="M10 24 H54 V50 H10 Z" fill="#7b7258" />
+      <path d="M10 24 L16 16 H48 L54 24" fill="#968c6c" />
+      <path d="M10 33 H54 M10 42 H54 M24 24 V50 M40 24 V50" stroke="#4d4634" strokeWidth="1.5" />
     </>
   ),
   credits: (
     <>
-      <circle cx="32" cy="32" r="22" fill={BRASS} />
-      <circle cx="32" cy="32" r="16" fill="none" stroke="#b8892a" strokeWidth="3" />
-      <path d="M36 23 A9 9 0 1 0 36 41" stroke="#8a6420" strokeWidth="4" fill="none" strokeLinecap="round" />
+      <circle cx="32" cy="32" r="20" fill="none" stroke={A} strokeWidth="3" />
+      <path d="M38 24 A10 10 0 1 0 38 40 M22 30 H36 M22 34 H36" stroke={A} strokeWidth="3" fill="none" />
     </>
   ),
-  strom: <path d="M36 6 L16 36 H30 L26 58 L48 26 H34 Z" fill={BRASS} />,
+  strom: <path d="M36 6 L18 36 H30 L26 58 L46 26 H34 Z" fill={A} />,
 
-  // ---------------------------------------------------------- Gebäude
+  // ---------------------------------------------------------- Gebäude (technische Piktogramme)
   kommandozentrale: (
     <>
-      <rect x="12" y="34" width="40" height="20" fill={STEEL} />
-      <rect x="24" y="18" width="16" height="36" fill={HULL} />
-      <rect x="28" y="24" width="8" height="6" fill={SEA} />
-      <path d="M32 18 V6" stroke={DARK} strokeWidth="2" />
-      <path d="M32 6 L44 10 L32 14 Z" fill={RED} />
-      <rect x="16" y="40" width="5" height="5" fill={SEA} />
-      <rect x="43" y="40" width="5" height="5" fill={SEA} />
+      <path d="M10 54 V36 H54 V54" fill={M} />
+      <path d="M24 54 V18 H40 V54" fill={L} />
+      <path d="M28 24 H36 M28 30 H36 M28 36 H36 M28 42 H36" stroke={W} strokeWidth="2" />
+      <path d="M32 18 V6 M26 9 H38" stroke={L} strokeWidth="2" />
+      <path d="M14 42 H20 M44 42 H50" stroke={D} strokeWidth="3" />
     </>
   ),
   stahlwerk: (
     <>
-      <path d="M8 54 V32 L20 24 V32 L32 24 V32 L44 24 V54 Z" fill={STEEL} />
-      <rect x="46" y="12" width="7" height="42" fill="#46607a" />
-      <circle cx="50" cy="8" r="4" fill="#8899aa" opacity="0.7" />
-      <rect x="14" y="40" width="24" height="6" fill="#f08a3c" />
+      <path d="M6 54 V34 L18 26 V34 L30 26 V34 L42 26 V54 Z" fill={M} />
+      <rect x="45" y="10" width="7" height="44" fill={L} />
+      <path d="M45 18 H52 M45 26 H52" stroke={D} strokeWidth="1.5" />
+      <rect x="12" y="42" width="26" height="4" fill={A} opacity="0.8" />
     </>
   ),
   raffinerie: (
     <>
-      <rect x="8" y="30" width="18" height="24" rx="9" fill={HULL} />
-      <rect x="28" y="22" width="18" height="32" rx="9" fill="#c9d6e3" />
-      <rect x="48" y="10" width="6" height="44" fill={STEEL} />
-      <path d="M51 10 C47 4 55 2 51 -2" stroke="#f08a3c" strokeWidth="3" fill="none" />
-      <rect x="28" y="34" width="18" height="4" fill="#c0503c" />
+      <rect x="6" y="30" width="18" height="24" fill={L} />
+      <ellipse cx="15" cy="30" rx="9" ry="3" fill={M} />
+      <rect x="28" y="20" width="16" height="34" fill={M} />
+      <ellipse cx="36" cy="20" rx="8" ry="3" fill={L} />
+      <path d="M50 54 V8 M47 14 H53 M47 24 H53 M47 34 H53" stroke={L} strokeWidth="2.5" />
+      <path d="M24 44 H28 M44 40 H48" stroke={D} strokeWidth="2" />
     </>
   ),
   chipfabrik: (
     <>
-      <rect x="8" y="24" width="48" height="30" fill="#2f6f5e" />
-      <path d="M8 24 L20 14 L32 24 L44 14 L56 24" fill="#3d8a75" />
-      <rect x="22" y="32" width="20" height="14" rx="2" fill={GREEN} />
-      <path d="M26 32 V28 M32 32 V28 M38 32 V28" stroke={BRASS} strokeWidth="2" />
+      <path d="M6 54 V24 L18 16 L30 24 L42 16 L58 24 V54 Z" fill={M} />
+      <rect x="12" y="32" width="40" height="6" fill={W} opacity="0.8" />
+      <rect x="12" y="42" width="40" height="6" fill={W} opacity="0.5" />
     </>
   ),
   versorgungshof: (
     <>
-      <path d="M8 30 L24 18 L40 30 V54 H8 Z" fill="#a6553a" />
-      <rect x="18" y="38" width="12" height="16" fill="#5c2c1d" />
-      <rect x="42" y="20" width="14" height="34" rx="7" fill="#d9b26b" />
-      <path d="M4 56 H60" stroke={OLIVE} strokeWidth="4" />
+      <path d="M6 54 V32 L22 20 L38 32 V54 Z" fill={M} />
+      <rect x="17" y="40" width="10" height="14" fill={D} />
+      <rect x="42" y="16" width="14" height="38" fill={L} />
+      <ellipse cx="49" cy="16" rx="7" ry="3" fill={M} />
     </>
   ),
   kraftwerk: (
     <>
-      <path d="M12 54 L16 22 H36 L40 54 Z" fill={HULL} />
-      <path d="M14 22 Q26 30 38 22" fill="#c9d6e3" />
-      <ellipse cx="26" cy="14" rx="10" ry="6" fill="#e6eef7" opacity="0.6" />
-      <path d="M50 22 L42 38 H48 L45 52 L56 34 H50 L53 22 Z" fill={BRASS} />
+      <path d="M8 54 Q14 34 12 18 H32 Q30 34 36 54 Z" fill={L} />
+      <path d="M12 18 Q22 22 32 18" fill="none" stroke={M} strokeWidth="2" />
+      <path d="M42 54 V20 M38 26 H46 M38 34 H46" stroke={M} strokeWidth="2.5" />
+      <path d="M52 22 L46 34 H51 L48 44 L56 30 H51 L54 22 Z" fill={A} />
     </>
   ),
   lagerkomplex: (
     <>
-      <path d="M6 28 L32 12 L58 28 V54 H6 Z" fill={STEEL} />
-      <rect x="14" y="34" width="36" height="20" fill="#46607a" />
-      <path d="M14 39 H50 M14 44 H50 M14 49 H50" stroke="#2c4257" strokeWidth="2" />
+      <path d="M4 54 V28 L32 14 L60 28 V54 Z" fill={M} />
+      <rect x="12" y="34" width="40" height="20" fill={D} />
+      <path d="M12 39 H52 M12 44 H52 M12 49 H52" stroke={M} strokeWidth="1.5" />
     </>
   ),
   tiefbunker: (
     <>
-      <path d="M6 54 Q32 6 58 54 Z" fill="#6b7480" />
-      <path d="M18 54 Q32 26 46 54 Z" fill="#4a525c" />
-      <rect x="26" y="40" width="12" height="14" rx="2" fill={DARK} />
-      <circle cx="35" cy="47" r="1.6" fill={BRASS} />
+      <path d="M4 54 Q32 8 60 54 Z" fill={M} />
+      <path d="M16 54 Q32 28 48 54 Z" fill={D} />
+      <rect x="27" y="40" width="10" height="14" fill="#1a232c" />
+      <path d="M2 54 H62" stroke={L} strokeWidth="2" />
     </>
   ),
   werft: (
     <>
-      <path d="M10 44 H54 L48 54 H16 Z" fill={HULL} />
-      <rect x="14" y="10" width="4" height="34" fill={BRASS} />
-      <path d="M14 12 H46" stroke={BRASS} strokeWidth="4" />
-      <path d="M40 14 V30" stroke={DARK} strokeWidth="2" />
-      <rect x="36" y="30" width="8" height="6" fill={DARK} />
-      <path d="M4 58 Q16 54 28 58 T52 58 T64 58" stroke={SEA} strokeWidth="3" fill="none" />
+      <path d="M8 42 H54 L50 50 H12 Z" fill={M} />
+      <path d="M14 42 V8 H46 M40 8 V22" stroke={L} strokeWidth="3" fill="none" />
+      <path d="M14 14 L22 8" stroke={L} strokeWidth="2" />
+      <rect x="37" y="22" width="6" height="5" fill={A} />
+      {WATER}
     </>
   ),
   kaserne: (
     <>
-      <path d="M6 30 L32 14 L58 30 Z" fill={OLIVE} />
-      <rect x="10" y="30" width="44" height="24" fill="#5e6e36" />
-      <rect x="27" y="38" width="10" height="16" fill={DARK} />
-      <path d="M32 18 l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8Z" fill={BRASS} />
+      <rect x="4" y="30" width="56" height="24" fill={M} />
+      <path d="M2 30 L32 16 L62 30 Z" fill={L} />
+      <path d="M10 38 H18 M24 38 H32 M38 38 H46 M50 38 H56" stroke={W} strokeWidth="3" opacity="0.8" />
+      <rect x="28" y="44" width="8" height="10" fill={D} />
     </>
   ),
   flugfeld: (
     <>
-      <path d="M22 58 L28 6 H36 L42 58 Z" fill="#4a525c" />
-      <path d="M32 12 V18 M32 26 V32 M32 40 V46" stroke="#e6eef7" strokeWidth="2" />
-      <path d="M50 18 L46 34 L38 38 L46 38 L44 46 L48 46 L52 38 L58 36 L52 34 Z" fill={HULL} />
+      <path d="M4 56 L26 8 H38 L60 56 Z" fill={D} />
+      <path d="M32 14 V20 M32 28 V34 M32 42 V48" stroke={L} strokeWidth="2" />
+      <path d="M50 14 L48 24 L40 28 L48 29 L47 34 L50 33 L53 29 L60 28 L52 24 Z" fill={L} />
     </>
   ),
   radarstation: (
     <>
-      <path d="M28 54 L32 34 L36 54 Z" fill={STEEL} />
-      <path d="M14 30 A20 20 0 0 1 46 12 L32 30 Z" fill={HULL} />
-      <circle cx="32" cy="30" r="3" fill={BRASS} />
-      <path d="M46 34 A14 14 0 0 0 52 22 M52 40 A22 22 0 0 0 60 22" stroke={GREEN} strokeWidth="2.5" fill="none" />
+      <path d="M26 56 L32 30 L38 56 Z" fill={M} />
+      <path d="M12 28 A22 22 0 0 1 48 10 L32 30 Z" fill={L} />
+      <circle cx="32" cy="30" r="2.5" fill={W} />
+      <path d="M46 38 A14 14 0 0 0 52 26 M50 44 A22 22 0 0 0 60 26" stroke={W} strokeWidth="2" fill="none" />
     </>
   ),
   hafenkommandantur: (
     <>
-      <rect x="8" y="28" width="30" height="26" fill="#c9d6e3" />
-      <path d="M6 28 L23 16 L40 28 Z" fill="#c0503c" />
-      <rect x="18" y="38" width="10" height="16" fill={DARK} />
-      <path d="M50 14 V44 M43 22 H57 M42 38 Q50 50 58 38" stroke={BRASS} strokeWidth="4" fill="none" strokeLinecap="round" />
-      <circle cx="50" cy="12" r="3.5" fill="none" stroke={BRASS} strokeWidth="3" />
+      <rect x="6" y="28" width="30" height="26" fill={L} />
+      <path d="M4 28 L21 18 L38 28 Z" fill={M} />
+      <path d="M12 36 H18 M24 36 H30 M12 44 H18 M24 44 H30" stroke={W} strokeWidth="2.5" />
+      <path d="M50 14 V44 M44 22 H56 M42 38 Q50 50 58 38" stroke={L} strokeWidth="3" fill="none" strokeLinecap="round" />
+      <circle cx="50" cy="11" r="3" fill="none" stroke={L} strokeWidth="2.5" />
     </>
   ),
 
-  // ---------------------------------------------------------- Schiffe
+  // ---------------------------------------------------------- Schiffe (Seitenriss, Bug rechts)
   korvette: (
     <>
-      <path d="M4 40 H60 L52 50 H12 Z" fill={HULL} />
-      <rect x="24" y="30" width="16" height="10" fill="#c9d6e3" />
-      <rect x="30" y="20" width="3" height="10" fill={STEEL} />
-      <path d="M44 36 H54" stroke={DARK} strokeWidth="3" />
-      <path d="M2 56 Q14 52 26 56 T50 56 T64 56" stroke={SEA} strokeWidth="3" fill="none" />
+      <path d="M3 40 H50 L61 34 L59 40 L54 46 H8 Z" fill={M} />
+      <path d="M3 40 H59" stroke={L} strokeWidth="1" />
+      <path d="M22 40 V33 H32 V29 H38 V33 H42 V40 Z" fill={L} />
+      <path d="M35 29 V18 M31 22 H39 M33 25 H37" stroke={L} strokeWidth="1.5" />
+      <rect x="46" y="35" width="5" height="4" fill={L} />
+      <path d="M50 36 H56" stroke={L} strokeWidth="1.5" />
+      <rect x="12" y="36" width="6" height="4" fill={D} />
+      {WATER}
     </>
   ),
   zerstoerer: (
     <>
-      <path d="M2 40 H62 L54 50 H8 Z" fill={STEEL} />
-      <rect x="18" y="28" width="22" height="12" fill={HULL} />
-      <rect x="24" y="16" width="4" height="12" fill="#46607a" />
-      <rect x="32" y="22" width="6" height="6" fill="#46607a" />
-      <path d="M44 35 H58 M6 35 H16" stroke={DARK} strokeWidth="3" />
-      <path d="M2 56 Q14 52 26 56 T50 56 T64 56" stroke={SEA} strokeWidth="3" fill="none" />
+      <path d="M2 40 H52 L62 33 L60 40 L55 47 H6 Z" fill={M} />
+      <path d="M2 40 H60" stroke={L} strokeWidth="1" />
+      <path d="M16 40 V32 H24 V26 H30 V32 H40 V40 Z" fill={L} />
+      <path d="M27 26 V13 M23 16 H31 M24 20 H30" stroke={L} strokeWidth="1.5" />
+      <rect x="33" y="28" width="4" height="4" fill={D} />
+      <rect x="44" y="35" width="6" height="5" fill={L} />
+      <path d="M49 36 H57" stroke={L} strokeWidth="1.5" />
+      <rect x="7" y="35" width="6" height="5" fill={L} />
+      <path d="M8 36 H2" stroke={L} strokeWidth="1.5" />
+      {WATER}
     </>
   ),
   landungsschiff: (
     <>
-      <path d="M4 36 H60 V46 L54 52 H8 L4 46 Z" fill={OLIVE} />
-      <rect x="44" y="24" width="12" height="12" fill={HULL} />
-      <rect x="10" y="30" width="30" height="6" fill="#5e6e36" />
-      <path d="M2 58 Q14 54 26 58 T50 58 T64 58" stroke={SEA} strokeWidth="3" fill="none" />
+      <path d="M3 36 H58 V42 L55 47 H7 L3 42 Z" fill={M} />
+      <path d="M58 36 L62 40 V42 H58" fill={D} />
+      <path d="M5 36 V25 H17 V36 Z" fill={L} />
+      <path d="M11 25 V15 M8 18 H14" stroke={L} strokeWidth="1.5" />
+      <rect x="22" y="31" width="8" height="5" fill={D} />
+      <rect x="32" y="31" width="8" height="5" fill={D} />
+      <rect x="42" y="31" width="8" height="5" fill={D} />
+      {WATER}
     </>
   ),
   schnellboot: (
     <>
-      <path d="M8 40 H58 L50 48 H14 Z" fill="#3b3b44" />
-      <rect x="26" y="32" width="12" height="8" fill="#55555f" />
-      <path d="M32 32 V18" stroke={DARK} strokeWidth="2" />
-      <path d="M32 18 H42 V26 H32 Z" fill="#111" />
-      <circle cx="37" cy="22" r="2" fill="#fff" />
-      <path d="M2 54 Q14 50 26 54 T50 54 T64 54" stroke={SEA} strokeWidth="3" fill="none" />
+      <path d="M10 41 H48 L58 36 L55 43 L52 46 H14 Z" fill={M} />
+      <path d="M24 41 V35 H34 L38 41 Z" fill={L} />
+      <path d="M30 35 V27" stroke={L} strokeWidth="1.5" />
+      <path d="M30 27 H37 V31 H30" fill={R} />
+      <path d="M44 38 H50" stroke={L} strokeWidth="1.5" />
+      {WATER}
     </>
   ),
 
   // ---------------------------------------------------------- Bodentruppen
   schuetzen: (
     <>
-      <path d="M12 34 Q12 14 32 14 Q52 14 52 34 Z" fill={OLIVE} />
-      <rect x="8" y="34" width="48" height="6" rx="3" fill="#5e6e36" />
-      <path d="M20 44 L44 44 L40 54 H24 Z" fill="#d9b48c" />
+      <path d="M12 36 Q13 18 32 17 Q51 18 52 36 Z" fill={M} />
+      <path d="M8 36 H56 L54 40 H10 Z" fill={L} />
+      <path d="M18 26 Q32 22 46 26" stroke={D} strokeWidth="1.5" fill="none" />
+      <path d="M22 40 L24 50 M42 40 L40 50" stroke={D} strokeWidth="2" />
     </>
   ),
   pioniere: (
     <>
-      <path d="M14 34 Q14 16 32 16 Q50 16 50 34 Z" fill="#c9a33a" />
-      <rect x="10" y="34" width="44" height="6" rx="3" fill="#9a7b26" />
-      <path d="M44 6 L56 18 M50 12 L28 34" stroke={HULL} strokeWidth="4" strokeLinecap="round" />
-      <path d="M20 44 L44 44 L40 54 H24 Z" fill="#d9b48c" />
+      <path d="M12 38 Q13 22 30 21 Q47 22 48 38 Z" fill={M} />
+      <path d="M8 38 H52 L50 42 H10 Z" fill={L} />
+      <path d="M40 8 L58 26" stroke={L} strokeWidth="3" />
+      <path d="M54 22 L60 16 L62 22 L58 28 Z" fill={L} />
+      <path d="M18 12 L30 24" stroke={A} strokeWidth="2.5" />
     </>
   ),
   kampfpanzer: (
     <>
-      <rect x="6" y="40" width="52" height="12" rx="6" fill="#4a5530" />
-      {[14, 24, 34, 44].map((x) => <circle key={x} cx={x + 2} cy="46" r="3.5" fill="#2e351d" />)}
-      <path d="M12 40 L16 30 H48 L52 40 Z" fill={OLIVE} />
-      <rect x="24" y="22" width="16" height="10" rx="3" fill="#5e6e36" />
-      <rect x="38" y="25" width="22" height="4" fill="#5e6e36" />
+      <rect x="6" y="38" width="48" height="10" rx="5" fill={D} />
+      {[12, 20, 28, 36, 44].map((x) => <circle key={x} cx={x + 2} cy="43" r="3" fill={M} />)}
+      <path d="M6 38 L12 31 H48 L56 38 Z" fill={M} />
+      <path d="M20 31 L23 24 H40 L45 31 Z" fill={L} />
+      <path d="M42 26 H63" stroke={L} strokeWidth="2.5" />
+      <path d="M28 24 V20 H32" stroke={L} strokeWidth="1.5" fill="none" />
     </>
   ),
   piratenmiliz: (
     <>
-      <circle cx="32" cy="28" r="16" fill="#e6e1d3" />
-      <circle cx="26" cy="27" r="4" fill="#111" />
-      <circle cx="38" cy="27" r="4" fill="#111" />
-      <path d="M28 36 H36 M30 36 V40 M34 36 V40" stroke="#111" strokeWidth="2" />
-      <path d="M14 50 L50 58 M50 50 L14 58" stroke="#e6e1d3" strokeWidth="5" strokeLinecap="round" />
+      <path d="M12 36 Q13 20 32 19 Q51 20 52 36 Z" fill="#5a4a40" />
+      <path d="M8 36 H56 L54 40 H10 Z" fill="#7a6658" />
+      <path d="M40 10 L56 50" stroke={L} strokeWidth="2" />
+      <path d="M36 14 H46" stroke={A} strokeWidth="3" />
     </>
   ),
 
-  // ---------------------------------------------------------- Flugzeuge
+  // ---------------------------------------------------------- Flugzeuge (Draufsicht, Nase oben)
   abfangjaeger: (
     <>
-      <path d="M32 4 L36 20 L58 36 V42 L36 34 L35 50 L42 56 V60 L32 56 L22 60 V56 L29 50 L28 34 L6 42 V36 L28 20 Z" fill={HULL} />
-      <path d="M32 10 L34 20 H30 Z" fill={SEA} />
+      <path d="M32 4 L35 14 L36 26 L58 38 V42 L36 38 L35 50 L42 56 V59 L32 56 L22 59 V56 L29 50 L28 38 L6 42 V38 L28 26 L29 14 Z" fill={M} />
+      <path d="M32 6 L34 16 H30 Z" fill={W} />
+      <path d="M32 18 V52" stroke={L} strokeWidth="1" />
     </>
   ),
   jagdbomber: (
     <>
-      <path d="M32 4 L37 22 L58 34 V40 L37 34 L36 50 L42 56 V60 L32 56 L22 60 V56 L28 50 L27 34 L6 40 V34 L27 22 Z" fill={STEEL} />
-      <ellipse cx="16" cy="40" rx="3" ry="6" fill={RED} />
-      <ellipse cx="48" cy="40" rx="3" ry="6" fill={RED} />
+      <path d="M32 4 L36 16 L37 24 L60 36 V41 L37 36 L36 50 L44 56 V59 L32 56 L20 59 V56 L28 50 L27 36 L4 41 V36 L27 24 L28 16 Z" fill={M} />
+      <path d="M32 6 L34 16 H30 Z" fill={W} />
+      <rect x="14" y="38" width="3" height="9" fill={D} />
+      <rect x="47" y="38" width="3" height="9" fill={D} />
+      <rect x="21" y="34" width="3" height="9" fill={D} />
+      <rect x="40" y="34" width="3" height="9" fill={D} />
     </>
   ),
   aufklaerungsdrohne: (
     <>
-      <path d="M8 30 H56 L50 36 H14 Z" fill={HULL} />
-      <rect x="26" y="24" width="12" height="16" rx="5" fill={STEEL} />
-      <circle cx="32" cy="42" r="4" fill={SEA} stroke={DARK} strokeWidth="2" />
-      <path d="M32 46 L20 58 M32 46 L44 58" stroke={GREEN} strokeWidth="2" opacity="0.7" />
+      <path d="M30 8 H34 L35 27 L62 29 V32 L35 33 L34 50 L42 53 V56 H22 V53 L30 50 L29 33 L2 32 V29 L29 27 Z" fill={M} />
+      <circle cx="32" cy="12" r="2.5" fill={W} />
     </>
   ),
 
   // ---------------------------------------------------------- Anlagen
   kuestenbatterie: (
     <>
-      <path d="M6 54 L14 38 H50 L58 54 Z" fill="#6b7480" />
-      <rect x="20" y="28" width="22" height="12" rx="4" fill={STEEL} />
-      <rect x="38" y="30" width="22" height="5" fill="#46607a" />
-      <path d="M2 60 Q14 56 26 60 T50 60" stroke={SEA} strokeWidth="3" fill="none" />
+      <path d="M4 52 L10 38 H46 L52 52 Z" fill={M} />
+      <path d="M16 38 L20 30 H38 L42 38 Z" fill={L} />
+      <path d="M36 33 L62 25" stroke={L} strokeWidth="3" />
+      <path d="M2 52 H62" stroke={D} strokeWidth="2" />
+      {WATER}
     </>
   ),
   flakstellung: (
     <>
-      <path d="M8 54 L14 42 H50 L56 54 Z" fill="#6b7480" />
-      <rect x="24" y="34" width="16" height="10" rx="3" fill={STEEL} />
-      <path d="M30 36 L44 10 M34 38 L50 14" stroke="#46607a" strokeWidth="4" strokeLinecap="round" />
-      <circle cx="52" cy="8" r="3" fill={BRASS} />
+      <path d="M8 54 L14 44 H50 L56 54 Z" fill={M} />
+      <rect x="24" y="36" width="16" height="8" fill={L} />
+      <path d="M30 38 L46 10 M34 40 L52 14" stroke={L} strokeWidth="3" />
     </>
   ),
   bunkerlinie: (
     <>
-      <path d="M4 54 V34 L14 28 H50 L60 34 V54 Z" fill="#7a828c" />
-      <rect x="14" y="38" width="10" height="4" fill={DARK} />
-      <rect x="40" y="38" width="10" height="4" fill={DARK} />
-      <path d="M4 46 H60" stroke="#5a626c" strokeWidth="2" />
+      <path d="M2 54 V34 L12 28 H52 L62 34 V54 Z" fill={M} />
+      <path d="M12 28 H52" stroke={L} strokeWidth="2" />
+      <rect x="12" y="38" width="10" height="3" fill="#1a232c" />
+      <rect x="42" y="38" width="10" height="3" fill="#1a232c" />
+      <path d="M2 54 H62" stroke={D} strokeWidth="2" />
     </>
   ),
   minensperre: (
     <>
-      <circle cx="32" cy="36" r="14" fill="#3b3b44" />
-      {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
-        <rect key={a} x="30" y="14" width="4" height="8" fill="#55555f" transform={`rotate(${a} 32 36)`} />
+      <circle cx="32" cy="30" r="12" fill={D} stroke={M} strokeWidth="1.5" />
+      {[0, 60, 120, 180, 240, 300].map((a) => (
+        <rect key={a} x="30.5" y="12" width="3" height="7" fill={M} transform={`rotate(${a} 32 30)`} />
       ))}
-      <circle cx="27" cy="31" r="3" fill="#8899aa" />
-      <path d="M4 50 Q16 46 28 50 T52 50 T64 50" stroke={SEA} strokeWidth="3" fill="none" opacity="0.6" />
+      <path d="M32 42 V58" stroke={M} strokeWidth="1.5" strokeDasharray="2 2" />
+      <path d="M2 24 H62" stroke={W} strokeWidth="1" opacity="0.5" />
     </>
   ),
 
-  // ---------------------------------------------------------- Missionen und Sonstiges
+  // ---------------------------------------------------------- Missionen und Lage (Taktikzeichen)
   ueberfall: (
     <>
-      <path d="M12 12 L44 44 M52 12 L20 44" stroke={HULL} strokeWidth="6" strokeLinecap="round" />
-      <path d="M38 48 L48 38 M26 48 L16 38" stroke={BRASS} strokeWidth="6" strokeLinecap="round" />
+      <path d="M8 46 Q20 18 46 18" stroke={L} strokeWidth="3" fill="none" />
+      <path d="M40 10 L56 18 L40 26 Z" fill={L} />
+      <path d="M8 46 Q24 30 48 30" stroke={L} strokeWidth="1.5" fill="none" opacity="0.5" />
     </>
   ),
   aufklaerung: (
     <>
-      <circle cx="20" cy="36" r="12" fill={DARK} stroke={HULL} strokeWidth="5" />
-      <circle cx="44" cy="36" r="12" fill={DARK} stroke={HULL} strokeWidth="5" />
-      <rect x="26" y="28" width="12" height="8" fill={HULL} />
-      <circle cx="17" cy="33" r="3" fill={SEA} />
-      <circle cx="41" cy="33" r="3" fill={SEA} />
+      <path d="M4 32 Q32 8 60 32 Q32 56 4 32 Z" fill="none" stroke={L} strokeWidth="2.5" />
+      <circle cx="32" cy="32" r="8" fill={W} />
+      <circle cx="32" cy="32" r="3" fill="#0d131a" />
     </>
   ),
   transport: (
     <>
-      <rect x="14" y="16" width="16" height="14" fill="#d9b26b" />
-      <rect x="32" y="20" width="14" height="10" fill="#c0503c" />
-      <path d="M6 32 H58 L52 44 H12 Z" fill={OLIVE} />
-      <path d="M2 52 Q14 48 26 52 T50 52 T64 52" stroke={SEA} strokeWidth="3" fill="none" />
+      <path d="M6 32 H48" stroke={L} strokeWidth="3" />
+      <path d="M44 22 L60 32 L44 42 Z" fill={L} />
+      <rect x="10" y="18" width="12" height="10" fill="none" stroke={M} strokeWidth="2" />
+      <rect x="24" y="18" width="12" height="10" fill="none" stroke={M} strokeWidth="2" />
     </>
   ),
   kartell: (
     <>
-      <path d="M14 6 V58" stroke="#8a6430" strokeWidth="4" />
-      <path d="M16 8 H54 L46 20 L54 32 H16 Z" fill="#111" />
-      <circle cx="33" cy="17" r="5" fill="#e6e1d3" />
-      <path d="M26 26 L40 22 M26 22 L40 26" stroke="#e6e1d3" strokeWidth="2.5" />
+      <path d="M32 6 L58 32 L32 58 L6 32 Z" fill="#ff8080" stroke="#2a0a0a" strokeWidth="2" />
+      <path d="M22 22 L42 42 M42 22 L22 42" stroke="#2a0a0a" strokeWidth="3" />
     </>
   ),
   schild: (
     <>
-      <path d="M32 6 L54 14 V30 C54 44 44 54 32 58 C20 54 10 44 10 30 V14 Z" fill={SEA} />
-      <path d="M32 12 L48 18 V30 C48 40 41 48 32 52 Z" fill="#7cc6e8" />
+      <path d="M32 6 L54 14 V30 C54 44 44 54 32 58 C20 54 10 44 10 30 V14 Z" fill="none" stroke={W} strokeWidth="3" />
+      <path d="M22 32 L29 39 L43 24" stroke={W} strokeWidth="3" fill="none" />
     </>
   ),
   uhr: (
     <>
-      <circle cx="32" cy="32" r="22" fill="none" stroke={HULL} strokeWidth="5" />
-      <path d="M32 18 V32 L42 38" stroke={BRASS} strokeWidth="5" strokeLinecap="round" fill="none" />
+      <circle cx="32" cy="32" r="22" fill="none" stroke={M} strokeWidth="3" />
+      <path d="M32 18 V32 L42 38" stroke={L} strokeWidth="3" fill="none" />
     </>
   ),
   "nav-karte": (
     <>
-      <path d="M6 14 L22 8 L42 14 L58 8 V50 L42 56 L22 50 L6 56 Z" fill="none" stroke="currentColor" strokeWidth="4" strokeLinejoin="round" />
-      <path d="M22 8 V50 M42 14 V56" stroke="currentColor" strokeWidth="4" />
+      <path d="M6 14 L22 8 L42 14 L58 8 V50 L42 56 L22 50 L6 56 Z" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinejoin="round" />
+      <path d="M22 8 V50 M42 14 V56" stroke="currentColor" strokeWidth="3.5" />
     </>
   ),
   "nav-bericht": (
     <>
-      <path d="M14 8 H44 L52 16 V56 H14 Z" fill="none" stroke="currentColor" strokeWidth="4" strokeLinejoin="round" />
-      <path d="M22 26 H44 M22 36 H44 M22 46 H36" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+      <path d="M14 8 H44 L52 16 V56 H14 Z" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinejoin="round" />
+      <path d="M22 26 H44 M22 36 H44 M22 46 H36" stroke="currentColor" strokeWidth="3.5" />
     </>
   ),
   "nav-boerse": (
     <>
-      <path d="M32 8 V56 M14 56 H50 M10 20 H54" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
-      <path d="M10 20 L4 38 Q10 44 16 38 Z M54 20 L48 38 Q54 44 60 38 Z" fill="currentColor" />
+      <path d="M8 50 L22 34 L32 42 L54 16" stroke="currentColor" strokeWidth="3.5" fill="none" strokeLinejoin="round" />
+      <path d="M44 16 H54 V26" stroke="currentColor" strokeWidth="3.5" fill="none" />
+      <path d="M6 56 H58" stroke="currentColor" strokeWidth="3.5" />
     </>
   ),
   "nav-truppen": (
     <>
-      <path d="M12 34 Q12 12 32 12 Q52 12 52 34 Z" fill="none" stroke="currentColor" strokeWidth="4" />
-      <path d="M6 36 H58" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
-      <path d="M22 44 L32 54 L42 44" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+      <rect x="8" y="16" width="48" height="32" fill="none" stroke="currentColor" strokeWidth="3.5" />
+      <path d="M8 16 L56 48 M56 16 L8 48" stroke="currentColor" strokeWidth="3" />
     </>
   ),
   "nav-basis": (
     <>
-      <circle cx="32" cy="12" r="5" fill="none" stroke="currentColor" strokeWidth="4" />
-      <path d="M32 17 V56 M22 26 H42 M10 38 Q14 56 32 56 Q50 56 54 38" stroke="currentColor" strokeWidth="5" fill="none" strokeLinecap="round" />
+      <circle cx="32" cy="12" r="5" fill="none" stroke="currentColor" strokeWidth="3.5" />
+      <path d="M32 17 V56 M22 26 H42 M10 38 Q14 56 32 56 Q50 56 54 38" stroke="currentColor" strokeWidth="4" fill="none" strokeLinecap="round" />
     </>
   ),
   anker: (
     <>
-      <circle cx="32" cy="12" r="5" fill="none" stroke={BRASS} strokeWidth="4" />
-      <path d="M32 17 V54 M22 26 H42 M12 38 Q16 54 32 54 Q48 54 52 38" stroke={BRASS} strokeWidth="5" fill="none" strokeLinecap="round" />
+      <circle cx="32" cy="12" r="5" fill="none" stroke={L} strokeWidth="3.5" />
+      <path d="M32 17 V54 M22 26 H42 M12 38 Q16 54 32 54 Q48 54 52 38" stroke={L} strokeWidth="4" fill="none" strokeLinecap="round" />
     </>
   ),
 };
@@ -390,32 +394,33 @@ export function hasIcon(id: string): boolean {
   return id in P;
 }
 
-/** Icon ohne Hintergrund. */
+/** Symbol ohne Hintergrund. */
 export function Icon({ id, size = 24, className }: { id: string; size?: number; className?: string }) {
   return (
     <svg viewBox="0 0 64 64" width={size} height={size} className={className} aria-hidden="true" style={{ overflow: "visible" }}>
-      {P[id] ?? <circle cx="32" cy="32" r="14" fill={STEEL} />}
+      {P[id] ?? <circle cx="32" cy="32" r="12" fill={M} />}
     </svg>
   );
 }
 
-const TILE: Record<string, string> = {
-  see: "from-sky-900 to-navy-800",
-  land: "from-lime-950 to-navy-800",
-  luft: "from-slate-700 to-navy-800",
-  gebaeude: "from-navy-600 to-navy-800",
-  anlage: "from-stone-700 to-navy-800",
-  feind: "from-red-950 to-navy-800",
+/** Kennstreifen links nach Zugehörigkeit (NATO-Farben gedämpft). */
+const TONE: Record<string, string> = {
+  see: "#4fb3d9",
+  land: "#8ea27a",
+  luft: "#9fb2c4",
+  gebaeude: "#6c7d8e",
+  anlage: "#a39782",
+  feind: "#d36b65",
 };
 
-/** Icon auf einer gerundeten Kachel mit Verlauf. */
-export function IconTile({ id, size = 48, tone = "gebaeude" }: { id: string; size?: number; tone?: keyof typeof TILE }) {
+/** Symbol auf einer dunklen Kachel mit dünnem Rahmen und Kennstreifen. */
+export function IconTile({ id, size = 48, tone = "gebaeude" }: { id: string; size?: number; tone?: keyof typeof TONE }) {
   return (
     <div
-      className={`shrink-0 rounded-xl bg-gradient-to-br ${TILE[tone]} border border-white/10 shadow-inner grid place-items-center`}
-      style={{ width: size, height: size }}
+      className="shrink-0 relative grid place-items-center bg-navy-900 border border-white/10"
+      style={{ width: size, height: size, borderRadius: 4, boxShadow: `inset 3px 0 0 ${TONE[tone]}` }}
     >
-      <Icon id={id} size={Math.round(size * 0.74)} />
+      <Icon id={id} size={Math.round(size * 0.78)} />
     </div>
   );
 }

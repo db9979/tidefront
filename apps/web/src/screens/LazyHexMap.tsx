@@ -8,10 +8,10 @@ export type HexMapProps = ComponentProps<typeof Inner>;
 
 function MapLoading() {
   return (
-    <div className="w-full h-full grid place-items-center bg-navy-950/60">
+    <div className="w-full h-full grid place-items-center bg-[#061521]">
       <div className="flex flex-col items-center gap-2 text-slate-400">
         <Icon id="nav-karte" size={40} className="animate-pulse" />
-        <span className="font-display uppercase text-sm">Karte lädt …</span>
+        <span className="font-mono uppercase tracking-widest text-[11px] text-[#9fd3e6]">Lagekarte wird geladen …</span>
       </div>
     </div>
   );

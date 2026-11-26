@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { hexDistanceKm, nearestTradePort, terrainAt } from "@tidefront/world";
+import { hexCenter, hexDistanceKm, nearestTradePort, terrainAt } from "@tidefront/world";
 import { trpc, type BaseData } from "../lib/trpc.ts";
 import { fmtDuration, fmtSeconds, useNow } from "../lib/time.ts";
 import { countLabel, fmtNum, label } from "../lib/names.ts";
@@ -8,6 +8,8 @@ import type { Target } from "../App.tsx";
 import { HexMap } from "./LazyHexMap.tsx";
 import { Button, Loading } from "../ui.tsx";
 import { MapLegend } from "../map/Legend.tsx";
+import { TacticalIcon } from "../map/TacticalIcon.tsx";
+import { fmtPosition } from "../map/coords.ts";
 
 const TERRAIN: Record<string, string> = { sea: "Offene See", coast: "Küste", land: "Binnenland" };
 const LEVEL_TEXT = ["", "schwach besetzt", "kleine Bande", "befestigt", "Festung", "Hauptquartier"];
@@ -50,39 +52,51 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
           missions={base.missions}
           alert={alert}
         />
-        <div className="absolute left-2 top-2 flex flex-col gap-2 items-start">
+        <div className="absolute left-2 top-6 flex flex-col gap-1.5 items-start">
           <button
             type="button"
-            className="tap rounded-full bg-navy-900/85 border border-brass-400/60 text-brass-400 px-3 text-sm font-semibold shadow-lg backdrop-blur"
+            className="tap rounded-[4px] bg-slate-950/75 border border-[#80c0ff]/60 text-[#80c0ff] px-3 text-[11px] font-mono uppercase tracking-widest backdrop-blur-sm flex items-center gap-2"
             onClick={() => { setCenterOn(home); setRecenter((n) => n + 1); }}
           >
-            ⚓ Mein Hafen
+            <TacticalIcon kind="own" size={20} /> Mein Hafen
           </button>
-          {alert && <div className="rounded-full bg-red-700/90 px-3 py-1 text-xs font-semibold shadow-lg">⚠ Angriff im Anmarsch</div>}
+          {alert && (
+            <div className="rounded-[4px] bg-red-950/85 border border-[#ff8080] text-[#ffb0b0] px-2 py-1 text-[11px] font-mono uppercase tracking-wider animate-pulse">
+              Feindkontakt – Angriff im Anmarsch
+            </div>
+          )}
         </div>
+        {sel && (
+          <div className="absolute right-2 bottom-2 rounded-[4px] bg-slate-950/80 border border-white/20 px-2 py-1 text-[11px] font-mono text-[#9fd3e6] pointer-events-none">
+            {(() => { const c = hexCenter(sel.col, sel.row); return fmtPosition(c.lat, c.lon); })()}
+          </div>
+        )}
         {!sel && <MapLegend />}
       </div>
       {sel && info && (
-        <div className="p-3 bg-navy-900 border-t border-navy-700 shadow-[0_-8px_24px_rgba(0,0,0,0.4)]">
+        <div className="p-3 bg-slate-950/95 border-t border-white/15">
           <div className="flex items-start justify-between gap-2">
             <div className="text-sm min-w-0 flex-1">
-              <div className="text-xs text-slate-400">
+              <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">
                 {TERRAIN[terrainAt(sel.col, sel.row) ?? "sea"]} · Feld {sel.col}/{sel.row}
-                {!isHome && ` · ${fmtNum(dist)} km von deinem Hafen`}
+                {!isHome && ` · ${fmtNum(dist)} km`}
               </div>
               {info.base && (
                 <div className="mt-1">
-                  <div className="text-base font-semibold">
-                    <span className={info.base.own ? "text-brass-400" : "text-red-300"}>{info.base.own ? "★" : "⛨"}</span> {info.base.name}
+                  <div className="text-base font-semibold flex items-center gap-2">
+                    <TacticalIcon kind={info.base.own ? "own" : "other"} size={26} /> {info.base.name}
                   </div>
                   <div className="text-xs text-slate-300">{info.base.own ? "Dein Stützpunkt" : `Stützpunkt von ${info.base.owner}`}</div>
-                  {info.base.protection && <div className="text-emerald-300 text-xs">🛡 {label(info.base.protection)} – kein Überfall möglich</div>}
+                  {info.base.protection && <div className="text-emerald-300 text-xs">{label(info.base.protection)} – kein Überfall möglich</div>}
                   {isHome && <div className="text-xs text-slate-400">Nächster Handelshafen: {nearestTradePort(home).name} ({fmtNum(nearestTradePort(home).distanceKm)} km)</div>}
                 </div>
               )}
               {info.nest && (
                 <div className="mt-1">
-                  <div className="text-base font-semibold">☠ Piratennest Stufe {info.nest.level} <span className="text-xs font-normal text-slate-400">{LEVEL_TEXT[info.nest.level]}</span></div>
+                  <div className="text-base font-semibold flex items-center gap-2">
+                    <TacticalIcon kind={info.nest.empty ? "nestEmpty" : "nest"} level={info.nest.level} size={30} />
+                    <span>Piratennest Stufe {info.nest.level} <span className="text-xs font-normal text-slate-400">{LEVEL_TEXT[info.nest.level]}</span></span>
+                  </div>
                   {info.nest.empty ? (
                     <div className="text-xs text-slate-400">Verlassen – neu besetzt in {fmtDuration((info.nest.respawnAtMs ?? now) - now)}</div>
                   ) : garrison ? (
@@ -99,18 +113,19 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
                 </div>
               )}
               {info.wreck && (
-                <div className="text-xs text-orange-300 mt-1">
-                  Wrackfeld: {fmtNum(info.wreck.stahl)} Stahl, {fmtNum(info.wreck.elektronik)} Elektronik – jede Mission hierher birgt es mit freiem Laderaum.
+                <div className="text-xs text-slate-300 mt-1 flex items-start gap-2">
+                  <TacticalIcon kind="wreck" size={20} />
+                  <span>Wrackfeld: {fmtNum(info.wreck.stahl)} Stahl, {fmtNum(info.wreck.elektronik)} Elektronik – jede Mission hierher birgt es mit freiem Laderaum.</span>
                 </div>
               )}
               {!info.base && !info.nest && !info.wreck && (
-                <div className="text-slate-400 mt-1">Hier ist nichts. Ziele sind Piratennester (☠) und fremde Stützpunkte.</div>
+                <div className="text-slate-400 mt-1">Hier ist nichts. Ziele sind Piratennester (rote Raute) und fremde Stützpunkte.</div>
               )}
               {!isHome && (info.base || info.nest) && (
                 <div className="text-xs text-slate-400 mt-1">Fahrzeit etwa: Korvette {eta("korvette")}, Landungsschiff {eta("landungsschiff")}</div>
               )}
             </div>
-            <button type="button" className="tap rounded-full bg-navy-800 text-slate-300" onClick={() => setSel(null)} aria-label="Schließen">✕</button>
+            <button type="button" className="tap rounded-[4px] border border-white/20 text-slate-300" onClick={() => setSel(null)} aria-label="Schließen">✕</button>
           </div>
           {(info.nest || (info.base && !info.base.own)) && (
             <Button className="w-full mt-2" onClick={() => onPlan(sel)}>Mission planen</Button>

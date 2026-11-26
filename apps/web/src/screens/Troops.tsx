@@ -34,7 +34,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap }: { base: BaseData; on
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h1 className="font-display text-2xl font-bold uppercase">Truppen</h1>
+        <h1 className="font-display text-xl font-bold uppercase">Truppen</h1>
         <Button onClick={onPlan}>Mission planen</Button>
       </div>
 

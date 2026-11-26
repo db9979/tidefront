@@ -5,6 +5,7 @@ import { queryClient, trpc, trpcClient } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum } from "../lib/names.ts";
 import { HexMap } from "./LazyHexMap.tsx";
+import { TacticalIcon } from "../map/TacticalIcon.tsx";
 import { Button, ErrorLine, Loading } from "../ui.tsx";
 
 type Hex = { col: number; row: number };
@@ -60,47 +61,47 @@ export function ChooseBase() {
 
   return (
     <div className="h-full flex flex-col max-w-xl mx-auto">
-      <div className="p-3 bg-navy-900 border-b border-navy-700">
+      <div className="p-3 bg-slate-950 border-b border-white/15">
         <div className="flex items-start justify-between gap-2">
-          <h1 className="font-semibold text-brass-400">Wo gründest du deinen Hafen?</h1>
+          <h1 className="font-mono text-sm uppercase tracking-widest text-[#80c0ff]">Standort für deinen Hafen</h1>
           <button type="button" className="text-xs text-sea-300 underline min-h-[44px] -my-3 px-1" onClick={async () => { await trpcClient.auth.logout.mutate(); queryClient.clear(); location.reload(); }}>Abmelden</button>
         </div>
-        <p className="text-xs text-slate-300">Gelb markierte Felder sind freie Küste. Tippe eines an oder nimm einen Vorschlag.</p>
+        <p className="text-xs text-slate-300">Hell umrandete Felder sind freie Küste. Tippe eines an oder nimm einen Vorschlag.</p>
       </div>
       <div className="flex-1 min-h-0 relative">
         <HexMap data={map.data} selectMode free={free} selected={sel} onSelect={(h) => { setSel(h); setShowHelp(false); }} center={view.center} recenter={view.n} zoom={0.3} />
         {showHelp && (
-          <div className="absolute inset-x-2 bottom-2 rounded-xl bg-navy-900/95 border border-navy-600 p-3 text-xs text-slate-200 shadow-xl">
-            <div className="font-semibold text-sm text-sea-300 mb-1">Worauf es ankommt</div>
+          <div className="absolute inset-x-2 bottom-2 rounded-[4px] bg-slate-950/92 border border-white/20 p-3 text-xs text-slate-200 backdrop-blur-sm">
+            <div className="font-mono text-[11px] uppercase tracking-widest text-[#9fd3e6] mb-1">Worauf es ankommt</div>
             <ul className="space-y-1 list-disc pl-4">
-              <li><b>Piratennester (☠) in der Nähe</b> bringen schnelle Beute – kurze Fahrten, wenig Treibstoff.</li>
-              <li><b>Ein Handelshafen (⚓) in der Nähe</b> verkürzt Lieferungen der Börse.</li>
+              <li><b>Piratennester (rote Raute) in der Nähe</b> bringen schnelle Beute – kurze Fahrten, wenig Treibstoff.</li>
+              <li><b>Ein Handelshafen (Kreis mit Anker) in der Nähe</b> verkürzt Lieferungen der Börse.</li>
               <li><b>Abstand zu anderen Spielern</b> gibt Ruhe; Nähe macht Handel und Überfälle möglich.</li>
               <li>Die ersten 7 Tage schützt dich der Anfängerschutz.</li>
             </ul>
-            <button type="button" className="tap w-full mt-2 rounded-lg bg-navy-700" onClick={() => setShowHelp(false)}>Verstanden</button>
+            <button type="button" className="tap w-full mt-2 rounded-[4px] border border-white/25 bg-slate-800 font-mono text-[11px] uppercase tracking-widest" onClick={() => setShowHelp(false)}>Verstanden</button>
           </div>
         )}
       </div>
-      <div className="bg-navy-900 border-t border-navy-700">
+      <div className="bg-slate-950 border-t border-white/15">
         <div className="flex gap-2 overflow-x-auto px-3 pt-3 pb-1" role="list" aria-label="Schnellwahl">
           {QUICK_PICKS.map((q) => (
             <button key={q.name} type="button" role="listitem" onClick={() => quick(q.lon, q.lat)}
-              className="tap shrink-0 rounded-lg bg-navy-800 border border-navy-600 px-3 py-1 text-left active:bg-navy-700">
+              className="tap shrink-0 rounded-[4px] bg-slate-900 border border-white/15 px-3 py-1 text-left active:bg-slate-800">
               <div className="text-sm font-semibold">{q.name}</div>
               <div className="text-[11px] text-slate-400 whitespace-nowrap">{q.hint}</div>
             </button>
           ))}
         </div>
         <div className="p-3 pt-2">
-          {!sel && <p className="text-sm text-slate-300">Schnellwahl oben oder ein gelbes Feld auf der Karte antippen.</p>}
-          {sel && !isFree && <p className="text-sm text-red-300">Dieses Feld ist keine freie Küste – wähle ein gelb markiertes Feld.</p>}
+          {!sel && <p className="text-sm text-slate-300">Schnellwahl oben oder ein hell umrandetes Küstenfeld auf der Karte antippen.</p>}
+          {sel && !isFree && <p className="text-sm text-red-300">Dieses Feld ist keine freie Küste – wähle ein hell umrandetes Feld.</p>}
           {sel && isFree && f && (
             <div className="space-y-2">
-              <div className="text-xs text-slate-300 grid grid-cols-2 gap-x-2 gap-y-0.5">
-                <span>☠ Nester im Umkreis 900 km</span><span className="text-right">{f.near.length} (nächstes St. {f.nearest?.n.level}, {fmtNum(f.nearest?.d ?? 0)} km)</span>
-                <span>⚓ Handelshafen</span><span className="text-right">{f.port.name}, {fmtNum(f.port.distanceKm)} km</span>
-                <span>⛨ Nächster Spieler</span><span className="text-right">{f.other === undefined ? "keiner" : `${fmtNum(f.other)} km`}</span>
+              <div className="text-xs text-slate-300 grid grid-cols-2 gap-x-2 gap-y-0.5 font-mono">
+                <span className="flex items-center gap-1"><TacticalIcon kind="nest" size={16} /> Nester ≤ 900 km</span><span className="text-right">{f.near.length} (nächstes St. {f.nearest?.n.level}, {fmtNum(f.nearest?.d ?? 0)} km)</span>
+                <span className="flex items-center gap-1"><TacticalIcon kind="port" size={16} /> Handelshafen</span><span className="text-right">{f.port.name}, {fmtNum(f.port.distanceKm)} km</span>
+                <span className="flex items-center gap-1"><TacticalIcon kind="other" size={16} /> Nächster Spieler</span><span className="text-right">{f.other === undefined ? "keiner" : `${fmtNum(f.other)} km`}</span>
               </div>
               <input className="w-full h-12 rounded-lg bg-navy-950 border border-navy-600 px-3" placeholder="Name des Stützpunkts" value={name} onChange={(e) => setName(e.target.value)} />
               <label className="flex items-center gap-2 text-sm">

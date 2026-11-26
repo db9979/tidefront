@@ -135,7 +135,7 @@ export function Handbook({ onClose, onLogout, playerName }: { onClose: () => voi
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h1 className="font-display text-2xl font-bold uppercase">Handbuch</h1>
+        <h1 className="font-display text-xl font-bold uppercase">Handbuch</h1>
         <Button kind="secondary" onClick={onClose}>Zurück</Button>
       </div>
       {chapters.map((c) => (

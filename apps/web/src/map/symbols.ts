@@ -1,141 +1,148 @@
-// Kartensymbole in Bildschirm-Pixeln um (0, 0); der Aufrufer setzt Position und Gegenskalierung.
+// Kartensymbole als Taktikzeichen nach Art von APP-6 (freundlich blau, neutral grün, feindlich rot),
+// in Bildschirm-Pixeln um (0, 0); der Aufrufer setzt Position und Gegenskalierung.
 import { Container, Graphics, Text } from "pixi.js";
 
-export const LEVEL_COLORS = [0xf2d44e, 0xf2a93b, 0xe8742f, 0xd9442b, 0xb01e3a];
-const INK = 0x0b1726;
+export const FRIEND = 0x80c0ff;
+export const NEUTRAL = 0xaaffaa;
+export const HOSTILE = 0xff8080;
+const INK = 0x0a1420;
+const MONO = "ui-monospace, Menlo, Consolas, monospace";
+const ROMAN = ["", "I", "II", "III", "IV", "V"];
 
-function star(g: Graphics, r1: number, r2: number, points = 5): Graphics {
-  const pts: number[] = [];
-  for (let i = 0; i < points * 2; i++) {
-    const r = i % 2 === 0 ? r1 : r2;
-    const a = (Math.PI * i) / points - Math.PI / 2;
-    pts.push(Math.cos(a) * r, Math.sin(a) * r);
-  }
-  return g.poly(pts);
+function txt(s: string, size: number, fill: number, weight = "600"): Text {
+  const t = new Text({ text: s, style: { fontFamily: MONO, fontSize: size, fill, fontWeight: weight as "600" } });
+  t.resolution = 2;
+  return t;
 }
 
-/** Namensschild unter einem Symbol. */
-export function nameTag(text: string, color: number, y = 20): Container {
+/** Namensschild in Monospace-Versalien unter einem Zeichen. */
+export function nameTag(text: string, color: number, y = 16): Container {
   const c = new Container();
-  const t = new Text({ text, style: { fontSize: 12, fill: 0xffffff, fontWeight: "600", fontFamily: "system-ui, sans-serif" } });
-  t.resolution = 2;
+  const t = txt(text.toUpperCase(), 10, 0xe8f1f6);
   t.anchor.set(0.5, 0);
-  const w = t.width + 10;
-  const bg = new Graphics().roundRect(-w / 2, y - 1, w, t.height + 3, 5).fill({ color: INK, alpha: 0.82 }).stroke({ color, width: 1.5 });
+  const w = t.width + 8;
+  const bg = new Graphics().rect(-w / 2, y, w, t.height + 2).fill({ color: INK, alpha: 0.78 }).stroke({ color, width: 1, alpha: 0.9 });
   t.position.set(0, y + 1);
   c.addChild(bg, t);
   return c;
 }
 
-/** Eigener Stützpunkt: Festung mit Stern, messingfarben. */
+/** Einrichtungsrahmen (Rechteck) mit Ankerzeichen und Einrichtungsbalken oben. */
+function installation(fill: number): Graphics {
+  const g = new Graphics();
+  g.rect(-13, -9, 26, 18).fill({ color: fill }).stroke({ color: INK, width: 1.6 });
+  g.rect(-5, -12.5, 10, 3.5).fill({ color: INK });
+  // Anker
+  g.circle(0, -4.2, 1.6).stroke({ color: INK, width: 1.2 });
+  g.moveTo(0, -2.6).lineTo(0, 5).moveTo(-3, -0.8).lineTo(3, -0.8).stroke({ color: INK, width: 1.4 });
+  g.arc(0, 1.4, 4.6, 0.15 * Math.PI, 0.85 * Math.PI).stroke({ color: INK, width: 1.4 });
+  return g;
+}
+
 export function ownBaseSymbol(): Container {
   const c = new Container();
-  const g = new Graphics();
-  g.circle(0, 0, 17).fill({ color: 0xf2c14e, alpha: 0.25 });
-  // Bastion: Achteck
-  const pts: number[] = [];
-  for (let i = 0; i < 8; i++) {
-    const a = (Math.PI / 4) * i + Math.PI / 8;
-    pts.push(Math.cos(a) * 13, Math.sin(a) * 13);
-  }
-  g.poly(pts).fill({ color: 0xf2c14e }).stroke({ color: INK, width: 2.5 });
-  star(g, 8, 3.4).fill({ color: INK });
-  c.addChild(g);
+  c.addChild(installation(FRIEND));
   return c;
 }
 
-/** Fremder Stützpunkt: rotes Wappenschild. */
+/** Fremder Spielerhafen: neutral (grün); geschützt mit gestricheltem Rahmen. */
 export function otherBaseSymbol(isProtected: boolean): Container {
   const c = new Container();
-  const g = new Graphics();
-  g.poly([-11, -12, 11, -12, 11, 1, 0, 13, -11, 1]).fill({ color: 0xe5484d }).stroke({ color: 0xffffff, width: 2 });
-  g.rect(-1.5, -8, 3, 15).fill({ color: 0xffffff, alpha: 0.85 });
-  g.rect(-7, -3, 14, 3).fill({ color: 0xffffff, alpha: 0.85 });
-  if (isProtected) g.circle(0, 0, 17).stroke({ color: 0x6ee7b7, width: 2, alpha: 0.9 });
-  c.addChild(g);
+  c.addChild(installation(NEUTRAL));
+  if (isProtected) {
+    const g = new Graphics();
+    for (let i = -17; i < 17; i += 6) g.moveTo(i, -14).lineTo(Math.min(17, i + 3), -14).moveTo(i, 13).lineTo(Math.min(17, i + 3), 13);
+    g.stroke({ color: 0xcfe8f0, width: 1.2, alpha: 0.9 });
+    c.addChild(g);
+  }
   return c;
 }
 
-/** Piratennest: Totenkopf-Flagge mit Stufenabzeichen. */
+/** Piratennest: feindliche Raute, Stufe als römische Zahl darüber; verlassen gestrichelt grau. */
 export function nestSymbol(level: number, empty: boolean): Container {
   const c = new Container();
   const g = new Graphics();
-  const ring = empty ? 0x6b7280 : LEVEL_COLORS[Math.max(0, Math.min(4, level - 1))];
-  g.circle(0, 0, 13).fill({ color: empty ? 0x374151 : 0x161616 }).stroke({ color: ring, width: 2.5 });
-  const bone = empty ? 0x9ca3af : 0xf5f1e6;
-  // gekreuzte Knochen
-  g.moveTo(-8, 6).lineTo(8, -2).moveTo(-8, -2).lineTo(8, 6).stroke({ color: bone, width: 2.2, cap: "round" });
-  // Schädel
-  g.circle(0, -2, 5.6).fill({ color: bone });
-  g.rect(-3, 2, 6, 3).fill({ color: bone });
-  g.circle(-2.1, -2.4, 1.4).circle(2.1, -2.4, 1.4).fill({ color: 0x161616 });
+  const r = 11;
+  if (empty) {
+    const pts = [[0, -r], [r, 0], [0, r], [-r, 0], [0, -r]];
+    for (let i = 0; i < 4; i++) {
+      const [ax, ay] = pts[i], [bx, by] = pts[i + 1];
+      for (let t = 0; t < 1; t += 0.34) {
+        const t2 = Math.min(1, t + 0.18);
+        g.moveTo(ax + (bx - ax) * t, ay + (by - ay) * t).lineTo(ax + (bx - ax) * t2, ay + (by - ay) * t2);
+      }
+    }
+    g.stroke({ color: 0x9aa4ad, width: 1.6 });
+  } else {
+    g.poly([0, -r, r, 0, 0, r, -r, 0]).fill({ color: HOSTILE }).stroke({ color: INK, width: 1.6 });
+    // Kennung: gekreuzte Säbel als zwei Linien
+    g.moveTo(-4.5, -4.5).lineTo(4.5, 4.5).moveTo(4.5, -4.5).lineTo(-4.5, 4.5).stroke({ color: INK, width: 1.4 });
+  }
   c.addChild(g);
-  const badge = new Graphics().circle(11, -11, 7.5).fill({ color: ring }).stroke({ color: INK, width: 1.5 });
-  const t = new Text({ text: String(level), style: { fontSize: 11, fill: INK, fontWeight: "800", fontFamily: "system-ui, sans-serif" } });
-  t.resolution = 2;
-  t.anchor.set(0.5);
-  t.position.set(11, -11);
-  c.addChild(badge, t);
+  const t = txt(ROMAN[Math.max(1, Math.min(5, level))], 9, empty ? 0x9aa4ad : 0xffd0d0, "700");
+  t.anchor.set(0.5, 1);
+  t.position.set(0, -r - 1);
+  c.addChild(t);
   return c;
 }
 
-/** Wrackfeld: gebrochener Rumpf auf dem Wasser. */
+/** Wrackfeld: gestrichelter Kreis mit Kreuz. */
 export function wreckSymbol(): Container {
   const c = new Container();
   const g = new Graphics();
-  g.circle(0, 0, 10).fill({ color: 0x0b1726, alpha: 0.55 });
-  g.poly([-9, 1, -2, 1, -4, 6, -8, 6]).fill({ color: 0xe8893a });
-  g.poly([1, -1, 9, -4, 8, 5, 2, 5]).fill({ color: 0xc96a24 });
-  g.moveTo(4, -2).lineTo(5, -9).stroke({ color: 0xe8893a, width: 1.6 });
-  g.moveTo(-9, 7).lineTo(9, 7).stroke({ color: 0xbfe9f5, width: 1.2, alpha: 0.7 });
+  for (let i = 0; i < 8; i++) g.arc(0, 0, 7, (i * Math.PI) / 4, (i * Math.PI) / 4 + 0.45).moveTo(0, 0);
+  g.stroke({ color: 0xb8c2ca, width: 1.4 });
+  g.moveTo(-3.5, -3.5).lineTo(3.5, 3.5).moveTo(3.5, -3.5).lineTo(-3.5, 3.5).stroke({ color: 0xb8c2ca, width: 1.4 });
   c.addChild(g);
   return c;
 }
 
-/** Handelshafen: Anker. */
+/** Handelshafen: kleiner Kreis mit Anker. */
 export function portSymbol(): Container {
   const c = new Container();
   const g = new Graphics();
-  g.circle(0, 0, 10).fill({ color: 0x0b1726, alpha: 0.75 }).stroke({ color: 0x7cc6e8, width: 1.5 });
-  g.circle(0, -5, 1.8).stroke({ color: 0xe6eef7, width: 1.4 });
-  g.moveTo(0, -3).lineTo(0, 6).moveTo(-3.5, -1).lineTo(3.5, -1).stroke({ color: 0xe6eef7, width: 1.6 });
-  g.arc(0, 1, 5.5, 0.15 * Math.PI, 0.85 * Math.PI).stroke({ color: 0xe6eef7, width: 1.6 });
+  g.circle(0, 0, 7).fill({ color: INK, alpha: 0.7 }).stroke({ color: 0x9fd3e6, width: 1 });
+  g.moveTo(0, -3.5).lineTo(0, 4).moveTo(-2.5, -1.5).lineTo(2.5, -1.5).stroke({ color: 0xd8ecf2, width: 1.1 });
+  g.arc(0, 0.5, 3.6, 0.15 * Math.PI, 0.85 * Math.PI).stroke({ color: 0xd8ecf2, width: 1.1 });
   c.addChild(g);
   return c;
 }
 
-/** Schiff, Bug zeigt nach +x; der Aufrufer dreht. */
+/** Eigener Verband auf See: freundlicher Kreisrahmen (Seeeinheit) mit Rumpfzeichen. */
 export function shipSymbol(color: number): Container {
   const c = new Container();
   const g = new Graphics();
-  g.poly([-9, -4, 6, -4, 11, 0, 6, 4, -9, 4]).fill({ color }).stroke({ color: INK, width: 1.5 });
-  g.rect(-4, -2, 6, 4).fill({ color: INK, alpha: 0.6 });
+  g.circle(0, 0, 8).fill({ color }).stroke({ color: INK, width: 1.4 });
+  g.poly([-5, -1, 5, -1, 3, 3, -3, 3]).fill({ color: INK });
+  g.moveTo(0, -1).lineTo(0, -5).stroke({ color: INK, width: 1.2 });
   c.addChild(g);
   return c;
 }
 
-/** Warnring für einen erkannten Angriff. */
+/** Erkannter Angriff: rote Raute und Ring um den eigenen Hafen. */
 export function alertRing(): Graphics {
-  return new Graphics().circle(0, 0, 24).stroke({ color: 0xff4d4f, width: 3 }).circle(0, 0, 30).stroke({ color: 0xff4d4f, width: 1.5, alpha: 0.6 });
+  return new Graphics()
+    .poly([0, -26, 26, 0, 0, 26, -26, 0]).stroke({ color: HOSTILE, width: 2 })
+    .circle(0, 0, 32).stroke({ color: HOSTILE, width: 1, alpha: 0.6 });
 }
 
-/** Kartenbeschriftung: Meere kursiv und blau, Regionen in Versalien. */
+/** Kartenbeschriftung: Meere kursiv gedeckt blau, Regionen in gesperrten Versalien. */
 export function mapLabel(name: string, kind: "sea" | "region", size: number): Text {
   const sea = kind === "sea";
   const t = new Text({
     text: sea ? name : name.toUpperCase(),
     style: {
-      fontFamily: sea ? "Georgia, 'Times New Roman', serif" : "system-ui, sans-serif",
+      fontFamily: sea ? "Georgia, 'Times New Roman', serif" : "'Arial Narrow', 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif",
       fontStyle: sea ? "italic" : "normal",
-      fontWeight: sea ? "400" : "600",
-      fontSize: Math.round(13 * size),
-      letterSpacing: sea ? 1 : 2.5,
-      fill: sea ? 0xa9dcf0 : 0xf2ead2,
-      stroke: { color: sea ? 0x0b2540 : 0x1d2a17, width: 3 },
+      fontWeight: "400",
+      fontSize: Math.round((sea ? 12 : 10.5) * size),
+      letterSpacing: sea ? 1.5 : 3.5,
+      fill: sea ? 0x8fb8cc : 0xd9d3bd,
+      stroke: { color: 0x061019, width: 2, alpha: 0.5 },
     },
   });
   t.resolution = 2;
   t.anchor.set(0.5);
-  t.alpha = sea ? 0.85 : 0.75;
+  t.alpha = sea ? 0.8 : 0.62;
   return t;
 }

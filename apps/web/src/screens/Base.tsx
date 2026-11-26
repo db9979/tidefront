@@ -41,13 +41,13 @@ export function BaseScreen(props: {
     <div>
       {/* Hafen-Kopf */}
       <section className="panel rounded-2xl p-3 mb-3 flex items-center gap-3">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brass-400 to-brass-500 grid place-items-center shadow-lg">
-          <Icon id="anker" size={40} className="[&_*]:!stroke-navy-950" />
+        <div className="w-14 h-14 grid place-items-center bg-[#80c0ff] border-2 border-[#0a1a2a]" title="Eigener Stützpunkt (Taktikzeichen)">
+          <Icon id="anker" size={36} className="[&_*]:!stroke-[#0a1a2a]" />
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="font-display text-2xl font-bold uppercase truncate">{base.name}</h1>
+          <h1 className="font-display text-xl font-bold uppercase truncate">{base.name}</h1>
           <div className="flex flex-wrap gap-1 mt-0.5">
-            {base.protection.status ? <Badge tone="green">🛡 {label(base.protection.status)}</Badge> : <Badge tone="red">ungeschützt</Badge>}
+            {base.protection.status ? <Badge tone="green">{label(base.protection.status)}</Badge> : <Badge tone="red">ungeschützt</Badge>}
             <Badge>Feld {base.col}/{base.row}</Badge>
             <Badge>Hafen {base.market.port.name} {fmtNum(base.market.port.distanceKm)} km</Badge>
           </div>
@@ -117,8 +117,8 @@ function BuildingTile({ b, res, busy, building, onOpen }: { b: Building; res: Re
     >
       <IconTile id={b.id} size={52} />
       <span className="w-full text-[11px] font-semibold mt-1 leading-tight break-words hyphens-auto" lang="de">{label(b.id).replace("kommandantur", "\u00ADkommandantur").replace("zentrale", "\u00ADzentrale")}</span>
-      <span className={`absolute top-1 right-1 min-w-6 h-6 px-1 rounded-full grid place-items-center text-xs font-bold ${b.level > 0 ? "bg-brass-400 text-navy-950" : "bg-navy-700 text-slate-300"}`}>{b.level}</span>
-      {can && <span className="absolute top-1 left-1 w-2.5 h-2.5 rounded-full bg-emerald-400" title="Ausbau möglich" />}
+      <span className={`absolute top-1 right-1 min-w-6 h-5 px-1 grid place-items-center text-[11px] mono border ${b.level > 0 ? "border-sea-400/60 text-sea-300 bg-navy-950" : "border-white/10 text-slate-500 bg-navy-950"}`}>{b.level}</span>
+      {can && <span className="absolute top-1 left-1 w-2 h-2 bg-emerald-400" title="Ausbau möglich" />}
       {building && <span className="text-[10px] text-sea-300">im Bau</span>}
     </button>
   );
@@ -136,7 +136,7 @@ function BuildingSheet({ b, base, res, queueBusy, onClose, onTroops }: { b: Buil
   const next = balance && !maxed ? buildingEffect(balance, b.id, b.level + 1) : null;
   const trains = ["werft", "kaserne", "flugfeld"].includes(b.id);
   return (
-    <Sheet open onClose={onClose} title={<>{label(b.id)} <span className="text-brass-300">Stufe {b.level}</span></>} icon={<IconTile id={b.id} size={56} />}>
+    <Sheet open onClose={onClose} title={<>{label(b.id)} <span className="text-sea-300 mono">Stufe {b.level}</span></>} icon={<IconTile id={b.id} size={56} />}>
       <p className="text-sm text-slate-200 mb-3">{BUILDING_TEXT[b.id]?.lang}</p>
       {(now || next) && (
         <div className="grid grid-cols-2 gap-2 mb-3">

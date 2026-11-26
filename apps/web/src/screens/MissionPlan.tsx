@@ -70,14 +70,14 @@ export function MissionPlan({ base, initialTarget, onClose }: { base: BaseData; 
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h1 className="font-display text-2xl font-bold uppercase">Mission planen</h1>
+        <h1 className="font-display text-xl font-bold uppercase">Mission planen</h1>
         <Button kind="ghost" onClick={onClose}>Schließen</Button>
       </div>
 
       <Card title="Art">
         <div className="grid grid-cols-3 gap-2">
           {TYPES.map((t) => (
-            <button key={t.id} type="button" onClick={() => setType(t.id)} className={`tap rounded-xl px-1 py-2 text-sm flex flex-col items-center gap-1 border ${type === t.id ? "border-brass-400 bg-brass-400/15 font-semibold" : "border-white/10 bg-navy-900"}`}>
+            <button key={t.id} type="button" onClick={() => setType(t.id)} className={`tap rounded-xl px-1 py-2 text-sm flex flex-col items-center gap-1 border ${type === t.id ? "border-sea-400 bg-sea-400/10 font-semibold reticle" : "border-white/10 bg-navy-900"}`}>
               <Icon id={t.id} size={32} />
               {t.text}
             </button>
@@ -197,7 +197,7 @@ function Strength({ balance, units, level }: { balance: Balance; units: Record<s
         {rows.map(([name, own, enemy]) => (
           <div key={name}>
             <div className="flex justify-between text-xs text-slate-400"><span>Feuerkraft {name}</span><span className="tabular-nums">{fmtNum(own)} gegen {fmtNum(enemy)}</span></div>
-            <div className="flex h-2 rounded-full overflow-hidden bg-navy-950">
+            <div className="flex h-1.5 overflow-hidden bg-navy-950">
               <div className="bg-sea-400" style={{ width: `${(own / Math.max(1, own + enemy)) * 100}%` }} />
               <div className="bg-red-500 flex-1" />
             </div>

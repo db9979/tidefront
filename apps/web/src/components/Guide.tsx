@@ -50,13 +50,13 @@ export function Guide({ base, wonRaid, onAction }: { base: BaseData; wonRaid: bo
   return (
     <section className="panel brass-edge rounded-2xl p-3 mb-3">
       <div className="flex items-center justify-between gap-2 mb-2">
-        <h2 className="font-display text-sm font-bold uppercase text-brass-300">Auftragsbuch</h2>
-        <span className="text-xs text-slate-400 tabular-nums">{doneCount}/{STEPS.length} erledigt</span>
+        <h2 className="font-display text-xs font-bold uppercase text-slate-300 flex items-center gap-2"><span className="w-1.5 h-3 bg-sea-400 inline-block" aria-hidden="true" />Auftragsbuch</h2>
+        <span className="text-xs text-slate-400 mono">{doneCount}/{STEPS.length} erledigt</span>
       </div>
-      <Bar value={doneCount / STEPS.length} tone="brass" />
+      <Bar value={doneCount / STEPS.length} />
       {current ? (
         <div className="flex gap-3 mt-3">
-          <div className="pulse rounded-xl shrink-0 self-start"><div className="rounded-xl bg-navy-900 border border-brass-500/50 p-1"><Icon id={current.icon} size={44} /></div></div>
+          <div className="shrink-0 self-start reticle"><div className="bg-navy-900 border border-sea-400/40 p-1"><Icon id={current.icon} size={44} /></div></div>
           <div className="min-w-0 flex-1">
             <div className="font-bold">{current.title}</div>
             <p className="text-sm text-slate-300">{current.why}</p>
@@ -83,7 +83,7 @@ export function Guide({ base, wonRaid, onAction }: { base: BaseData; wonRaid: bo
             const ok = s.done(base, wonRaid);
             return (
               <li key={s.id} className={`flex items-center gap-2 text-sm ${ok ? "text-slate-400 line-through" : ""}`}>
-                <span className={`grid place-items-center w-5 h-5 rounded-full text-xs ${ok ? "bg-emerald-600 text-white" : "bg-navy-700"}`}>{ok ? "✓" : ""}</span>
+                <span className={`grid place-items-center w-5 h-5 text-xs border ${ok ? "border-emerald-500 text-emerald-300" : "border-white/15"}`}>{ok ? "✓" : ""}</span>
                 <Icon id={s.icon} size={20} /> {s.title}
               </li>
             );

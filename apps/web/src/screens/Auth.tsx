@@ -33,24 +33,24 @@ export function AuthScreen() {
   const field = "w-full h-12 rounded-lg bg-navy-950 border border-navy-600 px-3 mb-3";
   return (
     <div className="min-h-full flex flex-col justify-center p-5 max-w-sm mx-auto">
-      <img src="/icon.svg" alt="" className="w-20 h-20 mx-auto mb-3" />
-      <h1 className="text-3xl font-bold text-center tracking-widest mb-1">TIDEFRONT</h1>
-      <p className="text-center text-slate-400 mb-6 text-sm">Nordatlantik · Mittelmeer</p>
+      <img src="/icon.svg" alt="" className="w-16 h-16 mx-auto mb-4" />
+      <h1 className="font-display text-3xl font-bold text-center uppercase tracking-[0.4em] mb-1">Tidefront</h1>
+      <p className="text-center text-slate-500 mb-8 text-xs mono uppercase tracking-widest">Lagezentrum Nordatlantik · Mittelmeer</p>
       <div className="grid grid-cols-2 mb-4 rounded-lg overflow-hidden border border-navy-600">
         {(["login", "register"] as const).map((m) => (
-          <button key={m} type="button" onClick={() => setMode(m)} className={`tap ${mode === m ? "bg-navy-600 text-white" : "bg-navy-900 text-slate-400"}`}>
+          <button key={m} type="button" onClick={() => setMode(m)} className={`tap font-display uppercase text-sm tracking-wider ${mode === m ? "bg-navy-700 text-sea-300 border-b-2 border-sea-400" : "bg-navy-900 text-slate-500"}`}>
             {m === "login" ? "Anmelden" : "Registrieren"}
           </button>
         ))}
       </div>
       <form onSubmit={submit}>
-        <label className="text-sm text-slate-300">Name</label>
+        <label className="text-[11px] font-display uppercase tracking-wider text-slate-400">Name</label>
         <input className={field} value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" required />
-        <label className="text-sm text-slate-300">Passwort</label>
+        <label className="text-[11px] font-display uppercase tracking-wider text-slate-400">Passwort</label>
         <input className={field} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === "login" ? "current-password" : "new-password"} required />
         {mode === "register" && (
           <>
-            <label className="text-sm text-slate-300">Einladungscode</label>
+            <label className="text-[11px] font-display uppercase tracking-wider text-slate-400">Einladungscode</label>
             <input className={field} value={invite} onChange={(e) => setInvite(e.target.value)} autoCapitalize="characters" required />
           </>
         )}

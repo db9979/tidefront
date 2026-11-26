@@ -37,9 +37,9 @@ export function MarketScreen({ base }: { base: BaseData }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h1 className="font-display text-2xl font-bold uppercase">Börse</h1>
+        <h1 className="font-display text-xl font-bold uppercase">Börse</h1>
         <div className="text-right">
-          <div className="text-lg font-semibold text-brass-400 flex items-center gap-1 justify-end"><Icon id="credits" size={20} /> {fmtNum(m.data.credits, 2)} Kr</div>
+          <div className="text-lg mono text-brass-300 flex items-center gap-1 justify-end"><Icon id="credits" size={20} /> {fmtNum(m.data.credits, 2)} Kr</div>
           <div className="text-xs text-slate-400">Limit {fmtNum(base.market.creditLimit)} Kr</div>
         </div>
       </div>

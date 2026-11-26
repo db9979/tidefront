@@ -5,10 +5,6 @@ import { Application, Container, Graphics, type Ticker } from "pixi.js";
 import {
   COLS,
   HEX_SIZE_KM,
-  KM_PER_DEG_LAT,
-  KM_PER_DEG_LON,
-  LAT1,
-  LON0,
   MAP_LABELS,
   ROWS,
   TRADE_PORTS,
@@ -19,10 +15,11 @@ import {
 } from "@tidefront/world";
 import type { MapData } from "../lib/trpc.ts";
 import { serverNow } from "../lib/time.ts";
-import { buildTerrain, hexPoints } from "../map/terrain.ts";
+import { buildTerrain, hexPoints, xyOf } from "../map/terrain.ts";
+import { Graticule } from "../map/graticule.ts";
 import { attachGestures, clampScale } from "../map/gestures.ts";
 import {
-  alertRing, mapLabel, nameTag, nestSymbol, otherBaseSymbol, ownBaseSymbol, portSymbol, shipSymbol, wreckSymbol,
+  FRIEND, NEUTRAL, alertRing, mapLabel, nameTag, nestSymbol, otherBaseSymbol, ownBaseSymbol, portSymbol, shipSymbol, wreckSymbol,
 } from "../map/symbols.ts";
 
 export interface MapMission {
@@ -69,9 +66,9 @@ interface Scene {
   pinnedMarkers: Pinned[];
   ships: Map<number, Container>;
   alert: Graphics | null;
+  grid: Graphics;
+  graticule: Graticule;
 }
-
-const xyOf = (lon: number, lat: number) => ({ x: (lon - LON0) * KM_PER_DEG_LON, y: (LAT1 - lat) * KM_PER_DEG_LAT });
 
 /** Gegenskalierung: Symbole bleiben etwa gleich groß, wachsen beim Hineinzoomen nur leicht. */
 function pinScale(worldScale: number, floor = 0.75): number {
@@ -123,7 +120,7 @@ export function HexMap(props: HexMapProps) {
     const app = new Application();
     const cleanups: (() => void)[] = [];
     void app
-      .init({ resizeTo: el, background: 0x081a2c, antialias: true, resolution: Math.min(2, window.devicePixelRatio || 1), autoDensity: true })
+      .init({ resizeTo: el, background: 0x061521, antialias: true, resolution: Math.min(2, window.devicePixelRatio || 1), autoDensity: true })
       .then(() => {
         if (destroyed) {
           app.destroy(true);
@@ -134,7 +131,10 @@ export function HexMap(props: HexMapProps) {
         app.canvas.style.display = "block";
         const world = new Container();
         app.stage.addChild(world);
-        world.addChild(buildTerrain());
+        const terrain = buildTerrain();
+        world.addChild(terrain.root);
+        const graticule = new Graticule();
+        world.addChild(graticule.lines);
         const freeG = new Graphics();
         const routes = new Graphics();
         const pinnedLayer = new Container();
@@ -157,21 +157,23 @@ export function HexMap(props: HexMapProps) {
           const p = hexCenterXY(h.col, h.row);
           const c = new Container();
           c.addChild(portSymbol());
-          const tag = nameTag(name, 0x7cc6e8, 12);
+          const tag = nameTag(name, 0x9fd3e6, 9);
           c.addChild(tag);
           c.position.set(p.x, p.y);
           pinnedLayer.addChild(c);
           pinnedStatic.push({ obj: c, min: 0.16 });
         }
+        app.stage.addChild(graticule.labels);
 
         const s: Scene = {
           app, world, free: freeG, routes, pinnedLayer, markerLayer, selection, pinnedStatic,
-          pinnedMarkers: [], ships: new Map(), alert: null,
+          pinnedMarkers: [], ships: new Map(), alert: null, grid: terrain.grid, graticule,
         };
         scene.current = s;
 
         let lastScale = -1;
         let lastMove = 0;
+        let lastPos = "";
         const tick = (_t: Ticker) => {
           const sc = world.scale.x;
           if (sc !== lastScale) {
@@ -179,7 +181,16 @@ export function HexMap(props: HexMapProps) {
             applyPinned(s.pinnedStatic, sc);
             applyPinned(s.pinnedMarkers, sc, 0.5);
             drawSelection(s, live.current.selected);
+            s.graticule.redraw(sc);
+            // Hexraster erst beim Hineinzoomen und nur zart
+            s.grid.alpha = Math.max(0, Math.min(0.09, (sc - 0.18) * 0.25));
+            s.grid.visible = s.grid.alpha > 0.005;
             lastMove = 0;
+          }
+          const pos = `${world.x | 0},${world.y | 0},${sc}`;
+          if (pos !== lastPos) {
+            lastPos = pos;
+            s.graticule.place(world, app.screen.width, app.screen.height);
           }
           const now = performance.now();
           if (now - lastMove > 250) {
@@ -229,10 +240,10 @@ export function HexMap(props: HexMapProps) {
     for (const key of free) {
       const [col, row] = key.split(",").map(Number);
       const { x, y } = hexCenterXY(col, row);
-      s.free.poly(hexPoints(x, y, HEX_SIZE_KM * 0.78)).fill({ color: 0xf2c14e, alpha: 0.28 });
-      s.free.poly(hexPoints(x, y, HEX_SIZE_KM * 0.78));
+      s.free.poly(hexPoints(x, y, HEX_SIZE_KM * 0.82)).fill({ color: 0x9fe3ff, alpha: 0.13 });
+      s.free.poly(hexPoints(x, y, HEX_SIZE_KM * 0.82));
     }
-    s.free.stroke({ color: 0xf2c14e, width: 4, alpha: 0.9 });
+    s.free.stroke({ color: 0xbfefff, width: 2.2, alpha: 0.75 });
   }, [ready, selectMode, free]);
 
   // Symbole für Stützpunkte, Nester, Wracks
@@ -253,7 +264,7 @@ export function HexMap(props: HexMapProps) {
       const c = new Container();
       c.addChild(b.own ? ownBaseSymbol() : otherBaseSymbol(b.protection !== null));
       add(c, b.col, b.row);
-      const tag = nameTag(b.own ? b.name : `${b.name} · ${b.owner}`, b.own ? 0xf2c14e : 0xe5484d);
+      const tag = nameTag(b.own ? b.name : `${b.name} · ${b.owner}`, b.own ? FRIEND : NEUTRAL);
       add(tag, b.col, b.row, b.own ? 0.08 : 0.15);
     }
     applyPinned(s.pinnedMarkers, s.world.scale.x, 0.5);
@@ -278,9 +289,9 @@ export function HexMap(props: HexMapProps) {
   return (
     <div className="w-full h-full relative">
       <div ref={host} className="w-full h-full overflow-hidden select-none" />
-      <div className="absolute right-2 top-2 flex flex-col gap-2">
-        <button type="button" className="tap rounded-full bg-navy-900/85 border border-sea-400/40 text-xl shadow-lg backdrop-blur" onClick={() => zoomBy(1.5)} aria-label="Hineinzoomen">+</button>
-        <button type="button" className="tap rounded-full bg-navy-900/85 border border-sea-400/40 text-xl shadow-lg backdrop-blur" onClick={() => zoomBy(1 / 1.5)} aria-label="Herauszoomen">−</button>
+      <div className="absolute right-2 top-6 flex flex-col gap-1.5">
+        <button type="button" className="tap rounded-[4px] bg-slate-950/75 border border-white/25 text-lg font-mono text-slate-100 backdrop-blur-sm" onClick={() => zoomBy(1.5)} aria-label="Hineinzoomen">+</button>
+        <button type="button" className="tap rounded-[4px] bg-slate-950/75 border border-white/25 text-lg font-mono text-slate-100 backdrop-blur-sm" onClick={() => zoomBy(1 / 1.5)} aria-label="Herauszoomen">−</button>
       </div>
     </div>
   );
@@ -290,9 +301,17 @@ function drawSelection(s: Scene, selected: { col: number; row: number } | null |
   s.selection.clear();
   if (!selected) return;
   const { x, y } = hexCenterXY(selected.col, selected.row);
-  const w = 3 / s.world.scale.x;
-  s.selection.poly(hexPoints(x, y, HEX_SIZE_KM * 1.02)).stroke({ color: 0x0b1726, width: w * 2.2, alpha: 0.6 });
-  s.selection.poly(hexPoints(x, y, HEX_SIZE_KM * 1.02)).stroke({ color: 0xffffff, width: w });
+  const sc = s.world.scale.x;
+  // Zielmarke: Eckwinkel um das Feld, mindestens 22 px Halbmesser am Bildschirm
+  const h = Math.max(HEX_SIZE_KM * 1.05, 22 / sc);
+  const l = h * 0.42;
+  const g = s.selection;
+  g.poly(hexPoints(x, y, HEX_SIZE_KM)).stroke({ color: 0x5ee0ff, width: 1 / sc, alpha: 0.45 });
+  for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+    g.moveTo(x + sx * h, y + sy * (h - l)).lineTo(x + sx * h, y + sy * h).lineTo(x + sx * (h - l), y + sy * h);
+  }
+  g.stroke({ color: 0x5ee0ff, width: 2 / sc, cap: "square" });
+  g.circle(x, y, 1.6 / sc).fill({ color: 0x5ee0ff });
 }
 
 /** Routen, Schiffe und Warnring; läuft gedrosselt im Ticker. */
@@ -307,20 +326,21 @@ function drawMovers(s: Scene, live: { home?: { col: number; row: number } | null
       if (m.status !== "outbound" && m.status !== "returning") continue;
       const tgt = hexCenterXY(m.target.col, m.target.row);
       const pos = missionPosition(m, home, tgt, now);
-      const color = pos.outbound ? 0xf2c14e : 0x6ee7b7;
-      dashed(s.routes, home, tgt, 7 / sc);
-      s.routes.stroke({ color, width: 2.2 / sc, alpha: 0.85 });
-      s.routes.circle(tgt.x, tgt.y, 9 / sc).stroke({ color, width: 2 / sc });
-      let ship = s.ships.get(m.id);
+      const color = pos.outbound ? FRIEND : 0xcfe6ff;
+      dashed(s.routes, home, tgt, 6 / sc);
+      s.routes.stroke({ color, width: 1.5 / sc, alpha: 0.9 });
+      s.routes.moveTo(tgt.x - 8 / sc, tgt.y).lineTo(tgt.x + 8 / sc, tgt.y).moveTo(tgt.x, tgt.y - 8 / sc).lineTo(tgt.x, tgt.y + 8 / sc);
+      s.routes.stroke({ color, width: 1.2 / sc });
+      const key = m.id * 2 + (pos.outbound ? 0 : 1);
+      let ship = s.ships.get(key);
       if (!ship) {
         ship = shipSymbol(color);
-        s.ships.set(m.id, ship);
+        s.ships.set(key, ship);
         s.world.addChild(ship);
       }
       ship.position.set(pos.x, pos.y);
-      ship.rotation = pos.angle;
       ship.scale.set(pinScale(sc));
-      seen.add(m.id);
+      seen.add(key);
     }
   }
   for (const [id, ship] of s.ships) {

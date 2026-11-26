@@ -23,14 +23,14 @@ export function Welcome() {
   };
   return (
     <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/70" role="dialog" aria-modal="true">
-      <div className="panel brass-edge rounded-3xl p-5 max-w-sm w-full text-center sheet-in">
-        <div className="mx-auto mb-3 w-24 h-24 rounded-full bg-navy-900 border border-brass-500/40 grid place-items-center">
+      <div className="panel brass-edge p-5 max-w-sm w-full text-center sheet-in">
+        <div className="mx-auto mb-3 w-24 h-24 bg-navy-900 border border-sea-400/40 grid place-items-center reticle">
           <Icon id={s.icon} size={64} />
         </div>
-        <h2 className="font-display text-2xl font-bold uppercase mb-2">{s.title}</h2>
+        <h2 className="font-display text-xl font-bold uppercase mb-2">{s.title}</h2>
         <p className="text-slate-200 leading-relaxed">{s.text}</p>
         <div className="flex justify-center gap-1.5 my-4">
-          {SLIDES.map((_, i) => <span key={i} className={`h-2 rounded-full ${i === step ? "w-6 bg-brass-400" : "w-2 bg-navy-600"}`} />)}
+          {SLIDES.map((_, i) => <span key={i} className={`h-1 ${i === step ? "w-6 bg-sea-400" : "w-3 bg-navy-600"}`} />)}
         </div>
         <div className="flex gap-2">
           <Button kind="secondary" className="flex-1" onClick={close}>Überspringen</Button>

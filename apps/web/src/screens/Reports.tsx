@@ -45,7 +45,7 @@ export function ReportsScreen() {
   if (!list.data) return <Loading />;
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold uppercase mb-3">Berichte</h1>
+      <h1 className="font-display text-xl font-bold uppercase mb-3">Berichte</h1>
       {list.data.length === 0 && (
         <div className="panel rounded-2xl p-4 text-center text-slate-300">
           <Icon id="nav-bericht" size={48} className="mx-auto mb-2 text-slate-500" />
@@ -120,8 +120,8 @@ function BattleView({ b, names, role }: { b: Battle; names: [string, string]; ro
   const won = (b.winner === "attacker") === (role === "attacker");
   return (
     <>
-      <div className={`rounded-2xl p-3 mb-3 text-center ${won ? "bg-gradient-to-b from-emerald-800/80 to-emerald-950/80 border border-emerald-500" : "bg-gradient-to-b from-red-800/80 to-red-950/80 border border-red-500"}`}>
-        <div className="font-display text-3xl font-bold uppercase">{won ? "Sieg" : "Niederlage"}</div>
+      <div className={`p-3 mb-3 text-center border-y-2 ${won ? "bg-emerald-950/50 border-emerald-500" : "bg-red-950/50 border-red-500"}`}>
+        <div className="font-display text-2xl font-bold uppercase tracking-[0.3em]">{won ? "Sieg" : "Niederlage"}</div>
         <div className="text-sm">{names[0]} <span className="text-slate-300">gegen</span> {names[1]}</div>
         <div className="text-xs">
           Luftüberlegenheit: {b.airSuperiority === null ? "keine" : b.airSuperiority === "attacker" ? names[0] : names[1]} · Landung: {b.landed ? "ja" : "nein"}

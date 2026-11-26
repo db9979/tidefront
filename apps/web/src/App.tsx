@@ -111,17 +111,17 @@ export function App() {
               key={t.id}
               type="button"
               onClick={() => go(t.id)}
-              className={`tap relative flex flex-col items-center justify-center pt-1.5 pb-1 text-[11px] font-semibold ${active ? "text-brass-400" : "text-slate-400"}`}
+              className={`tap relative flex flex-col items-center justify-center pt-1.5 pb-1 text-[10px] font-display uppercase tracking-normal ${active ? "text-sea-300" : "text-slate-500"}`}
               aria-current={active ? "page" : undefined}
             >
-              {active && <span className="absolute top-0 inset-x-4 h-0.5 rounded-full bg-brass-400" />}
+              {active && <span className="absolute top-0 inset-x-3 h-0.5 bg-sea-400" />}
               <Icon id={t.icon} size={24} />
               <span className="mt-0.5">{t.label}</span>
               {t.id === "berichte" && unread > 0 && (
-                <span className="absolute top-1 right-[22%] min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[11px] grid place-items-center">{unread}</span>
+                <span className="absolute top-1 right-[22%] min-w-5 h-5 px-1 bg-red-700 border border-red-400 text-white text-[11px] mono grid place-items-center">{unread}</span>
               )}
               {t.id === "basis" && b.incoming.some((i) => i.type !== "transport") && (
-                <span className="absolute top-1 right-[22%] w-3 h-3 rounded-full bg-red-500 pulse" />
+                <span className="absolute top-1 right-[22%] w-3 h-3 rotate-45 bg-red-500" />
               )}
             </button>
           );

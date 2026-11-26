@@ -1,7 +1,10 @@
-// Gelände der Hexkarte: Meerestiefe nach Abstand zur Küste, Landfarben mit leichtem Rauschen,
-// Küstenlinie und Brandung entlang der Kanten zwischen Land und Meer. Wird einmal gezeichnet.
-import { Container, Graphics } from "pixi.js";
-import { COLS, HEX_SIZE_KM, ROWS, hexCenter, hexCenterXY, hexIndex, neighbors, terrainMap } from "@tidefront/world";
+// Gelände im Stil eines Satellitenbilds: Landmaske aus den Küstenlinien gerastert, Höhe aus Abstand zur
+// Küste, Rauschen und Gebirgen, Schummerung mit Licht aus Nordwest. Wird einmal je Sitzung berechnet
+// und als Textur wiederverwendet. Darüber: feine Küstenlinie und ein sehr zartes Hexraster.
+import { Container, Graphics, Sprite, Texture } from "pixi.js";
+import {
+  COLS, HEX_SIZE_KM, HEX_W, ISLANDS, KM_PER_DEG_LAT, KM_PER_DEG_LON, LAND, LAT1, LON0, ROWS, ROW_H, WATER, hexCenterXY,
+} from "@tidefront/world";
 
 export function hexPoints(cx: number, cy: number, size: number): number[] {
   const pts: number[] = [];
@@ -12,124 +15,250 @@ export function hexPoints(cx: number, cy: number, size: number): number[] {
   return pts;
 }
 
-/** Deterministisches Rauschen in [0, 1) aus col/row. */
-function noise(col: number, row: number, salt = 0): number {
-  let h = (col * 374761393 + row * 668265263 + salt * 2147483647) | 0;
+export const xyOf = (lon: number, lat: number) => ({ x: (lon - LON0) * KM_PER_DEG_LON, y: (LAT1 - lat) * KM_PER_DEG_LAT });
+
+/** Rasterauflösung: Kilometer je Pixel. */
+const KM_PX = 5;
+const X0 = -HEX_W;
+const Y0 = -HEX_SIZE_KM * 1.2;
+const W = Math.ceil((HEX_W * (COLS + 1.5)) / KM_PX);
+const H = Math.ceil((ROW_H * (ROWS - 1) + HEX_SIZE_KM * 2.4) / KM_PX);
+
+/** Gebirge als Höhenbuckel: Länge, Breite, Radius in km, Höhe (0..1). */
+const RIDGES: [number, number, number, number][] = [
+  [10, 46.5, 260, 1], [7, 45.5, 160, 0.8], [13.5, 47, 200, 0.8], // Alpen
+  [0.5, 42.7, 170, 0.75], // Pyrenäen
+  [-4, 40.5, 280, 0.3], [-3.2, 37.1, 120, 0.5], // Iberische Meseta, Sierra Nevada
+  [13, 42.5, 220, 0.55], [16, 40, 160, 0.4], // Apennin
+  [20, 42.3, 260, 0.6], [22.5, 39.5, 180, 0.5], // Dinariden, Pindos
+  [25, 42, 200, 0.45], [33, 38.5, 380, 0.6], [37, 37.5, 200, 0.55], // Balkan, Anatolien, Taurus
+  [-5, 31.5, 380, 0.85], [2, 34.5, 260, 0.45], // Atlas
+  [9, 61.5, 330, 0.75], [15, 66, 320, 0.7], [18.5, 68.5, 260, 0.6], // Skanden
+  [-4.5, 57, 150, 0.45], [-3.8, 52.6, 110, 0.35], // Schottland, Wales
+  [-18.5, 64.8, 160, 0.6], // Island
+  [-80, 37, 320, 0.45], [-77, 40.5, 260, 0.35], [-72.5, 44, 220, 0.35], // Appalachen
+  [-64, 54, 420, 0.35], [-66, 58.5, 260, 0.4], // Labrador
+  [-42, 67, 520, 0.9], [-46, 63, 420, 0.8], [-38, 71, 420, 0.95], // Grönland
+  [24, 47, 260, 0.45], [36, 33.5, 140, 0.4], [4.5, 50, 180, 0.2], [9, 50.5, 220, 0.25],
+];
+
+function hash(x: number, y: number): number {
+  let h = (x * 374761393 + y * 668265263) | 0;
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   h ^= h >>> 16;
   return (h >>> 0) / 4294967296;
 }
 
-function mix(a: number, b: number, t: number): number {
-  const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
-  const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
-  const r = Math.round(ar + (br - ar) * t), g = Math.round(ag + (bg - ag) * t), bl = Math.round(ab + (bb - ab) * t);
-  return (r << 16) | (g << 8) | bl;
+function valueNoise(x: number, y: number): number {
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const fx = x - xi, fy = y - yi;
+  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+  const a = hash(xi, yi), b = hash(xi + 1, yi), c = hash(xi, yi + 1), d = hash(xi + 1, yi + 1);
+  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
 }
 
-/** Abstand jedes Felds (in Feldern) zum nächsten Feld der anderen Art: Meer zum Land, Land zum Meer. */
-export function coastDistance(): Int16Array {
-  const t = terrainMap();
-  const dist = new Int16Array(COLS * ROWS).fill(-1);
-  const queue: number[] = [];
-  for (let row = 0; row < ROWS; row++) for (let col = 0; col < COLS; col++) {
-    const i = hexIndex(col, row);
-    const land = t[i] !== "sea";
-    if (neighbors(col, row).some((n) => (t[hexIndex(n.col, n.row)] !== "sea") !== land)) {
-      dist[i] = 1;
-      queue.push(i);
+function fbm(x: number, y: number): number {
+  let v = 0, amp = 0.5, f = 1;
+  for (let o = 0; o < 4; o++) {
+    v += amp * valueNoise(x * f, y * f);
+    f *= 2.03;
+    amp *= 0.5;
+  }
+  return v / 0.9375;
+}
+
+const toPx = (lon: number, lat: number) => {
+  const p = xyOf(lon, lat);
+  return [(p.x - X0) / KM_PX, (p.y - Y0) / KM_PX] as const;
+};
+
+function ringPath(ctx: CanvasRenderingContext2D, ring: readonly (readonly [number, number])[]): void {
+  ring.forEach(([lon, lat], i) => {
+    const [x, y] = toPx(lon, lat);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+}
+
+function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  return [c, c.getContext("2d", { willReadFrequently: true })!];
+}
+
+/** Landanteil in der Umgebung (0..1) durch Verkleinern und weiches Vergrößern der Maske. */
+function proximity(mask: HTMLCanvasElement, factor: number): Uint8ClampedArray {
+  const [small, sctx] = canvas(Math.max(2, Math.ceil(W / factor)), Math.max(2, Math.ceil(H / factor)));
+  sctx.imageSmoothingEnabled = true;
+  sctx.imageSmoothingQuality = "high";
+  sctx.drawImage(mask, 0, 0, small.width, small.height);
+  const [, bctx] = canvas(W, H);
+  bctx.imageSmoothingEnabled = true;
+  bctx.imageSmoothingQuality = "high";
+  bctx.drawImage(small, 0, 0, W, H);
+  return bctx.getImageData(0, 0, W, H).data;
+}
+
+type RGB = [number, number, number];
+const hex = (c: number): RGB => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
+const lerp = (a: RGB, b: RGB, t: number): RGB => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const smooth = (a: number, b: number, v: number) => { const t = clamp01((v - a) / (b - a)); return t * t * (3 - 2 * t); };
+
+const C = {
+  deep: hex(0x081a29), mid: hex(0x0d2b40), shelf: hex(0x1a4656), lagoon: hex(0x26575f),
+  forest: hex(0x3a4b31), meadow: hex(0x56613d), dryOlive: hex(0x7a7452), steppe: hex(0x8f8560),
+  sand: hex(0xb39a6a), rock: hex(0x6e6a5d), tundra: hex(0x5f6658), boreal: hex(0x34402f), ice: hex(0xdfe5e8), snow: hex(0xeef2f3),
+};
+
+function landBase(lon: number, lat: number, e: number, n: number): RGB {
+  let c: RGB = lon < -50 ? lerp(C.forest, C.meadow, n * 0.6) : lerp(C.meadow, C.forest, n * 0.7);
+  // Mittelmeerklima: trockenes Oliv
+  const med = smooth(46, 40, lat) * (lon > -12 && lon < 45 ? 1 : 0);
+  c = lerp(c, C.dryOlive, med * 0.85);
+  // Wüste und Steppe in Nordafrika und Nahost
+  const desert = smooth(35, 30, lat) * (lon > -18 && lon < 45 ? 1 : 0) + smooth(37, 33, lat) * (lon > 33 ? 0.8 : 0);
+  c = lerp(c, lerp(C.steppe, C.sand, smooth(33, 28, lat)), clamp01(desert));
+  // Nordwälder, Tundra
+  c = lerp(c, C.boreal, smooth(56, 61, lat) * 0.8);
+  c = lerp(c, C.tundra, smooth(63, 68, lat) * 0.85);
+  // Gebirge: Fels, Schnee in großer Höhe
+  const eRough = e + (n - 0.5) * 0.45;
+  c = lerp(c, C.rock, smooth(0.55, 0.95, eRough) * 0.6);
+  // Schnee nur in Hochgebirgen (Alpen, Skanden, Atlas-Gipfel) und hohen Breiten
+  const snowLine = 1.12 - smooth(55, 70, lat) * 0.35;
+  c = lerp(c, C.snow, smooth(snowLine, snowLine + 0.25, eRough) * 0.5);
+  // Inlandeis
+  const greenland = lon < -20 && lon > -62 && lat > 59.5;
+  if (greenland || (lon < -62 && lat > 66)) c = lerp(c, C.ice, smooth(0.25, 0.5, e));
+  return c;
+}
+
+let cached: HTMLCanvasElement | null = null;
+
+/** Berechnet das Reliefbild (einmal je Sitzung). */
+export function terrainCanvas(): HTMLCanvasElement {
+  if (cached) return cached;
+  const [mask, mctx] = canvas(W, H);
+  mctx.fillStyle = "#fff";
+  mctx.beginPath();
+  for (const r of LAND) ringPath(mctx, r);
+  mctx.fill("nonzero");
+  mctx.globalCompositeOperation = "destination-out";
+  mctx.beginPath();
+  for (const r of WATER) ringPath(mctx, r);
+  mctx.fill("nonzero");
+  mctx.globalCompositeOperation = "source-over";
+  for (const [lon, lat] of ISLANDS) {
+    const [x, y] = toPx(lon, lat);
+    mctx.beginPath();
+    mctx.ellipse(x, y, 3.2 + hash(Math.round(x), 1) * 2, 2.4 + hash(Math.round(y), 2) * 1.6, hash(Math.round(x), Math.round(y)) * 3, 0, Math.PI * 2);
+    mctx.fill();
+  }
+  const m = mctx.getImageData(0, 0, W, H).data;
+  const near = proximity(mask, 6); // ~30 km
+  const far = proximity(mask, 28); // ~140 km
+
+  // Höhe
+  const elev = new Float32Array(W * H);
+  const ridgePx = RIDGES.map(([lon, lat, r, h]) => { const [x, y] = toPx(lon, lat); return [x, y, r / KM_PX, h] as const; });
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      const land = m[i * 4 + 3] / 255;
+      const n = fbm(x / 38, y / 38);
+      let e: number;
+      if (land > 0.5) {
+        const inland = far[i * 4 + 3] / 255;
+        e = 0.12 + inland * 0.28 + (n - 0.5) * 0.35;
+        for (const [rx, ry, rr, rh] of ridgePx) {
+          const dx = x - rx, dy = y - ry;
+          const d2 = (dx * dx + dy * dy) / (rr * rr);
+          if (d2 < 4) e += rh * Math.exp(-d2 * 1.6) * (0.65 + n * 0.7);
+        }
+      } else {
+        e = -0.6 + (near[i * 4 + 3] / 255) * 0.5 + (n - 0.5) * 0.06;
+      }
+      elev[i] = e;
     }
   }
-  for (let q = 0; q < queue.length; q++) {
-    const i = queue[q];
-    const col = i % COLS, row = Math.floor(i / COLS);
-    const land = t[i] !== "sea";
-    for (const n of neighbors(col, row)) {
-      const j = hexIndex(n.col, n.row);
-      if (dist[j] !== -1 || (t[j] !== "sea") !== land) continue;
-      dist[j] = dist[i] + 1;
-      queue.push(j);
+
+  const [out, octx] = canvas(W, H);
+  const img = octx.createImageData(W, H);
+  const d = img.data;
+  for (let y = 0; y < H; y++) {
+    const lat = LAT1 - (Y0 + y * KM_PX) / KM_PER_DEG_LAT;
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      const lon = LON0 + (X0 + x * KM_PX) / KM_PER_DEG_LON;
+      const land = m[i * 4 + 3] > 127;
+      const n = hash(x, y);
+      let c: RGB;
+      if (land) {
+        const e = elev[i];
+        c = landBase(lon, lat, e, fbm(x / 9, y / 9));
+        // Schummerung: Licht aus Nordwest
+        const xa = Math.max(0, x - 1), ya = Math.max(0, y - 1), xb = Math.min(W - 1, x + 1), yb = Math.min(H - 1, y + 1);
+        const slope = (elev[ya * W + xa] - elev[yb * W + xb]) * 9;
+        const shade = 0.88 + Math.max(-0.45, Math.min(0.5, slope)) + (n - 0.5) * 0.05;
+        c = [c[0] * shade, c[1] * shade, c[2] * shade];
+      } else {
+        const nr = near[i * 4 + 3] / 255;
+        const fr = far[i * 4 + 3] / 255;
+        c = lerp(C.deep, C.mid, smooth(0.02, 0.35, fr));
+        c = lerp(c, C.shelf, smooth(0.05, 0.6, nr) * 0.9);
+        c = lerp(c, C.lagoon, smooth(0.55, 0.95, nr) * 0.5);
+        const s = 1 + (fbm(x / 60, y / 60) - 0.5) * 0.12 + (n - 0.5) * 0.025;
+        c = [c[0] * s, c[1] * s, c[2] * s];
+      }
+      d[i * 4] = c[0];
+      d[i * 4 + 1] = c[1];
+      d[i * 4 + 2] = c[2];
+      d[i * 4 + 3] = 255;
     }
   }
-  return dist;
+  octx.putImageData(img, 0, 0);
+  cached = out;
+  return out;
 }
 
-const SEA_SHALLOW = 0x2a8aa8;
-const SEA_MID = 0x17506f;
-const SEA_DEEP = 0x0b2540;
-const LAND_LOW = 0x4f6b3a;
-const LAND_HIGH = 0x6b6a45;
-const SAND = 0xb7a46c;
-const DESERT = 0xc2a061;
-const ICE = 0xdfe7ea;
-const TUNDRA = 0x7c8a6e;
-
-function landColor(col: number, row: number, d: number, coast: boolean): number {
-  const { lat, lon } = hexCenter(col, row);
-  const n = noise(col, row);
-  let c = mix(LAND_LOW, LAND_HIGH, Math.min(1, d / 7) * 0.8 + n * 0.2);
-  if (lat > 58) c = mix(c, TUNDRA, Math.min(1, (lat - 58) / 6));
-  if (lat < 33 && lon > -12 && lon < 36) c = mix(c, DESERT, Math.min(1, (33 - lat) / 3));
-  // Grönland, Baffin: Inlandeis
-  if ((lon < -20 && lon > -58 && lat > 60 && d > 1) || (lon < -62 && lat > 64)) c = mix(c, ICE, 0.85);
-  if (coast) c = mix(c, SAND, 0.35);
-  return mix(c, 0x000000, n * 0.08);
+export interface TerrainLayers {
+  root: Container;
+  /** Zartes Hexraster; Deckkraft je Zoom setzt der Aufrufer. */
+  grid: Graphics;
 }
 
-function seaColor(col: number, row: number, d: number): number {
-  const n = noise(col, row, 7);
-  const t = Math.min(1, (d - 1) / 6);
-  const c = t < 0.35 ? mix(SEA_SHALLOW, SEA_MID, t / 0.35) : mix(SEA_MID, SEA_DEEP, (t - 0.35) / 0.65);
-  return mix(c, 0x000000, n * 0.06);
-}
-
-/** Zeichnet Gelände, Küstenlinie und Brandung in einen Container (Weltkoordinaten in km). */
-export function buildTerrain(): Container {
-  const t = terrainMap();
-  const dist = coastDistance();
+/** Reliefbild, Küstenlinie und Hexraster in Weltkoordinaten (km). */
+export function buildTerrain(): TerrainLayers {
   const root = new Container();
-  const fill = new Graphics();
-  for (let row = 0; row < ROWS; row++) {
-    for (let col = 0; col < COLS; col++) {
-      const i = hexIndex(col, row);
-      const { x, y } = hexCenterXY(col, row);
-      const color = t[i] === "sea" ? seaColor(col, row, dist[i]) : landColor(col, row, dist[i], t[i] === "coast");
-      // leicht übergroß, damit keine Fugen entstehen
-      fill.poly(hexPoints(x, y, HEX_SIZE_KM * 1.01)).fill({ color });
-    }
-  }
-  root.addChild(fill);
+  const sprite = new Sprite(Texture.from(terrainCanvas()));
+  sprite.position.set(X0, Y0);
+  sprite.scale.set(KM_PX);
+  root.addChild(sprite);
 
-  // feine Feldkanten nur auf dem Meer, sehr dezent
+  const coast = new Graphics();
+  const glow = new Graphics();
+  for (const ring of [...LAND, ...WATER]) {
+    ring.forEach(([lon, lat], i) => {
+      const p = xyOf(lon, lat);
+      if (i === 0) { coast.moveTo(p.x, p.y); glow.moveTo(p.x, p.y); } else { coast.lineTo(p.x, p.y); glow.lineTo(p.x, p.y); }
+    });
+    coast.closePath();
+    glow.closePath();
+  }
+  glow.stroke({ color: 0xbfe6f2, width: 10, alpha: 0.07, join: "round" });
+  coast.stroke({ color: 0xd8ecf2, width: 2.2, alpha: 0.55, join: "round" });
+  root.addChild(glow, coast);
+
   const grid = new Graphics();
   for (let row = 0; row < ROWS; row++) for (let col = 0; col < COLS; col++) {
     const { x, y } = hexCenterXY(col, row);
     grid.poly(hexPoints(x, y, HEX_SIZE_KM));
   }
-  grid.stroke({ color: 0xffffff, width: 1.2, alpha: 0.05 });
+  grid.stroke({ color: 0xcfe8f0, width: 1.4, alpha: 1 });
+  grid.alpha = 0;
   root.addChild(grid);
-
-  // Küstenlinie: gemeinsame Kante jedes Land-Meer-Paars; Brandung leicht seewärts versetzt
-  const coastLine = new Graphics();
-  const surf = new Graphics();
-  for (let row = 0; row < ROWS; row++) for (let col = 0; col < COLS; col++) {
-    if (t[hexIndex(col, row)] === "sea") continue;
-    const a = hexCenterXY(col, row);
-    for (const n of neighbors(col, row)) {
-      if (t[hexIndex(n.col, n.row)] !== "sea") continue;
-      const b = hexCenterXY(n.col, n.row);
-      const ang = Math.atan2(b.y - a.y, b.x - a.x);
-      const s = HEX_SIZE_KM;
-      const p1 = { x: a.x + s * Math.cos(ang - Math.PI / 6), y: a.y + s * Math.sin(ang - Math.PI / 6) };
-      const p2 = { x: a.x + s * Math.cos(ang + Math.PI / 6), y: a.y + s * Math.sin(ang + Math.PI / 6) };
-      coastLine.moveTo(p1.x, p1.y).lineTo(p2.x, p2.y);
-      const off = 9;
-      const ox = Math.cos(ang) * off, oy = Math.sin(ang) * off;
-      surf.moveTo(p1.x + ox, p1.y + oy).lineTo(p2.x + ox, p2.y + oy);
-    }
-  }
-  surf.stroke({ color: 0xbfe9f5, width: 5, alpha: 0.22 });
-  coastLine.stroke({ color: 0xf3e6c0, width: 3.5, alpha: 0.9, cap: "round" });
-  root.addChild(surf, coastLine);
-  return root;
+  return { root, grid };
 }
