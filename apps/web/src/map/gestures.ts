@@ -1,11 +1,42 @@
 // Ziehen, Zwei-Finger-Zoom, Mausrad und Tippen auf der Karte.
+// Zoomgrenzen: kleinste Stufe füllt den Bildschirm vollständig (cover), Schwenken endet am Kartenrand.
 import type { Container } from "pixi.js";
+import { COLS, HEX_SIZE_KM, HEX_W, ROWS, ROW_H } from "@tidefront/world";
 
-export const MIN_SCALE = 0.04;
 export const MAX_SCALE = 2.5;
 
-export function clampScale(s: number): number {
-  return Math.max(MIN_SCALE, Math.min(MAX_SCALE, s));
+/** Kartenausdehnung in Welt-km (Hexraster plus halber Feldsaum). */
+export const MAP_BOUNDS = { x0: -HEX_W * 0.5, y0: -HEX_SIZE_KM, x1: HEX_W * COLS, y1: ROW_H * (ROWS - 1) + HEX_SIZE_KM };
+
+/** Kleinste Zoomstufe für einen Bildschirm: Karte deckt ihn vollständig. */
+export function minScale(w: number, h: number): number {
+  const b = MAP_BOUNDS;
+  return Math.min(MAX_SCALE, Math.max(w / (b.x1 - b.x0), h / (b.y1 - b.y0)));
+}
+
+export function clampScale(s: number, w: number, h: number): number {
+  return Math.max(minScale(w, h), Math.min(MAX_SCALE, s));
+}
+
+/** Verschiebung so begrenzen, dass kein leerer Rand neben der Karte erscheint. */
+export function clampView(world: Container, w: number, h: number): void {
+  const b = MAP_BOUNDS;
+  const s = clampScale(world.scale.x, w, h);
+  if (s !== world.scale.x) world.scale.set(s);
+  const lim = (v: number, lo: number, hi: number) => (lo > hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, v)));
+  const x = lim(world.x, w - b.x1 * s, -b.x0 * s);
+  const y = lim(world.y, h - b.y1 * s, -b.y0 * s);
+  if (x !== world.x || y !== world.y) world.position.set(x, y);
+}
+
+/** Zoomen um einen Bildschirmpunkt, mit Grenzen. */
+export function zoomAround(world: Container, p: { x: number; y: number }, newScale: number, w: number, h: number): void {
+  const s = clampScale(newScale, w, h);
+  const wx = (p.x - world.x) / world.scale.x;
+  const wy = (p.y - world.y) / world.scale.y;
+  world.scale.set(s);
+  world.position.set(p.x - wx * s, p.y - wy * s);
+  clampView(world, w, h);
 }
 
 /** Rückgabe: Aufräumfunktion. onTap erhält Weltkoordinaten. */
@@ -19,12 +50,10 @@ export function attachGestures(canvas: HTMLCanvasElement, world: Container, onTa
     const r = canvas.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
-  const zoomAt = (p: { x: number; y: number }, newScale: number) => {
-    const s = clampScale(newScale);
-    const wx = (p.x - world.x) / world.scale.x;
-    const wy = (p.y - world.y) / world.scale.y;
-    world.scale.set(s);
-    world.position.set(p.x - wx * s, p.y - wy * s);
+  const zoomAt = (p: { x: number; y: number }, newScale: number) => zoomAround(world, p, newScale, canvas.clientWidth, canvas.clientHeight);
+  const pan = (dx: number, dy: number) => {
+    world.position.set(world.x + dx, world.y + dy);
+    clampView(world, canvas.clientWidth, canvas.clientHeight);
   };
   const pinchInfo = () => {
     const [a, b] = [...pts.values()];
@@ -50,11 +79,11 @@ export function attachGestures(canvas: HTMLCanvasElement, world: Container, onTa
     const p = local(e);
     pts.set(e.pointerId, p);
     if (pts.size === 1) {
-      world.position.set(world.x + p.x - prev.x, world.y + p.y - prev.y);
+      pan(p.x - prev.x, p.y - prev.y);
       moved += Math.abs(p.x - prev.x) + Math.abs(p.y - prev.y);
     } else if (pts.size === 2 && pinch) {
       const i = pinchInfo();
-      world.position.set(world.x + i.mid.x - pinch.mid.x, world.y + i.mid.y - pinch.mid.y);
+      pan(i.mid.x - pinch.mid.x, i.mid.y - pinch.mid.y);
       pinch.mid = i.mid;
       zoomAt(i.mid, pinch.scale * (i.dist / Math.max(1, pinch.dist)));
     }

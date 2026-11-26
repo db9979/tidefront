@@ -3,10 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Application, Container, Graphics, type Ticker } from "pixi.js";
 import {
-  COLS,
   HEX_SIZE_KM,
   MAP_LABELS,
-  ROWS,
   TRADE_PORTS,
   hexAtLonLat,
   hexAtXY,
@@ -17,10 +15,11 @@ import type { MapData } from "../lib/trpc.ts";
 import { serverNow } from "../lib/time.ts";
 import { buildTerrain, hexPoints, xyOf } from "../map/terrain.ts";
 import { Graticule } from "../map/graticule.ts";
-import { attachGestures, clampScale } from "../map/gestures.ts";
+import { MAP_BOUNDS, attachGestures, clampScale, clampView, minScale, zoomAround } from "../map/gestures.ts";
 import {
-  INK, SEE, SIEGEL, alertRing, compassRose, mapLabel, nameTag, nestSymbol, otherBaseSymbol, ownBaseSymbol, portSymbol, shipSymbol, wreckSymbol,
+  INK, SEE, SIEGEL, alertRing, compassRose, dotSymbol, mapLabel, nameTag, nestSymbol, otherBaseSymbol, ownBaseSymbol, portSymbol, shipSymbol, wreckSymbol,
 } from "../map/symbols.ts";
+import { LOD_NEAR, LOD_OVERVIEW, fade, layout, pinScale, snap, type Pinned } from "../map/lod.ts";
 import { buildSoundings } from "../map/soundings.ts";
 // Weltereignisse des Kartells (eigene Ebene unter den Hafenzeichen)
 import { buildWorldEventLayer, type MapWorldEvent } from "../map/world-events.ts";
@@ -56,13 +55,6 @@ export interface HexMapProps {
   events?: MapWorldEvent[];
 }
 
-/** Element in fester Bildschirmgröße, sichtbar in einem Zoombereich. */
-interface Pinned {
-  obj: Container;
-  min?: number;
-  max?: number;
-}
-
 interface Scene {
   app: Application;
   world: Container;
@@ -80,17 +72,16 @@ interface Scene {
   compass: Container;
 }
 
-/** Gegenskalierung: Symbole bleiben etwa gleich groß, wachsen beim Hineinzoomen nur leicht. */
-function pinScale(worldScale: number, floor = 0.75): number {
-  return Math.max(floor, Math.min(1.3, worldScale / 0.3 + 0.35)) / worldScale;
-}
+/** Beschriftungs-Prioritäten: Meere > große Regionen > kleine Regionen > Häfen > fremde Stützpunkte. */
+const PRIO = { always: -1, ocean: 0, sea: 1, bigRegion: 2, region: 3, port: 4, base: 5 } as const;
+/** Ab hier Namensschilder von Häfen und fremden Stützpunkten. */
+const LOD_NAMES = 0.4;
+/** Unterkante der Zoomknöpfe (top-6 + zwei 44-px-Knöpfe + Abstand). */
+const BUTTONS_BOTTOM = 24 + 44 * 2 + 6;
 
-function applyPinned(list: Pinned[], scale: number, floor?: number): void {
-  const k = pinScale(scale, floor);
-  for (const p of list) {
-    p.obj.visible = (p.min === undefined || scale >= p.min) && (p.max === undefined || scale <= p.max);
-    p.obj.scale.set(k);
-  }
+/** Sichtbarkeit und Größe aller Zeichen bei Zoomänderung neu bestimmen. */
+function relayout(s: Scene): void {
+  layout([s.pinnedStatic, s.pinnedMarkers], s.world.scale.x);
 }
 
 function missionPosition(m: MapMission, home: { x: number; y: number }, tgt: { x: number; y: number }, now: number) {
@@ -157,7 +148,7 @@ export function HexMap(props: HexMapProps) {
         const pinnedStatic: Pinned[] = [];
         for (const t of buildSoundings()) {
           pinnedLayer.addChild(t);
-          pinnedStatic.push({ obj: t, min: 0.2 });
+          pinnedStatic.push({ obj: t, min: LOD_NEAR + 0.1, fixed: true });
         }
         for (const l of MAP_LABELS) {
           const t = mapLabel(l.name, l.kind, l.size);
@@ -165,18 +156,22 @@ export function HexMap(props: HexMapProps) {
           t.position.set(p.x, p.y);
           pinnedLayer.addChild(t);
           const big = l.size >= 1.25;
-          pinnedStatic.push(l.kind === "sea" ? { obj: t, min: big ? undefined : 0.11, max: big ? 0.9 : 1.2 } : { obj: t, max: 0.5 });
+          pinnedStatic.push(l.kind === "sea"
+            ? { obj: t, max: big ? 0.9 : 1.2, fixed: true, prio: big ? PRIO.ocean : PRIO.sea }
+            : { obj: t, max: 0.5, fixed: true, prio: l.size >= 1 ? PRIO.bigRegion : PRIO.region });
         }
         for (const [lon, lat, name] of TRADE_PORTS) {
           const h = hexAtLonLat(lon, lat);
           const p = hexCenterXY(h.col, h.row);
-          const c = new Container();
-          c.addChild(portSymbol());
-          const tag = nameTag(name, INK, 11);
-          c.addChild(tag);
-          c.position.set(p.x, p.y);
-          pinnedLayer.addChild(c);
-          pinnedStatic.push({ obj: c, min: 0.16 });
+          const at = (obj: Container, pin: Omit<Pinned, "obj">) => {
+            obj.position.set(p.x, p.y);
+            pinnedLayer.addChild(obj);
+            pinnedStatic.push({ obj, ...pin });
+          };
+          // Übersicht: kleiner Ring; danach Ankerzeichen, Name erst näher und nur ohne Überlappung
+          at(dotSymbol(INK, 2.6, 0.8, true), { max: LOD_OVERVIEW, fixed: true });
+          at(portSymbol(), { min: LOD_OVERVIEW });
+          at(nameTag(name, INK, 11), { min: LOD_NAMES, fixed: true, prio: PRIO.port });
         }
         app.stage.addChild(graticule.labels);
         const compass = compassRose();
@@ -191,25 +186,42 @@ export function HexMap(props: HexMapProps) {
         let lastScale = -1;
         let lastMove = 0;
         let lastPos = "";
+        let lastSize = "";
+        let fading = false;
         const tick = (_t: Ticker) => {
+          const w = app.screen.width;
+          const h = app.screen.height;
+          const size = `${w}x${h}`;
+          if (size !== lastSize) {
+            // Drehung oder Größenänderung: Grenzen neu, Karte deckt weiter den Bildschirm
+            lastSize = size;
+            clampView(world, w, h);
+          }
           const sc = world.scale.x;
           if (sc !== lastScale) {
+            const first = lastScale < 0;
             lastScale = sc;
-            applyPinned(s.pinnedStatic, sc);
-            applyPinned(s.pinnedMarkers, sc, 0.5);
+            relayout(s);
+            if (first) snap([s.pinnedStatic, s.pinnedMarkers]);
+            fading = true;
             drawSelection(s, live.current.selected);
             s.graticule.redraw(sc);
-            // Hexraster erst beim Hineinzoomen und nur zart
-            s.grid.alpha = Math.max(0, Math.min(0.16, (sc - 0.16) * 0.4));
+            // Hexraster erst in der Nahansicht und nur zart; in der Übersicht ganz aus
+            s.grid.alpha = Math.max(0, Math.min(0.16, (sc - 0.3) * 0.5));
             s.grid.visible = s.grid.alpha > 0.005;
+            terrain.setOverview(sc);
             lastMove = 0;
           }
-          const pos = `${world.x | 0},${world.y | 0},${sc}`;
+          if (fading) fading = fade([s.pinnedStatic, s.pinnedMarkers], 0.14);
+          const pos = `${world.x | 0},${world.y | 0},${sc},${size}`;
           if (pos !== lastPos) {
             lastPos = pos;
-            s.graticule.place(world, app.screen.width, app.screen.height);
-            s.compass.position.set(app.screen.width - 40, Math.min(178, app.screen.height - 60));
-            s.compass.visible = app.screen.height > 360;
+            s.graticule.place(world, w, h);
+            // Windrose fest oben rechts unter den Zoomknöpfen, in der Übersicht kleiner; nur wenn Platz ist
+            const cs = sc < LOD_OVERVIEW ? 0.72 : 0.9;
+            s.compass.scale.set(cs);
+            s.compass.position.set(w - 36, BUTTONS_BOTTOM + 14 + 38 * cs);
+            s.compass.visible = h > 440 && w > 300;
           }
           const now = performance.now();
           if (now - lastMove > 250) {
@@ -243,11 +255,12 @@ export function HexMap(props: HexMapProps) {
     if (!ready || !s) return;
     const w = s.app.screen.width;
     const h = s.app.screen.height;
-    const target = center ? hexCenterXY(center.col, center.row) : hexCenterXY(Math.floor(COLS / 2), Math.floor(ROWS / 2));
-    const fit = Math.min(w / (COLS * HEX_SIZE_KM * 1.75), h / (ROWS * HEX_SIZE_KM * 1.5));
-    const scale = clampScale(center ? (zoom ?? 0.35) : fit * 2.2);
+    const b = MAP_BOUNDS;
+    const target = center ? hexCenterXY(center.col, center.row) : { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 };
+    const scale = clampScale(center ? (zoom ?? 0.35) : minScale(w, h), w, h);
     s.world.scale.set(scale);
     s.world.position.set(w / 2 - target.x * scale, h / 2 - target.y * scale);
+    clampView(s.world, w, h);
   }, [ready, centerKey]);
 
   // Freie Felder im Auswahlmodus
@@ -272,22 +285,33 @@ export function HexMap(props: HexMapProps) {
     if (!ready || !s) return;
     for (const c of s.markerLayer.removeChildren()) c.destroy({ children: true });
     s.pinnedMarkers = [];
-    const add = (c: Container, col: number, row: number, min?: number) => {
+    const add = (c: Container, col: number, row: number, pin: Omit<Pinned, "obj"> = {}) => {
       const p = hexCenterXY(col, row);
       c.position.set(p.x, p.y);
       s.markerLayer.addChild(c);
-      s.pinnedMarkers.push({ obj: c, min });
+      s.pinnedMarkers.push({ obj: c, floor: 0.5, ...pin });
     };
-    for (const w of data.wrecks) add(wreckSymbol(), w.col, w.row, 0.1);
-    for (const n of data.nests) add(nestSymbol(n.level, n.empty), n.col, n.row);
-    for (const b of data.bases) {
-      const c = new Container();
-      c.addChild(b.own ? ownBaseSymbol() : otherBaseSymbol(b.protection !== null));
-      add(c, b.col, b.row);
-      const tag = nameTag(b.own ? b.name : `${b.name} · ${b.owner}`, b.own ? INK : SEE);
-      add(tag, b.col, b.row, b.own ? 0.08 : 0.15);
+    // Detailstufen: Übersicht nur Punkte (Nester nach Stufe, fremde Häfen), ab mittlerer Stufe Zeichen, nah alles.
+    for (const w of data.wrecks) add(wreckSymbol(), w.col, w.row, { min: LOD_NEAR });
+    for (const n of data.nests) {
+      if (!n.empty) add(dotSymbol(SIEGEL, 1.6 + n.level * 0.45, 0.72), n.col, n.row, { max: LOD_OVERVIEW, fixed: true });
+      add(nestSymbol(n.level, n.empty), n.col, n.row, { min: LOD_OVERVIEW });
     }
-    applyPinned(s.pinnedMarkers, s.world.scale.x, 0.5);
+    for (const b of data.bases) {
+      const tag = nameTag(b.own ? b.name : `${b.name} · ${b.owner}`, b.own ? INK : SEE);
+      if (b.own) {
+        add(ownBaseSymbol(), b.col, b.row, { prio: PRIO.always });
+        add(tag, b.col, b.row, { fixed: true, prio: PRIO.always });
+        continue;
+      }
+      add(dotSymbol(SEE, 3, 0.95), b.col, b.row, { max: LOD_OVERVIEW, fixed: true });
+      add(otherBaseSymbol(b.protection !== null), b.col, b.row, { min: LOD_OVERVIEW });
+      add(tag, b.col, b.row, { min: LOD_NAMES, fixed: true, prio: PRIO.base });
+    }
+    // Eigener Hafen zuoberst
+    for (const p of s.pinnedMarkers) if (p.prio === PRIO.always) s.markerLayer.addChild(p.obj);
+    relayout(s);
+    snap([s.pinnedMarkers]);
   }, [ready, data]);
 
   // Weltereignisse: nach den Symbolen (die pinnedMarkers neu anlegen) eigene Ebene neu aufbauen.
@@ -304,9 +328,16 @@ export function HexMap(props: HexMapProps) {
     if (!events || events.length === 0) return;
     const layer = buildWorldEventLayer(events, serverNow());
     s.world.addChildAt(layer.root, s.world.getChildIndex(s.markerLayer));
+    // Weltereignisse immer sichtbar und vorrangig: Zeichen und Schilder belegen Platz vor allen Namen.
+    for (const p of layer.pinned as Pinned[]) {
+      p.floor = 0.5;
+      p.prio = PRIO.always;
+      p.min = undefined;
+    }
     s.pinnedMarkers.push(...layer.pinned);
     eventLayer.current = layer;
-    applyPinned(s.pinnedMarkers, s.world.scale.x, 0.5);
+    relayout(s);
+    snap([s.pinnedMarkers]);
   }, [ready, data, events]);
 
   // Auswahl
@@ -318,12 +349,8 @@ export function HexMap(props: HexMapProps) {
   const zoomBy = (f: number) => {
     const s = scene.current;
     if (!s) return;
-    const p = { x: s.app.screen.width / 2, y: s.app.screen.height / 2 };
-    const ns = clampScale(s.world.scale.x * f);
-    const wx = (p.x - s.world.x) / s.world.scale.x;
-    const wy = (p.y - s.world.y) / s.world.scale.y;
-    s.world.scale.set(ns);
-    s.world.position.set(p.x - wx * ns, p.y - wy * ns);
+    const { width: w, height: h } = s.app.screen;
+    zoomAround(s.world, { x: w / 2, y: h / 2 }, s.world.scale.x * f, w, h);
   };
   return (
     <div className="w-full h-full relative">
