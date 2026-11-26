@@ -205,6 +205,7 @@ export function HexMap(props: HexMapProps) {
             lastPos = pos;
             s.graticule.place(world, app.screen.width, app.screen.height);
             s.compass.position.set(app.screen.width - 40, Math.min(178, app.screen.height - 60));
+            s.compass.visible = app.screen.height > 360;
           }
           const now = performance.now();
           if (now - lastMove > 250) {
