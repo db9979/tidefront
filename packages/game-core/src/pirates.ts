@@ -10,6 +10,7 @@ import type {
 } from "./types.ts";
 import type { ProtectionReason } from "./protection.ts";
 import { protectionStatus } from "./protection.ts";
+import { mulberry32, randomFactor } from "./rng.ts";
 
 const HOUR_MS = 3600000;
 
@@ -41,12 +42,12 @@ export function isNestRespawned(defeatedAtMs: number, nowMs: number, balance: Ba
   return nowMs >= defeatedAtMs + balance.pirates.nestRespawnHours * HOUR_MS;
 }
 
-/** Lebenspunkte der Verteidigung: Schiffe und Anlagen des Stützpunkts. */
+/** Lebenspunkte der Verteidigung: Schiffe, Bodentruppen und Anlagen des Stützpunkts (ohne Flugzeuge). */
 export function defenseHp(units: Counts, defenses: Counts, balance: Balance): number {
   let hp = 0;
   for (const [id, n] of Object.entries(units)) {
     const def = balance.units[id] ?? balance.npcUnits[id];
-    if (def !== undefined && def.branch === "see") hp += def.hp * Math.max(0, n);
+    if (def !== undefined && def.branch !== "luft") hp += def.hp * Math.max(0, n);
   }
   for (const [id, n] of Object.entries(defenses)) {
     const def = balance.defenses[id];
@@ -55,20 +56,32 @@ export function defenseHp(units: Counts, defenses: Counts, balance: Balance): nu
   return hp;
 }
 
+/** Schwankungsfaktor der Überfallstärke: gleichverteilt in [1 - raidStrengthSpread, 1 + raidStrengthSpread]; ohne Seed 1. */
+export function raidStrengthFactor(balance: Balance, seed?: number): number {
+  if (seed === undefined) return 1;
+  return randomFactor(mulberry32(seed), balance.pirates.raidStrengthSpread);
+}
+
 /**
- * Stellt einen Kartell-Überfall passend zur Verteidigung zusammen: so viele Schnellboote,
- * dass ihre Lebenspunkte raidStrengthShareOfDefense der Verteidigungs-Lebenspunkte erreichen
- * (aufgerundet, mindestens raidMinSchnellboote), je Boot raidMiliPerBoot Milizionäre.
+ * Stellt einen Kartell-Überfall passend zur Verteidigung zusammen. Grundstärke in Booten:
+ * raidStrengthShareOfDefense der Verteidigungs-Lebenspunkte (Schiffe, Bodentruppen, Anlagen)
+ * geteilt durch die Lebenspunkte eines Schnellboots, mindestens raidMinSchnellboote. Mit Seed
+ * schwankt sie um raidStrengthSpread. Miliz = Grundstärke * Faktor * raidMiliPerBoot (gerundet),
+ * Boote = Miliz / raidMiliPerBoot (aufgerundet), damit jeder Milizionär einen Platz hat.
  */
-export function composeRaid(units: Counts, defenses: Counts, balance: Balance): RaidForce {
+export function composeRaid(units: Counts, defenses: Counts, balance: Balance, seed?: number): RaidForce {
   const p = balance.pirates;
   const hp = defenseHp(units, defenses, balance);
   const boatHp = balance.npcUnits.schnellboot.hp;
-  const boats = Math.max(p.raidMinSchnellboote, Math.ceil((hp * p.raidStrengthShareOfDefense) / boatHp - 1e-9));
-  const force: Counts = { schnellboot: boats, piratenmiliz: boats * p.raidMiliPerBoot };
+  const base = Math.max(p.raidMinSchnellboote, (hp * p.raidStrengthShareOfDefense) / boatHp);
+  const factor = raidStrengthFactor(balance, seed);
+  const miliz = Math.max(1, Math.round(base * factor * p.raidMiliPerBoot));
+  const boats = Math.ceil(miliz / p.raidMiliPerBoot - 1e-9);
+  const force: Counts = { schnellboot: boats, piratenmiliz: miliz };
   return {
     units: force,
     defenseHp: hp,
+    strengthFactor: factor,
     attacker: {
       units: { ...force },
       // Eigene Landungskapazität: die Miliz fährt auf den Schnellbooten mit.

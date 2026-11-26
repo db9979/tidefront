@@ -1,137 +1,189 @@
-// Simulations-Runner für die Balance: Kampf-Matrix (Kartell, Nester) und ein gieriger Wirtschafts-Bot.
+// Simulations-Runner für die Balance: Kartell-Überfälle, Piratennester und ein Wirtschafts-Bot,
+// der über eine Saison (28 Tage) einen Verband aufbaut und ihn gegen die Nester schickt.
 // Aufruf: npm run sim   (Ausgabe als Text; nichts wird gespeichert)
+// Werte (Beute, Verluste, Treibstoff) werden zum Richtwert der Börse in Stahl-Äquivalent bewertet.
 import { readFileSync } from "node:fs";
-import type { Balance, BaseState, Counts } from "../src/index.ts";
+import type { AttackerInput, Balance, Counts, DefenderInput } from "../src/index.ts";
 import {
+  commandPoints,
   composeRaid,
-  completeTraining,
-  completeUpgrade,
-  createBase,
   defenderFromBase,
-  maxAllowedLevel,
+  fleetTotals,
+  fuelCost,
+  missionSlots,
   nestDefender,
   productionRates,
   resolveBattle,
-  settle,
-  startTraining,
-  startUpgrade,
-  storageCapacity,
-  upgradeCost,
+  trainingCost,
+  validateFleet,
 } from "../src/index.ts";
+import type { BotSnapshot } from "./bot.ts";
+import { MILITARY_SHARE, runBot, value } from "./bot.ts";
 
 const balance = JSON.parse(
   readFileSync(new URL("../../balance/v1/balance.json", import.meta.url), "utf8"),
 ) as Balance;
 const SEEDS = 200;
-const HOUR = 3600000;
+/** Angenommene Entfernung zum Nest (Nestplätze liegen mindestens 350 km auseinander). */
+const NEST_DISTANCE_KM = 400;
+/** Versatz, damit Zusammensetzung des Überfalls und Kampf nicht denselben Zufallsstrom nutzen. */
+const RAID_SEED_OFFSET = 100000;
+const CHECKPOINTS = [1, 2, 3, 5, 7, 10, 14, 18, 21, 28];
+/** Zielfenster je Neststufe (Tage), ab dem ein bezahlbarer Verband mindestens 70 % siegt. */
+const TARGET: Record<number, [number, number]> = { 1: [1, 2], 2: [3, 5], 3: [7, 10], 4: [14, 18], 5: [21, 28] };
 
-function rate(attacker: Parameters<typeof resolveBattle>[0], defender: Parameters<typeof resolveBattle>[1]) {
+interface Rate {
+  winRate: number;
+  avgLoot: number;
+  avgLossValue: number;
+  avgBoats: number;
+  avgMiliz: number;
+}
+
+function lossValue(report: { attacker: { losses: Counts; returned: Counts } }): number {
+  let v = 0;
+  for (const [id, n] of Object.entries(report.attacker.losses)) {
+    const gone = n - (report.attacker.returned[id] ?? 0);
+    if (gone > 0 && balance.units[id]) v += value(trainingCost(id, gone, balance), balance);
+  }
+  return v;
+}
+
+function rate(attacker: (seed: number) => AttackerInput, defender: DefenderInput): Rate {
   let wins = 0;
-  let lootSum = 0;
-  let lostA = 0;
+  let loot = 0;
+  let loss = 0;
+  let boats = 0;
+  let miliz = 0;
   for (let seed = 1; seed <= SEEDS; seed++) {
-    const r = resolveBattle(attacker, defender, balance, seed);
+    const a = attacker(seed);
+    boats += a.units.schnellboot ?? 0;
+    miliz += a.units.piratenmiliz ?? 0;
+    const r = resolveBattle(a, defender, balance, seed);
     if (!r.ok) throw new Error(r.code);
     if (r.report.winner === "attacker") wins++;
-    for (const v of Object.values(r.report.loot)) lootSum += v;
-    for (const v of Object.values(r.report.attacker.losses)) lostA += v;
+    loot += value(r.report.loot, balance);
+    loss += lossValue(r.report);
   }
-  return { winRate: wins / SEEDS, avgLoot: Math.round(lootSum / SEEDS), avgLossesA: Math.round(lostA / SEEDS) };
+  return {
+    winRate: wins / SEEDS,
+    avgLoot: loot / SEEDS,
+    avgLossValue: loss / SEEDS,
+    avgBoats: boats / SEEDS,
+    avgMiliz: miliz / SEEDS,
+  };
 }
 
-function line(label: string, r: ReturnType<typeof rate>) {
-  console.log(
-    `  ${label.padEnd(46)} Sieg ${(r.winRate * 100).toFixed(0).padStart(3)} %  Beute ${String(r.avgLoot).padStart(6)}  Verluste A ${r.avgLossesA}`,
-  );
-}
+const pct = (x: number) => `${(x * 100).toFixed(0).padStart(3)} %`;
+const num = (x: number, w = 6) => String(Math.round(x)).padStart(w);
 
 console.log(`Balance ${balance.version}, ${SEEDS} Seeds je Fall\n`);
 
-console.log("Kartell-Überfälle gegen typische Verteidigungen");
+// ---------------------------------------------------------------- Kartell
+
+console.log("Kartell-Überfälle gegen typische Verteidigungen (Stärke schwankt je Seed, Beute nach Bunkerschutz 300)");
 const defenses: [string, Counts, Counts][] = [
   ["nichts", {}, {}],
-  ["20 Schützen", { schuetzen: 20 }, {}],
-  ["40 Schützen, 1 Bunkerlinie", { schuetzen: 40 }, { bunkerlinie: 1 }],
+  ["Wache: 20 Schützen", { schuetzen: 20 }, {}],
+  ["30 Schützen", { schuetzen: 30 }, {}],
   ["2 Korvetten, 30 Schützen", { korvette: 2, schuetzen: 30 }, {}],
-  ["5 Korvetten, 3 Küstenbatterien, 50 Schützen", { korvette: 5, schuetzen: 50 }, { kuestenbatterie: 3 }],
-  ["3 Zerstörer, 2 Batterien, 2 Bunker, 80 Schützen", { zerstoerer: 3, schuetzen: 80 }, { kuestenbatterie: 2, bunkerlinie: 2 }],
+  ["40 Schützen, 1 Bunkerlinie", { schuetzen: 40 }, { bunkerlinie: 1 }],
+  ["gut: 60 Schützen, 1 Bunker, 2 Batterien (+Radar)", { schuetzen: 60 }, { bunkerlinie: 1, kuestenbatterie: 2 }],
+  ["5 Korvetten, 3 Batterien, 50 Schützen", { korvette: 5, schuetzen: 50 }, { kuestenbatterie: 3 }],
+  ["stark: 3 Zerstörer, 2 Batt., 2 Bunker, 80 Sch.", { zerstoerer: 3, schuetzen: 80 }, { kuestenbatterie: 2, bunkerlinie: 2 }],
+  ["sehr stark: 4 Zerst., 3 Batt., 2 Bunker, 120 Sch., 4 Pz", { zerstoerer: 4, schuetzen: 120, kampfpanzer: 4 }, { kuestenbatterie: 3, bunkerlinie: 2 }],
 ];
+const raidRes = { stahl: 8000, treibstoff: 4000, elektronik: 2000, proviant: 3000 };
 for (const [label, units, defs] of defenses) {
-  const raid = composeRaid(units, defs, balance);
-  const res = { stahl: 8000, treibstoff: 4000, elektronik: 2000, proviant: 3000 };
-  line(`${label} (${raid.units.schnellboot} Boote)`, rate(raid.attacker, { units, defenses: defs, resources: res, protectedPerResource: 300 }));
+  const r = rate((seed) => composeRaid(units, defs, balance, seed + RAID_SEED_OFFSET).attacker, {
+    units,
+    defenses: defs,
+    resources: raidRes,
+    protectedPerResource: 300,
+  });
+  const force = `Ø ${r.avgBoats.toFixed(1)} Boote, ${Math.round(r.avgMiliz)} Miliz`;
+  console.log(`  ${label.padEnd(56)} ${force.padEnd(24)} Sieg ${pct(r.winRate)}  Beute ${num(r.avgLoot)}`);
 }
 
-console.log("\nÜberfälle auf Piratennester");
+// ---------------------------------------------------------------- Nester gegen feste Verbände
+
+console.log("\nÜberfälle auf Piratennester mit festen Verbänden (Sieg %)");
 const fleets: [string, Counts][] = [
-  ["2 Korvetten, 1 Landungsschiff, 60 Schützen", { korvette: 2, landungsschiff: 1, schuetzen: 60 }],
-  ["4 Korvetten, 2 Landungsschiffe, 120 Schützen", { korvette: 4, landungsschiff: 2, schuetzen: 120 }],
+  ["2 Korvetten, 1 Landungsschiff, 30 Schützen", { korvette: 2, landungsschiff: 1, schuetzen: 30 }],
+  ["4 Korvetten, 2 Landungsschiffe, 150 Schützen", { korvette: 4, landungsschiff: 2, schuetzen: 150 }],
   ["4 Zerstörer, 3 Landungsschiffe, 5 Panzer, 200 Sch.", { zerstoerer: 4, landungsschiff: 3, kampfpanzer: 5, schuetzen: 200 }],
-  ["8 Zerstörer, 4 Jagdbomber, 5 L-Schiffe, 10 Pz, 300 Sch.", { zerstoerer: 8, jagdbomber: 4, landungsschiff: 5, kampfpanzer: 10, schuetzen: 300, pioniere: 50 }],
+  ["8 Zerst., 4 Jagdbomber, 5 L-Schiffe, 10 Pz, 300 Sch., 50 Pio.", { zerstoerer: 8, jagdbomber: 4, landungsschiff: 5, kampfpanzer: 10, schuetzen: 300, pioniere: 50 }],
 ];
-for (let level = 1; level <= 5; level++) {
-  const nest = nestDefender(level, balance);
-  if (!nest.ok) throw new Error(nest.code);
-  console.log(` Nest Stufe ${level}`);
-  for (const [label, units] of fleets) line(label, rate({ units }, nest.defender));
+console.log(`  ${"".padEnd(62)} ${[1, 2, 3, 4, 5].map((l) => `Stufe ${l}`.padStart(8)).join("")}`);
+for (const [label, units] of fleets) {
+  const cells = [1, 2, 3, 4, 5].map((level) => pct(rate(() => ({ units }), nest(level)).winRate).padStart(8));
+  console.log(`  ${label.padEnd(62)} ${cells.join("")}`);
 }
 
-// ---------------------------------------------------------------- Wirtschafts-Bot
-
-console.log("\nWirtschafts-Bot (gierig: billigster erlaubter Ausbau, Kraftwerk bei Strommangel), 7 Tage");
-const order = ["stahlwerk", "raffinerie", "versorgungshof", "chipfabrik", "kraftwerk", "lagerkomplex", "kommandozentrale", "kaserne", "werft", "hafenkommandantur", "tiefbunker"];
-let base: BaseState = createBase(balance, 0);
-let t = 0;
-const end = 7 * 24 * HOUR;
-const step = 10 * 60000;
-let nextReport = 24 * HOUR;
-while (t <= end) {
-  if (base.buildQueue[0] && base.buildQueue[0].finishesAt <= t) {
-    const c = completeUpgrade(base, t, balance);
-    if (c.ok) base = c.base;
-  }
-  if (base.trainingQueue.some((o) => o.finishesAt <= t)) {
-    const c = completeTraining(base, t, balance);
-    if (c.ok) base = c.base;
-  }
-  // Etwas Verteidigung: 10 Schützen, solange mehr als 300 Stahl übrig bleiben.
-  if ((base.buildings.kaserne ?? 0) >= 1 && !base.trainingQueue.some((o) => o.builtIn === "kaserne")) {
-    const r = startTraining(base, "schuetzen", 10, t, balance);
-    if (r.ok && r.base.resources.stahl > 300 && (base.units.schuetzen ?? 0) < 60) base = r.base;
-  }
-  if (base.buildQueue.length === 0) {
-    base = settle(base, t, balance);
-    const rates = productionRates(base, balance);
-    let candidates = order.filter((id) => (base.buildings[id] ?? 0) < maxAllowedLevel(base, id, balance));
-    if (rates.powerFactor < 1) candidates = ["kraftwerk"];
-    candidates.sort((a, b) => sum(upgradeCost(a, base.buildings[a], balance)) - sum(upgradeCost(b, base.buildings[b], balance)));
-    for (const id of candidates) {
-      const r = startUpgrade(base, id, t, balance);
-      if (r.ok) {
-        base = r.base;
-        break;
-      }
-    }
-  }
-  if (t >= nextReport) {
-    base = settle(base, t, balance);
-    const rates = productionRates(base, balance);
-    const lv = Object.entries(base.buildings).filter(([, l]) => l > 0).map(([id, l]) => `${id.slice(0, 5)}${l}`).join(" ");
-    console.log(
-      `  Tag ${t / (24 * HOUR)}: Rate/h ${fmt(rates.perHour)} | Lager ${Math.round(storageCapacity(base, balance))} | Schützen ${base.units.schuetzen ?? 0} | ${lv}`,
-    );
-    nextReport += 24 * HOUR;
-  }
-  t += step;
+function nest(level: number): DefenderInput {
+  const n = nestDefender(level, balance);
+  if (!n.ok) throw new Error(n.code);
+  return n.defender;
 }
 
-function sum(m: Record<string, number>): number {
-  return Object.values(m).reduce((a, b) => a + b, 0);
-}
-function fmt(m: Record<string, number>): string {
-  return Object.entries(m).map(([k, v]) => `${k.slice(0, 2)} ${Math.round(v)}`).join(" ");
+// ---------------------------------------------------------------- Wirtschafts-Bot mit Verband
+
+console.log(
+  `\nWirtschafts-Bot über 28 Tage: gieriger Ausbau, ${MILITARY_SHARE * 100} % der Ausgaben in einen Verband nach Doktrin ` +
+    `(innerhalb der Kommandopunkte, Landungsschiffe nach Truppenbedarf). Nest in ${NEST_DISTANCE_KM} km.`,
+);
+const snaps = runBot(balance, 28, CHECKPOINTS);
+for (const s of snaps) {
+  const fleet = sentFleet(s);
+  const check = validateFleet(s.base, fleet, NEST_DISTANCE_KM, balance);
+  if (!check.ok) throw new Error(`Tag ${s.day}: ${check.code}`);
+  const t = fleetTotals(fleet, balance);
+  const rates = productionRates(s.base, balance).perHour;
+  console.log(
+    `  Tag ${String(s.day).padStart(2)}: KZ ${s.base.buildings.kommandozentrale}, KP ${t.commandPointsUsed.toFixed(0)}/${commandPoints(s.base, balance)}, ` +
+      `Missionsplätze ${missionSlots(s.base, balance)}, Truppen ${t.troopSize}/${t.troopSpace}, Ladung ${t.cargoCapacity}, ` +
+      `Treibstoff ${fuelCost(fleet, NEST_DISTANCE_KM, balance)} | Rate/h st ${Math.round(rates.stahl)} el ${Math.round(rates.elektronik)}`,
+  );
+  console.log(`          ${Object.entries(fleet).map(([id, n]) => `${n} ${id}`).join(", ")}`);
 }
 
-// Kontrolle: der Stützpunkt des Bots als Ziel eines Kartell-Überfalls
-const raid = composeRaid(base.units, base.defenses, balance);
-line("Kartell gegen den Bot nach 7 Tagen", rate(raid.attacker, defenderFromBase(base, balance)));
+console.log(`\n  Sieg % und Netto-Ertrag (Beute - bleibende Verluste - Treibstoff) je Neststufe; * = Zielfenster`);
+console.log(`  ${"".padEnd(7)}${[1, 2, 3, 4, 5].map((l) => `Stufe ${l}`.padEnd(18)).join("")}`);
+const firstWin: Record<number, number | null> = {};
+for (const s of snaps) {
+  const fleet = sentFleet(s);
+  const fuel = fuelCost(fleet, NEST_DISTANCE_KM, balance) * (balance.market.refPrice.treibstoff ?? 0);
+  const cells: string[] = [];
+  for (let level = 1; level <= 5; level++) {
+    const r = rate(() => ({ units: fleet }), nest(level));
+    const inWindow = s.day >= TARGET[level][0] && s.day <= TARGET[level][1] ? "*" : " ";
+    if (r.winRate >= 0.7 && firstWin[level] === undefined) firstWin[level] = s.day;
+    cells.push(`${pct(r.winRate)} ${num(r.avgLoot - r.avgLossValue - fuel, 7)}${inWindow}`.padEnd(18));
+  }
+  console.log(`  Tag ${String(s.day).padStart(2)} ${cells.join("")}`);
+}
+console.log(
+  `  Erster Prüftag mit >= 70 %: ${[1, 2, 3, 4, 5].map((l) => `Stufe ${l} Tag ${firstWin[l] ?? "-"} (Ziel ${TARGET[l].join("–")})`).join(", ")}`,
+);
+
+// Empfindlichkeit: anderer Rüstungsanteil
+for (const share of [0.3, 0.6]) {
+  const alt = runBot(balance, 28, CHECKPOINTS, share);
+  const first = [1, 2, 3, 4, 5].map((level) => {
+    const hit = alt.find((s) => rate(() => ({ units: sentFleet(s) }), nest(level)).winRate >= 0.7);
+    return `Stufe ${level} Tag ${hit?.day ?? "-"}`;
+  });
+  console.log(`  Rüstungsanteil ${share * 100} %: ${first.join(", ")}`);
+}
+
+// Kontrolle: der Stützpunkt des Bots (alle Einheiten daheim) als Ziel des Kartells
+for (const day of [7, 28]) {
+  const s = snaps.find((x) => x.day === day)!;
+  const r = rate((seed) => composeRaid(s.base.units, s.base.defenses, balance, seed + RAID_SEED_OFFSET).attacker, defenderFromBase(s.base, balance));
+  console.log(`  Kartell gegen den Bot nach ${day} Tagen: Ø ${r.avgBoats.toFixed(1)} Boote, ${Math.round(r.avgMiliz)} Miliz, Sieg ${pct(r.winRate)}`);
+}
+
+/** Der Bot schickt alles, was daheim steht (die Doktrin hält ihn innerhalb der Kommandopunkte). */
+function sentFleet(s: BotSnapshot): Counts {
+  return Object.fromEntries(Object.entries(s.base.units).filter(([, n]) => n > 0));
+}
