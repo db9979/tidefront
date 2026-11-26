@@ -2,6 +2,14 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.14.0 – 27.11.2026
+- **Rohstofffelder einnehmen** (Welle 3, Teil 1): Auf See liegen Ölfelder (Treibstoff), Erzbuchten (Stahl), Fischgründe (Proviant) und Elektronik-Wracks – in drei Größen, bevorzugt zwischen den Häfen. Neutrale Felder bewacht das Kartell.
+- **Besetzen**: Aufklären, mit bewaffneten Schiffen besetzen, die Wache schlagen. Eine Besatzung bleibt vor Ort (belegt einen Missionsplatz, kostet Proviant) und verteidigt das Feld. Alle 4 Stunden fährt der Ertrag als Konvoi zum Hafen – Kriegsgegner und Kartell können ihn abfangen, eine Blockade hält ihn zurück.
+- **Umkämpft**: Das Kartell greift besetzte Felder gelegentlich an (mit Vorwarnung), andere Spieler können sie erobern (gleiche Schutzregeln wie beim Überfall). Eine Mindestbesatzung hält auf großen Feldern nicht lange – stärkere Besatzungen schon.
+- **Grenzen**: 1 Feld je 4 Stufen Hafenkommandantur (höchstens 5), jedes weitere bringt weniger (100/85/70/55/45 %).
+- **Allianz-Einflusszone**: Ab drei benachbarten Feldern einer Allianz +10 % Ertrag; Felder bringen Punkte in der Allianzwertung.
+- Neue Liste „Meine Felder“ (Truppen → Einsatz), Kartensymbole und Legende, Handbuch-Kapitel und der Erfolg „Landnahme“.
+
 ## 0.13.0 – 27.11.2026
 - **Weniger Scrollen** (nach Messung durch einen Game-Designer): Die Seiten sind deutlich kürzer – Basis von 6 auf unter 3 Bildschirmhöhen, Truppen je Bereich etwa 1–2 statt bis zu 5,5, Börse von 3,6 auf unter 2.
 - Jeder Reiter merkt sich, wie weit du gescrollt hast; Missionsplanung, Handbuch und Forschung öffnen oben.
