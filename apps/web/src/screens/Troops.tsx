@@ -160,12 +160,12 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
     (m, [r, v]) => (v > 0 ? Math.min(m, Math.floor((props.base.resources[r] ?? 0) / v)) : m),
     MAX_TRAIN,
   );
-  const enough = n >= 1 && n <= afford;
+  // Menge 0 ist kein Fehler: nur „Bauen“ gesperrt, Hinweis neutral, Kosten je Stück statt „kostenlos“.
   const why = props.busy
     ? "Hier läuft schon ein Auftrag (oben) – neue Ausbildung erst nach Abschluss oder Abbruch."
     : props.base.versorgungsmangel ? "Versorgungsmangel: keine Ausbildung möglich."
     : afford < 1 ? "Nicht genug Ressourcen für ein Stück."
-    : !enough ? `Nicht genug Ressourcen (höchstens ${fmtNum(afford)}).` : null;
+    : n > afford ? `Nicht genug Ressourcen (höchstens ${fmtNum(afford)}).` : null;
   return (
     <li className="py-2">
       <div className="flex gap-3 items-start">
@@ -191,10 +191,20 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
         )}
       </div>
       <div className="flex justify-between gap-2 mt-1">
-        <Cost cost={scale(props.cost, n)} have={props.base.resources} />
-        {props.secondsEach !== null && <span className="text-xs text-slate-400 flex items-center gap-1"><Icon id="uhr" size={14} /> {fmtSeconds(props.secondsEach * n)}</span>}
+        {n >= 1 ? (
+          <>
+            <Cost cost={scale(props.cost, n)} have={props.base.resources} />
+            {props.secondsEach !== null && <span className="text-xs text-slate-400 flex items-center gap-1"><Icon id="uhr" size={14} /> {fmtSeconds(props.secondsEach * n)}</span>}
+          </>
+        ) : (
+          <>
+            <span className="text-xs text-slate-400 flex flex-wrap items-center gap-x-1">je Stück: <Cost cost={props.cost} have={props.base.resources} /></span>
+            {props.secondsEach !== null && <span className="text-xs text-slate-400 flex items-center gap-1"><Icon id="uhr" size={14} /> {fmtSeconds(props.secondsEach)} je Stück</span>}
+          </>
+        )}
       </div>
       {why && !props.needLevel && <p className="text-xs text-brass-300 mt-1">{why}</p>}
+      {!why && n < 1 && !props.needLevel && <p className="text-xs text-slate-400 mt-1">Anzahl wählen (bezahlbar: bis {fmtNum(afford)}).</p>}
       <ErrorLine text={cmd.error} />
       <Sheet open={info} onClose={() => setInfo(false)} title={label(props.id)} icon={<IconTile id={props.id} size={56} tone={unitTone(props.balance, props.id)} />}>
         <p className="text-sm text-slate-200 mb-3">{unitText(props.balance, props.id)}</p>

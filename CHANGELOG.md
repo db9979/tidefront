@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.10.2 – 27.11.2026
+- Ausbildung: Bei Menge 0 steht nicht mehr „kostenlos“ und „Nicht genug Ressourcen“, sondern die Kosten je Stück und wie viele du dir leisten kannst.
+
 ## 0.10.1 – 27.11.2026
 - **Gebäude wachsen sichtbar mit**: Jedes Gebäude hat eigene Bilder je Ausbaustufe – vom Bauplan über klein, mittel und groß bis zum Prachtbau mit Licht, Laternen und Fahnen.
 - Das Info-Blatt zeigt das Gebäude jetzt und nach dem nächsten Ausbau nebeneinander; der Bauhof zeigt das Bild der Zielstufe.
