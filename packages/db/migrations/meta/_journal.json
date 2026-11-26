@@ -64,6 +64,13 @@
       "when": 1795725502235,
       "tag": "0008_worldevents",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795726565664,
+      "tag": "0009_guide",
+      "breakpoints": true
     }
   ]
 }
