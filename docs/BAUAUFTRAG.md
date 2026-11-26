@@ -7,26 +7,43 @@ Hobbyprojekt für den Freundeskreis. Gebaut wird mit KI-Agenten. Regeln: `docs/R
 | Paket | Inhalt | Stand |
 | --- | --- | --- |
 | 0 Fundament | Gerüst, Regel-Spezifikation, Balance-Daten | fertig |
-| 1 Spielregeln | `packages/game-core`: Ressourcen, Bau, Einheiten, Missionen, Kampf, Freibeuter-Kartell, Schutz | fertig, 104 Tests; offene Punkte unten |
-| 4 Börsenkern | `packages/game-core/src/market`: Sofortkauf und -verkauf, Schutzregeln, Journal | fertig, 28 Tests |
-| 2 Server | Datenbank, Ereignis-Queue, Befehle, Konten, WebSocket | offen |
-| 3 Oberfläche | PWA nach den Mockups | offen |
-| 5 Betrieb | Dockerfile, Compose, Sicherung, Startanleitung | offen |
+| 1 Spielregeln | `packages/game-core`: Ressourcen, Bau, Einheiten, Missionen, Kampf, Freibeuter-Kartell, Schutz | fertig, offene Punkte aus Stand 1 behoben (Stand 2) |
+| 4 Börsenkern | `packages/game-core/src/market`: Sofortkauf und -verkauf, Schutzregeln, Journal | fertig |
+| 2 Server | Datenbank, Ereignis-Queue, Befehle, Konten, WebSocket | fertig (Stand 2), Integrationstests gegen PostgreSQL |
+| 3 Oberfläche | PWA mit Basis, Karte, Truppen, Mission planen, Kampfbericht, Börse | fertig (Stand 2) |
+| 5 Betrieb | Dockerfile, Compose, Sicherung, Startanleitung | fertig (Stand 2), läuft auf `speech.local:8080` |
 | 6 Prüfung | Unabhängiger Testlauf und Durchspielen im Handy-Format | offen |
 
-## Offene Punkte am Regelkern
+## Offene Punkte am Regelkern (Stand 2: erledigt)
 
 Auslegungen stehen in `packages/game-core/ENTSCHEIDUNGEN.md` und `packages/game-core/src/market/ENTSCHEIDUNGEN.md`.
 
-- **Restschaden verfällt (Regelfehler):** Weil Schaden unterhalb der Lebenspunkte einer Einheit je Runde verfällt, sind kleine Verbände
-  und die Überfälle des Kartells fast wirkungslos. Korrektur: Restschaden je Einheitentyp über Runden und Phasen mitführen;
-  REGELN.md und `combat.ts` anpassen, Test ergänzen.
-- Kampfbericht auf den Stützpunkt anwenden (Bestände, Beute, Rückkehr der Einheiten) fehlt; gehört zu Paket 2 oder als Funktion in den Kern.
-- Ablauf von Aufklärung und Transport am Ziel fehlt.
-- Ohne Regel und nicht umgesetzt: Schwachziel-Regel (`loot.weakTarget*`), Wrack-Verfall, Radar-Vorwarnzeit, Abbruch von Bau und Ausbildung.
-- Der Angriffswert `anlage` der Bodentruppen und `kuestenbatterie.attack.land` werden nicht genutzt; Auslegung A1 bis A4 prüfen.
-- Balance ist nicht simuliert. Ein Simulations-Runner mit Bots steht aus.
-- Typprüfung der Tests fehlt (`@types/node`); nach `npm install` nachholen.
+- [x] **Restschaden** wird je Einheitentyp über Runden und Phasen mitgeführt (REGELN.md, `combat.ts`, Tests).
+- [x] Kampfbericht auf Stützpunkte anwenden: `applyDefenseResult`, `returnMission`, `attackerReturning` (`resolution.ts`).
+- [x] Ablauf von Aufklärung und Transport am Ziel: `scoutBase`, `deliverCargo`; Regeln in REGELN.md.
+- [x] Schwachziel-Regel, Wrack-Verfall und Bergung, Radar-Vorwarnzeit, Abbruch von Bau und Ausbildung: geregelt und umgesetzt.
+- [x] `anlage` der Bodentruppen wirkt gegen die Bunkerlinie, `kuestenbatterie.attack.land` feuert im Bodenkampf mit (A1, A3).
+- [x] Simulations-Runner: `npm run sim` (Kampf-Matrix und Bau-Bot). Ergebnisse und Balance-Hinweise in ENTSCHEIDUNGEN.md, Abschnitt C;
+  `balance.json` ist unverändert.
+- [x] Typprüfung: `npm run typecheck` (TypeScript mit `@types/node`) über alle Pakete und Tests.
+
+## Festlegungen des Servers (Stand 2)
+
+- Stützpunkt-Zustand liegt als `BaseState` (JSON) in `base.state`; jede Änderung sperrt die Zeile (`FOR UPDATE`).
+  Sperrreihenfolge: Ereignis, Mission, Stützpunkte aufsteigend, Spieler, Marktzeile.
+- Ereignisse: `build_complete`, `training_complete`, `mission_arrive`, `mission_return`, `raid_launch`, `raid_arrive`,
+  `delivery_arrive`. Handler rechnen mit dem Fälligkeitszeitpunkt, nicht mit der Uhr des Workers. Fehlgeschlagene
+  Ereignisse werden mit wachsendem Abstand bis zu fünfmal wiederholt, danach `failed`.
+- Befehle und Lesezugriffe verarbeiten zuerst die fälligen Ereignisse des eigenen Stützpunkts (je eine eigene Transaktion),
+  dann läuft der Befehl in einer Transaktion. Abgelehnte Befehle werden mit ihrem Code im Befehlsprotokoll gespeichert.
+- Schutz des Ziels wird beim Planen eines Überfalls geprüft, nicht erneut bei Ankunft.
+- Kartell: läuft alle `raidIntervalHours` je Stützpunkt aus und kommt 60 Minuten später an; Schutz wird bei Auslaufen und
+  Ankunft geprüft. Der Verband wird beim Auslaufen nach der dann vorhandenen Verteidigung zusammengestellt.
+- Aufklärung wird in Meilenstein 1 nicht abgefangen. Transport geht nur an fremde Spielerstützpunkte (ein Stützpunkt je Spieler).
+- Börse: Startkredite 0; Bestände werden für die Börse abgerundet, der Stützpunkt behält Nachkommastellen. Lieferungen
+  buchen bei Ankunft `delivery:<id>` an `player:<id>`. Der Worker prüft alle 10 Minuten das Journal gegen Kredite und offene
+  Lieferungen (`audit_run`).
+- Einladungscodes kommen aus `INVITE_CODES` und werden bei jedem `migrate` ergänzt.
 
 ## Festlegungen für den Betrieb
 

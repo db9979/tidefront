@@ -1,0 +1,160 @@
+import { useEffect, useMemo, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { queryClient, trpc, trpcClient, type BaseData } from "../lib/trpc.ts";
+import { useCommand } from "../lib/command.ts";
+import { RES_ICON, errorText, fmtNum, label } from "../lib/names.ts";
+import { fmtSeconds, fmtTime } from "../lib/time.ts";
+import type { Target } from "../App.tsx";
+import { HexMap } from "./HexMap.tsx";
+import { Button, Card, ErrorLine, Loading, Stepper } from "../ui.tsx";
+
+const TYPES = [
+  { id: "ueberfall", text: "Überfall", hint: "Kampf am Ziel, Beute bei Sieg" },
+  { id: "aufklaerung", text: "Aufklärung", hint: "Lagebild ohne Kampf" },
+  { id: "transport", text: "Transport", hint: "Ladung an einen Stützpunkt" },
+] as const;
+
+export function MissionPlan({ base, initialTarget, onClose }: { base: BaseData; initialTarget: Target | null; onClose: () => void; onPickOnMap?: () => void }) {
+  const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
+  const map = useQuery(trpc.world.map.queryOptions());
+  const [type, setType] = useState<"ueberfall" | "aufklaerung" | "transport">("ueberfall");
+  const [target, setTarget] = useState<Target | null>(initialTarget);
+  const [units, setUnits] = useState<Record<string, number>>({});
+  const [cargo, setCargo] = useState<Record<string, number>>({});
+  const [sent, setSent] = useState<{ arriveAtMs: number } | null>(null);
+  // Frische Bestände beim Öffnen
+  useEffect(() => {
+    void queryClient.invalidateQueries(trpc.base.pathFilter());
+  }, []);
+  const launch = useCommand(
+    (i: { key: string; type: string; units: Record<string, number>; col: number; row: number; cargo?: Record<string, number> }) => trpcClient.mission.launch.mutate(i),
+    () => [trpc.base.pathFilter().queryKey],
+  );
+
+  const chosen = useMemo(() => Object.fromEntries(Object.entries(units).filter(([, n]) => n > 0)), [units]);
+  const cargoSent = type === "transport" ? Object.fromEntries(Object.entries(cargo).filter(([, n]) => n > 0)) : undefined;
+  const input = target ? { type, units: chosen, col: target.col, row: target.row, cargo: cargoSent } : null;
+  const preview = useQuery({
+    ...trpc.mission.preview.queryOptions(input ?? { type, units: {}, col: 0, row: 0 }),
+    enabled: !!input && Object.keys(chosen).length > 0,
+    placeholderData: keepPreviousData,
+  });
+
+  if (!meta.data || !map.data) return <Loading />;
+  const balance = meta.data.balance;
+  let cp = 0, troops = 0, space = 0, cargoCap = 0;
+  for (const [id, n] of Object.entries(chosen)) {
+    const d = balance.units[id];
+    cp += (d.commandPoints ?? 0) * n;
+    if (d.branch === "land") troops += (d.size ?? 0) * n;
+    space += (d.troopSpace ?? 0) * n;
+    cargoCap += (d.cargo ?? 0) * n;
+  }
+  const tInfo = target && {
+    base: map.data.bases.find((b) => b.col === target.col && b.row === target.row),
+    nest: map.data.nests.find((n) => n.col === target.col && n.row === target.row),
+  };
+  const p = preview.data;
+
+  if (sent) {
+    return (
+      <Card title="Mission gestartet">
+        <p>Der Verband ist unterwegs. Ankunft {fmtTime(sent.arriveAtMs)}.</p>
+        <Button className="mt-3 w-full" onClick={onClose}>Fertig</Button>
+      </Card>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-xl font-bold">Mission planen</h1>
+        <Button kind="ghost" onClick={onClose}>Schließen</Button>
+      </div>
+
+      <Card title="Art">
+        <div className="grid grid-cols-3 gap-2">
+          {TYPES.map((t) => (
+            <button key={t.id} type="button" onClick={() => setType(t.id)} className={`tap rounded-lg px-1 py-2 text-sm ${type === t.id ? "bg-sea-400 text-navy-950 font-semibold" : "bg-navy-700"}`}>
+              {t.text}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-slate-400 mt-1">{TYPES.find((t) => t.id === type)!.hint}</p>
+      </Card>
+
+      <Card title="Ziel">
+        <div className="h-56 rounded-lg overflow-hidden mb-2">
+          <HexMap data={map.data} selected={target} onSelect={setTarget} center={initialTarget ?? { col: base.col, row: base.row }} />
+        </div>
+        <p className="text-sm">
+          {!target && "Ziel auf der Karte antippen."}
+          {target && tInfo?.base && <>Stützpunkt <strong>{tInfo.base.name}</strong> ({tInfo.base.owner})</>}
+          {target && tInfo?.nest && <>Piratennest Stufe <strong>{tInfo.nest.level}</strong>{tInfo.nest.empty ? " (verlassen)" : ""}</>}
+          {target && !tInfo?.base && !tInfo?.nest && <span className="text-slate-400">Feld {target.col}/{target.row}: kein Ziel</span>}
+        </p>
+      </Card>
+
+      <Card title="Verband">
+        <ul className="divide-y divide-navy-700">
+          {base.units.filter((u) => u.home > 0).map((u) => (
+            <li key={u.id} className="py-2 flex items-center justify-between gap-2 flex-wrap">
+              <div>{label(u.id)} <span className="text-xs text-slate-400">({fmtNum(u.home)} daheim)</span></div>
+              <Stepper value={units[u.id] ?? 0} max={u.home} onChange={(v) => setUnits({ ...units, [u.id]: v })} />
+            </li>
+          ))}
+        </ul>
+        {base.units.every((u) => u.home === 0) && <p className="text-sm text-slate-400">Keine Einheiten daheim.</p>}
+        <div className="text-xs text-slate-300 mt-2 grid grid-cols-2 gap-1">
+          <span>Kommandopunkte</span><span className={`text-right ${cp > base.commandPoints ? "text-red-300" : ""}`}>{fmtNum(cp, 1)}/{fmtNum(base.commandPoints)}</span>
+          <span>Truppen / Platz</span><span className={`text-right ${troops > space ? "text-red-300" : ""}`}>{fmtNum(troops)}/{fmtNum(space)}</span>
+          <span>Ladekapazität</span><span className="text-right">{fmtNum(cargoCap)}</span>
+        </div>
+      </Card>
+
+      {type === "transport" && (
+        <Card title="Ladung">
+          {balance.resources.map((r) => (
+            <div key={r} className="py-1 flex items-center justify-between gap-2 flex-wrap">
+              <span>{RES_ICON[r]} {label(r)} <span className="text-xs text-slate-400">({fmtNum(base.resources[r] ?? 0)})</span></span>
+              <Stepper value={cargo[r] ?? 0} max={Math.floor(base.resources[r] ?? 0)} onChange={(v) => setCargo({ ...cargo, [r]: v })} />
+            </div>
+          ))}
+        </Card>
+      )}
+
+      <Card title="Vorschau">
+        {!target || Object.keys(chosen).length === 0 ? (
+          <p className="text-sm text-slate-400">Ziel und Einheiten wählen.</p>
+        ) : !p ? (
+          <p className="text-sm text-slate-400">Berechne …</p>
+        ) : (
+          <div className="text-sm">
+            {"distanceKm" in p && <div>Entfernung {fmtNum(p.distanceKm)} km</div>}
+            {p.ok ? (
+              <>
+                <div>Reisezeit {fmtSeconds(p.travelSeconds)} je Richtung</div>
+                <div>Treibstoff {fmtNum(p.fuelCost)} (hin und zurück)</div>
+                <div>Ankunft {fmtTime(p.arriveAtMs)} · zurück {fmtTime(p.returnAtMs)}</div>
+              </>
+            ) : (
+              <div className="text-red-300">{errorText(p.code)}</div>
+            )}
+          </div>
+        )}
+        <Button
+          className="w-full mt-3"
+          disabled={!p?.ok || launch.busy || !target}
+          onClick={async () => {
+            if (!input) return;
+            const r = await launch.run(input);
+            if (r && r.ok) setSent({ arriveAtMs: r.arriveAtMs });
+          }}
+        >
+          Auslaufen
+        </Button>
+        <ErrorLine text={launch.error} />
+      </Card>
+    </div>
+  );
+}

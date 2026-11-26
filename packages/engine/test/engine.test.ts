@@ -229,3 +229,24 @@ test("Aufräumen und Prüflauf laufen ohne Fehler", async () => {
   await cleanup(engine, Date.now(), 48);
   assert.equal((await auditLedger(engine)).ok, true);
 });
+
+test("Transport liefert Ladung beim Ziel ab; Wrackgut wird geborgen", async () => {
+  const a = await newPlayer("Jana", 24);
+  const b = await newPlayer("Kurt", 27);
+  await patchBase(a.baseId, (s) => { s.units = { landungsschiff: 1 }; s.resources.treibstoff = 50000; s.resources.stahl = 3000; });
+  const before = (await stateOf(b.baseId)).resources.stahl;
+  const m = await launchMission(engine, a.playerId, key(), { type: "transport", units: { landungsschiff: 1 }, col: b.col, row: b.row, cargo: { stahl: 1000 } });
+  assert.equal(m.ok, true, JSON.stringify(m));
+  const [row] = await db.select().from(tables.mission).where(eq(tables.mission.id, (m as { missionId: number }).missionId));
+  // Wrack am Ziel, eine Stunde vor Ankunft entstanden (2 % verfallen)
+  await db.insert(tables.wreck).values({ col: b.col, row: b.row, stahl: 500, elektronik: 100, createdAt: new Date(row.arriveAt.getTime() - HOUR) });
+  await processDue(engine, row.arriveAt.getTime() + 1);
+  assert.ok((await stateOf(b.baseId)).resources.stahl >= before + 1000);
+  const [back] = await db.select().from(tables.mission).where(eq(tables.mission.id, row.id));
+  const cargo = back.cargoHome as Record<string, number>;
+  assert.ok(cargo.stahl > 400 && cargo.elektronik > 80, JSON.stringify(cargo));
+  const left = await db.select().from(tables.wreck).where(sql`${tables.wreck.col} = ${b.col} and ${tables.wreck.row} = ${b.row}`);
+  assert.equal(left.length, 0);
+  await processDue(engine, back.returnAt!.getTime() + 1);
+  assert.equal((await stateOf(a.baseId)).units.landungsschiff, 1);
+});
