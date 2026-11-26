@@ -55,15 +55,16 @@ export function timelineItems(base: BaseData, nowMs: number, opts: { seasonEndMs
   return out.filter((i) => i.atMs > nowMs - 5000).sort((a, b) => a.atMs - b.atMs || a.key.localeCompare(b.key));
 }
 
-export function Timeline({ base }: { base: BaseData }) {
+/** limit: so viele Einträge zugeklappt (Basis: 2), „mehr“ zeigt alle. */
+export function Timeline({ base, limit = SHOWN }: { base: BaseData; limit?: number }) {
   const now = useNow();
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const season = useQuery({ ...trpc.season.current.queryOptions(), staleTime: 300000 });
   const [all, setAll] = useState(false);
   const items = timelineItems(base, now, { seasonEndMs: season.data?.season?.endsAtMs ?? null, beginnerDays: meta.data?.balance.protection.beginnerDays });
-  const shown = all ? items : items.slice(0, SHOWN);
+  const shown = all ? items : items.slice(0, limit);
   return (
-    <Card title="Als Nächstes" right={items.length > SHOWN ? <button type="button" className="tap text-xs text-see underline" onClick={() => setAll(!all)}>{all ? "weniger" : `alle ${items.length}`}</button> : undefined}>
+    <Card title="Als Nächstes" right={items.length > limit ? <button type="button" className="tap text-xs text-see underline" onClick={() => setAll(!all)}>{all ? "weniger" : `mehr (${items.length})`}</button> : undefined}>
       {items.length === 0 ? (
         <p className="text-sm text-ink2">Nichts geplant. Baue aus, bilde aus oder schicke einen Verband los.</p>
       ) : (
