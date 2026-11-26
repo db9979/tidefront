@@ -2,6 +2,15 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.15.0 – 27.11.2026
+- **Mehrere Häfen** (Welle 3, Teil 2): Gründe bis zu zwei Außenposten zusätzlich zu deinem Heimathafen – den zweiten ab Kommandozentrale 8, den dritten ab 14.
+- **Kolonieschiff** aus der Werft (ab Stufe 6, Hafenkommandantur 6): Es fährt zu einem freien Küstenfeld (höchstens 900 km vom Heimathafen, mit Abstand zu anderen Häfen) und wird dort zum neuen Hafen – mit Grundbeständen und der mitgebrachten Ladung. Wer zuerst ankommt, bekommt das Feld.
+- Neue Häfen übernehmen den Anfängerschutz des Heimathafens und haben 24 Stunden Gründungsschutz; das Kartell greift frühestens nach 48 Stunden an.
+- **Hafenwahl** oben in der Kopfleiste: Alle Seiten zeigen den gewählten Hafen – Gebäude, Truppen, Börse, Missionen. Auf der Karte hat der aktive Hafen einen Doppelring; freie Küstenfelder bieten „Außenposten gründen“, eigene Häfen „Hierhin wechseln“, „Transport“ und „Verlegen“.
+- **Verlegen**: Truppen, Ladung und Admirale dauerhaft in einen anderen eigenen Hafen bringen. Transporte und Stationierung in eigene Häfen sind erlaubt.
+- Spielerweit: Kredite, Forschung (läuft im Heimathafen, wirkt überall), Erfolge, Tages- und Wochenziele, Rangliste (Summe aller Häfen), Nachtschild. Je Hafen: Ressourcen, Gebäude, Truppen, Strom, Blockade, Belagerung, Kartell-Angriffe, Hafenkommandant.
+- Neuer Erfolg „Kolonist“, Handbuch-Kapitel „Mehrere Häfen“.
+
 ## 0.14.1 – 27.11.2026
 - Vorbereitung für mehrere Häfen je Spieler (Heimathafen, Besitzprüfung je Hafen). Für dich ändert sich noch nichts.
 
