@@ -127,7 +127,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
             )}
             {level < 1 ? (
               <>
-                <p className="text-sm text-slate-400 flex items-center gap-2"><IconTile id={g.builtIn} size={36} /> Erst {label(g.builtIn)} bauen (Basis → {g.title}).</p>
+                <div className="text-sm text-slate-400 flex items-center gap-2"><IconTile id={g.builtIn} size={36} /> Erst {label(g.builtIn)} bauen (Basis → {g.title}).</div>
                 {base.units.some((u) => u.builtIn === g.builtIn && u.home + u.away > 0) && (
                   <p className="text-sm mt-1">
                     Vorhanden: <UnitChips counts={Object.fromEntries(base.units.filter((u) => u.builtIn === g.builtIn).map((u) => [u.id, u.home + u.away]))} />
