@@ -29,6 +29,7 @@ import {
   launchMission,
   leaveAlliance,
   makePeace,
+  mapView,
   missionPreview,
   playerTradeStats,
   offersView,
@@ -280,6 +281,31 @@ test("Krieg mit 12 h Vorlauf; im Krieg entfällt die Schwachziel-Kürzung", asyn
   assert.equal(await code(makePeace(engine, F.playerId, war.id)), "already_offered");
   assert.deepEqual(await makePeace(engine, E.playerId, war.id), { ok: true, ended: true });
   assert.equal(await atWar(db, E.playerId, F.playerId, Date.now() + 2 * WAR_LEAD_MS), false);
+});
+
+test("Kartenansicht: Freund/Feind aus Sicht des Betrachters (Allianz, Pakt, Krieg, neutral)", async () => {
+  const ally = `a:${allianceId}`;
+  const rows = await db.insert(tables.diplomacy).values([
+    { partyA: ally, partyB: `p:${E.playerId}`, kind: "pakt", status: "aktiv", proposedBy: ally },
+    { partyA: ally, partyB: `p:${F.playerId}`, kind: "krieg", status: "aktiv", proposedBy: ally, activeFrom: new Date(Date.now() + WAR_LEAD_MS) },
+    // Nur angeboten: zählt nicht als Pakt.
+    { partyA: ally, partyB: `p:${D.playerId}`, kind: "pakt", status: "angeboten", proposedBy: ally },
+  ]).returning({ id: tables.diplomacy.id });
+  const rel = async (viewer: P) =>
+    Object.fromEntries((await mapView(engine, viewer.playerId)).bases.map((b) => [b.id, b.relation]));
+  const a = await rel(A);
+  assert.equal(a[A.baseId], "own");
+  assert.equal(a[B.baseId], "allianz");
+  assert.equal(a[C.baseId], "allianz");
+  assert.equal(a[D.baseId], "neutral");
+  assert.equal(a[E.baseId], "pakt");
+  assert.equal(a[F.baseId], "krieg", "erklärter Krieg zählt schon im Vorlauf");
+  // Gegenseite sieht die ganze Allianz; Dritte sehen nur ihre eigenen Verträge.
+  const f = await rel(F);
+  assert.deepEqual([f[A.baseId], f[B.baseId], f[C.baseId], f[E.baseId]], ["krieg", "krieg", "krieg", "neutral"]);
+  const d = await rel(D);
+  assert.deepEqual([d[A.baseId], d[E.baseId], d[F.baseId]], ["neutral", "neutral", "neutral"]);
+  for (const r of rows) await db.delete(tables.diplomacy).where(eq(tables.diplomacy.id, r.id));
 });
 
 test("Handel: Treuhand, Annahme, Lieferung mit Reisezeit, Rückzug, Prüflauf ok", async () => {

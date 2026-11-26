@@ -8,13 +8,20 @@ import type { Target } from "../App.tsx";
 import { HexMap } from "./LazyHexMap.tsx";
 import { Button, Loading } from "../ui.tsx";
 import { MapLegend } from "../map/Legend.tsx";
-import { TacticalIcon } from "../map/TacticalIcon.tsx";
+import { RELATION_HEX, TacticalIcon, relationKind } from "../map/TacticalIcon.tsx";
 import { fmtPosition } from "../map/coords.ts";
 // Weltereignisse
 import { WorldEventCard, useWorldEvents } from "../components/WorldEvents.tsx";
 
 const TERRAIN: Record<string, string> = { sea: "Offene See", coast: "Küste", land: "Binnenland" };
-const LEVEL_TEXT = ["", "schwach besetzt", "kleine Bande", "befestigt", "Festung", "Hauptquartier"];
+const RELATION_TEXT: Record<string, string> = {
+  own: "",
+  allianz: "Allianzmitglied – kein Überfall möglich",
+  pakt: "Paktpartner – Nichtangriffspakt, kein Überfall möglich",
+  krieg: "Kriegsgegner",
+  neutral: "Neutral",
+};
+const LEVEL_TEXT =["", "schwach besetzt", "kleine Bande", "befestigt", "Festung", "Hauptquartier"];
 
 export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Target | null; onPlan: (t: Target) => void }) {
   const map = useQuery({ ...trpc.world.map.queryOptions(), refetchInterval: 60000 });
@@ -100,12 +107,15 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
               {info.base && (
                 <div className="mt-1">
                   <div className="font-serif text-[19px] leading-tight flex items-center gap-2 mt-0.5">
-                    <TacticalIcon kind={info.base.own ? "own" : "other"} size={26} /> {info.base.name}
+                    <TacticalIcon kind={info.base.own ? "own" : relationKind(info.base.relation)} size={26} /> {info.base.name}
                   </div>
                   <div className="text-xs text-slate-300">{info.base.own ? "Dein Stützpunkt" : `Stützpunkt von ${info.base.owner}`}</div>
+                  {!info.base.own && (
+                    <div className="text-xs font-semibold" style={{ color: RELATION_HEX[info.base.relation] }}>{RELATION_TEXT[info.base.relation]}</div>
+                  )}
                   {info.base.protection ? (
                     <div className="text-emerald-300 text-xs">Schutz: {label(info.base.protection)} – kein Überfall möglich</div>
-                  ) : !info.base.own && <div className="text-siegel text-xs">Kein Schutz aktiv – Überfall möglich</div>}
+                  ) : !info.base.own && info.base.relation !== "allianz" && info.base.relation !== "pakt" && <div className="text-siegel text-xs">Kein Schutz aktiv – Überfall möglich</div>}
                   {isHome && <div className="text-xs text-slate-400">Nächster Handelshafen: {nearestTradePort(home).name} ({fmtNum(nearestTradePort(home).distanceKm)} km)</div>}
                 </div>
               )}

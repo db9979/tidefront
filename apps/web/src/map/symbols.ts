@@ -26,7 +26,7 @@ export function nameTag(text: string, color: number, y = 18): Container {
   const t = txt(text.toUpperCase(), 10.5, INK, SERIF, "600", 1.2);
   t.anchor.set(0.5, 0);
   const w = t.width + 10;
-  const bg = new Graphics().rect(-w / 2, y, w, t.height + 3).fill({ color: PAPER }).stroke({ color: color === SEE ? SEE : INK, width: 1 });
+  const bg = new Graphics().rect(-w / 2, y, w, t.height + 3).fill({ color: PAPER }).stroke({ color, width: color === SEE || color === INK ? 1 : 1.4 });
   t.position.set(0, y + 1.5);
   c.addChild(bg, t);
   return c;
@@ -49,14 +49,41 @@ export function ownBaseSymbol(): Container {
   return c;
 }
 
-/** Fremder Spielerhafen: Papierkreis mit Tintenanker; geschützt mit gestricheltem Außenring. */
-export function otherBaseSymbol(isProtected: boolean): Container {
+/** Verhältnis eines fremden Hafens zum Betrachter (aus der Kartenansicht). */
+export type Relation = "allianz" | "pakt" | "krieg" | "neutral";
+/** Grünspan für die eigene Allianz, Ocker für Paktpartner, Siegelrot für Kriegsgegner, Seeblau neutral. */
+export const ALLY = 0x3d6b4f;
+export const PAKT = 0x9a7424;
+export const RELATION_COLOR: Record<Relation, number> = { allianz: ALLY, pakt: PAKT, krieg: SIEGEL, neutral: SEE };
+
+/**
+ * Fremder Spielerhafen: Papierkreis mit Anker in der Farbe des Verhältnisses; Allianz mit innerem Doppelring,
+ * Krieg mit vier Peilstrichen, geschützt mit gestricheltem Außenring.
+ */
+export function otherBaseSymbol(isProtected: boolean, relation: Relation = "neutral"): Container {
   const c = new Container();
   const g = new Graphics();
-  g.circle(0, 0, 12).fill({ color: PAPER }).stroke({ color: SEE, width: 1.6 });
-  anchor(g, SEE, 1);
+  const col = RELATION_COLOR[relation];
+  g.circle(0, 0, 12).fill({ color: PAPER }).stroke({ color: col, width: relation === "neutral" ? 1.6 : 2 });
+  if (relation === "allianz") g.circle(0, 0, 9.6).stroke({ color: col, width: 0.7 });
+  anchor(g, col, relation === "allianz" ? 0.85 : 1);
+  if (relation === "krieg") {
+    g.moveTo(0, -13).lineTo(0, -19).moveTo(0, 13).lineTo(0, 19).moveTo(-13, 0).lineTo(-19, 0).moveTo(13, 0).lineTo(19, 0);
+    g.stroke({ color: SIEGEL, width: 1.6 });
+  }
   if (isProtected) for (let i = 0; i < 12; i++) g.arc(0, 0, 16, (i * Math.PI) / 6, (i * Math.PI) / 6 + 0.28).moveTo(0, 0);
-  if (isProtected) g.stroke({ color: SEE, width: 1.2 });
+  if (isProtected) g.stroke({ color: col, width: 1.2 });
+  c.addChild(g);
+  return c;
+}
+
+/** Übersichtspunkt eines Nests: kleine Raute (Häfen sind Kreise), Größe nach Stufe. */
+export function diamondDot(color: number, r: number, alpha = 1): Container {
+  const c = new Container();
+  const g = new Graphics();
+  const o = r + 1.1;
+  g.poly([0, -o, o, 0, 0, o, -o, 0]).fill({ color: PAPER, alpha: 0.9 });
+  g.poly([0, -r, r, 0, 0, r, -r, 0]).fill({ color, alpha });
   c.addChild(g);
   return c;
 }

@@ -169,3 +169,47 @@ export async function atWar(db: DbOrTx, attackerId: number, defenderId: number, 
     ));
   return !!r;
 }
+
+// ---------------------------------------------------------------- Kartenansicht
+
+/** Verhältnis eines fremden Spielers zum Betrachter (für die Kartenfarben). */
+export type Relation = "allianz" | "pakt" | "krieg" | "neutral";
+
+/**
+ * Verhältnis des Betrachters zu anderen Spielern, nur aus dem, was er ohnehin sieht: eigene Allianz sowie Pakte
+ * und Kriege der eigenen Partei. Angebotene Pakte zählen nicht, die Kündigungsfrist schon; ein erklärter Krieg
+ * gilt schon während der Vorlaufzeit. Nicht enthaltene Spieler sind neutral.
+ */
+export async function relationsOf(db: DbOrTx, viewerId: number, atMs: number): Promise<Map<number, Relation>> {
+  const members = await db
+    .select({ playerId: tables.allianceMember.playerId, allianceId: tables.allianceMember.allianceId })
+    .from(tables.allianceMember);
+  const allianceOf = new Map(members.map((m) => [m.playerId, m.allianceId]));
+  const partyFor = (id: number) => (allianceOf.has(id) ? `a:${allianceOf.get(id)}` : `p:${id}`);
+  const me = partyFor(viewerId);
+  const rows = await db
+    .select({ partyA: tables.diplomacy.partyA, partyB: tables.diplomacy.partyB, kind: tables.diplomacy.kind, status: tables.diplomacy.status, endsAt: tables.diplomacy.endsAt })
+    .from(tables.diplomacy)
+    .where(or(eq(tables.diplomacy.partyA, me), eq(tables.diplomacy.partyB, me)));
+  const byParty = new Map<string, Relation>();
+  for (const r of rows) {
+    const other = r.partyA === me ? r.partyB : r.partyA;
+    if (r.kind === "krieg") byParty.set(other, "krieg");
+    else if (r.kind === "pakt" && r.status === "aktiv" && (!r.endsAt || r.endsAt.getTime() > atMs) && byParty.get(other) !== "krieg") {
+      byParty.set(other, "pakt");
+    }
+  }
+  const relationOf = (id: number): Relation => {
+    const party = partyFor(id);
+    return party === me ? "allianz" : byParty.get(party) ?? "neutral";
+  };
+  const out = new Map<number, Relation>();
+  for (const m of members) out.set(m.playerId, relationOf(m.playerId));
+  // Spieler ohne Allianz: nur die mit eigener Diplomatie, der Rest bleibt neutral.
+  for (const party of byParty.keys()) {
+    const p = parseParty(party);
+    if (p.kind === "p") out.set(p.id, relationOf(p.id));
+  }
+  out.delete(viewerId);
+  return out;
+}

@@ -54,7 +54,12 @@ export function useLive(enabled: boolean): void {
     return () => {
       stopped = true;
       clearTimeout(timer);
-      ws?.close();
+      // Noch im Aufbau: erst nach dem Öffnen schließen (sonst Konsolenwarnung „closed before the connection is established“).
+      const w = ws;
+      if (w && w.readyState === WebSocket.CONNECTING) {
+        w.onopen = () => w.close();
+        w.onmessage = null;
+      } else w?.close();
     };
   }, [enabled]);
 }

@@ -29,7 +29,7 @@ export function AllianceScreen({ onCompose }: { onCompose: (d: Draft) => void })
       <div className="flex gap-1 overflow-x-auto mb-3" role="tablist" aria-label="Allianz">
         {subs.map((s) => (
           <button key={s.id} type="button" role="tab" aria-selected={active === s.id} onClick={() => setSub(s.id)}
-            className={`tap shrink-0 flex-1 rounded-lg px-3 text-xs font-semibold ${active === s.id ? "bg-ink text-paper" : "bg-navy-950/60 text-slate-400"}`}>
+            className={`tap shrink-0 flex-1 rounded-lg px-2 text-xs font-semibold ${active === s.id ? "bg-ink text-paper" : "bg-navy-950/60 text-slate-400"}`}>
             {s.label}
           </button>
         ))}

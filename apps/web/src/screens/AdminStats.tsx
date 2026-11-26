@@ -127,8 +127,9 @@ export function AdminStats() {
               <li key={r.id}>
                 <div className="flex justify-between gap-2">
                   <span className="inline-flex items-center gap-1"><Icon id={r.id} size={16} /> {label(r.id)}</span>
-                  <span className="mono">{fmtNum(r.offset * 100, 1)} % <span className="text-ink2 text-xs">(Ziel {fmtNum(r.target * 100, 1)} %, Richtwert {fmtNum(r.effective, 3)})</span></span>
+                  <span className="mono">{fmtNum(r.offset * 100, 1)} %</span>
                 </div>
+                <div className="mono text-ink2 text-xs pl-6">Ziel {fmtNum(r.target * 100, 1)} % · Richtwert {fmtNum(r.effective, 3)}</div>
                 {r.influences.map((x, i) => (
                   <div key={i} className="text-xs text-ink2 pl-6">{x.reason}: {fmtNum(x.now * 100, 1)} %</div>
                 ))}

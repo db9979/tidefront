@@ -31,7 +31,13 @@ pub.on("error", () => {});
 sub.on("error", () => {});
 
 const BODY_LIMIT = 256 * 1024;
-const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" }, trustProxy: true, bodyLimit: BODY_LIMIT });
+// maxParamLength: gebündelte tRPC-Abfragen stehen im Pfad (/trpc/a,b,c…); die Vorgabe 100 lieferte sonst 414.
+const app = Fastify({
+  logger: { level: process.env.LOG_LEVEL ?? "info" },
+  trustProxy: true,
+  bodyLimit: BODY_LIMIT,
+  routerOptions: { maxParamLength: 1000 },
+});
 
 const engine: Engine = {
   db,

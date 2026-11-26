@@ -45,16 +45,25 @@ export function sabotagedUntil(base: BaseData, id: string, now: number): number 
 export function IntelPanel({ base, now }: { base: BaseData; now: number }) {
   const i = base.intel;
   if (!i) return null;
+  // Kurze Werte, damit die Beschriftung auf Handybreite nicht in eine schmale Spalte gedrückt wird.
   const rows: [string, string][] = [
-    ["Spione", `${fmtNum(i.spies.home)} daheim · ${fmtNum(i.spies.away)} unterwegs · ${fmtNum(i.spies.training)} in Ausbildung (höchstens ${fmtNum(i.cap)})`],
-    ["Abwehr gegen fremde Spione", `${i.defense.total} (${partsText(i.defense)})`],
+    ["Spione daheim", fmtNum(i.spies.home)],
+    ["Spione unterwegs", fmtNum(i.spies.away)],
+    ...(i.spies.training > 0 ? [["Spione in Ausbildung", fmtNum(i.spies.training)] as [string, string]] : []),
+    ["Höchstzahl Spione", fmtNum(i.cap)],
+    ["Abwehr gegen fremde Spione", String(i.defense.total)],
     ["Erfolgswert Erkunden", String(i.success.erkunden?.total ?? 0)],
     ["Erfolgswert Sabotage", String(i.success.sabotage?.total ?? 0)],
-    ["Gelungene Aufträge", `${fmtNum(i.successes)} (Erfahrung)`],
+    ["Gelungene Aufträge (Erfahrung)", fmtNum(i.successes)],
   ];
   if (i.disinfo.count > 0 && i.disinfo.untilMs) rows.push(["Desinformation ausgelegt", `${i.disinfo.count} · bis ${fmtTime(i.disinfo.untilMs)}`]);
   if (i.sabotageCooldownUntilMs > now) rows.push(["Alarmbereitschaft nach Sabotage", `bis ${fmtTime(i.sabotageCooldownUntilMs)}`]);
-  return <div className="mb-3"><StatTable rows={rows} /></div>;
+  return (
+    <div className="mb-3">
+      <StatTable rows={rows} />
+      <p className="text-xs text-ink2 mt-1">Abwehr: {partsText(i.defense)}</p>
+    </div>
+  );
 }
 
 interface SpyData {
@@ -71,7 +80,7 @@ function Dice({ s }: { s: SpyData }) {
     <div className="flex items-center gap-3 rounded-lg bg-paper border border-rule p-2 mb-2">
       <div className={`w-12 h-12 grid place-items-center rounded-lg border-2 font-display text-xl ${s.success ? "border-moos text-moos" : "border-siegel text-siegel"}`}>{s.roll}</div>
       <div className="text-sm">
-        <div>W{s.die}: <strong>{s.roll}</strong> {s.success ? "≤" : ">"} Zielzahl {s.threshold} – {s.success ? "unentdeckt" : "enttarnt"}</div>
+        <div>Wurf W{s.die}: <strong>{s.roll}</strong> {s.success ? "≤" : ">"} Zielzahl {s.threshold} – <strong className={s.success ? "text-moos" : "text-siegel"}>{s.success ? "gelungen, unentdeckt" : "misslungen, enttarnt"}</strong></div>
         {s.successValue && <div className="text-xs text-slate-400">Erfolgswert {s.successValue.total} ({partsText(s.successValue)})</div>}
         {s.defenseValue && <div className="text-xs text-slate-400">Abwehr {s.defenseValue.total} ({partsText(s.defenseValue)})</div>}
       </div>
@@ -89,7 +98,7 @@ export function SpyReport({ d, role }: { d: Record<string, unknown>; role: strin
         {role === "defender" ? (
           <p className="text-sm mb-2">Absender: <strong>{s.from}</strong>. Auftrag: {what}. {fmtNum(s.spies)} {s.spies === 1 ? "Spion" : "Spione"} ausgeschaltet.</p>
         ) : (
-          <p className="text-sm mb-2">Ziel: {s.targetName}{s.owner && s.kind !== "kartell" ? ` (${s.owner})` : ""}. {s.aborted ?? (s.success ? "Der Auftrag ist gelungen; das Ziel hat nichts bemerkt." : `Enttarnt – ${s.spies === 1 ? "der Spion ist" : "die Spione sind"} verloren, das Ziel kennt jetzt deinen Namen.`)}</p>
+          <p className="text-sm mb-2">Ziel: {s.targetName}{s.owner && s.kind !== "kartell" ? ` (${s.owner})` : ""}. {s.aborted ?? (s.success ? "Der Auftrag ist gelungen; das Ziel hat nichts bemerkt." : `Enttarnt – ${s.spies === 1 ? "der Spion ist" : "die Spione sind"} verloren${s.kind === "kartell" ? "." : ", das Ziel kennt jetzt deinen Namen."}`)}</p>
         )}
         <Dice s={s} />
       </Card>
@@ -157,7 +166,7 @@ function Cartel({ c }: { c: CartelData }) {
         <p>{c.next ? `Nächstes Unternehmen: ${c.next.kind ? label(c.next.kind) : "unbekannt"} um ${fmtTime(c.next.atMs)}.` : "Kein weiteres Unternehmen geplant."}</p>
         {c.events.length === 0 && <p className="text-slate-400">Derzeit kein Weltereignis.</p>}
         {c.events.map((e) => (
-          <div key={e.id} className="rounded-lg bg-paper border border-rule p-2">
+          <div key={e.id} className="rounded-lg bg-paper border border-rule p-2 break-words">
             <strong>{e.name}</strong> · Feld {e.position.col}/{e.position.row} · endet {fmtTime(e.endsAtMs)}
             <div className="text-xs"><CountsLine counts={e.units} /></div>
             {e.harbor && <div className="text-xs">Zielhafen: Feld {e.harbor.col}/{e.harbor.row}</div>}
