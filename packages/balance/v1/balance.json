@@ -1,5 +1,5 @@
 {
-  "version": "v1.4",
+  "version": "v1.6",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -18,15 +18,18 @@
     "raffinerie": { "cost": { "stahl": 150, "treibstoff": 20, "elektronik": 10 }, "seconds": 25, "produces": "treibstoff", "perHour": 60, "powerPerLevel": 12 },
     "chipfabrik": { "cost": { "stahl": 200, "treibstoff": 60, "elektronik": 20 }, "seconds": 40, "produces": "elektronik", "perHour": 30, "powerPerLevel": 15 },
     "versorgungshof": { "cost": { "stahl": 100, "treibstoff": 20, "elektronik": 0 }, "seconds": 20, "produces": "proviant", "perHour": 80, "powerPerLevel": 6 },
-    "kraftwerk": { "cost": { "stahl": 140, "treibstoff": 40, "elektronik": 10 }, "seconds": 25, "powerSupplyPerLevel": 60 },
+    "kraftwerk": { "cost": { "stahl": 140, "treibstoff": 40, "elektronik": 10 }, "seconds": 25, "powerSupplyPerLevel": 60, "fuelPerHourPerLevel": 3 },
+    "windpark": { "cost": { "stahl": 180, "treibstoff": 10, "elektronik": 40 }, "seconds": 30, "windPowerPerLevel": 80, "stormCutoff": 0.95 },
+    "solarfeld": { "cost": { "stahl": 120, "treibstoff": 0, "elektronik": 70 }, "seconds": 30, "solarPowerPerLevel": 150, "cloudLoss": 0.7 },
+    "speicherwerk": { "cost": { "stahl": 220, "treibstoff": 20, "elektronik": 90 }, "seconds": 40, "storagePerLevel": 200, "storageRatePerLevel": 40 },
     "lagerkomplex": { "cost": { "stahl": 250, "treibstoff": 0, "elektronik": 0 }, "seconds": 30, "capacityBase": 5000, "capacityGrowth": 1.5 },
     "tiefbunker": { "cost": { "stahl": 300, "treibstoff": 0, "elektronik": 50 }, "seconds": 45, "protectedBase": 300, "protectedGrowth": 1.4 },
-    "werft": { "cost": { "stahl": 400, "treibstoff": 100, "elektronik": 50 }, "seconds": 90, "buildSpeedPerLevel": 0.1 },
-    "kaserne": { "cost": { "stahl": 200, "treibstoff": 20, "elektronik": 10 }, "seconds": 45, "buildSpeedPerLevel": 0.1 },
-    "flugfeld": { "cost": { "stahl": 350, "treibstoff": 120, "elektronik": 120 }, "seconds": 90, "buildSpeedPerLevel": 0.1, "slotsPerLevel": 6 },
-    "radarstation": { "cost": { "stahl": 200, "treibstoff": 40, "elektronik": 150 }, "seconds": 60, "warningMinutesBase": 10, "warningMinutesPerLevel": 5 },
+    "werft": { "cost": { "stahl": 400, "treibstoff": 100, "elektronik": 50 }, "seconds": 90, "buildSpeedPerLevel": 0.1, "powerPerLevel": 3, "powerRank": 3 },
+    "kaserne": { "cost": { "stahl": 200, "treibstoff": 20, "elektronik": 10 }, "seconds": 45, "buildSpeedPerLevel": 0.1, "powerPerLevel": 3, "powerRank": 3 },
+    "flugfeld": { "cost": { "stahl": 350, "treibstoff": 120, "elektronik": 120 }, "seconds": 90, "buildSpeedPerLevel": 0.1, "slotsPerLevel": 6, "powerPerLevel": 3, "powerRank": 3 },
+    "radarstation": { "cost": { "stahl": 200, "treibstoff": 40, "elektronik": 150 }, "seconds": 60, "warningMinutesBase": 10, "warningMinutesPerLevel": 5, "powerPerLevel": 5, "powerRank": 1 },
     "hafenkommandantur": { "cost": { "stahl": 300, "treibstoff": 80, "elektronik": 60 }, "seconds": 60, "missionSlotsBase": 1, "missionSlotsPerTwoLevels": 1, "marketFromLevel": 3, "creditLimitPerLevel": 5000 },
-    "forschungsamt": { "cost": { "stahl": 300, "treibstoff": 80, "elektronik": 200 }, "seconds": 90, "researchSpeedPerLevel": 0.1 }
+    "forschungsamt": { "cost": { "stahl": 300, "treibstoff": 80, "elektronik": 200 }, "seconds": 90, "researchSpeedPerLevel": 0.1, "powerPerLevel": 5, "powerRank": 4 }
   },
   "units": {
     "korvette": { "branch": "see", "builtIn": "werft", "cost": { "stahl": 400, "treibstoff": 100, "elektronik": 50, "proviant": 0 }, "seconds": 300, "upkeepPerHour": 2, "commandPoints": 3, "hp": 200, "attack": { "see": 40, "luft": 5, "land": 0, "anlage": 15, "uboot": 40 }, "speedKmh": 60, "fuelPer100Km": 4, "cargo": 0, "troopSpace": 0, "bonus": { "schnellboot": 1.5 } },
@@ -158,6 +161,22 @@
       "minSchnellboote": 6,
       "lootPool": { "stahl": 2500, "treibstoff": 1200, "elektronik": 600, "proviant": 900 }
     }
+  },
+  "power": { "stepMinutes": 30, "minSpeed": 0.25, "forecastHours": 24, "horizonHours": 336 },
+  "weather": {
+    "seed": 1906,
+    "systemEveryHours": 12,
+    "systemLifeHours": 108,
+    "stormFrom": 0.8,
+    "shipSlowFrom": 0.5,
+    "shipSlowFull": 0.9,
+    "shipSlowMax": 0.3,
+    "routeSamples": 9,
+    "airStormPenalty": 0.6,
+    "cloudStrikePenalty": 0.3,
+    "fogRadarMax": 0.3,
+    "fogScoutFrom": 0.35,
+    "fogScoutHeavy": 0.65
   },
   "guide": {
     "steps": {

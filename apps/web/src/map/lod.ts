@@ -7,6 +7,9 @@ import type { Bounds, Container } from "pixi.js";
 export const LOD_OVERVIEW = 0.25;
 /** Nahansicht: ab hier Wracks, Lotungen, alle Namen. */
 export const LOD_NEAR = 0.55;
+/** Wetterschicht: in der Übersicht voll, ab der Nahansicht nur noch blass (Zeichen bleiben lesbar). */
+export const LOD_WEATHER_FADE = LOD_NEAR;
+export const WEATHER_NEAR_ALPHA = 0.35;
 
 /** Element in Bildschirmgröße, sichtbar in einem Zoombereich. */
 export interface Pinned {
@@ -39,6 +42,11 @@ function ramp(scale: number, edge: number): number {
   const t = Math.log(scale / edge) / 0.24 + 0.5;
   const c = t < 0 ? 0 : t > 1 ? 1 : t;
   return c * c * (3 - 2 * c);
+}
+
+/** Deckkraft der Wetterschicht je Zoom (weicher Übergang um LOD_WEATHER_FADE). */
+export function weatherAlpha(scale: number): number {
+  return 1 - (1 - WEATHER_NEAR_ALPHA) * ramp(scale, LOD_WEATHER_FADE);
 }
 
 export function zoomAlpha(p: Pinned, scale: number): number {

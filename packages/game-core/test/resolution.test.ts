@@ -102,7 +102,9 @@ test("Wracks verfallen linear und lassen sich bergen", () => {
 
 test("Radar: Vorwarnzeit nach Stufe, Erkennung spätestens bei Ankunft", () => {
   assert.equal(radarWarningMinutes(makeBase(balance), balance), 0);
-  assert.equal(radarWarningMinutes(makeBase(balance, { buildings: { radarstation: 2 } }), balance), 20);
+  assert.equal(radarWarningMinutes(makeBase(balance, { buildings: { radarstation: 2, kraftwerk: 1 } }), balance), 20);
+  // v1.6: ohne Strom keine Vorwarnung.
+  assert.equal(radarWarningMinutes(makeBase(balance, { buildings: { radarstation: 2 } }), balance), 0);
   const arrive = T0 + 60 * 60000;
   assert.equal(isAttackDetected(arrive, T0, 20), false);
   assert.equal(isAttackDetected(arrive, arrive - 20 * 60000, 20), true);

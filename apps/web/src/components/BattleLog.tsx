@@ -32,6 +32,8 @@ export interface Battle {
   defender: Outcome;
   loot: Counts;
   wreck: Counts;
+  /** Wetter am Kampfort (seit v1.6). */
+  weather?: { air: number; strike: number; wind: number; clouds: number; storm: boolean };
 }
 
 const SKIP: Record<string, string> = {
@@ -96,6 +98,11 @@ export function BattleLog({ b, names, role, protectedPerResource = null }: {
         <div className="text-[11.5px] text-ink2 mt-1">
           Luftüberlegenheit: {b.airSuperiority === null ? "keine" : b.airSuperiority === "attacker" ? names[0] : names[1]} · Landung: {b.landed ? "ja" : "nein"}
         </div>
+        {b.weather && (b.weather.air < 0.995 || b.weather.strike < 0.995) && (
+          <div className="text-[11.5px] text-ink2">
+            Wetter: {b.weather.storm ? "Sturm" : `Wind ${Math.round(b.weather.wind * 100)} %`}, Wolken {Math.round(b.weather.clouds * 100)} % – Flugzeuge ×{b.weather.air.toFixed(2)}, Luftschlag ×{(b.weather.air * b.weather.strike).toFixed(2)}
+          </div>
+        )}
       </section>
 
       <ol className="ml-2 mb-3 border-l border-ink">

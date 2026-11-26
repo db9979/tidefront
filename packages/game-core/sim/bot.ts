@@ -2,7 +2,7 @@
 // Kraftwerk bei Strommangel) und steckt einen festen Anteil seiner Ausgaben in einen Verband.
 // Der Verband folgt einer Doktrin (Anteile am Rüstungswert) und bleibt innerhalb der
 // Kommandopunkte; Landungsschiffe werden nach Bedarf der Truppen gebaut.
-import type { Balance, BaseState, Counts, ResourceMap } from "../src/index.ts";
+import type { Balance, BaseState, Counts, GeoPoint, ResourceMap } from "../src/index.ts";
 import {
   commandPoints,
   completeTraining,
@@ -128,15 +128,18 @@ export function runBot(
   doctrine: Doctrine = DOCTRINE,
   /** Optional: greift je Schritt in den Zustand ein (z. B. Belohnungen des Auftragsbuchs, sim/guide.ts). */
   onStep?: (base: BaseState, t: number) => BaseState,
+  /** Strom (v1.6): Lage des Hafens (Wetter), Startzeit und Kraftwerkstypen bei Strommangel (billigster zuerst). */
+  power: { site?: GeoPoint; startMs?: number; plants?: string[] } = {},
 ): BotSnapshot[] {
-  let base: BaseState = createBase(balance, 0);
+  const t0 = power.startMs ?? 0;
+  let base: BaseState = createBase(balance, t0, power.site);
   let spentBuild = 0;
   let spentMil = 0;
   const spentByType: Record<string, number> = {};
   const out: BotSnapshot[] = [];
   const marks = [...checkpoints].sort((a, b) => a - b);
-  let t = 0;
-  for (; t <= days * 24 * HOUR; t += STEP) {
+  let t = t0;
+  for (; t <= t0 + days * 24 * HOUR; t += STEP) {
     if (base.buildQueue[0] && base.buildQueue[0].finishesAt <= t) {
       const c = completeUpgrade(base, t, balance);
       if (c.ok) base = c.base;
@@ -155,7 +158,7 @@ export function runBot(
       build();
       train();
     }
-    if (marks.length > 0 && t >= marks[0] * 24 * HOUR) {
+    if (marks.length > 0 && t - t0 >= marks[0] * 24 * HOUR) {
       out.push({ day: marks.shift()!, base: settle(base, t, balance), spentBuild, spentMil });
     }
   }
@@ -164,18 +167,21 @@ export function runBot(
   function build(): void {
     if (base.buildQueue.length > 0) return;
     const rates = productionRates(base, balance);
-    let candidates = BUILD_ORDER.filter((id) => (base.buildings[id] ?? 0) < maxAllowedLevel(base, id, balance));
-    if (rates.powerFactor < 1) candidates = ["kraftwerk"];
+    const order = power.plants ? [...BUILD_ORDER.filter((id) => id !== "kraftwerk"), ...power.plants] : BUILD_ORDER;
+    let candidates = order.filter((id) => (base.buildings[id] ?? 0) < maxAllowedLevel(base, id, balance));
+    // Strommangel in Produktion oder Ausbildung (v1.6): erst ein Kraftwerk (bzw. die gewählten Quellen).
+    const plants = (power.plants ?? ["kraftwerk"]).filter((id) => (base.buildings[id] ?? 0) < maxAllowedLevel(base, id, balance));
+    if ((rates.powerFactor < 1 || rates.grid.served.training < 1) && plants.length > 0) candidates = plants;
     // Wer rüsten will, braucht zuerst Kaserne und Werft.
     else if (militaryShare > 0) {
       const missing = ["kaserne", "werft"].filter((id) => (base.buildings[id] ?? 0) === 0);
       if (missing.length > 0) candidates = missing;
     }
-    candidates.sort((a, b) => sum(upgradeCost(a, base.buildings[a], balance)) - sum(upgradeCost(b, base.buildings[b], balance)));
+    candidates.sort((a, b) => sum(upgradeCost(a, base.buildings[a] ?? 0, balance)) - sum(upgradeCost(b, base.buildings[b] ?? 0, balance)));
     // Nur der billigste Ausbau; reicht es nicht, wird gespart.
     const id = candidates[0];
     if (id === undefined) return;
-    const cost = upgradeCost(id, base.buildings[id], balance);
+    const cost = upgradeCost(id, base.buildings[id] ?? 0, balance);
     const r = startUpgrade(base, id, t, balance);
     if (r.ok) {
       base = r.base;

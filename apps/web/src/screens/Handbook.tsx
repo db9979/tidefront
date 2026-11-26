@@ -43,8 +43,19 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
       body: (
         <>
           <P>Vier Ressourcen: Stahl, Treibstoff, Elektronik und Proviant. Jeder Hafen erzeugt eine kleine Grundmenge; den Großteil liefern Stahlwerk, Raffinerie, Chipfabrik und Versorgungshof.</P>
-          <P>Diese Gebäude brauchen <strong>Strom</strong> vom Kraftwerk. Reicht er nicht, sinkt ihre Produktion anteilig – der Blitz in der Basis zeigt Bedarf und Angebot.</P>
+          <P>Diese Gebäude brauchen <strong>Strom</strong> von Kraftwerk, Windpark oder Solarfeld. Reicht er nicht, sinkt ihre Produktion anteilig – die Versorgung in der Basis zeigt Angebot, Bedarf und die Kurve der nächsten 24 Stunden (Kapitel „Wetter und Strom“).</P>
           <P>Produktion füllt nur bis zur <strong>Lagerkapazität</strong> (Lagerkomplex). Beute und Lieferungen dürfen darüber liegen. Einheiten essen <strong>Proviant</strong>. Versorgungsmangel herrscht erst, wenn der Bestand auf 0 fällt <em>und</em> die Netto-Rate (Produktion minus Unterhalt) negativ ist: keine Ausbildung, Angriffskraft −20 %.</P>
+        </>
+      ),
+    },
+    {
+      id: "wetter", icon: "windpark", title: "Wetter und Strom",
+      body: (
+        <>
+          <P>Über der Karte ziehen <strong>Wettersysteme</strong> von West nach Ost: Tiefs bringen Wind, Wolken und Sturm, Hochs ruhiges, klares Wetter. Der Norden (Nordatlantik, Nordsee, Skandinavien) ist windiger und wolkiger, Mittelmeer und Nordafrika sind sonniger. <strong>Nebel</strong> liegt gern vor Neufundland und in der Nordsee, vor allem nachts und bei Flaute. Das Tageslicht folgt dem Sonnenstand: Breitengrad, Uhrzeit und Jahreszeit. Das Wetter steht fest – die Vorhersage auf der Basis stimmt. Auf der Karte zeigt die abschaltbare Wetterschicht Wolken (Schraffur), Sturm (rote Kreuzschraffur) und Nebel (gepunktet).</P>
+          <P><strong>Stromquellen:</strong> Das <strong>Kraftwerk</strong> liefert {fmtNum(b?.buildings.kraftwerk?.powerSupplyPerLevel ?? 60)} Strom je Stufe bei jedem Wetter, verbrennt aber {fmtNum(b?.buildings.kraftwerk?.fuelPerHourPerLevel ?? 3)} Treibstoff je Stunde und Stufe; ist kein Treibstoff da, verbrennt es nur, was nachkommt. Der <strong>Windpark</strong> liefert bis zu {fmtNum(b?.buildings.windpark?.windPowerPerLevel ?? 0)} je Stufe im Verhältnis zum Wind und schaltet bei Orkan ab. Das <strong>Solarfeld</strong> liefert bis zu {fmtNum(b?.buildings.solarfeld?.solarPowerPerLevel ?? 0)} je Stufe bei hoher Sonne, Wolken kosten bis zu {pct(b?.buildings.solarfeld?.cloudLoss, 0.7)}, nachts nichts. Das <strong>Speicherwerk</strong> lädt Überschuss ({fmtNum(b?.buildings.speicherwerk?.storagePerLevel ?? 0)} je Stufe, höchstens {fmtNum(b?.buildings.speicherwerk?.storageRatePerLevel ?? 0)} je Stunde) und gibt ihn bei Flaute oder nachts wieder ab.</P>
+          <P><strong>Rangfolge bei Mangel:</strong> 1. Radar (ohne volle Versorgung schrumpft die Vorwarnzeit anteilig, ohne Strom gibt es keine), 2. Produktion (gedrosselt), 3. Werft, Kaserne und Flugfeld während der Ausbildung, 4. Forschung. Ausbildung und Forschung laufen bei Mangel langsamer (mindestens mit {pct(b?.power?.minSpeed, 0.25)} Tempo); ihre Fertigstellung wird beim Start mit der Stromprognose festgelegt und ändert sich danach nicht mehr. Die Basis warnt, wann und wie viel Strom fehlt.</P>
+          <P><strong>Wetter im Einsatz:</strong> Sturm auf der Route verlängert die Reisezeit der Schiffe um bis zu {pct(b?.weather?.shipSlowMax, 0.3)} (bestimmt bei Abfahrt); die Missionsplanung zeigt Wetter und Zuschlag. Bei Sturm am Hafen starten reine Luftmissionen nicht, und im Kampf treffen Flugzeuge im Sturm schwächer (bis −{pct(b?.weather?.airStormPenalty, 0.6)}); Wolken am Kampfort schwächen den Luftschlag (bis −{pct(b?.weather?.cloudStrikePenalty, 0.3)}). Nebel kürzt die Radar-Vorwarnzeit (bis −{pct(b?.weather?.fogRadarMax, 0.3)}) und macht Aufklärung unsicher: Bestände und Truppen erscheinen gerundet.</P>
         </>
       ),
     },

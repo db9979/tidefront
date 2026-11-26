@@ -23,6 +23,8 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
   const [sel, setSel] = useState<Target | null>(focus);
   const [recenter, setRecenter] = useState(0);
   const [centerOn, setCenterOn] = useState<Target>(focus ?? { col: base.col, row: base.row });
+  // Wetterschicht (v1.6): abschaltbar, Wahl bleibt im Gerät.
+  const [showWeather, setShowWeather] = useState(() => localStorage.getItem("tf-wetter") !== "aus");
   const now = useNow();
   const home = useMemo(() => ({ col: base.col, row: base.row }), [base.col, base.row]);
   const alert = base.incoming.some((i) => i.type !== "transport");
@@ -56,6 +58,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
           missions={base.missions}
           alert={alert}
           events={worldEvents.data?.events}
+          weather={showWeather ? meta.data?.balance.weather : null}
         />
         <div className="absolute left-2 top-6 flex flex-col gap-1.5 items-start">
           <button
@@ -64,6 +67,14 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
             onClick={() => { setCenterOn(home); setRecenter((n) => n + 1); }}
           >
             <TacticalIcon kind="own" size={20} /> Mein Hafen
+          </button>
+          <button
+            type="button"
+            aria-pressed={showWeather}
+            className={`tap rounded-[3px] bg-card border px-3 text-[11px] font-display uppercase tracking-[0.12em] ${showWeather ? "border-ink text-ink" : "border-rule text-ink2"}`}
+            onClick={() => setShowWeather((v) => { localStorage.setItem("tf-wetter", v ? "aus" : "an"); return !v; })}
+          >
+            Wetter {showWeather ? "an" : "aus"}
           </button>
           {alert && (
             <div className="rounded-[3px] bg-card border border-siegel border-l-4 text-siegel px-2 py-1 text-[11px] font-display uppercase tracking-wider">

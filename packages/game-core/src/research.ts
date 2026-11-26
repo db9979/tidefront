@@ -14,6 +14,7 @@ import type {
 } from "./types.ts";
 import { addResources, buildingLevel, hasResources, settle, subtractResources } from "./economy.ts";
 import type { Modifiers } from "./modifiers.ts";
+import { poweredFinishMs } from "./power.ts";
 import { applyModPath, modValue } from "./modifiers.ts";
 import { mulberry32, randomInt } from "./rng.ts";
 
@@ -122,16 +123,22 @@ export function startResearch(
   const halved = state.halfNext === true;
   const factor = halved ? (balance.research!.breakthrough?.speedFactor ?? 1) : 1;
   const seconds = researchSeconds(techId, level, buildingLevel(base, balance.research!.building), balance, mods) * factor;
+  const workMs = Math.ceil(seconds * 1000);
   const order: ResearchOrder = {
     techId,
     targetLevel: level + 1,
     startedAt: nowMs,
-    finishesAt: nowMs + Math.ceil(seconds * 1000),
+    finishesAt: nowMs + workMs,
     cost,
     chance: breakthroughChance(base, balance),
     seed: (seed ?? nowMs) >>> 0,
     ...(halved ? { halved: true } : {}),
   };
+  // Strom (v1.6): Forschung ist Verbraucher im Rang 4; Fertigstellung beim Start mit der Stromprognose.
+  if ((balance.buildings[balance.research!.building]?.powerPerLevel ?? 0) > 0) {
+    const probe = { ...next, research: { ...state, order: { ...order, finishesAt: Infinity } } };
+    order.finishesAt = poweredFinishMs(probe, nowMs, workMs, "research", balance, mods);
+  }
   next.research = { ...state, levels: { ...state.levels }, order, halfNext: false };
   return { ok: true, base: next, order: { ...order } };
 }

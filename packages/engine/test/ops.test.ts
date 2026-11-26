@@ -3,7 +3,7 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { and, eq, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
-import { nestSites, isCoast, COLS, ROWS } from "@tidefront/world";
+import { nestSites, isCoast, COLS, ROWS, hexCenter } from "@tidefront/world";
 import type { BaseState } from "@tidefront/game-core";
 import {
   AlertMemory,
@@ -22,6 +22,7 @@ import {
   flushMailDigests,
   GameError,
   launchMission,
+  weatherModifiers,
   listInvites,
   login,
   mailNotice,
@@ -158,7 +159,8 @@ test("Angriff auf Spielerhafen plant attack_warning nach Radar-Vorwarnzeit; Push
   await pushSubscribe(db, other.playerId, { endpoint: "https://push.example/ok", keys: { p256dh: "p".repeat(20), auth: "a".repeat(16) } });
   await pushSubscribe(db, other.playerId, { endpoint: "https://push.example/gone", keys: { p256dh: "p".repeat(20), auth: "a".repeat(16) } });
   await patchBase(admin.baseId, (s) => { s.units = { korvette: 2, landungsschiff: 1, schuetzen: 50 }; s.resources.treibstoff = 50000; s.buildings.hafenkommandantur = 4; });
-  await patchBase(other.baseId, (s) => { s.protection.createdAtMs = 0; s.buildings.radarstation = 2; });
+  // v1.6: Das Radar braucht Strom (Kraftwerk); Nebel am Hafen kürzt die Vorwarnzeit.
+  await patchBase(other.baseId, (s) => { s.protection.createdAtMs = 0; s.buildings.radarstation = 2; s.buildings.kraftwerk = 1; });
   const m = await launchMission(engine, admin.playerId, key(), { type: "ueberfall", units: { korvette: 1, landungsschiff: 1, schuetzen: 50 }, col: other.col, row: other.row });
   assert.equal(m.ok, true, JSON.stringify(m));
   const missionId = (m as { missionId: number }).missionId;
@@ -166,7 +168,8 @@ test("Angriff auf Spielerhafen plant attack_warning nach Radar-Vorwarnzeit; Push
   const [ev] = await db.select().from(tables.gameEvent).where(and(eq(tables.gameEvent.type, "attack_warning"), sql`(payload->>'missionId')::int = ${missionId}`));
   assert.ok(ev, "attack_warning geplant");
   assert.equal(ev.baseId, other.baseId);
-  const warnMin = 10 + 5 * 2; // warningMinutesBase + perLevel * 2
+  const fog = weatherModifiers({ site: hexCenter(other.col, other.row), buildings: { radarstation: 2 } } as unknown as BaseState, Date.now()).radarWarning ?? 1;
+  const warnMin = (10 + 5 * 2) * fog; // warningMinutesBase + perLevel * 2, mal Nebel
   assert.ok(Math.abs(ev.dueAt.getTime() - Math.max(Date.now(), arriveAtMs - warnMin * 60000)) < 5000);
 
   pushed.length = 0;

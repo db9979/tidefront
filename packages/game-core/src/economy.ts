@@ -1,9 +1,8 @@
-import type { Balance, BaseState, Counts, ProductionInfo, ResearchState, ResourceMap } from "./types.ts";
+import type { Balance, BaseState, Counts, GeoPoint, ProductionInfo, ResearchState, ResourceMap } from "./types.ts";
 import { createProtection } from "./protection.ts";
 import type { Modifiers } from "./modifiers.ts";
-import { modEntry, modValue } from "./modifiers.ts";
-
-const HOUR_MS = 3600000;
+import { modValue } from "./modifiers.ts";
+import { integrateGrid, powerAt } from "./power.ts";
 
 /** Angriffswert-Faktor bei Versorgungsmangel (REGELN.md, Abschnitt Ressourcen; nicht in balance.json). */
 export const SUPPLY_SHORTAGE_ATTACK_FACTOR = 0.8;
@@ -33,11 +32,13 @@ export function cloneBase(base: BaseState): BaseState {
       ? { research: cloneResearch(base.research) }
       : {}),
     ...(base.veterancy ? { veterancy: { ...base.veterancy } } : {}),
+    ...(base.site ? { site: { ...base.site } } : {}),
+    ...(base.powerStored !== undefined ? { powerStored: base.powerStored } : {}),
   };
 }
 
 /** Neuer Stützpunkt: Startbestände, alle Gebäude auf Stufe 0, keine Einheiten. */
-export function createBase(balance: Balance, nowMs: number): BaseState {
+export function createBase(balance: Balance, nowMs: number, site?: GeoPoint): BaseState {
   const resources: ResourceMap = {};
   for (const r of balance.resources) resources[r] = balance.start[r] ?? 0;
   const buildings: Counts = {};
@@ -53,6 +54,7 @@ export function createBase(balance: Balance, nowMs: number): BaseState {
     trainingQueue: [],
     versorgungsmangel: false,
     protection: createProtection(nowMs),
+    ...(site ? { site: { lat: site.lat, lon: site.lon } } : {}),
   };
 }
 
@@ -70,6 +72,7 @@ export function upkeepPerHour(base: BaseState, balance: Balance): number {
   return sum;
 }
 
+/** Nennleistung der Kraftwerke (ohne Wind, Sonne, Speicher und Treibstoffmangel). */
 export function powerSupply(base: BaseState, balance: Balance): number {
   let sum = 0;
   for (const [id, def] of Object.entries(balance.buildings)) {
@@ -78,35 +81,24 @@ export function powerSupply(base: BaseState, balance: Balance): number {
   return sum;
 }
 
-export function powerDemand(base: BaseState, balance: Balance): number {
-  let sum = 0;
-  for (const [id, def] of Object.entries(balance.buildings)) {
-    if (def.produces === undefined) continue;
-    sum += (def.powerPerLevel ?? 0) * buildingLevel(base, id);
-  }
-  return sum;
-}
-
-/** Produktionsraten je Stunde inklusive Strom-Drosselung und Proviant-Unterhalt; `mods.production` wirkt auf die Gebäudeproduktion. */
-export function productionRates(base: BaseState, balance: Balance, mods?: Modifiers): ProductionInfo {
-  const supply = powerSupply(base, balance);
-  const demand = powerDemand(base, balance);
-  const powerFactor = demand > supply ? supply / demand : 1;
-  const buildingPerHour: ResourceMap = {};
-  for (const r of balance.resources) buildingPerHour[r] = 0;
-  for (const [id, def] of Object.entries(balance.buildings)) {
-    const level = buildingLevel(base, id);
-    if (def.produces === undefined || level < 1) continue;
-    const raw = (def.perHour ?? 0) * balance.building.productionGrowth ** (level - 1);
-    buildingPerHour[def.produces] = (buildingPerHour[def.produces] ?? 0) + raw * powerFactor * modEntry(mods, "production", def.produces);
-  }
-  const upkeep = upkeepPerHour(base, balance);
-  const perHour: ResourceMap = {};
-  for (const r of balance.resources) {
-    perHour[r] = (balance.baseTricklePerHour[r] ?? 0) + buildingPerHour[r];
-  }
-  if ("proviant" in perHour) perHour.proviant -= upkeep;
-  return { perHour, buildingPerHour, powerSupply: supply, powerDemand: demand, powerFactor, upkeepPerHour: upkeep };
+/**
+ * Produktionsraten je Stunde im Augenblick `atMs` (Vorgabe: resUpdatedAt) inklusive Stromnetz (Rangfolge,
+ * Wind, Sonne, Speicher, Kraftwerk-Treibstoff) und Proviant-Unterhalt; `mods.production` wirkt auf die Gebäudeproduktion.
+ * powerSupply = Angebot einschließlich Entladung, powerDemand = Bedarf aller Ränge, powerFactor = versorgter Anteil der Produktion.
+ */
+export function productionRates(base: BaseState, balance: Balance, mods?: Modifiers, atMs = base.resUpdatedAt): ProductionInfo {
+  const grid = powerAt(base, atMs, balance, mods);
+  const s = grid.supply;
+  const d = grid.demand;
+  return {
+    perHour: grid.perHour,
+    buildingPerHour: grid.buildingPerHour,
+    powerSupply: s.kraftwerk + s.wind + s.solar + s.storage,
+    powerDemand: d.radar + d.production + d.training + d.research,
+    powerFactor: grid.served.production,
+    upkeepPerHour: upkeepPerHour(base, balance),
+    grid,
+  };
 }
 
 /** Lagerkapazität je Ressource (für alle Ressourcen gleich). */
@@ -122,30 +114,13 @@ export function bunkerProtection(base: BaseState, balance: Balance, mods?: Modif
 }
 
 /**
- * Schreibt die Bestände von resUpdatedAt auf nowMs fort (Lazy Evaluation).
+ * Schreibt die Bestände von resUpdatedAt auf nowMs fort (Lazy Evaluation, Stromnetz in Zeitschritten, power.ts).
  * Produktion füllt nur bis zur Lagerkapazität; Bestände über der Kapazität bleiben erhalten.
  * Der Bestand fällt nie unter 0; Bestand 0 bei negativer Rate setzt versorgungsmangel.
  * `mods` (Produktion, Lager) müssen für das ganze Intervall gelten; ändern sie sich, vorher fortschreiben.
  */
 export function settle(base: BaseState, nowMs: number, balance: Balance, mods?: Modifiers): BaseState {
-  const next = cloneBase(base);
-  const rates = productionRates(base, balance, mods).perHour;
-  const capacity = storageCapacity(base, balance, mods);
-  const hours = Math.max(0, nowMs - base.resUpdatedAt) / HOUR_MS;
-  for (const r of balance.resources) {
-    const stock = base.resources[r] ?? 0;
-    const rate = rates[r];
-    let value = stock;
-    if (rate >= 0) {
-      if (stock < capacity) value = Math.min(capacity, stock + rate * hours);
-    } else {
-      value = Math.max(0, stock + rate * hours);
-    }
-    next.resources[r] = value;
-  }
-  next.versorgungsmangel = (next.resources.proviant ?? 0) <= 0 && (rates.proviant ?? 0) < 0;
-  next.resUpdatedAt = Math.max(base.resUpdatedAt, nowMs);
-  return next;
+  return integrateGrid(base, nowMs, balance, mods);
 }
 
 export function hasResources(stock: ResourceMap, cost: ResourceMap): boolean {

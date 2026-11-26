@@ -19,7 +19,9 @@ import { MAP_BOUNDS, attachGestures, clampScale, clampView, minScale, zoomAround
 import {
   INK, SEE, SIEGEL, alertRing, compassRose, dotSymbol, mapLabel, nameTag, nestSymbol, otherBaseSymbol, ownBaseSymbol, portSymbol, shipSymbol, wreckSymbol,
 } from "../map/symbols.ts";
-import { LOD_NEAR, LOD_OVERVIEW, fade, layout, pinScale, snap, type Pinned } from "../map/lod.ts";
+import { LOD_NEAR, LOD_OVERVIEW, fade, layout, pinScale, snap, weatherAlpha, type Pinned } from "../map/lod.ts";
+import { buildWeatherLayer, type WeatherLayer } from "../map/weather.ts"; // Wetterschicht (v1.6)
+import type { WeatherBalance } from "@tidefront/game-core";
 import { buildSoundings } from "../map/soundings.ts";
 // Weltereignisse des Kartells (eigene Ebene unter den Hafenzeichen)
 import { buildWorldEventLayer, type MapWorldEvent } from "../map/world-events.ts";
@@ -53,6 +55,8 @@ export interface HexMapProps {
   alert?: boolean;
   /** Weltereignisse (Schatzschiff, Großflotte, Belagerung). */
   events?: MapWorldEvent[];
+  /** Wetterschicht (Wolken, Sturm, Nebel); fehlt sie, ist die Schicht aus. */
+  weather?: WeatherBalance | null;
 }
 
 interface Scene {
@@ -105,7 +109,8 @@ function dashed(g: Graphics, a: { x: number; y: number }, b: { x: number; y: num
 }
 
 export function HexMap(props: HexMapProps) {
-  const { data, selected, onSelect, selectMode, center, zoom, recenter, free, home, missions, alert, events } = props;
+  const { data, selected, onSelect, selectMode, center, zoom, recenter, free, home, missions, alert, events, weather } = props;
+  const weatherLayer = useRef<WeatherLayer | null>(null);
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<Scene | null>(null);
   const [ready, setReady] = useState(false);
@@ -227,6 +232,11 @@ export function HexMap(props: HexMapProps) {
           if (now - lastMove > 250) {
             lastMove = now;
             drawMovers(s, live.current);
+            const wl = weatherLayer.current;
+            if (wl) {
+              wl.root.alpha = weatherAlpha(sc);
+              wl.update(serverNow(), sc);
+            }
           }
         };
         app.ticker.add(tick);
@@ -339,6 +349,21 @@ export function HexMap(props: HexMapProps) {
     relayout(s);
     snap([s.pinnedMarkers]);
   }, [ready, data, events]);
+
+  // Wetterschicht unter den Zeichen (an- und abschaltbar).
+  useEffect(() => {
+    const s = scene.current;
+    if (!ready || !s || !weather) return;
+    const layer = buildWeatherLayer(weather);
+    s.world.addChildAt(layer.root, s.world.getChildIndex(s.routes));
+    layer.root.alpha = weatherAlpha(s.world.scale.x);
+    layer.update(serverNow(), s.world.scale.x);
+    weatherLayer.current = layer;
+    return () => {
+      weatherLayer.current = null;
+      layer.root.destroy();
+    };
+  }, [ready, weather]);
 
   // Auswahl
   useEffect(() => {

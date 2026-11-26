@@ -17,6 +17,7 @@ import { applyDefeatShield } from "./protection.ts";
 import { battleVeterancy } from "./veterans.ts";
 import type { Modifiers } from "./modifiers.ts";
 import { modValue } from "./modifiers.ts";
+import { powerAt } from "./power.ts";
 
 const HOUR_MS = 3600000;
 const MINUTE_MS = 60000;
@@ -131,20 +132,53 @@ export interface ScoutReport {
   units: Counts;
   defenses: Counts;
   protectedPerResource: number;
+  /** Nebel am Ziel (v1.6): Sichtung unsicher, Zahlen gerundet; fehlt bei klarer Sicht. */
+  uncertain?: { fog: number; heavy: boolean };
 }
 
-/** Aufklärung am Ziel: Lagebild des fortgeschriebenen Zielstützpunkts. Bestände abgerundet. */
-export function scoutBase(target: BaseState, nowMs: number, balance: Balance, targetMods?: Modifiers): ScoutReport {
+/** Rundet eine Zahl auf `digits` gültige Stellen (Nebel im Lagebild). */
+function roughly(n: number, digits: number): number {
+  if (n <= 0) return 0;
+  const p = 10 ** Math.max(0, Math.floor(Math.log10(n)) + 1 - digits);
+  return Math.max(1, Math.round(n / p) * p);
+}
+
+/** Zählung im Nebel: kleine Zahlen auf 5 (dichter Nebel: 10) gerundet, mindestens 1, wenn etwas da ist. */
+function roughCount(n: number, heavy: boolean): number {
+  if (n <= 0) return 0;
+  const step = heavy ? 10 : 5;
+  return n < step ? (heavy ? step : n) : Math.round(n / step) * step;
+}
+
+/**
+ * Aufklärung am Ziel: Lagebild des fortgeschriebenen Zielstützpunkts. Bestände abgerundet.
+ * Nebel am Ziel (`fog`, v1.6): ab weather.fogScoutFrom ist die Sichtung unsicher (Bestände auf zwei gültige
+ * Stellen, Einheiten und Anlagen auf 5 gerundet), ab fogScoutHeavy grob (eine Stelle, auf 10). Gebäude bleiben sichtbar.
+ */
+export function scoutBase(target: BaseState, nowMs: number, balance: Balance, targetMods?: Modifiers, fog = 0): ScoutReport {
   const s = settle(target, nowMs, balance, targetMods);
+  const wb = balance.weather;
+  const blur = !!wb && fog >= wb.fogScoutFrom;
+  const heavy = !!wb && fog >= wb.fogScoutHeavy;
   const resources: ResourceMap = {};
-  for (const r of balance.resources) resources[r] = Math.floor(s.resources[r] ?? 0);
+  for (const r of balance.resources) {
+    const v = Math.floor(s.resources[r] ?? 0);
+    resources[r] = blur ? roughly(v, heavy ? 1 : 2) : v;
+  }
+  const count = (c: Counts): Counts => {
+    if (!blur) return { ...c };
+    const out: Counts = {};
+    for (const [id, n] of Object.entries(c)) out[id] = roughCount(n, heavy);
+    return out;
+  };
   return {
     atMs: nowMs,
     resources,
     buildings: { ...s.buildings },
-    units: { ...s.units },
-    defenses: { ...s.defenses },
+    units: count(s.units),
+    defenses: count(s.defenses),
     protectedPerResource: bunkerProtection(s, balance, targetMods),
+    ...(blur ? { uncertain: { fog: Math.round(fog * 100) / 100, heavy } } : {}),
   };
 }
 
@@ -189,12 +223,16 @@ export function salvageWreck(
 
 // ---------------------------------------------------------------- Radar
 
-/** Vorwarnzeit in Minuten: ohne Radarstation 0, sonst (warningMinutesBase + warningMinutesPerLevel * L) mal `mods.radarWarning`. */
+/**
+ * Vorwarnzeit in Minuten: ohne Radarstation 0, sonst (warningMinutesBase + warningMinutesPerLevel * L) mal `mods.radarWarning`
+ * (Forschung, Nebel als Quelle „Wetter“) mal versorgtem Stromanteil des Radars zum Stand des Stützpunkts (v1.6, ohne Strom 0).
+ */
 export function radarWarningMinutes(base: BaseState, balance: Balance, mods?: Modifiers): number {
   const level = buildingLevel(base, "radarstation");
   if (level < 1) return 0;
   const def = balance.buildings.radarstation;
-  return ((def.warningMinutesBase ?? 0) + (def.warningMinutesPerLevel ?? 0) * level) * modValue(mods, "radarWarning");
+  const powered = def.powerPerLevel ? powerAt(base, base.resUpdatedAt, balance, mods).served.radar : 1;
+  return ((def.warningMinutesBase ?? 0) + (def.warningMinutesPerLevel ?? 0) * level) * modValue(mods, "radarWarning") * powered;
 }
 
 /** Ein anfliegender Angriff ist erkannt, sobald er innerhalb der Vorwarnzeit liegt (spätestens bei Ankunft). */

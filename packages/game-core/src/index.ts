@@ -14,4 +14,6 @@ export * from "./modifiers.ts";
 export * from "./research.ts";
 export * from "./luck.ts";
 export * from "./veterans.ts";
+export * from "./weather.ts";
+export * from "./power.ts";
 export * as market from "./market/index.ts";

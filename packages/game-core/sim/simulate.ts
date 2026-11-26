@@ -22,6 +22,7 @@ import { MILITARY_SHARE, UBOOT_DOCTRINE, UBOOT_HEAVY_DOCTRINE, runBot, value } f
 import { runResearchSim } from "./research.ts";
 import { runGuideSim } from "./guide.ts";
 import { runLuckSim } from "./luck.ts";
+import { runPowerSim } from "./power.ts";
 
 const balance = JSON.parse(
   readFileSync(new URL("../../balance/v1/balance.json", import.meta.url), "utf8"),
@@ -254,6 +255,7 @@ runResearchSim(balance, snaps);
 runGuideSim(balance);
 // Kriegsglück (v1.4): Würfel gegen Überlegenheit.
 runLuckSim(balance);
+runPowerSim(balance);
 
 /** Der Bot schickt alles, was daheim steht (die Doktrin hält ihn innerhalb der Kommandopunkte). */
 function sentFleet(s: BotSnapshot): Counts {

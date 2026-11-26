@@ -2,7 +2,8 @@
 
 Verbindlich für `packages/game-core`. Alle Zahlen stehen in `packages/balance/v1/balance.json`
 und werden dort geändert, nie im Code. Zahlen sind Startwerte; Kartell und Piratennester sind seit Balance v1.1
-per Simulation abgestimmt, U-Boote seit v1.2, Forschung seit v1.3 (`npm run sim`, Ergebnisse in `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt C).
+per Simulation abgestimmt, U-Boote seit v1.2, Forschung seit v1.3, Wetter und Strom seit v1.6 (`npm run sim`, Ergebnisse in `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitte C–F).
+**Wetter und Strom** (Wetterfeld, Stromquellen, Rangfolge bei Mangel, Wetter im Einsatz) stehen in `docs/REGELN-WETTER.md`; sie gelten als Teil dieser Regeln.
 
 ## Grundsätze
 
@@ -20,14 +21,13 @@ Vier Ressourcen: `stahl`, `treibstoff`, `elektronik`, `proviant`. Strom ist eine
 
 - Produktion pro Stunde eines Gebäudes auf Stufe L ≥ 1: `perHour * productionGrowth^(L-1)`.
 - Dazu kommt immer die Grundrate `baseTricklePerHour`.
-- Strom: Angebot = `kraftwerk.powerSupplyPerLevel * L`. Bedarf = Summe `powerPerLevel * L` der Produktionsgebäude.
-  Ist der Bedarf größer als das Angebot, wird die Gebäudeproduktion (nicht die Grundrate) mit `Angebot / Bedarf` multipliziert.
+- Strom (v1.6, „Wetter und Strom“): Erhält die Produktion nur den Anteil `f` ihres Bedarfs, wird die Gebäudeproduktion (nicht die Grundrate) mal `f` gerechnet.
 - Proviant-Unterhalt: Summe `upkeepPerHour * Anzahl` aller Einheiten des Stützpunkts wird von der Proviant-Rate abgezogen.
   Die Netto-Rate kann negativ sein; der Bestand fällt nie unter 0. Bei Bestand 0 und negativer Rate gilt `versorgungsmangel = true`
   (Ausbildungsstopp, Angriffswert aller eigenen Einheiten mal 0,8).
 - Lagerkapazität je Ressource: `capacityBase * capacityGrowth^L` (L = Stufe Lagerkomplex, ab 0).
   Produktion füllt nur bis zur Kapazität. Beute und Lieferungen dürfen darüber hinausgehen.
-- Lazy Evaluation: `settle(base, nowMs)` schreibt Bestände von `resUpdatedAt` auf `nowMs` fort.
+- Lazy Evaluation: `settle(base, nowMs)` schreibt Bestände von `resUpdatedAt` auf `nowMs` fort (seit v1.6 in Zeitschritten).
 
 ## Gebäude
 
@@ -65,7 +65,7 @@ Zehn Spielereinheiten in drei Gattungen, siehe `units`. Verteidigungsanlagen sie
 
 Meilenstein 1: `ueberfall`, `aufklaerung`, `transport`.
 
-- Reisezeit: `Entfernung / langsamste speedKmh` der Schiffe; reine Luftmissionen nach der langsamsten Luftgeschwindigkeit.
+- Reisezeit: `Entfernung / langsamste speedKmh` der Schiffe (seit v1.6 mal Sturmzuschlag der Route, bis +30 %); reine Luftmissionen nach der langsamsten Luftgeschwindigkeit, bei Sturm am Hafen kein Start (`storm`).
 - Treibstoff: Summe `fuelPer100Km * Anzahl * Entfernung / 100`, mal 2 für Hin- und Rückweg, aufgerundet; wird beim Start abgezogen.
 - Entfernung zwischen Hexfeldern: Großkreis-Entfernung der Feldmittelpunkte in Kilometern.
 
@@ -88,7 +88,7 @@ Rückruf:
 
 ## Vorwarnung
 
-- Radarstation Stufe L ≥ 1: Vorwarnzeit `warningMinutesBase + warningMinutesPerLevel * L` Minuten, ohne Radar 0.
+- Radarstation Stufe L ≥ 1: Vorwarnzeit `warningMinutesBase + warningMinutesPerLevel * L` Minuten, ohne Radar 0; seit v1.6 mal Stromanteil des Radars und Nebelfaktor.
 - Ein anrückender Angriff gilt als erkannt, sobald seine Ankunft höchstens die Vorwarnzeit entfernt ist.
   Erst dann sieht der Verteidiger ihn, und erst dann greift an der Börse die Sperre `under_attack`.
 
@@ -440,10 +440,10 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
   Gattung (`hp.*`); Tempo je Gattung (`speed.see|luft`); Treibstoffverbrauch (`fuel`); Bauzeit Gebäude (`buildTime`);
   Ausbildungszeit je ausführendem Gebäude (`trainingTime.werft|kaserne|flugfeld|anlagen`); Gebäudeproduktion je
   Ressource (`production.*`, nicht die Grundrate); Lagerkapazität (`storage`); Bunkerschutz (`bunker`);
-  Radar-Vorwarnzeit (`radarWarning`); Ladekapazität (`cargo`); Beute-Anteil (`loot`, nur Anteilsbeute, nicht feste
+  Radar-Vorwarnzeit (`radarWarning`, auch Nebel als Quelle „Wetter“); Ladekapazität (`cargo`); Beute-Anteil (`loot`, nur Anteilsbeute, nicht feste
   Nestbeute); Minenschaden an den eigenen Landungstruppen (`mineDamage`); Tarnung (`stealth`: Faktor auf die
   Vorwarnzeit, die das Ziel gegen eigene Überfälle hat); Forschungsdauer (`researchTime`).
-- **Kombination:** Quellen (Forschung, Veteranen, künftig Wetter, Admirale, Ereignisse) werden je Wert **multipliziert**.
+- **Kombination:** Quellen (Forschung, Veteranen, Wetter, künftig Admirale, Ereignisse) werden je Wert **multipliziert**.
   Innerhalb einer Technik wirken Stufen additiv: Faktor = 1 + Wirkung je Stufe × Stufe.
 - Im Kampf gelten die Modifikatoren jeder Seite nur für ihre eigenen Einheiten und Anlagen (Lebenspunkte, Angriff);
   der Angreifer bringt Minenschaden, Ladung und Beute-Anteil mit, der Verteidiger seinen Bunkerschutz.

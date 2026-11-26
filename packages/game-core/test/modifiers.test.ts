@@ -92,7 +92,8 @@ test("Reise: Tempo je Gattung, Treibstoff, Ladung", () => {
 });
 
 test("Radar, Tarnung, Beute-Anteil", () => {
-  const base = makeBase(balance, { buildings: { radarstation: 2 } });
+  // v1.6: Das Radar braucht Strom (Kraftwerk).
+  const base = makeBase(balance, { buildings: { radarstation: 2, kraftwerk: 1 } });
   assert.equal(radarWarningMinutes(base, balance, { radarWarning: 1.2 }), 24);
   assert.equal(warningMinutesAgainst(24, { stealth: 0.8 }), 24 * 0.8);
   assert.equal(warningMinutesAgainst(24), 24);

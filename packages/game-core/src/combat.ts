@@ -27,6 +27,7 @@ import {
   withModifiers,
 } from "./combat-stats.ts";
 import type { Modifiers } from "./modifiers.ts";
+import type { CombatWeather } from "./weather.ts";
 import { modValue } from "./modifiers.ts";
 import { luckFactor, luckOf, luckRng, rollDie } from "./luck.ts";
 
@@ -78,6 +79,8 @@ export function computeLoot(
  * Kriegsglück (combat.luck): Vor jeder Phase würfeln Angreifer, dann Verteidiger je einen Würfel aus einem eigenen
  * Strom (luckRng(seed)), auch für Phasen, die entfallen; der Faktor wirkt auf allen Schaden der Seite in der Phase
  * (Salven, Flak, Bomben, Minen). Der Rundenzufall nutzt weiter den Strom mulberry32(seed) wie zuvor.
+ * Wetter am Kampfort (`weather`, v1.6): `air` wirkt auf allen Schaden der Flugzeuge beider Seiten (Luftkampf,
+ * Luftschlag), `strike` zusätzlich auf den Luftschlag der Bomber; Flak und Schiffe sind nicht betroffen.
  * Codes: unknown_unit, bad_count.
  */
 export function resolveBattle(
@@ -85,7 +88,10 @@ export function resolveBattle(
   defender: DefenderInput,
   balance: Balance,
   seed: number,
+  weather?: CombatWeather,
 ): Result<{ report: BattleReport }> {
+  const wxAir = weather?.air ?? 1;
+  const wxStrike = wxAir * (weather?.strike ?? 1);
   const table = buildStats(balance);
   // Eine Werte-Tabelle je Seite; ohne Modifikatoren ist es dieselbe.
   const tA = withModifiers(table, attacker.modifiers);
@@ -148,8 +154,8 @@ export function resolveBattle(
         const fd = pick(tD, D, isFighter);
         if (fa.length === 0 || fd.length === 0) break;
         draft.rounds++;
-        const ra = randomFactor(rng, spread) * fA;
-        const rd = randomFactor(rng, spread) * fD;
+        const ra = randomFactor(rng, spread) * fA * wxAir;
+        const rd = randomFactor(rng, spread) * fD * wxAir;
         const toD = volley(fa, fd, (s) => withMorale(moraleA, s.attack.luft, s), ra, draft.damage.attacker);
         const toA = volley(fd, fa, (s) => withMorale(moraleD, s.attack.luft, s), rd, draft.damage.defender);
         applyDamage(tD, D, toD, carryD);
@@ -211,14 +217,14 @@ export function resolveBattle(
           pick(tA, A, isBomber),
           pick(tD, D, strikeTarget),
           (s, t) => withMorale(moraleA, strikeValue(s, t), s),
-          sa * bomberFactor("attacker"),
+          sa * bomberFactor("attacker") * wxStrike,
           draft.damage.attacker,
         );
         const strikeOnA = volley(
           pick(tD, D, isBomber),
           pick(tA, A, strikeTarget),
           (s, t) => withMorale(moraleD, strikeValue(s, t), s),
-          sd * bomberFactor("defender"),
+          sd * bomberFactor("defender") * wxStrike,
           draft.damage.defender,
         );
         applyDamage(tD, D, strikeOnD, carryD);
@@ -423,6 +429,7 @@ export function resolveBattle(
       defender: defenderOutcome,
       loot,
       wreck,
+      ...(weather ? { weather: { ...weather } } : {}),
     },
   };
 }

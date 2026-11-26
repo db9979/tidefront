@@ -3,6 +3,7 @@ import { buildingLevel, hasResources, settle, subtractResources } from "./econom
 import type { Modifiers } from "./modifiers.ts";
 import { modEntry } from "./modifiers.ts";
 import { diluteBase } from "./veterans.ts";
+import { poweredFinishMs } from "./power.ts";
 
 /** Pseudo-Bauplatz für Verteidigungsanlagen (haben in balance.json kein builtIn). */
 export const DEFENSE_SLOT = "anlagen";
@@ -91,14 +92,21 @@ export function startTraining(
   if (!hasResources(next.resources, cost)) return { ok: false, code: "insufficient_resources" };
 
   next.resources = subtractResources(next.resources, cost);
+  const workMs = Math.ceil(secondsEach * count * 1000);
   const order: TrainingOrder = {
     kind: isUnit ? "unit" : "defense",
     id,
     count,
     builtIn,
     startedAt: nowMs,
-    finishesAt: nowMs + Math.ceil(secondsEach * count * 1000),
+    finishesAt: nowMs + workMs,
   };
+  // Strom (v1.6): Werft, Kaserne und Flugfeld sind Verbraucher im Rang 3. Die Fertigstellung wird beim Start
+  // mit der Stromprognose (Wetter deterministisch) bestimmt und bleibt danach fest.
+  if (isUnit && (balance.buildings[builtIn]?.powerPerLevel ?? 0) > 0) {
+    const probe = { ...next, trainingQueue: [...next.trainingQueue, { ...order, finishesAt: Infinity }] };
+    order.finishesAt = poweredFinishMs(probe, nowMs, workMs, "training", balance, mods);
+  }
   next.trainingQueue = [...next.trainingQueue, order];
   return { ok: true, base: next, order: { ...order } };
 }
