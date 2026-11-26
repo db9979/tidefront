@@ -2,6 +2,15 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.13.0 – 27.11.2026
+- **Weniger Scrollen** (nach Messung durch einen Game-Designer): Die Seiten sind deutlich kürzer – Basis von 6 auf unter 3 Bildschirmhöhen, Truppen je Bereich etwa 1–2 statt bis zu 5,5, Börse von 3,6 auf unter 2.
+- Jeder Reiter merkt sich, wie weit du gescrollt hast; Missionsplanung, Handbuch und Forschung öffnen oben.
+- **Basis „Hafen zuerst“**: Bauhof und Gebäude stehen oben. Auftragsbuch, Tagesbefehle und Wochenziele sind eine kompakte Leiste „Aufträge“ mit Zähler, was abholbereit ist – antippen öffnet die Details. Versorgung und Schutz sind einklappbar.
+- **Truppen** mit Umschalter „Einsatz · Ausbilden · Abwehr“; jede Einheit ist eine Zeile, Werte und Kosten im Infoblatt (ⓘ). Forschung als Knopf oben.
+- **Feste Aktionsleiste** über der Navigation: „Auslaufen“, Kaufen/Verkaufen und „Angebot einstellen“ sind immer erreichbar.
+- **Börse** mit Unterreitern „Handel · Spieler · Nachrichten“; Tipp auf eine Ware holt die Order ins Bild, der Kursverlauf ist einklappbar.
+- Karte: Das Infofeld nimmt höchstens 45 % der Höhe ein. Erfolge, Rangliste (Top 10 + eigener Platz), Berichte (Filter, „Weitere laden“), Handbuch (Kapitelleiste), Forschung (Zweige als Umschalter) und Einstellungen sind gestrafft.
+
 ## 0.12.2 – 27.11.2026
 - **Wetter fachlich überarbeitet** (geprüft von einem Entwickler und einem Meteorologen): Tiefs ziehen nach Nordosten, der stärkste Wind liegt am Rand des Tiefs statt im Kern, Hochs halten länger. Der Norden ist nicht mehr dauernd stürmisch (Bergen im Winter ~8 % Sturm, im Sommer kaum), dafür gibt es Mistral, Meltemi, Bora und Wind in der Straße von Gibraltar. Nebel gibt es jetzt auch an Nordsee, Ärmelkanal und vor Portugal, am meisten bei Neufundland im Sommer.
 - **Wetterkarte**: Isobaren folgen dem Luftdruck, Windfahnen mit Fiedern nach Stärke, Sturmwimpel statt Blitz, Mond bei klarer Nacht.

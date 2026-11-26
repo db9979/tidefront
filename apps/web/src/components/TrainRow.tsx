@@ -21,6 +21,13 @@ const MAX_TRAIN = 10000;
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 
+/** Weiche Trennstellen an Wortfugen langer Einheitennamen (nur dort wird umbrochen, nie mitten im Wort). */
+const FUGEN = ["Landungs", "Minen", "Aufklärungs", "Abfang", "Jagd", "Kampf", "Küsten", "Flak", "Bunker", "Schnell", "Kolonie"];
+function softName(name: string): string {
+  for (const f of FUGEN) if (name.startsWith(f) && name.length > f.length + 3) return f + "\u00ad" + name.slice(f.length);
+  return name;
+}
+
 export function scale(cost: Record<string, number> | undefined, n: number): Record<string, number> {
   const out: Record<string, number> = {};
   for (const [r, v] of Object.entries(cost ?? {})) out[r] = v * n;
@@ -106,7 +113,7 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
           <span aria-hidden className="absolute -bottom-1.5 -right-2 min-w-5 px-1 rounded-full bg-ink text-paper mono text-[10.5px] leading-4 text-center">{fmtNum(props.have)}</span>
         </button>
         <button type="button" className="min-w-0 flex-1 text-left leading-tight pl-1" onClick={() => setInfo(true)}>
-          <span className="block font-serif text-[14px] break-words hyphens-auto" lang="de">{label(props.id)}</span>
+          <span className="block font-serif text-[13.5px] [hyphens:manual]" lang="de">{softName(label(props.id))}</span>
           {(props.away > 0 || (vet && vet.rank !== "rekrut")) && (
             <span className="block text-[11px] tabular-nums text-ink2">{props.away > 0 ? `+${fmtNum(props.away)} unterwegs ` : ""}{vet && vet.rank !== "rekrut" && <RankBadge vet={vet} />}</span>
           )}

@@ -101,17 +101,17 @@ export function Stepper({ value, onChange, max, limit, compact = false }: { valu
   const clamp = (v: number) => Math.max(0, Math.min(max ?? Infinity, limit ?? Infinity, Math.floor(v || 0)));
   return (
     <div className={`flex items-center ${compact ? "gap-0.5 shrink-0" : "gap-1"}`}>
-      <button type="button" className="tap rounded-lg btn-secondary text-lg" onClick={() => onChange(clamp(value - 1))} aria-label="weniger">−</button>
+      <button type="button" className={`${compact ? "h-11 w-8" : "tap"} rounded-lg btn-secondary text-lg`} onClick={() => onChange(clamp(value - 1))} aria-label="weniger">−</button>
       <input
         inputMode="numeric"
         aria-label="Anzahl"
-        className={`${compact ? "w-11" : "w-16"} h-11 rounded-lg field text-center mono`}
+        className={`${compact ? "w-10" : "w-16"} h-11 rounded-lg field text-center mono`}
         maxLength={8}
         value={value}
         // Nur der ganzzahlige Teil zählt: „1.5“ wird 1, nicht 15.
         onChange={(e) => onChange(clamp(Number(e.target.value.split(/[.,]/)[0].replace(/\D/g, ""))))}
       />
-      <button type="button" className="tap rounded-lg btn-secondary text-lg" onClick={() => onChange(clamp(value + 1))} aria-label="mehr">+</button>
+      <button type="button" className={`${compact ? "h-11 w-8" : "tap"} rounded-lg btn-secondary text-lg`} onClick={() => onChange(clamp(value + 1))} aria-label="mehr">+</button>
       {max !== undefined && (
         <button type="button" className="tap rounded-lg btn-secondary text-xs px-2" onClick={() => onChange(max)}>alle</button>
       )}
