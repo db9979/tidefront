@@ -15,11 +15,13 @@ import { PriceChart } from "../components/market/PriceChart.tsx";
 import { OrderTicket } from "../components/market/OrderTicket.tsx";
 import type { MarketCfg } from "../components/market/calc.ts";
 import { MarketNews } from "../components/MarketNews.tsx";
+import { ConvoyList, useNaval } from "../components/Naval.tsx"; // See: Konvois, Blockade
 
 export function MarketScreen({ base }: { base: BaseData }) {
   const m = useQuery({ ...trpc.market.get.queryOptions(), refetchInterval: 30000 });
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const we = useWorldEvents();
+  const naval = useNaval();
   const now = useNow();
   const [resource, setResource] = useState("stahl");
   if (!m.data || !meta.data) return <Loading />;
@@ -47,6 +49,7 @@ export function MarketScreen({ base }: { base: BaseData }) {
           : { tone: "open", title: "Geöffnet", reasons: [] };
   if (unlocked && siege) status.reasons.push("Belagerungsring vor deinem Hafen: keine Börsenkäufe.");
   if (unlocked && attack) status.reasons.push("Angriff erkannt: keine Verkäufe, bis er vorbei ist.");
+  if (unlocked && naval.data?.ownBlockade) { status.reasons.push("Seeblockade vor deinem Hafen: keine Verkäufe, Lieferungen werden zurückgehalten."); if (status.tone === "open") { status.tone = "partial"; status.title = "Verkäufe gesperrt"; } } // See
   if (halted.length > 0) status.reasons.push(`Handelspause: ${halted.map((r) => `${label(r.id)} (noch ${fmtDuration(r.haltedUntilMs - now)})`).join(", ")}.`);
   if (unlocked && status.tone === "open" && halted.length > 0) status.tone = "partial";
 
@@ -82,6 +85,7 @@ export function MarketScreen({ base }: { base: BaseData }) {
         <MarketNews limit={6} showRefs />
       </Card>
 
+      <ConvoyList />
       <PlayerTrade base={base} />
       <PlayerTradeStats />
     </div>

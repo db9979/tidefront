@@ -51,6 +51,7 @@ import { admiralPreviewMods } from "./admirals-core.ts"; // Admirale
 // Allianz-Ops: Stationierung (Vorschau, Gäste im Hafen) und gemeinsame Berichte der Sammelangriffe
 import { STATION_TYPE, stationPreview, stationedView } from "./alliance-ops-station.ts";
 import { sharedReportIds } from "./alliance-ops-view.ts";
+import { isNavalInput, previewNaval } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 
 /**
  * Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband;
@@ -105,7 +106,7 @@ export async function baseView(engine: Engine, playerId: number) {
   const missions = await engine.db
     .select()
     .from(tables.mission)
-    .where(and(eq(tables.mission.baseId, own.id), inArray(tables.mission.status, ["outbound", "returning", "staged", "stationed"]))) // Allianz-Ops
+    .where(and(eq(tables.mission.baseId, own.id), inArray(tables.mission.status, ["outbound", "returning", "staged", "stationed", "holding"]))) // Allianz-Ops
     .orderBy(tables.mission.arriveAt);
   const incomingRows = await engine.db
     .select()
@@ -248,13 +249,14 @@ export async function mapView(engine: Engine, playerId: number) {
 export async function missionPreview(
   engine: Engine,
   playerId: number,
-  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number; admiralId?: number },
+  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number; admiralId?: number; blockadeId?: number; convoyId?: number; holdHours?: number },
 ) {
   const nowMs = Date.now();
   const own = await baseOfPlayer(engine.db, playerId);
   if (!own) return { ok: false as const, code: "no_base" };
   if (input.eventId !== undefined) return previewAgainstEvent(engine.db, playerId, own, { ...input, eventId: input.eventId }, nowMs);
   if (input.type === STATION_TYPE) return stationPreview(engine.db, playerId, own, input, nowMs); // Allianz-Ops
+  if (isNavalInput(input)) return previewNaval(engine.db, playerId, own, input, nowMs); // See: Minen/Blockade/Konvoi
   const target = await targetAt(engine.db as never, input.col, input.row);
   const distanceKm = hexDistanceKm(own, input);
   if (!target) return { ok: false as const, code: "no_target", distanceKm };

@@ -26,6 +26,7 @@ import type { WeatherBalance } from "@tidefront/game-core";
 import { buildSoundings } from "../map/soundings.ts";
 // Weltereignisse des Kartells (eigene Ebene unter den Hafenzeichen)
 import { buildWorldEventLayer, type MapWorldEvent } from "../map/world-events.ts";
+import { buildNavalLayer, type MapNaval } from "../map/naval.ts"; // See: Minen/Blockade/Konvoi
 
 /** Kartenschriften vor dem ersten Zeichnen laden (Pixi rastert Text über das Canvas). */
 const FONTS = ["600 12px Fraunces", "italic 600 12px Fraunces", "600 12px 'IBM Plex Sans'", "500 10px 'IBM Plex Mono'"];
@@ -60,6 +61,7 @@ export interface HexMapProps {
   alert?: boolean;
   /** Weltereignisse (Schatzschiff, Großflotte, Belagerung). */
   events?: MapWorldEvent[];
+  naval?: MapNaval; // See: Minenfelder, Blockaden, Konvois
   /** Wetterschicht (Wolken, Sturm, Nebel); fehlt sie, ist die Schicht aus. */
   weather?: WeatherBalance | null;
 }
@@ -114,7 +116,7 @@ function dashed(g: Graphics, a: { x: number; y: number }, b: { x: number; y: num
 }
 
 export function HexMap(props: HexMapProps) {
-  const { data, selected, onSelect, selectMode, center, zoom, recenter, free, home, missions, alert, events, weather } = props;
+  const { data, selected, onSelect, selectMode, center, zoom, recenter, free, home, missions, alert, events, weather, naval } = props;
   const weatherLayer = useRef<WeatherLayer | null>(null);
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<Scene | null>(null);
@@ -370,8 +372,9 @@ export function HexMap(props: HexMapProps) {
       old.root.destroy({ children: true });
       eventLayer.current = null;
     }
-    if (!events || events.length === 0) return;
-    const layer = buildWorldEventLayer(events, serverNow());
+    if ((!events || events.length === 0) && !naval) return;
+    const layer = buildWorldEventLayer(events ?? [], serverNow());
+    if (naval) { const nl = buildNavalLayer(naval, serverNow()); layer.root.addChild(nl.root); layer.pinned.push(...nl.pinned); } // See
     s.world.addChildAt(layer.root, s.world.getChildIndex(s.markerLayer));
     // Weltereignisse immer sichtbar und vorrangig: Zeichen und Schilder belegen Platz vor allen Namen.
     for (const p of layer.pinned as Pinned[]) {
@@ -383,7 +386,7 @@ export function HexMap(props: HexMapProps) {
     eventLayer.current = layer;
     relayout(s);
     snap([s.pinnedMarkers]);
-  }, [ready, data, events]);
+  }, [ready, data, events, naval]);
 
   // Wetterschicht unter den Zeichen (an- und abschaltbar).
   useEffect(() => {

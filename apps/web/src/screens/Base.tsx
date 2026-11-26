@@ -21,6 +21,7 @@ import { buildingBreakdown } from "../lib/breakdown.ts";
 import { Breakdown } from "../components/Breakdown.tsx";
 import { IntelPanel, SabotageBanner, sabotagedUntil } from "../components/Intel.tsx"; // Nachrichtendienst
 import { PowerGrid } from "../components/PowerGrid.tsx";
+import { BlockadeBanner } from "../components/Naval.tsx"; // See: Blockade („blockiert bis …“)
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 
@@ -78,6 +79,7 @@ export function BaseScreen(props: {
 
       <SabotageBanner base={base} now={now} />
       <WorldEventBanner onMap={() => props.onGuide({ kind: "tab", tab: "karte" })} />
+      <BlockadeBanner />
       <Guide base={base} onAction={props.onGuide} />
       <DailyOrders />
       <WeeklyGoals />

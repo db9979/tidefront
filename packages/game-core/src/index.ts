@@ -18,5 +18,6 @@ export * from "./espionage.ts";
 export * from "./weather.ts";
 export * from "./power.ts";
 export * from "./admirals.ts"; // Admirale
+export * from "./naval.ts"; // See: Minen/Blockade/Konvoi
 export * as market from "./market/index.ts";
 export * from "./alliance-ops.ts"; // Allianz-Ops (Sammelangriff, Stationierung)

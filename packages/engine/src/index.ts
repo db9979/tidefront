@@ -64,3 +64,5 @@ export {
 export { openRaid, joinRaid, withdrawRaid, cancelRaid } from "./alliance-ops-raid.ts";
 export { stationRelease, STATION_TYPE } from "./alliance-ops-station.ts";
 export { allianceRaidsView } from "./alliance-ops-view.ts";
+// See: Minen, Blockade und Konvois
+export { navalView, navalRouteMines, liftBlockade, clearNaval, NAVAL_TYPES } from "./naval.ts";

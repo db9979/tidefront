@@ -5,6 +5,7 @@ import type { MarketNewsBalance } from "./market/types.ts";
 import type { EspionageBalance, IntelState } from "./espionage.ts";
 import type { CombatWeather, RouteWeather, WeatherBalance } from "./weather.ts";
 import type { PowerBalance, PowerSnapshot } from "./power.ts";
+import type { BlockadeBalance, ConvoysBalance, MinesBalance } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 
 export type ResourceMap = Record<string, number>;
 export type Counts = Record<string, number>;
@@ -78,6 +79,9 @@ export interface UnitDef {
   covert?: boolean;
   /** Höchstzahl je Stufe des Baugebäudes (daheim, unterwegs, in Ausbildung). */
   maxPerLevel?: number;
+  /** See: Minen/Blockade/Konvoi – Minenstärke, die ein Schiff legt (Minenleger) bzw. räumt (Minenräumer). */
+  mineLayer?: number;
+  mineSweeper?: number;
 }
 
 export interface DefenseDef {
@@ -185,6 +189,12 @@ export interface Balance {
   admirals?: AdmiralBalance; // Admirale (admirals.ts); fehlt es, gibt es keine Admirale
   /** Erfolge und Wochenziele (Erfolge); fehlt es, gibt es keine Abzeichen und Wochenziele. */
   achievements?: AchievementsBalance;
+  /** Allianz-Ops: Sammelangriff und Stationierung (alliance-ops.ts); fehlt es, gelten die Vorgaben. */
+  allianceOps?: import("./alliance-ops.ts").AllianceOpsBalance;
+  // See: Minen/Blockade/Konvoi (naval.ts); fehlt ein Block, ist das System aus.
+  mines?: MinesBalance;
+  blockade?: BlockadeBalance;
+  convoys?: ConvoysBalance;
 }
 
 // ---------------------------------------------------------------- Erfolge (Abzeichen) und Wochenziele
@@ -218,8 +228,6 @@ export interface AchievementsBalance {
     bonusCredits: number;
     stageGrowth: number;
   };
-  /** Allianz-Ops: Sammelangriff und Stationierung (alliance-ops.ts); fehlt es, gelten die Vorgaben. */
-  allianceOps?: import("./alliance-ops.ts").AllianceOpsBalance;
 }
 
 /** Würfel des Kriegsglücks: 1 = min, die = max, dazwischen linear innerMin … innerMax (luck.ts). */
@@ -417,7 +425,9 @@ export interface GeoPoint {
   lon: number;
 }
 
-export type MissionType = "ueberfall" | "aufklaerung" | "transport";
+export type MissionType = "ueberfall" | "aufklaerung" | "transport"
+  // See: Minen/Blockade/Konvoi – nur serverseitig geplant (naval-*.ts), nicht in MISSION_TYPES.
+  | "minen" | "raeumen" | "blockade" | "abfangen" | "geleit";
 
 export interface MissionInput {
   type: string;

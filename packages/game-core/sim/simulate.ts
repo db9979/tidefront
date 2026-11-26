@@ -25,6 +25,7 @@ import { runLuckSim } from "./luck.ts";
 import { runPowerSim } from "./power.ts";
 import { runEspionageSim } from "./espionage.ts";
 import { runAdmiralSim } from "./admirals.ts"; // Admirale
+import { runNavalSim } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 
 const balance = JSON.parse(
   readFileSync(new URL("../../balance/v1/balance.json", import.meta.url), "utf8"),
@@ -262,6 +263,8 @@ runPowerSim(balance);
 runEspionageSim(balance, snaps);
 // Admirale (Welle 2): Kampfwert-Bonus eines Admirals.
 runAdmiralSim(balance);
+// See: Minenverluste, Blockade-Wirkung, Konvoi-Verlustquote.
+runNavalSim(balance, snaps);
 
 /** Der Bot schickt alles, was daheim steht (die Doktrin hält ihn innerhalb der Kommandopunkte). */
 function sentFleet(s: BotSnapshot): Counts {

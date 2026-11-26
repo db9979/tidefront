@@ -11,7 +11,7 @@ import { HexMap } from "./LazyHexMap.tsx";
 import { Button, Card, ErrorLine, Loading, Stepper } from "../ui.tsx";
 import { RouteWeather } from "../components/RouteWeather.tsx"; // Wetter auf der Route (v1.6)
 // Komfort: Vorlagen, Wiederholen, Probekampf
-import { fitUnits, type PlanPreset } from "../lib/plan-request.ts";
+import { fitUnits, isPlanType, type PlanPreset } from "../lib/plan-request.ts";
 import { TemplateBar, shortText } from "../components/Templates.tsx";
 import { ProbeCard } from "../components/SimLauncher.tsx";
 // Weltereignisse als Ziel
@@ -22,6 +22,7 @@ import { SpyPlan } from "../components/SpyPlan.tsx";
 import { AdmiralPick } from "../components/Admirals.tsx";
 // Allianz-Ops: Stationieren, als Sammelangriff eröffnen
 import { RaidOpenCard } from "../components/AllianceOps.tsx";
+import { HoldHours, MineWarning } from "../components/Naval.tsx"; // See: Minen/Blockade/Konvoi
 
 const TYPES = [
   { id: "ueberfall", text: "Überfall", hint: "Kampf am Ziel, Beute bei Sieg" },
@@ -29,7 +30,13 @@ const TYPES = [
   { id: "transport", text: "Transport", hint: "Ladung an einen Stützpunkt" },
   { id: "spionage", text: "Spionage", hint: "Spione des Nachrichtendiensts: Erkunden, Sabotage, Desinformation, Kartell" },
   { id: "stationierung", text: "Stationieren", hint: "Truppen verteidigen den Hafen eines Verbündeten mit, bis du sie zurückrufst" }, // Allianz-Ops
+  // See: Minen/Blockade/Konvoi (Abfangen nur mit einem Konvoi als Ziel, über die Karte)
+  { id: "minen", text: "Minen legen", hint: "Minenleger legen ein Minenfeld auf offener See nahe dem eigenen Hafen" },
+  { id: "raeumen", text: "Minen räumen", hint: "Minenräumer räumen fremde Minenfelder auf dem Zielfeld" },
+  { id: "blockade", text: "Blockade", hint: "Bewaffnete Schiffe liegen vor einem fremden Hafen: Produktion, Lieferungen und Börse des Ziels leiden" },
+  { id: "abfangen", text: "Abfangen", hint: "Konvoi eines Kriegsgegners auf See abfangen: Kampf gegen das Geleit, Beute aus der Ladung" },
 ] as const;
+type PlanKind = (typeof TYPES)[number]["id"];
 
 /** Bestätigung nach dem Auslaufen, passend zur Art der Mission. */
 const SENT_TEXT: Record<string, string> = {
@@ -38,12 +45,17 @@ const SENT_TEXT: Record<string, string> = {
   transport: "Die Ladung wird bei Ankunft gutgeschrieben; die Bestätigung erscheint unter „Meldungen“.",
   stationierung: "Die Truppen verteidigen den Hafen des Verbündeten ab der Ankunft mit. Zurückrufen unter „Truppen“.",
   sammelangriff: "Deine Allianz kann jetzt beitreten (Allianz → Angriffe). Zur Frist laufen alle gemeinsam aus.",
+  minen: "Das Minenfeld liegt nach der Ankunft; der Bericht erscheint unter „Meldungen“.",
+  raeumen: "Der Räumbericht erscheint nach der Ankunft unter „Meldungen“.",
+  blockade: "Nach der Ankunft beginnt die Blockade; das Ziel wird benachrichtigt.",
+  abfangen: "Der Kampfbericht erscheint nach dem Abfangen unter „Meldungen“.",
 };
 
 export function MissionPlan({ base, initialTarget, onClose, preset }: { base: BaseData; initialTarget: Target | null; onClose: () => void; onPickOnMap?: () => void; preset?: PlanPreset }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const map = useQuery(trpc.world.map.queryOptions());
-  const [type, setType] = useState<"ueberfall" | "aufklaerung" | "transport" | "spionage" | "stationierung">(preset?.type ?? "ueberfall");
+  const [type, setType] = useState<PlanKind>(preset?.type ?? initialTarget?.naval ?? (initialTarget?.convoyId ? "abfangen" : "ueberfall"));
+  const [holdHours, setHoldHours] = useState(4); // See: Blockade
   const [target, setTarget] = useState<Target | null>(initialTarget);
   // Vorbelegung („Wiederholen“) auf die Einheiten daheim gekürzt; note erklärt die Kürzung.
   const [first] = useState(() => fitUnits(preset?.units ?? {}, Object.fromEntries(base.units.map((u) => [u.id, u.home]))));
@@ -58,13 +70,14 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   }, []);
   const worldEvents = useWorldEvents(!!target?.eventId);
   const launch = useCommand(
-    (i: { key: string; type: string; units: Record<string, number>; col: number; row: number; cargo?: Record<string, number>; eventId?: number; admiralId?: number }) => trpcClient.mission.launch.mutate(i),
+    (i: { key: string; type: string; units: Record<string, number>; col: number; row: number; cargo?: Record<string, number>; eventId?: number; blockadeId?: number; convoyId?: number; holdHours?: number; admiralId?: number }) => trpcClient.mission.launch.mutate(i),
     () => [trpc.base.pathFilter().queryKey, trpc.admiral.pathFilter().queryKey], // Admirale: Status
   );
 
   const chosen = useMemo(() => Object.fromEntries(Object.entries(units).filter(([, n]) => n > 0)), [units]);
   const cargoSent = type === "transport" ? Object.fromEntries(Object.entries(cargo).filter(([, n]) => n > 0)) : undefined;
-  const input = target ? { type, units: chosen, col: target.col, row: target.row, cargo: cargoSent, ...(target.eventId ? { eventId: target.eventId } : admiralId ? { admiralId } : {}) } : null;
+  const naval = target?.blockadeId ? { blockadeId: target.blockadeId } : target?.convoyId ? { convoyId: target.convoyId } : type === "blockade" ? { holdHours } : {}; // See
+  const input = target ? { type, units: chosen, col: target.col, row: target.row, cargo: cargoSent, ...(target.eventId ? { eventId: target.eventId } : admiralId ? { admiralId } : {}), ...naval } : null;
   const event = target?.eventId ? worldEvents.data?.events.find((e) => e.id === target.eventId) : undefined;
   const preview = useQuery({
     ...trpc.mission.preview.queryOptions(input ?? { type, units: {}, col: 0, row: 0 }),
@@ -82,7 +95,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
     space += (d.troopSpace ?? 0) * n;
     cargoCap += (d.cargo ?? 0) * n;
   }
-  const tInfo = target && !target.eventId ? {
+  const tInfo = target && !target.eventId && !target.blockadeId && !target.convoyId ? {
     base: map.data.bases.find((b) => b.col === target.col && b.row === target.row),
     nest: map.data.nests.find((n) => n.col === target.col && n.row === target.row),
   } : null;
@@ -106,7 +119,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
 
       <Card title="Art">
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-          {TYPES.map((t) => (
+          {TYPES.filter((t) => t.id !== "abfangen" || target?.convoyId).map((t) => (
             <button key={t.id} type="button" onClick={() => setType(t.id)} className={`tap rounded-xl px-1 py-2 text-sm flex flex-col items-center gap-1 border ${type === t.id ? "border-sea-400 bg-sea-400/10 font-semibold reticle" : "border-navy-600 bg-navy-900"}`}>
               <Icon id={t.id} size={32} />
               {t.text}
@@ -124,14 +137,19 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         </div>
         <p className="text-sm">
           {!target && "Ziel auf der Karte antippen."}
+          {target?.blockadeId && <>Blockadeverband vor dem Hafen – nur Überfall; Seekampf auf dem Feld.<br /></>}
+          {target?.convoyId && <>Feindlicher Konvoi – Abfangpunkt wird berechnet.<br /></>}
           {target?.eventId && <>Weltereignis <strong>{event ? KIND_TITLE[event.kind] : "…"}</strong>{event?.siege ? ` vor ${event.siege.name}` : ""} – nur Überfall; {event?.kind === "schatzschiff" ? "Abfangpunkt wird berechnet." : "Kampf auf See."}<br /></>}
-          {target && !target.eventId && tInfo?.base && <>Stützpunkt <strong>{tInfo.base.name}</strong> ({tInfo.base.owner}){tInfo.base.protection && <span className="text-messing"> · geschützt: {label(tInfo.base.protection)}</span>}</>}
-          {target && !target.eventId && tInfo?.nest && <>Piratennest Stufe <strong>{tInfo.nest.level}</strong>{tInfo.nest.empty ? " (verlassen)" : ""}</>}
-          {target && !target.eventId && !tInfo?.base && !tInfo?.nest && <span className="text-slate-400">Feld {target.col}/{target.row}: kein Ziel</span>}
+          {target && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.base && <>Stützpunkt <strong>{tInfo.base.name}</strong> ({tInfo.base.owner}){tInfo.base.protection && <span className="text-messing"> · geschützt: {label(tInfo.base.protection)}</span>}</>}
+          {target && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.nest && <>Piratennest Stufe <strong>{tInfo.nest.level}</strong>{tInfo.nest.empty ? " (verlassen)" : ""}</>}
+          {target && !target.eventId && !target.blockadeId && !target.convoyId && !tInfo?.base && !tInfo?.nest && <span className="text-slate-400">Feld {target.col}/{target.row}: kein Ziel</span>}
         </p>
       </Card>
 
-      {type !== "stationierung" && <TemplateBar base={base} units={chosen} type={type} onApply={(u, t, n) => { setUnits(u); if (t) setType(t); setNote(n); }} />}
+      {type === "blockade" && <HoldHours value={holdHours} onChange={setHoldHours} />}
+      {target && Object.keys(chosen).length > 0 && type !== "aufklaerung" && <MineWarning col={target.col} row={target.row} units={chosen} />}
+
+      {type !== "stationierung" && <TemplateBar base={base} units={chosen} type={isPlanType(type) ? type : "ueberfall"} onApply={(u, t, n) => { setUnits(u); if (t) setType(t); setNote(n); }} />}
 
       <Card title="Verband">
         {note && <p className="text-xs text-messing mb-1">{note}</p>}

@@ -19,6 +19,7 @@ import { RecallSheet, missionHex, targetName } from "../components/MissionSheet.
 export { targetName };
 import { AdmiralsCard } from "../components/Admirals.tsx"; // Admirale
 import { OpsMissionLine, StationedGuestsCard } from "../components/AllianceOps.tsx"; // Allianz-Ops
+import { LiftBlockade } from "../components/Naval.tsx"; // See: Blockade aufheben
 
 /** Werte, die die Aufschlüsselung zeigt (aus der festen Werte-Tabelle ausgeblendet). */
 const BROKEN_DOWN = /^(Lebenspunkte|Angriff|U-Jagd|Tempo|Ladung|Treibstoff)/;
@@ -81,6 +82,11 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
               >
                 {m.status === "outbound" ? `Ankunft in ${fmtDuration(m.arriveAtMs - now)}` : `Rückkehr in ${fmtDuration(m.returnAtMs - now)}`} · auf der Karte zeigen
               </button>)}
+              <div className="text-xs text-slate-300"><UnitChips counts={m.status === "returning" ? m.returning : m.units} /></div>
+              <div className="text-sea-300">
+                {m.status === "outbound" ? `Ankunft in ${fmtDuration(m.arriveAtMs - now)}` : m.status === "holding" ? "Blockade läuft" : `Rückkehr in ${fmtDuration(m.returnAtMs - now)}`}
+              </div>
+              {m.status === "holding" && <LiftBlockade missionId={m.id} />}
               {m.cargoHome && Object.values(m.cargoHome).some((v) => v > 0) && (
                 <div className="text-xs text-brass-400">Ladung: <UnitChips counts={m.cargoHome} /></div>
               )}

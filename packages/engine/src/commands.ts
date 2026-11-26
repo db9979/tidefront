@@ -41,6 +41,7 @@ import { modifiersFor, modsOf } from "./modifiers.ts";
 import { applyPendingBoost } from "./guide.ts";
 import { admiralForLaunch, assignAdmiral } from "./admirals-core.ts"; // Admirale
 import { STATION_TYPE, stationLaunch } from "./alliance-ops-station.ts"; // Allianz-Ops: Stationierung
+import { createConvoy, isNavalInput, launchNaval, tradeBlocked, transportConvoyRecall } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 
 export type Rejected = { ok: false; code: string };
 type Draft<T> = T | (Rejected & { keepWrites?: boolean });
@@ -237,13 +238,15 @@ export function launchMission(
   engine: Engine,
   playerId: number,
   key: string,
-  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number; admiralId?: number },
+  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number; admiralId?: number; blockadeId?: number; convoyId?: number; holdHours?: number },
 ) {
   return runCommand<{ ok: true; missionId: number; arriveAtMs: number }>(engine, playerId, key, "mission", async (ctx) => {
     const b = await ownBaseLocked(ctx);
     // Weltereignis als Ziel (world-events-missions.ts).
     if (input.eventId !== undefined) return launchAgainstEvent(ctx.tx, playerId, b, { ...input, eventId: input.eventId }, ctx.nowMs, ctx.notify);
     if (input.type === STATION_TYPE) return stationLaunch(ctx.tx, playerId, b, input, ctx.nowMs, ctx.notify); // Allianz-Ops
+    // See: Minen legen/räumen, Blockade, Konvoi abfangen, Angriff auf Blockade (naval.ts).
+    if (isNavalInput(input)) return launchNaval(ctx.tx, playerId, b, input, ctx.nowMs, ctx.notify);
     const target = await targetAt(ctx.tx, input.col, input.row);
     if (!target) fail("no_target");
     if (target.kind === "base" && target.playerId === playerId) fail("own_base");
@@ -284,6 +287,10 @@ export function launchMission(
       .returning({ id: tables.mission.id });
     if (adm) await assignAdmiral(ctx.tx, adm.id, m.id); // Admirale
     await scheduleEvent(ctx.tx, "mission_arrive", r.mission.arriveAtMs, { missionId: m.id }, target.kind === "base" ? target.id : null);
+    // See: Konvoi – ein Transport reist als Konvoi (Kartell und Kriegsgegner können abfangen).
+    if (r.mission.type === "transport" && target.kind === "base") {
+      await createConvoy(ctx.tx, { kind: "transport", missionId: m.id, senderId: playerId, recipientId: target.playerId!, recipientBaseId: target.id, from: b, to: target, cargo: r.mission.cargo, escort: r.mission.units, departMs: ctx.nowMs, arriveMs: r.mission.arriveAtMs });
+    }
     if (r.mission.type === "ueberfall" && target.kind === "base" && target.state) {
       const targetMods = await modifiersFor(ctx.tx, target.playerId, { state: target.state, nowMs: ctx.nowMs });
       await scheduleAttackWarning(ctx.tx, { missionId: m.id, targetBaseId: target.id, targetState: target.state, arriveAtMs: r.mission.arriveAtMs, nowMs: ctx.nowMs, targetMods, warningFactor: r.mission.warningFactor });
@@ -314,7 +321,7 @@ export function recallOwnMission(engine: Engine, playerId: number, key: string, 
         status: "returning",
         plan: r.mission,
         returning: { ...plan.units },
-        cargoHome: { ...(plan.cargo ?? {}) },
+        cargoHome: { ...((await transportConvoyRecall(ctx.tx, m.id)) ?? plan.cargo ?? {}) }, // See: Konvoi (Ladung nach Abfang)
         returnAt: new Date(r.returnAtMs),
       })
       .where(eq(tables.mission.id, m.id));
@@ -354,6 +361,7 @@ export function trade(
     if (!balance.resources.includes(request.resource)) fail("bad_qty");
     // Weltereignis Belagerung: keine Börsenkäufe (Lieferungen) während des Belagerungsrings.
     if (request.side === "buy" && (await siegeEffects(ctx.tx, b.id, ctx.nowMs))?.marketBlocked) fail("siege");
+    if (await tradeBlocked(ctx.tx, b.id, request.side, ctx.nowMs)) fail("blockade"); // See: Blockade sperrt Börsenverkäufe
     const marketState = await loadMarket(ctx.tx, request.resource);
     const mods = await modsOf(ctx.tx, b, ctx.nowMs);
     const state = settle(b.state, ctx.nowMs, balance, mods);

@@ -16,13 +16,16 @@ const NAMES: Record<string, string> = {
   erkunden: "Erkunden", desinformation: "Desinformation", bauschlange: "Bauschlange",
   anfaengerschutz: "Anfängerschutz", niederlage: "Schutz nach Niederlage", nachtschild: "Nachtschild",
   sammelangriff: "Sammelangriff", stationierung: "Stationierung", // Allianz-Ops
+  // See: Minen/Blockade/Konvoi
+  minenleger: "Minenleger", minenraeumer: "Minenräumer", minen: "Minen legen", raeumen: "Minen räumen", blockade: "Blockade",
+  abfangen: "Konvoi abfangen", geleit: "Geleitschutz", konvoi: "Konvoi", blockadekampf: "Blockadekampf", mine: "Minenfeld",
 };
 
 const PLURAL: Record<string, string> = {
   korvette: "Korvetten", zerstoerer: "Zerstörer", landungsschiff: "Landungsschiffe", uboot: "U-Boote", schuetzen: "Schützen", pioniere: "Pioniere",
   kampfpanzer: "Kampfpanzer", abfangjaeger: "Abfangjäger", jagdbomber: "Jagdbomber", aufklaerungsdrohne: "Aufklärungsdrohnen",
   schnellboot: "Schnellboote", piratenmiliz: "Piratenmilizionäre", kuestenbatterie: "Küstenbatterien", flakstellung: "Flakstellungen",
-  bunkerlinie: "Bunkerlinien", minensperre: "Minensperren", spion: "Spione",
+  bunkerlinie: "Bunkerlinien", minensperre: "Minensperren", spion: "Spione", minenleger: "Minenleger", minenraeumer: "Minenräumer",
 };
 
 /** Name mit passender Zahlform für eine Menge. */
@@ -216,6 +219,23 @@ const ERRORS: Record<string, string> = {
   sabotage_cooldown: "Dieser Hafen wurde vor Kurzem sabotiert und ist noch in Alarmbereitschaft (höchstens eine Sabotage je 24 Stunden).",
   no_espionage: "Spionage ist nicht verfügbar.",
   bad_spy_kind: "Unbekannte Auftragsart.",
+  // See: Minen/Blockade/Konvoi
+  not_sea: "Minen lassen sich nur auf offener See legen und räumen.",
+  too_far: "Zu weit vom eigenen Hafen entfernt.",
+  no_minelayer: "Zum Minenlegen gehört mindestens ein Minenleger in den Verband.",
+  no_sweeper: "Zum Räumen gehört mindestens ein Minenräumer in den Verband.",
+  too_many_fields: "Du hast schon die Höchstzahl an Minenfeldern ausgelegt.",
+  blockade_ships_only: "Eine Blockade halten nur Schiffe – keine Truppen, keine Flugzeuge.",
+  blockade_too_weak: "Zu schwach für eine Blockade: mehr bewaffnete Schiffe (Kommandopunkte) mitschicken.",
+  already_blockading: "Du blockierst diesen Hafen schon.",
+  no_blockade: "Diese Blockade gibt es nicht (mehr).",
+  own_blockade: "Die eigene Blockade kannst du nur aufheben.",
+  blockade: "Seeblockade: keine Börsenverkäufe, bis die Blockade endet oder gebrochen ist.",
+  no_convoy: "Diesen Konvoi gibt es nicht (mehr).",
+  own_convoy: "Eigene Konvois fängt man nicht ab.",
+  convoy_not_enemy: "Nur Konvois von Kriegsgegnern lassen sich abfangen.",
+  intercept_needs_ships: "Zum Abfangen gehören Schiffe in den Verband.",
+  escort_ships_only: "Geleitschutz stellen nur Schiffe.",
 };
 
 export function errorText(code: string): string {

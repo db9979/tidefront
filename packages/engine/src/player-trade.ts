@@ -12,6 +12,7 @@ import { runCommand, type Ctx } from "./commands.ts";
 import { baseOfPlayer, lockBase, lockBases, saveBase, scheduleEvent } from "./store.ts";
 import { fail, membershipOf, systemMessage } from "./alliance-core.ts";
 import { getSetting } from "./settings.ts";
+import { attachTradeEscort, createConvoy } from "./naval.ts"; // See: Konvoi (Lieferungen reisen als Konvoi, Geleitschutz)
 
 /** Gebühr je empfangener Seite ohne Einstellung (server_setting player_trade_fee, 0 bis 0,2). */
 export const PLAYER_TRADE_FEE_DEFAULT = 0.02;
@@ -117,7 +118,7 @@ export function createOffer(engine: Engine, playerId: number, key: string, input
  * Angebot annehmen. Das Angebot wird zuerst gesperrt: von zwei gleichzeitigen Annahmen gelingt genau eine.
  * Codes: offer_gone, own_offer, not_ally, no_base, seller_gone, locked, funds.
  */
-export function acceptOffer(engine: Engine, playerId: number, key: string, offerId: number) {
+export function acceptOffer(engine: Engine, playerId: number, key: string, offerId: number, escort?: Record<string, number>) {
   return runCommand<{ ok: true; arriveAtMs: number }>(engine, playerId, key, "offerAccept", async (ctx: Ctx) => {
     const [o] = await ctx.tx.select().from(tables.playerOffer).where(eq(tables.playerOffer.id, offerId)).for("update");
     if (!o || o.status !== "open") fail("offer_gone");
@@ -170,6 +171,13 @@ export function acceptOffer(engine: Engine, playerId: number, key: string, offer
         });
         await scheduleEvent(ctx.tx, "delivery_arrive", arriveAtMs, { deliveryId: id }, toBaseId);
         line(`delivery:${id}`, asset, net);
+        // See: Konvoi – die Lieferung reist auf der Route; Geleitschutz des Annehmenden begleitet die eingehende Ware.
+        const fromBase = toBaseId === buyerBase.id ? sellerBase : buyerBase;
+        const convoyId = await createConvoy(ctx.tx, {
+          kind: "handel", deliveryId: id, senderId: fromBase.playerId, recipientId: to, recipientBaseId: toBaseId, from: fromBase,
+          to: toBaseId === buyerBase.id ? buyerBase : sellerBase, cargo: { [asset]: net }, departMs: ctx.nowMs, arriveMs: arriveAtMs,
+        });
+        if (suffix === "k" && escort) await attachTradeEscort(ctx.tx, playerId, { ...buyerBase, state: buyerState }, escort, convoyId, sellerBase, arriveAtMs, ctx.nowMs);
       }
     };
     line(`escrow:po-${o.id}`, o.give, -o.giveQty);

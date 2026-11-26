@@ -92,6 +92,13 @@
       "when": 1795729985530,
       "tag": "0012_season_alliance_result",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795732260631,
+      "tag": "0013_welle2",
+      "breakpoints": true
     }
   ]
 }
