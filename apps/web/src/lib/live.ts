@@ -6,9 +6,15 @@ import { noteServerTime } from "./time.ts";
 const FILTERS: Record<string, () => { queryKey: readonly unknown[] }[]> = {
   base: () => [trpc.base.pathFilter()],
   missions: () => [trpc.base.pathFilter()],
-  reports: () => [trpc.report.pathFilter(), trpc.base.pathFilter()],
+  reports: () => [trpc.report.pathFilter(), trpc.base.pathFilter(), trpc.social.ranking.pathFilter()],
   market: () => [trpc.market.pathFilter(), trpc.base.pathFilter()],
   map: () => [trpc.world.pathFilter()],
+  messages: () => [trpc.social.messages.pathFilter()],
+  // Saisonwechsel: die ganze Welt ist neu.
+  season: () => [
+    trpc.season.pathFilter(), trpc.social.pathFilter(), trpc.base.pathFilter(), trpc.world.pathFilter(),
+    trpc.report.pathFilter(), trpc.market.pathFilter(),
+  ],
 };
 
 export function useLive(enabled: boolean): void {

@@ -25,6 +25,7 @@ import {
   upgrade,
   type Engine,
 } from "@tidefront/engine";
+import { seasonRouter, socialRouter } from "./routers/social.ts";
 
 export interface Ctx {
   engine: Engine;
@@ -167,6 +168,9 @@ export const appRouter = t.router({
       }))
       .mutation(({ ctx, input }) => trade(ctx.engine, ctx.player.id, input.key, input)),
   }),
+
+  social: socialRouter,
+  season: seasonRouter,
 });
 
 export type AppRouter = typeof appRouter;

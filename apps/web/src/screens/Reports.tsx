@@ -45,7 +45,6 @@ export function ReportsScreen() {
   if (!list.data) return <Loading />;
   return (
     <div>
-      <h1 className="font-display text-xl font-bold uppercase mb-3">Berichte</h1>
       {list.data.length === 0 && (
         <div className="panel rounded-2xl p-4 text-center text-slate-300">
           <Icon id="nav-bericht" size={48} className="mx-auto mb-2 text-slate-500" />

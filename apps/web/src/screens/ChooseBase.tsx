@@ -7,6 +7,7 @@ import { fmtNum } from "../lib/names.ts";
 import { HexMap } from "./LazyHexMap.tsx";
 import { TacticalIcon } from "../map/TacticalIcon.tsx";
 import { Button, ErrorLine, Loading } from "../ui.tsx";
+import { NewSeasonNotice } from "../components/Season.tsx";
 
 type Hex = { col: number; row: number };
 
@@ -67,6 +68,7 @@ export function ChooseBase() {
           <button type="button" className="text-xs text-sea-300 underline min-h-[44px] -my-3 px-1" onClick={async () => { await trpcClient.auth.logout.mutate(); queryClient.clear(); location.reload(); }}>Abmelden</button>
         </div>
         <p className="text-xs text-slate-300">Hell umrandete Felder sind freie Küste. Tippe eines an oder nimm einen Vorschlag.</p>
+        <NewSeasonNotice />
       </div>
       <div className="flex-1 min-h-0 relative">
         <HexMap data={map.data} selectMode free={free} selected={sel} onSelect={(h) => { setSel(h); setShowHelp(false); }} center={view.center} recenter={view.n} zoom={0.3} />
