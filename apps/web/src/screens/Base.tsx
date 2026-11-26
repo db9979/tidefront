@@ -220,10 +220,17 @@ function BuildingSheet({ b, base, res, onClose, onTroops, onResearch }: { b: Bui
             <div className="text-[11px] uppercase tracking-wider text-slate-400">Jetzt</div>
             <div className="text-sm font-semibold">{now ?? "–"}</div>
           </div>
-          <div className="rounded-xl bg-emerald-950 border border-moos/50 p-2">
-            <div className="text-[11px] uppercase tracking-wider text-emerald-300">Stufe {target}</div>
-            <div className="text-sm font-semibold">{next ?? "–"}</div>
-          </div>
+          {maxed ? (
+            <div className="rounded-xl bg-paper border border-messing/60 p-2">
+              <div className="text-[11px] uppercase tracking-wider text-slate-400">Höchststufe</div>
+              <div className="text-sm font-semibold">Voll ausgebaut</div>
+            </div>
+          ) : (
+            <div className="rounded-xl bg-emerald-950 border border-moos/50 p-2">
+              <div className="text-[11px] uppercase tracking-wider text-emerald-300">Stufe {target}</div>
+              <div className="text-sm font-semibold">{next ?? "–"}</div>
+            </div>
+          )}
         </div>
       )}
       {effective.length > 0 && <div className="mb-3"><Breakdown rows={effective} digits={0} /></div>}
@@ -240,9 +247,11 @@ function BuildingSheet({ b, base, res, onClose, onTroops, onResearch }: { b: Bui
       <div className="flex gap-2">
         {trains && b.level > 0 && <Button kind="secondary" className="flex-1" onClick={() => { onClose(); onTroops(); }}>Ausbilden</Button>}
         {b.id === "forschungsamt" && <Button kind="secondary" className="flex-1" onClick={() => { onClose(); onResearch(); }}>Forschung</Button>}
-        <Button className="flex-1" disabled={!!reason || up.busy} onClick={async () => { const r = await up.run({ buildingId: b.id }); if (r?.ok) onClose(); }}>
-          {used > 0 ? `Einreihen: Stufe ${target}` : `Ausbau auf ${target}`}
-        </Button>
+        {!maxed && (
+          <Button className="flex-1" disabled={!!reason || up.busy} onClick={async () => { const r = await up.run({ buildingId: b.id }); if (r?.ok) onClose(); }}>
+            {used > 0 ? `Einreihen: Stufe ${target}` : `Ausbau auf ${target}`}
+          </Button>
+        )}
       </div>
       {b.id === "hafenkommandantur" && <p className="text-xs text-slate-400 mt-2">Missionsplätze jetzt: {base.missionSlots}</p>}
     </Sheet>
