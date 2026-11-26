@@ -60,3 +60,7 @@ export { achievementsView, claimAchievement, weeklyView, claimWeekly } from "./a
 export {
   achievementList, drawWeek, nextWeekStartMs, placementScore, tierFor, weekKey, weekStartMs, weeklyBonus, weeklyReward, WEEKLY_KINDS,
 } from "./achievement-defs.ts";
+// Allianz-Ops: Sammelangriff und Stationierung
+export { openRaid, joinRaid, withdrawRaid, cancelRaid } from "./alliance-ops-raid.ts";
+export { stationRelease, STATION_TYPE } from "./alliance-ops-station.ts";
+export { allianceRaidsView } from "./alliance-ops-view.ts";

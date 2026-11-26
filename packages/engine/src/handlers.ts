@@ -41,6 +41,8 @@ import { withAttackExperience } from "./veterans.ts";
 import { scoutWithDisinfo } from "./espionage.ts"; // Nachrichtendienst (Desinformation)
 import { battleWeather, fogAt } from "./weather.ts"; // Wetter am Kampfort und Nebel (v1.6)
 import { admiralsAfterBattle, defenseAdmiral, missionAdmiral } from "./admirals-battle.ts"; // Admirale
+// Allianz-Ops: Stationierung (Ankunft, stationierte Verbündete verteidigen mit)
+import { STATION_TYPE, settleGuests, stationArrive, stationedGuests, withGuests } from "./alliance-ops-station.ts";
 
 const HOUR_MS = 3600000;
 const none = (): HandlerResult => ({ notify: [] });
@@ -90,8 +92,8 @@ async function playerName(tx: Tx, id: number | null): Promise<string> {
   return p?.name ?? "?";
 }
 
-/** Wrackfeld am Kampfort anlegen. */
-async function dropWreck(tx: Tx, col: number, row: number, wreck: ResourceMap, atMs: number): Promise<void> {
+/** Wrackfeld am Kampfort anlegen. (Auch für Allianz-Ops.) */
+export async function dropWreck(tx: Tx, col: number, row: number, wreck: ResourceMap, atMs: number): Promise<void> {
   if ((wreck.stahl ?? 0) + (wreck.elektronik ?? 0) <= 0) return;
   await tx.insert(tables.wreck).values({
     col,
@@ -102,8 +104,8 @@ async function dropWreck(tx: Tx, col: number, row: number, wreck: ResourceMap, a
   });
 }
 
-/** Wrackgut am Feld bergen, bis die freie Ladekapazität erschöpft ist. */
-async function salvageAt(tx: Tx, col: number, row: number, freeCargo: number, atMs: number): Promise<ResourceMap> {
+/** Wrackgut am Feld bergen, bis die freie Ladekapazität erschöpft ist. (Auch für Allianz-Ops.) */
+export async function salvageAt(tx: Tx, col: number, row: number, freeCargo: number, atMs: number): Promise<ResourceMap> {
   const got: ResourceMap = { stahl: 0, elektronik: 0 };
   if (freeCargo <= 0) return got;
   const rows = await tx
@@ -135,7 +137,7 @@ function addMaps(a: ResourceMap, b: ResourceMap): ResourceMap {
   return out;
 }
 
-async function storeReport(
+export async function storeReport( // auch für Allianz-Ops
   tx: Tx,
   values: {
     kind: string;
@@ -162,6 +164,7 @@ async function storeReport(
 const missionArrive: Handler = async (tx, ev, due) => {
   const m = await lockMission(tx, Number(ev.payload.missionId));
   if (!m || m.status !== "outbound") return none();
+  if (m.type === STATION_TYPE) return stationArrive(tx, m, due); // Allianz-Ops: Stationierung
   const plan = m.plan as Mission;
   const notify: HandlerResult["notify"] = [[[m.playerId!], "missions"]];
   const push: NonNullable<HandlerResult["push"]> = [];
@@ -220,11 +223,13 @@ const missionArrive: Handler = async (tx, ev, due) => {
       const seed = randomSeed();
       const admD = await defenseAdmiral(tx, target.playerId, due); // Admirale: Hafenkommandant des Ziels
       const defender = defenderFromBase(defenderBase, balance, combineModifiers(targetMods, admD?.mods));
-      const res = resolveBattle(attacker, defender, balance, seed, battleWeather(target.col, target.row, due));
+      const guests = await stationedGuests(tx, target.id); // Allianz-Ops: stationierte Verbündete verteidigen mit
+      const res = resolveBattle(attacker, withGuests(defender, guests), balance, seed, battleWeather(target.col, target.row, due));
       if (!res.ok) throw new Error(`battle: ${res.code}`);
       const report = res.report;
       const admirals = await admiralsAfterBattle(tx, report, seed, admA, admD, due); // Admirale
-      await saveBase(tx, target.id, applyDefenseResult(defenderBase, report, due, balance, targetMods));
+      const hostReport = await settleGuests(tx, guests, defender, report, due, notify); // Allianz-Ops
+      await saveBase(tx, target.id, applyDefenseResult(defenderBase, hostReport, due, balance, targetMods));
       await dropWreck(tx, m.targetCol, m.targetRow, report.wreck, due);
       returning = attackerReturning(report);
       cargoHome = report.loot;
@@ -233,7 +238,7 @@ const missionArrive: Handler = async (tx, ev, due) => {
         title: `Überfall auf ${target.name}`,
         attackerPlayerId: m.playerId, defenderPlayerId: target.playerId, attackerBaseId: m.baseId,
         defenderBaseId: target.id, nestId: null, winner: report.winner, seed, atMs: due,
-        report: { battle: report, attackerName, defenderName: await playerName(tx, target.playerId), targetName: target.name, attacker, protectedPerResource: defender.protectedPerResource ?? 0, admirals },
+        report: { battle: report, attackerName, defenderName: await playerName(tx, target.playerId), targetName: target.name, attacker, protectedPerResource: defender.protectedPerResource ?? 0, admirals, ...(hostReport.guests ? { guests: hostReport.guests } : {}) },
       });
       notify.push([[target.playerId], "base"], [[target.playerId], "reports"]);
     }
@@ -382,16 +387,18 @@ const raidArrive: Handler = async (tx, ev, due) => {
   const seed = randomSeed();
   const admD = await defenseAdmiral(tx, b.playerId, due); // Admirale: Hafenkommandant
   const defender = defenderFromBase(state, balance, combineModifiers(mods, admD?.mods));
-  const res = resolveBattle(plan.attacker, defender, balance, seed, battleWeather(b.col, b.row, due));
+  const guests = await stationedGuests(tx, b.id); // Allianz-Ops: stationierte Verbündete verteidigen mit
+  const res = resolveBattle(plan.attacker, withGuests(defender, guests), balance, seed, battleWeather(b.col, b.row, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
   const report: BattleReport = res.report;
   const admirals = await admiralsAfterBattle(tx, report, seed, null, admD, due); // Admirale
-  await saveBase(tx, b.id, applyDefenseResult(state, report, due, balance, mods));
+  const hostReport = await settleGuests(tx, guests, defender, report, due); // Allianz-Ops
+  await saveBase(tx, b.id, applyDefenseResult(state, hostReport, due, balance, mods));
   await dropWreck(tx, b.col, b.row, report.wreck, due);
   const reportId = await storeReport(tx, {
     kind: "kartell", title: `Kartell überfällt ${b.name}`, attackerPlayerId: null, defenderPlayerId: b.playerId,
     attackerBaseId: null, defenderBaseId: b.id, nestId: null, winner: report.winner, seed, atMs: due,
-    report: { battle: report, attackerName: "Freibeuter-Kartell", defenderName: await playerName(tx, b.playerId), targetName: b.name, attacker: plan.attacker, protectedPerResource: defender.protectedPerResource ?? 0, admirals },
+    report: { battle: report, attackerName: "Freibeuter-Kartell", defenderName: await playerName(tx, b.playerId), targetName: b.name, attacker: plan.attacker, protectedPerResource: defender.protectedPerResource ?? 0, admirals, ...(hostReport.guests ? { guests: hostReport.guests } : {}) },
   });
   await tx.update(tables.mission).set({ status: "done", reportId }).where(eq(tables.mission.id, m.id));
   return { notify: [[[b.playerId], "base"], [[b.playerId], "reports"], [[b.playerId], "missions"]] };
@@ -435,6 +442,9 @@ export const HANDLERS: Record<string, Handler> = {
   // Nachrichtendienst und Spionage (espionage-run.ts)
   spy_arrive: (tx, ev, due) => import("./espionage-run.ts").then((m) => m.spyArrive(tx, ev, due)),
   spy_sabotage_end: (tx, ev, due) => import("./espionage-run.ts").then((m) => m.spySabotageEnd(tx, ev, due)),
+  // Allianz-Ops: Sammelangriff läuft zur Beitrittsfrist aus und kommt gemeinsam an
+  alliance_raid_launch: (tx, ev, due) => import("./alliance-ops-raid.ts").then((m) => m.raidLaunch(tx, ev, due)),
+  alliance_raid_arrive: (tx, ev, due) => import("./alliance-ops-battle.ts").then((m) => m.raidArrive(tx, ev, due)),
 };
 
 // Für Tests

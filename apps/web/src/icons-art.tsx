@@ -111,6 +111,11 @@ export const ART: Record<string, ReactNode> = {
   // Admirale: Schirmmütze mit weißem Bezug, dunklem Band, Kokarde mit Anker und Eichenlaub auf dem Schirm.
   admiral: (<><path d="M6 31 Q8 13 32 12 Q58 13 59 27 L54 34 H11 Z" {...p} /><path d="M17 20 Q32 15 50 19" {...ln} strokeWidth={1.4} /><path d="M11 34 H54 V42 H11 Z" {...hd} /><path d="M8 42 H56 Q54 51 32 53 Q12 52 8 42 Z" {...h} /><circle cx="32" cy="27" r="6" fill={PAPER} stroke={MESSING} strokeWidth={1.8} /><path d="M32 23 V31 M29 25.5 H35 M28.5 29 Q32 32.5 35.5 29" fill="none" stroke={INK} strokeWidth={1.4} strokeLinecap="round" /><path d="M16 46 q4 -3 8 0 q4 -3 8 0 q4 -3 8 0 q4 -3 8 0" fill="none" stroke={MESSING} strokeWidth={1.8} strokeLinecap="round" /></>),
 
+  // Allianz-Ops – Sammelangriff: drei Kurslinien laufen auf einer Zielscheibe zusammen (Siegel im Zentrum).
+  sammelangriff: (<><circle cx="42" cy="22" r="16" {...p} /><circle cx="42" cy="22" r="9" fill="url(#tf-h)" {...K} strokeWidth={1.6} /><circle cx="42" cy="22" r="4" {...red} /><path d="M4 60 L31 33 M4 30 L28 24 M28 62 L37 36" {...ln} strokeWidth={3} /><path d="M33 31 L25 33 L31 39 Z M30 23 L23 19 L23 28 Z M38 34 L31 38 L38 42 Z" fill={INK} /></>),
+  // Allianz-Ops – Stationierung: Schild mit Anker, dahinter ein Wimpel der Verbündeten.
+  stationierung: (<><path d="M46 4 V30" {...ln} strokeWidth={2} /><path d="M46 5 L60 9 L46 13 Z" {...red} /><path d="M28 10 L48 17 V33 C48 46 39 54 28 59 C17 54 8 46 8 33 V17 Z" {...p} /><path d="M28 10 L48 17 V33 C48 46 39 54 28 59 Z" fill="url(#tf-h)" stroke="none" /><path d="M28 10 L48 17 V33 C48 46 39 54 28 59 C17 54 8 46 8 33 V17 Z" {...ln} /><circle cx="28" cy="22" r="3.2" fill={PAPER} stroke={INK} strokeWidth={2} /><path d="M28 25 V49 M21 31 H35 M17 39 Q19 49 28 49 Q37 49 39 39" fill="none" stroke={INK} strokeWidth={3} strokeLinecap="round" /></>),
+
   // ---------------------------------------------------------------- Wetter (v1.6)
   wind: (<path d="M6 22 H40 Q50 22 50 14 Q50 7 43 8 M6 33 H52 Q60 33 60 41 Q60 48 53 47 M6 44 H30 Q37 44 37 50 Q37 56 31 55" {...ln} strokeWidth={3} />),
   sonne: (<><circle cx="32" cy="32" r="12" {...h} /><path d="M32 6 V13 M32 51 V58 M6 32 H13 M51 32 H58 M14 14 L19 19 M45 45 L50 50 M50 14 L45 19 M19 45 L14 50" {...ln} strokeWidth={2.6} /></>),

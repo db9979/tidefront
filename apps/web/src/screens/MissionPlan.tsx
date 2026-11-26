@@ -20,12 +20,15 @@ import { KIND_TITLE, useWorldEvents } from "../components/WorldEvents.tsx";
 import { SpyPlan } from "../components/SpyPlan.tsx";
 // Admirale: Führung des Verbands
 import { AdmiralPick } from "../components/Admirals.tsx";
+// Allianz-Ops: Stationieren, als Sammelangriff eröffnen
+import { RaidOpenCard } from "../components/AllianceOps.tsx";
 
 const TYPES = [
   { id: "ueberfall", text: "Überfall", hint: "Kampf am Ziel, Beute bei Sieg" },
   { id: "aufklaerung", text: "Aufklärung", hint: "Lagebild ohne Kampf" },
   { id: "transport", text: "Transport", hint: "Ladung an einen Stützpunkt" },
   { id: "spionage", text: "Spionage", hint: "Spione des Nachrichtendiensts: Erkunden, Sabotage, Desinformation, Kartell" },
+  { id: "stationierung", text: "Stationieren", hint: "Truppen verteidigen den Hafen eines Verbündeten mit, bis du sie zurückrufst" }, // Allianz-Ops
 ] as const;
 
 /** Bestätigung nach dem Auslaufen, passend zur Art der Mission. */
@@ -33,12 +36,14 @@ const SENT_TEXT: Record<string, string> = {
   ueberfall: "Den Kampfbericht findest du nach der Ankunft unter „Meldungen“, die Fahrt auf der Karte.",
   aufklaerung: "Das Lagebild findest du nach der Ankunft unter „Meldungen“, die Fahrt auf der Karte.",
   transport: "Die Ladung wird bei Ankunft gutgeschrieben; die Bestätigung erscheint unter „Meldungen“.",
+  stationierung: "Die Truppen verteidigen den Hafen des Verbündeten ab der Ankunft mit. Zurückrufen unter „Truppen“.",
+  sammelangriff: "Deine Allianz kann jetzt beitreten (Allianz → Angriffe). Zur Frist laufen alle gemeinsam aus.",
 };
 
 export function MissionPlan({ base, initialTarget, onClose, preset }: { base: BaseData; initialTarget: Target | null; onClose: () => void; onPickOnMap?: () => void; preset?: PlanPreset }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const map = useQuery(trpc.world.map.queryOptions());
-  const [type, setType] = useState<"ueberfall" | "aufklaerung" | "transport" | "spionage">(preset?.type ?? "ueberfall");
+  const [type, setType] = useState<"ueberfall" | "aufklaerung" | "transport" | "spionage" | "stationierung">(preset?.type ?? "ueberfall");
   const [target, setTarget] = useState<Target | null>(initialTarget);
   // Vorbelegung („Wiederholen“) auf die Einheiten daheim gekürzt; note erklärt die Kürzung.
   const [first] = useState(() => fitUnits(preset?.units ?? {}, Object.fromEntries(base.units.map((u) => [u.id, u.home]))));
@@ -85,8 +90,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
 
   if (sent) {
     return (
-      <Card title="Mission gestartet">
-        <div className="flex items-center gap-3"><Icon id={sent.type} size={48} /><p>Der Verband hat abgelegt. Ankunft am Ziel {fmtTime(sent.arriveAtMs)}. {SENT_TEXT[sent.type] ?? ""}</p></div>
+      <Card title={sent.type === "sammelangriff" ? "Sammelangriff eröffnet" : "Mission gestartet"}>
+        <div className="flex items-center gap-3"><Icon id={sent.type} size={48} /><p>{sent.type === "sammelangriff" ? "Dein Verband ist gebunden. Ankunft frühestens" : "Der Verband hat abgelegt. Ankunft am Ziel"} {fmtTime(sent.arriveAtMs)}. {SENT_TEXT[sent.type] ?? ""}</p></div>
         <Button className="mt-3 w-full" onClick={onClose}>Fertig</Button>
       </Card>
     );
@@ -100,7 +105,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
       </div>
 
       <Card title="Art">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
           {TYPES.map((t) => (
             <button key={t.id} type="button" onClick={() => setType(t.id)} className={`tap rounded-xl px-1 py-2 text-sm flex flex-col items-center gap-1 border ${type === t.id ? "border-sea-400 bg-sea-400/10 font-semibold reticle" : "border-navy-600 bg-navy-900"}`}>
               <Icon id={t.id} size={32} />
@@ -126,7 +131,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         </p>
       </Card>
 
-      <TemplateBar base={base} units={chosen} type={type} onApply={(u, t, n) => { setUnits(u); if (t) setType(t); setNote(n); }} />
+      {type !== "stationierung" && <TemplateBar base={base} units={chosen} type={type} onApply={(u, t, n) => { setUnits(u); if (t) setType(t); setNote(n); }} />}
 
       <Card title="Verband">
         {note && <p className="text-xs text-messing mb-1">{note}</p>}
@@ -211,6 +216,9 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         </Button>
         <ErrorLine text={launch.error} />
       </Card>
+      {type === "ueberfall" && target && Object.keys(chosen).length > 0 && (tInfo?.base || tInfo?.nest || target.eventId) && (
+        <RaidOpenCard balance={balance} target={target} units={chosen} ok={!!p?.ok} travelSeconds={p?.ok ? p.travelSeconds : null} onDone={(at) => setSent({ arriveAtMs: at, type: "sammelangriff" })} />
+      )}
       </>}
     </div>
   );

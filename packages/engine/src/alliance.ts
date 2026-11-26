@@ -3,6 +3,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { tables, type Tx } from "@tidefront/db";
 import type { Engine } from "./context.ts";
+import { allianceOpsExit } from "./alliance-ops-raid.ts"; // Allianz-Ops
 import {
   act,
   allianceMaxSize,
@@ -205,6 +206,7 @@ export function leaveAlliance(engine: Engine, playerId: number) {
       .where(eq(tables.allianceMember.allianceId, m.allianceId))
       .orderBy(tables.allianceMember.joinedAt);
     const name = await playerNameOf(tx, playerId);
+    await allianceOpsExit(tx, notes, [playerId], m.allianceId); // Allianz-Ops: Stationierungen heim, Teilnahmen enden
     if (rest.length === 0) {
       await removeAlliance(tx, notes, m.allianceId, `[${m.tag}] ${m.name} hat sich aufgelöst: das letzte Mitglied ist ausgetreten.`);
     } else {
@@ -231,6 +233,7 @@ export function kickMember(engine: Engine, playerId: number, targetId: number) {
     if (!t || t.allianceId !== m.allianceId) fail("not_member");
     if (RANK[t.role] >= RANK[m.role]) fail("no_rights");
     await tx.delete(tables.allianceMember).where(eq(tables.allianceMember.playerId, targetId));
+    await allianceOpsExit(tx, notes, [targetId], m.allianceId); // Allianz-Ops
     const name = await playerNameOf(tx, targetId);
     await systemMessage(tx, notes, [targetId], "Allianz: ausgeschlossen", `Du wurdest aus [${m.tag}] ${m.name} ausgeschlossen.`);
     const ids = await memberIds(tx, m.allianceId);
@@ -269,6 +272,7 @@ async function removeAlliance(tx: Tx, notes: Notes, allianceId: number, text: st
   await tx.delete(tables.diplomacy).where(sql`${tables.diplomacy.partyA} = ${party} or ${tables.diplomacy.partyB} = ${party}`);
   await systemMessage(tx, notes, ids, "Allianz aufgelöst", text);
   await tx.delete(tables.alliance).where(eq(tables.alliance.id, allianceId));
+  await allianceOpsExit(tx, notes, ids, allianceId); // Allianz-Ops
   notes.push([ids, "alliance"], [null, "alliance"]);
 }
 

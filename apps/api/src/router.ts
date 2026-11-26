@@ -41,6 +41,7 @@ import { espionageRouter } from "./routers/espionage.ts";
 import { bugReportRouter } from "./routers/bug-report.ts";
 import { admiralRouter } from "./routers/admirals.ts"; // Admirale
 import { achievementsRouter } from "./routers/achievements.ts"; // Erfolge
+import { allianceOpsRouter } from "./routers/alliance-ops.ts"; // Allianz-Ops
 
 export type { Ctx };
 
@@ -184,6 +185,7 @@ export const appRouter = t.router({
   espionage: espionageRouter,
   bugReport: bugReportRouter,
   achievements: achievementsRouter, // Erfolge und Wochenziele
+  allianceOps: allianceOpsRouter, // Allianz-Ops: Sammelangriff, Stationierung
 });
 
 export type AppRouter = typeof appRouter;

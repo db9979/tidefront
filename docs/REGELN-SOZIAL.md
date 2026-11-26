@@ -65,3 +65,68 @@ Umsetzung in `packages/engine` (Allianzen, Diplomatie, Spielerhandel), Tabellen 
 - **Handelsstatistik:** Die Börse zeigt für die letzten 7 Tage je Paar die angenommenen Angebote (Anzahl, Mengen) und
   das mittlere Tauschverhältnis (Summe gegen Summe) in Krediten je Einheit, die Gegenseite zum aktuellen Börsenkurs,
   neben dem Börsenkurs. Serverseitig bis zu 60 s zwischengespeichert.
+
+## Sammelangriff und Stationierung (Allianz-Ops)
+
+Umsetzung: Regeln rein in `packages/game-core/src/alliance-ops.ts`, Server in `packages/engine/src/alliance-ops-*.ts`,
+Tabellen `alliance_raid` und `alliance_raid_member` in `packages/db/src/schema/alliance-ops.ts`. Werte in
+`balance.allianceOps` (`raid`, `station`).
+
+### Sammelangriff
+
+- **Eröffnen:** jedes Allianzmitglied, gleich mit dem eigenen Verband (Missionsplanung → Überfall → „als Sammelangriff
+  eröffnen“). Ziel: ein feindlicher Spielerhafen (Überfall-Schutzregeln: nicht Verbündete `ally`, nicht Paktpartner
+  `pact`, kein geschützter Hafen `target_protected`), ein Piratennest oder ein Weltereignis mit festem Ort (Großflotte,
+  Belagerungsring; nicht das fahrende Schatzschiff, `raid_bad_target`). Beitrittsfrist `raid.minJoinMinutes` bis
+  `raid.maxJoinHours` nach dem Eröffnen; gewünschte Ankunft frühestens zur Frist, spätestens `raid.maxArriveHours`.
+  Höchstens `raid.maxOpenPerAlliance` offene Sammelangriffe je Allianz.
+- **Beitreten:** Mitglieder derselben Allianz bis zur Frist, je Spieler ein Verband, höchstens `raid.maxParticipants`
+  Verbände. Geplant wie ein Überfall vom eigenen Hafen (Verband, Kommandopunkte, Missionsplatz, Treibstoff hin und
+  zurück); Einheiten und Treibstoff sind ab dem Beitritt gebunden (Mission „staged“), der Missionsplatz ist belegt.
+  Die Schutzregeln gelten je Teilnehmer (z. B. `own_siege` für den Belagerten).
+- **Rückzug vor dem Auslaufen:** Verband und Treibstoff kommen sofort zurück. **Abbrechen** (alle zurück) dürfen
+  Eröffner, Führung und Offiziere. Austritt, Ausschluss oder Auflösung beenden die Teilnahme; ohne Allianz bricht der
+  Angriff ab.
+- **Auslaufen zur Frist:** Ziel und Teilnehmer werden erneut geprüft (Schutz, Diplomatie); wer nicht mehr darf, bleibt im
+  Hafen. Reisezeit je Verband mit Forschung und Sturm auf der Route zum Zeitpunkt der Frist. Ankunft =
+  max(gewünschte Ankunft, Frist + längste Reisezeit) – der langsamste bestimmt, ggf. später als gewünscht. Jeder läuft
+  zu Ankunft − eigene Reisezeit aus. Danach gilt der normale Rückruf; ein zurückgerufener Verband kommt nicht mehr an.
+  Ohne Teilnehmer verfällt der Angriff.
+- **Radar:** Alle Verbände tragen dieselbe Ankunft und den schwächsten Tarnfaktor der Teilnehmer; die Vorwarnung
+  (Push) des Ziels kommt einmal für den ganzen Angriff.
+- **Kampf:** Alle angekommenen Verbände bilden eine Streitmacht in einem einzigen `resolveBattle`. Modifikatoren je
+  Teilnehmer werden gemittelt: Angriff (Gattung × Einheit × Versorgungsmangel) je Einheitentyp nach Anzahl,
+  Lebenspunkte je Gattung nach Lebenspunkten, Angriff gegen Zielarten und Beutefaktor nach Kampfwert, Minenschaden nach
+  Truppen. Überlebende je Typ werden anteilig zum Einsatz auf die Besitzer verteilt, Rückkehrer (Lazarett, beschädigte
+  Flugzeuge) anteilig zu den Verlusten (größte Reste, bei Gleichstand der frühere Teilnehmer). Verluste trägt jeder für
+  seine Einheiten. Wiederholungsfaktor: frühere Überfälle aller Teilnehmer auf diesen Hafen im Zeitfenster;
+  Schwachziel-Kürzung, wenn das Ziel für einen Teilnehmer (ohne Krieg) ein Schwachziel ist.
+- **Beute nach Kampfbeitrag:** Beitrag = Kampfwert der eingesetzten Einheiten vor dem Kampf (je Einheit Lebenspunkte ×
+  Summe der Angriffswerte, mit den Modifikatoren des Besitzers). Anteil = Beitrag / Summe. Jeder lädt höchstens seinen
+  Laderaum (überlebende Einheiten, mit eigener Ladungsforschung); der Rest geht nach demselben Schlüssel an die anderen.
+  Insgesamt höchstens die Summe der Laderäume. Ganzzahlig je Ressource: abgerundet, verbleibende Einheiten nach
+  größtem Rest (Gleichstand: früherer Teilnehmer). Danach birgt jeder Wrackgut mit seinem freien Laderaum.
+- **Weltereignis:** Der Sammelangriff zählt als ein Sieger (Ende des Ereignisses mit dem ersten Teilnehmer als
+  Sieger). Beute aus dem Beutepool nach vernichteten Lebenspunkten, geteilt nach demselben Schlüssel; der Schaden wird
+  den Teilnehmern nach Beitrag gutgeschrieben.
+- **Bericht:** ein gemeinsamer Kampfbericht (Art `sammelangriff`) für alle Teilnehmer und das Ziel, mit Tabelle
+  Teilnehmer / Beitrag % / Verluste / Beute. Systemnachrichten an die Teilnehmer bei Eröffnung (an die ganze Allianz),
+  Beitritt, Rückzug, Auslaufen und Ergebnis; Push bei Eröffnung, Beitritt, Auslaufen und Ergebnis. Veteranen sammeln
+  Erfahrung mit ihrem Anteil der Streitmacht.
+
+### Stationierung
+
+- Missionsart **Stationieren**: Schiffe, Landtruppen und Flugzeuge (keine Spione) in den Hafen eines Verbündeten
+  (dieselbe Allianz, sonst `station_not_ally`). Geplant wie ein Transport ohne Ladung (Treibstoff hin und zurück).
+  Höchstens `station.maxPerBase` stationierte oder anfahrende verbündete Verbände je Hafen (`station_full`).
+- Am Ziel bleibt der Verband stationiert (Mission „stationed“), belegt weiter den Missionsplatz beim Besitzer und zählt
+  in dessen Unterhalt (die Einheiten bleiben „unterwegs“). Ist der Gastgeber bei Ankunft kein Verbündeter mehr oder kein
+  Liegeplatz frei, kehrt er um.
+- **Verteidigung:** Bei jedem Kampf im Hafen (Spielerüberfall, Kartell, Sammelangriff) kämpfen die stationierten
+  Einheiten als zusätzliche Verteidiger, unter den Modifikatoren des Gastgebers. Das Ergebnis wird wie beim
+  Sammelangriff nach Besitzer getrennt; Verluste trägt der Besitzer. Ganz vernichtete Verbände sind erledigt.
+- **Ende:** Rückruf durch den Besitzer oder Heimschicken durch den Gastgeber – Heimfahrt mit einer Reisezeit; auf der
+  Anfahrt gilt der normale Rückruf. Austritt, Ausschluss oder Auflösung der Allianz schicken die Truppen automatisch heim
+  (in beide Richtungen).
+- Anzeige: Der Gastgeber sieht die stationierten Verbände unter Truppen („Verbündete im Hafen“), der Besitzer unter den
+  Missionen als „stationiert“.

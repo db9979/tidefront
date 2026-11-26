@@ -316,5 +316,9 @@
       "wochenwerk": { "title": "Wochenwerk", "description": "Wochenziele erfüllt", "counter": "wochenziele", "thresholds": [3, 15, 50] }
     },
     "weekly": { "goalValue": 5000, "goalCredits": 150, "bonusValue": 9000, "bonusCredits": 400, "stageGrowth": 0.3 }
+  },
+  "allianceOps": {
+    "raid": { "minJoinMinutes": 15, "maxJoinHours": 24, "maxArriveHours": 48, "maxOpenPerAlliance": 3, "maxParticipants": 8 },
+    "station": { "maxPerBase": 3 }
   }
 }

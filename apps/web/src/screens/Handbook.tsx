@@ -12,6 +12,7 @@ import { SettingsScreen } from "./Settings.tsx";
 import { IntelChapter } from "../components/IntelChapter.tsx";
 import { AdmiralChapter } from "../components/AdmiralChapter.tsx"; // Admirale
 import { AchievementsChapter } from "../components/AchievementsChapter.tsx"; // Erfolge
+import { AllianceOpsChapter } from "../components/AllianceOps.tsx"; // Allianz-Ops
 import { requestBugReport } from "../lib/bug-log.ts";
 
 /** Kachel im Schnellzugriff oben im Handbuch. */
@@ -245,6 +246,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
         </>
       ),
     },
+    { id: "allianz-ops", icon: "sammelangriff", title: "Sammelangriff und Stationierung", body: <AllianceOpsChapter b={b} /> },
     {
       id: "einheiten", icon: "kampfpanzer", title: "Einheiten im Überblick",
       body: b ? (

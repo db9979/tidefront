@@ -218,6 +218,8 @@ export interface AchievementsBalance {
     bonusCredits: number;
     stageGrowth: number;
   };
+  /** Allianz-Ops: Sammelangriff und Stationierung (alliance-ops.ts); fehlt es, gelten die Vorgaben. */
+  allianceOps?: import("./alliance-ops.ts").AllianceOpsBalance;
 }
 
 /** Würfel des Kriegsglücks: 1 = min, die = max, dazwischen linear innerMin … innerMax (luck.ts). */

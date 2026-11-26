@@ -109,7 +109,7 @@ export async function computeStandings(db: DbOrTx, seasonStartMs: number, nowMs:
          from player p left join base b on b.player_id = p.id`);
   const missions = await db.execute<{ player_id: number; status: string; units: Counts | null; returning: Counts | null }>(sql`
     select player_id, status, plan->'units' as units, "returning" as returning from mission
-    where player_id is not null and status in ('outbound', 'returning')`);
+    where player_id is not null and status in ('outbound', 'returning', 'staged', 'stationed')`);
   const since = new Date(seasonStartMs).toISOString();
   const reports = await db.execute<{
     attacker_player_id: number | null; defender_player_id: number | null; al: Counts | null; dl: Counts | null; loot: ResourceMap | null;
@@ -131,7 +131,7 @@ export async function computeStandings(db: DbOrTx, seasonStartMs: number, nowMs:
     r.ausbau += buildingValue(p.state.buildings ?? {});
     r.militaer += countsValue(p.state.units) + countsValue(p.state.defenses);
   }
-  for (const m of missions) get(m.player_id).militaer += countsValue(m.status === "returning" ? m.returning : m.units);
+  for (const m of missions) get(m.player_id).militaer += countsValue(m.status === "returning" || m.status === "stationed" ? m.returning : m.units); // Allianz-Ops: stationed
   for (const b of reports) {
     if (b.attacker_player_id !== null) {
       const r = get(b.attacker_player_id);

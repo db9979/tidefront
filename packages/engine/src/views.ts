@@ -48,6 +48,9 @@ import { intelView } from "./espionage.ts";
 import { gridView, missionWeather } from "./weather.ts";
 import { detectIncoming } from "./radar.ts";
 import { admiralPreviewMods } from "./admirals-core.ts"; // Admirale
+// Allianz-Ops: Stationierung (Vorschau, Gäste im Hafen) und gemeinsame Berichte der Sammelangriffe
+import { STATION_TYPE, stationPreview, stationedView } from "./alliance-ops-station.ts";
+import { sharedReportIds } from "./alliance-ops-view.ts";
 
 /**
  * Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband;
@@ -102,7 +105,7 @@ export async function baseView(engine: Engine, playerId: number) {
   const missions = await engine.db
     .select()
     .from(tables.mission)
-    .where(and(eq(tables.mission.baseId, own.id), inArray(tables.mission.status, ["outbound", "returning"])))
+    .where(and(eq(tables.mission.baseId, own.id), inArray(tables.mission.status, ["outbound", "returning", "staged", "stationed"]))) // Allianz-Ops
     .orderBy(tables.mission.arriveAt);
   const incomingRows = await engine.db
     .select()
@@ -188,6 +191,7 @@ export async function baseView(engine: Engine, playerId: number) {
         cargoHome: m.cargoHome as ResourceMap | null,
         reportId: m.reportId,
         spy: (m.plan as { spy?: { kind: string; building?: string } }).spy ?? null,
+        allianceRaidId: (m.plan as { allianceRaidId?: number }).allianceRaidId ?? null, // Allianz-Ops
       })),
       incoming,
       deliveries: deliveries.map((d) => ({ id: d.id, resource: d.resource, qty: d.qty, arriveAtMs: d.arriveAt.getTime() })),
@@ -198,6 +202,8 @@ export async function baseView(engine: Engine, playerId: number) {
       veterans: veteranView(s),
       research: researchView(s, mods),
       intel: intelView(s, mods, nowMs),
+      /** Allianz-Ops: fremde Verbände im eigenen Hafen (stationiert oder anfahrend). */
+      stationed: await stationedView(engine.db, own.id),
     },
   };
 }
@@ -248,6 +254,7 @@ export async function missionPreview(
   const own = await baseOfPlayer(engine.db, playerId);
   if (!own) return { ok: false as const, code: "no_base" };
   if (input.eventId !== undefined) return previewAgainstEvent(engine.db, playerId, own, { ...input, eventId: input.eventId }, nowMs);
+  if (input.type === STATION_TYPE) return stationPreview(engine.db, playerId, own, input, nowMs); // Allianz-Ops
   const target = await targetAt(engine.db as never, input.col, input.row);
   const distanceKm = hexDistanceKm(own, input);
   if (!target) return { ok: false as const, code: "no_target", distanceKm };
@@ -294,6 +301,7 @@ export async function missionPreview(
 }
 
 export async function reportList(engine: Engine, playerId: number) {
+  const shared = await sharedReportIds(engine.db, playerId); // Allianz-Ops: gemeinsame Berichte der Sammelangriffe
   const rows = await engine.db
     .select({
       id: tables.battleReport.id,
@@ -305,11 +313,11 @@ export async function reportList(engine: Engine, playerId: number) {
       from: sql<string | null>`coalesce(${tables.battleReport.report}->>'from', ${tables.battleReport.report}->'spy'->>'from')`,
     })
     .from(tables.battleReport)
-    .where(or(eq(tables.battleReport.attackerPlayerId, playerId), eq(tables.battleReport.defenderPlayerId, playerId)))
+    .where(or(eq(tables.battleReport.attackerPlayerId, playerId), eq(tables.battleReport.defenderPlayerId, playerId), shared.length ? inArray(tables.battleReport.id, shared) : undefined))
     .orderBy(desc(tables.battleReport.createdAt))
     .limit(100);
   return rows.map((r) => {
-    const role = reportRole(r.kind, r.attackerPlayerId, playerId);
+    const role = shared.includes(r.id) ? "attacker" : reportRole(r.kind, r.attackerPlayerId, playerId);
     return {
       id: r.id,
       kind: r.kind,
@@ -317,7 +325,7 @@ export async function reportList(engine: Engine, playerId: number) {
       title: reportTitle(r.kind, role, r.title, r.from),
       atMs: r.createdAt.getTime(),
       role,
-      won: r.winner === null ? null : (r.winner === "attacker") === (r.attackerPlayerId === playerId),
+      won: r.winner === null ? null : (r.winner === "attacker") === (role === "attacker"),
     };
   });
 }
@@ -336,15 +344,16 @@ export function reportRole(kind: string, attackerPlayerId: number | null, player
 }
 
 export async function reportGet(engine: Engine, playerId: number, id: number) {
+  const shared = await sharedReportIds(engine.db, playerId, id); // Allianz-Ops
   const [r] = await engine.db
     .select()
     .from(tables.battleReport)
     .where(and(
       eq(tables.battleReport.id, id),
-      or(eq(tables.battleReport.attackerPlayerId, playerId), eq(tables.battleReport.defenderPlayerId, playerId)),
+      or(eq(tables.battleReport.attackerPlayerId, playerId), eq(tables.battleReport.defenderPlayerId, playerId), shared.length ? inArray(tables.battleReport.id, shared) : undefined),
     ));
   if (!r) return null;
-  const role = reportRole(r.kind, r.attackerPlayerId, playerId);
+  const role = shared.includes(r.id) ? "attacker" : reportRole(r.kind, r.attackerPlayerId, playerId);
   return {
     id: r.id,
     kind: r.kind,

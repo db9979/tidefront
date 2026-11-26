@@ -10,10 +10,11 @@ import { Icon } from "../icons.tsx";
 import { AllianceChat } from "../components/AllianceChat.tsx";
 import { AllianceMembers } from "../components/AllianceMembers.tsx";
 import { AllianceDiplomacy } from "../components/AllianceDiplomacy.tsx";
+import { AllianceRaids } from "../components/AllianceRaids.tsx"; // Allianz-Ops
 import type { Draft } from "./Messages.tsx";
 
 type View = Outputs["alliance"]["get"];
-type Sub = "uebersicht" | "chat" | "mitglieder" | "diplomatie";
+type Sub = "uebersicht" | "chat" | "mitglieder" | "diplomatie" | "sammelangriffe";
 
 export function AllianceScreen({ onCompose }: { onCompose: (d: Draft) => void }) {
   const v = useQuery(trpc.alliance.get.queryOptions());
@@ -21,7 +22,7 @@ export function AllianceScreen({ onCompose }: { onCompose: (d: Draft) => void })
   if (!v.data) return <Loading />;
   const own = v.data.alliance;
   const subs: { id: Sub; label: string }[] = own
-    ? [{ id: "uebersicht", label: "Übersicht" }, { id: "chat", label: "Chat" }, { id: "mitglieder", label: "Mitglieder" }, { id: "diplomatie", label: "Diplomatie" }]
+    ? [{ id: "uebersicht", label: "Übersicht" }, { id: "chat", label: "Chat" }, { id: "mitglieder", label: "Mitglieder" }, { id: "sammelangriffe", label: "Angriffe" }, { id: "diplomatie", label: "Diplomatie" }]
     : [{ id: "uebersicht", label: "Übersicht" }, { id: "diplomatie", label: "Diplomatie" }];
   const active = subs.some((s) => s.id === sub) ? sub : "uebersicht";
   return (
@@ -29,13 +30,15 @@ export function AllianceScreen({ onCompose }: { onCompose: (d: Draft) => void })
       <div className="flex gap-1 overflow-x-auto mb-3" role="tablist" aria-label="Allianz">
         {subs.map((s) => (
           <button key={s.id} type="button" role="tab" aria-selected={active === s.id} onClick={() => setSub(s.id)}
-            className={`tap shrink-0 flex-1 rounded-lg px-2 text-xs font-semibold ${active === s.id ? "bg-ink text-paper" : "bg-navy-950/60 text-slate-400"}`}>
+            className={`tap shrink-0 flex-auto rounded-lg px-2 text-xs font-semibold ${active === s.id ? "bg-ink text-paper" : "bg-navy-950/60 text-slate-400"}`}>
             {s.label}
           </button>
         ))}
       </div>
       {active === "diplomatie" ? <AllianceDiplomacy /> : !own ? <NoAlliance data={v.data} /> : active === "chat" ? (
         <AllianceChat />
+      ) : active === "sammelangriffe" ? (
+        <AllianceRaids />
       ) : active === "mitglieder" ? (
         <AllianceMembers data={v.data} onCompose={onCompose} />
       ) : (
