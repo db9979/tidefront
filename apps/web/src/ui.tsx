@@ -96,15 +96,16 @@ export function Cost({ cost, have }: { cost: Record<string, number> | null | und
   );
 }
 
-/** Ganzzahl-Eingabe; max zeigt „alle“, limit begrenzt nur (z. B. auf das Bezahlbare). */
-export function Stepper({ value, onChange, max, limit }: { value: number; onChange: (v: number) => void; max?: number; limit?: number }) {
+/** Ganzzahl-Eingabe; max zeigt „alle“, limit begrenzt nur (z. B. auf das Bezahlbare); compact: schmales Feld für Listenzeilen. */
+export function Stepper({ value, onChange, max, limit, compact = false }: { value: number; onChange: (v: number) => void; max?: number; limit?: number; compact?: boolean }) {
   const clamp = (v: number) => Math.max(0, Math.min(max ?? Infinity, limit ?? Infinity, Math.floor(v || 0)));
   return (
-    <div className="flex items-center gap-1">
+    <div className={`flex items-center ${compact ? "gap-0.5 shrink-0" : "gap-1"}`}>
       <button type="button" className="tap rounded-lg btn-secondary text-lg" onClick={() => onChange(clamp(value - 1))} aria-label="weniger">−</button>
       <input
         inputMode="numeric"
-        className="w-16 h-11 rounded-lg field text-center mono"
+        aria-label="Anzahl"
+        className={`${compact ? "w-11" : "w-16"} h-11 rounded-lg field text-center mono`}
         maxLength={8}
         value={value}
         // Nur der ganzzahlige Teil zählt: „1.5“ wird 1, nicht 15.
@@ -254,6 +255,35 @@ export function UnitChips({ counts }: { counts: Record<string, number> | null | 
       ))}
     </span>
   );
+}
+
+/**
+ * Segment-Schalter (Unterreiter) im Muster von Meldungen: klebt oben, rote Linie unter dem gewählten.
+ * Wahl wird mit storageKey geräteweit gemerkt (useSegment).
+ */
+export function Segments<T extends string>({ items, value, onChange, label: aria }: { items: { id: T; label: ReactNode; badge?: number }[]; value: T; onChange: (v: T) => void; label: string }) {
+  return (
+    <div className="mb-3 sticky -top-3 -mx-3 z-10 bg-paper border-b border-rule">
+      <div className="flex gap-1 overflow-x-auto px-3 pt-1 [scrollbar-width:none]" role="tablist" aria-label={aria}>
+        {items.map((t) => (
+          <button key={t.id} type="button" role="tab" aria-selected={value === t.id} onClick={() => onChange(t.id)}
+            className={`tap flex-auto shrink-0 px-3 whitespace-nowrap text-[14px] font-serif flex items-center justify-center gap-1.5 border-b-[3px] -mb-px ${value === t.id ? "border-siegel text-ink" : "border-transparent text-ink2"}`}>
+            <span>{t.label}</span>
+            {!!t.badge && <span className="shrink-0 min-w-5 h-5 px-1 rounded-full bg-siegel text-white text-[11px] font-sans mono grid place-items-center">{t.badge}</span>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Gewählter Unterreiter, in localStorage gemerkt („tf-seg:…“); unbekannte Werte fallen auf fallback zurück. */
+export function useSegment<T extends string>(storageKey: string, ids: readonly T[], fallback: T): [T, (v: T) => void] {
+  const [v, setV] = useState<T>(() => {
+    const s = localStorage.getItem(`tf-seg:${storageKey}`) as T | null;
+    return s && ids.includes(s) ? s : fallback;
+  });
+  return [v, (n: T) => { setV(n); localStorage.setItem(`tf-seg:${storageKey}`, n); }];
 }
 
 const ACTION_BAR_HOST = "tf-actionbar";

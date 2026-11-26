@@ -66,7 +66,10 @@ export function AdmiralsCard() {
   const free = v.slots - v.list.length;
   const s = v.slotsRule;
   return (
-    <Card title={<span className="flex items-center gap-2"><Icon id="admiral" size={22} />Admirale</span>} right={<span className="text-xs text-slate-400">{v.list.length}/{v.slots}</span>}>
+    // Truppen → Einsatz: standardmäßig eingeklappt, Zusammenfassung „Rang Name, …“.
+    <Card title={<span className="flex items-center gap-2"><Icon id="admiral" size={22} />Admirale <span className="mono normal-case tracking-normal">{v.list.length}/{v.slots}</span></span>}
+      collapsible storageKey="truppen-admirale" defaultOpen={false}
+      summary={v.list.length === 0 ? (free > 0 ? "Noch kein Admiral – ernennen möglich." : "Kein Admiral.") : v.list.map((a) => `${a.rankName} ${a.name}`).join(" · ")}>
       <p className="text-xs text-ink2 mb-2">
         Ein Admiral führt einen Verband auf Mission oder als Hafenkommandant daheim die Verteidigung. Plätze: {s.base} + 1 je {s.perHarborLevels} Stufen Hafenkommandantur, höchstens {s.max}.
       </p>
