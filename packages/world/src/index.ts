@@ -202,3 +202,4 @@ export function nestSites(seed = 1, count = 70): NestSite[] {
 }
 export * from "./labels.ts";
 export { LAND, WATER, ISLANDS } from "./coast.ts";
+export { fieldSites, type FieldSite } from "./fields.ts"; // Felder

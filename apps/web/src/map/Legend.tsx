@@ -1,6 +1,7 @@
 // Einklappbare Legende der Kartenzeichen: Häfen nach Verhältnis, Kartell und See, Übersichtspunkte, Wetter.
 import { useState, type ReactNode } from "react";
 import { TacticalIcon } from "./TacticalIcon.tsx";
+import { Icon } from "../icons.tsx"; // Felder
 
 type Item = { icon: ReactNode; text: string };
 
@@ -23,6 +24,16 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { icon: <TacticalIcon kind="wreck" />, text: "Wrackfeld, bergbar" },
       { icon: <TacticalIcon kind="port" />, text: "Handelshafen der Börse" },
       { icon: <><TacticalIcon kind="ship" size={22} /><TacticalIcon kind="shipBack" size={22} /></>, text: "Eigener Verband: Hinfahrt, Rückfahrt – antippen für Details" },
+    ],
+  },
+  {
+    // Felder: Rohstofffelder auf See
+    title: "Rohstofffelder",
+    items: [
+      { icon: <><Icon id="oelfeld" size={22} /><Icon id="erzbucht" size={22} /></>, text: "Ölfeld (Treibstoff), Erzbucht (Stahl); Punkte darunter: Stufe 1–3" },
+      { icon: <><Icon id="fischgrund" size={22} /><Icon id="elektronikwrack" size={22} /></>, text: "Fischgrund (Proviant), Elektronik-Wrack (Elektronik)" },
+      { icon: <FieldRing dashed color="#a8331f" />, text: "Rot gestrichelt: vom Kartell bewacht; grau: frei" },
+      { icon: <><FieldRing color="#18273a" /><FieldRing color="#3d6b4f" /></>, text: "Ring in Besitzerfarbe wie die Häfen; Linien und Hof: Einflusszone einer Allianz" },
     ],
   },
   {
@@ -73,6 +84,10 @@ function StormFlag() {
       <path d="M6 1.5 L17 4 L6 6.5 Z M6 8.5 L17 11 L6 13.5 Z" fill="#a8331f" />
     </svg>
   );
+}
+
+function FieldRing({ color, dashed }: { color: string; dashed?: boolean }) {
+  return <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="#fbf8f0" stroke={color} strokeWidth={1.8} strokeDasharray={dashed ? "3 2" : undefined} /></svg>;
 }
 
 function Hatch({ d, color }: { d: string; color: string }) {

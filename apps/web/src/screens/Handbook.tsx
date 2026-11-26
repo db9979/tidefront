@@ -14,6 +14,7 @@ import { AdmiralChapter } from "../components/AdmiralChapter.tsx"; // Admirale
 import { AchievementsChapter } from "../components/AchievementsChapter.tsx"; // Erfolge
 import { AllianceOpsChapter } from "../components/AllianceOps.tsx"; // Allianz-Ops
 import { NavalChapter } from "../components/NavalChapter.tsx"; // See: Minen/Blockade/Konvoi
+import { FieldsChapter } from "../components/FieldsChapter.tsx"; // Felder
 import { requestBugReport } from "../lib/bug-log.ts";
 
 /** Kachel im Schnellzugriff oben im Handbuch. */
@@ -192,6 +193,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
     // Admirale (components/Admirals.tsx)
     { id: "admirale", icon: "admiral", title: "Admirale", body: <AdmiralChapter b={b} /> },
     { id: "see", icon: "mine", title: "Minen, Blockade, Konvois", body: <NavalChapter b={b} /> }, // See
+    { id: "felder", icon: "oelfeld", title: "Rohstofffelder", body: <FieldsChapter b={b} /> }, // Felder
     {
       id: "tagesbefehle", icon: "uhr", title: "Tagesbefehle",
       body: (

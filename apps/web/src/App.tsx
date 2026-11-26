@@ -37,6 +37,7 @@ export type Tab = "basis" | "karte" | "truppen" | "berichte" | "boerse";
 /** Missionsziel; eventId: Weltereignis (Schatzschiff, Großflotte, Belagerung). */
 export interface Target { col: number; row: number; eventId?: number; /** Karte: dieses Missionsblatt öffnen. */ missionId?: number }
 export interface Target { col: number; row: number; eventId?: number; blockadeId?: number; convoyId?: number; naval?: "minen" | "raeumen" | "blockade" } // See: Seeziele
+export interface Target { fieldId?: number; fieldMission?: "besetzen" | "aufklaerung" } // Felder
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "basis", label: "Basis", icon: "nav-basis" },

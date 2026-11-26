@@ -21,3 +21,4 @@ export * from "./admirals.ts"; // Admirale
 export * from "./naval.ts"; // See: Minen/Blockade/Konvoi
 export * as market from "./market/index.ts";
 export * from "./alliance-ops.ts"; // Allianz-Ops (Sammelangriff, Stationierung)
+export * from "./fields.ts"; // Felder: Rohstofffelder einnehmen

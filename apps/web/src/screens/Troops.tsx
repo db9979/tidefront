@@ -20,6 +20,7 @@ import { AdmiralsCard } from "../components/Admirals.tsx"; // Admirale
 import { OpsMissionLine, StationedGuestsCard } from "../components/AllianceOps.tsx"; // Allianz-Ops
 import { LiftBlockade } from "../components/Naval.tsx"; // See: Blockade aufheben
 import { TrainGroup } from "../components/TrainRow.tsx";
+import { FieldMissionLine, MyFieldsCard } from "../components/Fields.tsx"; // Felder
 
 type Seg = "einsatz" | "ausbilden" | "abwehr";
 const SEGS: { id: Seg; label: string }[] = [
@@ -69,7 +70,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
                 </button>
               </div>
               <div className="text-xs text-slate-300"><UnitChips counts={m.status === "returning" || m.status === "stationed" ? m.returning : m.units} /></div>
-              {m.status === "staged" || m.status === "stationed" ? <OpsMissionLine m={m} /> : m.status === "holding" ? (
+              {m.type === "besetzen" && m.status === "stationed" ? <FieldMissionLine missionId={m.id} /> : m.status === "staged" || m.status === "stationed" ? <OpsMissionLine m={m} /> : m.status === "holding" ? (
                 <>
                   <div className="text-sea-300">Blockade läuft</div>
                   <LiftBlockade missionId={m.id} />
@@ -93,6 +94,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
           ))}
         </ul>
       </Card>
+      <MyFieldsCard base={base} onShowOnMap={onShowOnMap} />{/* Felder */}
       <StationedGuestsCard base={base} now={now} />
       <AdmiralsCard />
       <RecentMissions />

@@ -15,6 +15,7 @@ import { AllianceOpsReport } from "../components/AllianceOps.tsx"; // Allianz-Op
 
 const KIND_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "kartell", aufklaerung: "aufklaerung", transport: "transport", leer: "kartell", abgewiesen: "schild", weltereignis: "kartell", weltereignis_leer: "kartell", spionage: "spionage", sabotage: "sabotage", sammelangriff: "sammelangriff", minen: "mine", blockade: "blockade", blockadekampf: "blockade", konvoi: "konvoi" };
 import { NavalReport } from "../components/Naval.tsx"; // See: Minen/Blockade/Konvoi
+import { FieldReport } from "../components/Fields.tsx"; // Felder
 const NAVAL_KINDS = ["minen", "blockade", "blockadekampf", "konvoi"]; // See: kein „Wiederholen“
 
 type Counts = Record<string, number>;
@@ -114,7 +115,8 @@ function ReportDetail({ id, onBack }: { id: number; onBack: () => void }) {
         <Button kind="secondary" onClick={onBack}>Zurück</Button>
       </div>
       <p className="text-xs mono text-slate-400 mb-3">{fmtTime(r.atMs)}</p>
-      {r.role === "attacker" && r.kind !== "kartell" && r.kind !== "spionage" && r.kind !== "sammelangriff" && !d.allianceRaid && !r.kind.startsWith("weltereignis") && !NAVAL_KINDS.includes(r.kind) && <RepeatButton reportId={r.id} />}
+      {r.role === "attacker" && r.kind !== "kartell" && r.kind !== "spionage" && r.kind !== "sammelangriff" && !d.allianceRaid && !r.kind.startsWith("weltereignis") && !NAVAL_KINDS.includes(r.kind) && r.kind !== "feld" && <RepeatButton reportId={r.id} />}
+      {d.field ? <FieldReport d={d.field as Parameters<typeof FieldReport>[0]["d"]} /> : null}{/* Felder */}
       {NAVAL_KINDS.includes(r.kind) && <NavalReport kind={r.kind} d={d} />}
       {r.kind.startsWith("weltereignis") && <WorldEventReportNote kind={r.kind} data={d} />}
       {r.kind === "spionage" && d.spy ? <SpyReport d={d} role={r.role} /> : null}

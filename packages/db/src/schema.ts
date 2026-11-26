@@ -10,3 +10,4 @@ export * from "./schema/admirals.ts"; // Admirale
 export * from "./schema/achievements.ts"; // Erfolge und Wochenziele
 export * from "./schema/alliance-ops.ts"; // Allianz-Ops (Sammelangriff, Stationierung)
 export * from "./schema/naval.ts"; // See: Minen/Blockade/Konvoi
+export * from "./schema/fields.ts"; // Felder: Rohstofffelder

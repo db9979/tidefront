@@ -579,3 +579,36 @@ Regeln in `docs/REGELN-SEE.md`, Simulation `sim/naval.ts` (`npm run sim`, Abschn
    25 %. Kartellboote 0,8 je 1000 Warenwert (statt 1,2), höchstens 12.
 4. **Offen:** Rückfahrt und Handelskonvois laufen nicht durch Minen; Börsenlieferungen sind keine Konvois; Geleitschutz
    beim Handel nur durch den Annehmenden (für die eingehende Ware), nicht durch den Anbieter beim Einstellen.
+
+## J. Rohstofffelder (Welle 3 „Expansion“, Teil 1, Balance-Block `fields`)
+
+Regeln in `docs/REGELN-FELDER.md`, Simulation `sim/fields.ts` (`npm run sim`, Abschnitt „Felder“, 400 feste Seeds).
+Ziel: Felder sind Entscheidungen und Konflikte, kein passiver Mehrertrag.
+
+1. **Verteilung.** Feste Kandidatenliste (`fieldSites`, Seed 7): Seefelder mit Küste in ein bis zwei Feldern Nähe,
+   mindestens 230 km auseinander. Aktiv sind `count` = 28; der Server wählt nach Lage der Häfen: nie näher als 220 km
+   an einem Hafen, bevorzugt Plätze mit Häfen mehrerer Spieler im Umkreis von 700 km. Neutrale Felder, die durch einen
+   neuen Hafen zu nah liegen oder seit einem Tag ohne Hafen in Reichweite sind (wenn es bessere Plätze gibt), ziehen um.
+2. **Ertrag.** Stufen 1/2/3 ≈ 75 / 125 / 190 Stahl-Äquivalent je Stunde, alle Arten gleich viel wert (Richtpreise).
+   Netto (Unterhalt 10/15/20 Proviant, Konvoi 450 km ohne Geleit, Risiko einer Besatzung aus 2 Zerstörern + 2 Korvetten):
+   68 / 114 / 173 je Stunde. Zusatzertrag gegenüber der Produktion des Bot-Hafens (Stufe 2, Mittel der Arten):
+   Tag 14 (779/h): 1 Feld 14,7 %, 2 Felder 26,9 %, 5 Felder 50,4 %; Tag 28 (1127/h): 1 Feld 10,1 %, 5 Felder 34,8 %.
+   Der Bot hat an Tag 14 und 28 Hafenkommandantur 5 bzw. 7, darf also nur 2 Felder halten; 5 Felder brauchen Stufe 16.
+   Erster Entwurf (Stufe 2 ≈ 99/h) lag an Tag 28 bei 7,8 % für ein Feld – zu wenig; Ertrag +25 %. Abnehmender Ertrag
+   von 100/85/70/60/50 auf 100/85/70/55/45 %, damit 5 Felder an Tag 14 bei etwa +50 % bleiben.
+3. **Kartell.** Chance 5 % je 4-Stunden-Zyklus (≈ alle 3,3 Tage je Feld), Verband 9/12/18 Schnellboote ± 30 %.
+   Mindestbesatzung (2 Korvetten bzw. 1 Zerstörer) fällt auf Stufe 1 in 63 % / 58 % der Angriffe, auf Stufe 2 und 3
+   immer (Ø 3 Tage bis zum Verlust); 2 Zerstörer + 2 Korvetten halten auf allen Stufen. Erster Entwurf (4/7/11) ließ
+   jede Besatzung außer auf Stufe 3 sicher – kein Risiko; jetzt lohnt eine stärkere Besatzung, die aber Schiffe bindet.
+   Wache neutraler Felder 4/8/14 Schnellboote (schwächer als ein Nest; 2 Zerstörer + 4 Korvetten siegen immer).
+4. **Bremse.** Höchstzahl 1 + 1 je 4 Stufen Hafenkommandantur (Stufe 0: keines), höchstens 5; Unterhalt je Feld in
+   Proviant; die Besatzung belegt einen Missionsplatz und kostet ihren normalen Unterhalt (sie bleibt in unitsAway).
+5. **Allianz.** Zone: Felder derselben Allianz bis 450 km verbunden (Kette); ab 3 Feldern +10 % Ertrag je Feld.
+   Allianzwertung +20 Punkte je Feld und Tag (Saisonbeitrag; eine Allianz mit 5 Feldern über 28 Tage: 2800).
+6. **Umsetzung.** Felder hängen am Spieler und an einem Heimathafen (`resource_field.base_id`, Ziel der Konvois),
+   vorbereitet für mehrere Häfen. Ertragskonvois nutzen das Konvoi-System (Art „feld“, ohne Geleit), Blockade hält sie
+   zurück; Minen wirken auf Konvois nicht. Der angefangene Zyklus geht beim Rückruf noch als Konvoi heim, bei Verlust
+   durch Angriff verfällt er.
+7. **Offen:** kein Geleitschutz für Ertragskonvois; keine Verstärkung einer Besatzung (Rückruf und neu besetzen);
+   ein Admiral, der einen Besetzungsverband führt, bleibt bei der Besatzung; Wochenziel-Art für Felder nicht umgesetzt;
+   kein Radar-Vorwarnung für Angriffe auf Felder (nur Push nach dem Kampf, beim Kartell vorab).

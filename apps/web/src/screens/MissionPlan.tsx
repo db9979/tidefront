@@ -23,6 +23,7 @@ import { AdmiralPick } from "../components/Admirals.tsx";
 // Allianz-Ops: Stationieren, als Sammelangriff eröffnen
 import { RaidOpenCard } from "../components/AllianceOps.tsx";
 import { HoldHours, MineWarning } from "../components/Naval.tsx"; // See: Minen/Blockade/Konvoi
+import { FieldTargetLine, StayAllToggle, fieldsRules, useFields } from "../components/Fields.tsx"; // Felder
 
 const TYPES = [
   { id: "ueberfall", text: "Überfall", hint: "Kampf am Ziel, Beute bei Sieg" },
@@ -35,6 +36,7 @@ const TYPES = [
   { id: "raeumen", text: "Minen räumen", hint: "Minenräumer räumen fremde Minenfelder auf dem Zielfeld" },
   { id: "blockade", text: "Blockade", hint: "Bewaffnete Schiffe liegen vor einem fremden Hafen: Produktion, Lieferungen und Börse des Ziels leiden" },
   { id: "abfangen", text: "Abfangen", hint: "Konvoi eines Kriegsgegners auf See abfangen: Kampf gegen das Geleit, Beute aus der Ladung" },
+  { id: "besetzen", text: "Besetzen", hint: "Rohstofffeld einnehmen: Seekampf gegen Wache oder Besatzung, danach bleibt eine Besatzung und der Ertrag fließt per Konvoi" }, // Felder
 ] as const;
 type PlanKind = (typeof TYPES)[number]["id"];
 
@@ -49,13 +51,17 @@ const SENT_TEXT: Record<string, string> = {
   raeumen: "Der Räumbericht erscheint nach der Ankunft unter „Meldungen“.",
   blockade: "Nach der Ankunft beginnt die Blockade; das Ziel wird benachrichtigt.",
   abfangen: "Der Kampfbericht erscheint nach dem Abfangen unter „Meldungen“.",
+  besetzen: "Nach dem Sieg hält deine Besatzung das Feld; den Ertrag und den Rückruf findest du unter „Truppen“ → Meine Felder.", // Felder
 };
 
 export function MissionPlan({ base, initialTarget, onClose, preset }: { base: BaseData; initialTarget: Target | null; onClose: () => void; onPickOnMap?: () => void; preset?: PlanPreset }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const map = useQuery(trpc.world.map.queryOptions());
-  const [type, setType] = useState<PlanKind>(preset?.type ?? initialTarget?.naval ?? (initialTarget?.convoyId ? "abfangen" : "ueberfall"));
+  const [type, setType] = useState<PlanKind>(preset?.type ?? initialTarget?.naval ?? initialTarget?.fieldMission ?? (initialTarget?.convoyId ? "abfangen" : "ueberfall"));
   const [holdHours, setHoldHours] = useState(4); // See: Blockade
+  const [stayAll, setStayAll] = useState(false); // Felder: ganzer Verband bleibt
+  const fieldsQ = useFields(); // Felder: Feldzeichen auf der Zielkarte
+  const fieldLayer = useMemo(() => (fieldsQ.data && meta.data ? { list: fieldsQ.data.fields, linkKm: fieldsRules(meta.data.balance)?.zoneLinkKm ?? 450 } : undefined), [fieldsQ.data, meta.data]);
   const [target, setTarget] = useState<Target | null>(initialTarget);
   // Vorbelegung („Wiederholen“) auf die Einheiten daheim gekürzt; note erklärt die Kürzung.
   const [first] = useState(() => fitUnits(preset?.units ?? {}, Object.fromEntries(base.units.map((u) => [u.id, u.home]))));
@@ -72,13 +78,13 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   }, []);
   const worldEvents = useWorldEvents(!!target?.eventId);
   const launch = useCommand(
-    (i: { key: string; type: string; units: Record<string, number>; col: number; row: number; cargo?: Record<string, number>; eventId?: number; blockadeId?: number; convoyId?: number; holdHours?: number; admiralId?: number }) => trpcClient.mission.launch.mutate(i),
+    (i: { key: string; type: string; units: Record<string, number>; col: number; row: number; cargo?: Record<string, number>; eventId?: number; blockadeId?: number; convoyId?: number; holdHours?: number; admiralId?: number; fieldId?: number; stayAll?: boolean }) => trpcClient.mission.launch.mutate(i),
     () => [trpc.base.pathFilter().queryKey, trpc.admiral.pathFilter().queryKey], // Admirale: Status
   );
 
   const chosen = useMemo(() => Object.fromEntries(Object.entries(units).filter(([, n]) => n > 0)), [units]);
   const cargoSent = type === "transport" ? Object.fromEntries(Object.entries(cargo).filter(([, n]) => n > 0)) : undefined;
-  const naval = target?.blockadeId ? { blockadeId: target.blockadeId } : target?.convoyId ? { convoyId: target.convoyId } : type === "blockade" ? { holdHours } : {}; // See
+  const naval = target?.blockadeId ? { blockadeId: target.blockadeId } : target?.convoyId ? { convoyId: target.convoyId } : type === "blockade" ? { holdHours } : target?.fieldId ? { fieldId: target.fieldId, ...(type === "besetzen" ? { stayAll } : {}) } : {}; // See, Felder
   const input = target ? { type, units: chosen, col: target.col, row: target.row, cargo: cargoSent, ...(target.eventId ? { eventId: target.eventId } : admiralId ? { admiralId } : {}), ...naval } : null;
   const event = target?.eventId ? worldEvents.data?.events.find((e) => e.id === target.eventId) : undefined;
   const preview = useQuery({
@@ -128,7 +134,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           </div>
         ) : <>
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-          {TYPES.filter((t) => t.id !== "abfangen" || target?.convoyId).map((t) => (
+          {TYPES.filter((t) => (t.id !== "abfangen" || target?.convoyId) && (t.id !== "besetzen" || target?.fieldId)).map((t) => (
             <button key={t.id} type="button" onClick={() => { setType(t.id); setTypeOpen(false); }} className={`tap rounded-xl px-1 py-2 text-sm flex flex-col items-center gap-1 border ${type === t.id ? "border-sea-400 bg-sea-400/10 font-semibold reticle" : "border-navy-600 bg-navy-900"}`}>
               <Icon id={t.id} size={32} />
               {t.text}
@@ -143,20 +149,22 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
 
       <Card title="Ziel">
         <div className="h-56 rounded-lg overflow-hidden mb-2">
-          <HexMap data={map.data} selected={target} onSelect={setTarget} center={initialTarget ?? { col: base.col, row: base.row }} />
+          <HexMap data={map.data} selected={target} onSelect={(h) => { const f = fieldsQ.data?.fields.find((x) => x.col === h.col && x.row === h.row); setTarget(f ? { ...h, fieldId: f.id } : h); }} center={initialTarget ?? { col: base.col, row: base.row }} fields={fieldLayer} />
         </div>
         <p className="text-sm">
           {!target && "Ziel auf der Karte antippen."}
           {target?.blockadeId && <>Blockadeverband vor dem Hafen – nur Überfall; Seekampf auf dem Feld.<br /></>}
           {target?.convoyId && <>Feindlicher Konvoi – Abfangpunkt wird berechnet.<br /></>}
+          {target?.fieldId && <FieldTargetLine fieldId={target.fieldId} />}
           {target?.eventId && <>Weltereignis <strong>{event ? KIND_TITLE[event.kind] : "…"}</strong>{event?.siege ? ` vor ${event.siege.name}` : ""} – nur Überfall; {event?.kind === "schatzschiff" ? "Abfangpunkt wird berechnet." : "Kampf auf See."}<br /></>}
           {target && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.base && <>Stützpunkt <strong>{tInfo.base.name}</strong> ({tInfo.base.owner}){tInfo.base.protection && <span className="text-messing"> · geschützt: {label(tInfo.base.protection)}</span>}</>}
           {target && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.nest && <>Piratennest Stufe <strong>{tInfo.nest.level}</strong>{tInfo.nest.empty ? " (verlassen)" : ""}</>}
-          {target && !target.eventId && !target.blockadeId && !target.convoyId && !tInfo?.base && !tInfo?.nest && <span className="text-slate-400">Feld {target.col}/{target.row}: kein Ziel</span>}
+          {target && !target.eventId && !target.blockadeId && !target.convoyId && !tInfo?.base && !tInfo?.nest && !target.fieldId && <span className="text-slate-400">Feld {target.col}/{target.row}: kein Ziel</span>}
         </p>
       </Card>
 
       {type === "blockade" && <HoldHours value={holdHours} onChange={setHoldHours} />}
+      {type === "besetzen" && <StayAllToggle value={stayAll} onChange={setStayAll} balance={balance} />}
       {target && Object.keys(chosen).length > 0 && type !== "aufklaerung" && <MineWarning col={target.col} row={target.row} units={chosen} />}
 
       {type !== "stationierung" && <TemplateBar base={base} units={chosen} type={isPlanType(type) ? type : "ueberfall"} onApply={(u, t, n) => { setUnits(u); if (t) setType(t); setNote(n); }} />}
@@ -190,7 +198,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         </Card>
       )}
 
-      {!target?.eventId && <AdmiralPick value={admiralId} onChange={setAdmiralId} />}
+      {!target?.eventId && !target?.fieldId && <AdmiralPick value={admiralId} onChange={setAdmiralId} />}
 
       {type === "ueberfall" && tInfo?.nest && !tInfo.nest.empty && Object.keys(chosen).length > 0 && (
         <Strength balance={balance} units={chosen} level={tInfo.nest.level} />

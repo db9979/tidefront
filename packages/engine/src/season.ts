@@ -161,6 +161,7 @@ export const seasonEnd: Handler = async (tx, ev, due) => {
   await resetChallenges(tx);
   await clearWorldEvents(tx);
   await (await import("./naval.ts")).clearNaval(tx); // See: Minen/Blockade/Konvoi verfallen
+  await (await import("./fields-run.ts")).clearFields(tx); // Felder: Besitz und Feldpunkte verfallen
   // Marktnachrichten verfallen; die Börse steht wieder auf dem Grundrichtwert.
   await clearMarketNews(tx);
   await tx.update(tables.nest).set({ defeatedAt: null });

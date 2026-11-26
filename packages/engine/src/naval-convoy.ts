@@ -66,7 +66,7 @@ const route = (c: ConvoyRow) => buildRoute([hexCenter(c.fromCol, c.fromRow), hex
 export async function createConvoy(
   tx: Tx,
   v: {
-    kind: "handel" | "transport"; deliveryId?: string; missionId?: number; senderId: number | null; recipientId: number; recipientBaseId: number;
+    kind: "handel" | "transport" | "feld"; deliveryId?: string; missionId?: number; senderId: number | null; recipientId: number; recipientBaseId: number; // Felder: "feld"
     from: { col: number; row: number }; to: { col: number; row: number }; cargo: ResourceMap; escort?: Counts; departMs: number; arriveMs: number;
   },
 ): Promise<number> {

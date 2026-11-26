@@ -43,6 +43,7 @@ import { admiralRouter } from "./routers/admirals.ts"; // Admirale
 import { achievementsRouter } from "./routers/achievements.ts"; // Erfolge
 import { allianceOpsRouter } from "./routers/alliance-ops.ts"; // Allianz-Ops
 import { navalRouter } from "./routers/naval.ts"; // See: Minen/Blockade/Konvoi
+import { fieldsRouter } from "./routers/fields.ts"; // Felder
 
 export type { Ctx };
 
@@ -51,7 +52,7 @@ const counts = z.record(z.string().max(40), z.number().int().min(0).max(1_000_00
 const resources = z.record(z.string().max(20), z.number().int().min(0).max(100_000_000));
 const field = { col: z.number().int().min(0).max(500), row: z.number().int().min(0).max(500) };
 // See: Minen/Blockade/Konvoi – Ziele und Haltezeit von Seemissionen.
-const navalTarget = { blockadeId: z.number().int().min(1).optional(), convoyId: z.number().int().min(1).optional(), holdHours: z.number().int().min(0).max(48).optional() };
+const navalTarget = { blockadeId: z.number().int().min(1).optional(), convoyId: z.number().int().min(1).optional(), holdHours: z.number().int().min(0).max(48).optional(), fieldId: z.number().int().min(1).optional(), stayAll: z.boolean().optional() }; // Felder: fieldId, stayAll
 
 export const appRouter = t.router({
   meta: t.procedure.query(() => ({ balance, serverNow: Date.now(), version: APP_VERSION, builtAt: BUILD_TIME })),
@@ -190,6 +191,7 @@ export const appRouter = t.router({
   achievements: achievementsRouter, // Erfolge und Wochenziele
   allianceOps: allianceOpsRouter, // Allianz-Ops: Sammelangriff, Stationierung
   naval: navalRouter, // See: Minen/Blockade/Konvoi
+  fields: fieldsRouter, // Felder
 });
 
 export type AppRouter = typeof appRouter;

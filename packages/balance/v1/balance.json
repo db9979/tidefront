@@ -1,5 +1,5 @@
 {
-  "version": "v1.9",
+  "version": "v1.10",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -329,12 +329,44 @@
       "flottenbrecher": { "title": "Flottenbrecher", "description": "Weltereignisse mit dem entscheidenden Angriff besiegt", "counter": "weltereignisse", "thresholds": [1, 3, 10] },
       "pflichttreu": { "title": "Pflichttreu", "description": "Längste Serie: Tage in Folge alle drei Tagesbefehle abgeholt", "counter": "serie", "thresholds": [3, 7, 21] },
       "ruhmreich": { "title": "Ruhmreich", "description": "Beste Platzierung am Ende einer Saison", "counter": "saison", "thresholds": [1, 2, 3], "tierTexts": ["Platz 1 bis 10", "Platz 1 bis 3", "Saisonsieg"] },
-      "wochenwerk": { "title": "Wochenwerk", "description": "Wochenziele erfüllt", "counter": "wochenziele", "thresholds": [3, 15, 50] }
+      "wochenwerk": { "title": "Wochenwerk", "description": "Wochenziele erfüllt", "counter": "wochenziele", "thresholds": [3, 15, 50] },
+      "landnahme": { "title": "Landnahme", "description": "Rohstofffelder eingenommen", "counter": "felder", "thresholds": [1, 5, 20] }
     },
     "weekly": { "goalValue": 5000, "goalCredits": 150, "bonusValue": 9000, "bonusCredits": 400, "stageGrowth": 0.3 }
   },
   "allianceOps": {
     "raid": { "minJoinMinutes": 15, "maxJoinHours": 24, "maxArriveHours": 48, "maxOpenPerAlliance": 3, "maxParticipants": 8 },
     "station": { "maxPerBase": 3 }
+  },
+  "fields": {
+    "count": 28,
+    "siteSeed": 7,
+    "minKmFromBase": 220,
+    "preferKm": 700,
+    "kinds": {
+      "oelfeld": { "resource": "treibstoff", "yieldPerHour": [42, 70, 105], "share": 1 },
+      "erzbucht": { "resource": "stahl", "yieldPerHour": [75, 125, 190], "share": 1.2 },
+      "fischgrund": { "resource": "proviant", "yieldPerHour": [125, 210, 315], "share": 1 },
+      "elektronikwrack": { "resource": "elektronik", "yieldPerHour": [25, 42, 63], "share": 0.8 }
+    },
+    "tierShares": [0.5, 0.33, 0.17],
+    "guard": [{ "schnellboot": 4 }, { "schnellboot": 8 }, { "schnellboot": 14 }],
+    "guardRespawnHours": 6,
+    "minGarrisonCommandPoints": 6,
+    "maxFieldsBase": 1,
+    "maxFieldsPerHarborLevels": 4,
+    "maxFields": 5,
+    "yieldFactors": [1, 0.85, 0.7, 0.55, 0.45],
+    "upkeepProviantPerHour": [10, 15, 20],
+    "deliveryHours": 4,
+    "convoySpeedKmh": 40,
+    "cartelRaidChance": 0.05,
+    "cartelRaidLeadMinutes": 60,
+    "cartelRaid": [{ "schnellboot": 9 }, { "schnellboot": 12 }, { "schnellboot": 18 }],
+    "cartelRaidSpread": 0.3,
+    "zoneLinkKm": 450,
+    "zoneMinFields": 3,
+    "zoneBonus": 0.1,
+    "alliancePointsPerFieldDay": 20
   }
 }
