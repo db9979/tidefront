@@ -131,6 +131,8 @@ export interface Balance {
     raidStrengthShareOfDefense: number;
     raidMinSchnellboote: number;
     raidMiliPerBoot: number;
+    /** Schwankung der Überfallstärke je Überfall (0,3 = ±30 %). */
+    raidStrengthSpread: number;
   };
   market: MarketBalance;
 }
@@ -326,5 +328,7 @@ export interface NestGarrison {
 export interface RaidForce {
   units: Counts;
   defenseHp: number;
+  /** Gezogener Schwankungsfaktor der Stärke (1 ohne Seed). */
+  strengthFactor: number;
   attacker: AttackerInput;
 }

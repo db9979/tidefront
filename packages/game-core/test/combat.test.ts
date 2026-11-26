@@ -111,8 +111,8 @@ test("ein klar überlegener Verband gewinnt gegen Nest Stufe 1", () => {
     assert.equal(report.defender.survivors.piratenmiliz, 0);
     assert.equal(report.defender.survivors.schnellboot, 0);
     assert.equal(report.attacker.survivors.landungsschiff, 2);
-    // 2 Landungsschiffe laden 8000, das Nest gibt 5400: volle feste Beute
-    assert.deepEqual(report.loot, { stahl: 3000, treibstoff: 1200, elektronik: 400, proviant: 800 });
+    // 2 Landungsschiffe laden 8000, das Nest gibt 3800: volle feste Beute
+    assert.deepEqual(report.loot, { stahl: 2000, treibstoff: 800, elektronik: 300, proviant: 700 });
   }
 });
 
@@ -135,11 +135,11 @@ test("Landungsschiffe ohne Truppen: keine Landung, kein Sieg", () => {
 });
 
 test("Beute durch Ladekapazität begrenzt und proportional gekürzt", () => {
-  const report = fight({ units: { zerstoerer: 6, landungsschiff: 1, kampfpanzer: 10 } }, nest(1));
+  const report = fight({ units: { zerstoerer: 6, landungsschiff: 1, kampfpanzer: 10 } }, nest(2));
   assert.equal(report.winner, "attacker");
   assert.equal(report.attacker.survivors.landungsschiff, 1);
-  // 5400 Beute auf 4000 Ladung: Faktor 4000 / 5400, abgerundet
-  assert.deepEqual(report.loot, { stahl: 2222, treibstoff: 888, elektronik: 296, proviant: 592 });
+  // 6400 Beute auf 4000 Ladung: Faktor 4000 / 6400, abgerundet
+  assert.deepEqual(report.loot, { stahl: 2187, treibstoff: 875, elektronik: 312, proviant: 625 });
   const sum = Object.values(report.loot).reduce((a, b) => a + b, 0);
   assert.ok(sum <= 4000);
 });
@@ -172,7 +172,7 @@ test("Wiederholungsfaktor nach Anzahl früherer Angriffe", () => {
   assert.deepEqual(stahl, [3000, 1500, 750, 0, 0]);
   // feste Nestbeute unterliegt dem Faktor nicht
   const nestLoot = fight({ units: strongFleet, priorAttacksInWindow: 3 }, nest(1)).loot;
-  assert.equal(nestLoot.stahl, 3000);
+  assert.equal(nestLoot.stahl, 2000);
 });
 
 test("computeLoot: Kürzung, Faktor und Grenzfälle", () => {

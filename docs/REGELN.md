@@ -1,7 +1,8 @@
 # TIDEFRONT – Regel-Spezifikation Meilenstein 1
 
 Verbindlich für `packages/game-core`. Alle Zahlen stehen in `packages/balance/v1/balance.json`
-und werden dort geändert, nie im Code. Zahlen sind Startwerte und nicht simuliert.
+und werden dort geändert, nie im Code. Zahlen sind Startwerte; Kartell und Piratennester sind seit Balance v1.1
+per Simulation abgestimmt (`npm run sim`, Ergebnisse in `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt C).
 
 ## Grundsätze
 
@@ -121,9 +122,16 @@ Nach dem Kampf:
 ## Freibeuter-Kartell
 
 - Nester der Stufen 1 bis 5 mit fester Besatzung und Beute (`pirates.nestLevels`), neu besetzt nach `nestRespawnHours`.
-- Überfälle auf Spieler alle `raidIntervalHours` je Stützpunkt. Stärke: Schnellboote so viele, dass ihre Lebenspunkte
-  `raidStrengthShareOfDefense` der Lebenspunkte der Verteidigung (Schiffe und Anlagen) entsprechen, mindestens `raidMinSchnellboote`;
-  je Boot `raidMiliPerBoot` Milizionäre. Das Kartell führt eigene Landungskapazität mit.
+  Ausgelegt auf eine Saison von 28 Tagen: Ein bezahlbarer Verband schlägt Stufe 1 ab Tag 1–2, Stufe 2 ab Tag 3–5,
+  Stufe 3 um Tag 7–10, Stufe 4 um Tag 14–18 und Stufe 5 um Tag 21–28 mit mindestens 70 %. Die Beute einer Stufe passt
+  ungefähr in die Ladung der Landungsschiffe eines solchen Verbands.
+- Überfälle auf Spieler alle `raidIntervalHours` je Stützpunkt. Stärke (seit v1.1):
+  - Verteidigungs-Lebenspunkte = Lebenspunkte aller Schiffe, Bodentruppen und Anlagen daheim (Flugzeuge zählen nicht).
+  - Grundstärke in Booten = `raidStrengthShareOfDefense * Verteidigungs-Lebenspunkte / hp(schnellboot)`, mindestens `raidMinSchnellboote`.
+  - Je Überfall wird ein Faktor gleichverteilt aus `[1 - raidStrengthSpread, 1 + raidStrengthSpread]` gezogen (eigener Seed,
+    nicht der Kampf-Seed). Milizionäre = `Grundstärke * Faktor * raidMiliPerBoot`, gerundet, mindestens 1;
+    Schnellboote = `Milizionäre / raidMiliPerBoot`, aufgerundet.
+  - Das Kartell führt eigene Landungskapazität mit (`raidMiliPerBoot` je Schnellboot).
 - Kein Überfall während Nachtschild, Anfängerschutz oder Schutz nach Niederlage.
 
 ## Schutz

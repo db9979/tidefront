@@ -20,14 +20,25 @@ const balance = loadBalance();
 test("Besatzung und Beute eines Nests nach Stufe", () => {
   const n1 = nestGarrison(1, balance);
   assert.ok(n1.ok);
-  assert.deepEqual(n1.nest.units, { schnellboot: 6, piratenmiliz: 40 });
+  assert.deepEqual(n1.nest.units, { schnellboot: 4, piratenmiliz: 18 });
   assert.deepEqual(n1.nest.defenses, { flakstellung: 0, kuestenbatterie: 0, bunkerlinie: 0 });
-  assert.deepEqual(n1.nest.loot, { stahl: 3000, treibstoff: 1200, elektronik: 400, proviant: 800 });
+  assert.deepEqual(n1.nest.loot, { stahl: 2000, treibstoff: 800, elektronik: 300, proviant: 700 });
   const n5 = nestGarrison(5, balance);
   assert.ok(n5.ok);
-  assert.deepEqual(n5.nest.units, { schnellboot: 70, piratenmiliz: 400 });
-  assert.deepEqual(n5.nest.defenses, { flakstellung: 5, kuestenbatterie: 4, bunkerlinie: 3 });
-  assert.equal(n5.nest.loot.stahl, 32000);
+  assert.deepEqual(n5.nest.units, { schnellboot: 26, piratenmiliz: 250 });
+  assert.deepEqual(n5.nest.defenses, { flakstellung: 3, kuestenbatterie: 2, bunkerlinie: 2 });
+  assert.equal(n5.nest.loot.stahl, 14000);
+});
+
+test("Nestbeute wächst mit der Stufe", () => {
+  let last = 0;
+  for (let level = 1; level <= 5; level++) {
+    const g = nestGarrison(level, balance);
+    assert.ok(g.ok);
+    const total = Object.values(g.nest.loot).reduce((x, y) => x + y, 0);
+    assert.ok(total > last);
+    last = total;
+  }
 });
 
 test("Nester werden mit der Stufe stärker; unbekannte Stufe wird abgelehnt", () => {
@@ -60,30 +71,61 @@ test("Nest wird nach nestRespawnHours neu besetzt", () => {
 
 test("Überfall: Mindeststärke ohne Verteidigung", () => {
   const raid = composeRaid({}, {}, balance);
-  assert.deepEqual(raid.units, { schnellboot: 4, piratenmiliz: 24 });
-  // schwache Verteidigung bleibt bei der Mindeststärke: 200 HP * 0.6 / 80 = 1.5 -> 2 < 4
-  assert.equal(composeRaid({ korvette: 1 }, {}, balance).units.schnellboot, 4);
+  // raidMinSchnellboote 4, je Boot 8 Milizionäre
+  assert.deepEqual(raid.units, { schnellboot: 4, piratenmiliz: 32 });
+  assert.equal(raid.strengthFactor, 1);
+  // schwache Verteidigung bleibt bei der Mindeststärke: 200 bzw. 400 HP * 0,55 / 80 < 4 Boote
+  assert.deepEqual(composeRaid({ korvette: 1 }, {}, balance).units, { schnellboot: 4, piratenmiliz: 32 });
+  assert.deepEqual(composeRaid({ schuetzen: 20 }, {}, balance).units, { schnellboot: 4, piratenmiliz: 32 });
 });
 
-test("Überfallstärke skaliert mit der Verteidigung (Schiffe und Anlagen)", () => {
-  // 5 Korvetten (1000) + 3 Küstenbatterien (1200) + 1 Bunkerlinie (600) = 2800 HP
-  const raid = composeRaid({ korvette: 5, schuetzen: 500 }, { kuestenbatterie: 3, bunkerlinie: 1 }, balance);
-  assert.equal(raid.defenseHp, 2800);
-  assert.equal(raid.units.schnellboot, 21); // 2800 * 0.6 / 80
-  assert.equal(raid.units.piratenmiliz, 126);
-  // Bodentruppen und Flugzeuge zählen nicht zur Verteidigungsstärke
-  assert.equal(defenseHp({ schuetzen: 500, abfangjaeger: 10 }, {}, balance), 0);
-  // aufgerundet: 1650 * 0.6 / 80 = 12.375 -> 13
-  assert.equal(composeRaid({ korvette: 6, zerstoerer: 1 }, {}, balance).units.schnellboot, 13);
-  // monoton wachsend
+test("Überfallstärke skaliert mit der Verteidigung einschließlich Bodentruppen", () => {
+  // 5 Korvetten (1000) + 100 Schützen (2000) + 3 Küstenbatterien (1200) + 1 Bunkerlinie (600) = 4800 HP
+  const raid = composeRaid({ korvette: 5, schuetzen: 100 }, { kuestenbatterie: 3, bunkerlinie: 1 }, balance);
+  assert.equal(raid.defenseHp, 4800);
+  // 4800 * 0,55 / 80 = 33 Boote, 264 Miliz
+  assert.deepEqual(raid.units, { schnellboot: 33, piratenmiliz: 264 });
+  // Bodentruppen zählen, Flugzeuge nicht
+  assert.equal(defenseHp({ schuetzen: 500, kampfpanzer: 2, abfangjaeger: 10, jagdbomber: 3 }, {}, balance), 10600);
+  // Miliz gerundet, Boote aufgerundet: 1650 * 0,55 / 80 = 11,34 -> 91 Miliz auf 12 Booten
+  assert.deepEqual(composeRaid({ korvette: 6, zerstoerer: 1 }, {}, balance).units, { schnellboot: 12, piratenmiliz: 91 });
+  // monoton wachsend, auch mit Bodentruppen allein
   let last = 0;
-  for (let n = 0; n <= 40; n += 4) {
-    const boats = composeRaid({ zerstoerer: n }, { flakstellung: n }, balance).units.schnellboot;
-    assert.ok(boats >= last);
-    assert.ok(boats >= balance.pirates.raidMinSchnellboote);
-    last = boats;
+  for (let n = 0; n <= 400; n += 40) {
+    const miliz = composeRaid({ schuetzen: n }, {}, balance).units.piratenmiliz;
+    assert.ok(miliz >= last);
+    last = miliz;
   }
-  assert.ok(last > 100);
+  assert.equal(last, 440); // 8000 HP * 0,55 / 80 * 8
+});
+
+test("Überfallstärke schwankt mit dem Seed in den Grenzen von raidStrengthSpread", () => {
+  const spread = balance.pirates.raidStrengthSpread;
+  const units = { schuetzen: 200 }; // Grundstärke 27,5 Boote = 220 Miliz
+  const seen = new Set<number>();
+  for (let seed = 1; seed <= 300; seed++) {
+    const raid = composeRaid(units, {}, balance, seed);
+    assert.ok(raid.strengthFactor >= 1 - spread && raid.strengthFactor <= 1 + spread);
+    assert.equal(raid.units.piratenmiliz, Math.round(220 * raid.strengthFactor));
+    // jeder Milizionär hat einen Platz
+    assert.ok(raid.units.schnellboot * balance.pirates.raidMiliPerBoot >= raid.units.piratenmiliz);
+    assert.ok((raid.units.schnellboot - 1) * balance.pirates.raidMiliPerBoot < raid.units.piratenmiliz);
+    seen.add(raid.units.piratenmiliz);
+  }
+  assert.ok(seen.size > 50);
+  // gleicher Seed, gleicher Verband
+  assert.deepEqual(composeRaid(units, {}, balance, 42), composeRaid(units, {}, balance, 42));
+});
+
+test("Kartell gegen die Wache (20 Schützen): mal Sieg, mal Niederlage", () => {
+  let wins = 0;
+  for (let seed = 1; seed <= 100; seed++) {
+    const raid = composeRaid({ schuetzen: 20 }, {}, balance, seed + 1000);
+    const res = resolveBattle(raid.attacker, { units: { schuetzen: 20 }, defenses: {}, resources: { stahl: 5000 } }, balance, seed);
+    assert.ok(res.ok);
+    if (res.report.winner === "attacker") wins++;
+  }
+  assert.ok(wins >= 30 && wins <= 70, `Siege ${wins}`);
 });
 
 test("Kartell führt eigene Landungskapazität mit und plündert ohne Landungsschiffe", () => {

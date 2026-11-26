@@ -1,5 +1,5 @@
 {
-  "version": "v1",
+  "version": "v1.1",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -73,17 +73,18 @@
   },
   "pirates": {
     "nestLevels": {
-      "1": { "schnellboot": 6, "piratenmiliz": 40, "flakstellung": 0, "kuestenbatterie": 0, "bunkerlinie": 0, "loot": { "stahl": 3000, "treibstoff": 1200, "elektronik": 400, "proviant": 800 } },
-      "2": { "schnellboot": 14, "piratenmiliz": 90, "flakstellung": 1, "kuestenbatterie": 0, "bunkerlinie": 0, "loot": { "stahl": 6500, "treibstoff": 2600, "elektronik": 900, "proviant": 1600 } },
-      "3": { "schnellboot": 26, "piratenmiliz": 160, "flakstellung": 2, "kuestenbatterie": 1, "bunkerlinie": 1, "loot": { "stahl": 12000, "treibstoff": 5000, "elektronik": 1800, "proviant": 3000 } },
-      "4": { "schnellboot": 44, "piratenmiliz": 260, "flakstellung": 3, "kuestenbatterie": 2, "bunkerlinie": 2, "loot": { "stahl": 20000, "treibstoff": 8500, "elektronik": 3200, "proviant": 5000 } },
-      "5": { "schnellboot": 70, "piratenmiliz": 400, "flakstellung": 5, "kuestenbatterie": 4, "bunkerlinie": 3, "loot": { "stahl": 32000, "treibstoff": 14000, "elektronik": 5500, "proviant": 8000 } }
+      "1": { "schnellboot": 4, "piratenmiliz": 18, "flakstellung": 0, "kuestenbatterie": 0, "bunkerlinie": 0, "loot": { "stahl": 2000, "treibstoff": 800, "elektronik": 300, "proviant": 700 } },
+      "2": { "schnellboot": 9, "piratenmiliz": 60, "flakstellung": 1, "kuestenbatterie": 0, "bunkerlinie": 0, "loot": { "stahl": 3500, "treibstoff": 1400, "elektronik": 500, "proviant": 1000 } },
+      "3": { "schnellboot": 14, "piratenmiliz": 110, "flakstellung": 1, "kuestenbatterie": 1, "bunkerlinie": 1, "loot": { "stahl": 6500, "treibstoff": 2600, "elektronik": 1000, "proviant": 1900 } },
+      "4": { "schnellboot": 22, "piratenmiliz": 215, "flakstellung": 2, "kuestenbatterie": 1, "bunkerlinie": 1, "loot": { "stahl": 9500, "treibstoff": 3800, "elektronik": 1500, "proviant": 2700 } },
+      "5": { "schnellboot": 26, "piratenmiliz": 250, "flakstellung": 3, "kuestenbatterie": 2, "bunkerlinie": 2, "loot": { "stahl": 14000, "treibstoff": 5600, "elektronik": 2200, "proviant": 4200 } }
     },
     "nestRespawnHours": 12,
     "raidIntervalHours": 18,
-    "raidStrengthShareOfDefense": 0.6,
+    "raidStrengthShareOfDefense": 0.55,
     "raidMinSchnellboote": 4,
-    "raidMiliPerBoot": 6
+    "raidMiliPerBoot": 8,
+    "raidStrengthSpread": 0.3
   },
   "market": {
     "refPrice": { "stahl": 1.0, "treibstoff": 1.8, "elektronik": 3.0, "proviant": 0.6 },
