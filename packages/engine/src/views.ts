@@ -52,6 +52,7 @@ import { admiralPreviewMods } from "./admirals-core.ts"; // Admirale
 import { STATION_TYPE, stationPreview, stationedView } from "./alliance-ops-station.ts";
 import { sharedReportIds } from "./alliance-ops-view.ts";
 import { isNavalInput, previewNaval } from "./naval.ts"; // See: Minen/Blockade/Konvoi
+import { previewField } from "./fields-missions.ts"; // Felder
 
 /**
  * Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband;
@@ -251,11 +252,12 @@ export async function mapView(engine: Engine, playerId: number) {
 export async function missionPreview(
   engine: Engine,
   playerId: number,
-  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number; admiralId?: number; blockadeId?: number; convoyId?: number; holdHours?: number },
+  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number; admiralId?: number; blockadeId?: number; convoyId?: number; holdHours?: number; fieldId?: number; stayAll?: boolean },
 ) {
   const nowMs = Date.now();
   const own = await baseOfPlayer(engine.db, playerId);
   if (!own) return { ok: false as const, code: "no_base" };
+  if (input.fieldId !== undefined) return previewField(engine.db, playerId, own, { ...input, fieldId: input.fieldId }, nowMs); // Felder
   if (input.eventId !== undefined) return previewAgainstEvent(engine.db, playerId, own, { ...input, eventId: input.eventId }, nowMs);
   if (input.type === STATION_TYPE) return stationPreview(engine.db, playerId, own, input, nowMs); // Allianz-Ops
   if (isNavalInput(input)) return previewNaval(engine.db, playerId, own, input, nowMs); // See: Minen/Blockade/Konvoi

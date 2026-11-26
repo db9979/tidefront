@@ -33,6 +33,7 @@ const EMBLEM_OF: Record<string, string> = {
   pflichttreu: "uhr",
   ruhmreich: "kranz",
   wochenwerk: "woche",
+  landnahme: "besetzen", // Felder
 };
 
 function emblem(id: string): ReactNode {

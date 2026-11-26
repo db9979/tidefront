@@ -42,6 +42,7 @@ import { applyPendingBoost } from "./guide.ts";
 import { admiralForLaunch, assignAdmiral } from "./admirals-core.ts"; // Admirale
 import { STATION_TYPE, stationLaunch } from "./alliance-ops-station.ts"; // Allianz-Ops: Stationierung
 import { createConvoy, isNavalInput, launchNaval, tradeBlocked, transportConvoyRecall } from "./naval.ts"; // See: Minen/Blockade/Konvoi
+import { launchField } from "./fields-missions.ts"; // Felder
 
 export type Rejected = { ok: false; code: string };
 type Draft<T> = T | (Rejected & { keepWrites?: boolean });
@@ -238,10 +239,11 @@ export function launchMission(
   engine: Engine,
   playerId: number,
   key: string,
-  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number; admiralId?: number; blockadeId?: number; convoyId?: number; holdHours?: number },
+  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number; admiralId?: number; blockadeId?: number; convoyId?: number; holdHours?: number; fieldId?: number; stayAll?: boolean },
 ) {
   return runCommand<{ ok: true; missionId: number; arriveAtMs: number }>(engine, playerId, key, "mission", async (ctx) => {
     const b = await ownBaseLocked(ctx);
+    if (input.fieldId !== undefined) return launchField(ctx.tx, playerId, b, { ...input, fieldId: input.fieldId }, ctx.nowMs, ctx.notify); // Felder
     // Weltereignis als Ziel (world-events-missions.ts).
     if (input.eventId !== undefined) return launchAgainstEvent(ctx.tx, playerId, b, { ...input, eventId: input.eventId }, ctx.nowMs, ctx.notify);
     if (input.type === STATION_TYPE) return stationLaunch(ctx.tx, playerId, b, input, ctx.nowMs, ctx.notify); // Allianz-Ops

@@ -26,6 +26,7 @@ import { runPowerSim } from "./power.ts";
 import { runEspionageSim } from "./espionage.ts";
 import { runAdmiralSim } from "./admirals.ts"; // Admirale
 import { runNavalSim } from "./naval.ts"; // See: Minen/Blockade/Konvoi
+import { runFieldsSim } from "./fields.ts"; // Felder
 
 const balance = JSON.parse(
   readFileSync(new URL("../../balance/v1/balance.json", import.meta.url), "utf8"),
@@ -265,6 +266,8 @@ runEspionageSim(balance, snaps);
 runAdmiralSim(balance);
 // See: Minenverluste, Blockade-Wirkung, Konvoi-Verlustquote.
 runNavalSim(balance, snaps);
+// Felder: Ertrag gegen Kosten und Risiko, Fallquote der Besatzung.
+runFieldsSim(balance, snaps);
 
 /** Der Bot schickt alles, was daheim steht (die Doktrin hält ihn innerhalb der Kommandopunkte). */
 function sentFleet(s: BotSnapshot): Counts {

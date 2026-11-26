@@ -27,6 +27,8 @@ export async function allianceStandings(db: DbOrTx, totals: Map<number, number>)
     a.playerIds.push(r.playerId);
     by.set(r.allianceId, a);
   }
+  const fp = await (await import("./fields-run.ts")).fieldPoints(db); // Felder: Feldpunkte der Allianzen
+  for (const a of by.values()) a.total += fp.get(a.allianceId) ?? 0;
   const list = [...by.values()].sort((x, y) => y.total - x.total || x.name.localeCompare(y.name, "de"));
   list.forEach((a, i) => { a.rank = i > 0 && a.total === list[i - 1].total ? list[i - 1].rank : i + 1; });
   return list;

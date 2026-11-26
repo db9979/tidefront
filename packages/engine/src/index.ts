@@ -66,3 +66,7 @@ export { stationRelease, STATION_TYPE } from "./alliance-ops-station.ts";
 export { allianceRaidsView } from "./alliance-ops-view.ts";
 // See: Minen, Blockade und Konvois
 export { navalView, navalRouteMines, liftBlockade, clearNaval, NAVAL_TYPES } from "./naval.ts";
+// Felder: Rohstofffelder einnehmen
+export { fieldsView, spawnFields, FIELD_KIND_TEXT } from "./fields-core.ts";
+export { fieldRecall } from "./fields-missions.ts";
+export { ensureFieldPlanner, clearFields } from "./fields-run.ts";

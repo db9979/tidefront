@@ -427,7 +427,8 @@ export interface GeoPoint {
 
 export type MissionType = "ueberfall" | "aufklaerung" | "transport"
   // See: Minen/Blockade/Konvoi – nur serverseitig geplant (naval-*.ts), nicht in MISSION_TYPES.
-  | "minen" | "raeumen" | "blockade" | "abfangen" | "geleit";
+  | "minen" | "raeumen" | "blockade" | "abfangen" | "geleit"
+  | "besetzen"; // Felder: Rohstofffeld besetzen (fields-*.ts)
 
 export interface MissionInput {
   type: string;

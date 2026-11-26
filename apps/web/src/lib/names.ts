@@ -19,6 +19,8 @@ const NAMES: Record<string, string> = {
   // See: Minen/Blockade/Konvoi
   minenleger: "Minenleger", minenraeumer: "Minenräumer", minen: "Minen legen", raeumen: "Minen räumen", blockade: "Blockade",
   abfangen: "Konvoi abfangen", geleit: "Geleitschutz", konvoi: "Konvoi", blockadekampf: "Blockadekampf", mine: "Minenfeld",
+  // Felder: Rohstofffelder
+  besetzen: "Besetzen", feld: "Rohstofffeld", oelfeld: "Ölfeld", erzbucht: "Erzbucht", fischgrund: "Fischgrund", elektronikwrack: "Elektronik-Wrack",
 };
 
 const PLURAL: Record<string, string> = {
@@ -234,6 +236,12 @@ const ERRORS: Record<string, string> = {
   no_convoy: "Diesen Konvoi gibt es nicht (mehr).",
   own_convoy: "Eigene Konvois fängt man nicht ab.",
   convoy_not_enemy: "Nur Konvois von Kriegsgegnern lassen sich abfangen.",
+  // Felder
+  no_field: "Dieses Rohstofffeld gibt es nicht (mehr).",
+  own_field: "Das Feld gehört dir schon.",
+  field_limit: "Höchstzahl an Feldern erreicht – baue die Hafenkommandantur aus oder gib ein Feld auf.",
+  field_ships_only: "Felder liegen auf See: nur Schiffe können sie besetzen.",
+  garrison_too_weak: "Zu schwach für eine Besatzung: bewaffnete Schiffe mit genug Kommandopunkten mitschicken.",
   intercept_needs_ships: "Zum Abfangen gehören Schiffe in den Verband.",
   escort_ships_only: "Geleitschutz stellen nur Schiffe.",
 };

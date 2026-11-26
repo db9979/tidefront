@@ -1,6 +1,7 @@
 // Einklappbare Legende der Kartenzeichen: Häfen nach Verhältnis, Kartell und See, Übersichtspunkte, Wetter.
 import { useState, type ReactNode } from "react";
 import { TacticalIcon } from "./TacticalIcon.tsx";
+import { Icon } from "../icons.tsx"; // Felder
 
 type Item = { icon: ReactNode; text: string };
 
@@ -26,6 +27,16 @@ const GROUPS: { title: string; items: Item[] }[] = [
     ],
   },
   {
+    // Felder: Rohstofffelder auf See
+    title: "Rohstofffelder",
+    items: [
+      { icon: <><Icon id="oelfeld" size={22} /><Icon id="erzbucht" size={22} /></>, text: "Ölfeld (Treibstoff), Erzbucht (Stahl); Punkte darunter: Stufe 1–3" },
+      { icon: <><Icon id="fischgrund" size={22} /><Icon id="elektronikwrack" size={22} /></>, text: "Fischgrund (Proviant), Elektronik-Wrack (Elektronik)" },
+      { icon: <FieldRing dashed color="#a8331f" />, text: "Rot gestrichelt: vom Kartell bewacht; grau: frei" },
+      { icon: <><FieldRing color="#18273a" /><FieldRing color="#3d6b4f" /></>, text: "Ring in Besitzerfarbe wie die Häfen; Linien und Hof: Einflusszone einer Allianz" },
+    ],
+  },
+  {
     title: "Übersicht (weit herausgezoomt)",
     items: [
       { icon: <><TacticalIcon kind="dotAlly" size={18} /><TacticalIcon kind="dotPact" size={18} /></>, text: "Punkt: Hafen von Allianz (grün) oder Paktpartner (ocker)" },
@@ -43,6 +54,10 @@ const GROUPS: { title: string; items: Item[] }[] = [
     ],
   },
 ];
+
+function FieldRing({ color, dashed }: { color: string; dashed?: boolean }) {
+  return <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="#fbf8f0" stroke={color} strokeWidth={1.8} strokeDasharray={dashed ? "3 2" : undefined} /></svg>;
+}
 
 function Hatch({ d, color }: { d: string; color: string }) {
   return <svg width="22" height="18" viewBox="0 0 17 16" aria-hidden="true"><path d={d} stroke={color} strokeWidth={1.4} fill="none" strokeLinecap="round" /></svg>;

@@ -27,6 +27,7 @@ import { buildSoundings } from "../map/soundings.ts";
 // Weltereignisse des Kartells (eigene Ebene unter den Hafenzeichen)
 import { buildWorldEventLayer, type MapWorldEvent } from "../map/world-events.ts";
 import { buildNavalLayer, type MapNaval } from "../map/naval.ts"; // See: Minen/Blockade/Konvoi
+import { buildFieldLayer, type MapField } from "../map/fields.ts"; // Felder: Rohstofffelder und Allianzzonen
 
 /** Kartenschriften vor dem ersten Zeichnen laden (Pixi rastert Text über das Canvas). */
 const FONTS = ["600 12px Fraunces", "italic 600 12px Fraunces", "600 12px 'IBM Plex Sans'", "500 10px 'IBM Plex Mono'"];
@@ -62,6 +63,7 @@ export interface HexMapProps {
   /** Weltereignisse (Schatzschiff, Großflotte, Belagerung). */
   events?: MapWorldEvent[];
   naval?: MapNaval; // See: Minenfelder, Blockaden, Konvois
+  fields?: { list: MapField[]; linkKm: number }; // Felder
   /** Wetterschicht (Wolken, Sturm, Nebel); fehlt sie, ist die Schicht aus. */
   weather?: WeatherBalance | null;
 }
@@ -116,7 +118,7 @@ function dashed(g: Graphics, a: { x: number; y: number }, b: { x: number; y: num
 }
 
 export function HexMap(props: HexMapProps) {
-  const { data, selected, onSelect, selectMode, center, zoom, recenter, free, home, missions, alert, events, weather, naval } = props;
+  const { data, selected, onSelect, selectMode, center, zoom, recenter, free, home, missions, alert, events, weather, naval, fields } = props;
   const weatherLayer = useRef<WeatherLayer | null>(null);
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<Scene | null>(null);
@@ -256,9 +258,7 @@ export function HexMap(props: HexMapProps) {
             lastMove = now;
             drawMovers(s, live.current);
             const wl = weatherLayer.current;
-            if (wl) {
-              wl.update(serverNow(), sc);
-            }
+            if (wl) wl.update(serverNow(), sc);
           }
         };
         app.ticker.add(tick);
@@ -285,10 +285,7 @@ export function HexMap(props: HexMapProps) {
     return () => {
       destroyed = true;
       for (const c of cleanups) c();
-      if (scene.current) {
-        scene.current.app.destroy(true, { children: true });
-        scene.current = null;
-      }
+      if (scene.current) { scene.current.app.destroy(true, { children: true }); scene.current = null; }
     };
   }, []);
 
@@ -372,9 +369,10 @@ export function HexMap(props: HexMapProps) {
       old.root.destroy({ children: true });
       eventLayer.current = null;
     }
-    if ((!events || events.length === 0) && !naval) return;
+    if ((!events || events.length === 0) && !naval && !fields) return;
     const layer = buildWorldEventLayer(events ?? [], serverNow());
     if (naval) { const nl = buildNavalLayer(naval, serverNow()); layer.root.addChild(nl.root); layer.pinned.push(...nl.pinned); } // See
+    if (fields) { const fl = buildFieldLayer(fields.list, fields.linkKm); layer.root.addChild(fl.root); layer.pinned.push(...fl.pinned); } // Felder
     s.world.addChildAt(layer.root, s.world.getChildIndex(s.markerLayer));
     // Weltereignisse immer sichtbar und vorrangig: Zeichen und Schilder belegen Platz vor allen Namen.
     for (const p of layer.pinned as Pinned[]) {
@@ -386,7 +384,7 @@ export function HexMap(props: HexMapProps) {
     eventLayer.current = layer;
     relayout(s);
     snap([s.pinnedMarkers]);
-  }, [ready, data, events, naval]);
+  }, [ready, data, events, naval, fields]);
 
   // Wetterschicht unter den Zeichen (an- und abschaltbar).
   useEffect(() => {

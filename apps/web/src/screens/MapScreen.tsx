@@ -15,6 +15,7 @@ import { WeatherChip, WeatherLine } from "../map/WeatherChip.tsx";
 // Weltereignisse
 import { WorldEventCard, useWorldEvents } from "../components/WorldEvents.tsx";
 import { NavalSheet, navalAt, useNaval } from "../components/Naval.tsx"; // See: Minen/Blockade/Konvoi
+import { FieldSheet, fieldAt, fieldsRules, useFields } from "../components/Fields.tsx"; // Felder
 
 const TERRAIN: Record<string, string> = { sea: "Offene See", coast: "Küste", land: "Binnenland" };
 const RELATION_TEXT: Record<string, string> = {
@@ -31,6 +32,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const worldEvents = useWorldEvents();
   const naval = useNaval();
+  const fields = useFields(); // Felder
   const [sel, setSel] = useState<Target | null>(focus?.missionId ? null : focus);
   const [missionId, setMissionId] = useState<number | null>(focus?.missionId ?? null);
   const [recenter, setRecenter] = useState(0);
@@ -47,6 +49,8 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [missionId]);
   const home = useMemo(() => ({ col: base.col, row: base.row }), [base.col, base.row]);
+  const linkKm = fieldsRules(meta.data?.balance)?.zoneLinkKm ?? 450; // Felder: Zonenlinien
+  const fieldLayer = useMemo(() => (fields.data ? { list: fields.data.fields, linkKm } : undefined), [fields.data, linkKm]);
   const alert = base.incoming.some((i) => i.type !== "transport");
   if (!map.data) return <Loading />;
   const at = (t: Target) => ({
@@ -54,6 +58,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
     nest: map.data.nests.find((n) => n.col === t.col && n.row === t.row),
     wreck: map.data.wrecks.find((w) => w.col === t.col && w.row === t.row),
     event: worldEvents.data?.events.find((e) => e.col === t.col && e.row === t.row),
+    field: fieldAt(fields.data, t), // Felder
     naval: (() => { const n = navalAt(naval.data, t); return n.mines.length > 0 || !!n.blockade || n.convoys.length > 0; })(),
   });
   const info = sel ? at(sel) : null;
@@ -82,6 +87,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
           alert={alert}
           events={worldEvents.data?.events}
           naval={naval.data}
+          fields={fieldLayer}
           weather={showWeather ? meta.data?.balance.weather : null}
         />
         <div className="absolute left-2 top-6 flex flex-col gap-1.5 items-start">
@@ -181,10 +187,11 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
               )}
               {meta.data?.balance.weather && terrainAt(sel.col, sel.row) !== "land" && <WeatherLine at={sel} wb={meta.data.balance.weather} now={now} />}
               <NavalSheet data={naval.data} sel={sel} onPlan={onPlan} />
-              {!info.base && !info.nest && !info.wreck && !info.event && !info.naval && (
-                <div className="text-slate-400 mt-1">Hier ist nichts. Ziele sind Piratennester (rote Raute) und fremde Stützpunkte.</div>
+              <FieldSheet data={fields.data} sel={sel} onPlan={onPlan} />
+              {!info.base && !info.nest && !info.wreck && !info.event && !info.naval && !info.field && (
+                <div className="text-slate-400 mt-1">Hier ist nichts. Ziele sind Piratennester (rote Raute), Rohstofffelder und fremde Stützpunkte.</div>
               )}
-              {!isHome && (info.base || info.nest) && (
+              {!isHome && (info.base || info.nest || info.field) && (
                 <div className="text-xs text-slate-400 mt-1">Fahrzeit etwa: Korvette {eta("korvette")}, Landungsschiff {eta("landungsschiff")}</div>
               )}
             </div>
@@ -193,7 +200,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
           {(info.nest || (info.base && !info.base.own)) && (
             <Button className="w-full mt-2" onClick={() => onPlan(sel)}>Mission planen</Button>
           )}
-          {!info.base && !info.nest && terrainAt(sel.col, sel.row) === "sea" && naval.data?.rules.mines && hexDistanceKm(home, sel) <= naval.data.rules.mines.layRadiusKm && (
+          {!info.base && !info.nest && !info.field && terrainAt(sel.col, sel.row) === "sea" && naval.data?.rules.mines && hexDistanceKm(home, sel) <= naval.data.rules.mines.layRadiusKm && (
             <Button kind="secondary" className="w-full mt-2" onClick={() => onPlan({ ...sel, naval: "minen" })}>Minen legen</Button>
           )}
         </div>
