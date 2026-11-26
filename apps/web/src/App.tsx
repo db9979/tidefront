@@ -101,6 +101,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const [mapFocus, setMapFocus] = useState<Target | null>(null);
   const [help, setHelp] = useState(!!opened.view);
   const [helpView, setHelpView] = useState(opened.view ?? null);
+  const onMarket = tab === "boerse" && !plan && !help;
   // Neu aufbauen, wenn eine Benachrichtigung eine andere Ansicht öffnet (Wechsel im Handbuch selbst meldet onView).
   const [helpKey, setHelpKey] = useState(0);
   const [sheet, setSheet] = useState<string | null>(null);
@@ -225,9 +226,10 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   return (
     <div className="h-full flex flex-col max-w-xl mx-auto">
       <ResourceBar base={b} asOf={base.data.serverNow} now={now} onHelp={() => { setHelpView(null); setHelp((h) => !h); }} />
-      {tickerPos === "oben" && !(tab === "boerse" && !plan && !help) && <TickerBar onOpen={() => go("boerse")} />}
+      {/* Kurszeile: auf der Börse immer (oben, außer „unten“ gewählt), sonst nach Einstellung. */}
+      {(onMarket ? tickerPos !== "unten" : tickerPos === "oben") && <TickerBar onOpen={() => go("boerse")} />}
       <main className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto overflow-x-hidden p-3 pb-8 scroll-pb-8"}`}><Suspense fallback={<Loading />}>{content}</Suspense></main>
-      {tickerPos === "unten" && !(tab === "boerse" && !plan && !help) && <TickerBar onOpen={() => go("boerse")} />}
+      {tickerPos === "unten" && <TickerBar onOpen={() => go("boerse")} />}
       <nav className="grid grid-cols-5 bg-paper border-t-[3px] border-double border-ink" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {TABS.map((t) => {
           const active = tab === t.id && !plan && !help;

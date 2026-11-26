@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.11.5 – 27.11.2026
+- Börse: Die Kurszeile steht jetzt fest oben unter den Ressourcen (bei der Einstellung „Immer unten“ unten) statt mitten in der Seite.
+
 ## 0.11.4 – 27.11.2026
 - **Mission auf der Karte zeigen**: In der Missionsliste (Truppen) springt „auf der Karte zeigen“ zur aktuellen Position des Verbands und öffnet das Missionsblatt.
 - **Wetter je Feld**: Beim Hineinzoomen bekommt jedes Seefeld sein eigenes Wetterzeichen – Windpfeil mit Stärke-Fiedern, Wolkentönung, Regen, Nebel, Sturmfelder rot umrandet mit Blitz. Weit draußen bleibt die Wetterkarte mit Tiefs und Hochs.

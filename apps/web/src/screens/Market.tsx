@@ -10,7 +10,6 @@ import { PlayerTrade } from "../components/PlayerTrade.tsx";
 import { PlayerTradeStats } from "../components/TradeValue.tsx";
 import { useWorldEvents } from "../components/WorldEvents.tsx";
 import { MarketHeader, type MarketStatus } from "../components/market/MarketHeader.tsx";
-import { Ticker } from "../components/market/Ticker.tsx";
 import { PriceBoard } from "../components/market/PriceBoard.tsx";
 import { PriceChart } from "../components/market/PriceChart.tsx";
 import { OrderTicket } from "../components/market/OrderTicket.tsx";
@@ -54,7 +53,6 @@ export function MarketScreen({ base }: { base: BaseData }) {
   return (
     <div>
       <MarketHeader credits={credits} creditLimit={base.market.creditLimit} status={status} port={port} travelMs={travelMs} />
-      <Ticker resources={m.data.resources} nowMs={now} halfLife={cfg.reversionHalfLifeHours} />
       <MarketNews compact />
       <PriceBoard resources={m.data.resources} selected={sel.id} onSelect={setResource} nowMs={now} halfLife={cfg.reversionHalfLifeHours} />
 
