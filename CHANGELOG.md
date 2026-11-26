@@ -2,6 +2,11 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.8.0 – 27.11.2026
+- **Allianzen**: gründen, einladen oder anfragen, Rollen (Führung, Offizier, Mitglied), eigener Chat und Allianzwertung in der Rangliste. Verbündete können sich nicht überfallen. Zu finden unter Meldungen → Allianz.
+- **Diplomatie**: Nichtangriffspakt (beide stimmen zu, 24 Stunden Kündigungsfrist) und Kriegserklärung mit 12 Stunden Vorlauf. Im Krieg entfällt die Beute-Kürzung für schwache Ziele.
+- **Handel zwischen Spielern** in der Börse: Ressourcen oder Kredite tauschen, öffentlich oder nur für die eigene Allianz. Die Ware wird beim Einstellen einbehalten und reist nach dem Tausch per Konvoi.
+
 ## 0.7.0 – 27.11.2026
 - Neue Einheit **U-Boot** (Werft ab Stufe 3): Torpedosalve vor dem Seegefecht, nur von Korvetten und Zerstörern zu treffen. Neue Kampfphase „U-Boot-Angriff“ im Kampfbericht.
 - **Freunde einladen** per E-Mail mit persönlicher Nachricht oder als teilbarer Link (Einstellungen oder Rangliste). Du erfährst, wenn dein Freund beitritt.
