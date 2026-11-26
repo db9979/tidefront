@@ -64,7 +64,7 @@ export function ChooseBase() {
     <div className="h-full flex flex-col max-w-xl mx-auto">
       <div className="p-3 bg-navy-800/95 border-b border-navy-600">
         <div className="flex items-start justify-between gap-2">
-          <h1 className="font-mono text-sm uppercase tracking-widest text-ink">Standort für deinen Hafen</h1>
+          <h1 className="font-mono text-sm uppercase tracking-widest text-ink">Standort für deinen Heimathafen</h1>
           <button type="button" className="text-xs text-sea-300 underline min-h-[44px] -my-3 px-1" onClick={async () => { await trpcClient.auth.logout.mutate(); queryClient.clear(); location.reload(); }}>Abmelden</button>
         </div>
         <p className="text-xs text-slate-300">Blau markierte Felder sind freie Küste. Tippe eines an oder nimm unten einen Vorschlag aus der Schnellwahl.</p>
@@ -118,7 +118,7 @@ export function ChooseBase() {
                 disabled={cmd.busy || name.trim().length < 2}
                 onClick={() => void cmd.run({ col: sel.col, row: sel.row, name: name.trim(), nightShieldStartHour: nightHour, tzOffsetMinutes: -new Date().getTimezoneOffset() })}
               >
-                Stützpunkt gründen
+                Heimathafen gründen
               </Button>
             </div>
           )}

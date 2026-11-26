@@ -6,12 +6,14 @@ import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@tidefront/api/router";
 import { noteServerTime } from "./time.ts";
 import { logTrpcError } from "./bug-log.ts";
+import { activeBaseId, isNoBase, withBaseId } from "./active-base.ts";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5000,
-      retry: (n, err) => !(err instanceof TRPCClientError && err.data?.code === "UNAUTHORIZED") && n < 2,
+      // Ohne Wiederholung: Abmeldung und „Hafen nicht eigen“ (no_base → sofort zurück zum Heimathafen).
+      retry: (n, err) => !(err instanceof TRPCClientError && err.data?.code === "UNAUTHORIZED") && !isNoBase(err) && n < 2,
     },
   },
 });
@@ -28,11 +30,18 @@ const logLink: TRPCLink<AppRouter> = () => ({ op, next }) =>
       complete: () => observer.complete(),
     }));
 
+/** Mehrere Häfen: hafenbezogene Aufrufe tragen die baseId des aktiven Hafens (ausdrücklich gesetzte bleibt). */
+const activeBaseLink: TRPCLink<AppRouter> = () => ({ op, next }) => {
+  const input = withBaseId(op.path, op.input, activeBaseId());
+  return next(input === op.input ? op : { ...op, input });
+};
+
 const sameOrigin = (url: RequestInfo | URL, opts: unknown) => fetch(url, { ...(opts as RequestInit), credentials: "same-origin" });
 
 export const trpcClient = createTRPCClient<AppRouter>({
   links: [
     logLink,
+    activeBaseLink,
     // Fehlermeldungen (mit Screenshot) einzeln: nur dieser Weg darf große Anfragen senden.
     splitLink({
       condition: (op) => op.path === "bugReport.send",

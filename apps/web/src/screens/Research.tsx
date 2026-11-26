@@ -59,7 +59,10 @@ export function ResearchScreen({ base, asOf, onClose }: { base: BaseData; asOf: 
         <Button kind="secondary" onClick={onClose}>Zurück</Button>
       </div>
 
-      {r.buildingLevel < 1 && (
+      {!base.isHome && (
+        <Card><p className="text-sm flex items-center gap-2"><Icon id="heimathafen" size={32} /> Forschung läuft im Heimathafen ({base.bases.find((b) => b.isHome)?.name ?? "Heimathafen"}) und gilt für alle Häfen. Das Forschungsamt steht nur dort.</p></Card>
+      )}
+      {r.buildingLevel < 1 && base.isHome && (
         <Card><p className="text-sm flex items-center gap-2"><Icon id="forschungsamt" size={32} /> Baue in der Basis das Forschungsamt, um zu forschen. Forschung gilt für diese Saison.</p></Card>
       )}
 

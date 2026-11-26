@@ -24,6 +24,8 @@ import { AdmiralPick } from "../components/Admirals.tsx";
 import { RaidOpenCard } from "../components/AllianceOps.tsx";
 import { HoldHours, MineWarning } from "../components/Naval.tsx"; // See: Minen/Blockade/Konvoi
 import { FieldTargetLine, StayAllToggle, fieldsRules, useFields } from "../components/Fields.tsx"; // Felder
+import { ExpansionTargetLine, OriginLine, OwnHarborPick } from "../components/ExpansionPlan.tsx"; // Mehrere Häfen
+import { expansionRules } from "../lib/expansion.ts";
 
 const TYPES = [
   { id: "ueberfall", text: "Überfall", hint: "Kampf am Ziel, Beute bei Sieg" },
@@ -37,6 +39,9 @@ const TYPES = [
   { id: "blockade", text: "Blockade", hint: "Bewaffnete Schiffe liegen vor einem fremden Hafen: Produktion, Lieferungen und Börse des Ziels leiden" },
   { id: "abfangen", text: "Abfangen", hint: "Konvoi eines Kriegsgegners auf See abfangen: Kampf gegen das Geleit, Beute aus der Ladung" },
   { id: "besetzen", text: "Besetzen", hint: "Rohstofffeld einnehmen: Seekampf gegen Wache oder Besatzung, danach bleibt eine Besatzung und der Ertrag fließt per Konvoi" }, // Felder
+  // Mehrere Häfen
+  { id: "gruendung", text: "Gründen", hint: "Ein Kolonieschiff gründet auf einem freien Küstenfeld einen Außenposten; das Schiff wird dabei verbraucht" },
+  { id: "verlegung", text: "Verlegen", hint: "Einheiten (und Admiral) ziehen dauerhaft in einen anderen eigenen Hafen" },
 ] as const;
 type PlanKind = (typeof TYPES)[number]["id"];
 
@@ -52,12 +57,14 @@ const SENT_TEXT: Record<string, string> = {
   blockade: "Nach der Ankunft beginnt die Blockade; das Ziel wird benachrichtigt.",
   abfangen: "Der Kampfbericht erscheint nach dem Abfangen unter „Meldungen“.",
   besetzen: "Nach dem Sieg hält deine Besatzung das Feld; den Ertrag und den Rückruf findest du unter „Truppen“ → Meine Felder.", // Felder
+  gruendung: "Bei Ankunft entsteht dein Außenposten; wechsle dann oben in der Kopfleiste dorthin.",
+  verlegung: "Bei Ankunft gehören die Einheiten zum Zielhafen; die Bestätigung erscheint unter „Meldungen“.",
 };
 
 export function MissionPlan({ base, initialTarget, onClose, preset }: { base: BaseData; initialTarget: Target | null; onClose: () => void; onPickOnMap?: () => void; preset?: PlanPreset }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const map = useQuery(trpc.world.map.queryOptions());
-  const [type, setType] = useState<PlanKind>(preset?.type ?? initialTarget?.naval ?? initialTarget?.fieldMission ?? (initialTarget?.convoyId ? "abfangen" : "ueberfall"));
+  const [type, setType] = useState<PlanKind>(preset?.type ?? initialTarget?.expansion ?? initialTarget?.naval ?? initialTarget?.fieldMission ?? (initialTarget?.convoyId ? "abfangen" : "ueberfall"));
   const [holdHours, setHoldHours] = useState(4); // See: Blockade
   const [stayAll, setStayAll] = useState(false); // Felder: ganzer Verband bleibt
   const fieldsQ = useFields(); // Felder: Feldzeichen auf der Zielkarte
@@ -71,7 +78,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   const [sent, setSent] = useState<{ arriveAtMs: number; type: string } | null>(null);
   const [admiralId, setAdmiralId] = useState<number | null>(null); // Admirale
   // Art: nach der Auswahl auf eine Zeile mit „ändern“ eingeklappt (vorbelegt = schon gewählt).
-  const [typeOpen, setTypeOpen] = useState(!preset?.type && !initialTarget?.naval && !initialTarget?.convoyId);
+  const [typeOpen, setTypeOpen] = useState(!preset?.type && !initialTarget?.naval && !initialTarget?.convoyId && !initialTarget?.expansion);
   // Frische Bestände beim Öffnen
   useEffect(() => {
     void queryClient.invalidateQueries(trpc.base.pathFilter());
@@ -83,7 +90,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   );
 
   const chosen = useMemo(() => Object.fromEntries(Object.entries(units).filter(([, n]) => n > 0)), [units]);
-  const cargoSent = type === "transport" ? Object.fromEntries(Object.entries(cargo).filter(([, n]) => n > 0)) : undefined;
+  const cargoSent = type === "transport" || type === "verlegung" ? Object.fromEntries(Object.entries(cargo).filter(([, n]) => n > 0)) : undefined;
   const naval = target?.blockadeId ? { blockadeId: target.blockadeId } : target?.convoyId ? { convoyId: target.convoyId } : type === "blockade" ? { holdHours } : target?.fieldId ? { fieldId: target.fieldId, ...(type === "besetzen" ? { stayAll } : {}) } : {}; // See, Felder
   const input = target ? { type, units: chosen, col: target.col, row: target.row, cargo: cargoSent, ...(target.eventId ? { eventId: target.eventId } : admiralId ? { admiralId } : {}), ...naval } : null;
   const event = target?.eventId ? worldEvents.data?.events.find((e) => e.id === target.eventId) : undefined;
@@ -95,6 +102,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
 
   if (!meta.data || !map.data) return <Loading />;
   const balance = meta.data.balance;
+  const xRules = expansionRules(balance); // Mehrere Häfen
+  const ownTarget = target ? base.bases.find((b) => b.col === target.col && b.row === target.row && b.id !== base.id) : undefined;
   let cp = 0, troops = 0, space = 0, cargoCap = 0;
   for (const [id, n] of Object.entries(chosen)) {
     const d = balance.units[id];
@@ -134,7 +143,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           </div>
         ) : <>
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-          {TYPES.filter((t) => (t.id !== "abfangen" || target?.convoyId) && (t.id !== "besetzen" || target?.fieldId)).map((t) => (
+          {TYPES.filter((t) => (t.id !== "abfangen" || target?.convoyId) && (t.id !== "besetzen" || target?.fieldId) && (t.id !== "verlegung" || base.bases.length > 1) && (t.id !== "gruendung" || base.bases.length < xRules.maxBases)).map((t) => (
             <button key={t.id} type="button" onClick={() => { setType(t.id); setTypeOpen(false); }} className={`tap rounded-xl px-1 py-2 text-sm flex flex-col items-center gap-1 border ${type === t.id ? "border-sea-400 bg-sea-400/10 font-semibold reticle" : "border-navy-600 bg-navy-900"}`}>
               <Icon id={t.id} size={32} />
               {t.text}
@@ -148,6 +157,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
       {type === "spionage" ? <SpyPlan base={base} map={map.data} target={target} setTarget={setTarget} center={initialTarget ?? { col: base.col, row: base.row }} onClose={onClose} /> : <>
 
       <Card title="Ziel">
+        <OriginLine base={base} />
+        {(type === "transport" || type === "verlegung") && <OwnHarborPick base={base} target={target} onPick={setTarget} />}
         <div className="h-56 rounded-lg overflow-hidden mb-2">
           <HexMap data={map.data} selected={target} onSelect={(h) => { const f = fieldsQ.data?.fields.find((x) => x.col === h.col && x.row === h.row); setTarget(f ? { ...h, fieldId: f.id } : h); }} center={initialTarget ?? { col: base.col, row: base.row }} fields={fieldLayer} />
         </div>
@@ -157,9 +168,10 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           {target?.convoyId && <>Feindlicher Konvoi – Abfangpunkt wird berechnet.<br /></>}
           {target?.fieldId && <FieldTargetLine fieldId={target.fieldId} />}
           {target?.eventId && <>Weltereignis <strong>{event ? KIND_TITLE[event.kind] : "…"}</strong>{event?.siege ? ` vor ${event.siege.name}` : ""} – nur Überfall; {event?.kind === "schatzschiff" ? "Abfangpunkt wird berechnet." : "Kampf auf See."}<br /></>}
-          {target && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.base && <>Stützpunkt <strong>{tInfo.base.name}</strong> ({tInfo.base.owner}){tInfo.base.protection && <span className="text-messing"> · geschützt: {label(tInfo.base.protection)}</span>}</>}
+          {target && (type === "gruendung" || ownTarget || type === "verlegung") && <ExpansionTargetLine type={type} base={base} map={map.data} target={target} fields={fieldsQ.data?.fields} units={chosen} />}
+          {target && type !== "gruendung" && type !== "verlegung" && !ownTarget && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.base && <>Stützpunkt <strong>{tInfo.base.name}</strong> ({tInfo.base.owner}){tInfo.base.protection && <span className="text-messing"> · geschützt: {label(tInfo.base.protection)}</span>}</>}
           {target && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.nest && <>Piratennest Stufe <strong>{tInfo.nest.level}</strong>{tInfo.nest.empty ? " (verlassen)" : ""}</>}
-          {target && !target.eventId && !target.blockadeId && !target.convoyId && !tInfo?.base && !tInfo?.nest && !target.fieldId && <span className="text-slate-400">Feld {target.col}/{target.row}: kein Ziel</span>}
+          {target && type !== "gruendung" && type !== "verlegung" && !target.eventId && !target.blockadeId && !target.convoyId && !tInfo?.base && !tInfo?.nest && !target.fieldId && <span className="text-slate-400">Feld {target.col}/{target.row}: kein Ziel</span>}
         </p>
       </Card>
 
@@ -187,7 +199,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         </div>
       </Card>
 
-      {type === "transport" && (
+      {(type === "transport" || type === "verlegung") && (
         <Card title="Ladung">
           {balance.resources.map((r) => (
             <div key={r} className="py-1 flex items-center justify-between gap-2">
@@ -248,7 +260,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         <ErrorLine text={launch.error} />
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1 text-sm leading-tight">
-            <div className="font-semibold">{fmtNum(Object.values(chosen).reduce((a, b) => a + b, 0))} Einheiten{target ? ` · Feld ${target.col}/${target.row}` : ""}</div>
+            <div className="font-semibold truncate">{fmtNum(Object.values(chosen).reduce((a, b) => a + b, 0))} Einheiten{ownTarget ? ` → ${ownTarget.name}` : target ? ` · ${type === "gruendung" ? "Außenposten " : "Feld "}${target.col}/${target.row}` : ""}</div>
             <div className="text-xs text-ink2 truncate">{!target ? "Ziel wählen" : Object.keys(chosen).length === 0 ? "Einheiten wählen" : !p ? "Berechne …" : p.ok ? `Fahrt ${fmtSeconds(p.travelSeconds)} · ${fmtNum(p.fuelCost)} Treibstoff` : errorText(p.code)}</div>
           </div>
           <Button
@@ -260,7 +272,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
               if (r && r.ok) setSent({ arriveAtMs: r.arriveAtMs, type });
             }}
           >
-            Auslaufen
+            {type === "gruendung" ? "Gründen" : type === "verlegung" ? "Verlegen" : "Auslaufen"}
           </Button>
         </div>
       </ActionBar>

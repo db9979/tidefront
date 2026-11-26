@@ -17,7 +17,7 @@ export function welcomeSeen(playerId: number): boolean {
 }
 
 const SLIDES = [
-  { icon: "anker", title: "Dein Hafen steht", text: "Willkommen, Kommandant. Von hier aus baust du Wirtschaft und Flotte auf. Alles läuft in Echtzeit weiter, auch wenn die App geschlossen ist." },
+  { icon: "anker", title: "Dein Heimathafen steht", text: "Willkommen, Kommandant. Von hier aus baust du Wirtschaft und Flotte auf; später gründest du weitere Häfen. Alles läuft in Echtzeit weiter, auch wenn die App geschlossen ist." },
   { icon: "stahlwerk", title: "Erst die Wirtschaft", text: "Oben siehst du deine vier Ressourcen und ihre Stundenrate. Baue zuerst das Kraftwerk (ohne Strom liefern die Werke nichts), dann das Stahlwerk – das Auftragsbuch in der Basis sagt dir jeweils den nächsten Schritt." },
   { icon: "kartell", title: "Piraten an der Küste", text: "Das Freibeuter-Kartell hat Nester entlang der Küsten. Überfalle sie mit Korvetten, Landungsschiffen und Schützen – und halte Truppen daheim, denn das Kartell schlägt zurück, sobald dein Anfängerschutz endet." },
   { icon: "schild", title: "Sieben Tage Schonzeit", text: "In der ersten Woche bist du vor Angriffen geschützt. Danach schützt dich der Nachtschild jede Nacht acht Stunden – die Startzeit wählst du in der Basis. Fragen? Das „?“ oben rechts öffnet das Handbuch." },

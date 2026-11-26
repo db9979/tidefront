@@ -4,6 +4,7 @@ import { RES_ORDER, liveAmount } from "../lib/live.res.ts";
 import { useState } from "react";
 import { Icon } from "../icons.tsx";
 import { ResourceSheet } from "./ResourceSheet.tsx";
+import { HarborSwitcher } from "./HarborSwitcher.tsx";
 
 function short(n: number): string {
   if (n >= 100000) return `${fmtNum(n / 1000)}k`;
@@ -11,11 +12,12 @@ function short(n: number): string {
   return fmtNum(n);
 }
 
-/** Kopfleiste: Papierstreifen mit vier Ressourcen (Stich, Bestand, Rate, Füllstand) und Handbuch-Knopf. */
-export function ResourceBar({ base, asOf, now, onHelp }: { base: BaseData; asOf: number; now: number; onHelp: () => void }) {
+/** Kopfleiste: Hafenwahl (ab zwei Häfen), Papierstreifen mit vier Ressourcen (Stich, Bestand, Rate, Füllstand) und Handbuch-Knopf. */
+export function ResourceBar({ base, asOf, now, onHelp, onSwitchBase, onPlanFounding }: { base: BaseData; asOf: number; now: number; onHelp: () => void; onSwitchBase: (id: number) => void; onPlanFounding: () => void }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
     <header className="sticky top-0 z-30 bg-paper border-b-[3px] border-double border-ink" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+      <HarborSwitcher base={base} now={now} onSwitch={onSwitchBase} onPlanFounding={onPlanFounding} />
       <div className="flex items-stretch gap-1 pl-2 pr-1.5 py-1.5">
         {RES_ORDER.map((r) => {
           const v = liveAmount(base, asOf, now, r);

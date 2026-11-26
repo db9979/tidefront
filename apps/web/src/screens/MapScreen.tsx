@@ -16,6 +16,8 @@ import { WeatherChip, WeatherLine } from "../map/WeatherChip.tsx";
 import { WorldEventCard, useWorldEvents } from "../components/WorldEvents.tsx";
 import { NavalSheet, navalAt, useNaval } from "../components/Naval.tsx"; // See: Minen/Blockade/Konvoi
 import { FieldSheet, fieldAt, fieldsRules, useFields } from "../components/Fields.tsx"; // Felder
+import { FoundingButton, FoundingInfo, OwnHarborActions } from "../components/HarborMapSheet.tsx"; // Mehrere Häfen
+import { expansionRules, isFreeCoast } from "../lib/expansion.ts";
 
 const TERRAIN: Record<string, string> = { sea: "Offene See", coast: "Küste", land: "Binnenland" };
 const RELATION_TEXT: Record<string, string> = {
@@ -27,7 +29,7 @@ const RELATION_TEXT: Record<string, string> = {
 };
 const LEVEL_TEXT =["", "schwach besetzt", "kleine Bande", "befestigt", "Festung", "Hauptquartier"];
 
-export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Target | null; onPlan: (t: Target) => void }) {
+export function MapScreen({ base, focus, onPlan, onSwitchBase }: { base: BaseData; focus: Target | null; onPlan: (t: Target) => void; onSwitchBase: (id: number) => void }) {
   const map = useQuery({ ...trpc.world.map.queryOptions(), refetchInterval: 60000 });
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const worldEvents = useWorldEvents();
@@ -53,6 +55,9 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
   const linkKm = fieldsRules(meta.data?.balance)?.zoneLinkKm ?? 450; // Felder: Zonenlinien
   const fieldLayer = useMemo(() => (fields.data ? { list: fields.data.fields, linkKm } : undefined), [fields.data, linkKm]);
   const alert = base.incoming.some((i) => i.type !== "transport");
+  // Mehrere Häfen: freies Küstenfeld (Gründung) – Reichweitenkreis um den aktiven Hafen.
+  const freeCoast = !!sel && !!map.data && isFreeCoast(sel, map.data, fields.data?.fields);
+  const harbors = useMemo(() => ({ active: home, rangeKm: freeCoast ? expansionRules(meta.data?.balance).maxRangeKm : null }), [home, freeCoast, meta.data]);
   if (!map.data) return <Loading />;
   const at = (t: Target) => ({
     base: map.data.bases.find((b) => b.col === t.col && b.row === t.row),
@@ -70,7 +75,8 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
     return v ? fmtSeconds((dist / v) * 3600) : "–";
   };
   const garrison = info?.nest && meta.data ? meta.data.balance.pirates.nestLevels[String(info.nest.level)] : null;
-  const isHome = !!info?.base?.own;
+  const isHome = info?.base?.id === base.id; // aktiver Hafen
+  const otherOwn = info?.base?.own && !isHome ? info.base : null; // eigener, nicht aktiver Hafen
 
   return (
     <div className="h-full flex flex-col">
@@ -90,6 +96,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
           naval={naval.data}
           fields={fieldLayer}
           weather={showWeather ? meta.data?.balance.weather : null}
+          harbors={harbors}
         />
         <div className="absolute left-2 top-6 flex flex-col gap-1.5 items-start">
           <button
@@ -149,7 +156,7 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
                   <div className="font-serif text-[19px] leading-tight flex items-center gap-2 mt-0.5">
                     <TacticalIcon kind={info.base.own ? "own" : relationKind(info.base.relation)} size={26} /> {info.base.name}
                   </div>
-                  <div className="text-xs text-slate-300">{info.base.own ? "Dein Stützpunkt" : `Stützpunkt von ${info.base.owner}`}</div>
+                  <div className="text-xs text-slate-300">{isHome ? (base.bases.length > 1 ? "Dein aktiver Hafen" : "Dein Stützpunkt") : info.base.own ? "Dein Hafen – zum Verwalten hierhin wechseln" : `Stützpunkt von ${info.base.owner}`}</div>
                   {!info.base.own && (
                     <div className="text-xs font-semibold" style={{ color: RELATION_HEX[info.base.relation] }}>{RELATION_TEXT[info.base.relation]}</div>
                   )}
@@ -189,10 +196,11 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
               {info.event && (
                 <WorldEventCard e={info.event} onPlan={() => onPlan({ col: info.event!.col, row: info.event!.row, eventId: info.event!.id })} />
               )}
+              {freeCoast && <FoundingInfo base={base} sel={sel} />}
               {meta.data?.balance.weather && terrainAt(sel.col, sel.row) !== "land" && <WeatherLine at={sel} wb={meta.data.balance.weather} now={now} home={home} radar={hasRadar} />}
               <NavalSheet data={naval.data} sel={sel} onPlan={onPlan} />
               <FieldSheet data={fields.data} sel={sel} onPlan={onPlan} />
-              {!info.base && !info.nest && !info.wreck && !info.event && !info.naval && !info.field && (
+              {!info.base && !info.nest && !info.wreck && !info.event && !info.naval && !info.field && !freeCoast && (
                 <div className="text-slate-400 mt-1">Hier ist nichts. Ziele sind Piratennester (rote Raute), Rohstofffelder und fremde Stützpunkte.</div>
               )}
               {!isHome && (info.base || info.nest || info.field) && (
@@ -200,11 +208,13 @@ export function MapScreen({ base, focus, onPlan }: { base: BaseData; focus: Targ
               )}
             </div>
           </div>
-          {((info.nest || (info.base && !info.base.own)) || (!info.base && !info.nest && !info.field && terrainAt(sel.col, sel.row) === "sea" && naval.data?.rules.mines && hexDistanceKm(home, sel) <= naval.data.rules.mines.layRadiusKm)) && (
-            <div className="shrink-0 px-3 pb-3 pt-2 border-t border-rule flex gap-2">
+          {(otherOwn || freeCoast || (info.nest || (info.base && !info.base.own)) || (!info.base && !info.nest && !info.field && terrainAt(sel.col, sel.row) === "sea" && naval.data?.rules.mines && hexDistanceKm(home, sel) <= naval.data.rules.mines.layRadiusKm)) && (
+            <div className="shrink-0 px-3 pb-3 pt-2 border-t border-rule flex flex-wrap gap-2">
               {(info.nest || (info.base && !info.base.own)) && (
                 <Button className="flex-1" onClick={() => onPlan(sel)}>Mission planen</Button>
               )}
+              {otherOwn && <OwnHarborActions sel={otherOwn} onSwitch={onSwitchBase} onPlan={onPlan} />}
+              {freeCoast && <FoundingButton base={base} sel={sel} onPlan={onPlan} />}
               {!info.base && !info.nest && !info.field && terrainAt(sel.col, sel.row) === "sea" && naval.data?.rules.mines && hexDistanceKm(home, sel) <= naval.data.rules.mines.layRadiusKm && (
                 <Button kind="secondary" className="flex-1" onClick={() => onPlan({ ...sel, naval: "minen" })}>Minen legen</Button>
               )}

@@ -150,7 +150,7 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
               <div className="flex-1 min-w-0 text-sm">
                 <div className="font-bold">{p.name} {p.isAdmin && <Badge tone="brass">Admin</Badge>}</div>
                 <div className="text-xs text-slate-400">
-                  {p.baseName ?? "kein Hafen"} · seit {when(p.createdAt)} · aktiv {ago(p.lastSeenAt)}
+                  {p.baseName ?? "kein Hafen"}{p.baseCount > 1 ? ` (+${p.baseCount - 1} weitere)` : ""} · seit {when(p.createdAt)} · aktiv {ago(p.lastSeenAt)}
                   {p.email ? ` · E-Mail ${p.emailVerified ? "bestätigt" : "unbestätigt"}` : ""}
                 </div>
               </div>

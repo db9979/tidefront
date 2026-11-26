@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { useViewScroll } from "./lib/view-scroll.ts";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc.ts";
 import { useLive } from "./lib/live.ts";
 import { useNow } from "./lib/time.ts";
@@ -26,6 +26,7 @@ import { useGuide, type GuideAction } from "./components/Guide.tsx";
 import { useDaily } from "./components/Daily.tsx";
 import { parseOpenUrl, type OpenTarget } from "./lib/push.ts";
 import { usePlanRequests, type PlanPreset } from "./lib/plan-request.ts";
+import { initActiveBase, isBaseQueryKey, isNoBase, resetActiveBase, setActiveBase, useActiveBaseId } from "./lib/active-base.ts";
 const ResearchScreen = lazy(() => import("./screens/Research.tsx").then((m) => ({ default: m.ResearchScreen })));
 import { ResearchRollPopup } from "./components/ResearchDice.tsx";
 import { onBugReportRequest } from "./lib/bug-log.ts";
@@ -38,6 +39,7 @@ export type Tab = "basis" | "karte" | "truppen" | "berichte" | "boerse";
 export interface Target { col: number; row: number; eventId?: number; /** Karte: dieses Missionsblatt öffnen. */ missionId?: number }
 export interface Target { col: number; row: number; eventId?: number; blockadeId?: number; convoyId?: number; naval?: "minen" | "raeumen" | "blockade" } // See: Seeziele
 export interface Target { fieldId?: number; fieldMission?: "besetzen" | "aufklaerung" } // Felder
+export interface Target { expansion?: "gruendung" | "verlegung" | "transport" } // Mehrere Häfen: Art vorbelegen
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "basis", label: "Basis", icon: "nav-basis" },
@@ -82,7 +84,16 @@ export function App() {
 
 function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerName: string; onLoggedOut: () => void }) {
   const loggedIn = true;
-  const base = useQuery({ ...trpc.base.get.queryOptions(), enabled: loggedIn, refetchInterval: 30000 });
+  // Mehrere Häfen: aktiver Hafen (null = Heimathafen) vor der ersten Abfrage laden; eigener Cache-Schlüssel je Hafen.
+  useState(() => {
+    initActiveBase(playerId);
+    const fromUrl = parseOpenUrl(location.href).base; // Push-Deep-Link ?base= (Server prüft den Besitz)
+    if (fromUrl) setActiveBase(fromUrl);
+  });
+  const activeId = useActiveBaseId();
+  const base = useQuery({ ...trpc.base.get.queryOptions(activeId !== null ? { baseId: activeId } : undefined), enabled: loggedIn, refetchInterval: 30000, placeholderData: keepPreviousData });
+  useNoBaseFallback(base.error);
+  const switchKey = useBaseSwitch(activeId);
   const hasBase = !!base.data?.base;
   const reports = useQuery({ ...trpc.report.list.queryOptions(), enabled: hasBase, refetchInterval: 60000 });
   const messages = useQuery({ ...trpc.social.messages.unread.queryOptions(), enabled: hasBase, refetchInterval: 60000 });
@@ -154,6 +165,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       setHelpKey((k) => k + 1);
       setHelp(!!t.view);
       if (t.tab) setTab(t.tab);
+      if (t.base) setActiveBase(t.base);
     };
     navigator.serviceWorker?.addEventListener("message", onMsg);
     return () => navigator.serviceWorker?.removeEventListener("message", onMsg);
@@ -169,7 +181,8 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   }, [tab, sub, newestReport, seen, playerId]);
 
   // Scrollposition je Ansicht (Reiter + Unterreiter); Planung, Handbuch, Forschung öffnen immer oben.
-  const mainScroll = useViewScroll(help ? "handbuch" : research ? "forschung" : plan ? "planung" : tab === "berichte" ? `berichte:${sub}` : tab);
+  // Hafenwechsel: eigener Satz Positionen je Hafen (Schlüssel mit Hafen), damit jede Ansicht oben beginnt.
+  const mainScroll = useViewScroll(`${switchKey}|${help ? "handbuch" : research ? "forschung" : plan ? "planung" : tab === "berichte" ? `berichte:${sub}` : tab}`);
 
   if (base.isLoading || !base.data) return <Loading />;
   if (!base.data.base) return <ChooseBase />;
@@ -205,33 +218,39 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   };
 
   const openResearch = () => { setPlan(null); setHelp(false); setResearch(true); };
+  /** Hafenwechsel aus Kopfleiste oder Karte: Planung schließen (Ursprung wäre falsch), Reiter bleibt. */
+  const switchBase = (id: number) => {
+    setPlan(null);
+    setSheet(null);
+    setActiveBase(b.bases.find((x) => x.id === id)?.isHome ? null : id);
+  };
   const fullBleed = tab === "karte" && !plan && !help && !research;
   screenRef.current = help ? "Handbuch" : research ? "Forschung" : plan ? "Missionsplanung"
     : `${TABS.find((x) => x.id === tab)?.label ?? tab}${tab === "berichte" ? ` · ${sub}` : ""}${tab === "basis" && sheet ? ` · Blatt ${sheet}` : ""}`;
   const content = help ? (
     <Handbook key={helpKey} onClose={() => { setHelp(false); setHelpView(null); }} onLogout={logout} playerName={playerName} initialView={helpView} onView={setHelpView} />
   ) : research ? (
-    <ResearchScreen base={b} asOf={base.data.serverNow} onClose={() => setResearch(false)} />
+    <ResearchScreen key={b.id} base={b} asOf={base.data.serverNow} onClose={() => setResearch(false)} />
   ) : plan ? (
-    <MissionPlan key={plan.seq ?? 0} base={b} initialTarget={plan.target} preset={plan.preset} onClose={() => setPlan(null)} onPickOnMap={() => go("karte")} />
+    <MissionPlan key={`${b.id}:${plan.seq ?? 0}`} base={b} initialTarget={plan.target} preset={plan.preset} onClose={() => setPlan(null)} onPickOnMap={() => go("karte")} />
   ) : tab === "basis" ? (
     <>
       <SeasonEndBanner onOpen={() => { go("berichte"); setSub("rangliste"); }} />
-      <BaseScreen base={b} asOf={base.data.serverNow} sheet={sheet} setSheet={setSheet} onGuide={onGuide} onTroops={() => go("truppen")} onResearch={openResearch} />
+      <BaseScreen key={b.id} base={b} asOf={base.data.serverNow} sheet={sheet} setSheet={setSheet} onGuide={onGuide} onTroops={() => go("truppen")} onResearch={openResearch} />
     </>
   ) : tab === "karte" ? (
-    <MapScreen key={mapFocus?.missionId ?? "karte"} base={b} focus={mapFocus} onPlan={openPlan} />
+    <MapScreen key={`${b.id}:${mapFocus?.missionId ?? "karte"}`} base={b} focus={mapFocus} onPlan={openPlan} onSwitchBase={switchBase} />
   ) : tab === "truppen" ? (
-    <TroopsScreen base={b} onResearch={openResearch} onPlan={() => openPlan(null)} onShowOnMap={(t) => { setMapFocus(t); go("karte"); }} />
+    <TroopsScreen key={b.id} base={b} onResearch={openResearch} onPlan={() => openPlan(null)} onShowOnMap={(t) => { setMapFocus(t); go("karte"); }} />
   ) : tab === "berichte" ? (
     <MeldungenScreen sub={sub} setSub={setSub} unread={{ berichte: unread, nachrichten: unreadMsgs }} onShowOnMap={(t) => { setMapFocus(t); go("karte"); }} />
   ) : (
-    <MarketScreen base={b} />
+    <MarketScreen key={b.id} base={b} />
   );
 
   return (
     <div className="h-full flex flex-col max-w-xl mx-auto">
-      <ResourceBar base={b} asOf={base.data.serverNow} now={now} onHelp={() => { setHelpView(null); setHelp((h) => !h); }} />
+      <ResourceBar base={b} asOf={base.data.serverNow} now={now} onSwitchBase={switchBase} onPlanFounding={() => go("karte")} onHelp={() => { setHelpView(null); setHelp((h) => !h); }} />
       {/* Kurszeile: auf der Börse immer (oben, außer „unten“ gewählt), sonst nach Einstellung. */}
       {(onMarket ? tickerPos !== "unten" : tickerPos === "oben") && <TickerBar onOpen={() => go("boerse")} />}
       <main ref={mainScroll.ref} onScroll={mainScroll.onScroll} className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto overflow-x-hidden p-3 pb-8 scroll-pb-8"}`}><Suspense fallback={<Loading />}>{content}</Suspense>{!fullBleed && <ActionBarHost />}</main>
@@ -256,7 +275,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
               {t.id === "basis" && claimable > 0 && (
                 <span className="absolute top-1 left-[18%] min-w-5 h-5 px-1 rounded-full bg-moos text-white text-[11px] mono grid place-items-center" title="Belohnung abholbereit">{claimable}</span>
               )}
-              {t.id === "basis" && b.incoming.some((i) => i.type !== "transport") && (
+              {t.id === "basis" && (b.incoming.some((i) => i.type !== "transport") || b.bases.some((x) => x.underAttack)) && (
                 <span className="absolute top-1.5 right-[24%] w-3 h-3 rotate-45 bg-siegel pulse" />
               )}
             </button>
@@ -264,9 +283,43 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
         })}
       </nav>
       {welcome && <Welcome playerId={playerId} onDone={() => setWelcome(false)} />}
-      <ResearchRollPopup base={b} />
+      <ResearchRollPopup key={b.id} base={b} />
       <UpdateNotices playerId={playerId} paused={welcome} />
       {bug && <Suspense fallback={null}><BugReportSheet draft={bug} playerName={playerName} onClose={() => setBug(null)} /></Suspense>}
     </div>
   );
 }
+
+/** Server meldet „Hafen nicht eigen“ (Saisonwechsel, veraltete ID): zurück auf den Heimathafen. */
+function useNoBaseFallback(error: unknown) {
+  useEffect(() => {
+    if (isNoBase(error)) resetActiveBase();
+  }, [error]);
+  useEffect(() => queryClient.getQueryCache().subscribe((e) => {
+    if (e.type === "updated" && e.action.type === "error" && isNoBase(e.action.error)) resetActiveBase();
+  }), []);
+}
+
+/**
+ * Hafenwechsel: hafenbezogene Abfragen ohne eigenen Hafen-Schlüssel (Markt, Felder, Admirale …) verwerfen, damit
+ * nichts vom vorigen Hafen stehen bleibt. Liefert einen Zähler, der je Wechsel steigt (Scrollpositionen).
+ */
+function useBaseSwitch(activeId: number | null): number {
+  const [n, setN] = useState(0);
+  const last = useRef(activeId);
+  useEffect(() => {
+    if (last.current === activeId) return;
+    last.current = activeId;
+    setN((x) => x + 1);
+    void queryClient.resetQueries({
+      predicate: (q) => isBaseQueryKey(q.queryKey) && !hasBaseId(q.queryKey),
+    });
+  }, [activeId]);
+  return n;
+}
+
+function hasBaseId(queryKey: readonly unknown[]): boolean {
+  const opts = queryKey[1] as { input?: { baseId?: unknown } } | undefined;
+  return typeof opts?.input?.baseId === "number";
+}
+
