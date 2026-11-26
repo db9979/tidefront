@@ -59,6 +59,27 @@ Meilenstein 1: `ueberfall`, `aufklaerung`, `transport`.
 - Treibstoff: Summe `fuelPer100Km * Anzahl * Entfernung / 100`, mal 2 für Hin- und Rückweg, aufgerundet; wird beim Start abgezogen.
 - Entfernung zwischen Hexfeldern: Großkreis-Entfernung der Feldmittelpunkte in Kilometern.
 
+Ablauf am Ziel:
+
+- `ueberfall`: Kampf bei Ankunft. Der Verteidiger erhält seinen Endbestand (Überlebende plus Rückkehrer), die Beute wird
+  abgezogen. Die Einheiten des Angreifers aus `final` kehren mit der Beute nach der Reisezeit heim; erst dann verlassen
+  alle entsandten Einheiten `unitsAway`.
+- `aufklaerung`: kein Kampf. Bei Ankunft entsteht ein Lagebild des Ziels (Bestände abgerundet, Gebäude, Einheiten daheim,
+  Anlagen, Bunkerschutz); bei einem Nest dessen Besatzung. Der Verband kehrt vollständig heim.
+- `transport`: Bei Ankunft wird die Ladung dem Zielstützpunkt gutgeschrieben, auch über die Lagerkapazität. Ziel kann nur
+  ein Spielerstützpunkt sein. Der Verband kehrt leer heim.
+
+## Vorwarnung
+
+- Radarstation Stufe L ≥ 1: Vorwarnzeit `warningMinutesBase + warningMinutesPerLevel * L` Minuten, ohne Radar 0.
+- Ein anrückender Angriff gilt als erkannt, sobald seine Ankunft höchstens die Vorwarnzeit entfernt ist.
+  Erst dann sieht der Verteidiger ihn, und erst dann greift an der Börse die Sperre `under_attack`.
+
+## Abbruch
+
+- Ein laufender Ausbau oder Ausbildungsauftrag kann abgebrochen werden. Erstattet wird je Ressource
+  `floor(Kosten * Restzeit / Gesamtdauer)`, auch über die Lagerkapazität. Der Bauplatz ist sofort frei.
+
 ## Kampf
 
 Automatisch, höchstens `maxRoundsPerPhase` Runden je Phase.
@@ -68,14 +89,18 @@ Automatisch, höchstens `maxRoundsPerPhase` Runden je Phase.
    Mit Luftüberlegenheit mal `airSuperiorityBomberBonus`, gegen fremde Luftüberlegenheit mal `airSuperiorityBomberMalus`.
 3. **Seegefecht:** Schiffe gegeneinander (`see`), Küstenbatterien feuern mit.
 4. **Landung:** Nur wenn Landungsschiffe überleben. Truppen über der verbliebenen Kapazität gehen verloren.
-   Minensperren wirken einmal, Pioniere halbieren den Schaden. Dann Bodenkampf (`land`) gegen Bunkerlinie und Bodentruppen.
+   Minensperren wirken einmal, Pioniere halbieren den Schaden. Dann Bodenkampf: Truppen treffen Bodentruppen mit `land`
+   und die Bunkerlinie mit `anlage`. Verteidigende Bodentruppen und Bunkerlinie feuern mit `land`, Küstenbatterien feuern
+   mit `land` mit, sind im Bodenkampf aber kein Ziel und zählen nicht für den Sieg.
 
 Schadensregeln:
 
 - Schaden einer Seite je Runde = Summe über ihre Einheitentypen `Angriff * Anzahl`, verteilt auf die gegnerischen Typen
   der Phase proportional zu deren gesamten Lebenspunkten. `bonus[zieltyp]` multipliziert den Anteil gegen diesen Typ.
 - Jede Runde wird der Schaden mit einem Zufallsfaktor aus `[1 - randomSpread, 1 + randomSpread]` multipliziert.
-- Beide Seiten schießen gleichzeitig. Verluste = `floor(Schaden / hp)`, Restschaden verfällt.
+- Beide Seiten schießen gleichzeitig. Verluste = `floor((Restschaden + Schaden) / hp)`. Der Restschaden unterhalb der
+  Lebenspunkte einer Einheit wird je Einheitentyp und Seite über alle Runden und Phasen des Kampfs mitgeführt;
+  er verfällt erst, wenn der Typ ausgelöscht ist oder der Kampf endet.
 - Der Angreifer gewinnt, wenn nach der Landung keine verteidigenden Bodentruppen und keine Bunkerlinie mehr stehen und eigene Bodentruppen leben.
 
 Nach dem Kampf:
@@ -83,8 +108,12 @@ Nach dem Kampf:
 - Beute je Ressource: `min(Bestand - Bunkerschutz, …) * maxShareOfUnprotected`, mal Wiederholungsfaktor
   (`repeatFactors` nach Anzahl der Angriffe desselben Angreifers binnen `repeatWindowHours`),
   insgesamt begrenzt durch `cargo` der überlebenden Landungsschiffe; bei Knappheit proportional gekürzt.
-- Piratennester geben ihren festen `loot` statt eines Anteils, ebenfalls durch `cargo` begrenzt.
-- Wracks: `wreckShare` der Stahl- und Elektronikkosten versenkter Schiffe.
+- Schwachziel: Ist die Stärke des Ziels (Summe aller Gebäudestufen) kleiner als `weakTargetBelowShare` mal der Stärke des
+  angreifenden Stützpunkts, wird die Anteilsbeute zusätzlich mit `weakTargetLootFactor` multipliziert.
+- Piratennester geben ihren festen `loot` statt eines Anteils, ebenfalls durch `cargo` begrenzt; keine Schwachziel-Regel.
+- Wracks: `wreckShare` der Stahl- und Elektronikkosten versenkter Schiffe beider Seiten bleiben als Wrackfeld am Kampfort.
+  Das Wrackgut verfällt linear und ist nach `wreckHours` Stunden verschwunden. Jede eigene Mission, die das Feld erreicht,
+  birgt Wrackgut bis zur freien Ladekapazität ihrer Schiffe (nach der Beute) und bringt es mit heim.
 - Verteidiger: `defenseRepairShare` der zerstörten Anlagen und `hospitalShareDefender` der Bodentruppen kehren zurück.
 - Angreifer: `hospitalShareAttacker` der Bodentruppen kehren zurück, nur bei Sieg. `aircraftDamagedShare` der verlorenen Flugzeuge beider Seiten gelten als beschädigt und kehren zurück.
 - Der Kampfbericht enthält je Phase: Bestände vorher und nachher beider Seiten und einen Schlüssel `entscheidend` (der Einheitentyp mit dem meisten ausgeteilten Schaden).

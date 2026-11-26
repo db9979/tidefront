@@ -129,12 +129,26 @@ function volley(
   return damage;
 }
 
-/** Verluste = floor(Schaden / hp), höchstens der Bestand; Restschaden verfällt. */
-function applyDamage(table: StatTable, counts: Counts, damage: Record<string, number>): void {
+/**
+ * Verluste = floor((Restschaden + Schaden) / hp), höchstens der Bestand. Der Rest unterhalb der
+ * Lebenspunkte einer Einheit bleibt je Einheitentyp über Runden und Phasen erhalten (`carry`);
+ * ist der Typ ausgelöscht, verfällt er.
+ */
+function applyDamage(
+  table: StatTable,
+  counts: Counts,
+  damage: Record<string, number>,
+  carry: Record<string, number>,
+): void {
   for (const [id, d] of Object.entries(damage)) {
     const have = counts[id] ?? 0;
-    const lost = Math.min(have, Math.floor(d / table.byId[id].hp));
-    if (lost > 0) counts[id] = have - lost;
+    if (have <= 0) continue;
+    const hp = table.byId[id].hp;
+    const total = (carry[id] ?? 0) + d;
+    // Kleine Toleranz, damit 3 * 66,666… nicht knapp unter 200 bleibt.
+    const lost = Math.min(have, Math.floor(total / hp + 1e-9));
+    counts[id] = have - lost;
+    carry[id] = counts[id] === 0 ? 0 : Math.max(0, total - lost * hp);
   }
 }
 
@@ -194,7 +208,7 @@ function normalizeCounts(input: Counts, allowed: (id: string) => boolean): Resul
 
 /**
  * Beute nach einem Sieg. Feste Beute (Piratennest) oder Anteil am ungeschützten Bestand mal
- * Wiederholungsfaktor; insgesamt durch die Ladekapazität begrenzt, bei Knappheit proportional
+ * Wiederholungsfaktor (und bei Schwachzielen mal weakTargetLootFactor); insgesamt durch die Ladekapazität begrenzt, bei Knappheit proportional
  * gekürzt; je Ressource abgerundet.
  */
 export function computeLoot(
@@ -202,6 +216,7 @@ export function computeLoot(
   cargoCapacity: number,
   priorAttacksInWindow: number,
   balance: Balance,
+  weakTarget = false,
 ): ResourceMap {
   const raw: ResourceMap = {};
   let total = 0;
@@ -214,6 +229,7 @@ export function computeLoot(
     } else {
       const unprotected = Math.max(0, (defender.resources?.[r] ?? 0) - (defender.protectedPerResource ?? 0));
       amount = unprotected * balance.loot.maxShareOfUnprotected * repeat;
+      if (weakTarget) amount *= balance.loot.weakTargetLootFactor;
     }
     raw[r] = Math.max(0, amount);
     total += raw[r];
@@ -271,6 +287,9 @@ export function resolveBattle(
   const beforeD: Counts = { ...D };
 
   const rng: Rng = mulberry32(seed);
+  // Restschaden je Einheitentyp, über alle Runden und Phasen.
+  const carryA: Record<string, number> = {};
+  const carryD: Record<string, number> = {};
   const spread = balance.combat.randomSpread;
   const maxRounds = balance.combat.maxRoundsPerPhase;
   const moraleA = attacker.versorgungsmangel ? SUPPLY_SHORTAGE_ATTACK_FACTOR : 1;
@@ -300,8 +319,8 @@ export function resolveBattle(
         const rd = randomFactor(rng, spread);
         const toD = volley(fa, fd, (s) => withMorale(moraleA, s.attack.luft, s), ra, draft.damage.attacker);
         const toA = volley(fd, fa, (s) => withMorale(moraleD, s.attack.luft, s), rd, draft.damage.defender);
-        applyDamage(table, D, toD);
-        applyDamage(table, A, toA);
+        applyDamage(table, D, toD, carryD);
+        applyDamage(table, A, toA, carryA);
       }
     }
     phases.push(endPhase(draft, A, D, skip, table));
@@ -347,8 +366,8 @@ export function resolveBattle(
           ra,
           draft.damage.attacker,
         );
-        applyDamage(table, A, flakOnA);
-        applyDamage(table, D, flakOnD);
+        applyDamage(table, A, flakOnA, carryA);
+        applyDamage(table, D, flakOnD, carryD);
         // Dann schlagen die überlebenden Bomber beider Seiten gleichzeitig zu.
         const sa = randomFactor(rng, spread);
         const sd = randomFactor(rng, spread);
@@ -366,8 +385,8 @@ export function resolveBattle(
           sd * bomberFactor("defender"),
           draft.damage.defender,
         );
-        applyDamage(table, D, strikeOnD);
-        applyDamage(table, A, strikeOnA);
+        applyDamage(table, D, strikeOnD, carryD);
+        applyDamage(table, A, strikeOnA, carryA);
       }
       if (draft.rounds === 0) skip = "no_targets";
     }
@@ -396,8 +415,8 @@ export function resolveBattle(
         const rd = randomFactor(rng, spread);
         const toD = volley(sa, sd, (s, t) => withMorale(moraleA, seaValue(s, t), s), ra, draft.damage.attacker);
         const toA = volley(sd, sa, (s) => withMorale(moraleD, s.attack.see, s), rd, draft.damage.defender);
-        applyDamage(table, D, toD);
-        applyDamage(table, A, toA);
+        applyDamage(table, D, toD, carryD);
+        applyDamage(table, A, toA, carryA);
       }
     }
     phases.push(endPhase(draft, A, D, skip, table));
@@ -440,9 +459,12 @@ export function resolveBattle(
         const hpSum = totalHp(troops);
         const dmg: Record<string, number> = {};
         for (const [s, n] of troops) dmg[s.id] = (mineDamage * s.hp * n) / hpSum;
-        applyDamage(table, A, dmg);
+        applyDamage(table, A, dmg, carryA);
       }
-      // Bodenkampf mit dem Wert "land" gegen Bodentruppen und Bunkerlinie.
+      // Bodenkampf: Truppen treffen Bodentruppen mit "land" und die Bunkerlinie mit "anlage".
+      // Küstenbatterien feuern mit "land" auf die gelandeten Truppen, sind aber kein Ziel.
+      const groundValue = (s: Stat, t: Stat) => (t.kind === "defense" ? s.attack.anlage : s.attack.land);
+      const coastGuns = (s: Stat) => s.kind === "defense" && s.id !== "bunkerlinie" && s.attack.land > 0;
       while (draft.rounds < maxRounds) {
         const ga = pick(table, A, isGround);
         const gd = pick(table, D, defLand);
@@ -450,10 +472,11 @@ export function resolveBattle(
         draft.rounds++;
         const ra = randomFactor(rng, spread);
         const rd = randomFactor(rng, spread);
-        const toD = volley(ga, gd, (s) => withMorale(moraleA, s.attack.land, s), ra, draft.damage.attacker);
-        const toA = volley(gd, ga, (s) => withMorale(moraleD, s.attack.land, s), rd, draft.damage.defender);
-        applyDamage(table, D, toD);
-        applyDamage(table, A, toA);
+        const shootersD = [...gd, ...pick(table, D, coastGuns)];
+        const toD = volley(ga, gd, (s, t) => withMorale(moraleA, groundValue(s, t), s), ra, draft.damage.attacker);
+        const toA = volley(shootersD, ga, (s) => withMorale(moraleD, s.attack.land, s), rd, draft.damage.defender);
+        applyDamage(table, D, toD, carryD);
+        applyDamage(table, A, toA, carryA);
       }
     }
     phases.push(endPhase(draft, A, D, skip, table));
@@ -498,7 +521,7 @@ export function resolveBattle(
     let cargo = 0;
     for (const id of table.ids) cargo += table.byId[id].cargo * (A[id] ?? 0);
     if (attacker.unlimitedCargo) cargo = Infinity;
-    loot = computeLoot(defender, cargo, attacker.priorAttacksInWindow ?? 0, balance);
+    loot = computeLoot(defender, cargo, attacker.priorAttacksInWindow ?? 0, balance, attacker.weakTarget ?? false);
   }
 
   return {

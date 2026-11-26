@@ -261,15 +261,28 @@ test("Schaden verteilt sich proportional zu den Lebenspunkten der Zieltypen", ()
   assert.ok(report.defender.losses.landungsschiff >= 1);
 });
 
-test("Restschaden verfällt: zu wenig Schaden versenkt nichts", () => {
-  // 4 Schnellboote: rund 72 Schaden je Runde gegen einen Zerstörer mit 450 HP;
-  // der Zerstörer: rund 70 Schaden gegen Boote mit 80 HP. Schaden summiert sich nicht über Runden.
-  const report = fight({ units: { schnellboot: 4 } }, { units: { zerstoerer: 1 }, defenses: {} });
-  assert.equal(report.phases[2].rounds, 3);
-  assert.ok(report.phases[2].damage.attacker.schnellboot > 200);
-  assert.equal(report.defender.survivors.zerstoerer, 1);
-  assert.equal(report.attacker.survivors.schnellboot, 4);
-  assert.deepEqual(report.wreck, { stahl: 0, elektronik: 0 });
+test("Restschaden wird über Runden mitgeführt", () => {
+  // 4 Schnellboote: rund 72 Schaden je Runde gegen eine Korvette mit 200 HP -> nach 3 Runden versenkt.
+  // Die Korvette: rund 60 Schaden je Runde (Bonus 1,5) gegen Boote mit 80 HP -> 2 Boote nach 3 Runden.
+  const report = fight({ units: { schnellboot: 4 } }, { units: { korvette: 1 }, defenses: {} });
+  const sea = report.phases[2];
+  assert.equal(sea.rounds, 3);
+  assert.equal(report.defender.survivors.korvette, 0);
+  assert.equal(report.attacker.survivors.schnellboot, 2);
+  // Ein Zerstörer (450 HP) hält 3 Runden gegen 4 Boote aus, verliert aber nichts „umsonst“:
+  const big = fight({ units: { schnellboot: 4 } }, { units: { zerstoerer: 1 }, defenses: {} });
+  assert.equal(big.defender.survivors.zerstoerer, 1);
+  assert.ok(big.attacker.survivors.schnellboot <= 2);
+});
+
+test("Restschaden wird über Phasen mitgeführt (Luftschlag -> Seegefecht)", () => {
+  // Ein Jagdbomber trifft die Korvette im Luftschlag mit rund 3 * 55 = 165 (keine Versenkung),
+  // im Seegefecht genügt dann die erste Salve zweier Korvetten (rund 80).
+  const report = fight({ units: { jagdbomber: 1, korvette: 2 } }, { units: { korvette: 1 }, defenses: {} }, 3);
+  assert.equal(report.phases[1].after.defender.korvette, 1);
+  assert.ok(report.phases[1].damage.attacker.jagdbomber > 150);
+  assert.equal(report.phases[2].rounds, 1);
+  assert.equal(report.defender.survivors.korvette, 0);
 });
 
 test("Landung: Truppen über der verbliebenen Kapazität gehen verloren", () => {
@@ -496,4 +509,23 @@ test("Eigenschaftstest: viele Seeds und zufällige Verbände", () => {
   assert.ok(skippedPhases > 100, `übersprungen: ${skippedPhases}`);
   assert.ok(foughtPhases > 1000, `ausgetragen: ${foughtPhases}`);
   assert.ok(attackerWins > 10, `Siege: ${attackerWins}`);
+});
+
+test("Bodenkampf: Truppen treffen die Bunkerlinie mit anlage, Küstenbatterien feuern mit", () => {
+  // 10 Pioniere: anlage 6 * Bonus 4 = 240 je Runde gegen die Bunkerlinie (600 HP) -> nach 3 Runden zerstört.
+  // Mit land (4 * 4 = 160) wären es nur 480 gewesen.
+  const report = fight({ units: { landungsschiff: 1, pioniere: 10 } }, { units: {}, defenses: { bunkerlinie: 1 } }, 2);
+  assert.equal(report.defender.survivors.bunkerlinie, 0);
+  assert.equal(report.winner, "attacker");
+
+  const guns = fight(
+    { units: { landungsschiff: 12, schuetzen: 100 } },
+    { units: { schuetzen: 20 }, defenses: { kuestenbatterie: 1 } },
+    2,
+  );
+  const landing = guns.phases[3];
+  assert.ok((landing.damage.defender.kuestenbatterie ?? 0) > 0);
+  // Batterien sind im Bodenkampf kein Ziel und verhindern den Sieg nicht.
+  assert.equal(landing.after.defender.kuestenbatterie, landing.before.defender.kuestenbatterie);
+  assert.equal(guns.winner, "attacker");
 });

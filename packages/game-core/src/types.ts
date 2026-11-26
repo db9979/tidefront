@@ -258,6 +258,8 @@ export interface AttackerInput {
   troopSpaceBonus?: Record<string, number>;
   /** Beute nicht durch Ladekapazität begrenzt (Kartell-Überfall). */
   unlimitedCargo?: boolean;
+  /** Ziel ist ein Schwachziel (Anteilsbeute mal loot.weakTargetLootFactor). */
+  weakTarget?: boolean;
 }
 
 export interface DefenderInput {

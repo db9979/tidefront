@@ -5,14 +5,15 @@ Die Börse hat ihre eigene Liste in `src/market/ENTSCHEIDUNGEN.md`.
 
 ## A. Auslegungen, die das Spielgefühl berühren (bitte gegenlesen)
 
-1. **Bodenkampf nutzt `land` auch gegen die Bunkerlinie** (wörtlich nach REGELN). Folge: Die `anlage`-Werte der
-   Bodentruppen und der Miliz werden in Meilenstein 1 nirgends benutzt. Der Bonus `pioniere.bonus.bunkerlinie` wirkt
-   (auf den `land`-Wert), `pioniere.bonus.minensperre` wirkt nicht, weil Minensperren im Bodenkampf kein Ziel sind.
+1. **Bodenkampf: `land` gegen Truppen, `anlage` gegen die Bunkerlinie** (seit Stand 2, in REGELN.md übernommen).
+   Damit haben die `anlage`-Werte der Bodentruppen eine Funktion, `pioniere.bonus.bunkerlinie` wirkt auf `anlage`.
+   `pioniere.bonus.minensperre` bleibt ungenutzt: Minensperren sind im Bodenkampf kein Ziel; Pioniere halbieren ihren
+   Schaden ohnehin.
 2. **Seegefecht: Küstenbatterien sind Teilnehmer, also auch Ziel.** Schiffe treffen Schiffe mit `see` und
    Küstenbatterien mit `anlage`. REGELN sagt nur „feuern mit“; ohne diese Auslegung wären die `anlage`-Werte der
    Schiffe ohne Funktion und Batterien nur durch Bomber zerstörbar. Teilnehmer sind alle Anlagen mit `attack.see > 0`.
-3. **Bodenkampf-Teilnehmer des Verteidigers: nur Bodentruppen und Bunkerlinie.** `kuestenbatterie.attack.land` (10)
-   bleibt ungenutzt.
+3. **Bodenkampf-Teilnehmer des Verteidigers: Bodentruppen und Bunkerlinie als Ziele; Küstenbatterien feuern mit
+   `land` mit** (seit Stand 2, in REGELN.md übernommen), sind aber kein Ziel und zählen nicht für den Sieg.
 4. **Luftschlag gilt für beide Seiten.** Auch Bomber des Verteidigers greifen an (die Schiffe des Angreifers), vorher
    schießen dessen Schiffe mit `luft` auf sie. Ablauf je Runde: erst Flugabwehr, Verluste abziehen, dann schlagen die
    überlebenden Bomber beider Seiten gleichzeitig zu. Jäger schießen im Luftschlag nicht auf Bomber; sie wirken nur
@@ -56,12 +57,13 @@ Die Börse hat ihre eigene Liste in `src/market/ENTSCHEIDUNGEN.md`.
   und danach mit der neuen Stufe. Der Deckel über die Kommandozentrale gilt für die Zielstufe.
 - **Ausbildung:** höchstens ein Auftrag je Baugebäude (Werft, Kaserne, Flugfeld parallel möglich), Dauer =
   Zeit je Einheit mal Anzahl, alle Einheiten erscheinen am Ende gemeinsam. `completeTraining` schließt alle fälligen
-  Aufträge ab. Abbruch und Rückerstattung gibt es nicht.
+  Aufträge ab. Abbruch: `cancelUpgrade` und `cancelTraining` in `resolution.ts`, Erstattung nach Restzeit.
 - **Reihenfolge der Ereignisse** (Bau fertig, Ausbildung fertig, Mission, Kampf) muss der Aufrufer zeitlich
   einhalten; `settle` kennt nur den aktuellen Zustand.
 - **Mission:** Reisezeit nach dem langsamsten Schiff, auch wenn Flugzeuge mitfliegen. Verband ohne Schiff und ohne
   Flugzeug: `troop_capacity` oder `no_carrier`. `planMission` verschiebt Einheiten nach `unitsAway`; die Rückbuchung
-  nach dem Kampf (Überlebende, Rückkehrer, Beute) macht der Aufrufer. Transport-Ladung ist durch `cargo` begrenzt.
+  macht `returnMission`, das Kampfergebnis beim Verteidiger `applyDefenseResult` (beide in `resolution.ts`).
+  Verlorene Einheiten zählen bis zur Heimkehr des Verbands noch für Unterhalt und Stellplätze. Transport-Ladung ist durch `cargo` begrenzt.
   Ein optional übergebenes geschütztes Ziel wird für Überfälle abgelehnt (`target_protected`).
 - **Nachtschild:** Startstunde in Ortszeit mit festem `tzOffsetMinutes` (keine Sommerzeit-Automatik). „Diese Nacht“ =
   das laufende, sonst das nächste Schildfenster. Jeder geplante `ueberfall` hebt es auf, auch gegen Nester.
@@ -83,12 +85,18 @@ Die Börse hat ihre eigene Liste in `src/market/ENTSCHEIDUNGEN.md`.
 
 - **`maxBuildSeconds` (432000 s) wird nie erreicht.** Die längste Bauzeit ist Kommandozentrale 19 auf 20 mit
   120 * 1,4^19, rund 71700 s (knapp 20 Stunden). Der Test prüft die Kappung deshalb mit verkleinerter Obergrenze.
-- **Ohne Regel in REGELN, daher nicht umgesetzt:** `loot.weakTargetBelowShare`, `loot.weakTargetLootFactor`,
-  `combat.wreckHours` (Verfall der Wracks), `radarstation.warningMinutes*`.
-- **Kartell-Überfälle sind mit `raidStrengthShareOfDefense` 0,6 fast chancenlos.** Weil Restschaden je Runde
-  verfällt, versenken z. B. 21 Schnellboote gegen 5 Korvetten und 3 Küstenbatterien nichts. Ohne Schiffe und Anlagen
-  kommt nur die Mindeststärke (4 Boote, 24 Miliz). Nicht simuliert, nur an Einzelfällen beobachtet.
-- **Restschaden verfällt** (REGELN): Kleine Verbände richten gegen Einheiten mit vielen Lebenspunkten gar nichts
-  aus, auch nicht über mehrere Runden. Das ist so umgesetzt, kann aber überraschen.
+- **Früher ohne Regel, seit Stand 2 geregelt und umgesetzt** (`resolution.ts`): Schwachziel (Stärke = Summe der
+  Gebäudestufen), Wrack-Verfall (linear, Bergung durch eigene Missionen), Radar-Vorwarnzeit, Abbruch von Bau und
+  Ausbildung. Wer den Spielerstützpunkt eines anderen Spielers angreift, wird nach seinem Startstützpunkt gemessen.
+- **Restschaden wird seit Stand 2 mitgeführt** (vorher verfiel er je Runde, kleine Verbände waren wirkungslos).
+- **Simulation** (`npm run sim`, 200 Seeds je Fall), Stand 2 mit `balance.json` v1:
+  - Kartell-Überfälle gewinnen nur gegen völlig unverteidigte Stützpunkte. Schon 20 Schützen halten die Mindeststärke
+    (4 Boote, 24 Miliz) auf; gegen Schiffe und Anlagen skaliert nur die Bootszahl, die Miliz bleibt bei 6 je Boot und
+    verliert den Bodenkampf. Vorschlag zum Prüfen: `raidStrengthShareOfDefense` an der Bodenverteidigung messen oder
+    `raidMiliPerBoot` erhöhen.
+  - Nester: Stufe 1 fällt schon mit 2 Korvetten, 1 Landungsschiff, 60 Schützen; Stufe 3 erst mit einem Verband aus
+    8 Zerstörern, Bombern, 5 Landungsschiffen, Panzern und 350 Mann; Stufe 4 und 5 hielt jeder getestete Verband.
+    Die Sprünge zwischen den Stufen sind groß.
+  - Ein gieriger Bau-Bot erreicht nach 7 Tagen rund 300 Stahl je Stunde und Kommandozentrale 4.
 - **Nest-Besatzung** steht in `nestLevels` als flache Schlüssel neben `loot`; der Code ordnet sie über die IDs den
   Einheiten oder Anlagen zu.
