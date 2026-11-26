@@ -10,6 +10,7 @@ import {
   checkOps,
   cleanup,
   ensureWorldEventPlanner,
+  flushAchievementNotices,
   flushMailDigests,
   noticeHook,
   processDue,
@@ -71,6 +72,9 @@ async function loop() {
           if (mails > 0) log("digest mails", { sent: mails });
           const summaries = await runMorningSummaries(engine, Date.now());
           if (summaries > 0) log("morning summaries", { sent: summaries });
+          // Erfolge: Push für frisch freigeschaltete Abzeichen.
+          const badges = await flushAchievementNotices(engine);
+          if (badges > 0) log("achievement notices", { sent: badges });
         } catch (err) {
           log("ops check failed", String(err));
         }

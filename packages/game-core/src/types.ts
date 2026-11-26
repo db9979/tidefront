@@ -181,6 +181,41 @@ export interface Balance {
   espionage?: EspionageBalance;
   weather?: WeatherBalance; // Wetter (seit v1.6); fehlt es, rechnen Wind und Sonne mit 0
   power?: PowerBalance;
+  /** Erfolge und Wochenziele (Erfolge); fehlt es, gibt es keine Abzeichen und Wochenziele. */
+  achievements?: AchievementsBalance;
+}
+
+// ---------------------------------------------------------------- Erfolge (Abzeichen) und Wochenziele
+
+/** Belohnung einer Erfolgsstufe: Kredite und Ressourcen, einmalig. */
+export type AchievementReward = Record<string, number>;
+
+export interface AchievementDef {
+  title: string;
+  description: string;
+  /** Zähler (achievement_counter), z. B. nester, beute, spionage. */
+  counter: string;
+  /** Schwellen für Bronze, Silber, Gold (aufsteigend). */
+  thresholds: [number, number, number];
+  /** Anzeigetexte der Stufen statt „Zahl/Schwelle“ (z. B. Saisonplatzierung). */
+  tierTexts?: [string, string, string];
+  /** Eigene Belohnungen je Stufe; sonst die gemeinsamen. */
+  rewards?: [AchievementReward, AchievementReward, AchievementReward];
+}
+
+export interface AchievementsBalance {
+  /** Gemeinsame Belohnung je Stufe (Bronze, Silber, Gold). */
+  rewards: [AchievementReward, AchievementReward, AchievementReward];
+  list: Record<string, AchievementDef>;
+  weekly: {
+    /** Ressourcenwert je Ziel bei Kommandozentrale 0; wächst um stageGrowth je Stufe. */
+    goalValue: number;
+    goalCredits: number;
+    /** Wochenbonus bei allen drei Zielen. */
+    bonusValue: number;
+    bonusCredits: number;
+    stageGrowth: number;
+  };
 }
 
 /** Würfel des Kriegsglücks: 1 = min, die = max, dazwischen linear innerMin … innerMax (luck.ts). */

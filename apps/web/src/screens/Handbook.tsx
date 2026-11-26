@@ -10,6 +10,7 @@ import { Icon, IconTile } from "../icons.tsx";
 import { Button } from "../ui.tsx";
 import { SettingsScreen } from "./Settings.tsx";
 import { IntelChapter } from "../components/IntelChapter.tsx";
+import { AchievementsChapter } from "../components/AchievementsChapter.tsx"; // Erfolge
 import { requestBugReport } from "../lib/bug-log.ts";
 
 /** Kachel im Schnellzugriff oben im Handbuch. */
@@ -189,6 +190,8 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
         </>
       ),
     },
+    // Erfolge (Abzeichen) und Wochenziele (components/AchievementsChapter.tsx)
+    { id: "erfolge", icon: "hafenmeister", title: "Erfolge und Wochenziele", body: <AchievementsChapter b={b} /> },
     {
       id: "saison", icon: "nav-bericht", title: "Saison und Wertung",
       body: (
