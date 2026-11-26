@@ -2,6 +2,12 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.10.1 – 27.11.2026
+- **Gebäude wachsen sichtbar mit**: Jedes Gebäude hat eigene Bilder je Ausbaustufe – vom Bauplan über klein, mittel und groß bis zum Prachtbau mit Licht, Laternen und Fahnen.
+- Das Info-Blatt zeigt das Gebäude jetzt und nach dem nächsten Ausbau nebeneinander; der Bauhof zeigt das Bild der Zielstufe.
+- Die Hafen-Ansicht oben auf der Basis wächst mit deinem Gesamtausbau (Häuser, Kran, Schiffe, Licht, Flagge).
+- Voll ausgebaute Gebäude zeigen „Höchststufe“ statt eines Ausbau-Knopfs.
+
 ## 0.10.0 – 27.11.2026
 - **Forschung**: neues Gebäude Forschungsamt mit 20 Techniken in vier Zweigen (Seefahrt, Heer, Luftfahrt, Wirtschaft). Jede abgeschlossene Forschung hat eine sichtbare **Durchbruch-Chance** – Würfelwurf mit Extra-Stufe oder halber Dauer für die nächste Forschung.
 - **Kriegsglück**: Jede Seite würfelt je Kampfphase einen W20 (−20 % bis +20 %), die Würfe stehen im Kampfbericht.
