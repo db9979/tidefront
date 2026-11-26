@@ -2,6 +2,17 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.11.2 – 27.11.2026
+- **Freund und Feind auf der Karte**: Häfen sind nach Beziehung gefärbt – eigener Hafen, Allianz (grün, Doppelring), Paktpartner (ocker), Kriegsgegner (rot), neutral (blau); auch in der weit herausgezoomten Übersicht. Die Legende ist neu gegliedert und erklärt die Übersichtspunkte.
+- **Proviant verständlich**: Die Versorgung zeigt Erzeugung, Unterhalt der Truppen und den Saldo; bei negativem Saldo steht, wie lange der Vorrat reicht.
+- **Allianzwertung** zum Saisonende in der Ruhmeshalle.
+- Wetter wirkt jetzt auch bei Kämpfen der Weltereignisse; bei Sturm wird der Abfangpunkt des Schatzschiffs richtig berechnet.
+- Radar: Ein einmal erkannter Angriff bleibt sichtbar, auch wenn das Radar danach ausfällt.
+- Spionage abgestimmt: Erkunden gelingt öfter, Sabotage braucht nur noch einen Spion, Desinformation ist schwächer. Eigene Meldung „Spione zurück“; der Chancenbalken zeigt jetzt richtig an.
+- Das Kartell berücksichtigt die Forschung der Verteidiger zur Hälfte – gut erforschte Häfen bleiben nicht völlig unangreifbar.
+- Neue Tagesbefehle zu Strom, Wetter und Spionage.
+- Kleinere Korrekturen an der Darstellung auf dem Handy.
+
 ## 0.11.1 – 27.11.2026
 - **Fehler melden ist leichter zu finden**: Ganz oben im Handbuch gibt es jetzt drei Schnellknöpfe – Fehler melden, Einstellungen und Was ist neu? Unten im Handbuch steht ein deutlicher Knopf statt eines kleinen Links.
 
