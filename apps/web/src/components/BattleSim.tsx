@@ -143,7 +143,7 @@ type AttMode = "eigen" | "frei" | "kartell";
 
 /** Freier Simulator: beide Seiten frei wählbar, Vorlagen für Nester, eigenen Hafen und Kartell-Überfall. */
 export function FreeSim({ balance, base }: { balance: Balance; base: BaseData }) {
-  const home = useMemo(() => positive(Object.fromEntries(base.units.map((u) => [u.id, u.home]))), [base.units]);
+  const home = useMemo(() => positive(Object.fromEntries(base.units.filter((u) => !balance.units[u.id]?.covert).map((u) => [u.id, u.home]))), [base.units, balance]);
   const ownDef = useMemo(() => positive(Object.fromEntries(base.defenses.map((d) => [d.id, d.count]))), [base.defenses]);
   const nestLevels = Object.keys(balance.pirates.nestLevels).sort((a, b) => Number(a) - Number(b));
   const [attMode, setAttMode] = useState<AttMode>("eigen");
@@ -167,7 +167,7 @@ export function FreeSim({ balance, base }: { balance: Balance; base: BaseData })
     if (m === "kartell") pickDefender("hafen");
   };
 
-  const playerIds = Object.keys(balance.units);
+  const playerIds = Object.keys(balance.units).filter((id) => !balance.units[id].covert); // Spione kämpfen nicht
   const defIds = [...playerIds, ...Object.keys(balance.npcUnits), ...Object.keys(balance.defenses)];
   const split = useMemo(() => splitDefender(def, balance), [def, balance]);
   const attacker = useMemo<AttackerInput>(

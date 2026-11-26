@@ -22,6 +22,10 @@ export const BUILDING_TEXT: Record<string, { kurz: string; lang: string }> = {
     kurz: "Forschung dieser Saison",
     lang: "Hier wird geforscht: eine Technik gleichzeitig, Boni bis zum Saisonende. Höhere Stufen öffnen weitere Techniken (ab Stufe 3 und 5), forschen 10 % schneller je Stufe und erhöhen die Chance auf einen Durchbruch.",
   },
+  nachrichtendienst: {
+    kurz: "Spione und Gegenspionage",
+    lang: "Bildet Spione aus (je Stufe {spyCap} mehr) und schickt sie auf Spionageaufträge: Erkunden, Desinformation (ab Stufe 2), Kartell-Aufklärung (ab Stufe 2), Sabotage (ab Stufe 3). Jede Stufe gibt +1 auf den Erfolgswert deiner Spione und +1 Abwehr gegen fremde.",
+  },
   hafenkommandantur: { kurz: "Missionsplätze und Börse", lang: "Jede zweite Stufe gibt einen weiteren Missionsplatz. Ab Stufe {market} öffnet die Börse, das Kreditlimit wächst mit jeder Stufe." },
 };
 
@@ -36,6 +40,7 @@ export const UNIT_TEXT: Record<string, string> = {
   abfangjaeger: "Kämpft um die Luftüberlegenheit. Wer sie hat, dessen Bomber treffen härter.",
   jagdbomber: "Greift im Luftschlag Schiffe und Anlagen an, bevor das Seegefecht beginnt. Am Bodenkampf nimmt er nicht teil.",
   aufklaerungsdrohne: "Kämpft nicht. Schnell und mit großer Reichweite – ideal für Aufklärung.",
+  spion: "Kämpft nicht und fährt in keinem Verband mit. Reist unauffällig und schnell zu Spionageaufträgen; wird er enttarnt, ist er verloren und das Ziel erfährt den Absender.",
   kuestenbatterie: "Feuert im Seegefecht schwer auf Schiffe und im Bodenkampf auf gelandete Truppen.",
   flakstellung: "Schießt im Luftschlag auf angreifende Bomber.",
   bunkerlinie: "Muss im Bodenkampf fallen, bevor ein Angreifer siegen kann.",
@@ -59,6 +64,7 @@ function numbers(b: Balance | undefined): Record<string, string> {
     lsCargo: fmtNum(b?.units.landungsschiff?.cargo ?? 4000),
     panzerSize: String(b?.units.kampfpanzer?.size ?? 10),
     mine: fmtNum(b?.defenses.minensperre?.oneShotDamageToLanding ?? 300),
+    spyCap: String(b?.units.spion?.maxPerLevel ?? 2),
   };
 }
 
@@ -99,6 +105,10 @@ export function buildingEffect(balance: Balance, id: string, level: number): str
   if (def.capacityBase) return `${fmtNum(def.capacityBase * (def.capacityGrowth ?? 1) ** level)} je Ressource`;
   if (def.protectedBase) return `${fmtNum(def.protectedBase * (def.protectedGrowth ?? 1) ** level)} je Ressource geschützt`;
   if (def.commandPointsBase !== undefined) return `${fmtNum(def.commandPointsBase + (def.commandPointsPerLevel ?? 0) * level)} Kommandopunkte`;
+  if (balance.espionage?.building === id) {
+    if (level < 1) return "noch keine Spione";
+    return `bis ${(balance.units[balance.espionage.unit]?.maxPerLevel ?? 0) * level} Spione, Erfolg und Abwehr +${level * balance.espionage.attackPerLevel}`;
+  }
   if (def.slotsPerLevel) return `${def.slotsPerLevel * level} Stellplätze, Bau ${level < 1 ? "–" : `+${Math.round((def.buildSpeedPerLevel ?? 0) * (level - 1) * 100)} %`}`;
   if (def.buildSpeedPerLevel) return level < 1 ? "noch nicht gebaut" : `Bautempo +${Math.round(def.buildSpeedPerLevel * (level - 1) * 100)} %`;
   if (def.researchSpeedPerLevel !== undefined) {
@@ -117,7 +127,7 @@ export function buildingEffect(balance: Balance, id: string, level: number): str
 }
 
 function label(r: string): string {
-  return { stahl: "Stahl", treibstoff: "Treibstoff", elektronik: "Elektronik", proviant: "Proviant", werft: "Werft", kaserne: "Kaserne", flugfeld: "Flugfeld" }[r] ?? r;
+  return { stahl: "Stahl", treibstoff: "Treibstoff", elektronik: "Elektronik", proviant: "Proviant", werft: "Werft", kaserne: "Kaserne", flugfeld: "Flugfeld", nachrichtendienst: "Nachrichtendienst" }[r] ?? r;
 }
 
 /**
@@ -148,6 +158,12 @@ export function unitStats(balance: Balance, id: string): [string, string][] {
   const u = balance.units[id] ?? balance.npcUnits[id];
   const d = balance.defenses[id];
   const a = u?.attack ?? d?.attack;
+  if (u?.covert) {
+    const e = balance.espionage;
+    const rows: [string, string][] = [["Kampf", "kämpft nicht"], ["Reise", `${e?.speedKmh ?? 0} km/h, ohne Treibstoff`], ["Höchstzahl", `${u.maxPerLevel ?? 0} je Stufe ${label(u.builtIn ?? "")}`]];
+    if (u.upkeepPerHour) rows.push(["Unterhalt", `${u.upkeepPerHour} Proviant/h`]);
+    return rows;
+  }
   const rows: [string, string][] = [["Lebenspunkte", fmtNum(u?.hp ?? d?.hp ?? 0)]];
   if (a && u?.branch === "luft") {
     // Nur die Werte, die der Kampf benutzt: Bomber treffen im Luftschlag Schiffe (See) und Anlagen, Jäger kämpfen um die Luft.

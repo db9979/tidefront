@@ -15,11 +15,14 @@ import { TemplateBar, shortText } from "../components/Templates.tsx";
 import { ProbeCard } from "../components/SimLauncher.tsx";
 // Weltereignisse als Ziel
 import { KIND_TITLE, useWorldEvents } from "../components/WorldEvents.tsx";
+// Nachrichtendienst: Spionageaufträge
+import { SpyPlan } from "../components/SpyPlan.tsx";
 
 const TYPES = [
   { id: "ueberfall", text: "Überfall", hint: "Kampf am Ziel, Beute bei Sieg" },
   { id: "aufklaerung", text: "Aufklärung", hint: "Lagebild ohne Kampf" },
   { id: "transport", text: "Transport", hint: "Ladung an einen Stützpunkt" },
+  { id: "spionage", text: "Spionage", hint: "Spione des Nachrichtendiensts: Erkunden, Sabotage, Desinformation, Kartell" },
 ] as const;
 
 /** Bestätigung nach dem Auslaufen, passend zur Art der Mission. */
@@ -32,7 +35,7 @@ const SENT_TEXT: Record<string, string> = {
 export function MissionPlan({ base, initialTarget, onClose, preset }: { base: BaseData; initialTarget: Target | null; onClose: () => void; onPickOnMap?: () => void; preset?: PlanPreset }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const map = useQuery(trpc.world.map.queryOptions());
-  const [type, setType] = useState<"ueberfall" | "aufklaerung" | "transport">(preset?.type ?? "ueberfall");
+  const [type, setType] = useState<"ueberfall" | "aufklaerung" | "transport" | "spionage">(preset?.type ?? "ueberfall");
   const [target, setTarget] = useState<Target | null>(initialTarget);
   // Vorbelegung („Wiederholen“) auf die Einheiten daheim gekürzt; note erklärt die Kürzung.
   const [first] = useState(() => fitUnits(preset?.units ?? {}, Object.fromEntries(base.units.map((u) => [u.id, u.home]))));
@@ -56,7 +59,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   const event = target?.eventId ? worldEvents.data?.events.find((e) => e.id === target.eventId) : undefined;
   const preview = useQuery({
     ...trpc.mission.preview.queryOptions(input ?? { type, units: {}, col: 0, row: 0 }),
-    enabled: !!input && Object.keys(chosen).length > 0,
+    enabled: !!input && Object.keys(chosen).length > 0 && type !== "spionage",
     placeholderData: keepPreviousData,
   });
 
@@ -93,7 +96,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
       </div>
 
       <Card title="Art">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {TYPES.map((t) => (
             <button key={t.id} type="button" onClick={() => setType(t.id)} className={`tap rounded-xl px-1 py-2 text-sm flex flex-col items-center gap-1 border ${type === t.id ? "border-sea-400 bg-sea-400/10 font-semibold reticle" : "border-navy-600 bg-navy-900"}`}>
               <Icon id={t.id} size={32} />
@@ -103,6 +106,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         </div>
         <p className="text-xs text-slate-400 mt-1">{TYPES.find((t) => t.id === type)!.hint}</p>
       </Card>
+
+      {type === "spionage" ? <SpyPlan base={base} map={map.data} target={target} setTarget={setTarget} center={initialTarget ?? { col: base.col, row: base.row }} onClose={onClose} /> : <>
 
       <Card title="Ziel">
         <div className="h-56 rounded-lg overflow-hidden mb-2">
@@ -122,7 +127,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
       <Card title="Verband">
         {note && <p className="text-xs text-messing mb-1">{note}</p>}
         <ul className="divide-y divide-navy-700">
-          {base.units.filter((u) => u.home > 0).map((u) => (
+          {base.units.filter((u) => u.home > 0 && !balance.units[u.id]?.covert).map((u) => (
             <li key={u.id} className="py-2 flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2"><IconTile id={u.id} size={36} tone={unitTone(balance, u.id)} /><div>{label(u.id)}<div className="text-xs text-slate-400">{fmtNum(u.home)} daheim</div></div></div>
               <Stepper value={units[u.id] ?? 0} max={u.home} onChange={(v) => setUnits({ ...units, [u.id]: v })} />
@@ -198,6 +203,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         </Button>
         <ErrorLine text={launch.error} />
       </Card>
+      </>}
     </div>
   );
 }

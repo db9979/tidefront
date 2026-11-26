@@ -87,6 +87,12 @@ export function startTraining(
       return { ok: false, code: "no_aircraft_slots" };
     }
   }
+  // Höchstzahl je Stufe (Spione): Bestand daheim, unterwegs und in Ausbildung zählt.
+  if (isUnit && balance.units[id].maxPerLevel !== undefined) {
+    let have = (base.units[id] ?? 0) + (base.unitsAway[id] ?? 0);
+    for (const o of base.trainingQueue) if (o.kind === "unit" && o.id === id) have += o.count;
+    if (have + count > balance.units[id].maxPerLevel! * buildingLevel(base, builtIn)) return { ok: false, code: "unit_cap" };
+  }
   const cost = trainingCost(id, count, balance);
   if (!hasResources(next.resources, cost)) return { ok: false, code: "insufficient_resources" };
 

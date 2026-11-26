@@ -36,6 +36,7 @@ import { playerTradeRouter } from "./routers/trade.ts";
 import { worldEventsRouter } from "./routers/world-events.ts";
 import { researchRouter } from "./routers/research.ts";
 import { guideRouter } from "./routers/guide.ts";
+import { espionageRouter } from "./routers/espionage.ts";
 
 export type { Ctx };
 
@@ -173,6 +174,7 @@ export const appRouter = t.router({
   worldEvents: worldEventsRouter,
   research: researchRouter,
   guide: guideRouter,
+  espionage: espionageRouter,
 });
 
 export type AppRouter = typeof appRouter;

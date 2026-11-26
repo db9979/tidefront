@@ -46,7 +46,7 @@ Vier Ressourcen: `stahl`, `treibstoff`, `elektronik`, `proviant`. Strom ist eine
 
 ## Einheiten
 
-Zehn Spielereinheiten in drei Gattungen, siehe `units`. Verteidigungsanlagen siehe `defenses`, Gegner siehe `npcUnits`.
+Zehn Spielereinheiten in drei Gattungen, dazu der Spion (kämpft nicht, siehe Nachrichtendienst), siehe `units`. Verteidigungsanlagen siehe `defenses`, Gegner siehe `npcUnits`.
 
 - Bau nur, wenn das Gebäude `builtIn` mindestens Stufe `requiresLevel` (Vorgabe 1) hat und kein Versorgungsmangel herrscht.
   Fehlt das Gebäude ganz: `building_required`; liegt es unter der Mindeststufe: `building_level`.
@@ -442,7 +442,9 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
   Ressource (`production.*`, nicht die Grundrate); Lagerkapazität (`storage`); Bunkerschutz (`bunker`);
   Radar-Vorwarnzeit (`radarWarning`); Ladekapazität (`cargo`); Beute-Anteil (`loot`, nur Anteilsbeute, nicht feste
   Nestbeute); Minenschaden an den eigenen Landungstruppen (`mineDamage`); Tarnung (`stealth`: Faktor auf die
-  Vorwarnzeit, die das Ziel gegen eigene Überfälle hat); Forschungsdauer (`researchTime`).
+  Vorwarnzeit, die das Ziel gegen eigene Überfälle hat); Forschungsdauer (`researchTime`); Spionage (`spyAttack`,
+  `spyDefense`: Faktor, der in Würfelpunkte umgerechnet wird, `round((Faktor − 1) × 10)`).
+- Quelle **Sabotage** (Nachrichtendienst): Eine laufende Sabotage im eigenen Hafen wirkt als Modifikator (siehe dort).
 - **Kombination:** Quellen (Forschung, Veteranen, künftig Wetter, Admirale, Ereignisse) werden je Wert **multipliziert**.
   Innerhalb einer Technik wirken Stufen additiv: Faktor = 1 + Wirkung je Stufe × Stufe.
 - Im Kampf gelten die Modifikatoren jeder Seite nur für ihre eigenen Einheiten und Anlagen (Lebenspunkte, Angriff);
@@ -485,6 +487,8 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
   | Wirtschaft | Lagertechnik | Lagerkapazität +10 % | 2 | 1 | – |
   | Wirtschaft | Fertigbau | Bauzeit Gebäude −8 % | 3 | 3 | Hochofen 1 |
   | Wirtschaft | Stahlbetonbunker | Bunkerschutz +12 % | 2 | 3 | Lagertechnik 1 |
+  | Nachrichtendienst | Verschlüsselung | Abwehr gegen Spione +1 (`spyDefense` +0,1) | 2 | 2 | – |
+  | Nachrichtendienst | Agentenschulung | Erfolgswert Spione +1 (`spyAttack` +0,1) | 2 | 2 | – |
 
 - **Durchbruch-Würfel:** Jede abgeschlossene Forschung würfelt einen Prozentwurf (W100, 1–100). Die Chance steht vor
   dem Start offen im Info-Blatt und wird beim Start festgehalten: `baseChance + perBuildingLevel * Stufe Forschungsamt`,
@@ -497,3 +501,48 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
   Wahl kann keine neue Forschung beginnen. Dieselbe Wahl erneut ändert nichts; eine andere wird abgelehnt.
   Durchbrüche kosten nichts und setzen nichts ein. Bei Durchbruch gibt es eine Systemnachricht und eine Benachrichtigung.
 - Forschung gilt **je Saison**: Mit dem Stützpunkt wird sie zum Saisonende gelöscht.
+
+## Nachrichtendienst und Spionage
+
+- Gebäude **Nachrichtendienst** (`espionage.building`, Werte unter `buildings.nachrichtendienst`). Er bildet die Einheit
+  **Spion** aus (`units.spion`, `covert`): je Stufe höchstens `maxPerLevel` Spione (daheim, unterwegs und in
+  Ausbildung zusammen; sonst `unit_cap`), Bautempo wie Werft/Kaserne (`buildSpeedPerLevel`), Unterhalt wie jede Einheit.
+- Spione **kämpfen nicht**: Sie gehören nicht zur Verteidigung eines Hafens und werden von Kämpfen nicht berührt; in
+  Verbänden normaler Missionen sind sie nicht erlaubt (`covert_unit`). Ihr Kostenwert zählt in der Wertung (Militär).
+- **Spionageaufträge** (Missionsart `spionage`, Befehl `espionage.launch`, Ereignis `spy_arrive`): Sie belegen einen
+  Missionsplatz, reisen ohne Treibstoff mit `espionage.speedKmh` (Hin- und Rückweg gleich lang) und sind für Radar und
+  Vorwarnung unsichtbar. Je Art Mindeststufe des Nachrichtendiensts, Zahl der Spione und Zuschlag (`espionage.kinds`):
+  - **Erkunden** (Stufe 1, 1 Spion, +2): Lagebild wie Aufklärung, dazu laufende Forschung, Bauschlange,
+    Ausbildung und Veteranenränge; ab Stufe `missionsFromLevel` (4) des Absenders auch die laufenden Missionen des Ziels.
+  - **Desinformation** (Stufe 2, 1 Spion, ±0): Beim Absender wird hinterlegt, dass das Ziel bis `disinfo.hours` (24 h)
+    im **nächsten** Lagebild (Aufklärung oder Erkunden) über den Absender verfälschte Zahlen sieht: Einheiten und
+    Anlagen mal `forceFactor` (gerundet), Bestände und Bunkerschutz mal `resourceFactor` (abgerundet). Einmalig.
+  - **Sabotage** (Stufe 3, 2 Spione, −3): wählbares Ziel aus `sabotage.targets`, nicht zerstörerisch:
+    Kraftwerk → Gebäudeproduktion mal `productionFactor`; Radarstation → Vorwarnzeit 0; Werft, Kaserne, Flugfeld →
+    der laufende Auftrag dort verschiebt sich um `sabotage.hours`, neue Aufträge dort dauern mal `trainingFactor`;
+    Forschungsamt → die laufende Forschung verschiebt sich um `sabotage.hours`, neue dauert mal `researchFactor`;
+    Bauschlange → alle Bauaufträge verschieben sich um `delayHours`. Die Wirkung (Zustand `BaseState.intel.sabotage`
+    mit Ziel, Beginn, Ende) gilt `sabotage.hours` (6 h) als Modifikator-Quelle „Sabotage“; das Ereignis
+    `spy_sabotage_end` schreibt bis zum Ende fort und hebt sie auf. Höchstens **eine** gelungene Sabotage je Hafen in
+    `cooldownHours` (24 h, `sabotage_cooldown`).
+  - **Kartell-Aufklärung** (Stufe 2, 1 Spion, ±0, kein Ziel, feste Dauer `kinds.kartell.hours` je Richtung, Abwehr
+    `kinds.kartell.defense`): nächstes Weltereignis (Art und Zeitpunkt), laufende Ereignisse mit Position, Kurs mit
+    Uhrzeiten (Schatzschiff), Zielhäfen mit erwarteter Angriffszeit (Großflotte), Belagerung.
+- **Ziele:** fremde Spielerhäfen (`spy_target`, `own_base`), nicht unter **Anfängerschutz** (`target_beginner`).
+  Nachtschild und Schutz nach Niederlage halten Spione nicht auf. **Sabotage** ist gegen Verbündete und Paktpartner
+  verboten (`ally`, `pact`); **Erkunden und Desinformation sind auch bei Verbündeten erlaubt** (Entscheidung: Spionage
+  unter Freunden ist ein Vertrauensbruch, aber kein Angriff). Bei Ankunft wird erneut geprüft (Anfängerschutz,
+  Bündnis, Sperrfrist); dann bricht der Spion ohne Wurf ab und kehrt heim.
+- **Probe (offener W20, `espionage.die`):** Erfolgswert E = `base` (9) + Stufe Nachrichtendienst × `attackPerLevel`
+  + Forschung (Agentenschulung) + Erfahrung (je `xpPerPoint` gelungene Aufträge +1, höchstens `maxXpPoints`) +
+  Zuschlag der Art. Abwehr A = Stufe Nachrichtendienst des Ziels × `defensePerLevel` + Forschung (Verschlüsselung);
+  beim Kartell der feste Wert. Zielzahl Z = E − A, begrenzt auf 1 … die − 1. **Erfolg bei Wurf ≤ Z**, sonst enttarnt;
+  eine 1 gelingt immer, eine 20 scheitert immer. Erfolgschance Z / 20, Enttarnungs-Chance 1 − Z / 20; beide stehen vor
+  dem Auslaufen in der Vorschau. Gewürfelt wird bei Ankunft mit den dann gültigen Werten, deterministisch aus dem
+  beim Auslaufen gespeicherten Seed (eigener Würfelstrom); Wurf, Zielzahl und beide Werte stehen im Bericht.
+- **Enttarnt:** Die Spione sind verloren. Das Ziel erhält eine Systemnachricht „Fremder Spion enttarnt – Absender …“,
+  eine Benachrichtigung und denselben Bericht (Art `spionage`). Der Bericht trägt die Verluste wie ein Kampf: Sieg der
+  Abwehr in der Kampfbilanz (Kategorie Spionage), Kampfpunkte für das Ziel in der Wertung.
+- **Unentdeckt:** Erfolg, das Ziel merkt nichts. Bei einer Sabotage sieht es nur die Folgen (Bericht `sabotage` ohne
+  Absender, Hinweis „sabotiert bis …“ im Hafen). Die Spione kehren heim (`mission_return`); der Absender erhält den
+  Spionagebericht.

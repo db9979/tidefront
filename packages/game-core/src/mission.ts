@@ -58,6 +58,7 @@ export function validateFleet(
   if (list.length === 0) return { ok: false, code: "empty_fleet" };
   for (const [id, n] of list) {
     if (!Object.hasOwn(balance.units, id)) return { ok: false, code: "unknown_unit" };
+    if (balance.units[id].covert) return { ok: false, code: "covert_unit" };
     if (!Number.isInteger(n) || n < 0) return { ok: false, code: "bad_count" };
     if ((base.units[id] ?? 0) < n) return { ok: false, code: "units_unavailable" };
   }

@@ -43,15 +43,19 @@ export interface Modifiers {
   stealth?: number;
   /** Forschungsdauer. */
   researchTime?: number;
+  /** Spionage: Erfolgswert eigener Spione (Faktor → Würfelpunkte, espionage.ts modPoints). */
+  spyAttack?: number;
+  /** Gegenspionage: Abwehr des eigenen Hafens (Faktor → Würfelpunkte). */
+  spyDefense?: number;
 }
 
 export const NEUTRAL_MODIFIERS: Modifiers = Object.freeze({}) as Modifiers;
 
 type MapKey = "attack" | "attackVs" | "attackUnit" | "hp" | "speed" | "trainingTime" | "production";
-type ScalarKey = "fuel" | "buildTime" | "storage" | "bunker" | "radarWarning" | "cargo" | "loot" | "mineDamage" | "stealth" | "researchTime";
+type ScalarKey = "fuel" | "buildTime" | "storage" | "bunker" | "radarWarning" | "cargo" | "loot" | "mineDamage" | "stealth" | "researchTime" | "spyAttack" | "spyDefense";
 
 export const MAP_KEYS: readonly MapKey[] = ["attack", "attackVs", "attackUnit", "hp", "speed", "trainingTime", "production"];
-export const SCALAR_KEYS: readonly ScalarKey[] = ["fuel", "buildTime", "storage", "bunker", "radarWarning", "cargo", "loot", "mineDamage", "stealth", "researchTime"];
+export const SCALAR_KEYS: readonly ScalarKey[] = ["fuel", "buildTime", "storage", "bunker", "radarWarning", "cargo", "loot", "mineDamage", "stealth", "researchTime", "spyAttack", "spyDefense"];
 
 /** Faktor eines skalaren Schlüssels (1, wenn nicht gesetzt). */
 export function modValue(mods: Modifiers | undefined, key: ScalarKey): number {

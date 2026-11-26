@@ -1,5 +1,6 @@
 // Gemeinsame Typen des Regelkerns. Nur löschbare Typ-Syntax (kein enum, kein namespace).
 import type { Modifiers } from "./modifiers.ts";
+import type { EspionageBalance, IntelState } from "./espionage.ts";
 
 export type ResourceMap = Record<string, number>;
 export type Counts = Record<string, number>;
@@ -60,6 +61,10 @@ export interface UnitDef {
   troopSpace?: number;
   size?: number;
   rangeKm?: number;
+  /** Verdeckte Einheit (Spion): kämpft nicht, fährt nicht in Verbänden mit, nur für Spionageaufträge. */
+  covert?: boolean;
+  /** Höchstzahl je Stufe des Baugebäudes (daheim, unterwegs, in Ausbildung). */
+  maxPerLevel?: number;
 }
 
 export interface DefenseDef {
@@ -156,6 +161,8 @@ export interface Balance {
   research?: ResearchBalance;
   /** Veteranen (seit v1.4); fehlt es, sammeln Einheiten keine Erfahrung. */
   veterans?: VeteranBalance;
+  /** Nachrichtendienst und Spionage (espionage.ts); fehlt es, gibt es keine Spionage. */
+  espionage?: EspionageBalance;
 }
 
 /** Würfel des Kriegsglücks: 1 = min, die = max, dazwischen linear innerMin … innerMax (luck.ts). */
@@ -327,6 +334,8 @@ export interface BaseState {
   research?: ResearchState;
   /** Erfahrung je Einheitentyp (Durchschnitt je Einheit, Stützpunkt und Saison); fehlt sie, sind alle Rekruten. */
   veterancy?: Record<string, number>;
+  /** Nachrichtendienst: Sabotage, Desinformation, Erfahrung (espionage.ts); fehlt er, ist nichts davon aktiv. */
+  intel?: IntelState;
 }
 
 export interface ProductionInfo {
