@@ -7,9 +7,11 @@ const FILTERS: Record<string, () => { queryKey: readonly unknown[] }[]> = {
   base: () => [trpc.base.pathFilter()],
   missions: () => [trpc.base.pathFilter()],
   reports: () => [trpc.report.pathFilter(), trpc.base.pathFilter(), trpc.social.ranking.pathFilter()],
-  market: () => [trpc.market.pathFilter(), trpc.base.pathFilter()],
+  market: () => [trpc.market.pathFilter(), trpc.base.pathFilter(), trpc.playerTrade.pathFilter()],
   map: () => [trpc.world.pathFilter()],
   messages: () => [trpc.social.messages.pathFilter()],
+  // Allianzen, Chat, Diplomatie (Kürzel und Beziehungen in der Rangliste)
+  alliance: () => [trpc.alliance.pathFilter(), trpc.playerTrade.pathFilter()],
   // Saisonwechsel: die ganze Welt ist neu.
   season: () => [
     trpc.season.pathFilter(), trpc.social.pathFilter(), trpc.base.pathFilter(), trpc.world.pathFilter(),

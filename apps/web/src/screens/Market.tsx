@@ -6,6 +6,7 @@ import { errorText, fmtNum, label } from "../lib/names.ts";
 import { Icon } from "../icons.tsx";
 import { fmtDuration, useNow } from "../lib/time.ts";
 import { Button, Card, ErrorLine, Loading } from "../ui.tsx";
+import { PlayerTrade } from "../components/PlayerTrade.tsx";
 
 export function MarketScreen({ base }: { base: BaseData }) {
   const m = useQuery({ ...trpc.market.get.queryOptions(), refetchInterval: 30000 });
@@ -117,6 +118,7 @@ export function MarketScreen({ base }: { base: BaseData }) {
         <ErrorLine text={exec.error} />
         {done && <p className="text-emerald-300 text-sm mt-2">{done}</p>}
       </Card>
+      <PlayerTrade base={base} />
     </div>
   );
 }

@@ -286,3 +286,81 @@ export const mailDigest = pgTable("mail_digest", {
   createdAt: ts("created_at").notNull().defaultNow(),
   sentAt: ts("sent_at"),
 }, (t) => [index("mail_digest_open").on(t.sentAt, t.playerId)]);
+
+// ================================================================ Allianzen, Diplomatie, Handel zwischen Spielern
+// Allianzen und Verträge überdauern das Saisonende; offene Handelsangebote verfallen dort (Treuhand an season:<n>).
+
+/** Allianz; Name und Kürzel (2–4 Zeichen) eindeutig ohne Groß-/Kleinschreibung. */
+export const alliance = pgTable("alliance", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  tag: text("tag").notNull(),
+  description: text("description").notNull().default(""),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [uniqueIndex("alliance_name_lower").on(sql`lower(${t.name})`), uniqueIndex("alliance_tag_lower").on(sql`lower(${t.tag})`)]);
+
+/** Mitgliedschaft; ein Spieler gehört höchstens einer Allianz an. role: fuehrung | offizier | mitglied. */
+export const allianceMember = pgTable("alliance_member", {
+  playerId: integer("player_id").primaryKey().references(() => player.id, { onDelete: "cascade" }),
+  allianceId: integer("alliance_id").notNull().references(() => alliance.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  joinedAt: ts("joined_at").notNull().defaultNow(),
+}, (t) => [index("alliance_member_alliance").on(t.allianceId)]);
+
+/** Offene Einladung (von der Allianz) oder Beitrittsanfrage (vom Spieler). kind: einladung | anfrage. */
+export const allianceRequest = pgTable("alliance_request", {
+  id: serial("id").primaryKey(),
+  allianceId: integer("alliance_id").notNull().references(() => alliance.id, { onDelete: "cascade" }),
+  playerId: integer("player_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  createdBy: integer("created_by"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [uniqueIndex("alliance_request_pair").on(t.allianceId, t.playerId), index("alliance_request_player").on(t.playerId)]);
+
+/** Allianz-Chat; playerId null, wenn der Absender gelöscht ist. */
+export const allianceChat = pgTable("alliance_chat", {
+  id: serial("id").primaryKey(),
+  allianceId: integer("alliance_id").notNull().references(() => alliance.id, { onDelete: "cascade" }),
+  playerId: integer("player_id").references(() => player.id, { onDelete: "set null" }),
+  body: text("body").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [index("alliance_chat_alliance").on(t.allianceId, t.createdAt)]);
+
+/**
+ * Vertrag zwischen zwei Parteien ("a:<allianz>" oder "p:<spieler ohne Allianz>"), partyA < partyB.
+ * kind pakt: status angeboten | aktiv, endsAt = Ende nach Kündigung. kind krieg: status aktiv, gilt ab activeFrom;
+ * peaceBy = Partei, die Frieden angeboten hat.
+ */
+export const diplomacy = pgTable("diplomacy", {
+  id: serial("id").primaryKey(),
+  partyA: text("party_a").notNull(),
+  partyB: text("party_b").notNull(),
+  kind: text("kind").notNull(),
+  status: text("status").notNull(),
+  proposedBy: text("proposed_by").notNull(),
+  activeFrom: ts("active_from"),
+  endsAt: ts("ends_at"),
+  peaceBy: text("peace_by"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [uniqueIndex("diplomacy_pair").on(t.partyA, t.partyB, t.kind), index("diplomacy_b").on(t.partyB)]);
+
+/**
+ * Handelsangebot zwischen Spielern: gibt giveQty von give (Ressource oder credits), will wantQty von want.
+ * Die Ware liegt ab dem Einstellen in Treuhand (Journal-Konto escrow:po-<id>).
+ * status: open | accepted | cancelled | expired. visibility: public | alliance.
+ */
+export const playerOffer = pgTable("player_offer", {
+  id: serial("id").primaryKey(),
+  sellerId: integer("seller_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  give: text("give").notNull(),
+  giveQty: integer("give_qty").notNull(),
+  want: text("want").notNull(),
+  wantQty: integer("want_qty").notNull(),
+  visibility: text("visibility").notNull(),
+  /** Allianz des Anbieters beim Einstellen (für visibility alliance). */
+  allianceId: integer("alliance_id"),
+  status: text("status").notNull().default("open"),
+  buyerId: integer("buyer_id"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  closedAt: ts("closed_at"),
+}, (t) => [index("player_offer_status").on(t.status, t.createdAt), index("player_offer_seller").on(t.sellerId, t.status)]);

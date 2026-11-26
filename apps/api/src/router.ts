@@ -25,6 +25,8 @@ import {
 import { seasonRouter, socialRouter } from "./routers/social.ts";
 import { authed, t, wrap, type Ctx } from "./trpc.ts";
 import { accountRouter, adminRouter, authExtras, pushRouter } from "./routers/ops.ts";
+import { allianceRouter } from "./routers/alliance.ts";
+import { playerTradeRouter } from "./routers/trade.ts";
 
 export type { Ctx };
 
@@ -150,6 +152,8 @@ export const appRouter = t.router({
 
   social: socialRouter,
   season: seasonRouter,
+  alliance: allianceRouter,
+  playerTrade: playerTradeRouter,
 });
 
 export type AppRouter = typeof appRouter;
