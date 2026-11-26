@@ -126,6 +126,8 @@ export function runBot(
   checkpoints: number[],
   militaryShare = MILITARY_SHARE,
   doctrine: Doctrine = DOCTRINE,
+  /** Optional: greift je Schritt in den Zustand ein (z. B. Belohnungen des Auftragsbuchs, sim/guide.ts). */
+  onStep?: (base: BaseState, t: number) => BaseState,
 ): BotSnapshot[] {
   let base: BaseState = createBase(balance, 0);
   let spentBuild = 0;
@@ -144,6 +146,7 @@ export function runBot(
       if (c.ok) base = c.base;
     }
     base = settle(base, t, balance);
+    if (onStep) base = onStep(base, t);
     const militaryFirst = spentMil <= militaryShare * (spentMil + spentBuild);
     // Ist die Rüstung an der Reihe und fehlt Geld dafür, wird für sie gespart.
     if (militaryFirst) {

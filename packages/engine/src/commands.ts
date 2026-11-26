@@ -35,6 +35,7 @@ import { diplomacyBlock } from "./alliance-core.ts"; // Allianzen/Diplomatie
 import { launchAgainstEvent } from "./world-events-missions.ts";
 import { siegeEffects } from "./world-events.ts";
 import { modifiersFor, modsOf } from "./modifiers.ts";
+import { applyPendingBoost } from "./guide.ts";
 
 export type Rejected = { ok: false; code: string };
 type Draft<T> = T | (Rejected & { keepWrites?: boolean });
@@ -137,8 +138,9 @@ export function upgrade(engine: Engine, playerId: number, key: string, buildingI
     const b = await ownBaseLocked(ctx);
     const r = startUpgrade(b.state, buildingId, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs));
     if (!r.ok) return r;
-    await saveBase(ctx.tx, b.id, r.base);
-    await scheduleEvent(ctx.tx, "build_complete", r.order.finishesAt, {}, b.id);
+    const state = await applyPendingBoost(ctx.tx, playerId, r.base, ctx.nowMs); // Auftragsbuch: −1 Stunde Bauzeit
+    await saveBase(ctx.tx, b.id, state);
+    await scheduleEvent(ctx.tx, "build_complete", state.buildQueue[state.buildQueue.length - 1].finishesAt, {}, b.id);
     await trackProgress(ctx.tx, playerId, "bauschlange", r.base.buildQueue.length, { atMs: ctx.nowMs, mode: "max" });
     ctx.notify.push([[playerId], "base"]);
     return { ok: true as const };

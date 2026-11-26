@@ -144,6 +144,22 @@
       "lootPool": { "stahl": 2500, "treibstoff": 1200, "elektronik": 600, "proviant": 900 }
     }
   },
+  "guide": {
+    "steps": {
+      "strom": { "stahl": 200, "treibstoff": 50 },
+      "stahl": { "stahl": 300, "treibstoff": 50, "elektronik": 20 },
+      "basis": { "stahl": 400, "treibstoff": 100, "elektronik": 100 },
+      "kz": { "stahl": 300, "treibstoff": 50, "proviant": 200 },
+      "kaserne": { "stahl": 600, "proviant": 400 },
+      "wache": { "stahl": 300, "proviant": 600 },
+      "werft": { "stahl": 800, "treibstoff": 300, "elektronik": 100 },
+      "flotte": { "stahl": 400, "proviant": 400 },
+      "nest": { "treibstoff": 800, "elektronik": 200 },
+      "hafen": { "stahl": 600, "elektronik": 250 },
+      "schutz": { "stahl": 600, "treibstoff": 200, "elektronik": 200, "proviant": 300 }
+    },
+    "final": { "reward": { "stahl": 2000, "treibstoff": 1000, "elektronik": 600, "proviant": 1000 }, "buildBoostSeconds": 3600 }
+  },
   "research": {
     "building": "forschungsamt",
     "costFactor": 2,

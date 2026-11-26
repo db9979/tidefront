@@ -1,12 +1,15 @@
-// Leitfaden: eine Kette von Aufträgen, die durch die ersten Spieltage führt. Erfüllt wird aus dem Spielstand.
+// Auftragsbuch: eine Kette von Aufträgen, die durch die ersten Spieltage führt. Erfüllung, Belohnung und
+// Abholstatus kommen vom Server (guide.get); hier stehen nur Texte, Symbole und Wege zum Ziel.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { trpc, type BaseData, type Balance } from "../lib/trpc.ts";
+import { trpc, trpcClient, type BaseData, type Balance, type Outputs } from "../lib/trpc.ts";
+import { useCommand } from "../lib/command.ts";
 import { countLabel, fmtNum } from "../lib/names.ts";
 import { Icon } from "../icons.tsx";
-import { Bar, Button } from "../ui.tsx";
+import { Badge, Bar, Button, ErrorLine, ResChips } from "../ui.tsx";
 
 export type GuideAction = { kind: "building"; id: string } | { kind: "tab"; tab: "karte" | "truppen" | "boerse" | "berichte" };
+type GuideData = Outputs["guide"]["get"];
 
 interface Step {
   id: string;
@@ -14,32 +17,27 @@ interface Step {
   title: string;
   /** Begründung; Zahlen aus der Balance, sobald sie geladen ist. */
   why: string | ((bal: Balance | undefined) => string);
-  done: (b: BaseData, wonRaid: boolean) => boolean;
   action: GuideAction;
   actionText: string;
 }
 
 const lvl = (b: BaseData, id: string) => b.buildings.find((x) => x.id === id)?.level ?? 0;
-const units = (b: BaseData, id: string) => {
-  const u = b.units.find((x) => x.id === id);
-  return u ? u.home + u.away : 0;
-};
 
 export const STEPS: Step[] = [
-  { id: "strom", icon: "kraftwerk", title: "Kraftwerk bauen", why: "Zuerst Strom: Stahlwerk, Raffinerie, Chipfabrik und Versorgungshof brauchen ihn. Ohne Kraftwerk liefern sie nichts – es läuft nur die kleine Grundproduktion.", done: (b) => lvl(b, "kraftwerk") >= 1, action: { kind: "building", id: "kraftwerk" }, actionText: "Zum Kraftwerk" },
-  { id: "stahl", icon: "stahlwerk", title: "Stahlwerk bauen", why: "Stahl ist der wichtigste Rohstoff. Fast jeder Ausbau und jedes Schiff braucht ihn. Mit dem Kraftwerk läuft es sofort mit voller Leistung.", done: (b) => lvl(b, "stahlwerk") >= 1, action: { kind: "building", id: "stahlwerk" }, actionText: "Zum Stahlwerk" },
-  { id: "basis", icon: "versorgungshof", title: "Raffinerie und Versorgungshof", why: "Treibstoff brauchst du für jede Mission, Proviant ernährt deine Truppen.", done: (b) => lvl(b, "raffinerie") >= 1 && lvl(b, "versorgungshof") >= 1, action: { kind: "building", id: "raffinerie" }, actionText: "Ausbauen" },
-  { id: "kz", icon: "kommandozentrale", title: "Kommandozentrale auf Stufe 1", why: "Sie hebt den Deckel für alle anderen Gebäude und gibt mehr Kommandopunkte für größere Verbände.", done: (b) => lvl(b, "kommandozentrale") >= 1, action: { kind: "building", id: "kommandozentrale" }, actionText: "Zur Kommandozentrale" },
-  { id: "kaserne", icon: "kaserne", title: "Kaserne bauen", why: "Nur Bodentruppen können landen, siegen und Beute holen – und deinen Hafen halten.", done: (b) => lvl(b, "kaserne") >= 1, action: { kind: "building", id: "kaserne" }, actionText: "Zur Kaserne" },
-  { id: "wache", icon: "schuetzen", title: "20 Schützen ausbilden", why: "Nach dem Anfängerschutz greift das Freibeuter-Kartell regelmäßig an. Mit 20 Schützen hältst du etwa jeden zweiten Überfall auf – mehr Truppen, eine Bunkerlinie und Küstenbatterien machen den Hafen sicher.", done: (b) => units(b, "schuetzen") >= 20, action: { kind: "tab", tab: "truppen" }, actionText: "Zu den Truppen" },
-  { id: "werft", icon: "werft", title: "Werft bauen", why: "Ohne Schiffe kommst du nicht übers Meer – weder zum Plündern noch zum Handeln.", done: (b) => lvl(b, "werft") >= 1, action: { kind: "building", id: "werft" }, actionText: "Zur Werft" },
+  { id: "strom", icon: "kraftwerk", title: "Kraftwerk bauen", why: "Zuerst Strom: Stahlwerk, Raffinerie, Chipfabrik und Versorgungshof brauchen ihn. Ohne Kraftwerk liefern sie nichts – es läuft nur die kleine Grundproduktion.", action: { kind: "building", id: "kraftwerk" }, actionText: "Zum Kraftwerk" },
+  { id: "stahl", icon: "stahlwerk", title: "Stahlwerk bauen", why: "Stahl ist der wichtigste Rohstoff. Fast jeder Ausbau und jedes Schiff braucht ihn. Mit dem Kraftwerk läuft es sofort mit voller Leistung.", action: { kind: "building", id: "stahlwerk" }, actionText: "Zum Stahlwerk" },
+  { id: "basis", icon: "versorgungshof", title: "Raffinerie und Versorgungshof", why: "Treibstoff brauchst du für jede Mission, Proviant ernährt deine Truppen.", action: { kind: "building", id: "raffinerie" }, actionText: "Ausbauen" },
+  { id: "kz", icon: "kommandozentrale", title: "Kommandozentrale auf Stufe 1", why: "Sie hebt den Deckel für alle anderen Gebäude und gibt mehr Kommandopunkte für größere Verbände.", action: { kind: "building", id: "kommandozentrale" }, actionText: "Zur Kommandozentrale" },
+  { id: "kaserne", icon: "kaserne", title: "Kaserne bauen", why: "Nur Bodentruppen können landen, siegen und Beute holen – und deinen Hafen halten.", action: { kind: "building", id: "kaserne" }, actionText: "Zur Kaserne" },
+  { id: "wache", icon: "schuetzen", title: "20 Schützen ausbilden", why: "Nach dem Anfängerschutz greift das Freibeuter-Kartell regelmäßig an. Mit 20 Schützen hältst du etwa jeden zweiten Überfall auf – mehr Truppen, eine Bunkerlinie und Küstenbatterien machen den Hafen sicher.", action: { kind: "tab", tab: "truppen" }, actionText: "Zu den Truppen" },
+  { id: "werft", icon: "werft", title: "Werft bauen", why: "Ohne Schiffe kommst du nicht übers Meer – weder zum Plündern noch zum Handeln.", action: { kind: "building", id: "werft" }, actionText: "Zur Werft" },
   { id: "flotte", icon: "landungsschiff", title: "2 Korvetten und 1 Landungsschiff", why: (bal) => {
     const l = bal?.units.landungsschiff;
     return `Korvetten versenken die Schnellboote der Piraten, das Landungsschiff bringt ${fmtNum(l?.troopSpace ?? 100)} Plätze Truppen an Land und ${fmtNum(l?.cargo ?? 4000)} Beute heim.`;
-  }, done: (b) => units(b, "korvette") >= 2 && units(b, "landungsschiff") >= 1, action: { kind: "tab", tab: "truppen" }, actionText: "Schiffe bauen" },
-  { id: "nest", icon: "kartell", title: "Ein Piratennest Stufe 1 überfallen", why: nestWhy, done: (_b, won) => won, action: { kind: "tab", tab: "karte" }, actionText: "Nest auf der Karte suchen" },
-  { id: "hafen", icon: "hafenkommandantur", title: "Hafenkommandantur auf Stufe 3", why: "Öffnet die Börse: Überschüsse verkaufen, Fehlendes kaufen. Jede zweite Stufe bringt einen Missionsplatz.", done: (b) => lvl(b, "hafenkommandantur") >= 3, action: { kind: "building", id: "hafenkommandantur" }, actionText: "Zur Hafenkommandantur" },
-  { id: "schutz", icon: "radarstation", title: "Radarstation und Tiefbunker", why: "Das Radar warnt vor Angriffen, der Bunker schützt einen Grundstock vor Plünderung.", done: (b) => lvl(b, "radarstation") >= 1 && lvl(b, "tiefbunker") >= 1, action: { kind: "building", id: "radarstation" }, actionText: "Zur Radarstation" },
+  }, action: { kind: "tab", tab: "truppen" }, actionText: "Schiffe bauen" },
+  { id: "nest", icon: "kartell", title: "Ein Piratennest Stufe 1 überfallen", why: nestWhy, action: { kind: "tab", tab: "karte" }, actionText: "Nest auf der Karte suchen" },
+  { id: "hafen", icon: "hafenkommandantur", title: "Hafenkommandantur auf Stufe 3", why: "Öffnet die Börse: Überschüsse verkaufen, Fehlendes kaufen. Jede zweite Stufe bringt einen Missionsplatz.", action: { kind: "building", id: "hafenkommandantur" }, actionText: "Zur Hafenkommandantur" },
+  { id: "schutz", icon: "radarstation", title: "Radarstation und Tiefbunker", why: "Das Radar warnt vor Angriffen, der Bunker schützt einen Grundstock vor Plünderung.", action: { kind: "building", id: "radarstation" }, actionText: "Zur Radarstation" },
 ];
 
 /** Nest-Auftrag mit der Besatzung von Stufe 1 aus der Balance. */
@@ -60,24 +58,57 @@ export function nextAction(step: Step, b: BaseData): GuideAction {
   return step.action;
 }
 
-export function Guide({ base, wonRaid, onAction }: { base: BaseData; wonRaid: boolean; onAction: (a: GuideAction) => void }) {
+/** Auftragsbuch vom Server; auch für den Zähler an der Navigation genutzt. */
+export function useGuide(enabled = true) {
+  return useQuery({ ...trpc.guide.get.queryOptions(), enabled, refetchInterval: 60000 });
+}
+
+const invalidate = () => [trpc.guide.pathFilter().queryKey, trpc.base.pathFilter().queryKey, trpc.social.ranking.pathFilter().queryKey];
+
+export function Guide({ base, onAction }: { base: BaseData; onAction: (a: GuideAction) => void }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
+  const q = useGuide();
   const [showAll, setShowAll] = useState(false);
-  const doneCount = STEPS.filter((s) => s.done(base, wonRaid)).length;
-  const current = STEPS.find((s) => !s.done(base, wonRaid));
+  const claim = useCommand((i: { key: string; stepId: string }) => trpcClient.guide.claim.mutate(i), invalidate);
+  const claimFinal = useCommand((i: { key: string }) => trpcClient.guide.claimFinal.mutate(i), invalidate);
+  const g = q.data;
+  if (!g || !g.hasBase) return null;
+  const byId = new Map(g.steps.map((s) => [s.id, s]));
+  const current = STEPS.find((s) => !byId.get(s.id)?.done);
+  const open = STEPS.filter((s) => byId.get(s.id)?.claimable);
+  const busy = claim.busy || claimFinal.busy;
   return (
     <section className="panel rounded-xl p-3.5 mb-3">
       <div className="flex items-center justify-between gap-2 mb-2">
         <h2 className="font-display text-[11px] uppercase tracking-[0.16em] text-ink2">Auftragsbuch</h2>
-        <span className="text-xs text-slate-400 mono">{doneCount}/{STEPS.length} erledigt</span>
+        <span className="flex items-center gap-2">
+          {g.claimable > 0 && <Badge tone="green">{g.claimable} {g.claimable === 1 ? "Belohnung" : "Belohnungen"} abholbar</Badge>}
+          <span className="text-xs text-slate-400 mono">{g.doneCount}/{STEPS.length} erledigt</span>
+        </span>
       </div>
-      <Bar value={doneCount / STEPS.length} />
+      <Bar value={g.doneCount / STEPS.length} />
+      {open.length > 0 && (
+        <ul className="mt-3 space-y-1.5">
+          {open.map((s) => (
+            <li key={s.id} className="flex items-center gap-2 border border-moos/50 bg-moos/5 px-2 py-1.5">
+              <Icon id={s.icon} size={26} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold truncate">{s.title}</span>
+                <span className="block text-xs"><ResChips values={byId.get(s.id)!.reward} /></span>
+              </span>
+              <Button className="shrink-0" disabled={busy} onClick={() => void claim.run({ stepId: s.id })}>Abholen</Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <ErrorLine text={claim.error ?? claimFinal.error} />
       {current ? (
         <div className="flex gap-3 mt-3">
           <div className="shrink-0 self-start w-16 h-14 grid place-items-center bg-[#f6f1e5] border border-rule"><Icon id={current.icon} size={46} /></div>
           <div className="min-w-0 flex-1">
             <h3 className="font-serif text-[19px] leading-tight mb-0.5">{current.title}</h3>
             <p className="text-[13.5px] leading-snug text-ink2">{whyText(current, meta.data?.balance)}</p>
+            <p className="mt-1 text-xs text-ink2 flex flex-wrap items-center gap-x-2">Belohnung: <ResChips values={byId.get(current.id)?.reward} /></p>
             {(() => {
               const a = nextAction(current, base);
               // In Arbeit: das Gebäude steht in der Bauschlange (laufend oder eingereiht).
@@ -93,7 +124,7 @@ export function Guide({ base, wonRaid, onAction }: { base: BaseData; wonRaid: bo
           </div>
         </div>
       ) : (
-        <p className="text-sm mt-3">Alle Grundaufträge erledigt. Baue deine Flotte aus, nimm stärkere Nester ins Visier und handle an der Börse.</p>
+        <FinalCard g={g} busy={busy} onClaim={() => void claimFinal.run({})} />
       )}
       <button type="button" className="tap w-full text-left text-sm text-see underline underline-offset-4 mt-1" onClick={() => setShowAll((v) => !v)}>
         {showAll ? "Liste ausblenden" : "Alle Aufträge zeigen"}
@@ -101,16 +132,61 @@ export function Guide({ base, wonRaid, onAction }: { base: BaseData; wonRaid: bo
       {showAll && (
         <ol className="mt-1 space-y-1">
           {STEPS.map((s) => {
-            const ok = s.done(base, wonRaid);
+            const st = byId.get(s.id);
+            const ok = !!st?.done;
             return (
-              <li key={s.id} className={`flex items-center gap-2 text-sm ${ok ? "text-slate-400 line-through" : ""}`}>
+              <li key={s.id} className="flex items-center gap-2 text-sm">
                 <span className={`grid place-items-center w-5 h-5 text-xs border ${ok ? "border-moos text-moos" : "border-ink2"}`}>{ok ? "✓" : ""}</span>
-                <Icon id={s.icon} size={20} /> {s.title}
+                <Icon id={s.icon} size={20} />
+                <span className={`min-w-0 flex-1 ${st?.claimed ? "text-slate-400 line-through" : ""}`}>{s.title}</span>
+                <span className="text-[11px] text-slate-400">{st?.claimed ? "abgeholt" : st?.claimable ? "abholbar" : ""}</span>
               </li>
             );
           })}
+          <li className="flex items-center gap-2 text-sm">
+            <span className={`grid place-items-center w-5 h-5 text-xs border ${g.final.claimed ? "border-moos text-moos" : "border-ink2"}`}>{g.final.claimed ? "✓" : ""}</span>
+            <Icon id="hafenmeister" size={20} />
+            <span className="min-w-0 flex-1">Abschluss: Abzeichen „Hafenmeister“</span>
+          </li>
         </ol>
       )}
     </section>
+  );
+}
+
+/** Abschlusskarte nach allen elf Aufträgen: Paket, Abzeichen und −1 Stunde Bauzeit. */
+function FinalCard({ g, busy, onClaim }: { g: GuideData; busy: boolean; onClaim: () => void }) {
+  const hours = Math.round(g.final.boostSeconds / 360) / 10;
+  const boost = `−${fmtNum(hours)} ${hours === 1 ? "Stunde" : "Stunden"} Bauzeit`;
+  return (
+    <div className="flex gap-3 mt-3 border border-messing/60 bg-[#f6f1e5] p-2.5">
+      <div className="shrink-0 self-start grid place-items-center"><Icon id="hafenmeister" size={56} /></div>
+      <div className="min-w-0 flex-1">
+        {g.final.claimed ? (
+          <>
+            <h3 className="font-serif text-[19px] leading-tight mb-0.5">Hafenmeister</h3>
+            <p className="text-[13.5px] leading-snug text-ink2">
+              Alle Grundaufträge erledigt. Dein Abzeichen steht diese Saison in der Rangliste neben deinem Namen.
+              {g.final.boostPending ? ` Gutschrift: ${boost} für deinen nächsten Ausbau.` : ""}
+            </p>
+            <p className="text-sm mt-2">Baue deine Flotte aus, nimm stärkere Nester ins Visier und handle an der Börse.</p>
+          </>
+        ) : (
+          <>
+            <h3 className="font-serif text-[19px] leading-tight mb-0.5">Abschlussbelohnung</h3>
+            <p className="text-[13.5px] leading-snug text-ink2">
+              Alle elf Aufträge erfüllt. Zur Belohnung: ein großes Paket, das Abzeichen „Hafenmeister“ für diese Saison und
+              einmalig {boost} für den laufenden Ausbau (läuft keiner, für den nächsten).
+            </p>
+            <p className="mt-1 text-xs"><ResChips values={g.final.reward} /></p>
+            {g.final.claimable ? (
+              <Button className="mt-2 w-full" disabled={busy} onClick={onClaim}>Abschlussbelohnung abholen</Button>
+            ) : (
+              <p className="mt-2 text-sm text-ink2">Hole zuerst alle Belohnungen der Aufträge ab.</p>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }

@@ -92,6 +92,8 @@ export const ART: Record<string, ReactNode> = {
   kartell: (<><path d="M32 4 L60 32 L32 60 L4 32 Z" fill={SIEGEL} stroke={INK} strokeWidth={2} /><path d="M32 12 L52 32 L32 52 L12 32 Z" fill="none" stroke={PAPER} strokeWidth={1.4} /><path d="M23 23 L41 41 M41 23 L23 41" stroke={PAPER} strokeWidth={3.4} strokeLinecap="round" /></>),
   schild: (<><path d="M32 5 L54 13 V30 C54 45 44 54 32 59 C20 54 10 45 10 30 V13 Z" {...p} /><path d="M32 5 L54 13 V30 C54 45 44 54 32 59 Z" fill="url(#tf-h)" stroke="none" /><path d="M32 5 L54 13 V30 C54 45 44 54 32 59 C20 54 10 45 10 30 V13 Z" {...ln} /><path d="M21 32 L29 40 L44 23" fill="none" stroke={MOOS} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" /></>),
   uhr: (<><circle cx="32" cy="32" r="24" {...p} /><path d="M32 12 V15 M32 49 V52 M12 32 H15 M49 32 H52" {...ln} strokeWidth={1.8} /><path d="M32 18 V32 L43 38" {...ln} strokeWidth={3} /></>),
+  // Abzeichen aus dem Auftragsbuch: Medaille mit Anker an zwei Bändern.
+  hafenmeister: (<><path d="M20 4 L30 26 L24 30 L12 8 Z M44 4 L34 26 L40 30 L52 8 Z" {...hd} strokeWidth={1.8} /><circle cx="32" cy="41" r="18" {...h} /><circle cx="32" cy="41" r="12.5" {...p} strokeWidth={1.6} /><path d="M32 33 V50 M27 37 H37 M25 44 Q26 50 32 50 Q38 50 39 44" fill="none" stroke={MESSING} strokeWidth={2.4} strokeLinecap="round" /><circle cx="32" cy="31.5" r="1.8" fill={MESSING} /></>),
   anker: (<><circle cx="32" cy="11" r="5" {...p} /><path d="M32 16 V55 M21 25 H43 M11 38 Q15 55 32 55 Q49 55 53 38" {...ln} strokeWidth={3.6} /><path d="M7 41 L11 35 L15 41 M49 41 L53 35 L57 41" {...ln} strokeWidth={2.6} /></>),
 
   // ---------------------------------------------------------------- Navigation (Linie in Textfarbe)

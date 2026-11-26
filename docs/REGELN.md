@@ -310,6 +310,42 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
   Tag 7 +25 Punkte, danach jeder 7. Tag 10 Punkte mehr (14: +35, 21: +45, …), dazu ein Ressourcenpaket im Wert
   Punkte × 150 × (1 + 0,3·s). Die Serie gilt als unterbrochen, wenn weder heute noch gestern abgeschlossen wurde.
 
+## Auftragsbuch
+
+- Elf Grundaufträge auf der Basis (Reihenfolge wie in der Oberfläche): Kraftwerk Stufe 1; Stahlwerk Stufe 1; Raffinerie
+  und Versorgungshof Stufe 1; Kommandozentrale Stufe 1; Kaserne Stufe 1; 20 Schützen (daheim und unterwegs); Werft
+  Stufe 1; 2 Korvetten und 1 Landungsschiff; ein eigener gewonnener Überfall auf ein Piratennest (Kampfbericht der
+  Saison); Hafenkommandantur Stufe 3; Radarstation und Tiefbunker Stufe 1.
+- Erfüllung prüft der Server aus dem Stand des Hafens (packages/engine/src/guide.ts), auch für früher Erledigtes.
+- Jeder erfüllte Auftrag gibt ein abholbares Ressourcenpaket, passend zum nächsten Schritt (`balance.guide.steps`):
+
+  | Auftrag | Paket |
+  |---|---|
+  | Kraftwerk | Stahl 200, Treibstoff 50 |
+  | Stahlwerk | Stahl 300, Treibstoff 50, Elektronik 20 |
+  | Raffinerie und Versorgungshof | Stahl 400, Treibstoff 100, Elektronik 100 |
+  | Kommandozentrale | Stahl 300, Treibstoff 50, Proviant 200 |
+  | Kaserne | Stahl 600, Proviant 400 |
+  | 20 Schützen | Stahl 300, Proviant 600 |
+  | Werft | Stahl 800, Treibstoff 300, Elektronik 100 |
+  | 2 Korvetten, 1 Landungsschiff | Stahl 400, Proviant 400 |
+  | Piratennest | Treibstoff 800, Elektronik 200 |
+  | Hafenkommandantur 3 | Stahl 600, Elektronik 250 |
+  | Radarstation und Tiefbunker | Stahl 600, Treibstoff 200, Elektronik 200, Proviant 300 |
+
+- Abschlussbelohnung, sobald alle elf abgeholt sind (`balance.guide.final`): Stahl 2.000, Treibstoff 1.000,
+  Elektronik 600, Proviant 1.000; Abzeichen **Hafenmeister** für diese Saison (Rangliste und Spielerübersicht neben
+  dem Namen); einmalig −1 Stunde Bauzeit (`buildBoostSeconds` 3.600). Die Verkürzung wirkt direkt an der Bauschlange:
+  Der laufende Ausbau wird um bis zu eine Stunde früher fertig (frühestens sofort), die wartenden Aufträge rücken um
+  dieselbe Spanne vor. Läuft kein Ausbau, gilt sie für den nächsten, der gestartet wird. Kein Modifikator.
+- Summe aller Pakete 13.420 Ressourcen, etwa 1,5 Tage Anfangsproduktion. Simulation (`npm run sim`): der Bot mit
+  Auftragsbuch liegt nach dem Abschluss gleichbleibend etwa 1,5 Tage vor dem ohne (Tag 28: +9 % Ausgaben); der Vorsprung
+  wächst nicht weiter.
+- Abholen ist ein Befehl mit Idempotenz-Schlüssel (`guide.claim`, `guide.claimFinal`) und gelingt je Spieler, Saison und
+  Auftrag genau einmal, auch bei gleichzeitigen Aufrufen. Ressourcen werden auch über die Lagerkapazität gutgeschrieben.
+- Saison: Abholungen werden je Saison gespeichert (Tabelle `guide_claim` mit `season_id`, die alte Saison bleibt
+  erhalten). In der neuen Saison sind alle Aufträge und die Abschlussbelohnung wieder offen.
+
 ## Allianzen
 
 - Eine Allianz hat einen Namen (3–32 Zeichen) und ein Kürzel (2–4 Buchstaben oder Ziffern), beide eindeutig ohne
