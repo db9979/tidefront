@@ -17,4 +17,5 @@ export * from "./veterans.ts";
 export * from "./espionage.ts";
 export * from "./weather.ts";
 export * from "./power.ts";
+export * from "./admirals.ts"; // Admirale
 export * as market from "./market/index.ts";

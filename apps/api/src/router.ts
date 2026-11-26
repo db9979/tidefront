@@ -39,6 +39,7 @@ import { researchRouter } from "./routers/research.ts";
 import { guideRouter } from "./routers/guide.ts";
 import { espionageRouter } from "./routers/espionage.ts";
 import { bugReportRouter } from "./routers/bug-report.ts";
+import { admiralRouter } from "./routers/admirals.ts"; // Admirale
 
 export type { Ctx };
 
@@ -132,10 +133,10 @@ export const appRouter = t.router({
 
   mission: t.router({
     preview: authed
-      .input(z.object({ type: z.string().max(20), units: counts, ...field, cargo: resources.optional(), eventId: z.number().int().min(1).optional() }))
+      .input(z.object({ type: z.string().max(20), units: counts, ...field, cargo: resources.optional(), eventId: z.number().int().min(1).optional(), admiralId: z.number().int().min(1).optional() }))
       .query(({ ctx, input }) => missionPreview(ctx.engine, ctx.player.id, input)),
     launch: authed
-      .input(z.object({ key, type: z.string().max(20), units: counts, ...field, cargo: resources.optional(), eventId: z.number().int().min(1).optional() }))
+      .input(z.object({ key, type: z.string().max(20), units: counts, ...field, cargo: resources.optional(), eventId: z.number().int().min(1).optional(), admiralId: z.number().int().min(1).optional() }))
       .mutation(({ ctx, input }) => launchMission(ctx.engine, ctx.player.id, input.key, input)),
     recall: authed
       .input(z.object({ key, missionId: z.number().int().min(1) }))
@@ -170,6 +171,7 @@ export const appRouter = t.router({
   }),
 
   social: socialRouter,
+  admiral: admiralRouter, // Admirale
   season: seasonRouter,
   daily: dailyRouter,
   comfort: comfortRouter,

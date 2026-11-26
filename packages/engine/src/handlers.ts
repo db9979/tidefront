@@ -4,6 +4,7 @@ import {
   applyDefenseResult,
   attackerReturning,
   baseStrength,
+  combineModifiers,
   completeTraining,
   completeUpgrade,
   composeRaid,
@@ -39,6 +40,7 @@ import { modifiersFor, modsOf } from "./modifiers.ts";
 import { withAttackExperience } from "./veterans.ts";
 import { scoutWithDisinfo } from "./espionage.ts"; // Nachrichtendienst (Desinformation)
 import { battleWeather, fogAt } from "./weather.ts"; // Wetter am Kampfort und Nebel (v1.6)
+import { admiralsAfterBattle, defenseAdmiral, missionAdmiral } from "./admirals-battle.ts"; // Admirale
 
 const HOUR_MS = 3600000;
 const none = (): HandlerResult => ({ notify: [] });
@@ -169,7 +171,9 @@ const missionArrive: Handler = async (tx, ev, due) => {
   let reportId: number | null = null;
   const attackerName = await playerName(tx, m.playerId);
   // Modifikatoren des Angreifers (Kampf, Ladung) und je Ziel des Verteidigers.
-  const attackerMods = await modifiersFor(tx, m.playerId, { state: origin?.state ?? null, nowMs: due });
+  // Admirale: Führer des Verbands wirkt auf Kampf, Ladung und Beute dieses Verbands.
+  const admA = await missionAdmiral(tx, plan, m.id, m.playerId);
+  const attackerMods = combineModifiers(await modifiersFor(tx, m.playerId, { state: origin?.state ?? null, nowMs: due }), admA?.mods);
 
   if (m.targetKind === "base") {
     const target = await lockBase(tx, m.targetId!);
@@ -214,10 +218,12 @@ const missionArrive: Handler = async (tx, ev, due) => {
       // Diplomatie: im Krieg (nach Vorlauf) entfällt die Schwachziel-Kürzung der Beute.
       if (attacker.weakTarget && (await atWar(tx, m.playerId!, target.playerId, due))) attacker.weakTarget = false;
       const seed = randomSeed();
-      const defender = defenderFromBase(defenderBase, balance, targetMods);
+      const admD = await defenseAdmiral(tx, target.playerId, due); // Admirale: Hafenkommandant des Ziels
+      const defender = defenderFromBase(defenderBase, balance, combineModifiers(targetMods, admD?.mods));
       const res = resolveBattle(attacker, defender, balance, seed, battleWeather(target.col, target.row, due));
       if (!res.ok) throw new Error(`battle: ${res.code}`);
       const report = res.report;
+      const admirals = await admiralsAfterBattle(tx, report, seed, admA, admD, due); // Admirale
       await saveBase(tx, target.id, applyDefenseResult(defenderBase, report, due, balance, targetMods));
       await dropWreck(tx, m.targetCol, m.targetRow, report.wreck, due);
       returning = attackerReturning(report);
@@ -227,7 +233,7 @@ const missionArrive: Handler = async (tx, ev, due) => {
         title: `Überfall auf ${target.name}`,
         attackerPlayerId: m.playerId, defenderPlayerId: target.playerId, attackerBaseId: m.baseId,
         defenderBaseId: target.id, nestId: null, winner: report.winner, seed, atMs: due,
-        report: { battle: report, attackerName, defenderName: await playerName(tx, target.playerId), targetName: target.name, attacker, protectedPerResource: defender.protectedPerResource ?? 0 },
+        report: { battle: report, attackerName, defenderName: await playerName(tx, target.playerId), targetName: target.name, attacker, protectedPerResource: defender.protectedPerResource ?? 0, admirals },
       });
       notify.push([[target.playerId], "base"], [[target.playerId], "reports"]);
     }
@@ -250,6 +256,7 @@ const missionArrive: Handler = async (tx, ev, due) => {
       const res = resolveBattle(attacker, def.defender, balance, seed, battleWeather(nest.col, nest.row, due));
       if (!res.ok) throw new Error(`battle: ${res.code}`);
       const report = res.report;
+      const admirals = await admiralsAfterBattle(tx, report, seed, admA, null, due); // Admirale
       if (report.winner === "attacker") {
         await tx.update(tables.nest).set({ defeatedAt: new Date(due) }).where(eq(tables.nest.id, nest.id));
         notify.push([null, "map"]);
@@ -261,7 +268,7 @@ const missionArrive: Handler = async (tx, ev, due) => {
         kind: "ueberfall", title: `Überfall auf Piratennest Stufe ${nest.level}`, attackerPlayerId: m.playerId,
         defenderPlayerId: null, attackerBaseId: m.baseId, defenderBaseId: null, nestId: nest.id,
         winner: report.winner, seed, atMs: due,
-        report: { battle: report, attackerName, defenderName: "Freibeuter-Kartell", targetName: `Piratennest Stufe ${nest.level}`, attacker },
+        report: { battle: report, attackerName, defenderName: "Freibeuter-Kartell", targetName: `Piratennest Stufe ${nest.level}`, attacker, admirals },
       });
     } else if (m.type === "ueberfall") {
       reportId = await storeReport(tx, {
@@ -373,16 +380,18 @@ const raidArrive: Handler = async (tx, ev, due) => {
   const mods = await modsOf(tx, b, due);
   const state = settle(b.state, due, balance, mods);
   const seed = randomSeed();
-  const defender = defenderFromBase(state, balance, mods);
+  const admD = await defenseAdmiral(tx, b.playerId, due); // Admirale: Hafenkommandant
+  const defender = defenderFromBase(state, balance, combineModifiers(mods, admD?.mods));
   const res = resolveBattle(plan.attacker, defender, balance, seed, battleWeather(b.col, b.row, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
   const report: BattleReport = res.report;
+  const admirals = await admiralsAfterBattle(tx, report, seed, null, admD, due); // Admirale
   await saveBase(tx, b.id, applyDefenseResult(state, report, due, balance, mods));
   await dropWreck(tx, b.col, b.row, report.wreck, due);
   const reportId = await storeReport(tx, {
     kind: "kartell", title: `Kartell überfällt ${b.name}`, attackerPlayerId: null, defenderPlayerId: b.playerId,
     attackerBaseId: null, defenderBaseId: b.id, nestId: null, winner: report.winner, seed, atMs: due,
-    report: { battle: report, attackerName: "Freibeuter-Kartell", defenderName: await playerName(tx, b.playerId), targetName: b.name, attacker: plan.attacker, protectedPerResource: defender.protectedPerResource ?? 0 },
+    report: { battle: report, attackerName: "Freibeuter-Kartell", defenderName: await playerName(tx, b.playerId), targetName: b.name, attacker: plan.attacker, protectedPerResource: defender.protectedPerResource ?? 0, admirals },
   });
   await tx.update(tables.mission).set({ status: "done", reportId }).where(eq(tables.mission.id, m.id));
   return { notify: [[[b.playerId], "base"], [[b.playerId], "reports"], [[b.playerId], "missions"]] };

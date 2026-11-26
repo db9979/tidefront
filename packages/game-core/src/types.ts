@@ -1,4 +1,5 @@
 // Gemeinsame Typen des Regelkerns. Nur löschbare Typ-Syntax (kein enum, kein namespace).
+import type { AdmiralBalance } from "./admirals.ts"; // Admirale
 import type { Modifiers } from "./modifiers.ts";
 import type { MarketNewsBalance } from "./market/types.ts";
 import type { EspionageBalance, IntelState } from "./espionage.ts";
@@ -181,6 +182,7 @@ export interface Balance {
   espionage?: EspionageBalance;
   weather?: WeatherBalance; // Wetter (seit v1.6); fehlt es, rechnen Wind und Sonne mit 0
   power?: PowerBalance;
+  admirals?: AdmiralBalance; // Admirale (admirals.ts); fehlt es, gibt es keine Admirale
 }
 
 /** Würfel des Kriegsglücks: 1 = min, die = max, dazwischen linear innerMin … innerMax (luck.ts). */
@@ -409,6 +411,7 @@ export interface Mission {
   warningFactor?: number; // Tarnung des Angreifers: Faktor auf die Vorwarnzeit des Ziels (fehlt = 1)
   detectedAtMs?: number; // vom Radar des Ziels erkannt (Server); einmal erkannt bleibt erkannt
   weather?: { avgWind: number; storminess: number; shipFactor: number }; // Wetter bei Abfahrt (v1.6)
+  admiralId?: number; // Admirale: Führer des Verbands (Server); fehlt ohne Admiral
 }
 
 export interface FleetCheck {

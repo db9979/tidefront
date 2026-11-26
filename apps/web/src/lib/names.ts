@@ -39,6 +39,16 @@ export function label(id: string): string {
 export const RES_ICON: Record<string, string> = { stahl: "⛓", treibstoff: "🛢", elektronik: "🔌", proviant: "🥫" };
 
 const ERRORS: Record<string, string> = {
+  // Admirale
+  admiral_off: "Admirale gibt es in dieser Saison nicht.",
+  admiral_slots: "Alle Plätze für Admirale sind belegt. Mehr Plätze mit der Hafenkommandantur.",
+  admiral_name: "Diesen Namen gibt es nicht in der Liste oder er ist schon vergeben.",
+  admiral_spec: "Diese Spezialisierung ist nicht wählbar.",
+  admiral_rank: "Die zweite Spezialisierung gibt es erst ab Vizeadmiral.",
+  admiral_unknown: "Diesen Admiral gibt es nicht (mehr).",
+  admiral_busy: "Der Admiral ist nicht bereit (unterwegs, verwundet oder gefangen).",
+  admiral_not_captive: "Der Admiral ist nicht in Gefangenschaft.",
+  admiral_funds: "Nicht genug Kredite.",
   // Weltereignisse
   no_event: "Dieses Weltereignis gibt es nicht (mehr).",
   event_over: "Dieses Weltereignis ist schon vorbei.",

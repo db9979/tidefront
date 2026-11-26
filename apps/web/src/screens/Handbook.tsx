@@ -10,6 +10,7 @@ import { Icon, IconTile } from "../icons.tsx";
 import { Button } from "../ui.tsx";
 import { SettingsScreen } from "./Settings.tsx";
 import { IntelChapter } from "../components/IntelChapter.tsx";
+import { AdmiralChapter } from "../components/AdmiralChapter.tsx"; // Admirale
 import { requestBugReport } from "../lib/bug-log.ts";
 
 /** Kachel im Schnellzugriff oben im Handbuch. */
@@ -177,6 +178,8 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
     },
     // Nachrichtendienst und Spionage (components/Intel.tsx)
     { id: "nachrichtendienst", icon: "spion", title: "Nachrichtendienst", body: <IntelChapter b={b} /> },
+    // Admirale (components/Admirals.tsx)
+    { id: "admirale", icon: "admiral", title: "Admirale", body: <AdmiralChapter b={b} /> },
     {
       id: "tagesbefehle", icon: "uhr", title: "Tagesbefehle",
       body: (

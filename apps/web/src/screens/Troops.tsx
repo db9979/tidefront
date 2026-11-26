@@ -15,6 +15,7 @@ import { TECH, techName } from "../lib/research.ts";
 import { unitBreakdown } from "../lib/breakdown.ts";
 import { Breakdown, RankBadge, VeteranLine } from "../components/Breakdown.tsx";
 import { spyKindText } from "../components/SpyPlan.tsx"; // Nachrichtendienst
+import { AdmiralsCard } from "../components/Admirals.tsx"; // Admirale
 
 /** Werte, die die Aufschlüsselung zeigt (aus der festen Werte-Tabelle ausgeblendet). */
 const BROKEN_DOWN = /^(Lebenspunkte|Angriff|U-Jagd|Tempo|Ladung|Treibstoff)/;
@@ -92,6 +93,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
         </ul>
       </Card>
       <ResearchCard base={base} now={now} onOpen={onResearch} />
+      <AdmiralsCard />
       <RecentMissions />
       <FreeSimCard balance={balance} base={base} />
       {(() => {

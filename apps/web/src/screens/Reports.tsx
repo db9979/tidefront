@@ -10,6 +10,7 @@ import { RepeatButton } from "../components/Repeat.tsx";
 import { WorldEventReportNote } from "../components/WorldEvents.tsx";
 import { useBackLayer } from "../lib/back.ts";
 import { SabotageReport, SpyReport } from "../components/Intel.tsx";
+import { AdmiralReport } from "../components/Admirals.tsx"; // Admirale
 
 const KIND_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "kartell", aufklaerung: "aufklaerung", transport: "transport", leer: "kartell", abgewiesen: "schild", weltereignis: "kartell", weltereignis_leer: "kartell", spionage: "spionage", sabotage: "sabotage" };
 
@@ -85,6 +86,7 @@ function ReportDetail({ id, onBack }: { id: number; onBack: () => void }) {
           salvage={d.salvage && typeof d.salvage === "object" ? (d.salvage as Counts) : null}
         />
       ) : null}
+      {d.admirals ? <AdmiralReport d={d.admirals as Parameters<typeof AdmiralReport>[0]["d"]} names={[String(d.attackerName), String(d.defenderName)]} /> : null}
       {d.scout && r.kind !== "spionage" ? <ScoutView s={d.scout as Record<string, unknown>} owner={String(d.owner ?? "")} /> : null}
       {d.nest ? <NestScout n={d.nest as { level: number; empty: boolean; garrison: { units: Counts; defenses: Counts; loot: Counts } | null }} /> : null}
       {r.kind === "transport" && (

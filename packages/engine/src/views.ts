@@ -4,6 +4,7 @@ import {
   aircraftSlots,
   aircraftSlotsUsed,
   bunkerProtection,
+  combineModifiers,
   commandPoints,
   harborCreditLimit,
   harborMarketUnlocked,
@@ -46,6 +47,7 @@ import { diplomacyBlock, relationsOf } from "./alliance-core.ts";
 import { intelView } from "./espionage.ts";
 import { gridView, missionWeather } from "./weather.ts";
 import { detectIncoming } from "./radar.ts";
+import { admiralPreviewMods } from "./admirals-core.ts"; // Admirale
 
 /**
  * Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband;
@@ -240,7 +242,7 @@ export async function mapView(engine: Engine, playerId: number) {
 export async function missionPreview(
   engine: Engine,
   playerId: number,
-  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number },
+  input: { type: string; units: Counts; col: number; row: number; cargo?: ResourceMap; eventId?: number; admiralId?: number },
 ) {
   const nowMs = Date.now();
   const own = await baseOfPlayer(engine.db, playerId);
@@ -259,7 +261,7 @@ export async function missionPreview(
   if (input.type === "ueberfall" && target.kind === "nest" && target.defeatedAt && !isNestRespawned(target.defeatedAt.getTime(), nowMs, balance)) {
     return { ok: false as const, code: "nest_empty", distanceKm };
   }
-  const mods = await modsOf(engine.db, own, nowMs);
+  const mods = combineModifiers(await modsOf(engine.db, own, nowMs), await admiralPreviewMods(engine.db, playerId, input.admiralId)); // Admirale
   const weather = missionWeather(own.col, own.row, input.col, input.row, nowMs);
   const r = planMission(
     settle(own.state, nowMs, balance, mods),
