@@ -36,6 +36,12 @@ export function label(id: string): string {
 export const RES_ICON: Record<string, string> = { stahl: "⛓", treibstoff: "🛢", elektronik: "🔌", proviant: "🥫" };
 
 const ERRORS: Record<string, string> = {
+  already_claimed: "Diese Belohnung ist schon abgeholt.",
+  not_done: "Dieser Befehl ist noch nicht erfüllt.",
+  no_challenge: "Diesen Tagesbefehl gibt es nicht (mehr).",
+  reroll_used: "Heute wurde schon ein Befehl neu gewürfelt.",
+  already_done: "Erfüllte Befehle lassen sich nicht neu würfeln.",
+  no_alternative: "Gerade gibt es keinen anderen passenden Befehl.",
   bad_password: "Das bisherige Passwort stimmt nicht.",
   bad_reset: "Rücksetzcode oder Link ungültig, abgelaufen oder schon benutzt.",
   invite_exists: "Diesen Einladungscode gibt es schon.",

@@ -29,6 +29,13 @@
       "when": 1795723441660,
       "tag": "0003_invite",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795723693097,
+      "tag": "0004_daily",
+      "breakpoints": true
     }
   ]
 }

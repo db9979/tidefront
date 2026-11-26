@@ -203,9 +203,56 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
   - **Kampf:** Kostenwert der gegnerischen Einheiten und Anlagen, die laut Kampfbericht der Saison vernichtet wurden
     (als Angreifer und als Verteidiger, auch gegen Nester und Kartell). Schnellboot zählt 250, Piratenmiliz 40.
   - **Beute:** Summe der Beute aus eigenen Überfällen der Saison.
+  - **Befehle:** Punkte aus abgeholten Tagesbefehlen der Saison samt Serienbonus (bereits Punkte, kein Kostenwert;
+    siehe Abschnitt Tagesbefehle).
 - Rang nach Gesamtpunkten; Punktgleiche teilen den Rang.
-- Am Saisonende: Gold, Silber und Bronze für Rang 1 bis 3 (mit Punkten), je Kategorie eine Auszeichnung für den Besten.
+- Am Saisonende: Gold, Silber und Bronze für Rang 1 bis 3 (mit Punkten), je Kategorie eine Auszeichnung für den Besten
+  (für Befehle: „Pflichtbewusstester Kapitän“). Der Endstand hält alle fünf Kategorien fest.
   Jeder Spieler erhält eine Systemnachricht mit Platz und Auszeichnungen.
 - Danach wird die Welt zurückgesetzt: Stützpunkte, Missionen, Lieferungen, Wracks, Kampfberichte und Kredite verfallen,
-  Nester sind wieder besetzt, die Börse steht auf Richtwert. Konten, Nachrichten und die Ruhmeshalle bleiben.
+  Nester sind wieder besetzt, die Börse steht auf Richtwert, Tagesbefehle und Serien verfallen. Konten, Nachrichten und die Ruhmeshalle bleiben.
   Jeder Spieler wählt einen neuen Hafen und erhält erneut Anfängerschutz.
+
+## Tagesbefehle
+
+- Spieltag: Tageswechsel um 0:00 Uhr in der Zeitzone des Servers (`TZ`, Vorgabe `Europe/Berlin`).
+- Jeder Spieler mit Hafen erhält je Spieltag drei Tagesbefehle: Slot 0 **leicht**, Slot 1 **mittel**, Slot 2 **schwer**,
+  jede Art höchstens einmal am Tag. Vergeben wird beim ersten Abruf des Tages (Ansicht, Befehl oder Fortschritt);
+  die Auswahl ist deterministisch aus Spieler, Tag und Slot und hängt vom Stand des Hafens ab.
+- Pool (Art, Stufen, Voraussetzung, Ziel; `s` = Stufe der Kommandozentrale):
+
+  | Art | Stufen | Voraussetzung | Ziel |
+  |---|---|---|---|
+  | Ausbauten abschließen | l/m/s | – | 1 / 2 / 3 |
+  | Bauschlange füllen | l/m | – | 2 / `queueSlots` Aufträge gleichzeitig |
+  | Bodentruppen ausbilden | l/m/s | Kaserne | 15 / 40 / 100 × (1 + s/4), auf 5 gerundet |
+  | Schiffe in Dienst stellen | l/m/s | Werft | 1 / 2 / 4 + ⌊s/6⌋ |
+  | Flugzeuge ausbilden | l/m/s | Flugfeld | 1 / 2 / 4 + ⌊s/6⌋ |
+  | Verteidigungsanlagen errichten | l/m/s | – | 1 / 2 / 3 + ⌊s/5⌋ |
+  | Vorrat anlegen | l/m/s | Ziel über dem Bestand | knappste Ressource: Bestand + 15 / 30 / 50 % des Lagers, höchstens 95 % |
+  | Produktion steigern | m/s | Produktionsgebäude | Rate einer Ressource × 1,15 / 1,35 (mindestens +1) |
+  | Kommandozentrale ausbauen | s | nächste Stufe ≤ 12 h Bauzeit | Stufe s + 1 |
+  | Piratennest besiegen | m/s | Werft und Kaserne | Stufe ≥ max(1, k − 1) / k, k = min(5, 1 + ⌊s/3⌋) |
+  | Kartell-Überfall abwehren | s | Anfängerschutz vorbei | 1 |
+  | Aufklärung durchführen | l/m | Werft oder Flugfeld | 1 / 2 |
+  | Transport zu Mitspielern | m/s | Werft, andere Spieler | 1 / 2 (zählt bei Ankunft) |
+  | Börsenhandel | l/m/s | Börse offen | 300 / 1.000 / 3.000 Kredite × (1 + (Hafenkommandantur − 3)/2) |
+  | Wrackgut bergen | m/s | Werft oder Flugfeld | 300 / 1.000 × (1 + s/5) |
+  | Nachricht an Mitspieler | l | andere Spieler | 1 |
+  | Beute machen | m/s | Werft und Kaserne | 1.500 / 4.000 × (1 + s/4) |
+  | Überfall ohne eigene Verluste gewinnen | s | Werft und Kaserne | 1 |
+
+- Fortschritt zählt nur für Geschehen am selben Spieltag (Zeitpunkt des Ereignisses) und nur nach der Vergabe:
+  Ausbau, Ausbildung, Anlagen, Kampf, Aufklärung, Transport, Wrack und Beute aus den verarbeiteten Ereignissen,
+  Börsenhandel (Kreditbetrag des Handels) und Bauschlange (höchste Länge) aus den Befehlen. Vorrat, Produktion,
+  Kommandozentrale und Nachrichten werden beim Abruf und beim Abholen aus dem Zustand gelesen.
+- Belohnung je Befehl: Ressourcenpaket im Wert 400 / 1.000 / 2.500 × (1 + 0,3·s) (Stahl 40 %, Treibstoff 25 %,
+  Elektronik 15 %, Proviant 20 %, auf 10 gerundet; s bei der Vergabe) und 3 / 6 / 12 Punkte der Kategorie Befehle.
+  Abholen ist ein Befehl mit Idempotenz-Schlüssel und gelingt genau einmal; die Ressourcen werden auch über die
+  Lagerkapazität gutgeschrieben. Erfüllte Befehle früherer Tage bleiben bis zum Saisonende abholbar.
+- Neu würfeln: einmal je Spieltag ein noch nicht erfüllter Befehl des Tages, kostenlos. Neue Art derselben Stufe,
+  die an diesem Tag noch nicht vorkommt; Fortschritt beginnt bei 0, Belohnung bleibt.
+- Serie: Ein Tag ist abgeschlossen, wenn alle drei Befehle dieses Tages abgeholt sind. Schließt er an den zuletzt
+  abgeschlossenen Tag an, wächst die Serie um 1, sonst beginnt sie bei 1. Serienbonus beim Abschluss: Tag 3 +10 Punkte,
+  Tag 7 +25 Punkte, danach jeder 7. Tag 10 Punkte mehr (14: +35, 21: +45, …), dazu ein Ressourcenpaket im Wert
+  Punkte × 150 × (1 + 0,3·s). Die Serie gilt als unterbrochen, wenn weder heute noch gestern abgeschlossen wurde.

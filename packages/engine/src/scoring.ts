@@ -1,9 +1,11 @@
-// Wertung einer Saison: Punkte je Spieler in vier Kategorien. Kampf und Beute kommen ausschließlich aus den
-// Kampfberichten der Saison (battle_report), Ausbau und Militär aus dem aktuellen Stand.
+// Wertung einer Saison: Punkte je Spieler in fünf Kategorien. Kampf und Beute kommen ausschließlich aus den
+// Kampfberichten der Saison (battle_report), Ausbau und Militär aus dem aktuellen Stand, Befehle aus den
+// abgeholten Tagesbefehlen (daily_challenge).
 import { sql } from "drizzle-orm";
 import { protectionStatus, upgradeCost, type BaseState, type Counts, type ResourceMap } from "@tidefront/game-core";
 import type { DbOrTx } from "@tidefront/db";
 import { balance } from "./context.ts";
+import { challengePoints } from "./challenges.ts";
 
 /** Punkte = Kostenwert / POINT_DIVISOR, je Kategorie abgerundet. */
 export const POINT_DIVISOR = 100;
@@ -14,14 +16,16 @@ export const POINT_DIVISOR = 100;
  */
 export const NPC_UNIT_VALUE: Record<string, number> = { schnellboot: 250, piratenmiliz: 40 };
 
-export type Category = "ausbau" | "militaer" | "kampf" | "beute";
-export const CATEGORIES: Category[] = ["ausbau", "militaer", "kampf", "beute"];
+export type Category = "ausbau" | "militaer" | "kampf" | "beute" | "befehle";
+export const CATEGORIES: Category[] = ["ausbau", "militaer", "kampf", "beute", "befehle"];
 
 export interface Score {
   ausbau: number;
   militaer: number;
   kampf: number;
   beute: number;
+  /** Punkte aus Tagesbefehlen (schon Punkte, kein Kostenwert). */
+  befehle: number;
   total: number;
 }
 
@@ -56,9 +60,11 @@ export function buildingValue(buildings: Counts): number {
 
 const pts = (v: number) => Math.max(0, Math.floor(v / POINT_DIVISOR));
 
-export function makeScore(values: { ausbau: number; militaer: number; kampf: number; beute: number }): Score {
+/** Kostenwerte der vier Kategorien in Punkte umrechnen; befehle sind bereits Punkte. */
+export function makeScore(values: { ausbau: number; militaer: number; kampf: number; beute: number }, befehle = 0): Score {
   const s = { ausbau: pts(values.ausbau), militaer: pts(values.militaer), kampf: pts(values.kampf), beute: pts(values.beute) };
-  return { ...s, total: s.ausbau + s.militaer + s.kampf + s.beute };
+  const b = Math.max(0, Math.floor(befehle));
+  return { ...s, befehle: b, total: s.ausbau + s.militaer + s.kampf + s.beute + b };
 }
 
 export interface Standing extends Score {
@@ -93,8 +99,8 @@ export function awardsFor<T extends Score & { playerId: number; rank: number }>(
 }
 
 /**
- * Stand aller Spieler: drei Abfragen (Spieler mit Stützpunkt, laufende Missionen, Kampfberichte seit
- * Saisonbeginn), danach reine Rechnung.
+ * Stand aller Spieler: vier Abfragen (Spieler mit Stützpunkt, laufende Missionen, Kampfberichte und
+ * abgeholte Tagesbefehle seit Saisonbeginn), danach reine Rechnung.
  */
 export async function computeStandings(db: DbOrTx, seasonStartMs: number, nowMs: number): Promise<Standing[]> {
   const players = await db.execute<{
@@ -111,6 +117,7 @@ export async function computeStandings(db: DbOrTx, seasonStartMs: number, nowMs:
     select attacker_player_id, defender_player_id,
       report->'battle'->'attacker'->'losses' as al, report->'battle'->'defender'->'losses' as dl, report->'battle'->'loot' as loot
     from battle_report where report ? 'battle' and created_at >= ${since}::timestamptz`);
+  const orders = await challengePoints(db, seasonStartMs);
 
   const raw = new Map<number, { ausbau: number; militaer: number; kampf: number; beute: number }>();
   const get = (id: number) => {
@@ -139,7 +146,7 @@ export async function computeStandings(db: DbOrTx, seasonStartMs: number, nowMs:
     base: p.base_id === null
       ? null
       : { id: p.base_id, name: p.base_name!, col: p.col!, row: p.row!, protection: protectionStatus(p.state!.protection, nowMs, balance).reason },
-    ...makeScore(get(p.id)),
+    ...makeScore(get(p.id), orders.get(p.id) ?? 0),
   }));
   return rankStandings(rows);
 }
