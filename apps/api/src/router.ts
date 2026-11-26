@@ -28,6 +28,7 @@ import { authed, t, wrap, type Ctx } from "./trpc.ts";
 import { accountRouter, adminRouter, authExtras, pushRouter } from "./routers/ops.ts";
 import { afterRegister, inviteRouter } from "./routers/invite.ts";
 import { dailyRouter } from "./routers/daily.ts";
+import { adminStatsRouter } from "./routers/adminstats.ts";
 
 export type { Ctx };
 
@@ -78,6 +79,7 @@ export const appRouter = t.router({
   account: accountRouter,
   admin: adminRouter,
   invite: inviteRouter,
+  adminStats: adminStatsRouter,
 
   world: t.router({
     map: authed.query(({ ctx }) => mapView(ctx.engine, ctx.player.id)),

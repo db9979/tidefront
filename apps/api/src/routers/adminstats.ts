@@ -1,0 +1,35 @@
+// Teil-Router der Verwaltung (nur Admins, adminProc prüft is_admin serverseitig bei jeder Anfrage):
+// Statistik und Sicherungen (Liste, „Jetzt sichern“, Download-Token für die Fastify-Route backup-download.ts).
+import { z } from "zod";
+import {
+  adminStatsCached,
+  backupRequests,
+  createDownloadToken,
+  listBackups,
+  requestBackup,
+} from "@tidefront/engine";
+import { adminProc, t } from "../trpc.ts";
+
+export const adminStatsRouter = t.router({
+  stats: adminProc
+    .input(z.object({ days: z.union([z.literal(7), z.literal(28)]) }))
+    .query(({ ctx, input }) => adminStatsCached(ctx.engine.db, input.days)),
+
+  backups: adminProc.query(async ({ ctx }) => ({
+    ...(await listBackups()),
+    requests: await backupRequests(ctx.engine.db),
+  })),
+
+  backupNow: adminProc.mutation(async ({ ctx }) => {
+    if (!(await ctx.rateLimit(`backupnow:${ctx.player.id}`, 6, 3600))) return { ok: false as const, code: "rate" };
+    const r = await requestBackup(ctx.engine.db, ctx.player.id);
+    return { ok: true as const, ...r };
+  }),
+
+  backupToken: adminProc
+    .input(z.object({ name: z.string().min(1).max(120) }))
+    .mutation(async ({ ctx, input }) => {
+      if (!(await ctx.rateLimit(`backuptoken:${ctx.player.id}`, 30, 600))) return { ok: false as const, code: "rate" };
+      return createDownloadToken(ctx.engine.db, ctx.player.id, input.name);
+    }),
+});

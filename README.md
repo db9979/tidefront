@@ -65,7 +65,7 @@ Der Proxy terminiert TLS und leitet alles an den Port des `api`-Dienstes weiter.
 Admins stehen in `ADMIN_NAMES` (Spielernamen, Komma-getrennt; `migrate` gleicht bei jedem Start ab). Ist die Liste leer,
 wird der zuerst registrierte Spieler Admin. Admins erreichen über „?“ → „Einstellungen“ → „Verwaltung“:
 Einladungscodes anlegen und deaktivieren, Spielerliste mit letzter Aktivität, Passwort-Rücksetzcodes (einmalig,
-24 Stunden), E-Mail-Versand und Systemzustand. Spieler ändern ihr Passwort in den Einstellungen; „Passwort vergessen?“
+24 Stunden), E-Mail-Versand, Systemzustand, Sicherungen (siehe „Sicherung und Wiederherstellung“) und Statistik. Spieler ändern ihr Passwort in den Einstellungen; „Passwort vergessen?“
 auf dem Anmeldebildschirm nimmt den Rücksetzcode oder schickt mit bestätigter Adresse einen Link per E-Mail.
 
 ### Einladungen (Freunde einladen)
@@ -92,6 +92,17 @@ Grenzen gegen Missbrauch: je Spieler höchstens 5 offene und 10 neue Einladungen
 7 Tage; Adressen mit bestätigter `player_email` und gesperrte Adressen werden abgelehnt; zusätzlich 10 Versuche je
 Stunde und Spieler. Dort lässt sich das Einladen für Nicht-Admins ganz abschalten, und die Verwaltung sieht alle
 persönlichen Einladungen mit Einladendem. Eine Belohnung für Einladungen gibt es bewusst nicht.
+
+### Statistik (Verwaltung)
+
+Verwaltung → „Statistik“, Zeitraum 7 oder 28 Tage: aktive Spieler (24 Std., 7 Tage, Saison; aus der letzten Aktivität),
+Registrierungen je Tag, Ressourcenfluss (Netto-Produktion je Stunde aller Häfen, Beute von Spielern und Kartell,
+Börsenumsatz in Krediten ohne Gebühr, Handelsmengen, Gebühren), Kampf (Überfälle auf Spieler, Nester und
+Kartell-Überfälle je Tag mit Siegquoten, vor allem die Kartell-Siegquote gegen Spieler für die Balance),
+höchste besiegte Neststufe je Spieler (Saison), Wirtschaft (Ø Kommandozentrale, Verteilung der Gebäudestufen) und
+Auffälligkeiten: Spieler mit mehr als dem Dreifachen des Medians an Ressourcen (ab drei Häfen), fünf oder mehr Überfälle
+an einem Tag auf dasselbe Ziel, fehlgeschlagene Ereignisse. Tage nach `TZ`. Die Zahlen rechnet PostgreSQL; das Ergebnis
+wird im `api`-Prozess 60 Sekunden zwischengespeichert.
 
 ### Benachrichtigungen
 
@@ -131,9 +142,9 @@ des Workers meldet 503, wenn der Rückstau älter als 10 Minuten ist. Anzeige un
 ## Sicherung und Wiederherstellung
 
 Der Dienst `backup` sichert täglich um `BACKUP_HOUR` Uhr nach `./backups` (Vorgabe, änderbar über `BACKUP_DIR`)
-und hält `BACKUP_KEEP_DAYS` Tage vor. Beim ersten Start wird sofort gesichert.
+und hält `BACKUP_KEEP_DAYS` Tage vor (tägliche und manuelle Sicherungen gleich). Beim ersten Start wird sofort gesichert.
 
-    docker compose exec backup sh /scripts/backup.sh once                       # jetzt sichern
+    docker compose exec backup sh /scripts/backup.sh once                       # jetzt sichern (Datei -manuell)
     docker compose exec backup sh /scripts/backup.sh restore-test /backups/<datei>.dump   # Probe in eigener DB
 
 Ernstfall (Spielstand aus einer Sicherung zurückholen):
@@ -141,6 +152,22 @@ Ernstfall (Spielstand aus einer Sicherung zurückholen):
     docker compose stop api worker
     docker compose exec backup sh /scripts/backup.sh restore /backups/<datei>.dump
     docker compose start api worker
+
+### Sicherungen in der Verwaltung
+
+Verwaltung → „Sicherungen“ (nur Admins) listet die Dateien `tidefront-*.dump` mit Datum, Größe und Quelle
+(täglich oder manuell, Dateiname mit `-manuell`).
+
+- **Herunterladen:** Der `api`-Dienst hat das Sicherungsverzeichnis nur lesend unter `/backups` eingehängt. Ein Klick
+  holt ein einmaliges Download-Token (60 Sekunden gültig, an Admin und Datei gebunden) und lädt die Datei über
+  `GET /api/admin/backups/<datei>?t=<token>`; geprüft werden Sitzung, Admin-Recht und Token. Ein Link aus Protokoll oder
+  Browserverlauf funktioniert also kein zweites Mal. Die Datei ist ein `pg_dump -Fc`; sicher aufbewahren, sie enthält
+  alle Spielerdaten (Passwörter nur als scrypt-Hash).
+- **Jetzt sichern:** Die API hat keinen Docker-Zugriff. Der Knopf legt einen Auftrag in `backup_request` an; der
+  `backup`-Dienst prüft jede Minute, sichert (`tidefront-JJJJMMTT-HHMMSS-manuell.dump`), trägt `backup_run` ein und
+  meldet den Auftrag erledigt. Die Verwaltung zeigt „wartet“, „läuft“, „fertig“ oder den Fehler. Offen ist höchstens
+  ein Auftrag; einer, der nach 15 Minuten nicht fertig ist, gilt als fehlgeschlagen.
+- **Wiederherstellen** gibt es in der Verwaltung bewusst nicht; das bleibt Sache der Konsole (`restore`, siehe oben).
 
 ## Entwickeln
 

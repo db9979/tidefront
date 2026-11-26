@@ -165,7 +165,10 @@ test("Rückruf: Transport kehrt mit Ladung um, verschwindet beim Ziel, Ankunft l
   const [done] = await db.select().from(tables.mission).where(eq(tables.mission.id, missionId));
   assert.equal(done.status, "done");
   assert.equal(done.reportId, null);
-  assert.ok((await stateOf(b.baseId)).resources.stahl < targetStahl + 1000);
+  // Ohne Lieferung wächst der Zielhafen nur um seine eigene Produktion bis zur ursprünglichen Ankunft.
+  const growthHours = Math.max(0, plan.arriveAtMs - Date.now()) / 3600000 + 1;
+  const stahlRate = Math.max(0, (await baseView(engine, b.playerId)).base!.rates.stahl ?? 0);
+  assert.ok((await stateOf(b.baseId)).resources.stahl < targetStahl + stahlRate * growthHours + 1);
   s = await stateOf(a.baseId);
   assert.equal(s.units.landungsschiff, 1);
 });

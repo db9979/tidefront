@@ -373,3 +373,32 @@ export const dailyStreak = pgTable("daily_streak", {
   best: integer("best").notNull().default(0),
   updatedAt: ts("updated_at").notNull().defaultNow(),
 });
+
+// ================================================================ Sicherungen in der Verwaltung (Herunterladen, „Jetzt sichern“)
+
+/**
+ * Auftrag „Jetzt sichern“ aus der Verwaltung. Die API hat keinen Docker-Zugriff: scripts/backup.sh (backup-Dienst)
+ * prüft jede Minute auf offene Aufträge, führt pg_dump aus (Datei tidefront-…-manuell.dump) und setzt den Status.
+ */
+export const backupRequest = pgTable("backup_request", {
+  id: serial("id").primaryKey(),
+  requestedBy: integer("requested_by").references(() => player.id, { onDelete: "set null" }),
+  /** pending | running | done | failed */
+  status: text("status").notNull().default("pending"),
+  /** Dateiname der fertigen Sicherung. */
+  file: text("file"),
+  error: text("error"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  startedAt: ts("started_at"),
+  finishedAt: ts("finished_at"),
+}, (t) => [index("backup_request_status").on(t.status, t.id)]);
+
+/** Einmaliges Download-Token für eine Sicherung (nur als SHA-256), 60 Sekunden gültig, an Admin und Datei gebunden. */
+export const backupDownloadToken = pgTable("backup_download_token", {
+  tokenHash: text("token_hash").primaryKey(),
+  playerId: integer("player_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  file: text("file").notNull(),
+  expiresAt: ts("expires_at").notNull(),
+  usedAt: ts("used_at"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
