@@ -19,6 +19,7 @@ import { ResourceBar } from "./components/ResourceBar.tsx";
 import { Welcome } from "./components/Welcome.tsx";
 import type { GuideAction } from "./components/Guide.tsx";
 import { parseOpenUrl, type OpenTarget } from "./lib/push.ts";
+import { usePlanRequests, type PlanPreset } from "./lib/plan-request.ts";
 
 export type Tab = "basis" | "karte" | "truppen" | "berichte" | "boerse";
 export interface Target { col: number; row: number }
@@ -45,7 +46,9 @@ export function App() {
   // Ziel aus einer Benachrichtigung (?tab=…, ?view=…) beim Start und per Nachricht vom Service Worker.
   const [opened] = useState<OpenTarget>(() => parseOpenUrl(location.href));
   const [tab, setTab] = useState<Tab>(opened.tab ?? "basis");
-  const [plan, setPlan] = useState<{ target: Target | null } | null>(null);
+  const [plan, setPlan] = useState<{ target: Target | null; preset?: PlanPreset; seq?: number } | null>(null);
+  // „Wiederholen“ aus Berichten und Truppen öffnet die Planung mit Ziel und Zusammensetzung.
+  usePlanRequests((r) => { setHelp(false); setPlan({ target: r.target, preset: { type: r.type, units: r.units }, seq: Date.now() }); });
   const [mapFocus, setMapFocus] = useState<Target | null>(null);
   const [help, setHelp] = useState(!!opened.view);
   const [helpView, setHelpView] = useState(opened.view ?? null);
@@ -111,7 +114,7 @@ export function App() {
   const content = help ? (
     <Handbook key={helpView ?? "h"} onClose={() => setHelp(false)} onLogout={logout} playerName={me.data!.player!.name} initialView={helpView} />
   ) : plan ? (
-    <MissionPlan base={b} initialTarget={plan.target} onClose={() => setPlan(null)} onPickOnMap={() => go("karte")} />
+    <MissionPlan key={plan.seq ?? 0} base={b} initialTarget={plan.target} preset={plan.preset} onClose={() => setPlan(null)} onPickOnMap={() => go("karte")} />
   ) : tab === "basis" ? (
     <>
       <SeasonEndBanner onOpen={() => { go("berichte"); setSub("rangliste"); }} />

@@ -11,6 +11,7 @@ import { Badge, Bar, Button, Card, Cost, CountsLine, ErrorLine, Sheet } from "..
 import { Guide, type GuideAction } from "../components/Guide.tsx";
 import { HarborVignette, fmtDeg } from "../components/Vignette.tsx";
 import { hexCenter } from "@tidefront/world";
+import { Timeline } from "../components/Timeline.tsx";
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 
@@ -67,6 +68,7 @@ export function BaseScreen(props: {
       ))}
 
       <Guide base={base} wonRaid={wonRaid} onAction={props.onGuide} />
+      <Timeline base={base} />
 
       {/* Bauschlange */}
       <BuildYard base={base} now={now} />

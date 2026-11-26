@@ -6,6 +6,7 @@ import { fmtTime } from "../lib/time.ts";
 import { Button, Card, CountsLine, Loading } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 import { BattleLog, type Battle } from "../components/BattleLog.tsx";
+import { RepeatButton } from "../components/Repeat.tsx";
 
 const KIND_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "kartell", aufklaerung: "aufklaerung", transport: "transport", leer: "kartell" };
 
@@ -58,6 +59,7 @@ function ReportDetail({ id, onBack }: { id: number; onBack: () => void }) {
         <Button kind="secondary" onClick={onBack}>Zurück</Button>
       </div>
       <p className="text-xs mono text-slate-400 mb-3">{fmtTime(r.atMs)}{r.seed !== null ? ` · Seed ${r.seed} · Balance ${r.balanceVersion}` : ""}</p>
+      {r.role === "attacker" && r.kind !== "kartell" && <RepeatButton reportId={r.id} />}
       {d.battle ? <BattleLog b={d.battle as Battle} names={[String(d.attackerName), String(d.defenderName)]} role={r.role} /> : null}
       {d.scout ? <ScoutView s={d.scout as Record<string, unknown>} owner={String(d.owner ?? "")} /> : null}
       {d.nest ? <NestScout n={d.nest as { level: number; empty: boolean; garrison: { units: Counts; defenses: Counts; loot: Counts } | null }} /> : null}

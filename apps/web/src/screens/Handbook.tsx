@@ -127,6 +127,16 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
       ),
     },
     {
+      id: "komfort", icon: "uhr", title: "Planen ohne Rätselraten",
+      body: (
+        <>
+          <P><strong>Probekampf:</strong> In der Missionsplanung rechnet „Probekampf“ einen Überfall 50-mal durch und zeigt Siegchance, erwartete Verluste, Beute und die Spannweite. Gegen Nester zählt die bekannte Besatzung, gegen Spielerhäfen nur das Lagebild deiner letzten Aufklärung – ohne Aufklärung heißt es: erst aufklären. Unter Truppen → Kampfsimulator stellst du beide Seiten frei zusammen, auch das Kartell gegen deinen Hafen.</P>
+          <P><strong>Vorlagen:</strong> Speichere einen Verband unter einem Namen (z. B. „Nestjäger“). Ein Tipp setzt ihn in der Planung ein; fehlen Einheiten daheim, wird auf das Verfügbare gekürzt. <strong>Wiederholen</strong> an einem eigenen Bericht oder unter „Zuletzt heimgekehrt“ öffnet die Planung mit demselben Ziel und Verband.</P>
+          <P><strong>Als Nächstes:</strong> Die Zeitleiste auf der Basis zeigt Ausbauten, Ausbildungen, Ankunft und Rückkehr deiner Verbände, erkannte Angriffe, Lieferungen, Nachtschild und Saisonende mit Countdown. Der <strong>Morgenbericht</strong> (Einstellungen) fasst einmal am Tag zusammen, was über Nacht geschah.</P>
+        </>
+      ),
+    },
+    {
       id: "einheiten", icon: "kampfpanzer", title: "Einheiten im Überblick",
       body: b ? (
         <ul className="space-y-2">

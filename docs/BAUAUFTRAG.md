@@ -82,6 +82,32 @@ Auslegungen stehen in `packages/game-core/ENTSCHEIDUNGEN.md` und `packages/game-
 - Oberfläche: Der Reiter „Meldungen“ der unteren Leiste hat oben drei Reiter Berichte | Nachrichten | Rangliste
   (mit Spielerübersicht und Ruhmeshalle). Ohne Stützpunkt landet der Spieler in der Hafenwahl, die den Saisonwechsel anzeigt.
 
+## Festlegungen: Komfort (Simulator, Vorlagen, Zeitleiste, Morgenbericht)
+
+- Tabellen `formation_template`, `morning_summary`, `summary_entry` (Abschnitt „Komfort“ am Ende von `schema.ts`).
+  API: Teil-Router `comfort` (`apps/api/src/routers/comfort.ts`), Logik in `packages/engine/src/comfort.ts` und `summary.ts`.
+- **Kampfsimulator** rechnet im Browser mit `resolveBattle` aus `game-core` über 50 feste Seeds (`simSeed(i)`), Balance aus
+  `trpc.meta`. Er liegt im nachgeladenen Chunk `BattleSim` (nur Regelkern, keine Server-Teile, keine Balance-Datei).
+  Einheiten, Anlagen und Nest-Stufen kommen generisch aus der Balance; neue Einheiten erscheinen ohne Codeänderung.
+  Gegner: Nester mit `nestDefender`, Spielerhäfen nur mit dem Lagebild der letzten eigenen Aufklärung
+  (`comfort.scout`), sonst „Erst aufklären“. Nicht eingerechnet: Wiederholungsabschlag, Schwachziel-Regel, Wracks.
+  Verluste = Verluste minus Rückkehrer. Freier Simulator unter Truppen, auch „Kartell gegen eigenen Hafen“ (`composeRaid` ohne Seed).
+- **Verbandsvorlagen** serverseitig je Spieler, höchstens 20, Name 1–32 Zeichen, eindeutig ohne Groß-/Kleinschreibung
+  (gleicher Name überschreibt). Nur Spielereinheiten mit positiver Anzahl, Missionsart optional. Beim Einsetzen wird je Typ
+  auf die Einheiten daheim gekürzt und die Kürzung angezeigt; Kommandopunkte und Truppenraum prüft weiterhin die Vorschau.
+- **Wiederholen** sucht die eigene Mission über `mission.report_id` (Bericht) bzw. heimgekehrte Missionen (`status = done`,
+  die letzten 5) und öffnet die Planung mit Ziel, Missionsart und Zusammensetzung (gekürzt wie bei Vorlagen).
+- **Zeitleiste** („Als Nächstes“ auf der Basis) rechnet nur im Client aus `base.get` und `season.current`.
+- **Morgenbericht**: Einstellung je Spieler (an/aus, Uhrzeit, Vorgabe 7:00, Zeitzone, Vorgabe `Europe/Berlin`, optional Push).
+  Der Worker prüft jede Minute (`runMorningSummaries`). Fällig ab der Uhrzeit, höchstens 3 Stunden nachgeholt. Idempotent je
+  Spieler und Tag: `last_sent_day` (Datum in der Zeitzone des Spielers) wird vor dem Versand per bedingtem UPDATE beansprucht;
+  schlägt der Versand fehl (E-Mail-Fehler und kein Push zugestellt), wird der Tag wieder freigegeben. Zeitraum: seit dem letzten
+  Bericht, höchstens 36 Stunden, ohne Vorgänger 24 Stunden. Inhalt: Kämpfe mit Ergebnis, Beute und eigenen Verlusten (aus
+  `battle_report`), fertige Aufträge und Lieferungen (aus `summary_entry`, mitgeschrieben in `deliverNotice` nur bei aktiviertem
+  Bericht, 3 Tage aufbewahrt), Aufklärungsberichte, neue und ungelesene Nachrichten, Rang der laufenden Saison. Weitere
+  Abschnitte (z. B. Tagesbefehle) melden andere Module über `registerSummarySection` an. Versand nur an bestätigte Adressen;
+  Push als Art `report`. Der Abmeldelink der E-Mails schaltet auch den Morgenbericht ab.
+
 ## Festlegungen für den Betrieb
 
 - Ziel ist ein Raspberry Pi mit 64-Bit-System unter `speech@speech.local`; alle Images müssen für arm64 verfügbar sein.

@@ -80,6 +80,8 @@ auf dem Anmeldebildschirm nimmt den Rücksetzcode oder schickt mit bestätigter 
   gebündelt (höchstens eine Mail je 30 Minuten und Spieler). Jede Mail enthält einen Abmeldelink.
 - Arten: Angriff erkannt (zur Radar-Vorwarnzeit), Kampfbericht, Ausbau fertig, Ausbildung fertig, Verband zurück,
   Lieferung angekommen; für Admins zusätzlich Betriebsalarm.
+- **Morgenbericht**: Spieler schalten ihn in den Einstellungen ein (Uhrzeit wählbar, Vorgabe 7:00 Europe/Berlin, optional
+  auch als Push). Der Worker versendet ihn je Spieler höchstens einmal am Tag.
 
 ### Überwachung
 

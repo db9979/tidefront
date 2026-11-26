@@ -9,6 +9,10 @@ import { fmtSeconds, fmtTime } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
 import { HexMap } from "./LazyHexMap.tsx";
 import { Button, Card, ErrorLine, Loading, Stepper } from "../ui.tsx";
+// Komfort: Vorlagen, Wiederholen, Probekampf
+import { fitUnits, type PlanPreset } from "../lib/plan-request.ts";
+import { TemplateBar, shortText } from "../components/Templates.tsx";
+import { ProbeCard } from "../components/SimLauncher.tsx";
 
 const TYPES = [
   { id: "ueberfall", text: "Überfall", hint: "Kampf am Ziel, Beute bei Sieg" },
@@ -16,12 +20,15 @@ const TYPES = [
   { id: "transport", text: "Transport", hint: "Ladung an einen Stützpunkt" },
 ] as const;
 
-export function MissionPlan({ base, initialTarget, onClose }: { base: BaseData; initialTarget: Target | null; onClose: () => void; onPickOnMap?: () => void }) {
+export function MissionPlan({ base, initialTarget, onClose, preset }: { base: BaseData; initialTarget: Target | null; onClose: () => void; onPickOnMap?: () => void; preset?: PlanPreset }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const map = useQuery(trpc.world.map.queryOptions());
-  const [type, setType] = useState<"ueberfall" | "aufklaerung" | "transport">("ueberfall");
+  const [type, setType] = useState<"ueberfall" | "aufklaerung" | "transport">(preset?.type ?? "ueberfall");
   const [target, setTarget] = useState<Target | null>(initialTarget);
-  const [units, setUnits] = useState<Record<string, number>>({});
+  // Vorbelegung („Wiederholen“) auf die Einheiten daheim gekürzt; note erklärt die Kürzung.
+  const [first] = useState(() => fitUnits(preset?.units ?? {}, Object.fromEntries(base.units.map((u) => [u.id, u.home]))));
+  const [units, setUnits] = useState<Record<string, number>>(first.units);
+  const [note, setNote] = useState<string | null>(shortText(first.short));
   const [cargo, setCargo] = useState<Record<string, number>>({});
   const [sent, setSent] = useState<{ arriveAtMs: number } | null>(null);
   // Frische Bestände beim Öffnen
@@ -98,7 +105,10 @@ export function MissionPlan({ base, initialTarget, onClose }: { base: BaseData; 
         </p>
       </Card>
 
+      <TemplateBar base={base} units={chosen} type={type} onApply={(u, t, n) => { setUnits(u); if (t) setType(t); setNote(n); }} />
+
       <Card title="Verband">
+        {note && <p className="text-xs text-messing mb-1">{note}</p>}
         <ul className="divide-y divide-navy-700">
           {base.units.filter((u) => u.home > 0).map((u) => (
             <li key={u.id} className="py-2 flex items-center justify-between gap-2 flex-wrap">
@@ -128,6 +138,16 @@ export function MissionPlan({ base, initialTarget, onClose }: { base: BaseData; 
 
       {type === "ueberfall" && tInfo?.nest && !tInfo.nest.empty && Object.keys(chosen).length > 0 && (
         <Strength balance={balance} units={chosen} level={tInfo.nest.level} />
+      )}
+      {type === "ueberfall" && target && Object.keys(chosen).length > 0 && (tInfo?.nest || (tInfo?.base && tInfo.base.id !== base.id)) && (
+        <ProbeCard
+          key={`${target.col}/${target.row}`}
+          balance={balance}
+          base={base}
+          units={chosen}
+          target={tInfo.nest ? { kind: "nest", level: tInfo.nest.level, empty: tInfo.nest.empty } : { kind: "base", col: target.col, row: target.row, name: tInfo.base!.name }}
+          onScout={() => setType("aufklaerung")}
+        />
       )}
 
       <Card title="Vorschau">

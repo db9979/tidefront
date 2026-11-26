@@ -7,6 +7,7 @@ import { currentEndpoint, disablePush, enablePush, isIos, isStandalone, KIND_LAB
 import { Badge, Button, Card, ErrorLine } from "../ui.tsx";
 import { AdminScreen } from "./Admin.tsx";
 import { Switch } from "../components/Switch.tsx";
+import { SummaryCard } from "../components/MorningSummary.tsx";
 
 const field = "w-full h-12 rounded-lg field px-3 mb-3";
 
@@ -212,6 +213,7 @@ export function SettingsScreen({ onClose, initialAdmin = false }: { onClose: () 
       </div>
       <PushCard isAdmin={isAdmin} />
       <EmailCard isAdmin={isAdmin} />
+      <SummaryCard />
       <PasswordCard />
       {isAdmin && (
         <Card title="Verwaltung">
