@@ -290,8 +290,8 @@ export function HexMap(props: HexMapProps) {
     <div className="w-full h-full relative">
       <div ref={host} className="w-full h-full overflow-hidden select-none" />
       <div className="absolute right-2 top-6 flex flex-col gap-1.5">
-        <button type="button" className="tap rounded-[4px] bg-slate-950/75 border border-white/25 text-lg font-mono text-slate-100 backdrop-blur-sm" onClick={() => zoomBy(1.5)} aria-label="Hineinzoomen">+</button>
-        <button type="button" className="tap rounded-[4px] bg-slate-950/75 border border-white/25 text-lg font-mono text-slate-100 backdrop-blur-sm" onClick={() => zoomBy(1 / 1.5)} aria-label="Herauszoomen">−</button>
+        <button type="button" className="tap rounded-[4px] bg-navy-800/95 border border-navy-600 text-lg font-mono text-slate-100 backdrop-blur-sm" onClick={() => zoomBy(1.5)} aria-label="Hineinzoomen">+</button>
+        <button type="button" className="tap rounded-[4px] bg-navy-800/95 border border-navy-600 text-lg font-mono text-slate-100 backdrop-blur-sm" onClick={() => zoomBy(1 / 1.5)} aria-label="Herauszoomen">−</button>
       </div>
     </div>
   );

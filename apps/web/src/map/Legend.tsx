@@ -16,7 +16,7 @@ export function MapLegend() {
   const [open, setOpen] = useState(false);
   return (
     <div className="absolute left-2 bottom-2 right-2 pointer-events-none flex justify-start">
-      <div className="pointer-events-auto rounded-[4px] bg-slate-950/80 border border-white/20 backdrop-blur-sm max-w-full">
+      <div className="pointer-events-auto rounded-[4px] bg-navy-800/95 border border-navy-600 backdrop-blur-sm max-w-full">
         <button type="button" className="tap px-3 text-[11px] font-mono uppercase tracking-widest text-slate-200 w-full text-left" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
           {open ? "▾ Legende" : "▸ Legende"}
         </button>

@@ -40,14 +40,14 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
       <div className="flex gap-1 overflow-x-auto mb-2" role="tablist" aria-label="Wertung">
         {SORTS.map((s) => (
           <button key={s.id} type="button" role="tab" aria-selected={sort === s.id} onClick={() => setSort(s.id)}
-            className={`tap shrink-0 rounded-lg px-3 text-xs font-semibold ${sort === s.id ? "bg-navy-700 text-white" : "bg-navy-950/60 text-slate-400"}`}>
+            className={`tap shrink-0 rounded-lg px-3 text-xs font-semibold ${sort === s.id ? "bg-ink text-paper" : "bg-navy-950/60 text-slate-400"}`}>
             {s.label}
           </button>
         ))}
       </div>
       <Card title={`Spieler (${rows.length})`} right={<span className="text-[11px] text-slate-500 tabular-nums">Stand {fmtTime(q.data.computedAtMs)}</span>}>
         {rows.length === 0 ? <p className="text-sm text-slate-400">Noch keine Spieler.</p> : (
-          <ol className="divide-y divide-white/5 -mx-1">
+          <ol className="divide-y divide-navy-600/70 -mx-1">
             {rows.map((r, i) => (
               <li key={r.playerId}>
                 <button type="button" onClick={() => setOpen(r)}

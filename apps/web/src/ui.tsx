@@ -4,10 +4,10 @@ import { Icon } from "./icons.tsx";
 
 export function Card({ title, children, right }: { title?: ReactNode; children: ReactNode; right?: ReactNode }) {
   return (
-    <section className="panel rounded-2xl p-3 mb-3">
+    <section className="panel rounded-xl p-3.5 mb-3">
       {title !== undefined && (
         <div className="flex items-center justify-between mb-2 gap-2">
-          <h2 className="font-display text-xs font-bold uppercase text-slate-300 flex items-center gap-2"><span className="w-1.5 h-3 bg-sea-400 inline-block" aria-hidden="true" />{title}</h2>
+          <h2 className="font-display text-[11px] uppercase text-ink2 tracking-[0.16em] flex items-center gap-2 min-w-0">{title}</h2>
           {right}
         </div>
       )}
@@ -18,10 +18,10 @@ export function Card({ title, children, right }: { title?: ReactNode; children: 
 
 type BtnKind = "primary" | "secondary" | "danger" | "ghost";
 const KIND: Record<BtnKind, string> = {
-  primary: "btn-primary font-bold",
-  secondary: "bg-navy-700 text-slate-100 border border-white/10 active:bg-navy-600",
-  danger: "bg-red-900/80 text-red-100 border border-red-500/60 active:bg-red-800",
-  ghost: "bg-transparent text-sea-300 underline",
+  primary: "btn-primary",
+  secondary: "btn-secondary",
+  danger: "btn-danger",
+  ghost: "bg-transparent text-see underline underline-offset-4 normal-case tracking-normal",
 };
 
 export function Button(props: { children: ReactNode; onClick?: () => void; disabled?: boolean; kind?: BtnKind; className?: string; type?: "button" | "submit" }) {
@@ -30,7 +30,7 @@ export function Button(props: { children: ReactNode; onClick?: () => void; disab
       type={props.type ?? "button"}
       onClick={props.onClick}
       disabled={props.disabled}
-      className={`tap rounded-lg px-4 py-2 font-display uppercase text-sm tracking-wider disabled:opacity-40 ${KIND[props.kind ?? "primary"]} ${props.className ?? ""}`}
+      className={`tap rounded-lg px-4 py-2 font-display uppercase text-[13px] tracking-[0.12em] disabled:opacity-45 ${KIND[props.kind ?? "primary"]} ${props.className ?? ""}`}
     >
       {props.children}
     </button>
@@ -49,7 +49,7 @@ export function Cost({ cost, have }: { cost: Record<string, number> | null | und
   return (
     <span className="text-xs flex flex-wrap gap-x-2">
       {parts.map(([r, v]) => (
-        <span key={r} className={have && (have[r] ?? 0) < v ? "text-red-300" : "text-slate-300"}>
+        <span key={r} className={`mono ${have && (have[r] ?? 0) < v ? "text-siegel font-semibold" : "text-slate-300"}`}>
           <Icon id={r} size={14} className="inline -mt-0.5" /> {fmtNum(v)}
         </span>
       ))}
@@ -61,16 +61,16 @@ export function Stepper({ value, onChange, max }: { value: number; onChange: (v:
   const clamp = (v: number) => Math.max(0, Math.min(max ?? Infinity, Math.floor(v || 0)));
   return (
     <div className="flex items-center gap-1">
-      <button type="button" className="tap rounded-lg bg-navy-700 text-lg" onClick={() => onChange(clamp(value - 1))} aria-label="weniger">−</button>
+      <button type="button" className="tap rounded-lg btn-secondary text-lg" onClick={() => onChange(clamp(value - 1))} aria-label="weniger">−</button>
       <input
         inputMode="numeric"
-        className="w-16 h-11 rounded-lg bg-navy-950 border border-navy-600 text-center"
+        className="w-16 h-11 rounded-lg field text-center mono"
         value={value}
         onChange={(e) => onChange(clamp(Number(e.target.value.replace(/\D/g, ""))))}
       />
-      <button type="button" className="tap rounded-lg bg-navy-700 text-lg" onClick={() => onChange(clamp(value + 1))} aria-label="mehr">+</button>
+      <button type="button" className="tap rounded-lg btn-secondary text-lg" onClick={() => onChange(clamp(value + 1))} aria-label="mehr">+</button>
       {max !== undefined && (
-        <button type="button" className="tap rounded-lg bg-navy-700 text-xs px-2" onClick={() => onChange(max)}>alle</button>
+        <button type="button" className="tap rounded-lg btn-secondary text-xs px-2" onClick={() => onChange(max)}>alle</button>
       )}
     </div>
   );
@@ -87,7 +87,7 @@ export function Loading() {
     <div className="h-full grid place-items-center p-8 text-slate-400">
       <div className="flex flex-col items-center gap-3">
         <Icon id="anker" size={48} className="animate-pulse" />
-        <span className="font-display uppercase text-sm">Lädt …</span>
+        <span className="font-serif italic text-base text-ink2">Lädt …</span>
       </div>
     </div>
   );
@@ -104,13 +104,13 @@ export function Sheet({ open, onClose, title, icon, children }: { open: boolean;
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" role="dialog" aria-modal="true">
-      <button type="button" aria-label="Schließen" className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="sheet-in relative w-full max-w-xl max-h-[88vh] overflow-y-auto rounded-t-3xl panel brass-edge p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
-        <div className="mx-auto mb-3 h-1 w-10 bg-white/20" />
-        <div className="flex items-center gap-3 mb-3">
+      <button type="button" aria-label="Schließen" className="absolute inset-0 bg-ink/45" onClick={onClose} />
+      <div className="sheet-in relative w-full max-w-xl max-h-[88vh] overflow-y-auto rounded-t-[10px] bg-card border border-ink border-b-0 shadow-[0_-10px_30px_rgba(24,39,58,0.18)] p-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-rule" />
+        <div className="flex items-center gap-3 mb-3 pb-3 border-b-[3px] border-double border-ink">
           {icon}
-          <h2 className="font-display text-lg font-bold uppercase flex-1 min-w-0">{title}</h2>
-          <button type="button" className="tap rounded-lg bg-navy-700 border border-white/10 text-lg" onClick={onClose} aria-label="Schließen">✕</button>
+          <h2 className="font-serif text-xl flex-1 min-w-0">{title}</h2>
+          <button type="button" className="tap rounded-lg border border-rule text-ink2 text-base" onClick={onClose} aria-label="Schließen">✕</button>
         </div>
         {children}
       </div>
@@ -120,11 +120,11 @@ export function Sheet({ open, onClose, title, icon, children }: { open: boolean;
 
 export function StatTable({ rows }: { rows: [string, string][] }) {
   return (
-    <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+    <dl className="grid grid-cols-[1fr_auto] gap-x-3 text-sm">
       {rows.map(([k, v]) => (
         <div key={k} className="contents">
-          <dt className="text-slate-400">{k}</dt>
-          <dd className="text-right tabular-nums">{v}</dd>
+          <dt className="text-ink2 py-1 border-b border-dotted border-rule">{k}</dt>
+          <dd className="text-right mono py-1 border-b border-dotted border-rule">{v}</dd>
         </div>
       ))}
     </dl>
@@ -133,10 +133,10 @@ export function StatTable({ rows }: { rows: [string, string][] }) {
 
 /** Fortschrittsbalken mit Streifen, solange er läuft. */
 export function Bar({ value, tone = "sea" }: { value: number; tone?: "sea" | "brass" | "red" | "green" }) {
-  const color = { sea: "bg-sea-400", brass: "bg-brass-400", red: "bg-red-500", green: "bg-emerald-500" }[tone];
+  const color = { sea: "bg-ink", brass: "bg-messing", red: "bg-siegel", green: "bg-moos" }[tone];
   const v = Math.max(0, Math.min(1, value));
   return (
-    <div className="h-1.5 w-full bg-navy-950 overflow-hidden border border-white/10">
+    <div className="h-[5px] w-full bg-rule/70 overflow-hidden rounded-full">
       <div className={`h-full ${color} ${v > 0 && v < 1 ? "stripes" : ""}`} style={{ width: `${v * 100}%` }} />
     </div>
   );
@@ -144,13 +144,13 @@ export function Bar({ value, tone = "sea" }: { value: number; tone?: "sea" | "br
 
 export function Badge({ children, tone = "slate" }: { children: ReactNode; tone?: "slate" | "brass" | "green" | "red" | "sea" }) {
   const c = {
-    slate: "border-white/15 text-slate-300",
-    brass: "border-brass-400/60 text-brass-300",
-    green: "border-emerald-500/60 text-emerald-300",
-    red: "border-red-500/70 text-red-300",
-    sea: "border-sea-400/60 text-sea-300",
+    slate: "border-rule text-ink2",
+    brass: "border-messing text-messing",
+    green: "border-moos text-moos",
+    red: "border-siegel text-siegel",
+    sea: "border-see text-see",
   }[tone];
-  return <span className={`inline-flex items-center border bg-navy-950/60 px-1.5 py-0.5 text-[11px] font-display uppercase tracking-wider ${c}`}>{children}</span>;
+  return <span className={`inline-flex items-center border bg-card px-1.5 py-0.5 rounded-[2px] text-[10.5px] font-display uppercase tracking-[0.08em] ${c}`}>{children}</span>;
 }
 
 /** Ressourcen als Symbol und Zahl. */
@@ -160,7 +160,7 @@ export function ResChips({ values, empty = "–" }: { values: Record<string, num
   return (
     <span className="inline-flex flex-wrap gap-x-3 gap-y-1">
       {parts.map(([r, v]) => (
-        <span key={r} className="inline-flex items-center gap-1 tabular-nums"><Icon id={r} size={18} /> {fmtNum(v)}</span>
+        <span key={r} className="inline-flex items-center gap-1 mono"><Icon id={r} size={18} /> {fmtNum(v)}</span>
       ))}
     </span>
   );
@@ -173,7 +173,7 @@ export function UnitChips({ counts }: { counts: Record<string, number> | null | 
   return (
     <span className="inline-flex flex-wrap gap-x-3 gap-y-1">
       {parts.map(([id, n]) => (
-        <span key={id} className="inline-flex items-center gap-1 tabular-nums" title={label(id)}><Icon id={id} size={20} /> {fmtNum(n)} <span className="text-slate-400 text-xs">{countLabel(id, n)}</span></span>
+        <span key={id} className="inline-flex items-center gap-1" title={label(id)}><Icon id={id} size={22} /> <span className="mono">{fmtNum(n)}</span> <span className="text-ink2 text-xs">{countLabel(id, n)}</span></span>
       ))}
     </span>
   );

@@ -78,7 +78,7 @@ function PushCard({ isAdmin }: { isAdmin: boolean }) {
       )}
       {s?.subscribed && (
         <>
-          <div className="divide-y divide-white/5 mb-3">
+          <div className="divide-y divide-navy-600/70 mb-3">
             {kinds(isAdmin).map((k) => (
               <Switch key={k} label={KIND_LABEL[k]} on={s.prefs[k as keyof typeof s.prefs] ?? true} onChange={(v) => toggle(k, v)} disabled={busy} />
             ))}
@@ -145,7 +145,7 @@ function EmailCard({ isAdmin }: { isAdmin: boolean }) {
             {e.email && <Button kind="ghost" onClick={() => save(true)} disabled={busy}>Entfernen</Button>}
           </div>
           {e.verified && (
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-navy-600/70">
               {kinds(isAdmin).map((k) => (
                 <Switch key={k} label={KIND_LABEL[k]} on={e.prefs[k as keyof typeof e.prefs] ?? false} onChange={(v) => void toggle(k, v)} />
               ))}

@@ -80,7 +80,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap }: { base: BaseData; on
           <Card key={g.builtIn} title={<span className="flex items-center gap-2"><Icon id={g.builtIn === "anlagen" ? "kuestenbatterie" : g.builtIn} size={22} />{g.title}</span>} right={g.builtIn !== "anlagen" ? <span className="text-xs text-slate-400">Stufe {level}</span> : undefined}>
             {g.builtIn === "flugfeld" && <p className="text-xs text-slate-400 mb-1">Stellplätze {base.aircraftSlots.used}/{base.aircraftSlots.total}</p>}
             {order && (
-              <div className="rounded-lg bg-navy-900 p-2 mb-2 flex items-center justify-between gap-2">
+              <div className="rounded-lg bg-paper border border-rule p-2 mb-2 flex items-center justify-between gap-2">
                 <div className="text-sm">
                   {fmtNum(order.count)} × {label(order.id)}
                   <div className="text-sea-300">{order.finishesAt <= now ? "wird abgeschlossen …" : `noch ${fmtDuration(order.finishesAt - now)}`}</div>
@@ -126,7 +126,7 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
         <button type="button" onClick={() => setInfo(true)} aria-label={`${label(props.id)}: Info`}><IconTile id={props.id} size={52} tone={unitTone(props.balance, props.id)} /></button>
         <div className="min-w-0 flex-1">
           <div className="flex justify-between gap-2">
-            <button type="button" className="font-semibold text-left" onClick={() => setInfo(true)}>{label(props.id)} <span className="text-sea-300 text-xs">ⓘ</span></button>
+            <button type="button" className="font-serif text-[17px] leading-tight text-left" onClick={() => setInfo(true)}>{label(props.id)} <span className="text-sea-300 text-xs">ⓘ</span></button>
             <div className="text-sm tabular-nums"><strong>{fmtNum(props.have)}</strong>{props.away > 0 ? <span className="text-slate-400"> +{fmtNum(props.away)} unterwegs</span> : ""}</div>
           </div>
           <div className="text-xs text-slate-400">{UNIT_TEXT[props.id]}</div>
@@ -165,7 +165,7 @@ function RecallSheet({ mission, now, onClose }: { mission: MissionData; now: num
     <Sheet open onClose={onClose} title={`${label(mission.type)} zurückrufen?`} icon={<Icon id={mission.type} size={48} />}>
       <div className="text-sm space-y-2 mb-3">
         <p>Der Verband kehrt sofort um und ist nach der bereits gefahrenen Zeit wieder daheim.</p>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-xl bg-navy-900 p-2">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-xl bg-paper border border-rule p-2">
           <span className="text-slate-400">Ziel</span><span className="text-right">Feld {mission.target.col}/{mission.target.row}</span>
           <span className="text-slate-400">Unterwegs seit</span><span className="text-right">{fmtDuration(elapsed)}</span>
           <span className="text-slate-400">Wieder daheim</span><span className="text-right">etwa {fmtTime(now + elapsed)}</span>

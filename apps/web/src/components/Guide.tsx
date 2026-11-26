@@ -48,18 +48,18 @@ export function Guide({ base, wonRaid, onAction }: { base: BaseData; wonRaid: bo
   const doneCount = STEPS.filter((s) => s.done(base, wonRaid)).length;
   const current = STEPS.find((s) => !s.done(base, wonRaid));
   return (
-    <section className="panel brass-edge rounded-2xl p-3 mb-3">
+    <section className="panel rounded-xl p-3.5 mb-3">
       <div className="flex items-center justify-between gap-2 mb-2">
-        <h2 className="font-display text-xs font-bold uppercase text-slate-300 flex items-center gap-2"><span className="w-1.5 h-3 bg-sea-400 inline-block" aria-hidden="true" />Auftragsbuch</h2>
+        <h2 className="font-display text-[11px] uppercase tracking-[0.16em] text-ink2">Auftragsbuch</h2>
         <span className="text-xs text-slate-400 mono">{doneCount}/{STEPS.length} erledigt</span>
       </div>
       <Bar value={doneCount / STEPS.length} />
       {current ? (
         <div className="flex gap-3 mt-3">
-          <div className="shrink-0 self-start reticle"><div className="bg-navy-900 border border-sea-400/40 p-1"><Icon id={current.icon} size={44} /></div></div>
+          <div className="shrink-0 self-start w-16 h-14 grid place-items-center bg-[#f6f1e5] border border-rule"><Icon id={current.icon} size={46} /></div>
           <div className="min-w-0 flex-1">
-            <div className="font-bold">{current.title}</div>
-            <p className="text-sm text-slate-300">{current.why}</p>
+            <h3 className="font-serif text-[19px] leading-tight mb-0.5">{current.title}</h3>
+            <p className="text-[13.5px] leading-snug text-ink2">{current.why}</p>
             {(() => {
               const a = nextAction(current, base);
               // In Arbeit: das Gebäude steht in der Bauschlange (laufend oder eingereiht).
@@ -77,7 +77,7 @@ export function Guide({ base, wonRaid, onAction }: { base: BaseData; wonRaid: bo
       ) : (
         <p className="text-sm mt-3">Alle Grundaufträge erledigt. Baue deine Flotte aus, nimm stärkere Nester ins Visier und handle an der Börse.</p>
       )}
-      <button type="button" className="tap w-full text-left text-xs text-sea-300 mt-1" onClick={() => setShowAll((v) => !v)}>
+      <button type="button" className="tap w-full text-left text-sm text-see underline underline-offset-4 mt-1" onClick={() => setShowAll((v) => !v)}>
         {showAll ? "Liste ausblenden" : "Alle Aufträge zeigen"}
       </button>
       {showAll && (
@@ -86,7 +86,7 @@ export function Guide({ base, wonRaid, onAction }: { base: BaseData; wonRaid: bo
             const ok = s.done(base, wonRaid);
             return (
               <li key={s.id} className={`flex items-center gap-2 text-sm ${ok ? "text-slate-400 line-through" : ""}`}>
-                <span className={`grid place-items-center w-5 h-5 text-xs border ${ok ? "border-emerald-500 text-emerald-300" : "border-white/15"}`}>{ok ? "✓" : ""}</span>
+                <span className={`grid place-items-center w-5 h-5 text-xs border ${ok ? "border-moos text-moos" : "border-ink2"}`}>{ok ? "✓" : ""}</span>
                 <Icon id={s.icon} size={20} /> {s.title}
               </li>
             );

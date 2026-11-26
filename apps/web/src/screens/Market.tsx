@@ -93,7 +93,7 @@ export function MarketScreen({ base }: { base: BaseData }) {
           Bestand {fmtNum(base.resources[resource] ?? 0)} · Tageslimit {fmtNum(sel.dailyUsed)}/{fmtNum(sel.dailyLimit)} · Gebühr {fmtNum(m.data.fee * 100)} %
         </div>
         {q && (
-          <div className="text-sm rounded-lg bg-navy-900 p-2 mb-2">
+          <div className="text-sm rounded-lg bg-paper border border-rule p-2 mb-2">
             <div>Ausführungskurs {fmtNum(q.executionPrice, 4)} (Kurs danach {fmtNum(q.priceAfter, 4)})</div>
             <div>Kurswirkung {fmtNum(q.impact * 100, 2)} % · Gebühr {fmtNum(q.feeCredits, 2)} Kr</div>
             <div className="font-semibold">{side === "buy" ? "Kosten" : "Erlös"}: {fmtNum(q.totalCredits, 2)} Kr</div>

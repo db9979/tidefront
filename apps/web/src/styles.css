@@ -1,69 +1,129 @@
 @import "tailwindcss";
 
-/* Stil „Lagezentrum“: Graphit und Stahlblau, wenig Rundung, Ziffern in Monospace, Farbe nur als Signal. */
+/* Stil „Seekarte“: Admiralitätskarte – Papier, marineblaue Tinte, Siegelrot für Handlung.
+   Die alten Farbnamen (navy, slate, sea, brass …) bleiben als Schlüssel bestehen und zeigen auf die neue Palette,
+   damit alle Bildschirme mitziehen. navy = Papiertöne (hell), slate = Tinte (dunkel). */
 @theme {
-  --color-navy-950: #080c11;
-  --color-navy-900: #0d131a;
-  --color-navy-800: #131c25;
-  --color-navy-700: #1d2a36;
-  --color-navy-600: #2c3d4d;
-  --color-sea-400: #4fb3d9;
-  --color-sea-300: #8fcde6;
-  --color-brass-500: #b88a3e;
-  --color-brass-400: #d4a24c;
-  --color-brass-300: #e2bf7f;
-  --radius-lg: 4px;
-  --radius-xl: 5px;
-  --radius-2xl: 6px;
-  --radius-3xl: 10px;
-  --font-display: "Roboto Condensed", "Arial Narrow", "Helvetica Neue", system-ui, sans-serif;
-  --font-mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --color-paper: #f4eee1;
+  --color-card: #fbf8f0;
+  --color-inset: #efe7d5;
+  --color-ink: #18273a;
+  --color-ink2: #4f5b69;
+  --color-rule: #d5cab2;
+  --color-siegel: #a8331f;
+  --color-see: #2d5b7a;
+  --color-moos: #2f6b47;
+  --color-messing: #7e5a1e;
+
+  --color-navy-950: #efe7d5;
+  --color-navy-900: #f4eee1;
+  --color-navy-800: #fbf8f0;
+  --color-navy-700: #ebe2ce;
+  --color-navy-600: #cbbe9f;
+
+  --color-slate-50: #18273a;
+  --color-slate-100: #18273a;
+  --color-slate-200: #1f2f43;
+  --color-slate-300: #2b3a4c;
+  --color-slate-400: #4f5b69;
+  --color-slate-500: #59636f;
+  --color-slate-600: #8b8676;
+  --color-slate-700: #2b3a4c;
+  --color-slate-800: #22303f;
+  --color-slate-900: #18273a;
+  --color-slate-950: #101a27;
+
+  --color-sea-300: #2d5b7a;
+  --color-sea-400: #2d5b7a;
+  --color-sea-500: #244b66;
+  --color-brass-300: #7e5a1e;
+  --color-brass-400: #8a6424;
+  --color-brass-500: #7a5a1f;
+
+  --color-red-100: #a8331f;
+  --color-red-200: #a8331f;
+  --color-red-300: #a8331f;
+  --color-red-400: #a8331f;
+  --color-red-500: #a8331f;
+  --color-red-600: #982d1b;
+  --color-red-700: #8e2a18;
+  --color-red-800: #7a2414;
+  --color-red-900: #6a1f12;
+  --color-red-950: #f5e2d9;
+
+  --color-emerald-300: #2f6b47;
+  --color-emerald-400: #2f6b47;
+  --color-emerald-500: #2f6b47;
+  --color-emerald-600: #2a6040;
+  --color-emerald-700: #245536;
+  --color-emerald-950: #e3ecdf;
+
+  --color-amber-300: #7e5a1e;
+  --color-orange-300: #8a4a14;
+
+  --radius-lg: 3px;
+  --radius-xl: 4px;
+  --radius-2xl: 4px;
+  --radius-3xl: 8px;
+  --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-display: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
 }
 
 html, body, #root { height: 100%; }
 body {
   margin: 0;
-  color: #dbe3ea;
-  font-family: "Helvetica Neue", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
-  background-color: var(--color-navy-950);
-  background-image:
-    linear-gradient(rgba(79, 179, 217, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(79, 179, 217, 0.035) 1px, transparent 1px),
-    linear-gradient(rgba(79, 179, 217, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(79, 179, 217, 0.02) 1px, transparent 1px);
-  background-size: 96px 96px, 96px 96px, 24px 24px, 24px 24px;
-  background-attachment: fixed;
+  background-color: var(--color-paper);
+  /* Papierfaser: eine kleine Rauschkachel, einmal gerastert und gekachelt. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .28 0 0 0 0 .18 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
 }
-input, select, button { font: inherit; }
+input, select, button, textarea { font: inherit; }
+input, select, textarea { color: var(--color-ink); }
+::placeholder { color: #6b7380; }
+:focus-visible { outline: 2px solid var(--color-see); outline-offset: 2px; }
 .tap { min-height: 44px; min-width: 44px; }
-.font-display { font-family: var(--font-display); letter-spacing: 0.08em; }
-.mono { font-family: var(--font-mono); }
-.panel {
-  background: rgba(19, 28, 37, 0.94);
-  border: 1px solid rgba(143, 205, 230, 0.12);
+
+/* Beschriftungen in Versalien: Plex Sans halbfett, gesperrt (wie die Legende einer Seekarte). */
+.font-display { font-family: var(--font-display); font-weight: 600; letter-spacing: 0.1em; }
+/* Titel in Fraunces, normale Schreibung. */
+.font-serif, h1.font-display, h2.font-display.text-lg, h2.font-display.text-xl {
+  font-family: var(--font-serif); font-weight: 600; letter-spacing: -0.005em; text-transform: none;
 }
-/* Kopfzeile eines Panels: feine Akzentlinie oben links wie auf einem Instrument */
-.brass-edge { border-top: 1px solid rgba(79, 179, 217, 0.6); }
-.btn-primary {
-  background: #2f6f8f;
-  color: #f1f6f9;
-  border: 1px solid #4fb3d9;
-}
-.btn-primary:active { background: #27607c; }
-@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(79, 179, 217, 0.5); } 100% { box-shadow: 0 0 0 8px rgba(79, 179, 217, 0); } }
+.mono { font-family: var(--font-mono); font-weight: 500; }
+
+/* Fläche: Karte auf Papier, feine Tintenlinie. */
+.panel { background: var(--color-card); border: 1px solid var(--color-rule); box-shadow: 0 1px 0 rgba(24, 39, 58, 0.04); }
+/* Kopf eines Panels: doppelte Tintenlinie oben. */
+.brass-edge { border-top: 3px double var(--color-ink); }
+.rule-double { border-bottom: 3px double var(--color-ink); }
+.btn-primary { background: var(--color-ink); color: var(--color-paper); border: 1px solid var(--color-ink); }
+.btn-primary:active { background: #24384f; }
+.btn-danger { background: var(--color-siegel); color: #fff; border: 1px solid var(--color-siegel); }
+.btn-danger:active { background: #8e2a18; }
+.btn-secondary { background: transparent; color: var(--color-ink); border: 1px solid var(--color-ink); }
+.btn-secondary:active { background: var(--color-inset); }
+.field { background: #fffdf8; border: 1px solid var(--color-rule); color: var(--color-ink); }
+.field:focus { border-color: var(--color-ink); }
+
+@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(168, 51, 31, 0.45); } 100% { box-shadow: 0 0 0 8px rgba(168, 51, 31, 0); } }
 .pulse { animation: pulse-ring 2s ease-out infinite; }
-@keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
-.sheet-in { animation: slide-up 160ms ease-out; }
-.stripes {
-  background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0.18) 0 2px, transparent 2px 8px);
+@keyframes slide-up { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.sheet-in { animation: slide-up 220ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+/* Laufender Fortschritt: schräge Schraffur. */
+.stripes { background-image: repeating-linear-gradient(135deg, rgba(251, 248, 240, 0.35) 0 2px, transparent 2px 6px); }
+.hatch { background-image: repeating-linear-gradient(135deg, rgba(24, 39, 58, 0.16) 0 1px, transparent 1px 4px); }
+/* Hervorgehobene Kachel: innerer Seeblau-Rahmen. */
+.reticle { position: relative; box-shadow: inset 0 0 0 1px var(--color-see); border-color: var(--color-see) !important; }
+.reticle::before, .reticle::after { content: none; }
+/* Raute als Aufzählungszeichen (Logbuch). */
+.diamond { width: 9px; height: 9px; transform: rotate(45deg); display: inline-block; flex: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
-/* Eckmarken für hervorgehobene Kacheln (Zielmarke) */
-.reticle { position: relative; }
-.reticle::before, .reticle::after {
-  content: ""; position: absolute; width: 8px; height: 8px; border-color: #4fb3d9; border-style: solid; pointer-events: none;
-}
-.reticle::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
-.reticle::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }

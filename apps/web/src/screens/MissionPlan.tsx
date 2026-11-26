@@ -77,7 +77,7 @@ export function MissionPlan({ base, initialTarget, onClose }: { base: BaseData; 
       <Card title="Art">
         <div className="grid grid-cols-3 gap-2">
           {TYPES.map((t) => (
-            <button key={t.id} type="button" onClick={() => setType(t.id)} className={`tap rounded-xl px-1 py-2 text-sm flex flex-col items-center gap-1 border ${type === t.id ? "border-sea-400 bg-sea-400/10 font-semibold reticle" : "border-white/10 bg-navy-900"}`}>
+            <button key={t.id} type="button" onClick={() => setType(t.id)} className={`tap rounded-xl px-1 py-2 text-sm flex flex-col items-center gap-1 border ${type === t.id ? "border-sea-400 bg-sea-400/10 font-semibold reticle" : "border-navy-600 bg-navy-900"}`}>
               <Icon id={t.id} size={32} />
               {t.text}
             </button>

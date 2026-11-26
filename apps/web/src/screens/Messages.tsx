@@ -46,7 +46,7 @@ export function MessagesScreen({ setCompose }: { setCompose: (d: Draft) => void 
         <div className="flex rounded-lg bg-navy-950/70 p-0.5 flex-1" role="tablist">
           {(["inbox", "sent"] as const).map((b) => (
             <button key={b} type="button" role="tab" aria-selected={box === b} onClick={() => setBox(b)}
-              className={`tap flex-1 rounded-md text-sm font-semibold ${box === b ? "bg-navy-700 text-white" : "text-slate-400"}`}>
+              className={`tap flex-1 rounded-md text-sm font-semibold ${box === b ? "bg-ink text-paper" : "text-slate-400"}`}>
               {b === "inbox" ? "Posteingang" : "Gesendet"}
             </button>
           ))}
@@ -64,7 +64,7 @@ export function MessagesScreen({ setCompose }: { setCompose: (d: Draft) => void 
               <button type="button" onClick={() => void show(m)}
                 className={`tap w-full text-left panel rounded-2xl p-3 border-l-4 ${box === "inbox" && !m.read ? "!border-l-sea-400" : "!border-l-transparent"}`}>
                 <div className="flex justify-between gap-2 text-sm">
-                  <strong className={`min-w-0 truncate ${box === "inbox" && !m.read ? "text-white" : "text-slate-300"}`}>
+                  <strong className={`min-w-0 truncate ${box === "inbox" && !m.read ? "text-ink font-bold" : "text-slate-300"}`}>
                     {box === "sent" ? "an " : ""}{m.other?.name ?? SYSTEM}
                   </strong>
                   <span className="text-xs text-slate-400 shrink-0 tabular-nums">{fmtTime(m.atMs)}</span>

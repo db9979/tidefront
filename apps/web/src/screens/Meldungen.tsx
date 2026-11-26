@@ -28,7 +28,7 @@ export function MeldungenScreen(props: {
           const n = t.id === "rangliste" ? 0 : props.unread[t.id];
           return (
             <button key={t.id} type="button" role="tab" aria-selected={sub === t.id} onClick={() => setSub(t.id)}
-              className={`tap flex-1 rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5 ${sub === t.id ? "bg-navy-700 text-white" : "text-slate-400"}`}>
+              className={`tap flex-1 rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5 ${sub === t.id ? "bg-ink text-paper" : "text-slate-400"}`}>
               {t.label}
               {n > 0 && <span className="min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[11px] grid place-items-center tabular-nums">{n}</span>}
             </button>

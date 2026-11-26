@@ -131,7 +131,7 @@ export function App() {
     <div className="h-full flex flex-col max-w-xl mx-auto">
       <ResourceBar base={b} asOf={base.data.serverNow} now={now} onHelp={() => { setHelpView(null); setHelp((h) => !h); }} />
       <main className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto p-3"}`}>{content}</main>
-      <nav className="grid grid-cols-5 bg-navy-950/95 backdrop-blur border-t border-white/10" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+      <nav className="grid grid-cols-5 bg-paper border-t-[3px] border-double border-ink" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {TABS.map((t) => {
           const active = tab === t.id && !plan && !help;
           return (
@@ -139,17 +139,17 @@ export function App() {
               key={t.id}
               type="button"
               onClick={() => go(t.id)}
-              className={`tap relative flex flex-col items-center justify-center pt-1.5 pb-1 text-[11px] font-display tracking-normal ${active ? "text-sea-300" : "text-slate-500"}`}
+              className={`tap relative flex flex-col items-center justify-center pt-1.5 pb-1 text-[11px] leading-tight ${active ? "text-ink font-semibold" : "text-ink2"}`}
               aria-current={active ? "page" : undefined}
             >
-              {active && <span className="absolute top-0 inset-x-3 h-0.5 bg-sea-400" />}
+              {active && <span className="absolute -top-[3px] inset-x-[22%] h-[3px] bg-siegel" />}
               <Icon id={t.icon} size={24} />
               <span className="mt-0.5">{t.label}</span>
               {t.id === "berichte" && unread + unreadMsgs > 0 && (
-                <span className="absolute top-1 right-[22%] min-w-5 h-5 px-1 bg-red-700 border border-red-400 text-white text-[11px] mono grid place-items-center">{unread + unreadMsgs}</span>
+                <span className="absolute top-1 right-[18%] min-w-5 h-5 px-1 rounded-full bg-siegel text-white text-[11px] mono grid place-items-center">{unread + unreadMsgs}</span>
               )}
               {t.id === "basis" && b.incoming.some((i) => i.type !== "transport") && (
-                <span className="absolute top-1 right-[22%] w-3 h-3 rotate-45 bg-red-500" />
+                <span className="absolute top-1.5 right-[24%] w-3 h-3 rotate-45 bg-siegel pulse" />
               )}
             </button>
           );

@@ -76,7 +76,7 @@ export function AdminMail() {
         <Switch label="E-Mail-Versand aktiv" on={f.enabled} onChange={(v) => set({ enabled: v })} />
         <div className="grid grid-cols-3 my-2 rounded-lg overflow-hidden border border-navy-600">
           {PROVIDERS.map((p) => (
-            <button key={p.id} type="button" onClick={() => pick(p.id)} className={`tap text-sm ${f.provider === p.id ? "bg-navy-600 text-white" : "bg-navy-900 text-slate-400"}`}>{p.label}</button>
+            <button key={p.id} type="button" onClick={() => pick(p.id)} className={`tap text-sm ${f.provider === p.id ? "bg-ink text-paper" : "bg-navy-900 text-slate-400"}`}>{p.label}</button>
           ))}
         </div>
         <p className="text-xs text-slate-400 mb-2">{hint}</p>

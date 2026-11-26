@@ -17,7 +17,7 @@ export function HallOfFame() {
       ) : (
         <ul className="space-y-3">
           {seasons.map((s) => (
-            <li key={s.number} className="rounded-xl bg-navy-950/50 border border-white/5 p-3">
+            <li key={s.number} className="rounded-xl bg-navy-950/50 border border-navy-600 p-3">
               <div className="flex items-baseline justify-between gap-2 mb-2">
                 <strong className="font-display uppercase text-sm">Saison {s.number}</strong>
                 <span className="text-[11px] text-slate-400 tabular-nums">
@@ -47,7 +47,7 @@ export function HallOfFame() {
                 ))}
               </dl>
               {s.own && (
-                <div className="mt-2 pt-2 border-t border-white/5 text-xs">
+                <div className="mt-2 pt-2 border-t border-navy-600 text-xs">
                   <span className="text-slate-400">Du: </span>
                   <strong className="tabular-nums">Platz {s.own.rank}</strong>
                   <span className="text-slate-400 tabular-nums"> · {fmtNum(s.own.total)} Punkte</span>

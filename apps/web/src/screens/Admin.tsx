@@ -91,7 +91,7 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
             return r;
           })}
         >Code anlegen</Button>
-        <ul className="divide-y divide-white/5">
+        <ul className="divide-y divide-navy-600/70">
           {invites.map((i) => (
             <li key={i.code} className="flex items-center gap-2 py-2">
               <div className="flex-1 min-w-0">
@@ -114,7 +114,7 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
             <div className="text-xs text-slate-400">Der Code wird nur jetzt angezeigt. Auf dem Anmeldebildschirm unter „Passwort vergessen?“ eingeben.</div>
           </div>
         )}
-        <ul className="divide-y divide-white/5">
+        <ul className="divide-y divide-navy-600/70">
           {players.map((p) => (
             <li key={p.id} className="flex items-center gap-2 py-2">
               <div className="flex-1 min-w-0 text-sm">
