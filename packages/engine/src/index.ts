@@ -39,3 +39,5 @@ export { dailySummarySection } from "./daily-summary.ts";
 export { ensureWorldEventPlanner, siegeEffects, clearWorldEvents } from "./world-events.ts";
 export { spawnWorldEvent } from "./world-events-spawn.ts";
 export { worldEventsView } from "./world-events-view.ts";
+export * from "./modifiers.ts";
+export { researchStart, researchCancel, researchChoose, researchView, TECH_NAMES } from "./research.ts";

@@ -132,11 +132,23 @@ export function Handbook({ onClose, onLogout, playerName, initialView }: { onClo
       ),
     },
     {
+      id: "forschung", icon: "forschungsamt", title: "Forschung",
+      body: (
+        <>
+          <P>Im <strong>Forschungsamt</strong> (Basis → Führung und Schutz) erforschst du Techniken in vier Zweigen: Seefahrt, Heer, Luftfahrt und Wirtschaft. Es läuft immer <strong>eine</strong> Forschung; sie kostet Ressourcen und Zeit. Abbrechen erstattet den Anteil der Restzeit.</P>
+          <P>Jede Technik hat 1 bis 3 Stufen mit je 5 bis 12 % Wirkung, zum Beispiel Dampfturbinen +8 % Tempo der Schiffe, Sonar +10 % U-Jagd, Hochofen +8 % Stahl oder Logistik −8 % Treibstoff und +8 % Ladung. Voll erforscht bringt kein Bereich mehr als 25 %. Fortgeschrittene Techniken brauchen eine höhere Stufe des Forschungsamts (3 oder 5) und eine Vorgänger-Technik. Jede Stufe des Forschungsamts über 1 forscht 10 % schneller.</P>
+          <P>Die Boni wirken überall: in Kämpfen (auch gegen das Kartell), auf Reisen, in Produktion, Lager und Bunker. Die Info-Blätter zeigen sie als „+10 % durch Forschung“. Treffen mehrere Quellen denselben Wert, werden sie multipliziert.</P>
+          <P><strong>Durchbruch:</strong> Beim Abschluss jeder Forschung wird ein Prozentwurf (W100) gewürfelt. Die Chance steht vorher im Info-Blatt: {b?.research?.breakthrough ? `${Math.round(b.research.breakthrough.baseChance * 100)} % plus ${Math.round(b.research.breakthrough.perBuildingLevel * 100)} Punkte je Stufe des Forschungsamts, höchstens ${Math.round(b.research.breakthrough.maxChance * 100)} %` : "10 % plus 2 Punkte je Stufe, höchstens 25 %"}. Bei einem Durchbruch wählst du: (a) die Technik erhält sofort eine Stufe zusätzlich oder (b) deine nächste Forschung dauert nur halb so lange. Ist die Technik schon auf Höchststufe, gibt es automatisch (b). Kein Einsatz, kein Risiko – nur ein Bonus.</P>
+          <P>Forschung gilt für eine <strong>Saison</strong>: Zum Saisonende beginnt jeder wieder ohne Techniken.</P>
+        </>
+      ),
+    },
+    {
       id: "tagesbefehle", icon: "uhr", title: "Tagesbefehle",
       body: (
         <>
           <P>Jeden Tag um <strong>0:00 Uhr</strong> (deutsche Zeit) erhältst du auf der Basis drei <strong>Tagesbefehle</strong>: einen leichten, einen mittleren und einen schweren. Sie passen zu deinem Stand – ein Nest-Überfall wird erst verlangt, wenn du Werft und Kaserne hast, und die Ziele wachsen mit deiner Kommandozentrale.</P>
-          <P>Mögliche Befehle: Ausbauten abschließen, die Bauschlange füllen, Bodentruppen, Schiffe oder Flugzeuge ausbilden, Anlagen errichten, einen Vorrat anlegen, die Produktion steigern, die Kommandozentrale ausbauen, ein Nest besiegen, einen Kartell-Überfall abwehren, Aufklärung, Transporte, Börsenhandel, Wrackgut bergen, Beute machen, ohne Verluste siegen oder einem Mitspieler schreiben.</P>
+          <P>Mögliche Befehle: Ausbauten abschließen, die Bauschlange füllen, Bodentruppen, Schiffe oder Flugzeuge ausbilden, Anlagen errichten, einen Vorrat anlegen, die Produktion steigern, die Kommandozentrale ausbauen, ein Nest besiegen, einen Kartell-Überfall abwehren, eine Forschung abschließen, Aufklärung, Transporte, Börsenhandel, Wrackgut bergen, Beute machen, ohne Verluste siegen oder einem Mitspieler schreiben.</P>
           <P>Der Balken zeigt den Fortschritt. Ist ein Befehl erfüllt, holst du die Belohnung mit <strong>Abholen</strong> ab: Ressourcen (auch über die Lagerkapazität) und Punkte für die Kategorie Befehle – leicht 3, mittel 6, schwer 12. Erfüllte Befehle kannst du auch später noch abholen, bis die Saison endet. Ein grüner Zähler an der Basis zeigt, was bereitliegt.</P>
           <P>Einmal am Tag darfst du einen offenen Befehl kostenlos <strong>neu würfeln</strong>; der neue hat dieselbe Schwierigkeit, sein Fortschritt beginnt bei null.</P>
           <P><strong>Serie:</strong> Holst du an aufeinanderfolgenden Tagen alle drei Befehle ab, wächst deine Serie. Am 3. Tag gibt es 10 Punkte Bonus, am 7. Tag 25, an jedem weiteren 7. Tag 10 mehr – jeweils mit Nachschub. Ein ausgelassener Tag beginnt die Serie von vorn. Zum Saisonende verfallen Befehle und Serie.</P>

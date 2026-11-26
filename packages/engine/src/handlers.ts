@@ -35,6 +35,7 @@ import { atWar } from "./alliance-core.ts"; // Diplomatie (Krieg)
 // Weltereignisse (world-events*.ts): Missionsziel „event“ und eigene Ereignistypen.
 import { eventMissionArrive } from "./world-events-missions.ts";
 import { WORLD_EVENT_HANDLERS } from "./world-events-run.ts";
+import { modifiersFor, modsOf } from "./modifiers.ts";
 
 const HOUR_MS = 3600000;
 const none = (): HandlerResult => ({ notify: [] });
@@ -45,7 +46,7 @@ const buildComplete: Handler = async (tx, ev, due) => {
   const order = b.state.buildQueue[0];
   // Abgebrochen, verschoben oder schon erledigt: nichts zu tun. Sonst alle fälligen Aufträge abschließen.
   if (!order || order.finishesAt > due) return none();
-  const r = completeUpgrade(b.state, due, balance);
+  const r = completeUpgrade(b.state, due, balance, await modsOf(tx, b, due));
   if (!r.ok) return none();
   await saveBase(tx, b.id, r.base);
   return { notify: [[[b.playerId], "base"]] };
@@ -54,7 +55,7 @@ const buildComplete: Handler = async (tx, ev, due) => {
 const trainingComplete: Handler = async (tx, ev, due) => {
   const b = await lockBase(tx, ev.baseId!);
   if (!b) return none();
-  const r = completeTraining(b.state, due, balance);
+  const r = completeTraining(b.state, due, balance, await modsOf(tx, b, due));
   if (!r.ok) return none();
   await saveBase(tx, b.id, r.base);
   return { notify: [[[b.playerId], "base"]] };
@@ -164,13 +165,15 @@ const missionArrive: Handler = async (tx, ev, due) => {
   let cargoHome: ResourceMap = {};
   let reportId: number | null = null;
   const attackerName = await playerName(tx, m.playerId);
+  // Modifikatoren des Angreifers (Kampf, Ladung) und je Ziel des Verteidigers.
+  const attackerMods = await modifiersFor(tx, m.playerId, { state: origin?.state ?? null, nowMs: due });
 
   if (m.targetKind === "base") {
     const target = await lockBase(tx, m.targetId!);
     if (!target) {
       // Ziel existiert nicht mehr: Verband kehrt um.
     } else if (m.type === "transport") {
-      await saveBase(tx, target.id, deliverCargo(target.state, plan.cargo, due, balance));
+      await saveBase(tx, target.id, deliverCargo(target.state, plan.cargo, due, balance, await modsOf(tx, target, due)));
       notify.push([[target.playerId], "base"]);
       reportId = await storeReport(tx, {
         kind: "transport", title: `Transport an ${target.name} angekommen`, attackerPlayerId: m.playerId,
@@ -179,14 +182,15 @@ const missionArrive: Handler = async (tx, ev, due) => {
         report: { cargo: plan.cargo, from: attackerName, to: target.name },
       });
     } else if (m.type === "aufklaerung") {
-      const scout = scoutBase(target.state, due, balance);
+      const scout = scoutBase(target.state, due, balance, await modsOf(tx, target, due));
       reportId = await storeReport(tx, {
         kind: "aufklaerung", title: `Aufklärung: ${target.name}`, attackerPlayerId: m.playerId, defenderPlayerId: null,
         attackerBaseId: m.baseId, defenderBaseId: target.id, nestId: null, winner: null, seed: null, atMs: due,
         report: { scout, targetName: target.name, owner: await playerName(tx, target.playerId) },
       });
     } else {
-      const defenderBase = settle(target.state, due, balance);
+      const targetMods = await modsOf(tx, target, due);
+      const defenderBase = settle(target.state, due, balance, targetMods);
       const [prior] = await tx
         .select({ n: sql<number>`count(*)::int` })
         .from(tables.battleReport)
@@ -201,15 +205,16 @@ const missionArrive: Handler = async (tx, ev, due) => {
         versorgungsmangel: origin?.state.versorgungsmangel ?? false,
         priorAttacksInWindow: prior?.n ?? 0,
         weakTarget: origin ? isWeakTarget(baseStrength(origin.state), baseStrength(defenderBase), balance) : false,
+        modifiers: attackerMods,
       };
       // Diplomatie: im Krieg (nach Vorlauf) entfällt die Schwachziel-Kürzung der Beute.
       if (attacker.weakTarget && (await atWar(tx, m.playerId!, target.playerId, due))) attacker.weakTarget = false;
       const seed = randomSeed();
-      const defender = defenderFromBase(defenderBase, balance);
+      const defender = defenderFromBase(defenderBase, balance, targetMods);
       const res = resolveBattle(attacker, defender, balance, seed);
       if (!res.ok) throw new Error(`battle: ${res.code}`);
       const report = res.report;
-      await saveBase(tx, target.id, applyDefenseResult(defenderBase, report, due, balance));
+      await saveBase(tx, target.id, applyDefenseResult(defenderBase, report, due, balance, targetMods));
       await dropWreck(tx, m.targetCol, m.targetRow, report.wreck, due);
       returning = attackerReturning(report);
       cargoHome = report.loot;
@@ -236,7 +241,7 @@ const missionArrive: Handler = async (tx, ev, due) => {
     } else if (m.type === "ueberfall" && !empty) {
       const def = nestDefender(nest.level, balance);
       if (!def.ok) throw new Error(def.code);
-      const attacker: AttackerInput = { units: plan.units, versorgungsmangel: origin?.state.versorgungsmangel ?? false };
+      const attacker: AttackerInput = { units: plan.units, versorgungsmangel: origin?.state.versorgungsmangel ?? false, modifiers: attackerMods };
       const seed = randomSeed();
       const res = resolveBattle(attacker, def.defender, balance, seed);
       if (!res.ok) throw new Error(`battle: ${res.code}`);
@@ -272,7 +277,7 @@ const missionArrive: Handler = async (tx, ev, due) => {
   }
 
   // Wrackgut bergen: freie Ladekapazität der heimkehrenden Schiffe nach der Beute.
-  const free = fleetTotals(returning, balance).cargoCapacity - sumMap(cargoHome);
+  const free = fleetTotals(returning, balance, attackerMods).cargoCapacity - sumMap(cargoHome);
   const salvage = await salvageAt(tx, m.targetCol, m.targetRow, free, due);
   if (salvage.stahl + salvage.elektronik > 0) cargoHome = addMaps(cargoHome, salvage);
 
@@ -300,6 +305,7 @@ const missionReturn: Handler = async (tx, ev, due) => {
       (row.cargoHome as ResourceMap) ?? {},
       due,
       balance,
+      await modsOf(tx, b, due),
     );
     await saveBase(tx, b.id, next);
   }
@@ -316,7 +322,8 @@ const raidLaunch: Handler = async (tx, ev, due) => {
   if (raidBlocked(b.state.protection, due, balance).blocked || raidBlocked(b.state.protection, arrive, balance).blocked) {
     return none();
   }
-  const state = settle(b.state, due, balance);
+  const mods = await modsOf(tx, b, due);
+  const state = settle(b.state, due, balance, mods);
   // Eigener Seed für die Stärke-Schwankung des Kartells (unabhängig vom Kampf-Seed).
   const raid = composeRaid(state.units, state.defenses, balance, randomSeed());
   const [m] = await tx
@@ -328,7 +335,7 @@ const raidLaunch: Handler = async (tx, ev, due) => {
     })
     .returning({ id: tables.mission.id });
   await scheduleEvent(tx, "raid_arrive", arrive, { missionId: m.id }, b.id);
-  await scheduleAttackWarning(tx, { missionId: m.id, targetBaseId: b.id, targetState: state, arriveAtMs: arrive, nowMs: due });
+  await scheduleAttackWarning(tx, { missionId: m.id, targetBaseId: b.id, targetState: state, arriveAtMs: arrive, nowMs: due, targetMods: mods });
   return { notify: [[[b.playerId], "missions"]] };
 };
 
@@ -349,13 +356,15 @@ const raidArrive: Handler = async (tx, ev, due) => {
     await tx.update(tables.mission).set({ status: "done", reportId }).where(eq(tables.mission.id, m.id));
     return { notify: [[[b.playerId], "missions"], [[b.playerId], "reports"]] };
   }
-  const state = settle(b.state, due, balance);
+  // Kartell-Verteidigung: Forschung (und künftige Quellen) des Verteidigers wirken.
+  const mods = await modsOf(tx, b, due);
+  const state = settle(b.state, due, balance, mods);
   const seed = randomSeed();
-  const defender = defenderFromBase(state, balance);
+  const defender = defenderFromBase(state, balance, mods);
   const res = resolveBattle(plan.attacker, defender, balance, seed);
   if (!res.ok) throw new Error(`battle: ${res.code}`);
   const report: BattleReport = res.report;
-  await saveBase(tx, b.id, applyDefenseResult(state, report, due, balance));
+  await saveBase(tx, b.id, applyDefenseResult(state, report, due, balance, mods));
   await dropWreck(tx, b.col, b.row, report.wreck, due);
   const reportId = await storeReport(tx, {
     kind: "kartell", title: `Kartell überfällt ${b.name}`, attackerPlayerId: null, defenderPlayerId: b.playerId,
@@ -374,7 +383,7 @@ const deliveryArrive: Handler = async (tx, ev, due) => {
     .for("update");
   if (!d || d.status !== "underway") return none();
   const b = await lockBase(tx, d.baseId);
-  if (b) await saveBase(tx, b.id, deliverCargo(b.state, { [d.resource]: d.qty }, due, balance));
+  if (b) await saveBase(tx, b.id, deliverCargo(b.state, { [d.resource]: d.qty }, due, balance, await modsOf(tx, b, due)));
   // Journal: die Lieferung geht an den Spieler.
   await tx.insert(tables.tradeLedger).values([
     { tradeId: `${d.id}:arrival`, tMs: due, account: `delivery:${d.id}`, asset: d.resource, amount: String(-d.qty) },
@@ -395,6 +404,7 @@ export const HANDLERS: Record<string, Handler> = {
   season_end: (tx, ev, due) => import("./season.ts").then((m) => m.seasonEnd(tx, ev, due)),
   attack_warning: attackWarning,
   ...WORLD_EVENT_HANDLERS,
+  research_complete: (tx, ev, due) => import("./research.ts").then((m) => m.researchComplete(tx, ev, due)),
 };
 
 // Für Tests

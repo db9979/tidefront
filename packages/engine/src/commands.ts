@@ -34,6 +34,7 @@ import { diplomacyBlock } from "./alliance-core.ts"; // Allianzen/Diplomatie
 // Weltereignisse: Missionen gegen Ereignisse, Belagerung sperrt Börsenkäufe.
 import { launchAgainstEvent } from "./world-events-missions.ts";
 import { siegeEffects } from "./world-events.ts";
+import { modifiersFor, modsOf } from "./modifiers.ts";
 
 export type Rejected = { ok: false; code: string };
 type Draft<T> = T | (Rejected & { keepWrites?: boolean });
@@ -134,7 +135,7 @@ export function chooseBase(engine: Engine, playerId: number, key: string, input:
 export function upgrade(engine: Engine, playerId: number, key: string, buildingId: string) {
   return runCommand(engine, playerId, key, "upgrade", async (ctx) => {
     const b = await ownBaseLocked(ctx);
-    const r = startUpgrade(b.state, buildingId, ctx.nowMs, balance);
+    const r = startUpgrade(b.state, buildingId, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs));
     if (!r.ok) return r;
     await saveBase(ctx.tx, b.id, r.base);
     await scheduleEvent(ctx.tx, "build_complete", r.order.finishesAt, {}, b.id);
@@ -155,7 +156,7 @@ export function cancelBuild(engine: Engine, playerId: number, key: string, order
     const index = order
       ? b.state.buildQueue.findIndex((o) => o.buildingId === order.buildingId && o.targetLevel === order.targetLevel)
       : 0;
-    const r = cancelUpgrade(b.state, ctx.nowMs, balance, index);
+    const r = cancelUpgrade(b.state, ctx.nowMs, balance, index, await modsOf(ctx.tx, b, ctx.nowMs));
     if (!r.ok) return r;
     await saveBase(ctx.tx, b.id, r.base);
     const before = new Map(b.state.buildQueue.map((o) => [`${o.buildingId}:${o.targetLevel}`, o.finishesAt]));
@@ -172,7 +173,7 @@ export function cancelBuild(engine: Engine, playerId: number, key: string, order
 export function train(engine: Engine, playerId: number, key: string, id: string, count: number) {
   return runCommand(engine, playerId, key, "train", async (ctx) => {
     const b = await ownBaseLocked(ctx);
-    const r = startTraining(b.state, id, count, ctx.nowMs, balance);
+    const r = startTraining(b.state, id, count, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs));
     if (!r.ok) return r;
     await saveBase(ctx.tx, b.id, r.base);
     await scheduleEvent(ctx.tx, "training_complete", r.order.finishesAt, {}, b.id);
@@ -184,7 +185,7 @@ export function train(engine: Engine, playerId: number, key: string, id: string,
 export function cancelTrain(engine: Engine, playerId: number, key: string, builtIn: string) {
   return runCommand(engine, playerId, key, "cancelTrain", async (ctx) => {
     const b = await ownBaseLocked(ctx);
-    const r = cancelTraining(b.state, builtIn, ctx.nowMs, balance);
+    const r = cancelTraining(b.state, builtIn, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs));
     if (!r.ok) return r;
     await saveBase(ctx.tx, b.id, r.base);
     ctx.notify.push([[playerId], "base"]);
@@ -195,7 +196,7 @@ export function cancelTrain(engine: Engine, playerId: number, key: string, built
 export function setNightShield(engine: Engine, playerId: number, key: string, startHour: number | null, tzOffsetMinutes: number) {
   return runCommand<{ ok: true; fromMs: number }>(engine, playerId, key, "nightShield", async (ctx) => {
     const b = await ownBaseLocked(ctx);
-    const next = settle(b.state, ctx.nowMs, balance);
+    const next = settle(b.state, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs));
     const r = scheduleNightShieldChange(next.protection, startHour, tzOffsetMinutes, ctx.nowMs, balance);
     if (!r.ok) return { ok: false as const, code: r.code };
     next.protection = r.protection;
@@ -244,6 +245,7 @@ export function launchMission(
     if (input.type === "ueberfall" && target.kind === "nest" && target.defeatedAt && !isNestRespawned(target.defeatedAt.getTime(), ctx.nowMs, balance)) {
       fail("nest_empty");
     }
+    const mods = await modsOf(ctx.tx, b, ctx.nowMs);
     const r = planMission(
       b.state,
       {
@@ -257,6 +259,7 @@ export function launchMission(
       },
       ctx.nowMs,
       balance,
+      mods,
     );
     if (!r.ok) return r;
     await saveBase(ctx.tx, b.id, r.base);
@@ -270,7 +273,8 @@ export function launchMission(
       .returning({ id: tables.mission.id });
     await scheduleEvent(ctx.tx, "mission_arrive", r.mission.arriveAtMs, { missionId: m.id }, target.kind === "base" ? target.id : null);
     if (r.mission.type === "ueberfall" && target.kind === "base" && target.state) {
-      await scheduleAttackWarning(ctx.tx, { missionId: m.id, targetBaseId: target.id, targetState: target.state, arriveAtMs: r.mission.arriveAtMs, nowMs: ctx.nowMs });
+      const targetMods = await modifiersFor(ctx.tx, target.playerId, { state: target.state, nowMs: ctx.nowMs });
+      await scheduleAttackWarning(ctx.tx, { missionId: m.id, targetBaseId: target.id, targetState: target.state, arriveAtMs: r.mission.arriveAtMs, nowMs: ctx.nowMs, targetMods, warningFactor: r.mission.warningFactor });
     }
     ctx.notify.push([[playerId], "base"], [[playerId], "missions"]);
     if (target.kind === "base" && target.playerId !== null) ctx.notify.push([[target.playerId], "missions"]);
@@ -339,11 +343,12 @@ export function trade(
     // Weltereignis Belagerung: keine Börsenkäufe (Lieferungen) während des Belagerungsrings.
     if (request.side === "buy" && (await siegeEffects(ctx.tx, b.id, ctx.nowMs))?.marketBlocked) fail("siege");
     const marketState = await loadMarket(ctx.tx, request.resource);
-    const state = settle(b.state, ctx.nowMs, balance);
+    const mods = await modsOf(ctx.tx, b, ctx.nowMs);
+    const state = settle(b.state, ctx.nowMs, balance, mods);
     const stock = {} as Record<ResourceId, number>;
     for (const r of balance.resources) stock[r as ResourceId] = Math.floor(state.resources[r] ?? 0);
     const trader = { ...(p.trader as Omit<marketCore.TraderState, "stock">), stock } as marketCore.TraderState;
-    const capacity = storageCapacity(state, balance);
+    const capacity = storageCapacity(state, balance, mods);
     const storage = {} as Record<ResourceId, number>;
     for (const r of balance.resources) storage[r as ResourceId] = capacity;
     const tradeId = `t-${randomUUID()}`;
@@ -356,7 +361,7 @@ export function trade(
         tradeId,
         harborLevel: state.buildings.hafenkommandantur ?? 0,
         storageCapacity: storage,
-        attackDetected: await incomingDetected(ctx.tx, b.id, state, ctx.nowMs),
+        attackDetected: await incomingDetected(ctx.tx, b.id, state, ctx.nowMs, mods),
         distanceToPortKm: nearestTradePort(b).distanceKm,
       },
       marketBalance,

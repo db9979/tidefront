@@ -18,6 +18,10 @@ export const BUILDING_TEXT: Record<string, { kurz: string; lang: string }> = {
   kaserne: { kurz: "Bildet Bodentruppen aus", lang: "Schützen, Pioniere und Kampfpanzer. Nur Bodentruppen können erobern und Beute holen." },
   flugfeld: { kurz: "Flugzeuge und Stellplätze", lang: "Jede Stufe gibt {slots} Stellplätze. Flugzeuge kämpfen nur innerhalb ihrer Reichweite." },
   radarstation: { kurz: "Vorwarnung bei Angriffen", lang: "Meldet anrückende Angriffe vor der Ankunft: {radarFirst} Minuten auf Stufe 1, je weitere Stufe {radarStep} mehr. Ohne Radar siehst du einen Angriff erst bei Ankunft." },
+  forschungsamt: {
+    kurz: "Forschung dieser Saison",
+    lang: "Hier wird geforscht: eine Technik gleichzeitig, Boni bis zum Saisonende. Höhere Stufen öffnen weitere Techniken (ab Stufe 3 und 5), forschen 10 % schneller je Stufe und erhöhen die Chance auf einen Durchbruch.",
+  },
   hafenkommandantur: { kurz: "Missionsplätze und Börse", lang: "Jede zweite Stufe gibt einen weiteren Missionsplatz. Ab Stufe {market} öffnet die Börse, das Kreditlimit wächst mit jeder Stufe." },
 };
 
@@ -97,6 +101,12 @@ export function buildingEffect(balance: Balance, id: string, level: number): str
   if (def.commandPointsBase !== undefined) return `${fmtNum(def.commandPointsBase + (def.commandPointsPerLevel ?? 0) * level)} Kommandopunkte`;
   if (def.slotsPerLevel) return `${def.slotsPerLevel * level} Stellplätze, Bau ${level < 1 ? "–" : `+${Math.round((def.buildSpeedPerLevel ?? 0) * (level - 1) * 100)} %`}`;
   if (def.buildSpeedPerLevel) return level < 1 ? "noch nicht gebaut" : `Bautempo +${Math.round(def.buildSpeedPerLevel * (level - 1) * 100)} %`;
+  if (def.researchSpeedPerLevel !== undefined) {
+    if (level < 1) return "noch keine Forschung";
+    const bt = balance.research?.breakthrough;
+    const chance = bt ? Math.min(bt.maxChance, bt.baseChance + bt.perBuildingLevel * level) : 0;
+    return `Forschung +${Math.round(def.researchSpeedPerLevel * (level - 1) * 100)} % schneller, Durchbruch ${Math.round(chance * 100)} %`;
+  }
   if (def.warningMinutesBase !== undefined) return level < 1 ? "keine Vorwarnung" : `${def.warningMinutesBase + (def.warningMinutesPerLevel ?? 0) * level} min Vorwarnung`;
   if (def.missionSlotsBase !== undefined) {
     const slots = def.missionSlotsBase + Math.floor(level / 2) * (def.missionSlotsPerTwoLevels ?? 0);

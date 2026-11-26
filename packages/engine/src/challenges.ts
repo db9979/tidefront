@@ -7,6 +7,7 @@ import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance } from "./context.ts";
 import type { EventRow } from "./events.ts";
 import { baseOfPlayer, readBase } from "./store.ts";
+import { modsOf } from "./modifiers.ts";
 import {
   addDays,
   challengeReward,
@@ -28,7 +29,7 @@ const dc = tables.dailyChallenge;
 export async function contextFor(tx: DbOrTx, playerId: number, atMs: number): Promise<PoolContext | null> {
   const b = await baseOfPlayer(tx, playerId);
   if (!b) return null;
-  const state = settle(b.state, atMs, balance);
+  const state = settle(b.state, atMs, balance, await modsOf(tx, b, atMs));
   const [o] = await tx.select({ n: count() }).from(tables.base).where(ne(tables.base.playerId, playerId));
   const raidsPossible = protectionStatus(state.protection, atMs, balance).reason !== "anfaengerschutz";
   return poolContext(state, { others: (o?.n ?? 0) > 0, raidsPossible });

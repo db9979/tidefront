@@ -14,13 +14,14 @@ import { HarborVignette, fmtDeg } from "../components/Vignette.tsx";
 import { hexCenter } from "@tidefront/world";
 import { Timeline } from "../components/Timeline.tsx";
 import { WorldEventBanner } from "../components/WorldEvents.tsx";
+import { researchNote } from "../lib/research.ts";
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 
 const GROUPS: { title: string; ids: string[] }[] = [
   { title: "Wirtschaft", ids: ["stahlwerk", "raffinerie", "chipfabrik", "versorgungshof", "kraftwerk", "lagerkomplex"] },
   { title: "Militär", ids: ["werft", "kaserne", "flugfeld"] },
-  { title: "Führung und Schutz", ids: ["kommandozentrale", "hafenkommandantur", "radarstation", "tiefbunker"] },
+  { title: "Führung und Schutz", ids: ["kommandozentrale", "hafenkommandantur", "radarstation", "tiefbunker", "forschungsamt"] },
 ];
 
 type Building = BaseData["buildings"][number];
@@ -32,6 +33,7 @@ export function BaseScreen(props: {
   setSheet: (id: string | null) => void;
   onGuide: (a: GuideAction) => void;
   onTroops: () => void;
+  onResearch: () => void;
 }) {
   const { base, asOf, sheet, setSheet } = props;
   const now = useNow();
@@ -89,7 +91,7 @@ export function BaseScreen(props: {
       <Protection base={base} now={now} />
 
       {sheet && byId[sheet] && (
-        <BuildingSheet b={byId[sheet]} base={base} res={res} onClose={() => setSheet(null)} onTroops={props.onTroops} />
+        <BuildingSheet b={byId[sheet]} base={base} res={res} onClose={() => setSheet(null)} onTroops={props.onTroops} onResearch={props.onResearch} />
       )}
     </div>
   );
@@ -186,7 +188,19 @@ function BuildingTile({ b, res, queueFull, running, queued, onOpen }: { b: Build
   );
 }
 
-function BuildingSheet({ b, base, res, onClose, onTroops }: { b: Building; base: BaseData; res: Record<string, number>; onClose: () => void; onTroops: () => void }) {
+/** Wirkung der Forschung auf ein Gebäude (Produktion, Lager, Bunker, Radar, Ausbildung) als Hinweis. */
+function buildingResearchNote(base: BaseData, id: string, produces: string | undefined): string | null {
+  const [what, path] = produces
+    ? ["Produktion", `production.${produces}`]
+    : ({
+        lagerkomplex: ["Lagerkapazität", "storage"], tiefbunker: ["Bunkerschutz", "bunker"], radarstation: ["Vorwarnzeit", "radarWarning"],
+        werft: ["Bauzeit Schiffe", "trainingTime.werft"], kaserne: ["Ausbildungszeit", "trainingTime.kaserne"], flugfeld: ["Ausbildungszeit", "trainingTime.flugfeld"],
+      } as Record<string, [string, string]>)[id] ?? [null, null];
+  const note = path ? researchNote(base.modifiers, path) : null;
+  return note ? `${what} ${note}` : null;
+}
+
+function BuildingSheet({ b, base, res, onClose, onTroops, onResearch }: { b: Building; base: BaseData; res: Record<string, number>; onClose: () => void; onTroops: () => void; onResearch: () => void }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const up = useCommand((i: { key: string; buildingId: string }) => trpcClient.base.upgrade.mutate(i), invalidateBase);
   const balance = meta.data?.balance;
@@ -204,6 +218,8 @@ function BuildingSheet({ b, base, res, onClose, onTroops }: { b: Building; base:
   const now = balance ? buildingEffect(balance, b.id, b.level) : null;
   const next = balance && !maxed ? buildingEffect(balance, b.id, target) : null;
   const trains = ["werft", "kaserne", "flugfeld"].includes(b.id);
+  const note = buildingResearchNote(base, b.id, balance?.buildings[b.id]?.produces);
+  const buildNote = researchNote(base.modifiers, "buildTime");
   return (
     <Sheet open onClose={onClose} title={<>{label(b.id)} <span className="text-ink2 font-sans text-sm mono">Stufe {b.level}</span></>} icon={<IconTile id={b.id} size={56} />}>
       <p className="text-sm text-slate-200 mb-3">{buildingText(balance, b.id)}</p>
@@ -219,11 +235,12 @@ function BuildingSheet({ b, base, res, onClose, onTroops }: { b: Building; base:
           </div>
         </div>
       )}
+      {note && <p className="text-sm text-emerald-300 mb-3">{note}</p>}
       {!maxed && (
         <div className="rounded-xl bg-paper border border-rule p-2 mb-3">
           <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-1">Kosten</div>
           <Cost cost={b.cost} have={res} />
-          {b.seconds !== null && <div className="text-sm mt-1 flex items-center gap-1"><Icon id="uhr" size={16} /> {fmtSeconds(b.seconds)}</div>}
+          {b.seconds !== null && <div className="text-sm mt-1 flex items-center gap-1"><Icon id="uhr" size={16} /> {fmtSeconds(b.seconds)}{buildNote && <span className="text-xs text-emerald-300">({buildNote})</span>}</div>}
         </div>
       )}
       {b.planned > b.level && <p className="text-sm text-sea-300 mb-2">In der Bauschlange bis Stufe {b.planned}. Ein weiterer Ausbau wird dahinter eingereiht.</p>}
@@ -231,6 +248,7 @@ function BuildingSheet({ b, base, res, onClose, onTroops }: { b: Building; base:
       <ErrorLine text={up.error} />
       <div className="flex gap-2">
         {trains && b.level > 0 && <Button kind="secondary" className="flex-1" onClick={() => { onClose(); onTroops(); }}>Ausbilden</Button>}
+        {b.id === "forschungsamt" && <Button kind="secondary" className="flex-1" onClick={() => { onClose(); onResearch(); }}>Forschung</Button>}
         <Button className="flex-1" disabled={!!reason || up.busy} onClick={async () => { const r = await up.run({ buildingId: b.id }); if (r?.ok) onClose(); }}>
           {used > 0 ? `Einreihen: Stufe ${target}` : `Ausbau auf ${target}`}
         </Button>
@@ -251,19 +269,24 @@ function Supply({ base }: { base: BaseData }) {
           {short && <p className="text-xs text-red-300 mt-1">Zu wenig Strom: Produktion läuft nur mit {fmtNum(base.power.factor * 100)} %. Kraftwerk ausbauen!</p>}
         </div>
         <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-slate-300 [&>span:nth-child(even)]:mono">
-          <span>Lager je Ressource</span><span className="text-right">{fmtNum(base.capacity)}</span>
-          <span>Bunkerschutz</span><span className="text-right">{fmtNum(base.bunkerProtection)}</span>
+          <span>Lager je Ressource</span><span className="text-right">{fmtNum(base.capacity)}<Note text={researchNote(base.modifiers, "storage")} /></span>
+          <span>Bunkerschutz</span><span className="text-right">{fmtNum(base.bunkerProtection)}<Note text={researchNote(base.modifiers, "bunker")} /></span>
           <span>Unterhalt</span><span className="text-right">{fmtNum(base.upkeepPerHour, 1)} Proviant/h</span>
           <span>Kommandopunkte</span><span className="text-right">{fmtNum(base.commandPoints)}</span>
           <span>Missionsplätze</span><span className="text-right">{base.activeMissions}/{base.missionSlots}</span>
           <span>Stellplätze Flugfeld</span><span className="text-right">{base.aircraftSlots.used}/{base.aircraftSlots.total}</span>
-          <span>Radar-Vorwarnzeit</span><span className="text-right">{base.radarWarningMinutes} min</span>
+          <span>Radar-Vorwarnzeit</span><span className="text-right">{fmtNum(base.radarWarningMinutes, 1)} min<Note text={researchNote(base.modifiers, "radarWarning")} /></span>
         </div>
         {base.versorgungsmangel && <p className="text-red-300">Versorgungsmangel: keine Ausbildung, Angriffswert −20 %. Versorgungshof ausbauen oder Proviant kaufen.</p>}
         {base.deliveries.length > 0 && <DeliveryList base={base} />}
       </div>
     </Card>
   );
+}
+
+/** Kleiner Forschungshinweis hinter einem Wert („+20 % durch Forschung“). */
+function Note({ text }: { text: string | null }) {
+  return text ? <span className="block text-[11px] text-emerald-300 font-sans">{text}</span> : null;
 }
 
 function DeliveryList({ base }: { base: BaseData }) {

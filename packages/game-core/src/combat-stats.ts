@@ -1,5 +1,7 @@
 // Bausteine des Kampfs: Werte-Tabelle, Salven, Schaden mit Restschaden, Phasenbericht, Ergebnis einer Seite.
 import type { Balance, Counts, PhaseName, PhaseReport, ResourceMap, Result, Side, SideOutcome } from "./types.ts";
+import type { ModBranch, Modifiers } from "./modifiers.ts";
+import { modEntry, modValue } from "./modifiers.ts";
 
 /** "sub" = getauchtes U-Boot (UnitDef.submerged): nur durch U-Jagd (`uboot`) zu treffen. */
 export type Kind = "ship" | "sub" | "ground" | "fighter" | "bomber" | "airOther" | "defense";
@@ -66,6 +68,34 @@ export function buildStats(balance: Balance): StatTable {
     };
   }
   return { ids, byId };
+}
+
+/** Gattung einer Kampfrolle für Modifikatoren. */
+export function branchOfKind(kind: Kind): ModBranch {
+  if (kind === "ship" || kind === "sub") return "see";
+  if (kind === "ground") return "land";
+  if (kind === "defense") return "anlage";
+  return "luft";
+}
+
+const ATTACK_KEYS: readonly AttackKey[] = ["see", "luft", "land", "anlage", "uboot"];
+
+/**
+ * Werte-Tabelle einer Seite mit ihren Modifikatoren: Lebenspunkte mal hp[Gattung], jeder Angriffswert mal
+ * attack[Gattung] * attackVs[Wert] * attackUnit[Typ], Ladung mal cargo. Ohne Modifikatoren dieselbe Tabelle.
+ */
+export function withModifiers(table: StatTable, mods: Modifiers | undefined): StatTable {
+  if (mods === undefined) return table;
+  const byId: Record<string, Stat> = {};
+  for (const id of table.ids) {
+    const s = table.byId[id];
+    const branch = branchOfKind(s.kind);
+    const f = modEntry(mods, "attack", branch) * modEntry(mods, "attackUnit", id);
+    const attack = { ...s.attack };
+    for (const k of ATTACK_KEYS) attack[k] = s.attack[k] * f * modEntry(mods, "attackVs", k);
+    byId[id] = { ...s, attack, hp: s.hp * modEntry(mods, "hp", branch), cargo: s.cargo * modValue(mods, "cargo") };
+  }
+  return { ids: table.ids, byId };
 }
 
 export type Group = [Stat, number][];

@@ -1,10 +1,21 @@
-import type { Balance, BaseState, Counts, ProductionInfo, ResourceMap } from "./types.ts";
+import type { Balance, BaseState, Counts, ProductionInfo, ResearchState, ResourceMap } from "./types.ts";
 import { createProtection } from "./protection.ts";
+import type { Modifiers } from "./modifiers.ts";
+import { modEntry, modValue } from "./modifiers.ts";
 
 const HOUR_MS = 3600000;
 
 /** Angriffswert-Faktor bei Versorgungsmangel (REGELN.md, Abschnitt Ressourcen; nicht in balance.json). */
 export const SUPPLY_SHORTAGE_ATTACK_FACTOR = 0.8;
+
+function cloneResearch(r: ResearchState): ResearchState {
+  return {
+    ...r,
+    levels: { ...r.levels },
+    order: r.order ? { ...r.order, cost: { ...r.order.cost } } : null,
+    ...(r.lastRoll ? { lastRoll: { ...r.lastRoll } } : {}),
+  };
+}
 
 export function cloneBase(base: BaseState): BaseState {
   return {
@@ -18,6 +29,9 @@ export function cloneBase(base: BaseState): BaseState {
     trainingQueue: base.trainingQueue.map((o) => ({ ...o })),
     versorgungsmangel: base.versorgungsmangel,
     protection: { ...base.protection },
+    ...(base.research
+      ? { research: cloneResearch(base.research) }
+      : {}),
   };
 }
 
@@ -72,8 +86,8 @@ export function powerDemand(base: BaseState, balance: Balance): number {
   return sum;
 }
 
-/** Produktionsraten je Stunde inklusive Strom-Drosselung und Proviant-Unterhalt. */
-export function productionRates(base: BaseState, balance: Balance): ProductionInfo {
+/** Produktionsraten je Stunde inklusive Strom-Drosselung und Proviant-Unterhalt; `mods.production` wirkt auf die Gebäudeproduktion. */
+export function productionRates(base: BaseState, balance: Balance, mods?: Modifiers): ProductionInfo {
   const supply = powerSupply(base, balance);
   const demand = powerDemand(base, balance);
   const powerFactor = demand > supply ? supply / demand : 1;
@@ -83,7 +97,7 @@ export function productionRates(base: BaseState, balance: Balance): ProductionIn
     const level = buildingLevel(base, id);
     if (def.produces === undefined || level < 1) continue;
     const raw = (def.perHour ?? 0) * balance.building.productionGrowth ** (level - 1);
-    buildingPerHour[def.produces] = (buildingPerHour[def.produces] ?? 0) + raw * powerFactor;
+    buildingPerHour[def.produces] = (buildingPerHour[def.produces] ?? 0) + raw * powerFactor * modEntry(mods, "production", def.produces);
   }
   const upkeep = upkeepPerHour(base, balance);
   const perHour: ResourceMap = {};
@@ -95,26 +109,27 @@ export function productionRates(base: BaseState, balance: Balance): ProductionIn
 }
 
 /** Lagerkapazität je Ressource (für alle Ressourcen gleich). */
-export function storageCapacity(base: BaseState, balance: Balance): number {
+export function storageCapacity(base: BaseState, balance: Balance, mods?: Modifiers): number {
   const def = balance.buildings.lagerkomplex;
-  return (def.capacityBase ?? 0) * (def.capacityGrowth ?? 1) ** buildingLevel(base, "lagerkomplex");
+  return (def.capacityBase ?? 0) * (def.capacityGrowth ?? 1) ** buildingLevel(base, "lagerkomplex") * modValue(mods, "storage");
 }
 
 /** Vor Plünderung geschützte Menge je Ressource (Tiefbunker). */
-export function bunkerProtection(base: BaseState, balance: Balance): number {
+export function bunkerProtection(base: BaseState, balance: Balance, mods?: Modifiers): number {
   const def = balance.buildings.tiefbunker;
-  return (def.protectedBase ?? 0) * (def.protectedGrowth ?? 1) ** buildingLevel(base, "tiefbunker");
+  return (def.protectedBase ?? 0) * (def.protectedGrowth ?? 1) ** buildingLevel(base, "tiefbunker") * modValue(mods, "bunker");
 }
 
 /**
  * Schreibt die Bestände von resUpdatedAt auf nowMs fort (Lazy Evaluation).
  * Produktion füllt nur bis zur Lagerkapazität; Bestände über der Kapazität bleiben erhalten.
  * Der Bestand fällt nie unter 0; Bestand 0 bei negativer Rate setzt versorgungsmangel.
+ * `mods` (Produktion, Lager) müssen für das ganze Intervall gelten; ändern sie sich, vorher fortschreiben.
  */
-export function settle(base: BaseState, nowMs: number, balance: Balance): BaseState {
+export function settle(base: BaseState, nowMs: number, balance: Balance, mods?: Modifiers): BaseState {
   const next = cloneBase(base);
-  const rates = productionRates(base, balance).perHour;
-  const capacity = storageCapacity(base, balance);
+  const rates = productionRates(base, balance, mods).perHour;
+  const capacity = storageCapacity(base, balance, mods);
   const hours = Math.max(0, nowMs - base.resUpdatedAt) / HOUR_MS;
   for (const r of balance.resources) {
     const stock = base.resources[r] ?? 0;

@@ -3,7 +3,7 @@
 const NAMES: Record<string, string> = {
   kommandozentrale: "Kommandozentrale", stahlwerk: "Stahlwerk", raffinerie: "Raffinerie", chipfabrik: "Chipfabrik",
   versorgungshof: "Versorgungshof", kraftwerk: "Kraftwerk", lagerkomplex: "Lagerkomplex", tiefbunker: "Tiefbunker",
-  werft: "Werft", kaserne: "Kaserne", flugfeld: "Flugfeld", radarstation: "Radarstation", hafenkommandantur: "Hafenkommandantur",
+  werft: "Werft", kaserne: "Kaserne", flugfeld: "Flugfeld", radarstation: "Radarstation", hafenkommandantur: "Hafenkommandantur", forschungsamt: "Forschungsamt",
   korvette: "Korvette", zerstoerer: "Zerstörer", landungsschiff: "Landungsschiff", uboot: "U-Boot", schuetzen: "Schützen", pioniere: "Pioniere",
   kampfpanzer: "Kampfpanzer", abfangjaeger: "Abfangjäger", jagdbomber: "Jagdbomber", aufklaerungsdrohne: "Aufklärungsdrohne",
   schnellboot: "Schnellboot", piratenmiliz: "Piratenmiliz", kuestenbatterie: "Küstenbatterie", flakstellung: "Flakstellung",
@@ -164,6 +164,14 @@ const ERRORS: Record<string, string> = {
   own_offer: "Das ist dein eigenes Angebot.",
   not_ally: "Dieses Angebot gilt nur für die Allianz des Anbieters.",
   seller_gone: "Der Anbieter hat keinen Hafen mehr.",
+  unknown_tech: "Unbekannte Technik.",
+  requires_tech: "Erst die Voraussetzung erforschen.",
+  research_busy: "Es läuft schon eine Forschung.",
+  breakthrough_pending: "Erst die Durchbruch-Belohnung wählen.",
+  no_breakthrough: "Kein Durchbruch, der auf eine Wahl wartet.",
+  already_chosen: "Die Belohnung ist schon gewählt.",
+  bad_choice: "Ungültige Wahl.",
+  no_research: "Forschung ist nicht verfügbar.",
 };
 
 export function errorText(code: string): string {

@@ -22,6 +22,8 @@ import type { GuideAction } from "./components/Guide.tsx";
 import { useDaily } from "./components/Daily.tsx";
 import { parseOpenUrl, type OpenTarget } from "./lib/push.ts";
 import { usePlanRequests, type PlanPreset } from "./lib/plan-request.ts";
+import { ResearchScreen } from "./screens/Research.tsx";
+import { ResearchRollPopup } from "./components/ResearchDice.tsx";
 
 export type Tab = "basis" | "karte" | "truppen" | "berichte" | "boerse";
 /** Missionsziel; eventId: Weltereignis (Schatzschiff, Großflotte, Belagerung). */
@@ -87,8 +89,10 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const [opened] = useState<OpenTarget>(() => parseOpenUrl(location.href));
   const [tab, setTab] = useState<Tab>(opened.tab ?? "basis");
   const [plan, setPlan] = useState<{ target: Target | null; preset?: PlanPreset; seq?: number } | null>(null);
+  // Forschung: Unterbildschirm (aus dem Forschungsamt oder Truppen), die untere Navigation bleibt bei fünf Zielen.
+  const [research, setResearch] = useState(false);
   // „Wiederholen“ aus Berichten und Truppen öffnet die Planung mit Ziel und Zusammensetzung.
-  usePlanRequests((r) => { setHelp(false); setPlan({ target: r.target, preset: { type: r.type, units: r.units }, seq: Date.now() }); });
+  usePlanRequests((r) => { setHelp(false); setResearch(false); setPlan({ target: r.target, preset: { type: r.type, units: r.units }, seq: Date.now() }); });
   const [mapFocus, setMapFocus] = useState<Target | null>(null);
   const [help, setHelp] = useState(!!opened.view);
   const [helpView, setHelpView] = useState(opened.view ?? null);
@@ -146,6 +150,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
     setPlan(null);
     setHelp(false);
     setHelpView(null);
+    setResearch(false);
     setTab(t);
   };
   const onGuide = (a: GuideAction) => {
@@ -156,23 +161,27 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   };
   const openPlan = (target: Target | null) => {
     setHelp(false);
+    setResearch(false);
     setPlan({ target });
   };
 
-  const fullBleed = tab === "karte" && !plan && !help;
+  const openResearch = () => { setPlan(null); setHelp(false); setResearch(true); };
+  const fullBleed = tab === "karte" && !plan && !help && !research;
   const content = help ? (
     <Handbook key={helpView ?? "h"} onClose={() => setHelp(false)} onLogout={logout} playerName={playerName} initialView={helpView} />
+  ) : research ? (
+    <ResearchScreen base={b} asOf={base.data.serverNow} onClose={() => setResearch(false)} />
   ) : plan ? (
     <MissionPlan key={plan.seq ?? 0} base={b} initialTarget={plan.target} preset={plan.preset} onClose={() => setPlan(null)} onPickOnMap={() => go("karte")} />
   ) : tab === "basis" ? (
     <>
       <SeasonEndBanner onOpen={() => { go("berichte"); setSub("rangliste"); }} />
-      <BaseScreen base={b} asOf={base.data.serverNow} sheet={sheet} setSheet={setSheet} onGuide={onGuide} onTroops={() => go("truppen")} />
+      <BaseScreen base={b} asOf={base.data.serverNow} sheet={sheet} setSheet={setSheet} onGuide={onGuide} onTroops={() => go("truppen")} onResearch={openResearch} />
     </>
   ) : tab === "karte" ? (
     <MapScreen base={b} focus={mapFocus} onPlan={openPlan} />
   ) : tab === "truppen" ? (
-    <TroopsScreen base={b} onPlan={() => openPlan(null)} onShowOnMap={(t) => { setMapFocus(t); go("karte"); }} />
+    <TroopsScreen base={b} onResearch={openResearch} onPlan={() => openPlan(null)} onShowOnMap={(t) => { setMapFocus(t); go("karte"); }} />
   ) : tab === "berichte" ? (
     <MeldungenScreen sub={sub} setSub={setSub} unread={{ berichte: unread, nachrichten: unreadMsgs }} onShowOnMap={(t) => { setMapFocus(t); go("karte"); }} />
   ) : (
@@ -211,6 +220,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
         })}
       </nav>
       <Welcome playerId={playerId} />
+      <ResearchRollPopup base={b} />
       <UpdateNotices playerId={playerId} />
     </div>
   );

@@ -11,6 +11,7 @@ import { cancelLoss, cancelQuestion, unitStats, unitText, unitTone } from "../li
 import { Progress } from "./Base.tsx";
 import { RecentMissions } from "../components/Repeat.tsx";
 import { FreeSimCard } from "../components/SimLauncher.tsx";
+import { TECH, techName, unitResearchRows } from "../lib/research.ts";
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 const GROUPS: { builtIn: string; title: string }[] = [
@@ -38,7 +39,7 @@ function scale(cost: Record<string, number> | undefined, n: number): Record<stri
   return out;
 }
 
-export function TroopsScreen({ base, onPlan, onShowOnMap }: { base: BaseData; onPlan: () => void; onShowOnMap: (t: Target) => void }) {
+export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: BaseData; onPlan: () => void; onShowOnMap: (t: Target) => void; onResearch: () => void }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const now = useNow();
   const cancel = useCommand((i: { key: string; builtIn: string }) => trpcClient.base.cancelTraining.mutate(i), invalidateBase);
@@ -82,6 +83,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap }: { base: BaseData; on
           ))}
         </ul>
       </Card>
+      <ResearchCard base={base} now={now} onOpen={onResearch} />
       <RecentMissions />
       <FreeSimCard balance={balance} base={base} />
       {(() => {
@@ -190,9 +192,41 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
       <Sheet open={info} onClose={() => setInfo(false)} title={label(props.id)} icon={<IconTile id={props.id} size={56} tone={unitTone(props.balance, props.id)} />}>
         <p className="text-sm text-slate-200 mb-3">{unitText(props.balance, props.id)}</p>
         <StatTable rows={unitStats(props.balance, props.id).map(([k, v]) => [k.replace(/^Bonus gegen (.*)$/, (_m, t: string) => `Bonus gegen ${label(t)}`), v])} />
+        {(() => {
+          const rows = unitResearchRows(props.base.modifiers, props.balance.defenses[props.id] ? "anlage" : props.balance.units[props.id]?.branch ?? "", props.id);
+          return rows.length > 0 ? <div className="mt-2 text-emerald-300"><StatTable rows={rows} /></div> : null;
+        })()}
         <div className="mt-3 text-sm"><span className="text-slate-400">Kosten je Stück: </span><Cost cost={props.cost} /></div>
       </Sheet>
     </li>
+  );
+}
+
+/** Forschung als Abschnitt in Truppen: laufende Forschung und Weg in den Technikbaum. */
+function ResearchCard({ base, now, onOpen }: { base: BaseData; now: number; onOpen: () => void }) {
+  const r = base.research;
+  if (!r) return null;
+  const o = r.order;
+  return (
+    <Card title={<span className="flex items-center gap-2"><Icon id="forschungsamt" size={22} />Forschung</span>} right={<span className="text-xs text-slate-400">Forschungsamt {r.buildingLevel}</span>}>
+      <div className="flex items-center gap-3">
+        {o ? <IconTile id={TECH[o.techId]?.icon ?? "forschungsamt"} size={44} /> : <Icon id="wuerfel" size={36} />}
+        <div className="flex-1 min-w-0 text-sm">
+          {o ? (
+            <>
+              <div>{techName(o.techId)} · Stufe {o.targetLevel}</div>
+              <div className="text-sea-300">{o.finishesAt <= now ? "wird abgeschlossen …" : `noch ${fmtDuration(o.finishesAt - now)}`}</div>
+              <Progress start={o.startedAt} end={o.finishesAt} now={now} />
+            </>
+          ) : r.pendingChoice ? (
+            <div className="text-siegel">Durchbruch! Belohnung wählen.</div>
+          ) : (
+            <div className="text-slate-400">{r.buildingLevel < 1 ? "Erst das Forschungsamt bauen (Basis → Führung und Schutz)." : "Keine Forschung läuft."}</div>
+          )}
+        </div>
+        <Button kind="secondary" onClick={onOpen}>Technikbaum</Button>
+      </div>
+    </Card>
   );
 }
 

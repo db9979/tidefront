@@ -1,4 +1,5 @@
 // Gemeinsame Typen des Regelkerns. Nur löschbare Typ-Syntax (kein enum, kein namespace).
+import type { Modifiers } from "./modifiers.ts";
 
 export type ResourceMap = Record<string, number>;
 export type Counts = Record<string, number>;
@@ -33,6 +34,8 @@ export interface BuildingDef {
   creditLimitPerLevel?: number;
   warningMinutesBase?: number;
   warningMinutesPerLevel?: number;
+  /** Forschungsamt: Forschung je Stufe über 1 schneller (0,1 = +10 %). */
+  researchSpeedPerLevel?: number;
 }
 
 export type Branch = "see" | "land" | "luft";
@@ -147,6 +150,84 @@ export interface Balance {
     raidStrengthSpread: number;
   };
   market: MarketBalance;
+  /** Forschung (seit v1.3); fehlt sie, gibt es keine Forschung. */
+  research?: ResearchBalance;
+}
+
+// ---------------------------------------------------------------- Forschung
+
+/** Wirkung einer Technik: Faktor 1 + perLevel * Stufe auf einen Modifikator-Pfad (z. B. "production.stahl"). */
+export interface TechEffect {
+  path: string;
+  perLevel: number;
+}
+
+export interface TechDef {
+  /** Zweig (seefahrt, heer, luftfahrt, wirtschaft). */
+  branch: string;
+  maxLevel: number;
+  /** Kosten der ersten Stufe; jede weitere mal research.costFactor. */
+  cost: ResourceMap;
+  /** Dauer der ersten Stufe in Sekunden (Forschungsamt Stufe 1); jede weitere mal research.timeFactor. */
+  seconds: number;
+  /** Mindeststufe des Forschungsamts (Vorgabe 1). */
+  requiresBuildingLevel?: number;
+  /** Voraussetzungen: andere Techniken mit Mindeststufe. */
+  requires?: Record<string, number>;
+  effects: TechEffect[];
+}
+
+export interface ResearchBalance {
+  /** Gebäude, in dem geforscht wird. */
+  building: string;
+  costFactor: number;
+  timeFactor: number;
+  branches: string[];
+  /** Durchbruch-Würfel beim Abschluss: Chance = baseChance + perBuildingLevel * Stufe Forschungsamt, höchstens maxChance. */
+  breakthrough?: { baseChance: number; perBuildingLevel: number; maxChance: number; speedFactor: number };
+  techs: Record<string, TechDef>;
+}
+
+export interface ResearchOrder {
+  techId: string;
+  targetLevel: number;
+  startedAt: number;
+  finishesAt: number;
+  /** Bezahlte Kosten (Grundlage der Erstattung beim Abbruch). */
+  cost: ResourceMap;
+  /** Durchbruch-Chance (0..1), beim Start festgelegt und angezeigt. */
+  chance?: number;
+  /** Seed des Durchbruch-Wurfs (vom Server beim Start gesetzt). */
+  seed?: number;
+  /** Diese Forschung lief mit halber Dauer (Durchbruch-Belohnung eingelöst). */
+  halved?: boolean;
+}
+
+export type BreakthroughChoice = "level" | "speed";
+
+/** Ergebnis des Durchbruch-Wurfs einer abgeschlossenen Forschung. */
+export interface ResearchRoll {
+  techId: string;
+  /** Stufe, die erforscht wurde. */
+  level: number;
+  /** Wurf 1..100; Durchbruch, wenn roll <= chance * 100. */
+  roll: number;
+  chance: number;
+  breakthrough: boolean;
+  /** Gewählte Belohnung; null = Wahl steht noch aus. Ohne Durchbruch immer null. */
+  choice: BreakthroughChoice | null;
+  atMs: number;
+}
+
+export interface ResearchState {
+  /** Erreichte Stufe je Technik. */
+  levels: Counts;
+  /** Laufender Forschungsauftrag (höchstens einer). */
+  order: ResearchOrder | null;
+  /** Letzter Durchbruch-Wurf (nachvollziehbar gespeichert). */
+  lastRoll?: ResearchRoll | null;
+  /** Belohnung „nächste Forschung halb so lang“ liegt bereit. */
+  halfNext?: boolean;
 }
 
 // ---------------------------------------------------------------- Ergebnis
@@ -205,6 +286,8 @@ export interface BaseState {
   trainingQueue: TrainingOrder[];
   versorgungsmangel: boolean;
   protection: ProtectionState;
+  /** Forschung dieser Saison; fehlt sie, ist nichts erforscht. */
+  research?: ResearchState;
 }
 
 export interface ProductionInfo {
@@ -254,6 +337,8 @@ export interface Mission {
   returnAtMs: number;
   /** Zeitpunkt des Rückrufs auf der Hinfahrt; fehlt, wenn der Verband nicht zurückgerufen wurde. */
   recalledAtMs?: number;
+  /** Tarnung des Angreifers: Faktor auf die Vorwarnzeit des Ziels (fehlt = 1). */
+  warningFactor?: number;
 }
 
 export interface FleetCheck {
@@ -280,6 +365,8 @@ export interface AttackerInput {
   unlimitedCargo?: boolean;
   /** Ziel ist ein Schwachziel (Anteilsbeute mal loot.weakTargetLootFactor). */
   weakTarget?: boolean;
+  /** Modifikatoren des Angreifers (Angriff, Lebenspunkte, Minenschaden, Ladung, Beute). */
+  modifiers?: Modifiers;
 }
 
 export interface DefenderInput {
@@ -292,6 +379,8 @@ export interface DefenderInput {
   protectedPerResource?: number;
   /** Feste Beute (Piratennest) statt eines Anteils. */
   fixedLoot?: ResourceMap;
+  /** Modifikatoren des Verteidigers (Angriff, Lebenspunkte). Bunkerschutz steckt schon in protectedPerResource. */
+  modifiers?: Modifiers;
 }
 
 export interface PhaseReport {

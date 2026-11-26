@@ -25,6 +25,7 @@ import {
   nightShieldWindow,
   market as marketCore,
   type BaseState,
+  type Modifiers,
   type Counts,
   type Mission,
   type ResourceMap,
@@ -37,12 +38,14 @@ import { activeMissionCount, baseOfPlayer } from "./store.ts";
 import { loadMarket, targetAt } from "./commands.ts";
 // Weltereignisse: Vorschau einer Mission gegen ein Ereignis.
 import { previewAgainstEvent } from "./world-events-missions.ts";
+import { modsOf } from "./modifiers.ts";
+import { researchView } from "./research.ts";
 
-/** Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? */
-export async function incomingDetected(tx: DbOrTx, baseId: number, state: BaseState, nowMs: number): Promise<boolean> {
-  const warn = radarWarningMinutes(state, balance);
+/** Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband.) */
+export async function incomingDetected(tx: DbOrTx, baseId: number, state: BaseState, nowMs: number, mods?: Modifiers): Promise<boolean> {
+  const warn = radarWarningMinutes(state, balance, mods);
   const rows = await tx
-    .select({ arriveAt: tables.mission.arriveAt })
+    .select({ arriveAt: tables.mission.arriveAt, plan: tables.mission.plan })
     .from(tables.mission)
     .where(and(
       eq(tables.mission.targetKind, "base"),
@@ -50,7 +53,12 @@ export async function incomingDetected(tx: DbOrTx, baseId: number, state: BaseSt
       eq(tables.mission.status, "outbound"),
       inArray(tables.mission.type, ["ueberfall", "kartell"]),
     ));
-  return rows.some((r) => isAttackDetected(r.arriveAt.getTime(), nowMs, warn));
+  return rows.some((r) => isAttackDetected(r.arriveAt.getTime(), nowMs, warn * warnFactor(r.plan)));
+}
+
+/** Tarnfaktor eines Verbands (Mission.warningFactor), 1 ohne Tarnung. */
+function warnFactor(plan: unknown): number {
+  return (plan as Mission | null)?.warningFactor ?? 1;
 }
 
 export async function baseView(engine: Engine, playerId: number) {
@@ -59,8 +67,9 @@ export async function baseView(engine: Engine, playerId: number) {
   if (!own) return { serverNow: nowMs, base: null };
   await processDueForBase(engine, own.id, nowMs);
   const row = (await baseOfPlayer(engine.db, playerId))!;
-  const s = settle(row.state, nowMs, balance);
-  const rates = productionRates(s, balance);
+  const mods = await modsOf(engine.db, row, nowMs);
+  const s = settle(row.state, nowMs, balance, mods);
+  const rates = productionRates(s, balance, mods);
   const buildings = Object.keys(balance.buildings).map((id) => {
     const level = s.buildings[id] ?? 0;
     // Nächster Ausbau baut auf der geplanten Stufe auf (eingereihte Aufträge zählen mit).
@@ -71,7 +80,7 @@ export async function baseView(engine: Engine, playerId: number) {
       planned,
       maxAllowed: maxAllowedLevel(s, id, balance),
       cost: planned < balance.building.maxLevel ? upgradeCost(id, planned, balance) : null,
-      seconds: planned < balance.building.maxLevel ? upgradeSeconds(id, planned, balance) : null,
+      seconds: planned < balance.building.maxLevel ? upgradeSeconds(id, planned, balance, mods) : null,
     };
   });
   const units = Object.entries(balance.units).map(([id, def]) => {
@@ -81,7 +90,7 @@ export async function baseView(engine: Engine, playerId: number) {
       home: s.units[id] ?? 0,
       away: s.unitsAway[id] ?? 0,
       builtIn: def.builtIn ?? "",
-      secondsEach: lvl >= 1 ? trainingSecondsPerUnit(id, lvl, balance) : null,
+      secondsEach: lvl >= 1 ? trainingSecondsPerUnit(id, lvl, balance, mods) : null,
     };
   });
   const missions = await engine.db
@@ -97,9 +106,9 @@ export async function baseView(engine: Engine, playerId: number) {
       eq(tables.mission.targetId, own.id),
       eq(tables.mission.status, "outbound"),
     ));
-  const warn = radarWarningMinutes(s, balance);
+  const warn = radarWarningMinutes(s, balance, mods);
   const incoming = incomingRows
-    .filter((m) => m.type === "transport" || isAttackDetected(m.arriveAt.getTime(), nowMs, warn))
+    .filter((m) => m.type === "transport" || isAttackDetected(m.arriveAt.getTime(), nowMs, warn * warnFactor(m.plan)))
     .map((m) => ({
       id: m.id,
       type: m.type,
@@ -120,7 +129,7 @@ export async function baseView(engine: Engine, playerId: number) {
       col: own.col,
       row: own.row,
       resources: s.resources,
-      capacity: storageCapacity(s, balance),
+      capacity: storageCapacity(s, balance, mods),
       rates: rates.perHour,
       power: { supply: rates.powerSupply, demand: rates.powerDemand, factor: rates.powerFactor },
       upkeepPerHour: rates.upkeepPerHour,
@@ -135,7 +144,7 @@ export async function baseView(engine: Engine, playerId: number) {
       missionSlots: missionSlots(s, balance),
       activeMissions: missions.length,
       aircraftSlots: { used: aircraftSlotsUsed(s, balance), total: aircraftSlots(s, balance) },
-      bunkerProtection: bunkerProtection(s, balance),
+      bunkerProtection: bunkerProtection(s, balance, mods),
       radarWarningMinutes: warn,
       protection: {
         ...s.protection,
@@ -164,6 +173,9 @@ export async function baseView(engine: Engine, playerId: number) {
       })),
       incoming,
       deliveries: deliveries.map((d) => ({ id: d.id, resource: d.resource, qty: d.qty, arriveAtMs: d.arriveAt.getTime() })),
+      /** Alle wirksamen Modifikatoren (Forschung und weitere Quellen) für Info-Blätter. */
+      modifiers: mods,
+      research: researchView(s, mods),
     },
   };
 }
@@ -214,8 +226,9 @@ export async function missionPreview(
   const target = await targetAt(engine.db as never, input.col, input.row);
   const distanceKm = hexDistanceKm(own, input);
   if (!target) return { ok: false as const, code: "no_target", distanceKm };
+  const mods = await modsOf(engine.db, own, nowMs);
   const r = planMission(
-    settle(own.state, nowMs, balance),
+    settle(own.state, nowMs, balance, mods),
     {
       type: input.type,
       units: input.units,
@@ -227,6 +240,7 @@ export async function missionPreview(
     },
     nowMs,
     balance,
+    mods,
   );
   if (!r.ok) return { ok: false as const, code: r.code, distanceKm };
   return {
@@ -304,7 +318,8 @@ export async function marketView(engine: Engine, playerId: number) {
   const [p] = await engine.db.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, playerId));
   const trader = p?.trader as Omit<marketCore.TraderState, "stock">;
   const own = await baseOfPlayer(engine.db, playerId);
-  const cap = own ? storageCapacity(settle(own.state, nowMs, balance), balance) : 0;
+  const mods = own ? await modsOf(engine.db, own, nowMs) : undefined;
+  const cap = own ? storageCapacity(settle(own.state, nowMs, balance, mods), balance, mods) : 0;
   const dayIndex = marketCore.utcDayIndex(nowMs);
   return {
     serverNow: nowMs,

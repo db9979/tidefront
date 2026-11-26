@@ -19,6 +19,7 @@ import {
 } from "../src/index.ts";
 import type { BotSnapshot } from "./bot.ts";
 import { MILITARY_SHARE, UBOOT_DOCTRINE, UBOOT_HEAVY_DOCTRINE, runBot, value } from "./bot.ts";
+import { runResearchSim } from "./research.ts";
 
 const balance = JSON.parse(
   readFileSync(new URL("../../balance/v1/balance.json", import.meta.url), "utf8"),
@@ -243,6 +244,9 @@ for (const day of [7, 28]) {
   const r = rate((seed) => composeRaid(s.base.units, s.base.defenses, balance, seed + RAID_SEED_OFFSET).attacker, defenderFromBase(s.base, balance));
   console.log(`  Kartell gegen den Bot nach ${day} Tagen: Ø ${r.avgBoats.toFixed(1)} Boote, ${Math.round(r.avgMiliz)} Miliz, Sieg ${pct(r.winRate)}`);
 }
+
+// Forschung (v1.3): eigene Fälle, die bisherigen Zahlen oben bleiben unverändert.
+runResearchSim(balance, snaps);
 
 /** Der Bot schickt alles, was daheim steht (die Doktrin hält ihn innerhalb der Kommandopunkte). */
 function sentFleet(s: BotSnapshot): Counts {

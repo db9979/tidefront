@@ -1,7 +1,7 @@
 // Benachrichtigungen aus Ereignissen. Läuft in der Transaktion des Ereignisses (vor und nach dem Handler),
 // versandt wird erst nach dem Commit (engine.push). Hält handlers.ts frei von Benachrichtigungslogik.
 import { eq } from "drizzle-orm";
-import { radarWarningMinutes, type BaseState, type BuildOrder, type TrainingOrder } from "@tidefront/game-core";
+import { radarWarningMinutes, type BaseState, type BuildOrder, type Modifiers, type TrainingOrder } from "@tidefront/game-core";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, type NoticeJob } from "./context.ts";
 import type { EventRow, Handler } from "./events.ts";
@@ -139,9 +139,13 @@ export async function noticesAfter(tx: Tx, ev: EventRow, due: number, snap: Snap
  */
 export async function scheduleAttackWarning(
   tx: Tx,
-  input: { missionId: number; targetBaseId: number; targetState: BaseState; arriveAtMs: number; nowMs: number },
+  input: {
+    missionId: number; targetBaseId: number; targetState: BaseState; arriveAtMs: number; nowMs: number;
+    /** Modifikatoren des Ziels (Radar) und Tarnfaktor des Angreifers (Mission.warningFactor). */
+    targetMods?: Modifiers; warningFactor?: number;
+  },
 ): Promise<number> {
-  const warnMs = radarWarningMinutes(input.targetState, balance) * 60000;
+  const warnMs = radarWarningMinutes(input.targetState, balance, input.targetMods) * (input.warningFactor ?? 1) * 60000;
   const due = Math.max(input.nowMs, input.arriveAtMs - warnMs);
   await scheduleEvent(tx, "attack_warning", due, { missionId: input.missionId }, input.targetBaseId);
   return due;

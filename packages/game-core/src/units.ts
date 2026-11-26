@@ -1,5 +1,7 @@
 import type { Balance, BaseState, ResourceMap, Result, TrainingOrder } from "./types.ts";
 import { buildingLevel, hasResources, settle, subtractResources } from "./economy.ts";
+import type { Modifiers } from "./modifiers.ts";
+import { modEntry } from "./modifiers.ts";
 
 /** Pseudo-Bauplatz für Verteidigungsanlagen (haben in balance.json kein builtIn). */
 export const DEFENSE_SLOT = "anlagen";
@@ -16,11 +18,16 @@ export function trainingCost(id: string, count: number, balance: Balance): Resou
   return cost;
 }
 
-/** Bauzeit je Einheit in Sekunden bei Stufe `level` (>= 1) des Baugebäudes. */
-export function trainingSecondsPerUnit(unitId: string, level: number, balance: Balance): number {
+/** Bauzeit je Einheit in Sekunden bei Stufe `level` (>= 1) des Baugebäudes; `mods.trainingTime[builtIn]`. */
+export function trainingSecondsPerUnit(unitId: string, level: number, balance: Balance, mods?: Modifiers): number {
   const def = balance.units[unitId];
   const speed = balance.buildings[def.builtIn ?? ""]?.buildSpeedPerLevel ?? 0;
-  return (def.seconds ?? 0) / (1 + speed * (level - 1));
+  return ((def.seconds ?? 0) / (1 + speed * (level - 1))) * modEntry(mods, "trainingTime", def.builtIn ?? "");
+}
+
+/** Bauzeit je Verteidigungsanlage in Sekunden; `mods.trainingTime.anlagen`. */
+export function defenseSecondsEach(defenseId: string, balance: Balance, mods?: Modifiers): number {
+  return balance.defenses[defenseId].seconds * modEntry(mods, "trainingTime", DEFENSE_SLOT);
 }
 
 /** Stellplätze für Flugzeuge (Flugfeld). */
@@ -52,13 +59,14 @@ export function startTraining(
   count: number,
   nowMs: number,
   balance: Balance,
+  mods?: Modifiers,
 ): Result<{ base: BaseState; order: TrainingOrder }> {
   const isUnit = Object.hasOwn(balance.units, id);
   const isDefense = Object.hasOwn(balance.defenses, id);
   if (!isUnit && !isDefense) return { ok: false, code: "unknown_unit" };
   if (!isPositiveInt(count)) return { ok: false, code: "bad_count" };
 
-  const next = settle(base, nowMs, balance);
+  const next = settle(base, nowMs, balance, mods);
   let builtIn = DEFENSE_SLOT;
   let secondsEach = 0;
   if (isUnit) {
@@ -68,9 +76,9 @@ export function startTraining(
     if (level < 1) return { ok: false, code: "building_required" };
     if (level < (def.requiresLevel ?? 1)) return { ok: false, code: "building_level" };
     if (next.versorgungsmangel) return { ok: false, code: "supply_shortage" };
-    secondsEach = trainingSecondsPerUnit(id, level, balance);
+    secondsEach = trainingSecondsPerUnit(id, level, balance, mods);
   } else {
-    secondsEach = balance.defenses[id].seconds;
+    secondsEach = defenseSecondsEach(id, balance, mods);
   }
   if (base.trainingQueue.some((o) => o.builtIn === builtIn)) return { ok: false, code: "queue_busy" };
   if (isUnit && balance.units[id].branch === "luft") {
@@ -103,6 +111,7 @@ export function completeTraining(
   base: BaseState,
   nowMs: number,
   balance: Balance,
+  mods?: Modifiers,
 ): Result<{ base: BaseState; completed: TrainingOrder[] }> {
   if (base.trainingQueue.length === 0) return { ok: false, code: "no_order" };
   const due = base.trainingQueue
@@ -111,12 +120,12 @@ export function completeTraining(
   if (due.length === 0) return { ok: false, code: "not_finished" };
   let next = base;
   for (const order of due) {
-    next = settle(next, order.finishesAt, balance);
+    next = settle(next, order.finishesAt, balance, mods);
     const target = order.kind === "unit" ? next.units : next.defenses;
     target[order.id] = (target[order.id] ?? 0) + order.count;
     next.trainingQueue = next.trainingQueue.filter(
       (o) => !(o.builtIn === order.builtIn && o.finishesAt === order.finishesAt && o.id === order.id),
     );
   }
-  return { ok: true, base: settle(next, nowMs, balance), completed: due.map((o) => ({ ...o })) };
+  return { ok: true, base: settle(next, nowMs, balance, mods), completed: due.map((o) => ({ ...o })) };
 }
