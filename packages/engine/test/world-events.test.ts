@@ -150,6 +150,13 @@ test("Schatzschiff abfangen: Abfangpunkt beim Planen, nur der erste Sieger erhä
   const now = Date.now();
   const route = buildRoute(path.path.map((h) => hexCenter(h.col, h.row)), now, now + 48 * HOUR);
   await db.update(tables.worldEvent).set({ data: { ...(e.data as object), route }, endsAt: new Date(now + 48 * HOUR) }).where(eq(tables.worldEvent.id, id));
+  // Das Einlaufen (world_event_end) mitverschieben: sonst bleibt es bei der zufälligen Fahrzeit des Spawns (12–24 h),
+  // und ein Abfangen nach z. B. 13 h fände das Schiff schon „entkommen“.
+  await db.update(tables.gameEvent).set({ dueAt: new Date(now + 48 * HOUR) })
+    .where(and(eq(tables.gameEvent.type, "world_event_end"), sql`${tables.gameEvent.payload}->>'eventId' = ${String(id)}`));
+  const [end] = await db.select().from(tables.gameEvent)
+    .where(and(eq(tables.gameEvent.type, "world_event_end"), eq(tables.gameEvent.status, "pending"), sql`${tables.gameEvent.payload}->>'eventId' = ${String(id)}`));
+  assert.equal(end.dueAt.getTime(), now + 48 * HOUR, "Einlaufen auf 48 h verschoben");
   const fleet = { zerstoerer: 40, landungsschiff: 2 };
   await arm(a.baseId, fleet);
   await arm(b.baseId, fleet);
@@ -208,9 +215,11 @@ test("Großflotte: Ankündigung, Schwächung auf See (Verluste bleiben, Beute un
   const view = await worldEventsView(engine, a.playerId);
   assert.ok(view.nearby.includes(id));
   const initial = (e.units as Record<string, number>).schnellboot;
-  // Jäger greift die Flotte vor dem Auslaufen an.
-  await arm(c.baseId, { korvette: 6, landungsschiff: 1 });
-  const m = await launchMission(engine, c.playerId, key(), { type: "ueberfall", units: { korvette: 6, landungsschiff: 1 }, col: 0, row: 0, eventId: id });
+  // Jäger greift die Flotte vor dem Auslaufen an. 4 Korvetten gegen 15 Schnellboote: in 20 000 simulierten Kämpfen
+  // bleiben stets 5–10 Boote übrig (mit 6 Korvetten war die Flotte in ~2 % der zufälligen Kampfseeds ganz versenkt,
+  // das Ereignis endete „defeated“ und das Ziel blieb „pending“).
+  await arm(c.baseId, { korvette: 4, landungsschiff: 1 });
+  const m = await launchMission(engine, c.playerId, key(), { type: "ueberfall", units: { korvette: 4, landungsschiff: 1 }, col: 0, row: 0, eventId: id });
   assert.equal(m.ok, true, JSON.stringify(m));
   const arrive = (m as { arriveAtMs: number }).arriveAtMs;
   assert.ok(arrive < e.activeAt.getTime(), "Ankunft vor dem Auslaufen");
@@ -218,6 +227,7 @@ test("Großflotte: Ankündigung, Schwächung auf See (Verluste bleiben, Beute un
   e = await eventRow(id);
   const left = (e.units as Record<string, number>).schnellboot ?? 0;
   assert.ok(left < initial, `Flotte geschwächt: ${initial} → ${left}`);
+  assert.ok(left > 0, "Flotte nicht ganz versenkt (sonst entfallen die Hafenangriffe)");
   const [dmg] = await db.select().from(tables.worldEventDamage).where(eq(tables.worldEventDamage.eventId, id));
   assert.equal(dmg.playerId, c.playerId);
   assert.ok(dmg.hp > 0);
