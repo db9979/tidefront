@@ -1,0 +1,518 @@
+import type {
+  AttackerInput,
+  Balance,
+  BattleReport,
+  Counts,
+  DefenderInput,
+  PhaseName,
+  PhaseReport,
+  ResourceMap,
+  Result,
+  Side,
+  SideOutcome,
+} from "./types.ts";
+import type { Rng } from "./rng.ts";
+import { mulberry32, randomFactor } from "./rng.ts";
+import { SUPPLY_SHORTAGE_ATTACK_FACTOR } from "./economy.ts";
+
+/** "Pioniere halbieren den Schaden" der Minensperren (REGELN.md, Abschnitt Kampf). */
+export const PIONEER_MINE_FACTOR = 0.5;
+
+export const PHASE_NAMES: readonly PhaseName[] = ["luftkampf", "luftschlag", "seegefecht", "landung"];
+
+type Kind = "ship" | "ground" | "fighter" | "bomber" | "airOther" | "defense";
+type AttackKey = "see" | "luft" | "land" | "anlage";
+
+interface Stat {
+  id: string;
+  kind: Kind;
+  hp: number;
+  attack: Record<AttackKey, number>;
+  bonus: Record<string, number>;
+  troopSpace: number;
+  cargo: number;
+  size: number;
+  cost: ResourceMap;
+  oneShot: number;
+}
+
+interface StatTable {
+  /** Alle IDs in fester Reihenfolge (units, npcUnits, defenses) für deterministische Schleifen. */
+  ids: string[];
+  byId: Record<string, Stat>;
+}
+
+function buildStats(balance: Balance): StatTable {
+  const ids: string[] = [];
+  const byId: Record<string, Stat> = {};
+  for (const group of [balance.units, balance.npcUnits]) {
+    for (const [id, def] of Object.entries(group)) {
+      const a = def.attack;
+      const strikes = a.see > 0 || a.land > 0 || (a.anlage ?? 0) > 0;
+      let kind: Kind = def.branch === "see" ? "ship" : "ground";
+      // Flugzeugrollen aus den Werten: Bomber wirken gegen See/Land/Anlagen, Jäger nur gegen Luft.
+      if (def.branch === "luft") kind = strikes ? "bomber" : a.luft > 0 ? "fighter" : "airOther";
+      ids.push(id);
+      byId[id] = {
+        id,
+        kind,
+        hp: def.hp,
+        attack: { see: a.see, luft: a.luft, land: a.land, anlage: a.anlage ?? 0 },
+        bonus: def.bonus ?? {},
+        troopSpace: def.troopSpace ?? 0,
+        cargo: def.cargo ?? 0,
+        size: def.size ?? 0,
+        cost: def.cost ?? {},
+        oneShot: 0,
+      };
+    }
+  }
+  for (const [id, def] of Object.entries(balance.defenses)) {
+    const a = def.attack;
+    ids.push(id);
+    byId[id] = {
+      id,
+      kind: "defense",
+      hp: def.hp,
+      attack: { see: a?.see ?? 0, luft: a?.luft ?? 0, land: a?.land ?? 0, anlage: 0 },
+      bonus: {},
+      troopSpace: 0,
+      cargo: 0,
+      size: 0,
+      cost: def.cost ?? {},
+      oneShot: def.oneShotDamageToLanding ?? 0,
+    };
+  }
+  return { ids, byId };
+}
+
+type Group = [Stat, number][];
+
+function pick(table: StatTable, counts: Counts, pred: (s: Stat) => boolean): Group {
+  const out: Group = [];
+  for (const id of table.ids) {
+    const n = counts[id] ?? 0;
+    if (n > 0 && pred(table.byId[id])) out.push([table.byId[id], n]);
+  }
+  return out;
+}
+
+function totalHp(group: Group): number {
+  let sum = 0;
+  for (const [s, n] of group) sum += s.hp * n;
+  return sum;
+}
+
+/**
+ * Eine Salve: Schaden je Schütze = Angriff * Anzahl, verteilt auf die Ziele proportional zu
+ * deren gesamten Lebenspunkten; bonus[zieltyp] multipliziert den Anteil.
+ */
+function volley(
+  shooters: Group,
+  targets: Group,
+  valueFor: (shooter: Stat, target: Stat) => number,
+  factor: number,
+  dealt: Record<string, number>,
+): Record<string, number> {
+  const damage: Record<string, number> = {};
+  const hpSum = totalHp(targets);
+  if (hpSum <= 0) return damage;
+  for (const [shooter, n] of shooters) {
+    for (const [target, m] of targets) {
+      const share = (target.hp * m) / hpSum;
+      const d = n * valueFor(shooter, target) * share * (shooter.bonus[target.id] ?? 1) * factor;
+      if (d <= 0) continue;
+      damage[target.id] = (damage[target.id] ?? 0) + d;
+      dealt[shooter.id] = (dealt[shooter.id] ?? 0) + d;
+    }
+  }
+  return damage;
+}
+
+/** Verluste = floor(Schaden / hp), höchstens der Bestand; Restschaden verfällt. */
+function applyDamage(table: StatTable, counts: Counts, damage: Record<string, number>): void {
+  for (const [id, d] of Object.entries(damage)) {
+    const have = counts[id] ?? 0;
+    const lost = Math.min(have, Math.floor(d / table.byId[id].hp));
+    if (lost > 0) counts[id] = have - lost;
+  }
+}
+
+function decisive(damage: { attacker: Record<string, number>; defender: Record<string, number> }, table: StatTable): {
+  entscheidend: string | null;
+  entscheidendSide: Side | null;
+} {
+  let best: string | null = null;
+  let bestSide: Side | null = null;
+  let bestValue = 0;
+  for (const side of ["attacker", "defender"] as const) {
+    for (const id of table.ids) {
+      const d = damage[side][id] ?? 0;
+      if (d > bestValue) {
+        best = id;
+        bestSide = side;
+        bestValue = d;
+      }
+    }
+  }
+  return { entscheidend: best, entscheidendSide: bestSide };
+}
+
+interface PhaseDraft {
+  phase: PhaseName;
+  before: { attacker: Counts; defender: Counts };
+  damage: { attacker: Record<string, number>; defender: Record<string, number> };
+  rounds: number;
+}
+
+function beginPhase(phase: PhaseName, a: Counts, d: Counts): PhaseDraft {
+  return { phase, before: { attacker: { ...a }, defender: { ...d } }, damage: { attacker: {}, defender: {} }, rounds: 0 };
+}
+
+function endPhase(draft: PhaseDraft, a: Counts, d: Counts, skipReason: string | null, table: StatTable): PhaseReport {
+  return {
+    phase: draft.phase,
+    skipped: skipReason !== null,
+    skipReason,
+    rounds: draft.rounds,
+    before: draft.before,
+    after: { attacker: { ...a }, defender: { ...d } },
+    damage: draft.damage,
+    ...decisive(draft.damage, table),
+  };
+}
+
+function normalizeCounts(input: Counts, allowed: (id: string) => boolean): Result<{ counts: Counts }> {
+  const counts: Counts = {};
+  for (const [id, n] of Object.entries(input)) {
+    if (!allowed(id)) return { ok: false, code: "unknown_unit" };
+    if (!Number.isInteger(n) || n < 0) return { ok: false, code: "bad_count" };
+    counts[id] = n;
+  }
+  return { ok: true, counts };
+}
+
+/**
+ * Beute nach einem Sieg. Feste Beute (Piratennest) oder Anteil am ungeschützten Bestand mal
+ * Wiederholungsfaktor; insgesamt durch die Ladekapazität begrenzt, bei Knappheit proportional
+ * gekürzt; je Ressource abgerundet.
+ */
+export function computeLoot(
+  defender: Pick<DefenderInput, "resources" | "protectedPerResource" | "fixedLoot">,
+  cargoCapacity: number,
+  priorAttacksInWindow: number,
+  balance: Balance,
+): ResourceMap {
+  const raw: ResourceMap = {};
+  let total = 0;
+  const factors = balance.loot.repeatFactors;
+  const repeat = factors.length === 0 ? 1 : factors[Math.min(Math.max(0, priorAttacksInWindow), factors.length - 1)];
+  for (const r of balance.resources) {
+    let amount = 0;
+    if (defender.fixedLoot !== undefined) {
+      amount = defender.fixedLoot[r] ?? 0;
+    } else {
+      const unprotected = Math.max(0, (defender.resources?.[r] ?? 0) - (defender.protectedPerResource ?? 0));
+      amount = unprotected * balance.loot.maxShareOfUnprotected * repeat;
+    }
+    raw[r] = Math.max(0, amount);
+    total += raw[r];
+  }
+  const scale = total > cargoCapacity ? Math.max(0, cargoCapacity) / total : 1;
+  const loot: ResourceMap = {};
+  for (const r of balance.resources) loot[r] = Math.floor(raw[r] * scale + 1e-9);
+  return loot;
+}
+
+function outcome(
+  table: StatTable,
+  before: Counts,
+  after: Counts,
+  returnShare: (s: Stat) => number,
+): SideOutcome {
+  const survivors: Counts = {};
+  const losses: Counts = {};
+  const returned: Counts = {};
+  const final: Counts = {};
+  for (const id of Object.keys(before)) {
+    survivors[id] = after[id] ?? 0;
+    losses[id] = before[id] - survivors[id];
+    returned[id] = Math.floor(losses[id] * returnShare(table.byId[id]) + 1e-9);
+    final[id] = survivors[id] + returned[id];
+  }
+  return { before: { ...before }, survivors, losses, returned, final };
+}
+
+/**
+ * Trägt einen Kampf in vier Phasen aus (Luftkampf, Luftschlag, Seegefecht, Landung).
+ * Rein und deterministisch: gleicher Seed und gleiche Eingabe ergeben denselben Bericht.
+ * Codes: unknown_unit, bad_count.
+ */
+export function resolveBattle(
+  attacker: AttackerInput,
+  defender: DefenderInput,
+  balance: Balance,
+  seed: number,
+): Result<{ report: BattleReport }> {
+  const table = buildStats(balance);
+  const isUnit = (id: string) => Object.hasOwn(table.byId, id) && table.byId[id].kind !== "defense";
+  const isDefense = (id: string) => Object.hasOwn(table.byId, id) && table.byId[id].kind === "defense";
+
+  const aIn = normalizeCounts(attacker.units, isUnit);
+  if (!aIn.ok) return aIn;
+  const dUnits = normalizeCounts(defender.units, isUnit);
+  if (!dUnits.ok) return dUnits;
+  const dDefs = normalizeCounts(defender.defenses, isDefense);
+  if (!dDefs.ok) return dDefs;
+
+  const A: Counts = { ...aIn.counts };
+  const D: Counts = { ...dUnits.counts, ...dDefs.counts };
+  const beforeA: Counts = { ...A };
+  const beforeD: Counts = { ...D };
+
+  const rng: Rng = mulberry32(seed);
+  const spread = balance.combat.randomSpread;
+  const maxRounds = balance.combat.maxRoundsPerPhase;
+  const moraleA = attacker.versorgungsmangel ? SUPPLY_SHORTAGE_ATTACK_FACTOR : 1;
+  const moraleD = defender.versorgungsmangel ? SUPPLY_SHORTAGE_ATTACK_FACTOR : 1;
+  // Versorgungsmangel schwächt nur Einheiten, nicht Anlagen.
+  const withMorale = (morale: number, value: number, shooter: Stat) =>
+    shooter.kind === "defense" ? value : value * morale;
+
+  const phases: PhaseReport[] = [];
+
+  // ------------------------------------------------------------ 1. Luftkampf
+  {
+    const draft = beginPhase("luftkampf", A, D);
+    const isFighter = (s: Stat) => s.kind === "fighter";
+    let skip: string | null = null;
+    const hasA = pick(table, A, isFighter).length > 0;
+    const hasD = pick(table, D, isFighter).length > 0;
+    if (!hasA && !hasD) skip = "no_fighters";
+    else if (!hasA || !hasD) skip = "no_opponent";
+    else {
+      while (draft.rounds < maxRounds) {
+        const fa = pick(table, A, isFighter);
+        const fd = pick(table, D, isFighter);
+        if (fa.length === 0 || fd.length === 0) break;
+        draft.rounds++;
+        const ra = randomFactor(rng, spread);
+        const rd = randomFactor(rng, spread);
+        const toD = volley(fa, fd, (s) => withMorale(moraleA, s.attack.luft, s), ra, draft.damage.attacker);
+        const toA = volley(fd, fa, (s) => withMorale(moraleD, s.attack.luft, s), rd, draft.damage.defender);
+        applyDamage(table, D, toD);
+        applyDamage(table, A, toA);
+      }
+    }
+    phases.push(endPhase(draft, A, D, skip, table));
+  }
+  const fighterHpA = totalHp(pick(table, A, (s) => s.kind === "fighter"));
+  const fighterHpD = totalHp(pick(table, D, (s) => s.kind === "fighter"));
+  const airSuperiority: Side | null =
+    fighterHpA > fighterHpD ? "attacker" : fighterHpD > fighterHpA ? "defender" : null;
+
+  // ------------------------------------------------------------ 2. Luftschlag
+  {
+    const draft = beginPhase("luftschlag", A, D);
+    const isBomber = (s: Stat) => s.kind === "bomber";
+    const firesAtAir = (s: Stat) => (s.kind === "ship" || s.kind === "defense") && s.attack.luft > 0;
+    const strikeTarget = (s: Stat) => s.kind === "ship" || s.kind === "defense";
+    const strikeValue = (s: Stat, t: Stat) => (t.kind === "defense" ? s.attack.anlage : s.attack.see);
+    const c = balance.combat;
+    const bomberFactor = (side: Side) =>
+      airSuperiority === null ? 1 : airSuperiority === side ? c.airSuperiorityBomberBonus : c.airSuperiorityBomberMalus;
+    let skip: string | null = null;
+    if (pick(table, A, isBomber).length === 0 && pick(table, D, isBomber).length === 0) {
+      skip = "no_bombers";
+    } else {
+      while (draft.rounds < maxRounds) {
+        const canA = pick(table, A, isBomber).length > 0 && pick(table, D, strikeTarget).length > 0;
+        const canD = pick(table, D, isBomber).length > 0 && pick(table, A, strikeTarget).length > 0;
+        if (!canA && !canD) break;
+        draft.rounds++;
+        // Zuerst die Flugabwehr (Flak und Schiffe) auf die Bomber.
+        const ra = randomFactor(rng, spread);
+        const rd = randomFactor(rng, spread);
+        const flakOnA = volley(
+          pick(table, D, firesAtAir),
+          pick(table, A, isBomber),
+          (s) => withMorale(moraleD, s.attack.luft, s),
+          rd,
+          draft.damage.defender,
+        );
+        const flakOnD = volley(
+          pick(table, A, firesAtAir),
+          pick(table, D, isBomber),
+          (s) => withMorale(moraleA, s.attack.luft, s),
+          ra,
+          draft.damage.attacker,
+        );
+        applyDamage(table, A, flakOnA);
+        applyDamage(table, D, flakOnD);
+        // Dann schlagen die überlebenden Bomber beider Seiten gleichzeitig zu.
+        const sa = randomFactor(rng, spread);
+        const sd = randomFactor(rng, spread);
+        const strikeOnD = volley(
+          pick(table, A, isBomber),
+          pick(table, D, strikeTarget),
+          (s, t) => withMorale(moraleA, strikeValue(s, t), s),
+          sa * bomberFactor("attacker"),
+          draft.damage.attacker,
+        );
+        const strikeOnA = volley(
+          pick(table, D, isBomber),
+          pick(table, A, strikeTarget),
+          (s, t) => withMorale(moraleD, strikeValue(s, t), s),
+          sd * bomberFactor("defender"),
+          draft.damage.defender,
+        );
+        applyDamage(table, D, strikeOnD);
+        applyDamage(table, A, strikeOnA);
+      }
+      if (draft.rounds === 0) skip = "no_targets";
+    }
+    phases.push(endPhase(draft, A, D, skip, table));
+  }
+
+  // ------------------------------------------------------------ 3. Seegefecht
+  {
+    const draft = beginPhase("seegefecht", A, D);
+    const isShip = (s: Stat) => s.kind === "ship";
+    // Verteidiger: Schiffe und alle Anlagen mit See-Angriff (Küstenbatterien feuern mit).
+    const defSea = (s: Stat) => s.kind === "ship" || (s.kind === "defense" && s.attack.see > 0);
+    const seaValue = (s: Stat, t: Stat) => (t.kind === "defense" ? s.attack.anlage : s.attack.see);
+    let skip: string | null = null;
+    const hasA = pick(table, A, isShip).length > 0;
+    const hasD = pick(table, D, defSea).length > 0;
+    if (!hasA && !hasD) skip = "no_ships";
+    else if (!hasA || !hasD) skip = "no_opponent";
+    else {
+      while (draft.rounds < maxRounds) {
+        const sa = pick(table, A, isShip);
+        const sd = pick(table, D, defSea);
+        if (sa.length === 0 || sd.length === 0) break;
+        draft.rounds++;
+        const ra = randomFactor(rng, spread);
+        const rd = randomFactor(rng, spread);
+        const toD = volley(sa, sd, (s, t) => withMorale(moraleA, seaValue(s, t), s), ra, draft.damage.attacker);
+        const toA = volley(sd, sa, (s) => withMorale(moraleD, s.attack.see, s), rd, draft.damage.defender);
+        applyDamage(table, D, toD);
+        applyDamage(table, A, toA);
+      }
+    }
+    phases.push(endPhase(draft, A, D, skip, table));
+  }
+
+  // ------------------------------------------------------------ 4. Landung
+  let landed = false;
+  {
+    const draft = beginPhase("landung", A, D);
+    const isGround = (s: Stat) => s.kind === "ground";
+    const defLand = (s: Stat) => s.kind === "ground" || s.id === "bunkerlinie";
+    let skip: string | null = null;
+
+    // Truppen über der verbliebenen Transportkapazität gehen verloren (auch ohne Landung).
+    let capacity = 0;
+    for (const id of table.ids) {
+      const n = A[id] ?? 0;
+      if (n > 0) capacity += (table.byId[id].troopSpace + (attacker.troopSpaceBonus?.[id] ?? 0)) * n;
+    }
+    let needed = 0;
+    for (const [s, n] of pick(table, A, isGround)) needed += s.size * n;
+    if (needed > capacity) {
+      const scale = capacity / needed;
+      for (const [s, n] of pick(table, A, isGround)) A[s.id] = Math.floor(n * scale + 1e-9);
+    }
+
+    if (capacity <= 0) skip = "no_landing_ships";
+    else if (pick(table, A, isGround).length === 0) skip = "no_troops";
+    else {
+      landed = true;
+      // Minensperren wirken einmal; Pioniere im Landungsverband halbieren den Schaden.
+      let mineDamage = 0;
+      for (const [s, n] of pick(table, D, (x) => x.oneShot > 0)) {
+        const d = s.oneShot * n * ((A.pioniere ?? 0) > 0 ? PIONEER_MINE_FACTOR : 1);
+        mineDamage += d;
+        draft.damage.defender[s.id] = (draft.damage.defender[s.id] ?? 0) + d;
+      }
+      if (mineDamage > 0) {
+        const troops = pick(table, A, isGround);
+        const hpSum = totalHp(troops);
+        const dmg: Record<string, number> = {};
+        for (const [s, n] of troops) dmg[s.id] = (mineDamage * s.hp * n) / hpSum;
+        applyDamage(table, A, dmg);
+      }
+      // Bodenkampf mit dem Wert "land" gegen Bodentruppen und Bunkerlinie.
+      while (draft.rounds < maxRounds) {
+        const ga = pick(table, A, isGround);
+        const gd = pick(table, D, defLand);
+        if (ga.length === 0 || gd.length === 0) break;
+        draft.rounds++;
+        const ra = randomFactor(rng, spread);
+        const rd = randomFactor(rng, spread);
+        const toD = volley(ga, gd, (s) => withMorale(moraleA, s.attack.land, s), ra, draft.damage.attacker);
+        const toA = volley(gd, ga, (s) => withMorale(moraleD, s.attack.land, s), rd, draft.damage.defender);
+        applyDamage(table, D, toD);
+        applyDamage(table, A, toA);
+      }
+    }
+    phases.push(endPhase(draft, A, D, skip, table));
+  }
+
+  // ------------------------------------------------------------ Ergebnis
+  const attackerTroops = pick(table, A, (s) => s.kind === "ground").length > 0;
+  const defenderHolds = pick(table, D, (s) => s.kind === "ground" || s.id === "bunkerlinie").length > 0;
+  const winner: Side = landed && attackerTroops && !defenderHolds ? "attacker" : "defender";
+
+  const c = balance.combat;
+  const isAir = (s: Stat) => s.kind === "fighter" || s.kind === "bomber" || s.kind === "airOther";
+  const attackerOutcome = outcome(table, beforeA, A, (s) =>
+    isAir(s) ? c.aircraftDamagedShare : s.kind === "ground" && winner === "attacker" ? c.hospitalShareAttacker : 0,
+  );
+  const defenderOutcome = outcome(table, beforeD, D, (s) =>
+    isAir(s)
+      ? c.aircraftDamagedShare
+      : s.kind === "ground"
+        ? c.hospitalShareDefender
+        : s.kind === "defense"
+          ? c.defenseRepairShare
+          : 0,
+  );
+
+  // Wracks: Anteil der Stahl- und Elektronikkosten versenkter Schiffe beider Seiten.
+  const wreck: ResourceMap = { stahl: 0, elektronik: 0 };
+  for (const side of [attackerOutcome, defenderOutcome]) {
+    for (const [id, lost] of Object.entries(side.losses)) {
+      const s = table.byId[id];
+      if (s.kind !== "ship" || lost <= 0) continue;
+      wreck.stahl += (s.cost.stahl ?? 0) * lost * c.wreckShare;
+      wreck.elektronik += (s.cost.elektronik ?? 0) * lost * c.wreckShare;
+    }
+  }
+  wreck.stahl = Math.floor(wreck.stahl + 1e-9);
+  wreck.elektronik = Math.floor(wreck.elektronik + 1e-9);
+
+  let loot: ResourceMap = {};
+  for (const r of balance.resources) loot[r] = 0;
+  if (winner === "attacker") {
+    let cargo = 0;
+    for (const id of table.ids) cargo += table.byId[id].cargo * (A[id] ?? 0);
+    if (attacker.unlimitedCargo) cargo = Infinity;
+    loot = computeLoot(defender, cargo, attacker.priorAttacksInWindow ?? 0, balance);
+  }
+
+  return {
+    ok: true,
+    report: {
+      seed,
+      winner,
+      airSuperiority,
+      landed,
+      phases,
+      attacker: attackerOutcome,
+      defender: defenderOutcome,
+      loot,
+      wreck,
+    },
+  };
+}

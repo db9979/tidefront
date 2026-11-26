@@ -124,5 +124,8 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
   (`Entfernung zum Handelshafen / convoySpeedKmh`). Verkaufte Ware wird sofort abgezogen, Kredite sofort gutgeschrieben.
 - Jeder Handel liefert Journalzeilen (doppelte Buchführung): Summe aller Kredit-Buchungen einschließlich Gebührenkonto ist 0,
   ebenso die Summe je Ressource zwischen Spieler, Markt und Lieferung.
-- Garantie, die ein Test prüft: Keine Folge von Käufen und Verkäufen eines Spielers ohne vergangene Zeit
-  erhöht seinen Gesamtwert (Kredite plus Bestand zum Richtwert bewertet).
+- Garantie, die Tests prüfen: Keine Folge von Käufen und Verkäufen ohne vergangene Zeit, nach der der Spieler von jeder
+  Ressource mindestens so viel hält wie vorher (Bestand plus Lieferungen), erhöht seine Kredite.
+  Startet der Kurs am Richtwert, steigt außerdem sein zum Richtwert bewerteter Gesamtwert nicht.
+  Ein Kauf unter Richtwert ist erlaubt: Das ist eine Wette auf die Rückkehr des Kurses, kein Gewinn aus dem Nichts.
+- Auslegungen des Börsenkerns stehen in `packages/game-core/src/market/ENTSCHEIDUNGEN.md` und gelten als Teil dieser Regeln.
