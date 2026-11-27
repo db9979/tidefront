@@ -2,6 +2,11 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.24.4 – 27.11.2026
+- **Warnung vor vollem Lager:** Tagesbefehle, Wochenziele und Erfolge zeigen vor dem Abholen, wie viel bei vollem Lager verfallen würde – mit „Lagerkomplex ausbauen“ oder „Trotzdem abholen“. Die Bestätigung nennt, was verfallen ist.
+- **Balance v1.25 (Wirtschaft):** Belohnungen der Wochenziele halbiert – sie waren fast so groß wie die halbe Wochenproduktion. Belohnungspakete enthalten mehr vom knappen Stahl und weniger Proviant.
+- Erfolg „Kaufmann“ und Wochenziel „Geschäfte“ zählen nur noch Börsengeschäfte ab 500 Kredite.
+
 ## 0.24.3 – 27.11.2026
 - **Behoben:** Das Info-Blatt des Kolonieschiffs hatte keine Beschreibung. Jetzt erklärt es Reichweite, Startvorrat und ab welcher Kommandozentrale weitere Häfen möglich sind.
 
