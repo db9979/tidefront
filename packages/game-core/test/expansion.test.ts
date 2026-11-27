@@ -12,13 +12,14 @@ const balance = loadBalance();
 const e = balance.expansion!;
 const ship = e.colonyShip;
 
-test("Freischaltung: 1 Hafen, ab Kommandozentrale 5 zwei, ab 9 drei, höchstens maxBases", () => {
+test("Freischaltung: 1 Hafen, ab Kommandozentrale 5 zwei, ab 8 drei, höchstens maxBases", () => {
   assert.equal(allowedBases(makeBase(balance, { buildings: { kommandozentrale: 4 } }), balance), 1);
   assert.equal(allowedBases(makeBase(balance, { buildings: { kommandozentrale: 5 } }), balance), 2);
-  assert.equal(allowedBases(makeBase(balance, { buildings: { kommandozentrale: 9 } }), balance), 3);
+  assert.equal(allowedBases(makeBase(balance, { buildings: { kommandozentrale: 8 } }), balance), 3);
+  assert.equal(allowedBases(makeBase(balance, { buildings: { kommandozentrale: 7 } }), balance), 2);
   assert.equal(allowedBases(makeBase(balance, { buildings: { kommandozentrale: 20 } }), balance), e.maxBases);
-  assert.equal(nextUnlockLevel(makeBase(balance, { buildings: { kommandozentrale: 6 } }), balance), 9);
-  assert.equal(nextUnlockLevel(makeBase(balance, { buildings: { kommandozentrale: 9 } }), balance), null);
+  assert.equal(nextUnlockLevel(makeBase(balance, { buildings: { kommandozentrale: 6 } }), balance), 8);
+  assert.equal(nextUnlockLevel(makeBase(balance, { buildings: { kommandozentrale: 8 } }), balance), null);
   const { expansion: _, ...off } = balance;
   assert.equal(allowedBases(makeBase(balance, { buildings: { kommandozentrale: 20 } }), off), 1);
 });
@@ -36,7 +37,7 @@ function check(patch: Partial<FoundingCheck> = {}): FoundingCheck {
   return {
     target: { col: 50, row: 50 }, coast: true, homeDistanceKm: 500,
     bases: [{ col: 40, row: 50, own: true }], nests: [], tradePorts: [], fields: [],
-    homeState: makeBase(balance, { buildings: { kommandozentrale: 8 } }), ownBases: 1, pendingFoundings: 0,
+    homeState: makeBase(balance, { buildings: { kommandozentrale: 7 } }), ownBases: 1, pendingFoundings: 0,
     units: { [ship]: 1, korvette: 3 }, ...patch,
   };
 }

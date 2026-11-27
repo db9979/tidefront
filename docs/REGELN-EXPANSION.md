@@ -6,7 +6,7 @@ Begründung und Simulation: `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt K,
 ## Häfen je Spieler
 
 - Der erste Hafen (Saisonbeginn, „Hafen wählen“) ist der **Heimathafen**; weitere Häfen sind **Kolonien**.
-- Erlaubt sind `1 + Anzahl der Stufen in unlockCommandLevels (5, 9), die die Kommandozentrale des Heimathafens
+- Erlaubt sind `1 + Anzahl der Stufen in unlockCommandLevels (5, 8), die die Kommandozentrale des Heimathafens
   erreicht hat`, höchstens `maxBases` (3). Laufende Gründungen zählen mit.
 - Spielerweit bleiben Forschung (im Heimathafen geführt; Kolonien nutzen deren Stufen), Kredite, Erfolge, Allianz,
   Rangliste (Summe aller Häfen) und die Nachtschild-Einstellung. Je Hafen: Ressourcen, Gebäude, Bauschlange,

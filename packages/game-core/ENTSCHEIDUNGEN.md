@@ -643,11 +643,13 @@ Ziel: Felder sind Entscheidungen und Konflikte, kein passiver Mehrertrag.
 
 ## K. Mehrere Häfen: Gründung und Verlegung (Welle 3 „Expansion“, Teil 2, Block `expansion`, v1.11)
 
-1. **Freischaltung.** 2. Hafen ab Kommandozentrale 5, 3. ab 9 (Heimathafen), höchstens 3; laufende Gründungen zählen
+1. **Freischaltung.** 2. Hafen ab Kommandozentrale 5, 3. ab 8 (Heimathafen, bis v1.13: 9), höchstens 3; laufende Gründungen zählen
    mit. Der Wirtschafts-Bot erreicht in 28 Tagen nur Kommandozentrale 6–7 (gieriger Ausbau, billigstes zuerst); mit
    der ersten Vorgabe 8/14 wäre der 2. Hafen für typische Spieler erst nach etwa 4 Wochen gekommen. v1.12 senkt auf
    5/9: der 2. Hafen wird im frühen Mittelspiel möglich (gebremst durch Werft 6, Hafenkommandantur 6 und die Kosten
    des Kolonieschiffs), der 3. bleibt ein Ziel für gezielten Ausbau.
+   Mit der 42-Tage-Saison senkt v1.14 den 3. Hafen auf Kommandozentrale 8: Die 42-Tage-Simulation (L8) zeigt den
+   Rüstungs-Bot an Tag 42 erst auf Stufe 8 und nur den reinen Wirtschafts-Bot an Tag 37 auf Stufe 9.
 2. **Kolonieschiff.** Kosten 6000 Stahl, 3000 Treibstoff, 2000 Elektronik, 2000 Proviant = 18 600 zum Richtwert; das
    sind 27 / 24 / 21 Stunden Produktion des Bot-Hafens an Tag 10 / 14 / 21 (689 / 779 / 894 je Stunde). Bauzeit 3 h
    (2 h bei Werft 6), Werft 6 und Hafenkommandantur 6, höchstens 0,2 je Werftstufe. Ladung 3000 für Startgüter.

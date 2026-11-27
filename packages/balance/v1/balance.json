@@ -375,7 +375,7 @@
   },
   "expansion": {
     "maxBases": 3,
-    "unlockCommandLevels": [5, 9],
+    "unlockCommandLevels": [5, 8],
     "colonyShip": "kolonieschiff",
     "minDistanceHex": 4,
     "minDistanceOwnHex": 3,
