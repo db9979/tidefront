@@ -177,6 +177,11 @@ export interface Balance {
     raidStrengthSpread: number;
     /** Anteil des Lebenspunkte-Zuwachses aus der Forschung des Verteidigers, den das Kartell mitzählt (v1.7; fehlt: 0). */
     raidResearchWeight?: number;
+    /**
+     * Gewicht der Lebenspunkte für die Überfallstärke je Einheit (ID) oder Gattung (`see`, `land`), Anlagen je ID
+     * (v1.13; fehlt ein Eintrag: 1). Schiffe kämpfen nicht am Boden und zählen deshalb geringer.
+     */
+    raidHpWeights?: Record<string, number>;
   };
   market: MarketBalance;
   /** Forschung (seit v1.3); fehlt sie, gibt es keine Forschung. */

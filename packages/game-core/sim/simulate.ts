@@ -28,6 +28,10 @@ import { runAdmiralSim } from "./admirals.ts"; // Admirale
 import { runNavalSim } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 import { runFieldEscortSim, runFieldsSim } from "./fields.ts"; // Felder
 import { runExpansionSim } from "./expansion.ts"; // Mehrere Häfen
+import { runRaidSim } from "./raids.ts"; // v1.13: Bunkerlinie, Flotte daheim
+import { runVeteranSim } from "./veterans.ts"; // v1.13: Veteranen über eine Saison
+import { runUbootNpcSim } from "./uboot-npc.ts"; // v1.13: U-Jagd für Kartell und Nester?
+import { runSeason42Sim } from "./season42.ts"; // Saison 42 Tage: Stillstand, KZ 9, Felder, Weltereignisse
 
 const balance = JSON.parse(
   readFileSync(new URL("../../balance/v1/balance.json", import.meta.url), "utf8"),
@@ -271,6 +275,11 @@ runNavalSim(balance, snaps);
 runFieldsSim(balance, snaps);
 runFieldEscortSim(balance); // Felder 2: Geleitabteilung
 runExpansionSim(balance, snaps); // Mehrere Häfen
+// Offene Fragen nach Spielerfahrung (v1.13): Kartell gegen Bunkerlinie und Flotte daheim, Veteranen, U-Jagd.
+runRaidSim(balance, snaps);
+runVeteranSim(balance, 42); // Saison 42 Tage (SEASON_DAYS)
+runSeason42Sim(balance);
+runUbootNpcSim(balance);
 
 /** Der Bot schickt alles, was daheim steht (die Doktrin hält ihn innerhalb der Kommandopunkte). */
 function sentFleet(s: BotSnapshot): Counts {

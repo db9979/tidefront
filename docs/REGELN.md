@@ -187,11 +187,15 @@ Nach dem Kampf:
 ## Freibeuter-Kartell
 
 - Nester der Stufen 1 bis 5 mit fester Besatzung und Beute (`pirates.nestLevels`), neu besetzt nach `nestRespawnHours`.
-  Ausgelegt auf eine Saison von 28 Tagen: Ein bezahlbarer Verband schlägt Stufe 1 ab Tag 1–2, Stufe 2 ab Tag 3–5,
-  Stufe 3 um Tag 7–10, Stufe 4 um Tag 14–18 und Stufe 5 um Tag 21–28 mit mindestens 70 %. Die Beute einer Stufe passt
+  Fahrplan (ausgelegt auf die ersten 28 Tage der Saison, die seit `SEASON_DAYS` = 42 sechs Wochen dauert): Ein bezahlbarer
+  Verband schlägt Stufe 1 ab Tag 1–2, Stufe 2 ab Tag 3–5, Stufe 3 um Tag 7–10, Stufe 4 um Tag 14–18 und Stufe 5 um
+  Tag 21–28 mit mindestens 70 %. In den Wochen 5 und 6 bleibt Stufe 5 das höchste Nest; Ziele sind dann Weltereignisse
+  (werden mit dem Saisonfortschritt stärker und reicher), Felder, der 3. Hafen und andere Spieler. Die Beute einer Stufe passt
   ungefähr in die Ladung der Landungsschiffe eines solchen Verbands.
 - Überfälle auf Spieler alle `raidIntervalHours` je Stützpunkt. Stärke (seit v1.1):
   - Verteidigungs-Lebenspunkte = Lebenspunkte aller Schiffe (auch U-Boote), Bodentruppen und Anlagen daheim (Flugzeuge zählen nicht).
+    Seit v1.13 gewichtet mit `raidHpWeights` (je ID, sonst je Gattung, sonst 1): Schiffe kämpfen nicht am Boden und zählen
+    halb (`see` 0,5), Minenräumer 0,1, Landungsschiffe, Kolonieschiffe und Minenleger gar nicht; Bodentruppen und Anlagen voll.
   - Grundstärke in Booten = `raidStrengthShareOfDefense * Verteidigungs-Lebenspunkte / hp(schnellboot)`, mindestens `raidMinSchnellboote`.
   - Forschung des Verteidigers (seit v1.7): Vom Zuwachs der Lebenspunkte durch Modifikatoren (`hp` je Gattung, Anlagen
     `anlage`) zählt das Kartell den Anteil `raidResearchWeight` (0,5) mit; ohne Forschung unverändert.
@@ -199,9 +203,13 @@ Nach dem Kampf:
     nicht der Kampf-Seed). Milizionäre = `Grundstärke * Faktor * raidMiliPerBoot`, gerundet, mindestens 1;
     Schnellboote = `Milizionäre / raidMiliPerBoot`, aufgerundet.
   - Das Kartell führt eigene Landungskapazität mit (`raidMiliPerBoot` je Schnellboot).
+  - Die Miliz trifft die Bunkerlinie so hart wie Bodentruppen (`piratenmiliz.attack.anlage` = `land` = 5, seit v1.13; vorher
+    1). Eine Bunkerlinie bleibt ein starker Schutz, hält aber nicht mehr jeden Überfall auf.
 - Kein Überfall während Nachtschild, Anfängerschutz oder Schutz nach Niederlage. Greift ein Schutz erst während der Anfahrt,
   dreht der Verband bei Ankunft ohne Kampf ab; der Verteidiger erhält dazu einen Bericht (`abgewiesen`).
-- Kartell und Nester haben keine U-Boote und keine U-Jagd (v1.2): U-Boote sind für sie unverwundbar.
+- Kartell und Nester haben keine U-Boote und keine U-Jagd (v1.2): U-Boote sind für sie unverwundbar. In v1.13 per
+  Simulation geprüft und so belassen (U-Boot-Verbände sind gegen Nester nicht besser als Zerstörer;
+  `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt L).
 
 ## Weltereignisse des Kartells
 

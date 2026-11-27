@@ -4,6 +4,7 @@ import {
   applyDefeatShield,
   composeRaid,
   raidDefenseHp,
+  raidHpWeight,
   createProtection,
   defenseHp,
   isNestRespawned,
@@ -81,15 +82,17 @@ test("Überfall: Mindeststärke ohne Verteidigung", () => {
 });
 
 test("Überfallstärke skaliert mit der Verteidigung einschließlich Bodentruppen", () => {
-  // 5 Korvetten (1000) + 100 Schützen (2000) + 3 Küstenbatterien (1200) + 1 Bunkerlinie (600) = 4800 HP
-  const raid = composeRaid({ korvette: 5, schuetzen: 100 }, { kuestenbatterie: 3, bunkerlinie: 1 }, balance);
+  // 10 Korvetten (2000, Gewicht 0,5 seit v1.13: 1000) + 100 Schützen (2000) + 3 Küstenbatterien (1200)
+  // + 1 Bunkerlinie (600) = 4800 HP für das Kartell
+  const raid = composeRaid({ korvette: 10, schuetzen: 100 }, { kuestenbatterie: 3, bunkerlinie: 1 }, balance);
+  assert.equal(defenseHp({ korvette: 10, schuetzen: 100 }, { kuestenbatterie: 3, bunkerlinie: 1 }, balance), 5800);
   assert.equal(raid.defenseHp, 4800);
   // 4800 * 0,55 / 80 = 33 Boote, 264 Miliz
   assert.deepEqual(raid.units, { schnellboot: 33, piratenmiliz: 264 });
   // Bodentruppen zählen, Flugzeuge nicht
   assert.equal(defenseHp({ schuetzen: 500, kampfpanzer: 2, abfangjaeger: 10, jagdbomber: 3 }, {}, balance), 10600);
-  // Miliz gerundet, Boote aufgerundet: 1650 * 0,55 / 80 = 11,34 -> 91 Miliz auf 12 Booten
-  assert.deepEqual(composeRaid({ korvette: 6, zerstoerer: 1 }, {}, balance).units, { schnellboot: 12, piratenmiliz: 91 });
+  // Miliz gerundet, Boote aufgerundet: 3300 * 0,5 * 0,55 / 80 = 11,34 -> 91 Miliz auf 12 Booten
+  assert.deepEqual(composeRaid({ korvette: 12, zerstoerer: 2 }, {}, balance).units, { schnellboot: 12, piratenmiliz: 91 });
   // monoton wachsend, auch mit Bodentruppen allein
   let last = 0;
   for (let n = 0; n <= 400; n += 40) {
@@ -182,9 +185,10 @@ test("kein Überfall unter Schutz", () => {
 });
 
 test("Überfallstärke zählt den Forschungsanteil der Lebenspunkte mit (raidResearchWeight, v1.7)", () => {
-  const units = { korvette: 5, schuetzen: 100 };
+  const units = { korvette: 10, schuetzen: 100 };
   const defenses = { kuestenbatterie: 3, bunkerlinie: 1 };
-  const raw = defenseHp(units, defenses, balance);
+  // Korvetten zählen mit Gewicht 0,5 (raidHpWeights, v1.13): 1000 + 2000 + 1800
+  const raw = defenseHp(units, defenses, balance) - 1000;
   // ohne Modifikatoren unverändert
   assert.equal(raidDefenseHp(units, defenses, balance), raw);
   assert.equal(composeRaid(units, defenses, balance).defenseHp, raw);
@@ -199,4 +203,55 @@ test("Überfallstärke zählt den Forschungsanteil der Lebenspunkte mit (raidRes
   assert.equal(raidDefenseHp(units, defenses, off, mods), raw);
   // Flugzeuge zählen weiter nicht
   assert.equal(raidDefenseHp({ jagdbomber: 5 }, {}, balance, mods), 0);
+});
+
+test("Schiffe zählen für die Überfallstärke geringer, Transporter gar nicht (raidHpWeights, v1.13)", () => {
+  const w = balance.pirates.raidHpWeights ?? {};
+  // Kriegsschiffe über die Gattung, Transporter über die ID (ID vor Gattung)
+  assert.equal(raidHpWeight("korvette", "see", balance), w.see);
+  assert.equal(raidHpWeight("landungsschiff", "see", balance), 0);
+  assert.equal(raidHpWeight("kolonieschiff", "see", balance), 0);
+  assert.equal(raidHpWeight("schuetzen", "land", balance), 1);
+  assert.equal(raidHpWeight("bunkerlinie", undefined, balance), 1);
+  assert.equal(raidDefenseHp({ landungsschiff: 4 }, {}, balance), 0);
+  assert.equal(raidDefenseHp({ zerstoerer: 2, schuetzen: 10 }, {}, balance), 900 * (w.see ?? 1) + 200);
+  // ohne Gewichte wie bis v1.12
+  const { raidHpWeights: _drop, ...plain } = balance.pirates;
+  const old = { ...balance, pirates: plain };
+  assert.equal(raidHpWeight("landungsschiff", "see", old), 1);
+  assert.equal(raidDefenseHp({ zerstoerer: 2, landungsschiff: 4 }, {}, old), defenseHp({ zerstoerer: 2, landungsschiff: 4 }, {}, old));
+});
+
+test("Schiffe daheim erhöhen die Siegchance des Kartells nicht (v1.13)", () => {
+  const res = { stahl: 8000, treibstoff: 4000, elektronik: 2000, proviant: 3000 };
+  const winRate = (units: Record<string, number>) => {
+    let wins = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      const raid = composeRaid(units, {}, balance, seed + 100000);
+      const r = resolveBattle(raid.attacker, { units, defenses: {}, resources: res, protectedPerResource: 300 }, balance, seed);
+      assert.ok(r.ok);
+      if (r.report.winner === "attacker") wins++;
+    }
+    return wins / 200;
+  };
+  const base = winRate({ schuetzen: 40 });
+  const fleets: Record<string, number>[] = [{ korvette: 8 }, { zerstoerer: 4 }, { landungsschiff: 4 }, { uboot: 4 }];
+  for (const ships of fleets) {
+    assert.ok(winRate({ schuetzen: 40, ...ships }) <= base + 0.03, JSON.stringify(ships));
+  }
+});
+
+test("Die Miliz kann eine einzelne Bunkerlinie zerstören (anlage 5, v1.13)", () => {
+  assert.equal(balance.npcUnits.piratenmiliz.attack.anlage, balance.npcUnits.piratenmiliz.attack.land);
+  const res = { stahl: 8000, treibstoff: 4000, elektronik: 2000, proviant: 3000 };
+  const def = { units: {}, defenses: { bunkerlinie: 1 }, resources: res, protectedPerResource: 300 };
+  let wins = 0;
+  for (let seed = 1; seed <= 200; seed++) {
+    const raid = composeRaid({}, { bunkerlinie: 1 }, balance, seed + 100000);
+    const r = resolveBattle(raid.attacker, def, balance, seed);
+    assert.ok(r.ok);
+    if (r.report.winner === "attacker") wins++;
+  }
+  // Eine Bunkerlinie allein hält nicht mehr jeden Überfall auf, aber die meisten.
+  assert.ok(wins > 0 && wins < 100, `Siege ${wins}`);
 });

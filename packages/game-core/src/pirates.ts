@@ -58,24 +58,37 @@ export function defenseHp(units: Counts, defenses: Counts, balance: Balance): nu
   return hp;
 }
 
+/** Gewicht einer Einheit oder Anlage für die Überfallstärke (`raidHpWeights`, v1.13): erst die ID, dann die Gattung, sonst 1. */
+export function raidHpWeight(id: string, branch: string | undefined, balance: Balance): number {
+  const w = balance.pirates.raidHpWeights;
+  if (!w) return 1;
+  return w[id] ?? (branch !== undefined ? w[branch] : undefined) ?? 1;
+}
+
 /**
- * Lebenspunkte der Verteidigung, die das Kartell ansetzt (v1.7): die unmodifizierten Lebenspunkte, angehoben um den Anteil
- * `raidResearchWeight` des Lebenspunkte-Zuwachses aus den Modifikatoren des Verteidigers (Forschung: hp je Gattung,
- * Anlagen `anlage`). Ohne Modifikatoren oder mit Gewicht 0 genau `defenseHp`.
+ * Lebenspunkte der Verteidigung, die das Kartell ansetzt: je Einheit bzw. Anlage gewichtet mit `raidHpWeights` (v1.13,
+ * Schiffe zählen geringer), angehoben um den Anteil `raidResearchWeight` des Lebenspunkte-Zuwachses aus den Modifikatoren
+ * des Verteidigers (v1.7; Forschung: hp je Gattung, Anlagen `anlage`). Ohne Gewichte und Modifikatoren genau `defenseHp`.
  */
 export function raidDefenseHp(units: Counts, defenses: Counts, balance: Balance, mods?: Modifiers): number {
-  const raw = defenseHp(units, defenses, balance);
-  const w = balance.pirates.raidResearchWeight ?? 0;
-  if (!mods || w <= 0 || raw <= 0) return raw;
+  const w = mods ? (balance.pirates.raidResearchWeight ?? 0) : 0;
+  let raw = 0;
   let boosted = 0;
   for (const [id, n] of Object.entries(units)) {
     const def = balance.units[id] ?? balance.npcUnits[id];
-    if (def !== undefined && def.branch !== "luft") boosted += def.hp * Math.max(0, n) * modEntry(mods, "hp", def.branch);
+    if (def === undefined || def.branch === "luft") continue;
+    const hp = def.hp * Math.max(0, n) * raidHpWeight(id, def.branch, balance);
+    raw += hp;
+    if (w > 0) boosted += hp * modEntry(mods, "hp", def.branch);
   }
   for (const [id, n] of Object.entries(defenses)) {
     const def = balance.defenses[id];
-    if (def !== undefined) boosted += def.hp * Math.max(0, n) * modEntry(mods, "hp", "anlage");
+    if (def === undefined) continue;
+    const hp = def.hp * Math.max(0, n) * raidHpWeight(id, undefined, balance);
+    raw += hp;
+    if (w > 0) boosted += hp * modEntry(mods, "hp", "anlage");
   }
+  if (w <= 0 || raw <= 0) return raw;
   return raw + w * (boosted - raw);
 }
 

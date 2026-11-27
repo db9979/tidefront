@@ -50,7 +50,7 @@
   },
   "npcUnits": {
     "schnellboot": { "branch": "see", "hp": 80, "attack": { "see": 18, "luft": 2, "land": 0, "anlage": 4 }, "bonus": {} },
-    "piratenmiliz": { "branch": "land", "hp": 20, "attack": { "see": 0, "luft": 0, "land": 5, "anlage": 1 }, "size": 1, "bonus": {} }
+    "piratenmiliz": { "branch": "land", "hp": 20, "attack": { "see": 0, "luft": 0, "land": 5, "anlage": 5 }, "size": 1, "bonus": {} }
   },
   "defenses": {
     "kuestenbatterie": { "cost": { "stahl": 500, "treibstoff": 0, "elektronik": 100, "proviant": 0 }, "seconds": 300, "hp": 400, "attack": { "see": 90, "luft": 0, "land": 10 } },
@@ -113,7 +113,8 @@
     "raidMinSchnellboote": 4,
     "raidMiliPerBoot": 8,
     "raidStrengthSpread": 0.3,
-    "raidResearchWeight": 0.5
+    "raidResearchWeight": 0.5,
+    "raidHpWeights": { "see": 0.5, "minenraeumer": 0.1, "minenleger": 0, "landungsschiff": 0, "kolonieschiff": 0 }
   },
   "market": {
     "refPrice": { "stahl": 1.0, "treibstoff": 1.8, "elektronik": 3.0, "proviant": 0.6 },
