@@ -17,6 +17,7 @@ import { layMines, raidNest, raidPlayer, type TurnCtx } from "./bots-war.ts";
 import { botPatrol, botSatellite } from "./bots-intel.ts";
 import { expansionTurn, marketTurn, offersTurn } from "./bots-econ.ts";
 import { fieldTurn, wantsField } from "./bots-fields.ts";
+import { raidFinale } from "./bots-finale.ts";
 
 /** Zusatzanteile der Doktrin, solange ein Feldverband fehlt (bots-fields.ts). */
 const FIELD_DOCTRINE = { korvette: 0.15, zerstoerer: 0.05 };
@@ -129,6 +130,7 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
     const m = mods.get(b.id)!;
     await botSatellite(c, b); // Lagebild Stufe 3: Satellit, wenn viele Nester ohne Lagebild sind
     if (await fieldTurn(c, b, m)) continue;
+    if (await raidFinale(c, b, m)) continue; // Saisonfinale: Abschnitt der Armada, wenn sicher gewonnen
     if (await layMines(c, b)) continue;
     if (await raidPlayer(c, b, m)) continue;
     if (await raidNest(c, b, m)) continue;

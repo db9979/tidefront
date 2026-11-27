@@ -4,11 +4,12 @@ import { trpc, type Outputs } from "../lib/trpc.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { fmtDuration, useNow } from "../lib/time.ts";
 import { Button, Card, CountsLine } from "../ui.tsx";
+import { FinaleBanner, FinaleCard } from "./Finale.tsx";
 
 export type WorldEventsData = Outputs["worldEvents"]["list"];
 export type WorldEventInfo = WorldEventsData["events"][number];
 
-export const KIND_TITLE: Record<string, string> = { schatzschiff: "Schatzschiff", grossflotte: "Großflotte", belagerung: "Belagerungsring" };
+export const KIND_TITLE: Record<string, string> = { schatzschiff: "Schatzschiff", grossflotte: "Großflotte", belagerung: "Belagerungsring", finale: "Kartell-Armada" };
 const OUTCOME: Record<string, string> = {
   defeated: "besiegt", escaped: "entkommen", expired: "abgezogen", withdrawn: "abgezogen", test: "beendet",
 };
@@ -35,6 +36,11 @@ function blurb(e: WorldEventInfo): string {
 
 /** Info-Blatt (Kartenpanel): Besatzung, Restzeit, Belohnung, Beteiligte, Knopf „Mission planen“. */
 export function WorldEventCard({ e, onPlan }: { e: WorldEventInfo; onPlan: () => void }) {
+  if (e.finale) return <FinaleCard e={e} onPlan={onPlan} />; // Saisonfinale
+  return <EventCard e={e} onPlan={onPlan} />;
+}
+
+function EventCard({ e, onPlan }: { e: WorldEventInfo; onPlan: () => void }) {
   const now = useNow();
   const ended = e.status === "ended";
   const ownSiege = e.siege?.own ?? false;
@@ -76,8 +82,9 @@ export function WorldEventBanner({ onMap }: { onMap: () => void }) {
   const now = useNow();
   if (!q.data) return null;
   const { ownSiege, nearby, events } = q.data;
-  const near = events.filter((e) => nearby.includes(e.id) && !(e.siege?.own));
-  if (!ownSiege && near.length === 0) return null;
+  const near = events.filter((e) => nearby.includes(e.id) && !(e.siege?.own) && !e.finale);
+  const finale = events.find((e) => e.finale && e.status !== "ended"); // Saisonfinale: Banner für alle
+  if (!ownSiege && near.length === 0 && !finale) return null;
   return (
     <div className="mb-3 space-y-2">
       {ownSiege && (
@@ -87,6 +94,7 @@ export function WorldEventBanner({ onMap }: { onMap: () => void }) {
           <div className="text-xs text-ink2">Keine Börsenkäufe, Produktion −{Math.round((1 - ownSiege.productionFactor) * 100)} %. Brich den Ring aus einem anderen deiner Häfen oder bitte Mitspieler um Hilfe.</div>
         </div>
       )}
+      {finale && <FinaleBanner e={finale} onMap={onMap} />}
       {near.map((e) => (
         <button key={e.id} type="button" onClick={onMap} className="tap w-full text-left rounded-xl bg-card border border-siegel border-l-4 p-3 text-sm">
           <strong className="text-siegel uppercase font-display text-xs">Weltereignis in der Nähe: {KIND_TITLE[e.kind]}</strong>
@@ -106,6 +114,7 @@ export function WorldEventReportNote({ kind, data }: { kind: string; data: Recor
   const we = data.worldEvent as { kind?: string; destroyed?: boolean; destroyedHp?: number; initialHp?: number; remaining?: Record<string, number> } | undefined;
   if (kind === "weltereignis_leer") return <Card title="Weltereignis"><p>{String(data.text ?? "Bei Ankunft war niemand mehr da.")} Der Verband kehrt um.</p></Card>;
   if (!we) return null;
+  if (we.kind === "finale") return <FinaleReportNote we={we as FinaleNote} />; // Saisonfinale
   const share = we.initialHp ? Math.round(((we.destroyedHp ?? 0) / we.initialHp) * 100) : 0;
   return (
     <Card title={KIND_TITLE[we.kind ?? ""] ?? "Weltereignis"}>
@@ -114,6 +123,24 @@ export function WorldEventReportNote({ kind, data }: { kind: string; data: Recor
         {we.destroyedHp !== undefined && ` Dein Schaden: ${fmtNum(we.destroyedHp)} Lebenspunkte (${share} % der Anfangsstärke).`}
       </p>
       <p className="text-xs text-ink2 mt-1">Auf See ertrinkt die Miliz mit ihren Booten. Beute: {we.kind === "schatzschiff" ? "nur für den ersten Sieger" : "anteilig zum Schaden"}, begrenzt durch den Laderaum.</p>
+    </Card>
+  );
+}
+
+type FinaleNote = { destroyed?: boolean; sectorDestroyed?: boolean; destroyedHp?: number; initialHp?: number; remaining?: Record<string, number>; sector?: Record<string, number>; flagship?: boolean; treasure?: Record<string, number> };
+
+/** Saisonfinale im Kampfbericht: Abschnitt, Schaden, Rest der Armada, Schatz. */
+function FinaleReportNote({ we }: { we: FinaleNote }) {
+  const share = we.initialHp ? Math.round(((we.destroyedHp ?? 0) / we.initialHp) * 1000) / 10 : 0;
+  return (
+    <Card title="Saisonfinale: Kartell-Armada">
+      <p className="text-sm">
+        {we.flagship ? "Abschnitt: das Flaggschiff „Leviathan“" : <>Abschnitt: <CountsLine counts={we.sector} /></>}.
+        {we.destroyedHp !== undefined && ` Dein Schaden: ${fmtNum(we.destroyedHp)} Lebenspunkte (${share.toLocaleString("de-DE")} % der Armada).`}
+        {we.destroyed ? " Der Leviathan ist versenkt!" : <> Verbleibend: <CountsLine counts={we.remaining} />.</>}
+      </p>
+      {we.treasure && <p className="text-sm text-moos mt-1">Schatz des Leviathan: {resLine(we.treasure)}</p>}
+      <p className="text-xs text-ink2 mt-1">Beute ohne Laderaumgrenze, gutgeschrieben bei der Heimkehr. Kampfpunkte aus Armada-Kämpfen zählen zur Hälfte.</p>
     </Card>
   );
 }

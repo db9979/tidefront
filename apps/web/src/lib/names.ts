@@ -6,7 +6,7 @@ const NAMES: Record<string, string> = {
   werft: "Werft", kaserne: "Kaserne", flugfeld: "Flugfeld", radarstation: "Radarstation", hafenkommandantur: "Hafenkommandantur", forschungsamt: "Forschungsamt",
   korvette: "Korvette", zerstoerer: "Zerstörer", landungsschiff: "Landungsschiff", uboot: "U-Boot", schuetzen: "Schützen", pioniere: "Pioniere",
   kampfpanzer: "Kampfpanzer", abfangjaeger: "Abfangjäger", jagdbomber: "Jagdbomber", aufklaerungsdrohne: "Aufklärungsdrohne",
-  schnellboot: "Schnellboot", piratenmiliz: "Piratenmiliz", kuestenbatterie: "Küstenbatterie", flakstellung: "Flakstellung",
+  schnellboot: "Schnellboot", piratenmiliz: "Piratenmiliz", flaggschiff: "Leviathan-Sektion", kuestenbatterie: "Küstenbatterie", flakstellung: "Flakstellung",
   bunkerlinie: "Bunkerlinie", minensperre: "Minensperre", anlagen: "Anlagen",
   stahl: "Stahl", treibstoff: "Treibstoff", elektronik: "Elektronik", proviant: "Proviant", credits: "Kredite",
   ueberfall: "Überfall", aufklaerung: "Aufklärung", transport: "Transport", kartell: "Kartell-Überfall",
@@ -30,7 +30,7 @@ const NAMES: Record<string, string> = {
   startrampe: "Startrampe", stoersender: "Störsender", satellit: "Satellit", optisch: "Optischer Satellit", radar: "Radarsatellit",
   raumfahrt: "Raumfahrt", tarnnetze: "Tarnnetze", optischer_satellit: "Optischer Satellit", radarsatellit: "Radarsatellit",
   // Weltereignisse (Kartell-Aufklärung: „Nächstes Unternehmen“)
-  schatzschiff: "Schatzschiff", grossflotte: "Großflotte", belagerung: "Belagerung",
+  schatzschiff: "Schatzschiff", grossflotte: "Großflotte", belagerung: "Belagerung", finale: "Kartell-Armada",
 };
 
 /** Gibt es einen eigenen deutschen Namen (nicht nur den Rückfall von label())? Für Tests. */
@@ -46,7 +46,7 @@ export function hasErrorText(code: string): boolean {
 const PLURAL: Record<string, string> = {
   korvette: "Korvetten", zerstoerer: "Zerstörer", landungsschiff: "Landungsschiffe", uboot: "U-Boote", schuetzen: "Schützen", pioniere: "Pioniere",
   kampfpanzer: "Kampfpanzer", abfangjaeger: "Abfangjäger", jagdbomber: "Jagdbomber", aufklaerungsdrohne: "Aufklärungsdrohnen",
-  schnellboot: "Schnellboote", piratenmiliz: "Piratenmilizionäre", kuestenbatterie: "Küstenbatterien", flakstellung: "Flakstellungen",
+  schnellboot: "Schnellboote", piratenmiliz: "Piratenmilizionäre", flaggschiff: "Leviathan-Sektionen", kuestenbatterie: "Küstenbatterien", flakstellung: "Flakstellungen",
   bunkerlinie: "Bunkerlinien", minensperre: "Minensperren", spion: "Spione", minenleger: "Minenleger", minenraeumer: "Minenräumer",
   kolonieschiff: "Kolonieschiffe",
 };
@@ -102,6 +102,9 @@ const ERRORS: Record<string, string> = {
   own_siege: "Aus dem belagerten Hafen selbst lässt sich der Ring nicht brechen – greife aus einem anderen deiner Häfen an oder bitte Mitspieler.",
   intercept_impossible: "Der Verband erreicht das Schatzschiff nicht mehr vor dem Hafen – schnellere Schiffe wählen.",
   too_late: "Der Verband käme erst nach dem Ende des Ereignisses an.",
+  finale_not_yet: "Die Kartell-Armada ist bei Ankunft noch nicht erschienen. Lauf später aus.",
+  finale_running: "Das Saisonfinale läuft bereits.",
+  season_too_short: "Bis zum Saisonende bleibt keine Zeit mehr für das Finale.",
   siege: "Belagerungsring: keine Börsenkäufe, bis die Belagerung endet oder gebrochen ist.",
   already_claimed: "Diese Belohnung ist schon abgeholt.",
   not_done: "Das ist noch nicht erfüllt.",

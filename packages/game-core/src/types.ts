@@ -235,6 +235,8 @@ export interface ScoringBalance {
   npcDefenseFactor: number;
   /** Weltereignisse, deren Bekämpfung als Abwehr zählt (Großflotte, Belagerungsring). */
   npcWorldEventKinds?: string[];
+  /** Saisonfinale: Faktor auf Kampfpunkte aus Kämpfen gegen die Armada (Weltereignis finale). */
+  armadaFactor?: number;
 }
 // ---------------------------------------------------------------- Ergebnis
 

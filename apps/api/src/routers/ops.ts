@@ -26,6 +26,7 @@ import {
   saveSmtp,
   sendTestMail,
   setCartelStrength,
+  startFinaleNow, // Saisonfinale vorziehen (Testsystem)
   setEmail,
   setEmailPrefs,
   smtpView,
@@ -142,6 +143,10 @@ export const adminRouter = t.router({
   setCartelStrength: adminProc
     .input(z.object({ pct: z.number().int().min(25).max(300) }))
     .mutation(({ ctx, input }) => setCartelStrength(ctx.engine.db, input.pct)),
+  /** Saisonfinale „Leviathan“ jetzt ankündigen, Erscheinen in appearInMinutes (Testsystem). */
+  startFinale: adminProc
+    .input(z.object({ appearInMinutes: z.number().int().min(0).max(10080) }))
+    .mutation(({ ctx, input }) => startFinaleNow(ctx.engine, input.appearInMinutes)),
   createInvite: adminProc
     .input(z.object({ code: z.string().trim().max(64).optional(), maxUses: z.number().int().min(1).max(1000) }))
     .mutation(({ ctx, input }) => wrap(async () => ({ ok: true as const, ...(await createInvite(ctx.engine.db, input)) }))),

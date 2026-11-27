@@ -4,6 +4,7 @@ import { trpc } from "../lib/trpc.ts";
 import { fmtNum } from "../lib/names.ts";
 import { Card } from "../ui.tsx";
 import { AWARD_LABEL, AWARD_MARK, awardTone } from "../components/Season.tsx";
+import { FinaleHall } from "../components/Finale.tsx"; // Saisonfinale
 
 const BEST = ["best_ausbau", "best_militaer", "best_kampf", "best_beute", "best_befehle", "best_oekostrom"] as const;
 
@@ -49,6 +50,7 @@ export function HallOfFame() {
                 ))}
               </dl>
               {s.alliances.length > 0 && <SeasonAlliances alliances={s.alliances} />}
+              {s.finale && <FinaleHall f={s.finale} />}
               {s.own && (
                 <div className="mt-2 pt-2 border-t border-navy-600 text-xs">
                   <span className="text-slate-400">Du: </span>

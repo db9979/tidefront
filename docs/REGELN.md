@@ -283,6 +283,55 @@ Zeitlich begrenzte Ereignisse auf der Karte, die alle Spieler betreffen und Zusa
   Hafenangriffen). Je Angriff erhält der Angreifer `Pool * vernichtete Lebenspunkte / Anfangs-Lebenspunkte`, höchstens
   den noch nicht ausgezahlten Rest, begrenzt durch den Laderaum.
 - **Saisonende:** Alle Ereignisse und Beiträge verfallen; die Planung beginnt in der neuen Saison von vorn.
+- **Saisonfinale:** ab seiner Ankündigung entstehen keine gewöhnlichen Ereignisse mehr (laufende enden normal).
+
+## Saisonfinale „Leviathan“
+
+Gemeinsames Ziel der letzten Saisonwoche: eine Kartell-Armada mit Flaggschiff, die alle Spieler gemeinsam versenken.
+Werte unter `worldEvents.finale`, Kern in `packages/game-core/src/finale.ts`, Engine in `packages/engine/src/finale-*.ts`
+(Ereignisart `finale`, game_event `finale_announce`, `finale_appear`, `finale_end`). Vorlage: VORLAGE-SAISONFINALE.md.
+
+- **Zeitplan** (bei 42 Tagen Saison, `referenceSeasonDays`): Ankündigung `announceAfterDays` = 35,5 Tage nach
+  Saisonbeginn (Tag 36, 12:00): Systemnachricht und Push an alle, Banner, Karte mit Sammelpunkt und Countdown; ab dann keine
+  gewöhnlichen Weltereignisse. Erscheinen `appearAfterDays` = 37,5 (Tag 38, 12:00), Abzug nach `durationHours` = 72 h
+  (Tag 41, 12:00). Bei anderer Saisonlänge werden alle Zeiten proportional umgerechnet; der Abzug liegt immer vor dem
+  Saisonende. Missionen, die vor dem Erscheinen ankämen, werden abgelehnt (`finale_not_yet`).
+- **Teilnehmer** (Bezug): Häfen von Spielern außerhalb des Anfängerschutzes, die in den letzten `activeHours` (72 h)
+  aktiv waren (zuletzt gesehen oder angemeldet); KI-Spieler zählen immer.
+- **Ort:** Seefeld (offenes Wasser) mit der kleinsten größten Entfernung zu allen Teilnehmerhäfen, beim Ankündigen fest.
+  Liegen zwei Teilnehmerhäfen mehr als `vanguardSpreadKm` (1 500 km) auseinander, bekommt jeder Hafen weiter als
+  `vanguardKm` (400 km) vom Sammelpunkt eine **Vorhut** auf einem Seefeld höchstens 400 km vor sich (Richtung
+  Sammelpunkt; nahe Häfen teilen sich eine). Vorhuten sind weitere Kampforte derselben Geschwader; eine Mission fährt
+  zum nächsten Kampfort. Das Flaggschiff liegt immer am Sammelpunkt; sind die Geschwader versenkt, gibt es nur noch ihn.
+  Missionsart Überfall, Fahrt über die Seewege, Wetter gilt.
+- **Stärke** (einmal beim Erscheinen): Bezug K eines Hafens = Lebenspunkte seiner Kriegsschiffe und Flugzeuge
+  (`excludeUnits`: ohne Landungs-, Kolonie-, Minenleger, Minenräumer; ohne Truppen und Anlagen), daheim und unterwegs.
+  H = `referenceFactor` (4) × Σ K, mindestens `minHp` (40 000), mal Kartellstärke-Regler der Verwaltung (25–300 %).
+  `squadronShare` (90 %) als Schnellboote mit je `milizPerBoat` (8) Milizionären (240 LP je Boot), der Rest als
+  Flaggschiff aus Sektionen (NPC-Einheit `flaggschiff`, 1 000 LP, Angriff See 20, Luft 7 je Sektion).
+- **Abschnitt je Angriff:** Die Armada stellt jedem Verband `sectorFactor` (0,5) × K des Verbands / LP eines
+  Schnellboots Boote (mindestens `minSectorBoats` = 4, höchstens der Rest) mit ihrer Miliz. Beim Sammelangriff zählt K
+  aller Teilnehmer zusammen. Sind die Geschwader versenkt, steht das ganze Flaggschiff. Verluste bleiben, sinken alle
+  Boote des Abschnitts, ertrinkt ihre Miliz. Vorschau: Abschnitt, Siegchance (Probekampf mit `probeRuns` festen
+  Seeds), erwarteter Schaden und Beute.
+- **Beute:** `lootPerHp` (0,6) Richtwert je vernichtetem Lebenspunkt in der Mischung `lootMix` (wie der Beutepool der
+  Großflotte), **ohne Laderaumgrenze**, gutgeschrieben bei der Heimkehr im Ausgangshafen (das Lager begrenzt wie immer).
+  Versenkt ein Kampf das Flaggschiff, erhalten seine Teilnehmer zusätzlich einen Schatz von `treasureShare` (5 %) × H
+  (Richtwert), beim Sammelangriff nach Beitrag.
+- **Wertung:** Kampfpunkte aus Armada-Kämpfen × `scoring.armadaFactor` (0,5), Beutepunkte voll. Eine Flaggschiff-Sektion
+  zählt 2 375 (gleicher Wert je LP wie ein Schnellboot mit 8 Milizionären).
+- **Ende:** Versenkt (keine Boote und keine Sektionen mehr) oder nach Ablauf abgezogen (entkommen, Restbeute verfällt,
+  keine Strafe). Ruhmeshalle (`season_finale_result`): Ausgang mit Zeitpunkt, Rangliste nach Schaden und Titel
+  „Bezwinger des Leviathan“ (meister Schaden) und „Leviathan-Flotte“ (Allianz mit dem meisten Schaden; gezählt wird der
+  Schaden ihrer menschlichen Mitglieder zum Kampfzeitpunkt). KI-Spieler tragen bei und zählen im Gesamtschaden, Titel und
+  Ruhmeshalle gehören nur Menschen. Erfolg „Armada-Jäger“ (Zähler `armada`, bester Anteil am Gesamtschaden in Prozent):
+  Bronze/Silber/Gold ab 5/15/30 %.
+- **KI-Spieler:** Freibeuter und Festung greifen einen Abschnitt an, wenn der Probekampf ihres Verbands (Kriegsschiffe und
+  Flugzeuge ohne Heimwache) gegen ihn mit allen Läufen gewinnt; höchstens alle `botIntervalHours` (12 h), ein
+  Missionsplatz bleibt frei. Händler nehmen nicht teil.
+- **Börse:** während der Armada Marktnachricht „Kartell-Armada vor der Küste“ (`market`, Treibstoff +6 %), danach abklingend.
+- **Verwaltung:** „Saisonfinale vorziehen“ kündigt sofort an (Erscheinen nach Wahl, Dauer wie geplant, höchstens bis kurz
+  vor Saisonende); ein beendetes Finale der Saison wird ersetzt.
 
 ## Schutz
 
@@ -361,6 +410,7 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
     Abwehr ohne angreifenden Spieler (Kartell-Überfall, Großflotte, Konvoi, Feld) zählt nur `scoring.npcDefenseFactor`
     (v1.24: × 0,25). Eigene Angriffe auf Großflotte und Belagerungsring zählen voll (Nutzerentscheid 27.11.2026,
     `npcWorldEventKinds` leer), ebenso Nester, Schatzschiff und Spielerkämpfe.
+    Angriffe auf die Kartell-Armada des Saisonfinales zählen × `scoring.armadaFactor` (0,5); eine Flaggschiff-Sektion zählt 2 375.
   - **Beute:** Wert der Beute aus eigenen Überfällen der Saison (zum Richtpreis).
   - **Befehle:** Punkte aus abgeholten Tagesbefehlen der Saison samt Serienbonus (bereits Punkte, kein Kostenwert;
     siehe Abschnitt Tagesbefehle).
