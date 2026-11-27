@@ -2,6 +2,12 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.33.0 – 27.11.2026
+- **Konvois auf ihrem Seeweg:** Konvois fahren auf der Karte jetzt entlang ihrer echten Route statt auf einer Geraden über Land.
+- **Börsenkäufe und Lieferverträge kommen per Konvoi (Balance v1.33):** Ware vom Handelshafen bzw. von Reederei Albers und Bastion Falkenberg fährt sichtbar über See. Das Kartell kann ungeschützte Konvois überfallen – das Risiko ist klein (typisch 4 % Chance, im Schnitt etwa 1 % Warenverlust); in der Order kannst du Geleitschutz mitschicken, der Hinweis nennt Chance und erwarteten Verlust. Laufende Lieferungen kommen wie bisher an.
+- **Konvoi antippen:** Ein Blatt zeigt Art, Absender und Empfänger, Ladung, Geleit, Ankunft und Route; gegen Kriegsgegner mit „Abfangen“.
+- **Fremde Konvois im Lagebild:** Fahren sie durch deine Sensorreichweite (oder die deiner Allianz), siehst du sie auch ohne Krieg – Größe und Kurs, mit Erkennung Absender, Empfänger und Geleit. Die Ladung verrät erst ein Lagebild.
+
 ## 0.32.0 – 27.11.2026
 - **Lieferverträge (Börse → Verträge, Balance v1.32):** Rohstoffe heute zu festem Preis kaufen oder verkaufen, geliefert in 1–7 Tagen oder als Abo („täglich X für 3–7 Tage“). 25 % Anzahlung bzw. Pfand, Rest bei Fälligkeit; wer nicht zahlen oder liefern kann, hat 12 Stunden Nachfrist.
 - **KI-Spieler als Vertragspartner:** Reederei Albers handelt alles und bietet Abos, Bastion Falkenberg kauft Stahl und Elektronik, Kapitän Rotbart verkauft Treibstoff und Elektronik günstig – liefert aber per Konvoi über See, der abgefangen werden kann (Geleit möglich).
