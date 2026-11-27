@@ -1,6 +1,6 @@
 // Handel zwischen Spielern: Angebot "gebe X, will Y" mit Treuhand. Beim Einstellen wird die Ware aus dem Hafen
-// (bzw. die Kredite vom Konto) abgezogen und auf escrow:po-<id> gebucht. Bei Annahme zahlt der Annehmende sofort;
-// Ressourcen reisen beiderseits als Lieferung (delivery_arrive) mit Reisezeit nach Entfernung der Häfen, Kredite
+// (bzw. die Taler vom Konto) abgezogen und auf escrow:po-<id> gebucht. Bei Annahme zahlt der Annehmende sofort;
+// Ressourcen reisen beiderseits als Lieferung (delivery_arrive) mit Reisezeit nach Entfernung der Häfen, Taler
 // werden sofort gutgeschrieben. Gebühr je empfangener Seite. Rückzug erstattet sofort. Geleitschutz: der Annehmende
 // für die eingehende Ware (bei Annahme) oder der Anbieter für seine ausgehende Ware (beim Einstellen eingetragen,
 // läuft bei Annahme aus, ohne vorher Schiffe zu binden) – nicht beide für dieselbe Ware.
@@ -37,7 +37,7 @@ export async function playerTradeFee(db: Tx | Engine["db"]): Promise<number> {
   return Number.isFinite(n) && n >= 0 && n <= 0.2 ? n : PLAYER_TRADE_FEE_DEFAULT;
 }
 
-/** Gebühr auf eine Menge: Ressourcen ganzzahlig abgerundet, Kredite auf Cent abgerundet. */
+/** Gebühr auf eine Menge: Ressourcen ganzzahlig abgerundet, Taler auf Cent abgerundet. */
 export function feeOf(asset: string, qty: number, fee: number): number {
   return asset === "credits" ? Math.floor(qty * fee * 100) / 100 : Math.floor(qty * fee);
 }
@@ -54,7 +54,7 @@ const ESCORT_FAIL: Record<string, string> = {
   escort_ships_only: "nur Schiffe", empty_fleet: "keine Schiffe",
 };
 
-const ASSET_TEXT: Record<string, string> = { stahl: "Stahl", treibstoff: "Treibstoff", elektronik: "Elektronik", proviant: "Proviant", credits: "Kredite" };
+const ASSET_TEXT: Record<string, string> = { stahl: "Stahl", treibstoff: "Treibstoff", elektronik: "Elektronik", proviant: "Proviant", credits: "Taler" };
 const resLabel = (id: string) => ASSET_TEXT[id] ?? id;
 const cents = (n: number) => Math.round(n * 100) / 100;
 const amt = (n: number) => n.toFixed(2);
@@ -191,7 +191,7 @@ export function acceptOffer(engine: Engine, playerId: number, key: string, offer
       await saveBase(ctx.tx, buyerBase.id, buyerState);
     }
 
-    // 2. Lieferungen (Ressourcen per Konvoi, Kredite sofort), Gebühr je empfangener Seite.
+    // 2. Lieferungen (Ressourcen per Konvoi, Taler sofort), Gebühr je empfangener Seite.
     const fee = await playerTradeFee(ctx.tx);
     const arriveAtMs = ctx.nowMs + travelMs(sellerBase, buyerBase);
     const tradeId = `po-${o.id}:accept`;
@@ -239,7 +239,7 @@ export function acceptOffer(engine: Engine, playerId: number, key: string, offer
     const [buyer] = await ctx.tx.select({ name: tables.player.name }).from(tables.player).where(eq(tables.player.id, playerId));
     await systemMessage(ctx.tx, ctx.notify, [o.sellerId], "Handel: Angebot angenommen",
       `${buyer?.name ?? "?"} hat dein Angebot angenommen: ${fmtInt(o.giveQty)} ${resLabel(o.give)} gegen ${fmtInt(o.wantQty)} ${resLabel(o.want)}. ` +
-      (o.want === "credits" ? "Die Kredite sind gutgeschrieben." : "Die Ware ist per Konvoi unterwegs.") +
+      (o.want === "credits" ? "Die Taler sind gutgeschrieben." : "Die Ware ist per Konvoi unterwegs.") +
       (!hasSellerEscort || o.give === "credits" ? "" : sellerEscortCode === null ? " Dein Geleit begleitet deine Ware." : ` Dein Geleit konnte nicht auslaufen (${ESCORT_FAIL[sellerEscortCode] ?? sellerEscortCode}); die Ware fährt ohne Geleit.`));
     ctx.notify.push([[playerId, o.sellerId], "base"], [null, "market"]);
     return { ok: true as const, arriveAtMs };
@@ -273,7 +273,7 @@ export function withdrawOffer(engine: Engine, playerId: number, key: string, off
   });
 }
 
-/** Saisonende: offene Angebote verfallen, die Treuhand wird gegen season:<n> ausgebucht (wie Kredite und Lieferungen). */
+/** Saisonende: offene Angebote verfallen, die Treuhand wird gegen season:<n> ausgebucht (wie Taler und Lieferungen). */
 export async function expireOffers(tx: Tx, seasonNumber: number, atMs: number): Promise<void> {
   const open = await tx.select().from(tables.playerOffer).where(eq(tables.playerOffer.status, "open")).for("update");
   if (open.length === 0) return;

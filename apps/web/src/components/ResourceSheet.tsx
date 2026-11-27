@@ -108,8 +108,8 @@ export function ResourceSheet({ base, res, amount, onClose }: { base: BaseData; 
           <Row k="Bunkerschutz (vor Beute sicher)" v={fmtNum(Math.min(amount, base.bunkerProtection))} />
           {price !== undefined && (
             <>
-              <Row k="Börsenkurs" v={`${fmtNum(price, 3)} Kr`} />
-              <Row k="Wert des Bestands" v={`${fmtNum(amount * price)} Kr`} tone="muted" />
+              <Row k="Börsenkurs" v={`${fmtNum(price, 3)} T`} />
+              <Row k="Wert des Bestands" v={`${fmtNum(amount * price)} T`} tone="muted" />
             </>
           )}
         </div>

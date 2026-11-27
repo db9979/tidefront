@@ -41,7 +41,7 @@ export const BUILDING_TEXT: Record<string, { kurz: string; lang: string }> = {
     kurz: "Spione und Gegenspionage",
     lang: "Bildet Spione aus (je Stufe {spyCap} mehr) und schickt sie auf Spionageaufträge: Erkunden, Desinformation (ab Stufe 2), Kartell-Aufklärung (ab Stufe 2), Sabotage (ab Stufe 3). Jede Stufe gibt +1 auf den Erfolgswert deiner Spione und +1 Abwehr gegen fremde.",
   },
-  hafenkommandantur: { kurz: "Missionsplätze und Börse", lang: "Jede zweite Stufe gibt einen weiteren Missionsplatz. Ab Stufe {market} öffnet die Börse, das Kreditlimit wächst mit jeder Stufe." },
+  hafenkommandantur: { kurz: "Missionsplätze und Börse", lang: "Jede zweite Stufe gibt einen weiteren Missionsplatz. Ab Stufe {market} öffnet die Börse, die Kasse (höchstens so viele Taler) wächst mit jeder Stufe." },
 };
 
 export const UNIT_TEXT: Record<string, string> = {
@@ -186,7 +186,7 @@ export function buildingEffect(balance: Balance, id: string, level: number): str
   if (sb && id === sb.launchpad) return level < 1 ? "keine Starts" : `Satellitenstart möglich${level > 1 ? `, Startkosten −${Math.round(Math.min(sb.discountMax ?? 0, (sb.discountPerLevel ?? 0) * (level - 1)) * 100)} %` : ""}`;
   if (def.missionSlotsBase !== undefined) {
     const slots = def.missionSlotsBase + Math.floor(level / 2) * (def.missionSlotsPerTwoLevels ?? 0);
-    const market = level >= (def.marketFromLevel ?? 99) ? `, Kreditlimit ${fmtNum((def.creditLimitPerLevel ?? 0) * level)}` : "";
+    const market = level >= (def.marketFromLevel ?? 99) ? `, Kasse ${fmtNum((def.creditLimitPerLevel ?? 0) * level)} Taler` : "";
     return `${slots} ${slots === 1 ? "Missionsplatz" : "Missionsplätze"}${market}`;
   }
   return null;

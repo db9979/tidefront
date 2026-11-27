@@ -23,7 +23,7 @@ export function PlayerContracts({ base, data }: { base: BaseData; data: Contract
       <p className="text-xs text-ink2 mb-2">
         Preis höchstens {fmtNum(data.cfg.band * 100)} % neben Kurs bzw. erwartetem Kurs. Die Ware fährt per Konvoi über die Seewege (abfangbar,
         Geleit möglich). {fmtNum(data.cfg.baseFee * 100)} % des Preises und alle Strafen gehen in den Gebührentopf, nie an den Partner.
-        Je Spielerpaar höchstens {fmtNum(data.cfg.pairWeekValue)} Kredite Börsenwert in 7 Tagen. Verbundene Spieler (Allianz, Pakt, Handel in den
+        Je Spielerpaar höchstens {fmtNum(data.cfg.pairWeekValue)} Taler Börsenwert in 7 Tagen. Verbundene Spieler (Allianz, Pakt, Handel in den
         letzten 7 Tagen) dürfen, der Vertrag zählt dann aber nicht für Erfolge und Tagesbefehle.
       </p>
       <h3 className="font-display text-[11px] uppercase text-ink2 mb-1">Angebote ({data.proposals.length})</h3>

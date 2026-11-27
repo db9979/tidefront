@@ -150,7 +150,7 @@ export const seasonEnd: Handler = async (tx, ev, due) => {
     }));
   }
 
-  // 3. Journal abschließen (Kredite und Lieferungen auf 0), dann die Welt zurücksetzen.
+  // 3. Journal abschließen (Taler und Lieferungen auf 0), dann die Welt zurücksetzen.
   await expireOffers(tx, s.number, due); // Handel zwischen Spielern: offene Angebote verfallen (Treuhand an season:<n>)
   await (await import("./contracts-run.ts")).voidContracts(tx, s.number, due); // Lieferverträge: offene rückabgewickelt
   await closeLedger(tx, s.number, due);

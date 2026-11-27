@@ -1,5 +1,5 @@
 // Lieferverträge (v1.31): Abwicklung als Ereignis contract_due (Schritte remind, settle, grace, expire). Bei Fälligkeit
-// wird erfüllt, so weit Kredite und Ware reichen; sonst 12 h Nachfrist, danach anteilig mit Strafe auf den unerfüllten
+// wird erfüllt, so weit Taler und Ware reichen; sonst 12 h Nachfrist, danach anteilig mit Strafe auf den unerfüllten
 // Teil. Neue Verträge liefern per Konvoi über die Seewege (Art „vertrag“: abfangbar, Geleit des Käufers; KI-Profile mit
 // convoy: Albers, Falkenberg, Rotbart); alte Verträge mit delivery „abstrakt“ liefern weiter sofort ins Lager.
 // Lieferungen zählen ins gleitende Tageslimit und in die Handelsbilanz.
@@ -46,7 +46,7 @@ async function partyBase(tx: Tx, playerId: number | null, baseId: number | null)
   return b && b.playerId === playerId ? b : homeBaseOf(tx, playerId);
 }
 
-/** Fehlbetrag 6 h vor Fälligkeit: Kredite (Käufer) bzw. Ware (Verkäufer). */
+/** Fehlbetrag 6 h vor Fälligkeit: Taler (Käufer) bzw. Ware (Verkäufer). */
 async function remind(tx: Tx, c: ContractRow, due: number, notify: Notes, jobs: NoticeJob[]): Promise<void> {
   const ki = kiOf(c);
   const cfg = cfgOrFail();
@@ -54,10 +54,10 @@ async function remind(tx: Tx, c: ContractRow, due: number, notify: Notes, jobs: 
     const [p] = await tx.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, c.buyerId));
     const need = marketCore.ceilToCents(c.qty * c.buyerUnit) - c.buyerDepositCents - cents((p?.trader as Trader | undefined)?.credits ?? 0);
     if (need > 0) {
-      const body = `In ${cfg.remindHours} Stunden ist dein Liefervertrag über ${contractTitle(c)} fällig. Es fehlen ${credText(need)} Kredite. ` +
+      const body = `In ${cfg.remindHours} Stunden ist dein Liefervertrag über ${contractTitle(c)} fällig. Es fehlen ${credText(need)} Taler. ` +
         `Reicht es bei Fälligkeit nicht, gilt eine Nachfrist von ${cfg.graceHours} Stunden; danach wird anteilig erfüllt und ${Math.round(cfg.penaltyShare * 100)} % des nicht erfüllten Werts verfallen.`;
-      await systemMessage(tx, notify, [c.buyerId], "Liefervertrag: Kredite fehlen", body);
-      jobs.push(push(c.buyerId, "Liefervertrag: Kredite fehlen", body, c.id));
+      await systemMessage(tx, notify, [c.buyerId], "Liefervertrag: Taler fehlen", body);
+      jobs.push(push(c.buyerId, "Liefervertrag: Taler fehlen", body, c.id));
     }
   }
   if (c.sellerId !== null && c.sellerId !== ki) {
@@ -126,7 +126,7 @@ async function settleNow(tx: Tx, c: ContractRow, due: number, final: boolean, no
     await tx.update(tables.marketContract).set({ status: "nachfrist", graceUntil: new Date(until) }).where(eq(tables.marketContract.id, c.id));
     await scheduleEvent(tx, CONTRACT_EVENT, until, { contractId: c.id, step: "grace" }, buyerBase?.id ?? sellerBase?.id ?? null);
     const who: [number, string][] = [];
-    if (r.buyerShort > 0 && buyerHuman) who.push([c.buyerId!, `Deine Kredite reichen nur für ${fmtInt(c.qty - r.buyerShort)} von ${fmtInt(c.qty)}.`]);
+    if (r.buyerShort > 0 && buyerHuman) who.push([c.buyerId!, `Deine Taler reichen nur für ${fmtInt(c.qty - r.buyerShort)} von ${fmtInt(c.qty)}.`]);
     if (r.sellerShort > 0 && sellerHuman) who.push([c.sellerId!, `Im Hafen liegen nur ${fmtInt(c.qty - r.sellerShort)} von ${fmtInt(c.qty)} ${nameOf(c.resource)}.`]);
     for (const [id, why] of who) {
       const body = `Dein Liefervertrag über ${contractTitle(c)} ist fällig. ${why} Nachfrist ${cfg.graceHours} Stunden – danach wird anteilig erfüllt, ` +
@@ -180,7 +180,7 @@ async function settleNow(tx: Tx, c: ContractRow, due: number, final: boolean, no
   for (const [id, s] of states) await saveBase(tx, id, s);
   await journal(tx, `mc-${c.id}:settle`, due, lines);
 
-  // Kredite, gleitendes Tageslimit der Menschen (Lieferung zählt bei Lieferung, scheitert nie am Limit).
+  // Taler, gleitendes Tageslimit der Menschen (Lieferung zählt bei Lieferung, scheitert nie am Limit).
   for (const [id, t] of traders) {
     let next = withCredits(t, credit.get(id) ?? 0);
     const human = id !== ki;
@@ -212,7 +212,7 @@ async function settleNow(tx: Tx, c: ContractRow, due: number, final: boolean, no
     }
   }
 
-  // Erfolge und Tagesbefehle „Handel“ (ab 500 Kredite), PvP-Verbindung bei Spielerverträgen, Nachrichten.
+  // Erfolge und Tagesbefehle „Handel“ (ab 500 Taler), PvP-Verbindung bei Spielerverträgen, Nachrichten.
   if (r.qty > 0 && c.counts) {
     if (buyerHuman && r.buyerPaysCents >= 50_000) await trackProgress(tx, c.buyerId!, "handel", r.buyerPaysCents / 100, { atMs: due });
     if (sellerHuman && r.sellerGetsCents >= 50_000) await trackProgress(tx, c.sellerId!, "handel", r.sellerGetsCents / 100, { atMs: due });
@@ -223,10 +223,10 @@ async function settleNow(tx: Tx, c: ContractRow, due: number, final: boolean, no
     if (id === null || id === ki) continue;
     const parts = [`Liefervertrag über ${contractTitle(c)}: ${verdict}.`];
     if (role === "buyer" && r.qty > 0) parts.push(deliveryId ? `Die Ware ist per Konvoi unterwegs (Ankunft ${new Date(arriveMs).toLocaleString("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}).${escortNote}` : "Die Ware liegt im Lager.");
-    if (role === "buyer") parts.push(`Bezahlt: ${credText(r.buyerPaysCents)} Kredite.`);
-    if (role === "seller") parts.push(`Erlös: ${credText(r.sellerGetsCents)} Kredite.`);
+    if (role === "buyer") parts.push(`Bezahlt: ${credText(r.buyerPaysCents)} Taler.`);
+    if (role === "seller") parts.push(`Erlös: ${credText(r.sellerGetsCents)} Taler.`);
     const own = role === "buyer" ? r.buyerPenaltyCents : r.sellerPenaltyCents;
-    if (own > 0) parts.push(`Verfallen: ${credText(own)} Kredite (${Math.round(cfg.penaltyShare * 100)} % des nicht erfüllten Werts).`);
+    if (own > 0) parts.push(`Verfallen: ${credText(own)} Taler (${Math.round(cfg.penaltyShare * 100)} % des nicht erfüllten Werts).`);
     await systemMessage(tx, notify, [id], `Liefervertrag ${status === "erfuellt" ? "erfüllt" : status === "teilweise" ? "teilweise erfüllt" : "geplatzt"}`, parts.join(" "));
     jobs.push(push(id, `Liefervertrag ${verdict}`, parts[0], c.id));
     notify.push([[id], "base"], [[id], "market"]);

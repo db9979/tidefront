@@ -32,16 +32,16 @@ export function Slip({ q, cfg, nowMs, ctx, label }: { q: Quote; cfg: MarketCfg; 
             <div className={`h-full ${tooMuch ? "bg-siegel" : share > 0.75 ? "bg-messing" : "bg-see"}`} style={{ width: `${share * 100}%` }} />
           </div>
         </div>
-        <Row k="Warenwert" v={`${fmtNum(q.baseCredits, 2)} Kr`} />
-        <Row k={`Gebühr ${fmtNum(cfg.fee * 100)} %`} v={`${buy ? "+" : "−"} ${fmtNum(q.feeCredits, 2)} Kr`} />
+        <Row k="Warenwert" v={`${fmtNum(q.baseCredits, 2)} T`} />
+        <Row k={`Gebühr ${fmtNum(cfg.fee * 100)} %`} v={`${buy ? "+" : "−"} ${fmtNum(q.feeCredits, 2)} T`} />
       </dl>
       <div className="flex items-baseline justify-between border-t-2 border-ink mt-1 pt-1.5">
         <span className="font-display uppercase text-[12px]">{buy ? "Kosten" : "Erlös"}</span>
-        <span className="mono text-[22px]">{fmtNum(q.totalCredits, 2)} <span className="text-sm text-ink2">Kr</span></span>
+        <span className="mono text-[22px]">{fmtNum(q.totalCredits, 2)} <span className="text-sm text-ink2">T</span></span>
       </div>
       <div className="flex justify-between text-xs text-ink2 mt-0.5">
-        <span>Kreditkonto danach</span>
-        <span className={`mono ${after < 0 || after > ctx.creditLimit ? "text-siegel font-semibold" : ""}`}>{fmtNum(after, 2)} Kr</span>
+        <span>Konto danach</span>
+        <span className={`mono ${after < 0 || after > ctx.creditLimit ? "text-siegel font-semibold" : ""}`}>{fmtNum(after, 2)} T</span>
       </div>
       <div className="mt-2 pt-2 border-t border-dashed border-rule text-xs flex items-start gap-2">
         {buy ? (
@@ -50,7 +50,7 @@ export function Slip({ q, cfg, nowMs, ctx, label }: { q: Quote; cfg: MarketCfg; 
             {ctx.travelMs !== null && <> – Ankunft <span className="mono font-semibold">{when(nowMs + ctx.travelMs, nowMs)}</span> (in {fmtDuration(ctx.travelMs)})</>}.
           </span>
         ) : (
-          <span>Ware wird sofort abgezogen, Kredite sofort gutgeschrieben.</span>
+          <span>Ware wird sofort abgezogen, Taler sofort gutgeschrieben.</span>
         )}
       </div>
     </section>

@@ -5,7 +5,7 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
 
 ## Wer sie sind
 
-- Ein Bot ist ein normaler Spieler (Zeile in `player` mit `bot_profile`). Er hat Häfen, Bestände, Kredite und Punkte
+- Ein Bot ist ein normaler Spieler (Zeile in `player` mit `bot_profile`). Er hat Häfen, Bestände, Taler und Punkte
   wie jeder andere und erscheint in Rangliste und Spielerübersicht mit dem Kennzeichen **KI**.
 - Bots handeln **ausschließlich über die Befehle** (`upgrade`, `train`, `researchStart`, `launchMission`, `trade`,
   `createOffer`/`acceptOffer`, `chooseBase` …). Damit gelten Kosten, Bauzeiten, Kommandopunkte, Missionsplätze,
@@ -57,7 +57,7 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
 - **Patrouille** (Freibeuter): höchstens alle 24 h, nur wenn in diesem Zug kein Angriff möglich war und mindestens
   zwei Auftragsplätze frei sind.
 - **Admirale** (`bots-admiral.ts`): Freibeuter und Festung ernennen ab Hafenkommandantur 1 im Heimathafen einen Admiral
-  über denselben Befehl wie Menschen (gleiche Kosten, Plätze, Namen). Bis er bezahlbar ist, hält die Börse 2 000 Kredite
+  über denselben Befehl wie Menschen (gleiche Kosten, Plätze, Namen). Bis er bezahlbar ist, hält die Börse 2 000 Taler
   zurück. Freibeuter: „Landungstrupp“, führt den nächsten Überfall aus dem Heimathafen (Probekampf mit seinen
   Modifikatoren); Festung: „Verteidigung“, bleibt Hafenkommandant. Der Händler ernennt keinen. Gefangene Admirale
   werden nicht freigekauft.

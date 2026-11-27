@@ -21,6 +21,7 @@ import {
   ransomAdmiral,
   register,
   reportGet,
+  reportMailParts,
   seed,
   stationAdmiral,
   type Engine,
@@ -59,7 +60,7 @@ async function patchBase(baseId: number, patch: (s: BaseState) => void) {
   await db.update(tables.base).set({ state: s }).where(eq(tables.base.id, baseId));
 }
 
-/** Kredite gutschreiben, mit Gegenbuchung im Journal (Prüflauf bleibt ausgeglichen). */
+/** Taler gutschreiben, mit Gegenbuchung im Journal (Prüflauf bleibt ausgeglichen). */
 async function grantCredits(playerId: number, amount: number) {
   const [p] = await db.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, playerId));
   const t = p.trader as { credits: number };
@@ -101,7 +102,7 @@ after(async () => {
   await client.end();
 });
 
-test("Ernennen: Kosten in Krediten und Elektronik, Plätze nach Hafenkommandantur, Namen aus der Liste", async () => {
+test("Ernennen: Kosten in Talern und Elektronik, Plätze nach Hafenkommandantur, Namen aus der Liste", async () => {
   const before = await creditsOf(A.playerId);
   const r = await appointAdmiral(engine, A.playerId, key(), { name: null, spec: "logistik" });
   assert.equal(r.ok, true, JSON.stringify(r));
@@ -158,24 +159,36 @@ test("Kampf: Bericht nennt beide Admirale; Hafenkommandant gewinnt Erfahrung, Wu
   await processDue(engine, (m0.plan as Mission).arriveAtMs + 1000);
   const [m] = await db.select().from(tables.mission).where(eq(tables.mission.id, m0.id));
   const rep = await reportGet(engine, A.playerId, m.reportId!);
-  const d = rep!.data as { admirals: { attacker: { name: string; roll: number | null; fate: string; lines: { path: string; factor: number }[]; lossShare: number }; defender: { xpGain: number; lines: { path: string }[] } } };
+  type Side = { name: string; rankName: string; hidden?: boolean; roll?: number | null; fate?: string; lines?: { path: string; factor: number }[]; lossShare?: number; xpGain?: number; specs?: unknown };
+  const d = rep!.data as { admirals: { attacker: Side; defender: Side } };
   assert.equal(rep!.winner, "defender");
+  // Eigener Admiral (Angreifer A) vollständig, gegnerischer nur mit Name und Rang („Boni geheim“).
   assert.equal(d.admirals.attacker.name, att.name);
-  assert.ok(d.admirals.attacker.lines.some((l) => l.path === "attack.see" && l.factor > 1));
-  assert.ok(d.admirals.defender.lines.some((l) => l.path === "hp.anlage"), "Verteidigung wirkt daheim auch auf Anlagen");
-  assert.ok(d.admirals.defender.xpGain >= cfg.xp.minWin);
-  if (d.admirals.attacker.lossShare > cfg.risk.lossShare) {
+  assert.ok(d.admirals.attacker.lines!.some((l) => l.path === "attack.see" && l.factor > 1));
+  if (d.admirals.attacker.lossShare! > cfg.risk.lossShare) {
     assert.equal(d.admirals.attacker.roll, admiralFateRoll(rep!.seed!, "attacker", cfg.risk.die));
   } else assert.equal(d.admirals.attacker.roll, null);
   const vb = (await admiralView(engine, B.playerId))!.list[0];
-  assert.equal(vb.xp, d.admirals.defender.xpGain);
-  assert.equal(vb.wins, 1);
-  // Der Verteidiger sieht die Admirale ebenfalls
+  assert.deepEqual(d.admirals.defender, { name: vb.name, rankName: d.admirals.defender.rankName, hidden: true });
+  assert.ok(d.admirals.defender.rankName);
+  // Der Verteidiger sieht seinen Admiral vollständig, den des Angreifers nur mit Name und Rang.
   const repB = await reportGet(engine, B.playerId, m.reportId!);
-  assert.ok((repB!.data as { admirals?: unknown }).admirals);
+  const dB = repB!.data as { admirals: { attacker: Side; defender: Side } };
+  assert.ok(dB.admirals.defender.lines!.some((l) => l.path === "hp.anlage"), "Verteidigung wirkt daheim auch auf Anlagen");
+  assert.ok(dB.admirals.defender.xpGain! >= cfg.xp.minWin);
+  assert.equal(vb.xp, dB.admirals.defender.xpGain);
+  assert.equal(vb.wins, 1);
+  assert.deepEqual(Object.keys(dB.admirals.attacker).sort(), ["hidden", "name", "rankName"]);
+  assert.equal(dB.admirals.attacker.name, att.name);
+  // Auch die Bericht-Mail nennt beim Gegner keinen Einfluss.
+  const mail = reportMailParts({ id: repB!.id, kind: repB!.kind, title: repB!.title, atMs: repB!.atMs, role: "defender", winner: repB!.winner, data: repB!.data });
+  const items = mail.blocks.flatMap((x) => (x.type === "list" ? x.items : []));
+  const foe = items.find((t) => t.includes(att.name));
+  assert.ok(foe && !foe.includes("·"), `gegnerischer Admiral nur mit Rang und Name: ${foe}`);
+  assert.ok(items.some((t) => t.includes(vb.name) && t.includes("Erfahrung")), "eigener Admiral mit Erfahrung");
 });
 
-test("Gefangen: Lösegeld bringt ihn zurück (Kredite mit Journal); zweite Spezialisierung ab Rang 3", async () => {
+test("Gefangen: Lösegeld bringt ihn zurück (Taler mit Journal); zweite Spezialisierung ab Rang 3", async () => {
   const a = (await admiralView(engine, A.playerId))!.list[0];
   await db.update(tables.admiral).set({ captiveUntil: new Date(Date.now() + 3600000), woundedUntil: null }).where(eq(tables.admiral.id, a.id));
   assert.equal((await admiralView(engine, A.playerId))!.list[0].status, "gefangen");

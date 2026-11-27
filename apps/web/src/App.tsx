@@ -134,6 +134,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   // „Was hilft?“: Zähler je Sprung (baut Truppen/Börse mit dem gewählten Unterreiter neu auf), Ressource für die Börse.
   const [navSeq, setNavSeq] = useState(0);
   const [marketRes, setMarketRes] = useState<string | undefined>(undefined);
+  const [marketOrder, setMarketOrder] = useState<{ side: "buy" | "sell"; qty?: number } | undefined>(undefined);
   // Begrüßung hat Vorrang vor „Neu in Version“ (das erst danach erscheint).
   const [welcome, setWelcome] = useState(() => !welcomeSeen(playerId));
   // „Fehler melden“: Handbuch/Einstellungen schließen, Ansicht abwarten, Screenshot, dann Entwurf zeigen.
@@ -217,6 +218,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
     setHelpView(null);
     setResearch(false);
     setMarketRes(undefined);
+    setMarketOrder(undefined);
     setTab(t);
   };
   const onGuide = (a: GuideAction) => {
@@ -250,6 +252,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
         setSheet(null);
         go("boerse");
         setMarketRes(t.resource); // nach go(), das die Vorwahl zurücksetzt
+        setMarketOrder(t.side ? { side: t.side, qty: t.qty } : undefined);
         break;
       case "troops": localStorage.setItem("tf-seg:truppen", t.seg); setSheet(null); go("truppen"); break;
       case "map": setSheet(null); go("karte"); break;
@@ -257,6 +260,20 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
         setSheet(null);
         if (t.sub === "allianz") { localStorage.setItem("tf-seg:truppen", "allianz"); go("truppen"); break; } // Allianz liegt unter Truppen
         go("berichte"); setSub(t.sub); break;
+    }
+  };
+  /** Sprungziel = aktueller Bildschirm (ohne Vorwahl)? Dann bietet „Was hilft?“ den Knopf nicht an. */
+  const here = (t: NavTarget): boolean => {
+    if (help || plan) return false;
+    if (t.to === "research") return research;
+    if (research) return false;
+    switch (t.to) {
+      case "building": return tab === "basis" && sheet === t.id;
+      case "base": return tab === "basis" && !sheet;
+      case "market": return tab === "boerse" && !t.resource && !t.side && (localStorage.getItem("tf-seg:boerse") ?? "handel") === (t.seg ?? "handel");
+      case "troops": return tab === "truppen" && localStorage.getItem("tf-seg:truppen") === t.seg;
+      case "map": return tab === "karte";
+      case "meldungen": return t.sub === "allianz" ? tab === "truppen" && localStorage.getItem("tf-seg:truppen") === "allianz" : tab === "berichte" && sub === t.sub;
     }
   };
   const fullBleed = tab === "karte" && !plan && !help && !research;
@@ -280,11 +297,11 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   ) : tab === "berichte" ? (
     <MeldungenScreen sub={sub} setSub={setSub} unread={{ berichte: unread, nachrichten: unreadMsgs }} onShowOnMap={showOnMap} />
   ) : (
-    <MarketScreen key={`${b.id}:${navSeq}`} base={b} initialResource={marketRes} />
+    <MarketScreen key={`${b.id}:${navSeq}`} base={b} initialResource={marketRes} initialOrder={marketOrder} />
   );
 
   return (
-    <NavContext.Provider value={{ go: navTo, base: b }}>
+    <NavContext.Provider value={{ go: navTo, base: b, here }}>
     {/* Desktop ab 1024 px: breiter (max-w-3xl), die Karte volle Breite; mobil bleibt alles wie gehabt. */}
     <div className={`h-full flex flex-col w-full max-w-xl mx-auto ${fullBleed ? "lg:max-w-none" : "lg:max-w-3xl"}`}>
       <ResourceBar base={b} asOf={base.data.serverNow} now={now} onSwitchBase={switchBase} onPlanFounding={() => go("karte")} onPower={() => { setSheet(null); go("basis"); openCard("basis-versorgung", "versorgung"); }} onMenu={(i) => {

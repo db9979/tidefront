@@ -181,7 +181,7 @@ test("Zähler und Freischaltung: Stufen genau einmal, mit Meldung; Bestwerte sin
   assert.equal(await counter(A.playerId, "neu_vom_admiral"), 2);
 });
 
-test("Abholen: Belohnung genau einmal, Kredite im Journal, Push über den Worker", async () => {
+test("Abholen: Belohnung genau einmal, Taler im Journal, Push über den Worker", async () => {
   const before = await stateOf(A.baseId);
   const credits = await creditsOf(A.playerId);
   const k = key();
@@ -227,7 +227,7 @@ test("Volles Lager: Erfolg und Wochenziel melden den verfallenen Rest (`lost`), 
   const ok = r as { reward: Record<string, number>; lost: Record<string, number> };
   const res = Object.fromEntries(Object.entries(ok.reward).filter(([k, n]) => k !== "credits" && n > 0));
   assert.ok(Object.keys(res).length > 0);
-  assert.deepEqual(ok.lost, res); // Kredite verfallen nie
+  assert.deepEqual(ok.lost, res); // Taler verfallen nie
   assert.equal((await stateOf(C.baseId)).resources.stahl, 1_000_000);
 
   // Wochenziel: ein Ziel erfüllt abholen, alles verfällt.

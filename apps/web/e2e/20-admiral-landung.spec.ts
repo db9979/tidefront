@@ -16,12 +16,12 @@ test("Admiral: fehlende Kosten, Umschulung auf Landungstrupp, Wirkung im Probeka
   await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
   await page.getByRole("tab", { name: /^Einsatz/ }).click();
   const tile = page.getByRole("button", { name: /^Admirale 0\/1/ });
-  await expect(tile).toContainText("Platz frei – fehlt: 2.000 Kredite");
+  await expect(tile).toContainText("Platz frei – fehlt: 2.000 Taler");
   await expect(tile.getByLabel("jetzt möglich")).toHaveCount(0);
   await tile.click();
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByRole("button", { name: "Ernennen" })).toBeDisabled();
-  await expect(sheet.getByText("Fehlt: 2.000 Kredite.")).toBeVisible();
+  await expect(sheet.getByText("Fehlt: 2.000 Taler.")).toBeVisible();
   await expect(sheet.getByRole("button", { name: "Landungstrupp" })).toBeVisible();
   await expectNoHorizontalOverflow(page, "Ernennen gesperrt");
   await page.keyboard.press("Escape");

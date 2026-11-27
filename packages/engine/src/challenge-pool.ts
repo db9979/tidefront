@@ -226,7 +226,7 @@ export const KINDS: Record<string, KindDef> = {
   handel: {
     icon: "credits",
     spec: (t, c) => (c.marketOpen ? { param: null, target: round([300, 1000, 3000][t] * (1 + Math.max(0, lvl(c, "hafenkommandantur") - 3) / 2), 50) } : null),
-    text: (n) => `Handle an der Börse für ${fmt(n)} Kredite`,
+    text: (n) => `Handle an der Börse für ${fmt(n)} Taler`,
   },
   wrack: {
     icon: "stahl",

@@ -64,7 +64,7 @@ export function SeasonChart({ r, nowMs, span }: { r: MarketRes; nowMs: number; s
   d0.setHours(0, 0, 0, 0);
   for (let d = new Date(d0); d.getTime() <= nowMs; d.setDate(d.getDate() + stepDays)) if (d.getTime() >= from) xt.push(d.getTime());
   const yt = [0, 1, 2, 3].map((i) => lo + ((hi - lo) * (i + 0.5)) / 4);
-  const desc = `${label(r.id)}, ${name}: Kurs ${t.word} von ${fmtNum(pts[0].p, 2)} auf ${fmtNum(r.price, 2)} Kredite (${signed(pct)}), `
+  const desc = `${label(r.id)}, ${name}: Kurs ${t.word} von ${fmtNum(pts[0].p, 2)} auf ${fmtNum(r.price, 2)} Taler (${signed(pct)}), `
     + `Tief ${fmtNum(min, 2)}, Hoch ${fmtNum(max, 2)}, Richtwert jetzt ${fmtNum(r.ref, 2)}, Grundrichtwert ${fmtNum(baseRef, 2)}. `
     + `${pts.length - 1} Stundenschlusskurse.`;
 
@@ -72,7 +72,7 @@ export function SeasonChart({ r, nowMs, span }: { r: MarketRes; nowMs: number; s
     <div>
       <div className="flex items-end justify-between gap-2 mb-1">
         <div>
-          <div className="mono text-[28px] leading-none">{fmtNum(r.price, 2)} <span className="text-sm text-ink2">Kr</span></div>
+          <div className="mono text-[28px] leading-none">{fmtNum(r.price, 2)} <span className="text-sm text-ink2">T</span></div>
           <div className={`mono text-sm font-semibold ${TONE_TEXT[t.tone]}`}>{t.arrow} {signed(pct, 2)} <span className="font-sans font-normal text-ink2 text-xs">seit {day(from)}</span></div>
         </div>
         <div className="text-right text-[11px] text-ink2 leading-tight">

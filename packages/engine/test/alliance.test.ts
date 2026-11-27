@@ -336,7 +336,7 @@ test("Handel: Treuhand, Annahme, Lieferung mit Reisezeit, Rückzug, Prüflauf ok
   assert.ok((await stateOf(F.baseId)).resources.stahl >= stahlF + 980);
   assert.equal((await auditLedger(engine)).ok, true);
 
-  // Kredite: erst an der Börse verkaufen, dann Kredite anbieten und zurückziehen.
+  // Taler: erst an der Börse verkaufen, dann Taler anbieten und zurückziehen.
   const sold = await trade(engine, E.playerId, key(), { side: "sell", resource: "stahl", qty: 500, expectedPrice: 0.99875 });
   assert.equal(sold.ok, true, JSON.stringify(sold));
   const credits = async () => ((await db.select().from(tables.player).where(eq(tables.player.id, E.playerId)))[0].trader as { credits: number }).credits;
@@ -350,7 +350,7 @@ test("Handel: Treuhand, Annahme, Lieferung mit Reisezeit, Rückzug, Prüflauf ok
   assert.equal(await credits(), c0);
   assert.equal((await auditLedger(engine)).ok, true);
 
-  // Ware gegen Kredite: E zahlt sofort, F erhält 98 Kredite sofort.
+  // Ware gegen Taler: E zahlt sofort, F erhält 98 Taler sofort.
   const sell = await createOffer(engine, F.playerId, key(), { give: "proviant", giveQty: 500, want: "credits", wantQty: 100, visibility: "public" });
   assert.equal(sell.ok, true, JSON.stringify(sell));
   const before = await credits();
@@ -385,7 +385,7 @@ test("Handelsstatistik: angenommene Angebote der letzten 7 Tage je Paar, zwische
   clearTradeStatsCache();
   const st = await playerTradeStats(engine);
   const pair = (a: string, b: string) => st.pairs.find((p) => p.a === a && p.b === b);
-  // Aus den Tests oben: Stahl 1000 gegen Elektronik 200, Proviant 500 gegen 100 Kredite, Treibstoff 300 gegen Stahl 300.
+  // Aus den Tests oben: Stahl 1000 gegen Elektronik 200, Proviant 500 gegen 100 Taler, Treibstoff 300 gegen Stahl 300.
   assert.deepEqual(pair("stahl", "elektronik"), { a: "stahl", b: "elektronik", count: 1, qtyA: 1000, qtyB: 200 });
   assert.deepEqual(pair("proviant", "credits"), { a: "proviant", b: "credits", count: 1, qtyA: 500, qtyB: 100 });
   // Gleiche Paare in umgekehrter Richtung werden zusammengefasst (Reihenfolge wie die Ressourcenliste).

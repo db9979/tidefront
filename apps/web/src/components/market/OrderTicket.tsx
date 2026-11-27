@@ -15,6 +15,7 @@ type Why = { text: string; code?: string };
 import { allowedRange, dailyFreeAt, dailyWindow, limits, maxSensible, when, type Limits, type MarketCfg, type MarketRes } from "./calc.ts";
 import { Slip } from "./Slip.tsx";
 import { OrderEscort } from "./OrderEscort.tsx"; // See: Börsenkonvoi, Geleit optional
+import { noFundsText } from "../../lib/remedies/surplus.ts";
 
 /** Höchstmenge je Handel (wie im Server). */
 const MAX_QTY = 10_000_000;
@@ -22,8 +23,8 @@ const MAX_QTY = 10_000_000;
 const LIMIT_WHY: Record<keyof Limits, string> = {
   impact: "Kurswirkung",
   daily: "Tageslimit",
-  funds: "Kredite",
-  credit: "Kreditlimit",
+  funds: "Taler",
+  credit: "Kasse",
   band: "Kursband",
 };
 
@@ -37,11 +38,13 @@ export type OrderCtx = {
   attack: boolean;
 };
 
-export function OrderTicket({ r, cfg, nowMs, ctx, base }: { r: MarketRes; cfg: MarketCfg; nowMs: number; ctx: OrderCtx; base?: BaseData }) {
-  const [side, setSide] = useState<"buy" | "sell">("buy");
+/** initial: vorbelegte Richtung und Menge (Sprung aus „Was hilft?“); die Menge wird auf „Max“ der Richtung begrenzt. */
+export function OrderTicket({ r, cfg, nowMs, ctx, base, initial }: { r: MarketRes; cfg: MarketCfg; nowMs: number; ctx: OrderCtx; base?: BaseData; initial?: { side: "buy" | "sell"; qty?: number } }) {
+  const [side, setSide] = useState<"buy" | "sell">(initial?.side ?? "buy");
+  const [startQty] = useState(() => (initial?.qty ? Math.max(1, Math.min(initial.qty, maxSensible(limits(initial.side, r, nowMs, cfg, ctx)))) : 100));
   const [escort, setEscort] = useState<Record<string, number>>({}); // See: Geleit für den Börsenkonvoi
-  const [qtyText, setQtyText] = useState("100");
-  const [qty, setQty] = useState(100);
+  const [qtyText, setQtyText] = useState(String(startQty));
+  const [qty, setQty] = useState(startQty);
   const [done, setDone] = useState<string | null>(null);
   useEffect(() => setDone(null), [qtyText, side, r.id]);
   const [whyOpen, setWhyOpen] = useState(false); // „Was hilft?“ über dem gesperrten Order-Knopf
@@ -80,9 +83,9 @@ export function OrderTicket({ r, cfg, nowMs, ctx, base }: { r: MarketRes; cfg: M
   if (buy && ctx.siege) hard.push({ text: "Belagerungsring vor deinem Hafen: keine Käufe, bis er endet oder gebrochen ist.", code: "siege" });
   if (!buy && ctx.attack) hard.push({ text: "Angriff erkannt: Verkäufe gesperrt, bis er vorbei ist.", code: "under_attack" });
   if (dailyLeft <= 0) hard.push({ text: `Tageslimit für ${label(r.id)} erreicht${nextFree ? ` – ${fmtNum(nextFree.qty)} wieder frei ab ${when(nextFree.atMs, nowMs)} Uhr` : ""}.`, code: "daily_limit" });
-  if (!buy && ctx.credits >= ctx.creditLimit) hard.push({ text: "Kreditkonto am Kreditlimit: Verkäufe erst nach Käufen wieder möglich.", code: "credit_limit" });
+  if (!buy && ctx.credits >= ctx.creditLimit) hard.push({ text: `Kasse voll: höchstens ${fmtNum(ctx.creditLimit)} Taler. Verkäufe erst nach Käufen wieder möglich.`, code: "credit_limit" });
   if (!buy && ctx.stock < 1) hard.push({ text: `Kein Bestand an ${label(r.id)} zum Verkaufen.` });
-  if (buy && lim.funds < 1 && !ctx.siege) hard.push({ text: "Zu wenig Kredite für einen Kauf. Erst etwas verkaufen.", code: "funds" });
+  if (buy && lim.funds < 1 && !ctx.siege) hard.push({ text: noFundsText(ctx.credits, base, r.id), code: "funds" });
 
   // Sperrgründe zur eingegebenen Menge.
   const soft: Why[] = [];
@@ -95,9 +98,9 @@ export function OrderTicket({ r, cfg, nowMs, ctx, base }: { r: MarketRes; cfg: M
         code: "daily_limit",
       });
     }
-    if (q && buy && q.totalCredits > ctx.credits) soft.push({ text: `Kredite reichen nicht: ${fmtNum(q.totalCredits, 2)} Kredite nötig.`, code: "funds" });
+    if (q && buy && q.totalCredits > ctx.credits) soft.push({ text: `Taler reichen nicht: ${fmtNum(q.totalCredits, 2)} Taler nötig.`, code: "funds" });
     if (!buy && typed > ctx.stock) soft.push({ text: `Nur ${fmtNum(ctx.stock)} im Lager.` });
-    if (q && !buy && ctx.credits + q.totalCredits > ctx.creditLimit) soft.push({ text: `Kreditlimit: höchstens ${fmtNum(ctx.creditLimit - ctx.credits, 2)} Kredite Erlös möglich.`, code: "credit_limit" });
+    if (q && !buy && ctx.credits + q.totalCredits > ctx.creditLimit) soft.push({ text: `Kasse fast voll: höchstens ${fmtNum(ctx.creditLimit - ctx.credits, 2)} Taler Erlös möglich.`, code: "credit_limit" });
     if (q && (q.priceAfter > range.hi || q.priceAfter < range.lo)) soft.push({ text: "Der Kurs verließe das Kursband – der Handel würde abgelehnt und eine Pause ausgelöst.", code: "band" });
   }
   const firstWhy = [...hard, ...soft].find((w) => hasRemedy(w.code));
@@ -193,7 +196,7 @@ export function OrderTicket({ r, cfg, nowMs, ctx, base }: { r: MarketRes; cfg: M
           if (res?.ok) setDone(buy ? `Gekauft: ${fmtNum(qty)} ${label(r.id)} – der Konvoi ist unterwegs${esc ? " (mit Geleit)" : ""}.` : `Verkauft: ${fmtNum(qty)} ${label(r.id)}.`);
         }}
       >
-        {buy ? "Kaufen" : "Verkaufen"}{q ? ` · ${fmtNum(q.totalCredits, 2)} Kr` : ""}
+        {buy ? "Kaufen" : "Verkaufen"}{q ? ` · ${fmtNum(q.totalCredits, 2)} T` : ""}
       </button>
       <ErrorLine text={exec.error} code={exec.code} detail={why} />
       {done && <p className="text-moos text-sm mt-1 font-semibold" role="status">{done}</p>}

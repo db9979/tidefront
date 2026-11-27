@@ -85,10 +85,10 @@ export function AdminStats() {
         <div className="mt-2"><HBars rows={resRows(s.flow.loot.players)} tone="messing" /></div>
 
         <Sub>Börse</Sub>
-        <DayBars label="Börsenumsatz je Tag in Krediten" days={dayKeys} series={[{ key: "v", label: "Umsatz", tone: "see" }]} values={one(s.flow.market.perDay)} height={90} />
+        <DayBars label="Börsenumsatz je Tag in Talern" days={dayKeys} series={[{ key: "v", label: "Umsatz", tone: "see" }]} values={one(s.flow.market.perDay)} height={90} />
         <StatTable rows={[
           ["Handel", fmtNum(s.flow.market.trades)],
-          ["Umsatz (Kredite, ohne Gebühr)", fmtNum(s.flow.market.creditVolume)],
+          ["Umsatz (Taler, ohne Gebühr)", fmtNum(s.flow.market.creditVolume)],
           ["Gebühren", fmtNum(s.flow.market.fees, 2)],
         ]} />
         <div className="mt-2"><HBars rows={resRows(s.flow.market.byResource)} tone="see" /></div>

@@ -16,7 +16,7 @@ import type { BaseRow } from "./store.ts";
 export const BOT_ADMIRAL_SPEC: Partial<Record<BotProfile, string>> = { freibeuter: "landung", festung: "verteidigung" };
 
 /**
- * Admiral-Zug im Heimathafen: ernennen, sobald bezahlbar (bis dahin hält der Bot die Kredite an der Börse zurück:
+ * Admiral-Zug im Heimathafen: ernennen, sobald bezahlbar (bis dahin hält der Bot die Taler an der Börse zurück:
  * c.creditReserve); Festung: Hafenkommandant sicherstellen; Freibeuter: bereiten Admiral für Überfälle in c.admiral.
  */
 export async function admiralTurn(c: TurnCtx, home: BaseRow & { state: BaseState }): Promise<void> {
@@ -32,7 +32,7 @@ export async function admiralTurn(c: TurnCtx, home: BaseRow & { state: BaseState
       return;
     }
     const r = await appointAdmiral(c.engine, c.bot.id, c.key("admiral"), { name: null, spec, baseId: home.id });
-    if (r.ok) c.log.push(`Admiral ${r.name} ernannt (${cfg.specs[spec].name}, ${fmtInt(cfg.cost.credits)} Kredite).`);
+    if (r.ok) c.log.push(`Admiral ${r.name} ernannt (${cfg.specs[spec].name}, ${fmtInt(cfg.cost.credits)} Taler).`);
     return;
   }
   const own = rows.filter((a) => a.baseId === home.id);

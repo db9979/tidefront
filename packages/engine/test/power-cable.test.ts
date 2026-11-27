@@ -56,7 +56,7 @@ async function credits(playerId: number): Promise<number> {
   return (p.trader as { credits: number }).credits;
 }
 
-/** Kredite gutschreiben, ausgeglichen im Journal (Gegenkonto test). */
+/** Taler gutschreiben, ausgeglichen im Journal (Gegenkonto test). */
 async function grant(playerId: number, amount: number) {
   const [p] = await db.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, playerId));
   const t = p.trader as { credits: number };
@@ -151,7 +151,7 @@ test("Kabel zu einem Allianzpartner: Anfrage, Annahme, Preis über das Journal, 
   assert.equal(await credits(B.playerId), Math.round((100 - cost) * 100) / 100);
   assert.equal(await credits(A.playerId), cost);
   assert.equal((await auditLedger(engine)).ok, true);
-  // Preis ändern (nur der Abgebende); Kredite reichen nur für einen Teil.
+  // Preis ändern (nur der Abgebende); Taler reichen nur für einen Teil.
   assert.equal(await code(cableSetPrice(engine, B.playerId, key(), cableId, 1)), "cable_not_party");
   assert.equal((await cableSetPrice(engine, A.playerId, key(), cableId, 2)).ok, true);
   await patchBase(B.baseId, (s) => { s.cable = { ...s.cable!, buffer: 0 }; });

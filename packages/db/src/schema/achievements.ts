@@ -48,7 +48,7 @@ export const weeklyGoal = pgTable("weekly_goal", {
   param: text("param"),
   target: integer("target").notNull(),
   progress: integer("progress").notNull().default(0),
-  /** Ressourcen und Kredite (credits). */
+  /** Ressourcen und Taler (credits). */
   reward: jsonb("reward").notNull(),
   bonus: jsonb("bonus"),
   completedAt: ts("completed_at"),

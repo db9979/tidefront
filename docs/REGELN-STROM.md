@@ -42,7 +42,7 @@ Abschnitt O; Simulation `node packages/game-core/sim/power-green.ts`.
   kommt mit `1 − lossPer100Km * km / 100` an (10 % je 100 km; bei 600 km 40 %), höchstens bis der **Kabelpuffer** des
   Empfängers voll ist (`bufferHours` (2) Stunden seiner Stationsleistung) und nur so viel, wie der Empfänger bezahlen
   kann. Der Rest geht verloren.
-- **Preis:** Der Abgebende legt ihn fest, 0 bis `maxPrice` (2) Kredite je angekommener Strom-Stunde (0 = Allianzhilfe;
+- **Preis:** Der Abgebende legt ihn fest, 0 bis `maxPrice` (2) Taler je angekommener Strom-Stunde (0 = Allianzhilfe;
   zwischen eigenen Häfen immer 0). Bezahlt wird je Abrechnung über das Journal (`trade_ledger`, Buchung
   `kabel-<id>:<Zeit>`: `player:<Empfänger>` −, `player:<Abgebender>` +); der Prüflauf bleibt ausgeglichen. Preisänderungen
   gelten ab der nächsten Abrechnung.

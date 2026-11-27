@@ -45,25 +45,25 @@ Umsetzung in `packages/engine` (Allianzen, Diplomatie, Spielerhandel), Tabellen 
 
 ## Handel zwischen Spielern
 
-- Angebot: gibt Menge X einer Ressource oder Kredite, will Menge Y einer anderen Ressource oder Kredite (ganze Zahlen ≥ 1).
+- Angebot: gibt Menge X einer Ressource oder Taler, will Menge Y einer anderen Ressource oder Taler (ganze Zahlen ≥ 1).
   Sichtbar für alle oder nur für die eigene Allianz (nur mit Allianz). Höchstens 10 offene Angebote je Spieler.
   Einstellen und Annehmen erst ab Hafenkommandantur Stufe `marketFromLevel` (wie die Börse).
-- **Treuhand:** Beim Einstellen wird die angebotene Ware sofort aus dem Hafen (bzw. die Kredite vom Konto) abgezogen,
-  Börsenkurse, Tages- und Kreditlimits sind nicht beteiligt. Rückzug durch den Anbieter erstattet sofort und vollständig,
+- **Treuhand:** Beim Einstellen wird die angebotene Ware sofort aus dem Hafen (bzw. die Taler vom Konto) abgezogen,
+  Börsenkurse, Tageslimits und Kasse sind nicht beteiligt. Rückzug durch den Anbieter erstattet sofort und vollständig,
   auch über die Lagerkapazität.
 - **Annahme:** Nur durch einen anderen Spieler mit Hafen; ein Allianz-Angebot nur durch ein Mitglied derselben Allianz,
   der der Anbieter noch angehört (`not_ally`). Der Annehmende zahlt sofort. Ein Angebot kann genau einmal angenommen werden
   (`offer_gone`). Ressourcen reisen auf beiden Seiten als Lieferung mit Reisezeit `Entfernung der Häfen / convoySpeedKmh`
-  (mindestens eine Minute) und werden bei Ankunft gutgeschrieben, auch über die Lagerkapazität. Kredite werden sofort gutgeschrieben.
-- **Gebühr:** je empfangener Seite 2 % (Ressourcen ganzzahlig abgerundet, Kredite auf Cent abgerundet); einstellbar über
+  (mindestens eine Minute) und werden bei Ankunft gutgeschrieben, auch über die Lagerkapazität. Taler werden sofort gutgeschrieben.
+- **Gebühr:** je empfangener Seite 2 % (Ressourcen ganzzahlig abgerundet, Taler auf Cent abgerundet); einstellbar über
   `server_setting` `player_trade_fee` (0 bis 0,2). Die Gebühr verlässt das Spiel.
-- Saisonende: Offene Angebote verfallen ohne Erstattung (wie Kredite und Lieferungen).
+- Saisonende: Offene Angebote verfallen ohne Erstattung (wie Taler und Lieferungen).
 - **Börsenwert:** Spielerhandel verändert die Börsenkurse nicht; angezeigt wird der Börsenwert zur Orientierung.
-  Jedes Angebot zeigt den Gegenwert beider Seiten zum aktuellen Börsenkurs (Ressourcen × Kurs, Kredite 1:1, ohne Gebühr)
-  und die Differenz in Krediten und Prozent aus Sicht des Lesers. Ab mehr als 20 % Abweichung gibt es einen deutlichen
+  Jedes Angebot zeigt den Gegenwert beider Seiten zum aktuellen Börsenkurs (Ressourcen × Kurs, Taler 1:1, ohne Gebühr)
+  und die Differenz in Talern und Prozent aus Sicht des Lesers. Ab mehr als 20 % Abweichung gibt es einen deutlichen
   Hinweis und vor der Annahme eine Rückfrage.
 - **Handelsstatistik:** Die Börse zeigt für die letzten 7 Tage je Paar die angenommenen Angebote (Anzahl, Mengen) und
-  das mittlere Tauschverhältnis (Summe gegen Summe) in Krediten je Einheit, die Gegenseite zum aktuellen Börsenkurs,
+  das mittlere Tauschverhältnis (Summe gegen Summe) in Talern je Einheit, die Gegenseite zum aktuellen Börsenkurs,
   neben dem Börsenkurs. Serverseitig bis zu 60 s zwischengespeichert.
 
 ## Sammelangriff und Stationierung (Allianz-Ops)

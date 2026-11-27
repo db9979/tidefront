@@ -1,10 +1,11 @@
-// Abhilfe: Bauen, Ausbilden, Forschung, Versorgung, Kredite.
+// Abhilfe: Bauen, Ausbilden, Forschung, Versorgung, Taler.
 import { aircraftSlots, espionageOf, spyCap, type BaseState } from "@tidefront/game-core";
 import { fmtNum, label } from "../names.ts";
 import { fmtTime } from "../time.ts";
 import { build, go, joinDe, lvl, market, missingResources, nextStep, research, stateOf, training } from "./helpers.ts";
 import { techName as techLabel } from "../research.ts";
 import type { RemedyCtx, RemedyTable } from "./types.ts";
+import { surplus } from "./surplus.ts";
 
 /** Baugebäude der betroffenen Einheit/Anlage (Ausbildung) bzw. das genannte Gebäude. */
 function builtIn(ctx: RemedyCtx): string | null {
@@ -161,14 +162,20 @@ export const ECONOMY: RemedyTable = {
   template_limit: () => ({ hint: "Lösche zuerst eine alte Vorlage (Mülleimer neben der Vorlage), dann ist wieder Platz." }),
 };
 
-/** Kredite fehlen: Herkunft der Kredite und Sprung zur Börse. */
+/** Taler fehlen: Überschuss-Rohstoff verkaufen (Order vorbelegt), Herkunft der Taler, Sprung zur Börse. */
 function credits({ base, balance, detail }: RemedyCtx) {
   const have = base?.market.credits ?? 0;
   const need = detail.cost?.credits;
   const lack = need !== undefined ? Math.ceil(need - have) : null;
   const open = base?.market.unlocked;
+  const s = open ? surplus(base, detail.resource) : null;
+  const sell = s ? `Am schnellsten: ${label(s.resource)} verkaufen – davon liegt am meisten im Lager (${fmtNum(s.have)}). ` : "";
   return {
-    hint: `${lack !== null && lack > 0 ? `Es fehlen ${fmtNum(lack)} Kredite (Konto: ${fmtNum(have)}). ` : `Konto: ${fmtNum(have)} Kredite. `}Kredite bekommst du durch Verkäufe an der Börse${open ? "" : ` (öffnet ab Hafenkommandantur Stufe ${balance?.buildings.hafenkommandantur?.marketFromLevel ?? 3})`} oder im Spielerhandel. Bei Rohstoffen: Bestand prüfen oder kleinere Menge wählen.`,
-    actions: [market(), go("Spielerhandel", { to: "market", seg: "spieler" })],
+    hint: `${lack !== null && lack > 0 ? `Es fehlen ${fmtNum(lack)} Taler (Konto: ${fmtNum(Math.floor(have))}). ` : `Konto: ${fmtNum(Math.floor(have))} Taler. `}${sell}Taler bekommst du durch Verkäufe an der Börse${open ? "" : ` (öffnet ab Hafenkommandantur Stufe ${balance?.buildings.hafenkommandantur?.marketFromLevel ?? 3})`} oder im Spielerhandel. Bei Rohstoffen: Bestand prüfen oder kleinere Menge wählen.`,
+    actions: [
+      ...(s ? [go(`${fmtNum(s.qty)} ${label(s.resource)} verkaufen`, { to: "market", seg: "handel", resource: s.resource, side: "sell", qty: s.qty })] : []),
+      market(),
+      go("Spielerhandel", { to: "market", seg: "spieler" }),
+    ],
   };
 }

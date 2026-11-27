@@ -149,7 +149,7 @@ test("Kommandopunkte und Missionsplätze", () => {
   assert.deepEqual(slots, [1, 1, 2, 2, 3, 3]);
 });
 
-test("Börsenfreischaltung und Kreditlimit über die Hafenkommandantur", () => {
+test("Börsenfreischaltung und Kasse über die Hafenkommandantur", () => {
   assert.equal(harborMarketUnlocked(makeBase(balance, { buildings: { hafenkommandantur: 2 } }), balance), false);
   const h3 = makeBase(balance, { buildings: { hafenkommandantur: 3 } });
   assert.equal(harborMarketUnlocked(h3, balance), true);

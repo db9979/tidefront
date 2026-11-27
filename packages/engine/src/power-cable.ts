@@ -168,7 +168,7 @@ export function cableOffer(engine: Engine, playerId: number, key: string, input:
     if (own) await activate(ctx.tx, row, ctx.nowMs);
     else {
       await systemMessage(ctx.tx, ctx.notify, [to.playerId], "Seekabel angeboten",
-        `${from.name} bietet ${to.name} ein Seekabel an (${Math.round(km)} km, ${price > 0 ? `${price.toLocaleString("de-DE")} Kredite je Strom-Stunde` : "kostenlos als Allianzhilfe"}). ` +
+        `${from.name} bietet ${to.name} ein Seekabel an (${Math.round(km)} km, ${price > 0 ? `${price.toLocaleString("de-DE")} Taler je Strom-Stunde` : "kostenlos als Allianzhilfe"}). ` +
         "Annehmen oder ablehnen unter Basis → Versorgung → Seekabel.");
     }
     ctx.notify.push([[playerId, to.playerId], "base"]);
@@ -205,7 +205,7 @@ export function cableSetPrice(engine: Engine, playerId: number, key: string, cab
     await ctx.tx.update(pc).set({ price: checkPrice(price) }).where(eq(pc.id, c.id));
     if (c.status === "aktiv") {
       await systemMessage(ctx.tx, ctx.notify, [c.toPlayerId], "Seekabel: neuer Preis",
-        `Der Strom aus dem Seekabel kostet ab jetzt ${checkPrice(price).toLocaleString("de-DE")} Kredite je Strom-Stunde.`);
+        `Der Strom aus dem Seekabel kostet ab jetzt ${checkPrice(price).toLocaleString("de-DE")} Taler je Strom-Stunde.`);
     }
     ctx.notify.push([[c.fromPlayerId, c.toPlayerId], "base"]);
     return { ok: true as const };

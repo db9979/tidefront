@@ -43,7 +43,7 @@ async function lockOwnAdmiral(ctx: Ctx, admiralId: number): Promise<AdmiralRow> 
   return a;
 }
 
-/** Kredite abbuchen (mit Journal wie im Handel). Code admiral_funds. */
+/** Taler abbuchen (mit Journal wie im Handel). Code admiral_funds. */
 async function payCredits(ctx: Ctx, amount: number, tradeId: string): Promise<void> {
   if (amount <= 0) return;
   const [p] = await ctx.tx.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, ctx.playerId)).for("update");
@@ -57,7 +57,7 @@ async function payCredits(ctx: Ctx, amount: number, tradeId: string): Promise<vo
 }
 
 /**
- * Admiral ernennen. name: aus der Namensliste oder null (zufällig). Kosten: Kredite und Elektronik.
+ * Admiral ernennen. name: aus der Namensliste oder null (zufällig). Kosten: Taler und Elektronik.
  * Codes: no_base, admiral_off, admiral_slots, admiral_name, admiral_spec, admiral_funds, insufficient_resources.
  */
 export function appointAdmiral(engine: Engine, playerId: number, key: string, input: { name: string | null; spec: string; baseId?: number }) {
@@ -228,7 +228,7 @@ export async function admiralView(engine: Engine, playerId: number, baseId?: num
     };
   });
   const used = rows.map((r) => r.name);
-  // Bezahlbarkeit der Ernennung: Kredite des Spielers, Elektronik des aktiven Hafens (abgerechnet).
+  // Bezahlbarkeit der Ernennung: Taler des Spielers, Elektronik des aktiven Hafens (abgerechnet).
   const [p] = await engine.db.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, playerId));
   const have = {
     credits: cents((p?.trader as { credits?: number } | undefined)?.credits ?? 0),

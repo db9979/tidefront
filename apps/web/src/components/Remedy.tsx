@@ -54,7 +54,8 @@ function navIcon(go: NavTarget): string {
 /** Inhalt der Hinweis-Karte: Fehlmengen als Fortschrittszeilen, Erklärung, Sprungziele als Kacheln. */
 export function RemedyPanel({ remedy: r, onGo, bare = false }: { remedy: Remedy; onGo?: () => void; bare?: boolean }) {
   const nav = useNav();
-  const actions = r.actions ?? [];
+  // Knöpfe, die nur auf den aktuellen Bildschirm zeigen (z. B. „Zur Börse“ auf der Börse), helfen nicht.
+  const actions = (r.actions ?? []).filter((a) => !nav.here?.(a.go));
   const body = (
     <div className="space-y-2.5">
       {r.items && r.items.length > 0 && (

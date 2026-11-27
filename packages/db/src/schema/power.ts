@@ -8,7 +8,7 @@ import { base, player } from "./core.ts";
 
 /**
  * Kabel von einem abgebenden Hafen (from) zu einem empfangenden (to). status: angefragt (fremder Hafen, wartet auf
- * Zustimmung des Empfängers) oder aktiv. price: Kredite je gelieferter Strom-Stunde (0 = Allianzhilfe, eigene Häfen
+ * Zustimmung des Empfängers) oder aktiv. price: Taler je gelieferter Strom-Stunde (0 = Allianzhilfe, eigene Häfen
  * immer 0). Wird ein Hafen gelöscht, wird die Seite null und die nächste Abrechnung trennt das Kabel.
  */
 export const powerCable = pgTable("power_cable", {
@@ -23,7 +23,7 @@ export const powerCable = pgTable("power_cable", {
   createdAt: ts("created_at").notNull(),
   activeSince: ts("active_since"),
   lastTickAt: ts("last_tick_at"),
-  /** Summen seit Inbetriebnahme: angekommen, unterwegs verloren bzw. verfallen, bezahlt (Kredite). */
+  /** Summen seit Inbetriebnahme: angekommen, unterwegs verloren bzw. verfallen, bezahlt (Taler). */
   delivered: doublePrecision("delivered").notNull().default(0),
   lost: doublePrecision("lost").notNull().default(0),
   paid: doublePrecision("paid").notNull().default(0),

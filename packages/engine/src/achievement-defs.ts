@@ -50,7 +50,7 @@ export function placementScore(rank: number, total: number): number {
   return rank === 1 ? 3 : rank <= 3 ? 2 : rank <= 10 ? 1 : 0;
 }
 
-/** Ressourcen und Kredite einer Belohnung getrennt. */
+/** Ressourcen und Taler einer Belohnung getrennt. */
 export function splitReward(r: AchievementReward | Record<string, number>): { credits: number; resources: ResourceMap } {
   const resources: ResourceMap = {};
   for (const res of balance.resources) if ((r[res] ?? 0) > 0) resources[res] = r[res]!;
@@ -163,7 +163,7 @@ export const WEEKLY_KINDS: Record<string, WeeklyKind> = {
   handel: {
     icon: "credits",
     spec: (c) => (c.marketOpen ? { param: null, target: 5 } : null),
-    text: (n) => `Schließe ${n} Geschäfte an der Börse ab (je mindestens ${fmt(balance.achievements?.minCountedTradeCredits ?? 0)} Kredite)`,
+    text: (n) => `Schließe ${n} Geschäfte an der Börse ab (je mindestens ${fmt(balance.achievements?.minCountedTradeCredits ?? 0)} Taler)`,
   },
   abwehr: {
     icon: "schild",
@@ -250,7 +250,7 @@ export function drawWeek(c: WeeklyContext, seedText: string): WeeklyDraw[] {
 const growth = (stage: number) => 1 + stage * (balance.achievements?.weekly.stageGrowth ?? 0.3);
 const round10 = (n: number) => Math.round(n / 10) * 10;
 
-/** Belohnung eines Wochenziels: Ressourcenpaket und Kredite, wächst mit der Kommandozentrale. */
+/** Belohnung eines Wochenziels: Ressourcenpaket und Taler, wächst mit der Kommandozentrale. */
 export function weeklyReward(stage: number): Record<string, number> {
   const w = balance.achievements?.weekly;
   if (!w) return {};

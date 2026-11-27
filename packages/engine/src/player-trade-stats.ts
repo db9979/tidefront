@@ -1,5 +1,5 @@
 // Handelsstatistik des Spielerhandels: abgeschlossene Angebote der letzten 7 Tage je Paar (Summen, Anzahl).
-// Nur Anzeige: Spielerhandel verändert die Börsenkurse nicht. Die Umrechnung in Kredite je Einheit zum
+// Nur Anzeige: Spielerhandel verändert die Börsenkurse nicht. Die Umrechnung in Taler je Einheit zum
 // aktuellen Börsenkurs macht die Oberfläche. Bis zu 60 s zwischengespeichert.
 import { and, eq, gte, sql } from "drizzle-orm";
 import { tables } from "@tidefront/db";
@@ -10,7 +10,7 @@ export const TRADE_STATS_WINDOW_MS = 7 * 24 * 3600000;
 const TRADE_STATS_TTL_MS = 60000;
 
 export interface TradePairStat {
-  /** Bewertete Seite (Ressource); Kredite stehen immer auf Seite b. */
+  /** Bewertete Seite (Ressource); Taler stehen immer auf Seite b. */
   a: string;
   b: string;
   /** Anzahl abgeschlossener Geschäfte. */
@@ -21,7 +21,7 @@ export interface TradePairStat {
 
 interface RawPair { give: string; want: string; count: number; giveQty: number; wantQty: number }
 
-/** Fasst Rohsummen je Richtung zu ungeordneten Paaren zusammen (Reihenfolge wie tradeAssets, Kredite zuletzt). */
+/** Fasst Rohsummen je Richtung zu ungeordneten Paaren zusammen (Reihenfolge wie tradeAssets, Taler zuletzt). */
 export function foldTradePairs(raw: RawPair[], assets: string[]): TradePairStat[] {
   const idx = (a: string) => { const i = assets.indexOf(a); return i < 0 ? assets.length : i; };
   const map = new Map<string, TradePairStat>();

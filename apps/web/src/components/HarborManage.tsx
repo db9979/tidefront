@@ -38,7 +38,7 @@ export function HarborManage({ base, onDone }: { base: BaseData; onDone: () => v
     <div className="space-y-4">
       <RenameForm base={base} />
       {base.isHome
-        ? <p className="text-xs text-ink2">Der Heimathafen lässt sich nicht aufgeben. Forschung, Kredite und Rangliste hängen an ihm.</p>
+        ? <p className="text-xs text-ink2">Der Heimathafen lässt sich nicht aufgeben. Forschung, Taler und Rangliste hängen an ihm.</p>
         : <Abandon base={base} onDone={onDone} />}
     </div>
   );

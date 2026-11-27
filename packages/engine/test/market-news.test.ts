@@ -203,7 +203,7 @@ test("Saisonende: Stahl und Elektronik steigen in den letzten 7 Tagen tageweise 
   assert.ok(sooner.target.stahl === 0.08 && sooner.offsets.stahl > 0);
 });
 
-/** Spieler mit Börse und Treibstoff (Kredite nur aus Verkäufen, damit das Journal stimmt); Richtwert Treibstoff +20 %, Kurs seit einer Halbwertszeit am Grundrichtwert. */
+/** Spieler mit Börse und Treibstoff (Taler nur aus Verkäufen, damit das Journal stimmt); Richtwert Treibstoff +20 %, Kurs seit einer Halbwertszeit am Grundrichtwert. */
 async function shiftedMarket(name: string) {
   const p = await newPlayer(name);
   await patchBase(p.baseId, (s) => {
@@ -238,9 +238,9 @@ test("Handel, Angebot und Börsenansicht nutzen den effektiven Richtwert", async
   assert.ok(before > base.treibstoff * 1.05, "ohne Nachricht läge der Kurs am Grundrichtwert");
 });
 
-test("keine Kredite aus dem Nichts: Verkauf und Rückkauf bei verschobenem Richtwert verliert, Journal stimmt", async () => {
+test("keine Taler aus dem Nichts: Verkauf und Rückkauf bei verschobenem Richtwert verliert, Journal stimmt", async () => {
   const p = await shiftedMarket("Zocker");
-  // Kredite für den Rückkauf aus einem Stahlverkauf (über das Journal).
+  // Taler für den Rückkauf aus einem Stahlverkauf (über das Journal).
   const qStahl = await marketQuote(engine, { side: "sell", resource: "stahl", qty: 3000 });
   assert.ok(qStahl.ok);
   assert.equal((await trade(engine, p.playerId, key(), { side: "sell", resource: "stahl", qty: 3000, expectedPrice: qStahl.executionPrice })).ok, true);
@@ -256,7 +256,7 @@ test("keine Kredite aus dem Nichts: Verkauf und Rückkauf bei verschobenem Richt
   assert.equal(bought.ok, true, JSON.stringify(bought));
   const [afterRow] = await db.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, p.playerId));
   const credits1 = (afterRow.trader as { credits: number }).credits;
-  assert.ok(credits1 < credits0, `Kredite ${credits0} → ${credits1}`);
+  assert.ok(credits1 < credits0, `Taler ${credits0} → ${credits1}`);
   const audit = await auditLedger(engine);
   assert.equal(audit.ok, true, JSON.stringify(audit));
 });

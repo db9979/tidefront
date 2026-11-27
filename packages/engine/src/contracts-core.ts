@@ -1,6 +1,6 @@
 // Lieferverträge (v1.31, docs/REGELN.md Abschnitt Lieferverträge): gemeinsame Bausteine für KI- und Spielerverträge –
-// Konfiguration, Preis-Eingaben (Kurs, Richtwert, angekündigte Nachrichten), Kredite in Cent, Journal, Grenzen
-// (offene Verträge, Abschlüsse je Stunde, Tageslimit-Fenster, Kreditlimit). Abschluss: contracts-sign.ts,
+// Konfiguration, Preis-Eingaben (Kurs, Richtwert, angekündigte Nachrichten), Taler in Cent, Journal, Grenzen
+// (offene Verträge, Abschlüsse je Stunde, Tageslimit-Fenster, Kasse). Abschluss: contracts-sign.ts,
 // Abwicklung: contracts-run.ts, Angebote der KI: contracts-ki.ts, Verträge zwischen Spielern: contracts-player.ts.
 import { and, eq, gt, inArray, or, sql } from "drizzle-orm";
 import { market as marketCore } from "@tidefront/game-core";
@@ -77,7 +77,7 @@ export async function priceInputs(db: DbOrTx, resource: ResourceId, nowMs: numbe
   };
 }
 
-// ---------------------------------------------------------------- Kredite und Journal
+// ---------------------------------------------------------------- Taler und Journal
 
 export const cents = (credits: number) => Math.round(credits * 100);
 export const credits = (c: number) => c / 100;
@@ -96,12 +96,12 @@ export async function saveTrader(tx: Tx, id: number, trader: Trader): Promise<vo
   await tx.update(tables.player).set({ trader }).where(eq(tables.player.id, id));
 }
 
-/** Kredite ändern (ganze Cent). */
+/** Taler ändern (ganze Cent). */
 export function withCredits(t: Trader, deltaCents: number): Trader {
   return { ...t, credits: credits(cents(t.credits) + deltaCents) };
 }
 
-/** Journalzeile: Kredite in Cent (asset "credits"), Ressourcen in Einheiten. */
+/** Journalzeile: Taler in Cent (asset "credits"), Ressourcen in Einheiten. */
 export type Line = [account: string, asset: string, amount: number];
 
 export async function journal(tx: Tx, tradeId: string, tMs: number, lines: Line[]): Promise<void> {
@@ -167,7 +167,7 @@ export async function checkWindow(db: DbOrTx, playerId: number, resource: string
   if (marketCore.maxWindowLoad(await duePoints(db, playerId, resource), added) > limit) fail("daily_limit");
 }
 
-/** Kreditlimit des Spielers (Stufe der höchsten Hafenkommandantur). */
+/** Kasse des Spielers (Stufe der höchsten Hafenkommandantur). */
 export async function creditLimitCents(db: DbOrTx, playerId: number): Promise<number> {
   return cents((balance.buildings.hafenkommandantur.creditLimitPerLevel ?? 0) * (await maxHarborLevel(db, playerId)));
 }
@@ -187,7 +187,7 @@ export async function openCommitments(db: DbOrTx, playerId: number): Promise<{ p
 }
 
 /**
- * Kreditlimit beim Abschluss: Käufer – offene Restzahlungen + neue ≤ Limit; Verkäufer – Kredite + offene Erlöse + neue
+ * Kasse beim Abschluss: Käufer – offene Restzahlungen + neue ≤ Limit; Verkäufer – Taler + offene Erlöse + neue
  * ≤ Limit (Code credit_limit).
  */
 export async function checkCreditLimit(db: DbOrTx, playerId: number, role: "buyer" | "seller", newCents: number, creditsNow: number): Promise<void> {

@@ -54,7 +54,7 @@ async function trader(name: string) {
   return { playerId: p.playerId, baseId };
 }
 
-/** Börsenkauf im Journal (wie executeTrade ihn bucht: der Markt gibt Ware ab, der Spieler zahlt Kredite). */
+/** Börsenkauf im Journal (wie executeTrade ihn bucht: der Markt gibt Ware ab, der Spieler zahlt Taler). */
 async function journalBuy(playerId: number, resource: string, qty: number, tMs: number) {
   const tradeId = `t-test-${key()}`;
   await db.insert(tables.tradeLedger).values([

@@ -42,7 +42,7 @@ export interface TurnCtx {
   state: BotState;
   /** Admirale (bots-admiral.ts): bereiter Admiral für den nächsten Überfall aus seinem Hafen. */
   admiral?: { id: number; baseId: number; mods: Modifiers };
-  /** Admirale: Kredite, die die Börse für die Ernennung zurückhält. */
+  /** Admirale: Taler, die die Börse für die Ernennung zurückhält. */
   creditReserve?: number;
 }
 

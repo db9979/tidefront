@@ -1,4 +1,4 @@
-// Prüflauf: Journal der Börse gegen Kreditstände und offene Lieferungen.
+// Prüflauf: Journal der Börse gegen Talerstände und offene Lieferungen.
 import { eq, sql } from "drizzle-orm";
 import { tables } from "@tidefront/db";
 import type { Engine } from "./context.ts";
