@@ -101,7 +101,7 @@ export async function disablePush(): Promise<void> {
   await sub.unsubscribe().catch(() => {});
 }
 
-export type OpenTarget = { tab?: "basis" | "karte" | "truppen" | "berichte" | "boerse"; view?: "settings" | "admin"; /** Mehrere Häfen: diesen Hafen aktiv machen. */ base?: number };
+export type OpenTarget = { tab?: "basis" | "karte" | "truppen" | "berichte" | "boerse"; view?: "settings" | "admin"; /** Mehrere Häfen: diesen Hafen aktiv machen. */ base?: number; /** E-Mail-Link: diesen Bericht öffnen. */ report?: number };
 
 /** Ziel aus einer App-Adresse (Benachrichtigung): ?tab=berichte, ?view=admin, ?base=12 (Hafen). */
 export function parseOpenUrl(url: string): OpenTarget {
@@ -112,5 +112,14 @@ export function parseOpenUrl(url: string): OpenTarget {
     tab: tab && ["basis", "karte", "truppen", "berichte", "boerse"].includes(tab) ? (tab as OpenTarget["tab"]) : undefined,
     view: view === "admin" || view === "settings" ? view : undefined,
     base: /^\d{1,9}$/.test(q.get("base") ?? "") ? Number(q.get("base")) : undefined,
+    report: /^\d{1,9}$/.test(q.get("bericht") ?? "") ? Number(q.get("bericht")) : undefined,
   };
+}
+
+/** Bericht aus dem Start-Link (?bericht=ID, z. B. aus einer E-Mail); wird einmal abgeholt. */
+let openReport: number | undefined = typeof location !== "undefined" ? parseOpenUrl(location.href).report : undefined;
+export function takeOpenReport(): number | null {
+  const id = openReport ?? null;
+  openReport = undefined;
+  return id;
 }

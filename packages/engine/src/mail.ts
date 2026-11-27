@@ -6,6 +6,8 @@ import { and, eq, gt, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-or
 import { tables, type Db } from "@tidefront/db";
 import { type Engine, type Notice, type NoticeKind } from "./context.ts";
 import { renderMail, type MailContent } from "./mail-templates.ts";
+import { defaultNoticeBlocks, digestBlocks, digestSubject } from "./mail-notices.ts";
+import { reportMailFor } from "./mail-reports.ts";
 import { cleanPrefs, wants, type Prefs } from "./push.ts";
 import { decryptSecret, encryptSecret, getSetting, getSettings, publicUrl, secretAvailable, setSetting, sha256 } from "./settings.ts";
 
@@ -183,14 +185,32 @@ export async function sendMail(
 
 const unsubUrl = (token: string) => `${publicUrl()}/api/mail/unsubscribe?t=${token}`;
 
-function noticeMail(n: Notice, unsubscribeToken: string): MailContent {
+/** Inhalt einer Benachrichtigungs-Mail: mit Bericht ausführlich (mail-reports.ts), sonst aus Notice.mail bzw. facts. */
+export async function noticeMail(engine: Engine, playerId: number, n: Notice, unsubscribeToken: string): Promise<MailContent> {
+  const unsubscribeUrl = unsubUrl(unsubscribeToken);
+  if (n.reportId !== undefined) {
+    const r = await reportMailFor(engine, playerId, n.reportId).catch((err) => {
+      engine.log("report mail", String(err));
+      return null;
+    });
+    if (r) {
+      return {
+        subject: r.subject, heading: r.heading, paragraphs: [], preheader: r.lead, blocks: r.blocks,
+        button: { label: "Im Spiel öffnen", url: `${publicUrl()}/?tab=berichte&bericht=${r.reportId}` },
+        unsubscribeUrl,
+      };
+    }
+  }
+  // Mit eigenem Banner steht der Kurzsatz dort; dann nur als Vorschauzeile.
+  const banner = n.mail?.blocks?.some((b) => b.type === "banner") ?? false;
   return {
-    subject: n.title,
+    subject: n.mail?.subject ?? n.title,
     heading: n.title,
-    paragraphs: [n.body],
-    facts: n.facts,
+    paragraphs: banner ? [] : [n.mail?.lead ?? n.body],
+    preheader: n.mail?.lead ?? n.body,
+    blocks: n.mail?.blocks ?? defaultNoticeBlocks(n),
     button: { label: "Im Spiel öffnen", url: `${publicUrl()}${n.url ?? "/"}` },
-    unsubscribeUrl: unsubUrl(unsubscribeToken),
+    unsubscribeUrl,
   };
 }
 
@@ -205,7 +225,7 @@ export async function mailNotice(engine: Engine, playerId: number, n: Notice): P
     return "queued";
   }
   if (!(await mailReady(engine.db))) return "skipped";
-  const r = await sendMail(engine, pe.email, noticeMail(n, pe.unsubscribeToken));
+  const r = await sendMail(engine, pe.email, await noticeMail(engine, playerId, n, pe.unsubscribeToken));
   return r.ok ? "sent" : "failed";
 }
 
@@ -238,12 +258,12 @@ export async function flushMailDigests(engine: Engine, nowMs: number): Promise<n
     const [nb] = await engine.db.select({ n: sql<number>`count(*)::int` }).from(tables.base).where(eq(tables.base.playerId, p.playerId));
     const harbor = (nb?.n ?? 1) > 1 ? "deinen Häfen" : "deinem Hafen";
     const content: MailContent = rows.length === 1
-      ? noticeMail({ kind: rows[0].kind as NoticeKind, title: rows[0].title, body: rows[0].body }, p.token)
+      ? await noticeMail(engine, p.playerId, { kind: rows[0].kind as NoticeKind, title: rows[0].title, body: rows[0].body }, p.token)
       : {
-          subject: `${rows.length} Meldungen aus ${harbor}`,
+          subject: `${rows.length} Meldungen aus ${harbor}: ${digestSubject(rows)}`,
           heading: `Neues aus ${harbor}`,
           paragraphs: ["Seit der letzten Nachricht ist Folgendes passiert:"],
-          items: rows.map((r) => `${r.title}: ${r.body}`),
+          blocks: digestBlocks(rows),
           button: { label: "Im Spiel öffnen", url: `${publicUrl()}/` },
           unsubscribeUrl: unsubUrl(p.token),
         };

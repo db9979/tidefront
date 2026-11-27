@@ -185,12 +185,12 @@ export const spyArrive: Handler = async (tx, ev, due) => {
       winner: "defender", seed: spy.seed, atMs: due, report: { spy: dice, battle },
     });
     await tx.update(tables.mission).set({ status: "done", returning: {}, cargoHome: {}, reportId }).where(eq(tables.mission.id, m.id));
-    push.push({ playerId: pid, notice: { kind: "report", url: "/?tab=meldungen", tag: `spy-${m.id}`, title: "Spion enttarnt", body: `Dein Spion wurde in ${targetName} enttarnt (Wurf ${roll.roll}, nötig ≤ ${roll.threshold}). Er ist verloren.` } });
+    push.push({ playerId: pid, notice: { kind: "report", url: "/?tab=meldungen", tag: `spy-${m.id}`, reportId, title: "Spion enttarnt", body: `Dein Spion wurde in ${targetName} enttarnt (Wurf ${roll.roll}, nötig ≤ ${roll.threshold}). Er ist verloren.` } });
     if (target) {
       const what = KIND_TITLE[spy.kind] + (spy.building ? ` (${SABOTAGE_TEXT[spy.building] ?? spy.building})` : "");
       await systemMessage(tx, [target.playerId], `Fremder Spion enttarnt – Absender ${senderName}`,
         `In ${target.name} wurde ein Spion von ${senderName} enttarnt. Auftrag: ${what}. Der Spion ist ausgeschaltet; der Wurf steht im Bericht.`, due);
-      push.push({ playerId: target.playerId, notice: { kind: "attack", url: "/?tab=meldungen", tag: `spy-def-${m.id}`, title: "Fremder Spion enttarnt", body: `Absender: ${senderName}. Auftrag: ${what}.` } });
+      push.push({ playerId: target.playerId, notice: { kind: "attack", url: "/?tab=meldungen", tag: `spy-def-${m.id}`, reportId, title: "Fremder Spion enttarnt", body: `Absender: ${senderName}. Auftrag: ${what}.` } });
       notify.push([[target.playerId], "reports"], [[target.playerId], "messages"]);
     }
     return { notify, push };
@@ -211,12 +211,12 @@ export const spyArrive: Handler = async (tx, ev, due) => {
       const name = SABOTAGE_TEXT[spy.building] ?? spy.building;
       const effect = spy.building === "bauschlange" ? `Der Ausbau verzögert sich um ${espionageOf(balance)!.sabotage.delayHours} Stunden.` : `${name} fällt aus bis ${clock(r.sabotage.untilMs)} Uhr (UTC).`;
       detail = { sabotage: { ...r.sabotage, effect } };
-      await insertReport(tx, {
+      const sabotageReportId = await insertReport(tx, {
         kind: "sabotage", title: `Sabotage in ${target.name}: ${name}`, attackerPlayerId: null, defenderPlayerId: target.playerId,
         attackerBaseId: null, defenderBaseId: target.id, winner: null, seed: null, atMs: due,
         report: { sabotage: { ...r.sabotage, effect }, targetName: target.name },
       });
-      push.push({ playerId: target.playerId, notice: { kind: "attack", url: "/?tab=basis", tag: `sabotage-${target.id}`, title: `Sabotage: ${name}`, body: effect } });
+      push.push({ playerId: target.playerId, notice: { kind: "attack", url: "/?tab=basis", tag: `sabotage-${target.id}`, reportId: sabotageReportId, title: `Sabotage: ${name}`, body: effect } });
       notify.push([[target.playerId], "base"], [[target.playerId], "reports"]);
     }
   } else if (spy.kind === "desinformation" && target && origin) {
@@ -236,7 +236,7 @@ export const spyArrive: Handler = async (tx, ev, due) => {
   await back(reportId, true);
   // Tagesbefehl „erkundung“: erfolgreiche Erkundung (Hafen oder Kartell).
   if (spy.kind === "erkunden" || spy.kind === "kartell") await trackProgress(tx, pid, "erkundung", 1, { atMs: due });
-  push.push({ playerId: pid, notice: { kind: "report", url: "/?tab=meldungen", tag: `spy-${m.id}`, title: `Spionagebericht: ${KIND_TITLE[spy.kind]}`, body: `Auftrag gegen ${targetName} gelungen (Wurf ${roll.roll}, nötig ≤ ${roll.threshold}).` } });
+  push.push({ playerId: pid, notice: { kind: "report", url: "/?tab=meldungen", tag: `spy-${m.id}`, reportId, title: `Spionagebericht: ${KIND_TITLE[spy.kind]}`, body: `Auftrag gegen ${targetName} gelungen (Wurf ${roll.roll}, nötig ≤ ${roll.threshold}).` } });
   return { notify, push };
 };
 

@@ -9,6 +9,7 @@ import { BattleLog, type Battle } from "../components/BattleLog.tsx";
 import { RepeatButton } from "../components/Repeat.tsx";
 import { WorldEventReportNote } from "../components/WorldEvents.tsx";
 import { useBackLayer } from "../lib/back.ts";
+import { takeOpenReport } from "../lib/push.ts";
 import { SabotageReport, SpyReport } from "../components/Intel.tsx";
 import { AdmiralReport } from "../components/Admirals.tsx"; // Admirale
 import { AllianceOpsReport } from "../components/AllianceOps.tsx"; // Allianz-Ops
@@ -52,7 +53,7 @@ function roleText(role: string, kind: string): string {
 }
 
 export function ReportsScreen() {
-  const [open, setOpen] = useState<number | null>(null);
+  const [open, setOpen] = useState<number | null>(() => takeOpenReport()); // E-Mail-Link ?bericht=ID
   const [filter, setFilter] = useState<Filter>("alle");
   const [limit, setLimit] = useState(PAGE);
   const list = useQuery(trpc.report.list.queryOptions());

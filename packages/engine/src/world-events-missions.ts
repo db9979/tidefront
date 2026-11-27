@@ -255,7 +255,7 @@ export async function eventMissionArrive(
   } else {
     notify.push([null, "map"]);
   }
-  push.push(notice(pid, "report", `Kampfbericht: ${title}`, sumLoot(loot) > 0 ? `Beute: ${resText(loot)}.` : "Keine Beute."));
+  push.push(notice(pid, "report", `Kampfbericht: ${title}`, sumLoot(loot) > 0 ? `Beute: ${resText(loot)}.` : "Keine Beute.", r.id));
   return { returning, cargoHome: loot, reportId: r.id, notify, push };
 }
 

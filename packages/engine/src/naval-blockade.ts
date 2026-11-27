@@ -144,14 +144,14 @@ export async function blockadeArrive(tx: Tx, m: MissionRowLike, plan: Mission & 
   await tx.update(tables.mission).set({ status: "holding", returning: activeUnits(units), returnAt: new Date(endsAt + travel) }).where(eq(tables.mission.id, m.id));
   await scheduleEvent(tx, "blockade_end", endsAt, { blockadeId: b.id }, null);
   const who = await playerName(tx, pid);
-  await storeNavalReport(tx, {
+  const reportId = await storeNavalReport(tx, {
     kind: "blockade", title: `Blockade vor ${target.name} bis ${fmtClock(endsAt)}`, attackerPlayerId: pid, defenderPlayerId: target.playerId,
     attackerBaseId: m.baseId, defenderBaseId: target.id,
     report: { blockade: { id: b.id, targetName: target.name, attackerName: who, units: activeUnits(units), endsAtMs: endsAt, factor: blockadeProductionFactor(balance) } }, atMs: due,
   });
   await systemMessage(tx, [target.playerId], `Seeblockade vor ${target.name}`,
     `${who} blockiert deinen Hafen ${target.name} bis ${fmtClock(endsAt)}. Produktion −${Math.round((1 - blockadeProductionFactor(balance)) * 100)} %, eingehende Lieferungen werden zurückgehalten, Börsenverkäufe sind gesperrt. Greife den Blockadeverband auf der Karte an, um die Blockade zu brechen.`, due);
-  push.push(pushNotice(target.playerId, "attack", `Seeblockade vor ${target.name}`, `${who} blockiert deinen Hafen ${target.name} bis ${fmtClock(endsAt)}.`));
+  push.push(pushNotice(target.playerId, "attack", `Seeblockade vor ${target.name}`, `${who} blockiert deinen Hafen ${target.name} bis ${fmtClock(endsAt)}.`, "karte", reportId));
   notify.push([[target.playerId], "base"], [[target.playerId], "messages"], [[target.playerId], "reports"], [null, "map"]);
 }
 
@@ -263,8 +263,8 @@ export async function blockadeAttackArrive(tx: Tx, m: MissionRowLike, plan: Miss
     atMs: due,
   });
   if (destroyed) await endBlockade(tx, { ...b, units: left }, "broken", due, notify);
-  push.push(pushNotice(b.attackerId, "attack", destroyed ? "Blockade gebrochen" : "Blockade angegriffen", `${attackerName} hat deinen Blockadeverband angegriffen.`, "berichte"));
-  if (b.targetPlayerId !== pid) push.push(pushNotice(b.targetPlayerId, "report", title, `${attackerName} hat den Blockadeverband angegriffen.`, "berichte"));
+  push.push(pushNotice(b.attackerId, "attack", destroyed ? "Blockade gebrochen" : "Blockade angegriffen", `${attackerName} hat deinen Blockadeverband angegriffen.`, "berichte", reportId));
+  if (b.targetPlayerId !== pid) push.push(pushNotice(b.targetPlayerId, "report", title, `${attackerName} hat den Blockadeverband angegriffen.`, "berichte", reportId));
   notify.push([[b.attackerId], "reports"], [[b.attackerId], "missions"], [null, "map"]);
   await sendHome(tx, m, plan, activeUnits(raw.attacker.final), {}, reportId, due);
 }

@@ -262,6 +262,8 @@ export async function flushAchievementNotices(engine: Engine, limit = 200): Prom
       jobs.push({ playerId: r.playerId, notice: {
         kind: "report", url: "/?tab=berichte", tag: `erfolg-${r.achievementId}`,
         title: `Erfolg: ${a.title} (${TIER_NAMES[r.tier - 1]})`, body: `${tierText(a, r.tier)}. Belohnung abholen unter Meldungen → Erfolge.`,
+        facts: [["Erfolg", a.title], ["Stufe", TIER_NAMES[r.tier - 1] ?? String(r.tier)], ["Erreicht", tierText(a, r.tier)]], // E-Mail
+        mail: { subject: `Erfolg freigeschaltet: ${a.title} (${TIER_NAMES[r.tier - 1]})` },
       } });
     }
   });

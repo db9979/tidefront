@@ -271,7 +271,7 @@ export const raidArrive: Handler = async (tx, ev, due) => {
   for (let i = 0; i < parts.length; i++) {
     const mine = sum(shares[i]) > 0 ? resText(shares[i]) : "keine";
     await tx.insert(tables.message).values({ fromPlayerId: null, toPlayerId: parts[i].playerId, subject: "Sammelangriff: Ergebnis", body: `${head} Dein Beitrag ${pct[i]} %, deine Beute: ${mine}.`, createdAt: new Date(due) });
-    push.push({ playerId: parts[i].playerId, notice: { kind: "report", title: `Kampfbericht: ${fight?.title ?? raid.targetName}`, body: `Dein Beitrag ${pct[i]} %, Beute: ${mine}.`, url: "/?tab=meldungen", tag: `raid-${raid.id}` } });
+    push.push({ playerId: parts[i].playerId, notice: { kind: "report", title: `Kampfbericht: ${fight?.title ?? raid.targetName}`, body: `Dein Beitrag ${pct[i]} %, Beute: ${mine}.`, url: "/?tab=meldungen", tag: `raid-${raid.id}`, ...(reportId !== null ? { reportId } : {}) } });
   }
   notes.push([ids, "messages"], [ids, "reports"], [ids, "missions"], [await memberIds(tx, raid.allianceId), "alliance"]);
   return { notify: [...notify, ...notes], push };

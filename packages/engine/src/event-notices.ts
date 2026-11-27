@@ -9,6 +9,7 @@ import { ADMIRAL_RETURN_TYPE, lockBase, readBase, scheduleEvent } from "./store.
 import { amounts, clock, fmtInt, minutesText, nameOf } from "./names.ts";
 import { modsOf } from "./modifiers.ts";
 import { detectedAtOf, isDetected, markDetected, warnFactor } from "./radar.ts";
+import { attackWarningMail } from "./mail-notices.ts"; // E-Mail: Lage und empfohlene Schritte
 
 export type Snapshot =
   | { kind: "build"; order: BuildOrder | null }
@@ -60,12 +61,13 @@ async function reportNotices(tx: Tx, reportId: number): Promise<NoticeJob[]> {
   const loot = amounts(data.battle?.loot);
   const url = "/?tab=berichte";
   const tag = `report-${r.id}`;
+  // E-Mail: reportId (Parameter) zeigt den Bericht ausführlich.
   const out: NoticeJob[] = [];
   if (r.kind === "ueberfall" || r.kind === "kartell") {
     if (r.attackerPlayerId !== null) {
       const won = r.winner === "attacker";
       out.push({ playerId: r.attackerPlayerId, notice: {
-        kind: "report", url, tag, title: `Kampfbericht: ${r.title}`,
+        kind: "report", url, tag, reportId, title: `Kampfbericht: ${r.title}`,
         body: won ? `Sieg. Beute: ${loot}.` : "Der Angriff ist gescheitert.",
         facts: [["Ergebnis", won ? "Sieg" : "Niederlage"], ["Beute", loot]],
       } });
@@ -74,18 +76,18 @@ async function reportNotices(tx: Tx, reportId: number): Promise<NoticeJob[]> {
       const held = r.winner === "defender";
       const attacker = r.kind === "kartell" ? "Freibeuter-Kartell" : (data.attackerName ?? "Ein Gegner");
       out.push({ playerId: r.defenderPlayerId, notice: {
-        kind: "report", url, tag, title: `Kampfbericht: ${data.targetName ?? "Dein Hafen"} angegriffen`,
+        kind: "report", url, tag, reportId, title: `Kampfbericht: ${data.targetName ?? "Dein Hafen"} angegriffen`,
         body: held ? `${attacker} wurde abgewehrt.` : `${attacker} hat ${(await harborName(tx, r.defenderPlayerId, r.defenderBaseId)) ?? "deinen Hafen"} überwunden. Verlust: ${loot}.`,
         facts: [["Angreifer", attacker], ["Ergebnis", held ? "Abgewehrt" : "Verloren"], ["Beute des Gegners", loot]],
       } });
     }
   } else if (r.kind === "aufklaerung" || r.kind === "leer") {
     if (r.attackerPlayerId !== null) {
-      out.push({ playerId: r.attackerPlayerId, notice: { kind: "report", url, tag, title: r.title, body: "Der Bericht liegt vor." } });
+      out.push({ playerId: r.attackerPlayerId, notice: { kind: "report", url, tag, reportId, title: r.title, body: "Der Bericht liegt vor." } });
     }
   } else if (r.kind === "transport" && r.defenderPlayerId !== null) {
     out.push({ playerId: r.defenderPlayerId, notice: {
-      kind: "delivery", url: "/?tab=basis", tag, title: "Transport angekommen",
+      kind: "delivery", url: "/?tab=basis", tag, reportId, title: "Transport angekommen",
       body: `${data.from ?? "Ein Mitspieler"} hat Ladung geliefert.`,
     } });
   }
@@ -224,12 +226,14 @@ export const attackWarning: Handler = async (tx, ev, due) => {
   }
   const arrive = m.arriveAt.getTime();
   const left = minutesText(arrive - due);
+  const units = (m.plan as { units?: Record<string, number> } | null)?.units ?? {};
+  const mail = attackWarningMail({ attacker, targetName: b.name, arriveAtMs: arrive, nowMs: due, units, kartell: m.playerId === null, state: b.state, mods: await modsOf(tx, b, due) });
   return {
     notify: [[[b.playerId], "missions"]],
     push: [{ playerId: b.playerId, notice: {
       kind: "attack", url: "/?tab=basis", tag: `attack-${m.id}`, title: "Angriff erkannt",
       body: `${attacker} greift ${b.name} an. Ankunft in ${left} (${clock(arrive)} Uhr).`,
-      facts: [["Angreifer", attacker], ["Ziel", b.name], ["Ankunft in", left], ["Ankunft", `${clock(arrive)} Uhr`]],
+      facts: [["Angreifer", attacker], ["Ziel", b.name], ["Ankunft in", left], ["Ankunft", `${clock(arrive)} Uhr`]], mail,
     } }],
   };
 };

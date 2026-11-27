@@ -254,13 +254,13 @@ export async function fieldArrive(tx: Tx, m: MissionRowLike, plan: Mission, orig
   } else {
     await sendHome(tx, m, plan, survivors, {}, reportId, due);
   }
-  push.push(pushNotice(pid, "report", title, outcome === "captured" ? "Deine Besatzung hält das Feld." : "Der Verband kehrt heim.", "berichte"));
+  push.push(pushNotice(pid, "report", title, outcome === "captured" ? "Deine Besatzung hält das Feld." : "Der Verband kehrt heim.", "berichte", reportId));
   if (prevOwner !== null) {
     const lost = destroyed;
     await systemMessage(tx, notify, [prevOwner], lost ? `${name} verloren` : `${name} gehalten`,
       lost ? `${attackerName} hat deine Besatzung auf ${name} geschlagen.${outcome === "captured" ? " Das Feld gehört jetzt ihm." : " Das Feld ist wieder neutral."}`
         : `Deine Besatzung auf ${name} hat den Angriff von ${attackerName} abgewiesen.`);
-    push.push(pushNotice(prevOwner, "attack", lost ? `${name} verloren` : `${name} gehalten`, `Angreifer: ${attackerName}.`, "berichte"));
+    push.push(pushNotice(prevOwner, "attack", lost ? `${name} verloren` : `${name} gehalten`, `Angreifer: ${attackerName}.`, "berichte", reportId));
     notify.push([[prevOwner], "reports"], [[prevOwner], "missions"], [[prevOwner], "base"]);
   }
   notify.push([null, "map"], [[pid], "reports"]);

@@ -9,6 +9,12 @@ const NAMES: Record<string, string> = {
   schnellboot: "Schnellboot", piratenmiliz: "Piratenmiliz", kuestenbatterie: "Küstenbatterie", flakstellung: "Flakstellung",
   bunkerlinie: "Bunkerlinie", minensperre: "Minensperre",
   stahl: "Stahl", treibstoff: "Treibstoff", elektronik: "Elektronik", proviant: "Proviant", credits: "Kredite",
+  // Für ausführliche E-Mails (wie apps/web/src/lib/names.ts)
+  windpark: "Windpark", solarfeld: "Solarfeld", speicherwerk: "Speicherwerk", forschungsamt: "Forschungsamt",
+  minenleger: "Minenleger", minenraeumer: "Minenräumer", kolonieschiff: "Kolonieschiff", spion: "Spion", anlagen: "Anlagen",
+  luftkampf: "Luftkampf", luftschlag: "Luftschlag", ubootangriff: "U-Boot-Angriff", seegefecht: "Seegefecht", landung: "Landung",
+  nachtschild: "Nachtschild", anfaengerschutz: "Anfängerschutz", niederlage: "Schutz nach Niederlage", gruendungsschutz: "Gründungsschutz",
+  bauschlange: "Bauschlange", oelfeld: "Ölfeld", erzbucht: "Erzbucht", fischgrund: "Fischgrund", elektronikwrack: "Elektronik-Wrack",
 };
 
 export function nameOf(id: string): string {

@@ -97,8 +97,8 @@ export async function systemMessage(tx: Tx, playerIds: number[], subject: string
 }
 
 /** Push- bzw. E-Mail-Auftrag (nach dem Commit verschickt). */
-export function notice(playerId: number, kind: Notice["kind"], title: string, body: string): NoticeJob {
-  return { playerId, notice: { kind, title, body, url: "/?tab=karte", tag: `weltereignis-${kind}` } };
+export function notice(playerId: number, kind: Notice["kind"], title: string, body: string, reportId?: number): NoticeJob {
+  return { playerId, notice: { kind, title, body, url: "/?tab=karte", tag: `weltereignis-${kind}`, ...(reportId !== undefined ? { reportId } : {}) } }; // reportId: ausführliche E-Mail
 }
 
 /** Alle Spieler mit Hafen (Empfänger von Ankündigungen), je Spieler einmal mit seinem Heimathafen. */
