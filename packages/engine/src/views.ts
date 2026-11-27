@@ -339,7 +339,7 @@ export async function missionPreview(
     arriveAtMs: r.mission.arriveAtMs,
     returnAtMs: r.mission.returnAtMs,
     target: { kind: target.kind, own: target.playerId === playerId },
-    weather: withArrival(weather, input.col, input.row, r.mission.arriveAtMs),
+    weather: withArrival(weather, input.col, input.row, r.mission.arriveAtMs, nowMs, own.state),
     weatherFactor: r.mission.weather?.shipFactor ?? 1,
   };
 }

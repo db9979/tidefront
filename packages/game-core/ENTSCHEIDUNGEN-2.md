@@ -113,6 +113,32 @@ Fortsetzung von `ENTSCHEIDUNGEN.md` (dort Übersicht und Teil 1). Verbindlich bl
   Zeichen stehen auf der Zugseite (links in Laufrichtung des Linienzugs). Zeichen in Bildschirm-Pixeln, neu gestrichen
   bei Zoomsprung × 1,5; nah herangezoomt etwas zurückgenommen.
 
+### F5. Vorhersage mit Unsicherheit (v1.18, Block `weather.forecast`, Regeln in docs/REGELN-WETTER.md)
+
+- **Anlass:** Das Wetter ist deterministisch; Stromkurve, Sturmwarnung und Zielwetter der Planung zeigten exakt das
+  spätere Wetter (100 % Trefferquote). Gewünscht: realistische Unsicherheit, ohne laufende Spiele zu ändern.
+- **Entscheidung:** Das echte Wetter (`weatherAt`) bleibt unverändert und allein maßgeblich für Reise, Kampf, Strom,
+  Aufklärung, Radar. Nur Anzeigen der Zukunft rechnen mit `forecastWeatherAt` (neues Modul `weather-forecast.ts`,
+  rein). Drei Fehlerquellen, weil sie der Wetterpraxis entsprechen und einfach erklärbar sind: Zeitverschiebung der
+  Systeme (bis ±3 h), Wind und Nebel relativ (±5 % je 3 h, höchstens ±30 %), Bewölkung absolut (±0,04 je 3 h,
+  höchstens ±0,25). Fehlermuster je Ausgabe (alle 3 h) fest, damit die Anzeige nicht flackert; Vorlauf ab „jetzt“,
+  damit die erste Stunde zum Wetterkärtchen passt.
+- **Spannbreite** mit `bandShare` 0,8 der Höchstwerte statt 1,0: Bei 1,0 traf sie 97–99 % und war bei 24 h über
+  4 Bft breit (nutzlos); bei 0,6 nur 61–73 %. 0,8 trifft 79–89 % (mit dem Vorlauf steigend).
+- **Genauigkeit:** Funkmesstechnik (vorhanden, 2 Stufen) −15 % je Stufe, Radarstation (ab Stufe 1) −10 %, Untergrenze
+  0,5. Bewusst pauschal je Hafen und ohne Strombedarf: eine Regel, die man im Infotext nachrechnen kann. Simulation:
+  Faktor 0,6 senkt die mittlere Abweichung um 40 %.
+- **Unverzerrt:** Rauschen symmetrisch um 0; Simulation Verzerrung Wind < 0,003 bei mittlerer Abweichung bis 0,066;
+  Bewölkung −0,01 bei 24 h durch Kappung bei bedecktem Himmel (hingenommen).
+- **Strom:** `integrateGrid`/`powerForecast` nehmen eine optionale Wetterquelle; ohne Angabe das echte Wetter (settle
+  unverändert). Die Fertigstellung von Ausbildung und Forschung bleibt beim Start mit dem echten Wetter festgelegt
+  (bindende Zusage, nicht Vorhersage); sie verrät die Zukunft nur als Uhrzeit. Bei Bedarf später überdenken.
+- **KI-Spieler:** nutzen keine künftigen Wetterwerte (nur `productionRates` jetzt und `missionPreview`); keine
+  Änderung nötig.
+- **Bekannte Grenze:** Das Wetterfeld ist im Browser nachrechenbar (Seed in der Balance, die Karte rechnet es selbst).
+  Wer den Client auseinandernimmt, kann das echte künftige Wetter berechnen. Die Karte zeigt nur die Gegenwart;
+  eine serverseitige Wetterkarte wäre nötig, um das zu verhindern (offen, nicht in v1.18).
+
 ## G. Spionage, Kriegsglück und Kartell gegen Forschung (v1.7)
 
 1. **Spionage abgestimmt** (`sim/espionage.ts`; Chance exakt Zielzahl / 20). Typischer Stand: Tag 3 Stufe 2, Tag 7

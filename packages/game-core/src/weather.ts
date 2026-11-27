@@ -8,6 +8,7 @@
 import type { GeoPoint } from "./types.ts";
 import { mulberry32 } from "./rng.ts";
 import { frontClouds, frontLines, type FrontLine } from "./weather-fronts.ts";
+import type { ForecastBalance } from "./weather-forecast.ts";
 
 const HOUR_MS = 3600000;
 const RAD = Math.PI / 180;
@@ -40,6 +41,8 @@ export interface WeatherBalance {
   /** Aufklärung: ab diesem Nebel ist das Lagebild unsicher (gerundet), ab `fogScoutHeavy` grob gerundet. */
   fogScoutFrom: number;
   fogScoutHeavy: number;
+  /** Vorhersage (v1.18): Unsicherheit wächst mit dem Vorlauf (weather-forecast.ts); fehlt der Block, ist sie exakt. */
+  forecast?: ForecastBalance;
 }
 
 /** Wetter an einem Ort zu einem Zeitpunkt; alle Größen 0–1. */
@@ -168,6 +171,9 @@ function noise3(seed: number, x: number, y: number, z: number): number {
   }
   return v * 2 - 1;
 }
+
+/** Weiches Rauschen in [−1, 1] über Raum und Zeit (auch für die Abweichung der Vorhersage). */
+export const weatherNoise = noise3;
 
 // ---------------------------------------------------------------- Sonnenstand
 
@@ -346,6 +352,8 @@ export interface ArrivalWeather {
   clouds: number;
   fog: number;
   storm: boolean;
+  /** Vorhersage (v1.18): Spannbreite je Größe [niedrig, hoch], Sturm möglich, Unsicherheitsfaktor des Hafens. */
+  forecast?: { wind: [number, number]; clouds: [number, number]; fog: [number, number]; stormPossible: boolean; skill: number };
 }
 
 export function arrivalWeather(target: GeoPoint, arriveMs: number, wb: WeatherBalance): ArrivalWeather {

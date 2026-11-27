@@ -159,7 +159,7 @@ export async function previewExpansion(db: DbOrTx, playerId: number, own: BaseRo
     return {
       ok: true as const, distanceKm: m.distanceKm, travelSeconds: m.travelSeconds, fuelCost: m.fuelCost, arriveAtMs: m.arriveAtMs,
       returnAtMs: m.returnAtMs, target: { kind: input.type === FOUNDING_TYPE ? SITE_TARGET : "base", own: input.type === TRANSFER_TYPE },
-      intercept: null, weather: withArrival(weather, input.col, input.row, m.arriveAtMs), weatherFactor: m.weather?.shipFactor ?? 1,
+      intercept: null, weather: withArrival(weather, input.col, input.row, m.arriveAtMs, nowMs, own.state), weatherFactor: m.weather?.shipFactor ?? 1,
       expansion: { bases: bases.length, pending: await pendingFoundings(db, playerId), allowed: home ? allowedBases(home.state, balance) : 1, max: e.maxBases },
     };
   } catch (err) {

@@ -17,6 +17,7 @@ export * from "./veterans.ts";
 export * from "./espionage.ts";
 export * from "./weather.ts";
 export * from "./weather-fronts.ts"; // Fronten (Kalt-, Warmfront, Okklusion)
+export * from "./weather-forecast.ts"; // Vorhersage mit Unsicherheit (v1.18)
 export * from "./power.ts";
 export * from "./admirals.ts"; // Admirale
 export * from "./naval.ts"; // See: Minen/Blockade/Konvoi

@@ -173,6 +173,9 @@ export function powerAt(base: BaseState, atMs: number, balance: Balance, mods?: 
   return solvePiece(base, atMs, siteWeather(base, atMs, balance), stored, base.resources.treibstoff ?? 0, balance, mods);
 }
 
+/** Wetterquelle der Fortschreibung: Ort und Zeit → Wetter. Ohne Angabe das tatsächliche Wetter (weatherAt). */
+export type WeatherSource = (site: GeoPoint, ms: number) => Weather;
+
 /** Rückruf je Stück der Integration [from, to); true beendet die Integration vorzeitig. */
 export type PieceCallback = (snap: PowerSnapshot, from: number, to: number) => boolean | void;
 
@@ -180,7 +183,7 @@ export type PieceCallback = (snap: PowerSnapshot, from: number, to: number) => b
  * Schreibt Bestände und Speicher von resUpdatedAt bis toMs fort (Kern von settle). Produktion füllt nur bis zur
  * Lagerkapazität, der Bestand fällt nie unter 0; Bestand 0 bei negativer Proviant-Rate setzt versorgungsmangel.
  */
-export function integrateGrid(base: BaseState, toMs: number, balance: Balance, mods?: Modifiers, onPiece?: PieceCallback): BaseState {
+export function integrateGrid(base: BaseState, toMs: number, balance: Balance, mods?: Modifiers, onPiece?: PieceCallback, wx?: WeatherSource): BaseState {
   const next = cloneBase(base);
   const capacity = storageCapacity(base, balance, mods);
   const spec = storageSpecs(base, balance);
@@ -198,7 +201,8 @@ export function integrateGrid(base: BaseState, toMs: number, balance: Balance, m
     const stepStart = Math.floor(t / step) * step;
     let stepEnd = Math.min(toMs, stepStart + step);
     for (const e of ends) if (e > t && e < stepEnd) { stepEnd = e; break; }
-    const w = balance.weather ? weatherAt(base.site ?? DEFAULT_SITE, stepStart, balance.weather) : null;
+    const site = base.site ?? DEFAULT_SITE;
+    const w = balance.weather ? (wx ? wx(site, stepStart) : weatherAt(site, stepStart, balance.weather)) : null;
     for (let guard = 0; t < stepEnd && guard < 8; guard++) {
       const fuel = next.resources.treibstoff ?? 0;
       const snap = solvePiece(next, t, w, stored, fuel, balance, mods);
@@ -285,9 +289,12 @@ export interface PowerHour {
   storm: boolean;
 }
 
-/** Stromkurve über `hours` Stunden ab `fromMs` (Stützpunkt wird zuvor bis fromMs fortgeschrieben). */
-export function powerForecast(base: BaseState, fromMs: number, hours: number, balance: Balance, mods?: Modifiers): PowerHour[] {
-  const start = base.resUpdatedAt < fromMs ? integrateGrid(base, fromMs, balance, mods) : { ...base, resUpdatedAt: fromMs };
+/**
+ * Stromkurve über `hours` Stunden ab `fromMs` (Stützpunkt wird zuvor bis fromMs fortgeschrieben). `wx`: Wetterquelle,
+ * in der Anzeige die Vorhersage (weather-forecast.ts); ohne Angabe das tatsächliche Wetter.
+ */
+export function powerForecast(base: BaseState, fromMs: number, hours: number, balance: Balance, mods?: Modifiers, wx?: WeatherSource): PowerHour[] {
+  const start = base.resUpdatedAt < fromMs ? integrateGrid(base, fromMs, balance, mods, undefined, wx) : { ...base, resUpdatedAt: fromMs };
   const out: PowerHour[] = [];
   for (let i = 0; i < hours; i++) {
     out.push({
@@ -322,6 +329,19 @@ export function powerForecast(base: BaseState, fromMs: number, hours: number, ba
       }
       x = end;
     }
-  });
+  }, wx);
   return out;
+}
+
+/** Strom aus Wind und Sonne bei Wetter `w` (für die Spannbreite der Stromkurve). */
+export function renewableSupply(base: BaseState, w: Pick<Weather, "wind" | "clouds" | "daylight">, balance: Balance): { wind: number; solar: number } {
+  let wind = 0;
+  let solar = 0;
+  for (const [id, def] of Object.entries(balance.buildings)) {
+    const l = buildingLevel(base, id);
+    if (l < 1) continue;
+    if (def.windPowerPerLevel && w.wind <= (def.stormCutoff ?? 1)) wind += def.windPowerPerLevel * l * w.wind;
+    if (def.solarPowerPerLevel) solar += def.solarPowerPerLevel * l * sunshine({ ...w, fog: 0, storm: false }, def.cloudLoss ?? 0);
+  }
+  return { wind, solar };
 }

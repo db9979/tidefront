@@ -140,7 +140,7 @@ export async function previewAgainstEvent(db: DbOrTx, playerId: number, own: Bas
     returnAtMs: r.mission.returnAtMs,
     target: { kind: "event", own: false },
     intercept: target,
-    weather: withArrival(weather, target.col, target.row, r.mission.arriveAtMs),
+    weather: withArrival(weather, target.col, target.row, r.mission.arriveAtMs, nowMs, own.state),
     weatherFactor: r.mission.weather?.shipFactor ?? 1,
   };
 }

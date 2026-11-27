@@ -1,9 +1,9 @@
-# TIDEFRONT – Wetter und Strom (Balance v1.6, Wettermodell v1.9)
+# TIDEFRONT – Wetter und Strom (Balance v1.6, Wettermodell v1.9, Vorhersage v1.18)
 
 Teil von `docs/REGELN.md` (dort aus Platzgründen ausgelagert). Verbindlich für `packages/game-core`.
 
 Werte unter `weather`, `power` und bei den Gebäuden in `balance.json`; Kern in
-`packages/game-core/src/weather.ts` und `power.ts`.
+`packages/game-core/src/weather.ts` und `power.ts`, Vorhersage in `weather-forecast.ts`.
 
 ## Wetterfeld
 
@@ -101,8 +101,10 @@ und `research_complete` bleiben unverändert); spätere Änderungen am Hafen ver
 - **Kampf:** Wetter am Kampfort zum Kampfzeitpunkt. Aller Schaden von Flugzeugen (Luftkampf, Luftschlag) beider Seiten mal
   `1 − airStormPenalty * Sturmanteil` (0,6); der Luftschlag der Bomber zusätzlich mal `1 − cloudStrikePenalty * Bewölkung`
   (0,3). Flak und Schiffe sind nicht betroffen. Der Bericht enthält das Wetter.
-- **Planung:** Die Vorschau zeigt zusätzlich das Wetter am Ziel zur voraussichtlichen Ankunft (Wind, Wolken, Nebel;
-  deterministisch, nur Anzeige – der Plan speichert das Routenwetter bei Abfahrt).
+- **Planung:** Die Vorschau zeigt zusätzlich die **Vorhersage** für das Ziel zur voraussichtlichen Ankunft (Wind, Wolken,
+  Nebel mit Spannbreite, „Sturm möglich“; siehe „Vorhersage“). Nur Anzeige – der Plan speichert das Routenwetter bei
+  Abfahrt, bei Ankunft gilt das tatsächliche Wetter am Kampfort. Das Routenwetter bei Abfahrt ist gemessen (Jetzt-Wetter)
+  und gilt unverändert.
 - **Weltereignisse:** Missionen gegen Großflotte, Schatzschiff und Belagerungsring planen mit dem Wetter der Route
   (Vorschau und Plan wie oben); ihre Kämpfe und die Hafenangriffe der Großflotte rechnen mit dem Wetter am Kampfort.
 - **Nebel und Radar:** Vorwarnzeit mal `1 − fogRadarMax * Nebel` am Hafen (bis −30 %), als Modifikator-Quelle „Wetter“
@@ -111,3 +113,52 @@ und `research_complete` bleiben unverändert); spätere Änderungen am Hafen ver
   zwei gültige Stellen, Einheiten und Anlagen auf 5 gerundet; ab `fogScoutHeavy` (0,65) grob (eine Stelle, auf 10).
   Gebäude bleiben genau.
 
+
+## Vorhersage (v1.18)
+
+Das tatsächliche Wetter bleibt unverändert und gilt für Reise, Kampf, Strom, Aufklärung und Radar. Alles, was die
+Oberfläche für die Zukunft zeigt, ist eine **Vorhersage** (`forecastWeatherAt`): Stromkurve über 24 h samt
+Mangelwarnung, Wettervorhersage am Hafen, Sturmwarnung und das Wetter am Ziel in der Missionsplanung.
+Werte unter `weather.forecast`:
+
+- **Ausgabe:** Alle `issueEveryHours` (3) Stunden wird die Vorhersage neu ausgegeben. Ihr Fehlermuster ist
+  deterministisches Rauschen aus Seed, Ausgabezeitpunkt, Ort und Zielzeit (weich über 8 h); innerhalb einer Ausgabe
+  bleibt es fest, nur der Vorlauf wächst stetig – nichts flackert.
+- **Vorlauf** L = Zielzeit − jetzt (Stunden); für Gegenwart und Vergangenheit gilt das echte Wetter. Höchstabweichung
+  je 3 h Vorlauf, gedeckelt:
+
+  | Größe | je 3 h | höchstens | Art |
+  |---|---|---|---|
+  | Zeitliche Verschiebung der Systeme | `shiftPer3h` 0,375 h | `shiftMaxHours` 3 h (ab 24 h) | Wetter kommt früher/später |
+  | Wind | `windPer3h` 5 % | `windMax` 30 % (ab 18 h) | relativ |
+  | Bewölkung | `cloudsPer3h` 0,04 | `cloudsMax` 0,25 (ab knapp 19 h) | absolut (Anteil) |
+  | Nebel | `fogPer3h` 5 % | `fogMax` 30 % | relativ |
+
+  Vorhersage = echtes Wetter zur Zeit `t + n₁·Verschiebung`, Wind mal `1 + n₂·Abweichung`, Bewölkung plus
+  `n₃·Abweichung`, Nebel mal `1 + n₄·Abweichung`, jeweils auf 0–1 begrenzt; `n` liegt in [−1, 1], symmetrisch um 0
+  (Rauschen × 2, gekappt). Tageslicht ist Astronomie und bleibt exakt; Sturm = vorhergesagter Wind ≥ `stormFrom`.
+- **Spannbreite** (`forecastRange`): Vorhersage im Zeitfenster ±Verschiebung, erweitert um die Abweichung, beides mit
+  `bandShare` (0,8) der Höchstwerte. Die Kurve zeigt sie als Band um das Angebot aus Wind und Sonne (Kraftwerk und
+  Speicher wie vorhergesagt), die Wetterkästchen Wind von–bis, die Planung Wind/Wolken/Nebel von–bis und die
+  Wirkung auf Flugzeuge und Luftschlag von–bis. „Sturm möglich“, wenn der obere Rand `stormFrom` erreicht.
+  Sturmwarnung „ab etwa hh:mm (±Verschiebung)“.
+- **Genauigkeit** (`forecastSkill`, je Hafen): Unsicherheit mal `1 − skillPerLevel · Stufe(skillTech) − radarBonus`
+  (Funkmesstechnik −15 % je Stufe, Radarstation ab Stufe 1 −10 %), nicht unter `minFactor` (0,5). Bestwert heute
+  0,6 (Funkmesstechnik 2 und Radar). Der Faktor wirkt auf Abweichung und Verschiebung.
+- **Simulation** (6 Orte × 300 Ausgaben, `test/weather-forecast.test.ts`; Faktor 1 / 0,6):
+
+  | Vorlauf | Wind, mittl. Abweichung | relativ | Bewölkung, mittl. Abw. | Verzerrung Wind | Spannbreite trifft |
+  |---|---|---|---|---|---|
+  | 3 h | 0,011 / 0,007 | 3 % / 2 % | 0,02 / 0,01 | +0,001 | 79 % |
+  | 6 h | 0,022 / 0,013 | 6 % / 3 % | 0,04 / 0,03 | +0,001 | 82 % |
+  | 12 h | 0,044 / 0,026 | 11 % / 7 % | 0,08 / 0,05 | +0,001 | 85 % |
+  | 18 h | 0,066 / 0,039 | 17 % / 10 % | 0,12 / 0,07 | −0,002 | 89 % |
+  | 24 h | 0,065 / 0,039 | 17 % / 10 % | 0,13 / 0,08 | −0,001 | 89 % |
+
+  Im Mittel unverzerrt (Wind unter 0,003; Bewölkung −0,01 bei 24 h durch die Begrenzung auf 0–1 bei bedecktem
+  Himmel). Bei 24 h ist das Wind-Band im Mittel 0,26 breit (gut 3 Bft), „Sturm möglich“ in 16 % der Fälle.
+- **Unverändert exakt:** Wetterkärtchen „Am Hafen“, Feldzeile und Wetterkarte (Jetzt-Wetter), Routenwetter bei Abfahrt
+  (Zeitzuschlag, Startverbot), Kampf- und Aufklärungswetter, Fortschreibung (`settle`) und die beim Start festgelegte
+  Fertigstellung von Ausbildung und Forschung.
+- **KI-Spieler** kennen nur Jetzt-Wetter und -Strom (`productionRates` zum Zeitpunkt jetzt) und die Vorschau
+  (`missionPreview`, ab v1.18 mit Vorhersage); das echte künftige Wetter fragen sie nicht ab.

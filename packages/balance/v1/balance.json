@@ -1,5 +1,5 @@
 {
-  "version": "v1.16",
+  "version": "v1.18",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -218,7 +218,23 @@
     "cloudStrikePenalty": 0.3,
     "fogRadarMax": 0.3,
     "fogScoutFrom": 0.35,
-    "fogScoutHeavy": 0.65
+    "fogScoutHeavy": 0.65,
+    "forecast": {
+      "issueEveryHours": 3,
+      "windPer3h": 0.05,
+      "windMax": 0.3,
+      "cloudsPer3h": 0.04,
+      "cloudsMax": 0.25,
+      "fogPer3h": 0.05,
+      "fogMax": 0.3,
+      "shiftPer3h": 0.375,
+      "shiftMaxHours": 3,
+      "skillTech": "funkmesstechnik",
+      "skillPerLevel": 0.15,
+      "radarBonus": 0.1,
+      "minFactor": 0.5,
+      "bandShare": 0.8
+    }
   },
   "guide": {
     "steps": {

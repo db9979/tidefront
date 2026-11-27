@@ -1,5 +1,6 @@
 // Versorgung mit Strom (v1.6): Augenblick nach Quelle, Rangfolge der Verbraucher, Speicher, Stromkurve über 24 h
 // und Wettervorhersage am Hafen. Kupferstich-Stil: Tinte, Schraffur, wenige Kennfarben.
+// v1.18: Kurve und Wetter sind eine Vorhersage mit Spannbreite (Band um das Angebot, Wind von–bis).
 import { BEAUFORT_WORDS, beaufort } from "@tidefront/game-core";
 import type { BaseData } from "../lib/trpc.ts";
 import { fmtNum } from "../lib/names.ts";
@@ -83,12 +84,18 @@ export function PowerGrid({ base }: { base: BaseData }) {
       </div>
       {g.warning ? (
         <p className="text-xs text-red-300 font-semibold" role="status">
-          {g.warning.atMs - serverNow() < 60000 ? "Jetzt" : `Ab ${hourOf(g.warning.atMs)} Uhr`} fehlen {fmtNum(g.warning.missing)} Strom – {g.warning.text}
+          {g.warning.atMs - serverNow() < 60000 ? "Jetzt" : `Voraussichtlich ab ${hourOf(g.warning.atMs)} Uhr`} fehlen {fmtNum(g.warning.missing)} Strom – {g.warning.text}
         </p>
       ) : (
-        <p className="text-xs text-moos">Die nächsten {g.curve.length} Stunden reicht der Strom.</p>
+        <p className="text-xs text-moos">Die nächsten {g.curve.length} Stunden reicht der Strom voraussichtlich.</p>
       )}
       <Curve curve={g.curve} />
+      {g.forecast && (
+        <p className="text-[10.5px] text-ink2">
+          Vorhersage: je weiter voraus, desto unsicherer (alle {g.forecast.issuedEveryHours} h neu).
+          {g.forecast.skill < 0.999 ? ` Funkmesstechnik und Radar: Unsicherheit −${Math.round((1 - g.forecast.skill) * 100)} %.` : " Funkmesstechnik und Radarstation machen sie genauer."}
+        </p>
+      )}
       <Forecast g={g} />
     </div>
   );
@@ -100,7 +107,7 @@ function Curve({ curve }: { curve: Hour[] }) {
   const H = 120;
   const n = curve.length;
   if (n === 0) return null;
-  const max = Math.max(1, ...curve.map((h) => Math.max(sum(h.supply), sum(h.demand))));
+  const max = Math.max(1, ...curve.map((h) => Math.max(sum(h.supply), sum(h.demand), h.supplyHigh)));
   const maxStore = Math.max(1, ...curve.map((h) => h.stored));
   const bw = W / n;
   const y = (v: number) => H - (v / max) * (H - 8);
@@ -109,10 +116,13 @@ function Curve({ curve }: { curve: Hour[] }) {
     const d = y(sum(h.demand));
     demandPath += `${i === 0 ? "M" : "L"}${i * bw} ${d} H${(i + 1) * bw} `;
   });
+  // Spannbreite des Angebots (Wind und Sonne von schlecht bis gut) als Band über den Balken.
+  const bandTop = curve.map((h, i) => `${i === 0 ? "M" : "L"}${i * bw} ${y(h.supplyHigh)} H${(i + 1) * bw}`).join(" ");
+  const bandBottom = [...curve].reverse().map((h, j) => `L${(n - j) * bw} ${y(h.supplyLow)} H${(n - j - 1) * bw}`).join(" ");
   const storePath = curve.map((h, i) => `${i === 0 ? "M" : "L"}${(i + 0.5) * bw} ${H - (h.stored / maxStore) * (H - 8) * 0.9}`).join(" ");
   return (
     <figure className="m-0">
-      <svg viewBox={`0 -2 ${W} ${H + 16}`} className="w-full h-auto" role="img" aria-label="Stromkurve der nächsten 24 Stunden">
+      <svg viewBox={`0 -2 ${W} ${H + 16}`} className="w-full h-auto" role="img" aria-label="Stromkurve der nächsten 24 Stunden (Vorhersage mit Spannbreite)">
         {curve.map((h, i) => {
           let acc = 0;
           return (
@@ -129,6 +139,7 @@ function Curve({ curve }: { curve: Hour[] }) {
             </g>
           );
         })}
+        <path d={`${bandTop} ${bandBottom} Z`} fill={INK} fillOpacity={0.13} stroke={INK} strokeWidth={0.6} strokeDasharray="1.5 1.5" data-testid="strom-band" />
         <path d={demandPath} fill="none" stroke={SIEGEL} strokeWidth={1.6} />
         <path d={storePath} fill="none" stroke={MOOS} strokeWidth={1.2} strokeDasharray="3 2" />
         <path d={`M0 ${H} H${W}`} stroke={INK} strokeWidth={0.8} />
@@ -142,6 +153,7 @@ function Curve({ curve }: { curve: Hour[] }) {
         ))}
         <span className="flex items-center gap-1"><svg width="14" height="6" aria-hidden="true"><path d="M0 3 H14" stroke={SIEGEL} strokeWidth={1.6} /></svg>Bedarf</span>
         <span className="flex items-center gap-1"><svg width="14" height="6" aria-hidden="true"><path d="M0 3 H14" stroke={MOOS} strokeWidth={1.2} strokeDasharray="3 2" /></svg>Speicherstand</span>
+        <span className="flex items-center gap-1"><svg width="10" height="10" aria-hidden="true"><rect width="10" height="10" fill={INK} fillOpacity={0.13} stroke={INK} strokeWidth={0.6} strokeDasharray="1.5 1.5" /></svg>Spannbreite (Vorhersage)</span>
       </figcaption>
     </figure>
   );
@@ -155,30 +167,49 @@ function weatherIcon(h: Hour, g: Grid): string {
   return h.daylight > 0.05 ? "sonne" : "mond";
 }
 
-/** Wettervorhersage am Hafen alle drei Stunden: Wind, Sonne, Bewölkung, Nebel; Sturmwarnung auf 5 Minuten genau. */
+/** Halbe Stunden als Text („1½“). */
+const halfH = (h: number) => `${Math.floor(h)}${h % 1 >= 0.5 ? "½" : ""}`;
+
+/** Wind in Beaufort von–bis (gleich: eine Zahl). */
+function bftRange(lo: number, hi: number): string {
+  const a = beaufort(lo);
+  const b = beaufort(hi);
+  return a === b ? `${a}` : `${a}–${b}`;
+}
+
+/**
+ * Wettervorhersage am Hafen alle drei Stunden: Wind (von–bis), Bewölkung, Nebel; Sturmwarnung mit Zeitunsicherheit
+ * und „Sturm möglich“, wenn nur der obere Rand der Spannbreite Sturm erreicht.
+ */
 function Forecast({ g }: { g: Grid }) {
   const slots = g.curve.filter((_, i) => i % 3 === 0);
   const storm = g.stormWarning;
+  const possible = storm === null ? g.stormPossibleAt : null;
   const text = "Schiffe langsamer, reine Luftmissionen starten nicht, Windparks schalten über Orkanstärke ab.";
   return (
     <div>
-      <div className="text-[11px] uppercase tracking-wider text-ink2 mb-1 font-display">Wetter am Hafen</div>
+      <div className="text-[11px] uppercase tracking-wider text-ink2 mb-1 font-display">Wettervorhersage am Hafen</div>
       {storm !== null && (
         <p className="text-xs text-red-300 font-semibold mb-1">
-          {storm - serverNow() < 5 * 60000 ? "Sturm am Hafen" : `Sturmwarnung ab ${clockOf(storm)} Uhr`}: {text}
+          {storm.atMs - serverNow() < 5 * 60000
+            ? "Sturm am Hafen"
+            : `Sturmwarnung ab etwa ${clockOf(storm.atMs)} Uhr${storm.plusMinusH >= 0.5 ? ` (±${halfH(storm.plusMinusH)} h)` : ""}`}: {text}
         </p>
+      )}
+      {possible !== null && (
+        <p className="text-xs text-ink2 mb-1">Sturm möglich ab etwa {hourOf(possible)} Uhr (oberer Rand der Vorhersage).</p>
       )}
       <div className="grid grid-cols-8 gap-0.5 text-center text-[10px]">
         {slots.map((h) => (
           <div key={h.atMs} className="rounded border border-rule bg-paper py-0.5">
             <div className="mono">{hourOf(h.atMs)}h</div>
             <Icon id={weatherIcon(h, g)} size={22} />
-            <div className="mono" title={`Wind: ${BEAUFORT_WORDS[beaufort(h.wind)]}`}>{beaufort(h.wind)}</div>
+            <div className="mono whitespace-nowrap" title={`Wind: ${BEAUFORT_WORDS[beaufort(h.wind)]}`}>{bftRange(h.windRange[0], h.windRange[1])}</div>
             <div className="mono text-ink2" title="Bewölkung">{Math.round(h.clouds * 100)}</div>
           </div>
         ))}
       </div>
-      <p className="text-[10.5px] text-ink2 mt-0.5">Zeilen: Wind in Beaufort, Bewölkung in Prozent. Nebel kürzt die Radar-Vorwarnzeit und trübt Aufklärung.</p>
+      <p className="text-[10.5px] text-ink2 mt-0.5">Zeilen: Wind in Beaufort (von–bis), Bewölkung in Prozent. Nebel kürzt die Radar-Vorwarnzeit und trübt Aufklärung.</p>
     </div>
   );
 }
