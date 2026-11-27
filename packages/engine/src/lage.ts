@@ -17,7 +17,8 @@ import { openWorldEvents } from "./world-events.ts";
 import { runningSeason } from "./season.ts";
 import { amounts, clock, countsText, fmtInt, minutesText, nameOf } from "./names.ts";
 import { harborSub, row, SOON_MS, type LageRow, type LageUrgent } from "./lage-types.ts";
-import { rewardCounts, waitingRows } from "./lage-wait.ts";
+import { waitingRows } from "./lage-wait.ts";
+import { allianceRows, beginnerRow, rewardSourceCounts } from "./lage-social.ts"; // TST-15, TX-08, TST-16
 
 export type { LageJump, LageRow, LageUrgent } from "./lage-types.ts";
 
@@ -48,14 +49,21 @@ export async function lageView(engine: Engine, playerId: number, opts: { brief?:
 
   const attacks = await attackRows(db, bases, mods, nowMs);
   const contracts = await contractRows(db, playerId, nowMs);
-  const rewards = await rewardCounts(db, playerId);
+  const rewardSources = await rewardSourceCounts(db, playerId);
+  const rewards = rewardSources.achievements + rewardSources.weekly;
   const idle = bases.filter((b) => b.state.buildQueue.length === 0);
   const grace = contracts.filter((r) => r.kind === "nachfrist");
-  const keys = [...attacks.map((r) => r.key), ...grace.map((r) => r.key), ...idle.map((b) => `leer:${b.id}`), ...(rewards > 0 ? [`belohnungen:${rewards}`] : [])];
-  const urgent: LageUrgent = { attacks: attacks.length, grace: grace.length, idleQueues: idle.length, rewards, keys };
-  if (opts.brief) return { ...empty, urgent };
+  const beginner = beginnerRow(bases, nowMs); // TX-08: Anfängerschutz endet (letzte 24 h)
+  const keys = [...attacks.map((r) => r.key), ...grace.map((r) => r.key), ...idle.map((b) => `leer:${b.id}`), ...(rewards > 0 ? [`belohnungen:${rewards}`] : []),
+    ...(beginner ? [beginner.key] : [])];
+  const urgent: LageUrgent = { attacks: attacks.length, grace: grace.length, idleQueues: idle.length, rewards, rewardSources, keys };
+  if (opts.brief) {
+    // TST-15: offene Beitrittsanfragen zählen fürs Navigationszeichen (Schlüssel je neuester Anfrage).
+    for (const r of await allianceRows(db, playerId)) if (r.urgent) urgent.keys.push(r.key);
+    return { ...empty, urgent };
+  }
 
-  const soon: LageRow[] = [...attacks, ...contracts];
+  const soon: LageRow[] = [...attacks, ...contracts, ...(beginner ? [beginner] : [])];
   const underway: LageRow[] = [];
   await missionRows(db, playerId, bases, nowMs, soon, underway);
   await convoyRows(db, playerId, bases, nowMs, soon, underway);
@@ -63,7 +71,8 @@ export async function lageView(engine: Engine, playerId: number, opts: { brief?:
   const inWindow = soon.filter((r) => r.atMs !== null && r.atMs > nowMs - 5000 && (r.kind === "angriff" || r.atMs <= nowMs + SOON_MS));
   inWindow.sort((a, b) => Number(b.kind === "angriff") - Number(a.kind === "angriff") || a.atMs! - b.atMs! || a.key.localeCompare(b.key));
   underway.sort((a, b) => (a.atMs ?? Infinity) - (b.atMs ?? Infinity) || a.key.localeCompare(b.key));
-  const waiting = await waitingRows(db, playerId, bases, mods, nowMs, rewards);
+  const waiting = await waitingRows(db, playerId, bases, mods, nowMs, rewardSources);
+  for (const r of waiting) if (r.kind === "beitritt") urgent.keys.push(r.key); // TST-15: Zahl am Navigationszeichen
   return { serverNow: nowMs, soon: inWindow, underway, waiting, urgent };
 }
 

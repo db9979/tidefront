@@ -1,6 +1,7 @@
 // Tagesbefehle: Pool der Arten, Auswahl passend zum Fortschritt, Ziele, Belohnungen, Serienbonus, Spieltag.
 // Reine Funktionen (keine Datenbank); die Datenbankseite steht in challenges.ts.
 import {
+  gameTimeZone,
   mulberry32,
   powerAt,
   productionRates,
@@ -16,19 +17,8 @@ import { balance } from "./context.ts";
 
 const DAY_MS = 86400000;
 
-/** Zeitzone des Spieltags: TZ der Umgebung, sonst Europe/Berlin. */
-export function gameTimeZone(): string {
-  const tz = process.env.TZ;
-  if (tz && !tz.startsWith(":")) {
-    try {
-      new Intl.DateTimeFormat("en-CA", { timeZone: tz });
-      return tz;
-    } catch {
-      /* ungültig: Vorgabe */
-    }
-  }
-  return "Europe/Berlin";
-}
+/** Zeitzone des Spieltags: eine Quelle in game-core (time-zone.ts, TE-07); hier weitergereicht für alte Importe. */
+export { gameTimeZone };
 
 function parts(ms: number): { y: number; m: number; d: number; h: number; min: number; s: number } {
   const f = new Intl.DateTimeFormat("en-CA", {

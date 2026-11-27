@@ -16,7 +16,6 @@ import {
   scheduleNightShieldChange,
   settle,
   validTimeZone,
-  expansionOf,
   startTraining,
   startUpgrade,
   market as marketCore,
@@ -28,15 +27,15 @@ import {
 import { hexCenter, isCoast, isTradePortHex, nearestTradePortBySea } from "@tidefront/world";
 import { tables, type Tx } from "@tidefront/db";
 import { nestKnown } from "./intel-query.ts"; // Lagebild
-import { balance, marketBalance, GameError, type ChangeKind, type Engine } from "./context.ts";
-import { processDueForBase } from "./events.ts";
-import { lockPlayerWide, worldLockShared } from "./world-lock.ts";
+import { balance, marketBalance, GameError, type Engine } from "./context.ts";
+import { lockPlayerWide } from "./world-lock.ts";
 import { activeMissionCount, basesOfPlayer, homeBaseOf, lockBases, lockOwnBase, ownBase, saveBase, scheduleEvent, withSite } from "./store.ts";
 import { homeStorageCapacity, maxHarborLevel } from "./player-wide.ts"; // Mehrere Häfen: Börse spielerweit
 import { missionWeather } from "./weather.ts"; // Wetter (v1.6): Sturm auf der Route
 import { incomingDetected } from "./views.ts";
 import { scheduleAttackWarning } from "./event-notices.ts";
 import { trackProgress } from "./challenges.ts";
+import { recordTradeFee } from "./achievements.ts";
 import { diplomacyBlock } from "./alliance-core.ts"; // Allianzen/Diplomatie
 // Weltereignisse: Missionen gegen Ereignisse, Belagerung sperrt Börsenkäufe.
 import { launchAgainstEvent } from "./world-events-missions.ts";
@@ -55,67 +54,8 @@ import { endBeginnerElsewhere } from "./pvp.ts"; // PvP: Anfängerschutz endet b
 import { latePackState } from "./catch-up.ts"; // Aufholhilfe: Startpaket für Spät-Einsteiger
 import { reservedNext24h } from "./contracts-core.ts"; // Lieferverträge: Vormerkung im Tageslimit
 
-export type Rejected = { ok: false; code: string };
-type Draft<T> = T | (Rejected & { keepWrites?: boolean });
-
-export interface Ctx {
-  tx: Tx;
-  playerId: number;
-  nowMs: number;
-  notify: [number[] | null, ChangeKind][];
-}
-
-/**
- * Führt einen Befehl genau einmal aus. Ein zweiter Aufruf mit demselben Schlüssel liefert die
- * gespeicherte Antwort (auch für abgelehnte Befehle).
- */
-export async function runCommand<T extends { ok: true }>(
-  engine: Engine,
-  playerId: number,
-  key: string,
-  command: string,
-  fn: (ctx: Ctx) => Promise<Draft<T>>,
-): Promise<T | Rejected> {
-  const fullKey = `${playerId}:${key}`;
-  const nowMs = Date.now();
-  // Mehrere Häfen: fällige Ereignisse aller eigenen Häfen (höchstens balance-maxBases, also wenige).
-  for (const own of (await basesOfPlayer(engine.db, playerId)).slice(0, maxDueBases())) await processDueForBase(engine, own.id, nowMs);
-  const notes: Ctx["notify"] = [];
-  const result = await engine.db.transaction(async (tx) => {
-    await worldLockShared(tx); // Saisonwechsel wartet auf laufende Befehle (world-lock.ts)
-    const inserted = await tx
-      .insert(tables.commandLog)
-      .values({ key: fullKey, playerId, command })
-      .onConflictDoNothing()
-      .returning({ key: tables.commandLog.key });
-    if (inserted.length === 0) {
-      const [prev] = await tx.select().from(tables.commandLog).where(eq(tables.commandLog.key, fullKey));
-      return (prev?.response as T | Rejected) ?? { ok: false, code: "duplicate" };
-    }
-    let res: T | Rejected;
-    try {
-      // Savepoint: ein abgelehnter Befehl hinterlässt nur den Eintrag im Befehlsprotokoll.
-      res = await tx.transaction(async (inner) => {
-        const r = await fn({ tx: inner, playerId, nowMs, notify: notes });
-        if (r.ok) return r;
-        const rej = r as Rejected & { keepWrites?: boolean };
-        if (!rej.keepWrites) throw new GameError(rej.code);
-        return { ok: false as const, code: rej.code };
-      });
-    } catch (err) {
-      if (!(err instanceof GameError)) throw err;
-      notes.length = 0;
-      res = { ok: false, code: err.code };
-    }
-    await tx.update(tables.commandLog).set({ response: res }).where(eq(tables.commandLog.key, fullKey));
-    return res;
-  });
-  for (const [ids, kind] of notes) engine.notify(ids, kind);
-  return result;
-}
-
-/** Obergrenze der Häfen, deren fällige Ereignisse ein Befehl vorab verarbeitet (Balance: expansion.maxBases). */
-const maxDueBases = (): number => Math.max(1, expansionOf(balance)?.maxBases ?? 3);
+export { runCommand, isRetryableDbError, RETRY_ATTEMPTS, type Ctx, type Draft, type Rejected } from "./command-run.ts";
+import { runCommand, type Ctx } from "./command-run.ts";
 
 /** Gesperrter eigener Hafen: baseId mit Besitzprüfung (sonst "no_base"), ohne baseId der Heimathafen. */
 export function ownBaseLocked(ctx: Ctx, baseId?: number) {
@@ -485,6 +425,7 @@ export function trade(
       await createMarketConvoy(ctx.tx, playerId, { ...b, state }, d, input.escort); // See: Börsenkonvoi (Geleit optional)
     }
     await trackProgress(ctx.tx, playerId, "handel", result.quote.totalCredits, { atMs: ctx.nowMs });
+    await recordTradeFee(ctx.tx, playerId, result.quote.totalCredits, result.quote.feeCredits, ctx.nowMs); // M-07: Kaufmann nach Gebühren
     ctx.notify.push([[playerId], "base"], [null, "market"]);
     return { ok: true as const, quote: result.quote, delivery: result.delivery };
   });

@@ -4,7 +4,7 @@
 // convoy: Albers, Falkenberg, Rotbart); alte Verträge mit delivery „abstrakt“ liefern weiter sofort ins Lager.
 // Lieferungen zählen ins gleitende Tageslimit und in die Handelsbilanz.
 import { eq, inArray, sql } from "drizzle-orm";
-import { deliverCargo, settle, market as marketCore, type BaseState, type Counts } from "@tidefront/game-core";
+import { deliverCargo, gameTimeZone, settle, market as marketCore, type BaseState, type Counts } from "@tidefront/game-core";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, GameError, type NoticeJob } from "./context.ts";
 import type { HandlerResult } from "./events.ts";
@@ -222,7 +222,7 @@ async function settleNow(tx: Tx, c: ContractRow, due: number, final: boolean, no
   for (const [id, role] of [[c.buyerId, "buyer"], [c.sellerId, "seller"]] as const) {
     if (id === null || id === ki) continue;
     const parts = [`Liefervertrag über ${contractTitle(c)}: ${verdict}.`];
-    if (role === "buyer" && r.qty > 0) parts.push(deliveryId ? `Die Ware ist per Konvoi unterwegs (Ankunft ${new Date(arriveMs).toLocaleString("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}).${escortNote}` : "Die Ware liegt im Lager.");
+    if (role === "buyer" && r.qty > 0) parts.push(deliveryId ? `Die Ware ist per Konvoi unterwegs (Ankunft ${new Date(arriveMs).toLocaleString("de-DE", { timeZone: gameTimeZone(), day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}).${escortNote}` : "Die Ware liegt im Lager.");
     if (role === "buyer") parts.push(`Bezahlt: ${credText(r.buyerPaysCents)} Taler.`);
     if (role === "seller") parts.push(`Erlös: ${credText(r.sellerGetsCents)} Taler.`);
     const own = role === "buyer" ? r.buyerPenaltyCents : r.sellerPenaltyCents;

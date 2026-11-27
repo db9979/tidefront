@@ -2,7 +2,7 @@
 // Der Worker (Abfrage alle 250 ms) arbeitet die vorgezogenen Ereignisse danach regulär ab.
 import type postgres from "postgres";
 import { hexSteps } from "@tidefront/game-core";
-import { COLS, ROWS, hexIndex, nearestTradePort, terrainMap } from "@tidefront/world";
+import { COLS, ROWS, hexDistanceKm, hexIndex, nearestTradePort, terrainMap } from "@tidefront/world";
 import { awayFromEdge, until } from "./fixtures.ts";
 
 type Sql = ReturnType<typeof postgres>;
@@ -125,4 +125,25 @@ export async function foundingSpot(sql: Sql, home: { col: number; row: number })
   if (out.length === 0) throw new Error("kein Gründungsfeld in der Nähe");
   out.sort((a, b) => a.s - b.s);
   return { col: out[0].col, row: out[0].row };
+}
+
+/**
+ * Freies Rohstofffeld der Stufe 1 nahe `near` atomar für diesen Test reservieren (TE-03): Auswahl und Reservierung in
+ * einer Transaktion unter pg_advisory_xact_lock, damit parallele Specs (Felder, Admiral, Geleit) nie dasselbe Feld
+ * nehmen. Die Reservierung ist eine Missionszeile ohne Spieler und ohne Ereignis (Status e2e-reserviert).
+ */
+export async function reserveField(sql: Sql, near: { col: number; row: number }): Promise<{ id: number; col: number; row: number }> {
+  const picked = await sql.begin(async (tx) => {
+    await tx`select pg_advisory_xact_lock(hashtext('e2e-field-reserve'))`;
+    const rows = await tx`select id, col, row from resource_field where tier = 1 and player_id is null and not exists (select 1 from mission m where m.target_col = resource_field.col and m.target_row = resource_field.row and m.status in ('outbound', 'holding', 'returning', 'e2e-reserviert'))`;
+    const field = rows
+      .map((f) => ({ id: f.id as number, col: f.col as number, row: f.row as number }))
+      .filter(awayFromEdge)
+      .map((f) => ({ ...f, d: hexDistanceKm(near, f) }))
+      .sort((a, b) => a.d - b.d)[0];
+    if (!field) throw new Error("kein freies Rohstofffeld für den Test");
+    await tx`insert into mission (player_id, base_id, type, target_kind, target_col, target_row, plan, status, arrive_at) values (null, null, 'e2e', 'field', ${field.col}, ${field.row}, '{}'::jsonb, 'e2e-reserviert', now() + interval '1 day')`;
+    return { id: field.id, col: field.col, row: field.row };
+  });
+  return picked as { id: number; col: number; row: number };
 }

@@ -1,7 +1,7 @@
 // Lagezentrum „Wartet auf dich“: leere Bauschlange, freie Ausbildungs- und Missionsplätze, Lager fast voll,
 // Versorgungsmangel, Aufholhilfe-Gutschrift, verfallende Lagebilder lohnender Ziele, abholbare Erfolge/Wochenziele.
 // Tagesbefehle und Auftragsbuch ergänzt die Oberfläche aus ihren ohnehin geladenen Abfragen (daily.get, guide.get).
-import { and, desc, eq, gt, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
 import { missionSlots, settle, storageCapacity, type Modifiers, type ResourceMap } from "@tidefront/game-core";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance } from "./context.ts";
@@ -9,6 +9,7 @@ import { ADMIRAL_RETURN_TYPE, type BaseRow } from "./store.ts";
 import { catchUpView } from "./catch-up.ts";
 import { fmtInt, nameOf } from "./names.ts";
 import { HOUR_MS, harborSub, row, type LageRow } from "./lage-types.ts";
+import { allianceRows, rewardSourceCounts, rewardSourcesText, type RewardSources } from "./lage-social.ts";
 
 /** Lager „fast voll“ ab diesem Füllstand. */
 export const STORAGE_NEAR_FULL = 0.9;
@@ -21,19 +22,23 @@ const TRAINERS = ["werft", "kaserne", "flugfeld"];
 
 /** Abholbare Erfolgsstufen und erfüllte Wochenziele (reine Zählung, ohne Neuberechnung der Zähler). */
 export async function rewardCounts(db: DbOrTx, playerId: number): Promise<number> {
-  const at = tables.achievementTier;
-  const wg = tables.weeklyGoal;
-  const [a] = await db.select({ n: sql<number>`count(*)::int` }).from(at).where(and(eq(at.playerId, playerId), isNull(at.claimedAt)));
-  const [w] = await db.select({ n: sql<number>`count(*)::int` }).from(wg).where(and(eq(wg.playerId, playerId), isNotNull(wg.completedAt), isNull(wg.claimedAt)));
-  return (a?.n ?? 0) + (w?.n ?? 0);
+  const s = await rewardSourceCounts(db, playerId);
+  return s.achievements + s.weekly;
 }
 
-export async function waitingRows(db: DbOrTx, playerId: number, bases: BaseRow[], mods: Map<number, Modifiers>, nowMs: number, rewards: number): Promise<LageRow[]> {
+export async function waitingRows(
+  db: DbOrTx, playerId: number, bases: BaseRow[], mods: Map<number, Modifiers>, nowMs: number,
+  sources: Pick<RewardSources, "achievements" | "weekly">,
+): Promise<LageRow[]> {
   const out: LageRow[] = [];
+  const rewards = sources.achievements + sources.weekly;
   if (rewards > 0) {
+    // TST-16: nur die Quellen mit Anzahl nennen („2 Erfolge, 1 Wochenziel“).
+    const what = rewardSourcesText({ ...sources, daily: 0, guide: 0 });
     out.push(row({ key: "belohnung:erfolge", kind: "belohnung", icon: "hafenmeister", tone: "gut", urgent: true,
-      text: rewards === 1 ? "1 Belohnung abholbereit (Erfolge, Wochenziele)" : `${rewards} Belohnungen abholbereit (Erfolge, Wochenziele)`, jump: { to: "rewards", where: "erfolge" } }));
+      text: `${rewards === 1 ? "1 Belohnung" : `${rewards} Belohnungen`} abholbereit (${what})`, jump: { to: "rewards", where: "erfolge" } }));
   }
+  out.push(...(await allianceRows(db, playerId))); // TST-15: Beitrittsanfragen, Einladungen
   const t = tables.mission;
   const active = await db.select({ baseId: t.baseId, n: sql<number>`count(*)::int` }).from(t)
     .where(and(inArray(t.baseId, bases.map((b) => b.id)), inArray(t.status, ["outbound", "returning", "staged", "stationed", "holding"]), sql`${t.type} <> ${ADMIRAL_RETURN_TYPE}`))

@@ -10,7 +10,7 @@ import { fastifyTRPCPlugin, type CreateFastifyContextOptions, type FastifyTRPCPl
 import Valkey from "iovalkey";
 import { sql } from "drizzle-orm";
 import { createDb } from "@tidefront/db";
-import { bumpMapGeneration, enableMapCache, noticeHook, playerForToken, touchLastSeen, type ChangeKind, type Engine } from "@tidefront/engine";
+import { bumpMapGeneration, enableMapCache, LiveHub, noticeHook, playerForToken, touchLastSeen, type ChangeKind, type Engine } from "@tidefront/engine";
 import { appRouter, type AppRouter, type Ctx } from "./router.ts";
 import { registerMailLinks } from "./routers/mail-links.ts";
 import { registerBackupDownload } from "./routers/backup-download.ts";
@@ -57,40 +57,23 @@ engine.push = noticeHook(() => engine);
 const { rateLimit, failures } = createRateLimiter(pub);
 
 // ---------------------------------------------------------------- WebSocket: Änderungsmeldungen
-const sockets = new Map<number, Set<{ send: (s: string) => void }>>();
+// TE-04: LiveHub (engine/live-sockets.ts) – kein Leck beim Trennen während der Prüfung, Sitzung alle 10 min neu
+// geprüft, höchstens 5 Sockets je Spieler.
+const hub = new LiveHub({ validate: async (token) => (await playerForToken(db, token))?.id ?? null });
 await sub.psubscribe("tf:*");
 // world.map: geteilte Weltdaten 5 s zwischenspeichern (MAP_CACHE_MS, 0 = aus); jede Karten-/Saisonmeldung verwirft sie.
 enableMapCache(Number(process.env.MAP_CACHE_MS ?? 5000));
 sub.on("pmessage", (_p: string, channel: string, message: string) => {
   if (message.includes('"map"') || message.includes('"season"')) bumpMapGeneration();
-  if (channel === "tf:all") {
-    for (const set of sockets.values()) for (const s of set) s.send(message);
-  } else if (channel.startsWith("tf:player:")) {
-    const id = Number(channel.slice(10));
-    for (const s of sockets.get(id) ?? []) s.send(message);
-  }
+  if (channel === "tf:all") hub.publish(null, message);
+  else if (channel.startsWith("tf:player:")) hub.publish([Number(channel.slice(10))], message);
 });
 
 await app.register(cookie);
 await app.register(websocket, { options: { maxPayload: 1024 } });
 
 app.get("/ws", { websocket: true }, async (socket, req) => {
-  const player = await playerForToken(db, req.cookies[COOKIE]);
-  if (!player) {
-    socket.close(4401, "unauthorized");
-    return;
-  }
-  const entry = { send: (s: string) => socket.readyState === 1 && socket.send(s) };
-  let set = sockets.get(player.id);
-  if (!set) sockets.set(player.id, (set = new Set()));
-  set.add(entry);
-  entry.send(JSON.stringify({ kind: "hello", serverNow: Date.now() }));
-  const ping = setInterval(() => entry.send(JSON.stringify({ kind: "ping", serverNow: Date.now() })), 25000);
-  socket.on("close", () => {
-    clearInterval(ping);
-    set!.delete(entry);
-    if (set!.size === 0) sockets.delete(player.id);
-  });
+  await hub.attach(socket, req.cookies[COOKIE]);
 });
 
 // ---------------------------------------------------------------- tRPC

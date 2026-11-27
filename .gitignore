@@ -5,3 +5,4 @@ backups/
 *.log
 apps/web/dist/
 auto-deploy.log
+*.tsbuildinfo

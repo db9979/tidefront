@@ -68,14 +68,19 @@ export function LageTab({ onShowOnMap, onSub, unreadMsgs, seenReport }: {
       case "contracts": nav.go({ to: "market", seg: "vertraege" }); break;
       case "report": setOpenReport(j.id); onSub("berichte"); break;
       case "rewards": if (j.where === "erfolge") onSub("erfolge"); else nav.go({ to: "base" }); break;
+      case "alliance": nav.go({ to: "meldungen", sub: "allianz" }); break; // TST-15: Beitrittsanfragen
     }
   };
 
   const { soon, underway } = lage.data;
-  const quests = (daily.data?.claimable ?? 0) + (guide.data?.claimable ?? 0);
+  const dailyN = daily.data?.claimable ?? 0;
+  const guideN = guide.data?.claimable ?? 0;
+  const quests = dailyN + guideN;
+  // TST-16: nur die Quellen mit Anzahl nennen („10 im Auftragsbuch“).
+  const questWhat = [guideN > 0 ? `${guideN} im Auftragsbuch` : "", dailyN > 0 ? `${dailyN} ${dailyN === 1 ? "Tagesbefehl" : "Tagesbefehle"}` : ""].filter(Boolean).join(", ");
   const waiting: LageRow[] = [
     ...(quests > 0 ? [local({ key: "belohnung:quests", kind: "belohnung", icon: "hafenmeister", tone: "gut", urgent: true,
-      text: quests === 1 ? "1 Belohnung abholbereit (Tagesbefehle, Auftragsbuch)" : `${quests} Belohnungen abholbereit (Tagesbefehle, Auftragsbuch)`, jump: { to: "rewards", where: "basis" } })] : []),
+      text: `${quests === 1 ? "1 Belohnung" : `${quests} Belohnungen`} abholbereit (${questWhat})`, jump: { to: "rewards", where: "basis" } })] : []),
     ...(unreadMsgs > 0 ? [local({ key: "nachrichten", kind: "nachrichten", icon: "nav-bericht", text: unreadMsgs === 1 ? "1 neue Nachricht" : `${unreadMsgs} neue Nachrichten` })] : []),
     ...lage.data.waiting,
   ];

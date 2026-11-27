@@ -216,3 +216,52 @@ aktiv; Bauhof-Countdown läuft ohne Neuladen.
 - **KI-Spieler:** Börsenkäufe ab 10.000 Warenwert (`BOT_ESCORT_MIN_VALUE`) mit der Empfehlung, wenn sie `ok` ist und
   der Treibstoff reicht; scheitert das Geleit beim Kauf, kaufen sie ohne. Kleinere Käufe weiter ohne Geleit.
 - Keine Balance-Änderung, keine Schemaänderung.
+
+## Abschlussprüfung 0.38 – Welle 1: Fehler und Technik
+
+- **TST-02 Geleitstrecken wie gebucht.** Seewege sind richtungsabhängig; das Geleit fährt immer vom eigenen Hafen los
+  (`planNaval` → `missionRoute(own → Ziel)`). `engine/trade-routes.ts`: `escortTripKm(own, ziel)`. Börse: Basis-Ansicht
+  liefert `market.port.escortKm` (Hafen → Handelshafen); `distanceKm` bleibt die Lieferstrecke. Spielervertrag mit
+  bekanntem Partner: je Angebot `route { riskKm (Luftlinie, wie der Server würfelt), escortKm, travelMs }`, ebenso die
+  KI-Vorschau (`quote.route`). Partner noch offen (Angebot einstellen, Spielerhandel): `partnerKm` = Median der
+  Geleitstrecken zu den Heimathäfen der anderen Spieler (höchstens 40), Rückfall 500 km.
+- **TST-08** Schnellknöpfe der Order auf „Max“ gekappt; der Geleit-Kasten rechnet nur für kaufbare Mengen.
+- **TST-03** Vertragsgrenze: eigener Code `contract_limit` (statt `daily_limit` der Börse) mit eigenem Text. Vorab je
+  Angebot `room`/`overLimit` über `market.contractWindowRoom` – dieselbe Bedingung wie `maxWindowLoad ≤ limit`
+  (Zufallsprobe im Test); „Annehmen“ ist dann gesperrt.
+- **M-07 Kaufmann nach Gebühren.** Neuer Zähler `handel_gebuehr` (ganze Taler Börsengebühr je Geschäft ab
+  `minCountedTradeCredits`), Schwellen 400 / 2.000 / 8.000 (Vorschlag Mathematiker). Balance-Eintrag geändert
+  (`achievements.list.kaufmann`), Version nicht gehoben. Das Wochenziel „Handel“ zählt weiter Geschäfte. Bereits
+  erreichte Stufen bleiben; der neue Zähler beginnt bei 0 (kein Nachrechnen aus dem Journal). Rundreise-Farmen kostet
+  jetzt die volle Gebühr je Zählpunkt (8.000 T für Gold statt 4.000 T) – ganz geschlossen ist der Hebel damit nicht;
+  wer ihn ganz schließen will, hebt die Schwellen so, dass Gebühren ≥ Belohnungswert (rund 3.000/12.000/36.000).
+- **TE-06** Spielersperre (`lockTraders`/`lockPlayers`) vor den Grenzprüfungen in Angebot, Annahme, KI-Abschluss und
+  Spielerhandel-Angebot; Sperrreihenfolge bleibt Häfen → Spieler.
+- **TE-04** Live-Verbindungen in `engine/live-sockets.ts` (`LiveHub`): close-Handler vor der Sitzungsprüfung, danach
+  nur offene Sockets; Sitzung alle 10 min neu geprüft (DB-Fehler trennt nicht); höchstens 5 Sockets je Spieler, der
+  älteste wird mit 4408 geschlossen.
+- **TE-07** Eine Spielzeitzone: `gameTimeZone()` in `game-core/time-zone.ts` (TZ, wenn Intl sie kennt, sonst
+  Europe/Berlin; `:/etc/localtime` fällt zurück). Alle Stellen (Namen, Diplomatie, Mails, Verträge, Admin) nutzen sie.
+- **TE-08** `runCommand` (jetzt `engine/command-run.ts`) wiederholt bei 40P01/40001/55P03 bis zu zweimal mit kurzem
+  Zufallsabstand; die Transaktion samt `command_log` ist dann zurückgerollt, derselbe Schlüssel gilt weiter.
+- **TE-03** E2E: `reserveField` wählt und reserviert ein Rohstofffeld in einer Transaktion unter Advisory-Lock.
+  **TE-16** `*.tsbuildinfo` in `.gitignore`.
+- **AN-07 Push bündeln, Ruhezeit.** Dringendes (Angriff, Allianz-Ops, Test) sofort. Ruhezeit = laufendes
+  Nachtschild-Fenster des Heimathafens (ohne Nachtschild keine Ruhezeit – bewusst: der Spieler hat dann keine Nacht
+  angegeben). In der Ruhezeit wird alles andere gesammelt; Routine (Bau, Ausbildung, Verband, Lieferung, Bauschlange
+  leer, Markt) wird auch tagsüber gesammelt und höchstens alle 15 min als ein Push zugestellt („3 Meldungen“, Titel
+  mit Anzahl). Ablage ohne Schemaänderung in `mail_digest` mit `kind = "push:<art>"`; die Mail-Bündelung überspringt
+  diese Zeilen, das Aufräumen nach 3 Tagen gilt für beide. Der Morgenbericht (selbst gewählte Uhrzeit) geht direkt.
+- **AN-06 Rückholung.** Zweite Stufe nach 10–14 Tagen (`winback2:<last_seen>`, eigener Betreff „Noch da, Kapitän?“).
+  Ohne bestätigte Adresse, aber mit Push-Abo, kommen beide Stufen als Push (Art `comeback`, Push-Vorgabe jetzt an;
+  Einstellungen zeigen die Art auch bei Push). Saisonwechsel (`season-notice.ts`): einmal je Saison (`season:<Nr>`)
+  Mail und Push „Saison N hat begonnen“ mit Platz der Vorsaison an alle Menschen, die seit dem Start noch nicht da
+  waren, 9–21 Uhr Spielzeit, bis 48 h nach dem Start.
+- **TST-09 „Alle abholen“** (`rewards.claimAll`, `engine/rewards-claim.ts`): Auftragsbuch (Schritte, dann Abschluss),
+  Tagesbefehle, Wochenziele, Erfolge in einer Transaktion, je Belohnung ein Savepoint über denselben Kern wie die
+  Einzelabholung (`claim…In`). Lagergrenze: Würde etwas verfallen, bleibt die Belohnung liegen (`skipped`); mit
+  `allowLoss` wie bisher bis zur Grenze. Codes `nothing`, `storage_full`.
+- **Lage (TST-15, TX-08, TST-16):** „Beitrittsanfragen“ (Führung/Offiziere, zählt fürs Navigationszeichen) und
+  „Einladung in die Allianz“ unter „Wartet auf dich“, Sprung `{ to: "alliance" }`; „Anfängerschutz endet in …“ in den
+  letzten 24 h als dringender Termin; Belohnungstext nennt nur Quellen mit Anzahl, `urgent.rewardSources`.
+- Keine Schemaänderung.

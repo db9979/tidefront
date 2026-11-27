@@ -107,6 +107,16 @@ const FROM_DAILY: Record<string, (amount: number) => [string, number][]> = {
   anlagen: (n) => [["anlagen", n]],
 };
 
+/**
+ * M-07 (Abschlussprüfung 0.38): Erfolg „Kaufmann“ zählt die an der Börse gezahlte Gebühr in ganzen Talern (Zähler
+ * handel_gebuehr), nicht die Zahl der Geschäfte – Rundreise-Handel (kaufen, sofort verkaufen) bringt so keine billigen
+ * Stufen mehr. Wie bisher nur Geschäfte ab minCountedTradeCredits; kein Wochenziel (das zählt weiter Geschäfte).
+ */
+export async function recordTradeFee(tx: DbOrTx, playerId: number, tradeCredits: number, feeCredits: number, atMs: number): Promise<void> {
+  if (!(tradeCredits >= (balance.achievements?.minCountedTradeCredits ?? 0))) return;
+  await recordAchievement(tx, playerId, "handel_gebuehr", feeCredits, { atMs, weekly: false });
+}
+
 export async function achievementsFromDaily(tx: DbOrTx, playerId: number, kind: string, amount: number, atMs: number): Promise<void> {
   for (const [counter, n] of FROM_DAILY[kind]?.(amount) ?? []) await recordAchievement(tx, playerId, counter, n, { atMs });
 }

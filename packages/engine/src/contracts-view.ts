@@ -4,9 +4,10 @@ import { and, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
 import { market as marketCore } from "@tidefront/game-core";
 import { tables } from "@tidefront/db";
 import { balance, type Engine } from "./context.ts";
-import { ownBase } from "./store.ts";
+import { homeBaseOf, ownBase, readBase, type BaseRow } from "./store.ts";
+import { buyerEscortRoute, medianPartnerKm } from "./trade-routes.ts"; // TST-02: Strecken wie gebucht
 import {
-  ACTIVE, contractsCfg, dailyLimitOf, openCount, priceInputs, reservedNext24h, RUNNING, seasonEndMs, signedLastHour, type ContractRow,
+  ACTIVE, contractsCfg, dailyLimitOf, duePoints, openCount, priceInputs, reservedNext24h, RUNNING, seasonEndMs, signedLastHour, type ContractRow,
   type PriceInputs,
 } from "./contracts-core.ts";
 import { kiOffersView } from "./contracts-ki.ts";
@@ -20,7 +21,7 @@ export async function contractsView(engine: Engine, playerId: number, baseId?: n
   const nowMs = Date.now();
   const cfg = contractsCfg();
   const db = engine.db;
-  if (baseId !== undefined) await ownBase(db, playerId, baseId);
+  const active: BaseRow | null = baseId !== undefined ? await ownBase(db, playerId, baseId) : await homeBaseOf(db, playerId);
   if (!cfg) return { serverNow: nowMs, enabled: false as const };
   const t = tables.marketContract;
   const mineRows = await db.select().from(t).where(and(
@@ -72,12 +73,22 @@ export async function contractsView(engine: Engine, playerId: number, baseId?: n
     return c.buyerUnit >= b.min - 1e-9 && c.buyerUnit <= b.max + 1e-9;
   };
   const pairLeft = new Map<number, number>();
+  // TST-03: Vertragsgrenze (limitShare × Tageslimit je 24-h-Fenster) vorab je Angebot – wie checkWindow bei der Annahme.
+  const windowLimit = cfg.limitShare * limit;
+  const points = await duePoints(db, playerId);
   const open = [];
   for (const c of proposals) {
     if (c.proposerId === playerId) continue;
     // Aus Sicht des Lesers: bietet der andere Verkauf an, kauft der Leser.
     const iBuy = c.buyerId === null;
+    const propBaseId = iBuy ? c.sellerBaseId : c.buyerBaseId;
+    const prop = (propBaseId !== null ? await readBase(db, propBaseId) : null) ?? (await homeBaseOf(db, c.proposerId));
+    // TST-02: Partner bekannt – echte Strecken (Konvoi Verkäufer → Käufer, Geleit vom Hafen des Käufers).
+    const route = active && prop ? (iBuy ? buyerEscortRoute(active, prop) : buyerEscortRoute(prop, active)) : null;
+    const settleMs = Math.max(nowMs + 60_000, c.dueAt.getTime() - (route?.travelMs ?? 0));
+    const room = marketCore.contractWindowRoom(points.filter((x) => x.resource === c.resource), settleMs, windowLimit);
     open.push({
+      route, room, overLimit: c.qty > room,
       id: c.id, from: names.get(c.proposerId) ?? "?", personal: c.targetId === playerId, side: (iBuy ? "buy" : "sell") as "buy" | "sell",
       resource: c.resource, qty: c.qty, unitPrice: iBuy ? c.buyerUnit : c.sellerUnit,
       totalCredits: (iBuy ? marketCore.ceilToCents(c.qty * c.buyerUnit) : marketCore.floorToCents(c.qty * c.sellerUnit)) / 100,
@@ -101,6 +112,8 @@ export async function contractsView(engine: Engine, playerId: number, baseId?: n
     seasonEndMs: endMs,
     kis: await kiOffersView(db, playerId, nowMs),
     proposals: open,
+    /** Angebot einstellen (Partner noch offen): Median der Geleitstrecken zu den anderen Häfen, km (TST-02). */
+    partnerKm: active ? await medianPartnerKm(db, playerId, active) : null,
     mine: mineRows.map(shape),
     resources: balance.resources,
   };

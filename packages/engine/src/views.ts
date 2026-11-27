@@ -60,6 +60,7 @@ import { homeStorageCapacity, maxHarborLevelOf, settledHome } from "./player-wid
 import { mapViewFor } from "./intel-map.ts"; // Lagebild: Karte nach Sicht
 import { nestKnown } from "./intel-query.ts"; // Lagebild
 import { intelMissionInfo } from "./intel-route.ts"; // Lagebild Stufe 2
+import { withEscortKm } from "./trade-routes.ts"; // TST-02: Geleitstrecke in Buchungsrichtung
 
 /**
  * Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband;
@@ -223,7 +224,8 @@ export async function baseView(engine: Engine, playerId: number, baseId?: number
         unlocked: harborLevel >= (balance.buildings.hafenkommandantur.marketFromLevel ?? 3),
         creditLimit: (balance.buildings.hafenkommandantur.creditLimitPerLevel ?? 0) * harborLevel,
         credits: (p?.trader as { credits: number } | undefined)?.credits ?? 0,
-        port: nearestTradePortBySea(own), // Seewege: Entfernung über Wasser (Lieferzeit)
+        // Seewege: Entfernung über Wasser (Lieferzeit); escortKm = Geleitfahrt Hafen → Handelshafen wie gebucht (TST-02).
+        port: withEscortKm(own, nearestTradePortBySea(own)),
       },
       missions: missions.map((m) => ({
         id: m.id,

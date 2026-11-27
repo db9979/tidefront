@@ -228,6 +228,23 @@ export function maxWindowLoad(existing: readonly DuePoint[], added: readonly Due
   return max;
 }
 
+/**
+ * Vertragsgrenze vorab (TST-03): größte Menge, die zum Zeitpunkt atMs noch hinzukommen darf, ohne dass ein
+ * 24-h-Fenster `limit` überschreitet – genau die Bedingung von maxWindowLoad(existing, [{ atMs, qty }]) ≤ limit.
+ * Betroffen sind die Fenster, die bei atMs oder bei einer bestehenden Lieferung in (atMs − 24 h, atMs] beginnen.
+ */
+export function contractWindowRoom(existing: readonly DuePoint[], atMs: number, limit: number, windowMs = 24 * MS_PER_HOUR): number {
+  const pts = existing.filter((p) => p.qty > 0);
+  const starts = [atMs, ...pts.filter((p) => p.atMs <= atMs && p.atMs > atMs - windowMs).map((p) => p.atMs)];
+  let load = 0;
+  for (const s of starts) {
+    let sum = 0;
+    for (const p of pts) if (p.atMs >= s && p.atMs < s + windowMs) sum += p.qty;
+    load = Math.max(load, sum);
+  }
+  return Math.max(0, Math.floor(limit - load));
+}
+
 /** Vertragslieferungen der nächsten 24 h (für den freien Rahmen der Börse). */
 export function reservedNext24h(points: readonly DuePoint[], nowMs: number): number {
   return points.filter((p) => p.atMs >= nowMs && p.atMs < nowMs + 24 * MS_PER_HOUR).reduce((s, p) => s + p.qty, 0);

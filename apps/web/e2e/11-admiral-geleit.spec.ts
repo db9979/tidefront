@@ -1,7 +1,6 @@
 // Neue Abläufe aus 0.17: Admiral führt eine Feldbesatzung und wird allein abgezogen; Handelsangebot mit Geleit des Anbieters.
-import { hexDistanceKm } from "@tidefront/world";
-import { awayFromEdge, expect, expectNoHorizontalOverflow, tapHex, test, until } from "./fixtures.ts";
-import { fastForwardMission, setBuildings, setResources, setUnits } from "./game.ts";
+import { expect, expectNoHorizontalOverflow, tapHex, test, until } from "./fixtures.ts";
+import { fastForwardMission, reserveField, setBuildings, setResources, setUnits } from "./game.ts";
 
 test.describe("Admiral bei Feldmission", () => {
   test.use({ spawnNear: "field" });
@@ -10,13 +9,8 @@ test.describe("Admiral bei Feldmission", () => {
     await setBuildings(seed.sql, player.baseId, { werft: 3, hafenkommandantur: 4, kommandozentrale: 4 });
     await setUnits(seed.sql, player.baseId, { korvette: 8, zerstoerer: 4 });
     await seed.sql`insert into admiral (player_id, base_id, name, xp, spec1) values (${player.id}, ${player.baseId}, 'Testmann', 0, 'angriff')`;
-    const fields = await seed.sql`select id, col, row from resource_field where tier = 1 and player_id is null and not exists (select 1 from mission m where m.target_col = resource_field.col and m.target_row = resource_field.row and m.status in ('outbound', 'holding', 'e2e-reserviert'))`;
-    const field = fields
-      .map((f) => ({ id: f.id as number, col: f.col as number, row: f.row as number, d: hexDistanceKm(player, { col: f.col as number, row: f.row as number }) }))
-      .filter(awayFromEdge)
-      .sort((a, b) => a.d - b.d)[0];
-    // Feld für diesen Test reservieren (parallele Tests meiden es; Zeile ohne Spieler, kein Ereignis).
-    await seed.sql`insert into mission (player_id, base_id, type, target_kind, target_col, target_row, plan, status, arrive_at) values (null, null, 'e2e', 'field', ${field.col}, ${field.row}, '{}'::jsonb, 'e2e-reserviert', now() + interval '1 day')`;
+    // Feld für diesen Test atomar reservieren (TE-03: parallele Specs nehmen nie dasselbe Feld).
+    const field = await reserveField(seed.sql, player);
 
     await page.goto("/");
     await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();

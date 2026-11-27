@@ -25,6 +25,7 @@ export function OrderEscort({ base, resource, qty, value, onChange }: { base: Ba
   const loss = Number.isFinite(km) ? cartelExpectedLoss(km, worth, b, true) : 0;
   const escorted = Object.values(value).some((n) => n > 0);
   // Geleitfahrt: zum Handelshafen und mit dem Konvoi heim; die Schiffe fehlen bis zur Ankunft (feste Lieferzeit).
+  // Strecke der Geleitfahrt: escortKm = Seeweg Hafen → Handelshafen wie gebucht (TST-02; distanceKm ist die Gegenrichtung).
   const awayHours = market.deliveryTravelMs(b.market as unknown as market.MarketBalance["market"], base.market.port.distanceKm) / 3_600_000;
   return (
     <div className="mb-3 text-sm" data-order-escort>
@@ -40,7 +41,7 @@ export function OrderEscort({ base, resource, qty, value, onChange }: { base: Ba
         </p>
       )}
       {worth > 0 && Number.isFinite(km) && (
-        <EscortAdvice base={base} cargoValue={worth} riskKm={km} market trip={{ km: base.market.port.distanceKm, awayHours }} escort={value}
+        <EscortAdvice base={base} cargoValue={worth} riskKm={km} market trip={{ km: base.market.port.escortKm, awayHours }} escort={value}
           onApply={(u) => { onChange(u); setOpen(true); }} />
       )}
       {open && <EscortPicker base={base} value={value} onChange={onChange} hint="Die Schiffe fahren dem Konvoi zum Handelshafen entgegen und kommen mit ihm heim (Treibstoff, ein Missionsplatz). Sie kämpfen, wenn das Kartell oder ein Kriegsgegner abfängt." />}

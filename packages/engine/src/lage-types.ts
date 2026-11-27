@@ -11,7 +11,8 @@ export type LageJump =
   | { to: "troops"; baseId: number; seg: "einsatz" | "ausbilden" | "abwehr" }
   | { to: "contracts" }
   | { to: "report"; id: number }
-  | { to: "rewards"; where: "basis" | "erfolge" };
+  | { to: "rewards"; where: "basis" | "erfolge" }
+  | { to: "alliance" }; // TST-15: Allianz → Mitglieder (Beitrittsanfragen, Einladungen)
 
 export interface LageRow {
   /** Stabiler Schlüssel (React, Tests). */
@@ -39,6 +40,8 @@ export interface LageUrgent {
   idleQueues: number;
   /** Serverseitig gezählte abholbare Belohnungen (Erfolge, Wochenziele); Tagesbefehle/Auftragsbuch zählt die Oberfläche. */
   rewards: number;
+  /** Dieselben Belohnungen nach Quelle (TST-16), damit der Text nur Quellen mit Anzahl nennt. */
+  rewardSources?: { achievements: number; weekly: number };
   /** Schlüssel der dringenden Einträge: die Oberfläche zählt nur, was seit dem letzten Öffnen der Lage neu ist. */
   keys: string[];
 }

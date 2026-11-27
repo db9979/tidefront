@@ -2,6 +2,7 @@
 // und 24 h Kündigungsfrist, Kriegserklärung mit 12 h Vorlauf, Frieden auf Gegenseitigkeit. Für eine Allianz handeln
 // Führung und Offiziere. Jede Änderung eines Paars läuft unter einer Advisory-Sperre auf dieses Paar.
 import { and, eq, sql } from "drizzle-orm";
+import { gameTimeZone } from "@tidefront/game-core";
 import { tables, type Tx } from "@tidefront/db";
 import type { Engine } from "./context.ts";
 import { scheduleEvent } from "./store.ts";
@@ -21,7 +22,7 @@ import {
 } from "./alliance-core.ts";
 
 const fmt = (ms: number) =>
-  new Date(ms).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: process.env.TZ || "Europe/Berlin" });
+  new Date(ms).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: gameTimeZone() });
 
 /** Partei, für die der Spieler handeln darf. */
 async function actorParty(tx: Tx, playerId: number): Promise<string> {

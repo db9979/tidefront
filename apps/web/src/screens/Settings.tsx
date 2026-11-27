@@ -21,12 +21,12 @@ const LABEL: Record<string, string> = {
   daily: "Tagesbefehle bereit / Serie in Gefahr",
   idle: "Bauschlange leer",
   nest: "Nest wieder besetzt (zuletzt von dir besiegt)",
-  comeback: "Rückkehr-Erinnerung (nach 3 Tagen Pause)",
+  comeback: "Rückkehr-Erinnerung und Saisonwechsel",
 };
 
-/** Arten für Push bzw. E-Mail; Marktnachrichten nur als Push, die Rückkehr-Erinnerung nur als E-Mail. */
+/** Arten für Push bzw. E-Mail; Marktnachrichten nur als Push (Rückkehr/Saisonwechsel seit AN-06 auch als Push). */
 function kinds(isAdmin: boolean, mail = false): string[] {
-  return Object.keys(LABEL).filter((k) => (k !== "ops" || isAdmin) && !(mail && k === "market") && !(!mail && k === "comeback"));
+  return Object.keys(LABEL).filter((k) => (k !== "ops" || isAdmin) && !(mail && k === "market"));
 }
 
 function PushCard({ isAdmin }: { isAdmin: boolean }) {

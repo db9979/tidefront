@@ -5,6 +5,7 @@ import { tables, type Db } from "@tidefront/db";
 import { NOTICE_KINDS, type Engine, type NoticeKind } from "./context.ts";
 import { getSettings, publicUrl, setSetting } from "./settings.ts";
 import { isBot } from "./bots-flag.ts";
+import { flushPushBundles, routePush } from "./push-bundle.ts"; // AN-07: Ruhezeit und Bündel
 
 export interface PushPayload {
   kind: NoticeKind;
@@ -84,8 +85,9 @@ export const PUSH_DEFAULTS: Record<NoticeKind, boolean> = {
   attack: true, report: true, build: true, training: true, fleet: true, delivery: true, ops: true, test: true,
   // Marktnachricht: standardmäßig aus, in den Einstellungen schaltbar.
   market: false,
-  // Spielerbindung: Erinnerungen als Push an; die Rückhol-Nachricht gibt es nur als E-Mail.
-  daily: true, idle: true, nest: true, comeback: false,
+  // Spielerbindung: Erinnerungen als Push an; Rückholung und Saisonwechsel als Push an (AN-06: Push-Variante für Spieler
+  // ohne bestätigte E-Mail-Adresse, Saisonwechsel an alle).
+  daily: true, idle: true, nest: true, comeback: true,
 };
 
 export function wants(prefs: Prefs | null | undefined, defaults: Record<NoticeKind, boolean>, kind: NoticeKind): boolean {
@@ -103,16 +105,24 @@ export function cleanPrefs(input: Record<string, unknown>): Prefs {
  * Sendet eine Benachrichtigung an alle Geräte eines Spielers, die diese Art nicht abgeschaltet haben.
  * Abgelaufene Abos (404/410) werden entfernt. Rückgabe: Anzahl erfolgreich zugestellter Nachrichten.
  */
-export async function pushToPlayer(engine: Engine, playerId: number, msg: PushPayload): Promise<number> {
+export async function pushToPlayer(
+  engine: Engine, playerId: number, msg: PushPayload,
+  /** direct: ohne Ruhezeit/Bündelung (Zustellung eines Bündels); anyOf: Bündel – ein Gerät will mindestens eine der Arten. */
+  opts: { direct?: boolean; anyOf?: readonly NoticeKind[]; nowMs?: number } = {},
+): Promise<number> {
   if (await isBot(engine.db, playerId)) return 0; // KI-Spieler: kein Versand
   const vapid = await loadVapid(engine.db);
   if (!vapid) return 0;
   const subs = await engine.db.select().from(tables.pushSubscription).where(eq(tables.pushSubscription.playerId, playerId));
+  const kinds = opts.anyOf ?? [msg.kind];
+  const wanted = subs.filter((s) => kinds.some((k) => wants(s.prefs as Prefs, PUSH_DEFAULTS, k)));
+  if (wanted.length === 0) return 0;
+  // AN-07: Ruhezeit (Nachtschild) und 15-min-Bündel für Routinemeldungen.
+  if (!opts.direct && (await routePush(engine, playerId, msg, opts.nowMs ?? Date.now())) === "queued") return 0;
   const payload = JSON.stringify({ title: msg.title, body: msg.body, url: msg.url ?? "/", tag: msg.tag, kind: msg.kind });
   const gone: number[] = [];
   let sent = 0;
-  for (const s of subs) {
-    if (!wants(s.prefs as Prefs, PUSH_DEFAULTS, msg.kind)) continue;
+  for (const s of wanted) {
     try {
       await sender({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, vapid, {
         ttl: msg.kind === "attack" ? 3600 : 6 * 3600,
@@ -127,6 +137,12 @@ export async function pushToPlayer(engine: Engine, playerId: number, msg: PushPa
   }
   if (gone.length) await engine.db.delete(tables.pushSubscription).where(inArray(tables.pushSubscription.id, gone));
   return sent;
+}
+
+/** Worker, jede Minute: gesammelte Pushes (Bündel, Ruhezeit vorbei) zustellen (AN-07). */
+export function flushPushes(engine: Engine, nowMs: number): Promise<number> {
+  return flushPushBundles(engine, nowMs, (playerId, p) =>
+    pushToPlayer(engine, playerId, { kind: p.kind, title: p.title, body: p.body, url: "/", tag: "bundle" }, { direct: true, anyOf: p.kinds }));
 }
 
 // ---------------------------------------------------------------- Abos verwalten

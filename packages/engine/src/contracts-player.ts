@@ -5,7 +5,7 @@
 // (PvP-Absprache: Allianz, Pakt, Handel, Transport in 7 Tagen) dürfen Verträge schließen, diese zählen aber nicht für
 // Erfolge und Tagesbefehle; jede Lieferung verbindet das Paar selbst für 7 Tage (kein Kopfgeld).
 import { and, eq, gt, notInArray, or, sql } from "drizzle-orm";
-import { settle, market as marketCore } from "@tidefront/game-core";
+import { gameTimeZone, settle, market as marketCore } from "@tidefront/game-core";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, marketBalance, type Engine } from "./context.ts";
 import { runCommand, type Ctx } from "./commands.ts";
@@ -55,7 +55,7 @@ const inBand = (price: number, b: { min: number; max: number }) => price >= b.mi
 /**
  * Vertrag einem Spieler (oder allen) anbieten; die eigene Sicherheit (Anzahlung bzw. Pfand) geht sofort in Treuhand.
  * Codes: no_contracts, bad_qty, bad_term, bad_target, locked, halted, under_attack, price_band, too_many_contracts,
- * rate, daily_limit, credit_limit, funds, escort_ships_only.
+ * rate, contract_limit, credit_limit, funds, escort_ships_only.
  */
 export function proposePlayerContract(engine: Engine, playerId: number, key: string, input: ProposeInput) {
   return runCommand<{ ok: true; contractId: number }>(engine, playerId, key, "contractPropose", async (ctx: Ctx) => {
@@ -82,11 +82,13 @@ export function proposePlayerContract(engine: Engine, playerId: number, key: str
     if (!inBand(input.price, band)) fail("price_band");
     const units = marketCore.playerContractUnits(input.price, cfg);
     const escort = input.side === "buy" ? cleanEscort(input.escort) : {};
+    // TE-06: Spielersperre vor den Grenzprüfungen – zwei Angebote aus zwei Häfen sperren verschiedene Basen, aber
+    // denselben Spieler; so sieht das zweite die Zeile des ersten (Höchstzahl, Abschlüsse je Stunde, 24-h-Fenster).
+    const me = (await lockTraders(tx, [playerId])).get(playerId)!;
     await checkCounts(tx, playerId, nowMs, true);
     await checkWindow(tx, playerId, input.resource, [{ atMs: dueMs, qty: input.qty }], nowMs);
     const unit = input.side === "buy" ? units.buyerUnit : units.sellerUnit;
     const security = marketCore.depositCents(input.qty, unit, cfg.depositShare);
-    const me = (await lockTraders(tx, [playerId])).get(playerId)!;
     await checkCreditLimit(tx, playerId, input.side === "buy" ? "buyer" : "seller",
       input.side === "buy" ? marketCore.ceilToCents(input.qty * unit) - security : marketCore.floorToCents(input.qty * unit), me.credits);
     if (Math.round(me.credits * 100) < security) fail("funds");
@@ -126,7 +128,7 @@ export async function pairWeekValue(db: DbOrTx, a: number, b: number, nowMs: num
 
 /**
  * Vertragsangebot eines Spielers annehmen. Codes: offer_gone, own_offer, not_for_you, no_base, locked, halted,
- * under_attack, price_band (Kurs hat sich bewegt – neu anbieten), pair_limit, too_many_contracts, rate, daily_limit,
+ * under_attack, price_band (Kurs hat sich bewegt – neu anbieten), pair_limit, too_many_contracts, rate, contract_limit,
  * credit_limit, funds, escort_ships_only.
  */
 export function acceptPlayerContract(engine: Engine, playerId: number, key: string, contractId: number, opts: { baseId?: number; escort?: Record<string, number> } = {}) {
@@ -161,14 +163,14 @@ export function acceptPlayerContract(engine: Engine, playerId: number, key: stri
     const settleMs = Math.max(nowMs + 60_000, c.dueAt.getTime() - travelMs(seller, buyer));
     // Grenzen des Annehmenden; ein KI-Händler ist Gegenpartei vieler KI-Verträge und hat keine eigenen Vertragsgrenzen.
     const human = me.bot === null;
+    const traders = await lockTraders(tx, [playerId, c.proposerId]); // TE-06: Sperre vor den Grenzprüfungen
+    const mine = traders.get(playerId)!;
     if (human) {
       await checkCounts(tx, playerId, nowMs, true);
       await checkWindow(tx, playerId, c.resource, [{ atMs: settleMs, qty: c.qty }], nowMs);
     }
     const unit = iBuy ? c.buyerUnit : c.sellerUnit;
     const security = marketCore.depositCents(c.qty, unit, cfg.depositShare);
-    const traders = await lockTraders(tx, [playerId, c.proposerId]);
-    const mine = traders.get(playerId)!;
     if (human) {
       await checkCreditLimit(tx, playerId, iBuy ? "buyer" : "seller",
         iBuy ? marketCore.ceilToCents(c.qty * unit) - security : marketCore.floorToCents(c.qty * unit), mine.credits);
@@ -186,7 +188,7 @@ export function acceptPlayerContract(engine: Engine, playerId: number, key: stri
     await scheduleContract(tx, { id: c.id, settleAt: new Date(settleMs) }, seller.id, nowMs);
     const [n] = await tx.select({ name: tables.player.name }).from(tables.player).where(eq(tables.player.id, playerId));
     await systemMessage(tx, ctx.notify, [c.proposerId], "Liefervertrag angenommen",
-      `${n?.name ?? "?"} hat deinen Liefervertrag über ${fmtInt(c.qty)} ${nameOf(c.resource)} angenommen. Fällig ${c.dueAt.toLocaleString("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}; ` +
+      `${n?.name ?? "?"} hat deinen Liefervertrag über ${fmtInt(c.qty)} ${nameOf(c.resource)} angenommen. Fällig ${c.dueAt.toLocaleString("de-DE", { timeZone: gameTimeZone(), day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}; ` +
       `die Ware fährt per Konvoi.${counts ? "" : " Ihr seid verbunden (Allianz, Pakt oder Handel in den letzten Tagen): der Vertrag zählt nicht für Erfolge und Tagesbefehle."}`);
     ctx.notify.push([[playerId, c.proposerId], "base"], [null, "market"]);
     return { ok: true as const, dueAtMs: c.dueAt.getTime() };
