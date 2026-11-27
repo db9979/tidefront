@@ -2,7 +2,7 @@
 // Idempotenz-Schlüssel über runCommand). Kredite laufen über das Journal (Konto „rewards“), damit die
 // Prüfung von Journal und Kreditständen stimmt; Ressourcen gehen in den Hafen, auch über die Lagerkapazität.
 import { and, asc, desc, eq, isNotNull, isNull, lt } from "drizzle-orm";
-import { deliverCargo } from "@tidefront/game-core";
+import { deliverToStorage } from "./guide.ts";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, GameError, type Engine } from "./context.ts";
 import { runCommand } from "./commands.ts";
@@ -43,7 +43,7 @@ async function payReward(tx: Tx, playerId: number, reward: Record<string, number
     if (!own) fail("no_base");
     const b = (await lockBase(tx, own.id))!;
     const mods = await modsOf(tx, b, nowMs);
-    await saveBase(tx, b.id, deliverCargo(b.state, resources, nowMs, balance, mods));
+    await saveBase(tx, b.id, deliverToStorage(b.state, resources, nowMs, mods).state); // bis zur Lagergrenze (wie Auftragsbuch)
   }
   if (credits > 0) {
     const [p] = await tx.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, playerId)).for("update");

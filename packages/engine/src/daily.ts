@@ -1,7 +1,8 @@
 // Tagesbefehle für Spieler: Ansicht, Abholen der Belohnung (mit Serienbonus) und einmal täglich neu würfeln.
 // Abholen und Würfeln sind Befehle mit Idempotenz-Schlüssel (runCommand).
 import { and, asc, desc, eq, isNotNull, isNull, lt } from "drizzle-orm";
-import { deliverCargo, type ResourceMap } from "@tidefront/game-core";
+import { type ResourceMap } from "@tidefront/game-core";
+import { deliverToStorage } from "./guide.ts";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance, GameError, type Engine } from "./context.ts";
 import { runCommand } from "./commands.ts";
@@ -111,7 +112,7 @@ export function claimChallenge(engine: Engine, playerId: number, key: string, ch
       if (!row.completedAt) fail("not_done");
       const reward = row.reward as ResourceMap;
       const mods = await modsOf(ctx.tx, b, ctx.nowMs);
-      let state = deliverCargo(b.state, reward, ctx.nowMs, balance, mods);
+      let state = deliverToStorage(b.state, reward, ctx.nowMs, mods).state; // bis zur Lagergrenze (wie Auftragsbuch)
       await ctx.tx.update(dc).set({ claimedAt: new Date(ctx.nowMs) }).where(eq(dc.id, row.id));
 
       // Tagesabschluss: alle drei Befehle des Tages abgeholt.
@@ -129,7 +130,7 @@ export function claimChallenge(engine: Engine, playerId: number, key: string, ch
             .onConflictDoUpdate({ target: tables.dailyStreak.playerId, set: { lastDay: row.day, length: streak, best, updatedAt: new Date(ctx.nowMs) } });
           bonus = streakBonus(streak, b.state.buildings.kommandozentrale ?? 0);
           if (bonus) {
-            state = deliverCargo(state, bonus.reward, ctx.nowMs, balance, mods);
+            state = deliverToStorage(state, bonus.reward, ctx.nowMs, mods).state;
             await ctx.tx.update(dc).set({ bonusPoints: bonus.points }).where(eq(dc.id, row.id));
           }
         }
