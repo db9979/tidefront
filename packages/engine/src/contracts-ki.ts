@@ -9,6 +9,8 @@ import { modsOf } from "./modifiers.ts";
 import { homeBaseOf, type BaseRow } from "./store.ts";
 import { travelMs } from "./player-trade.ts";
 import { cfgOrFail, dayMs, fail, isResource, priceInputs, RUNNING, seasonEndMs, type PriceInputs, type ResourceId } from "./contracts-core.ts";
+import { kiAccess } from "./politik-ansehen.ts"; // Weltpolitik: Ansehen je KI-Spieler
+import { balanceNow, marketBalanceNow as marketBalanceNowFor } from "./politik-core.ts"; // Weltpolitik: wirksame Balance (Gezeit, Beschlüsse)
 
 const HOUR_MS = 3_600_000;
 const PROFILE_TEXT: Record<string, string> = { haendler: "Händler", festung: "Festung", freibeuter: "Freibeuter" };
@@ -18,6 +20,8 @@ export interface KiPartner {
   name: string;
   profile: string;
   cfg: marketCore.ContractKiProfile;
+  /** Weltpolitik: Kontingent-Anteil nach Ansehen (statt contracts.ki.quotaShare); fehlt er, gilt der Grundwert. */
+  quotaShare?: number;
 }
 
 /** Aktive KI-Spieler mit Vertragscharakter (abgeschaltete und gerade entfernte bieten nichts an). */
@@ -40,8 +44,12 @@ export async function contractKi(db: DbOrTx, id: number): Promise<KiPartner> {
   return ki;
 }
 
-/** Händler und Festung schließen nichts mit einem Spieler ab, der sie in den letzten Stunden überfallen hat. */
+/**
+ * Händler und Festung schließen nichts mit einem Spieler ab, der sie in den letzten Stunden überfallen hat.
+ * Weltpolitik: entscheidet das Ansehen (kiAccess: Überfall-Sperre 72 h, Berüchtigt).
+ */
 export async function kiRefuses(db: DbOrTx, ki: KiPartner, humanId: number, nowMs: number): Promise<boolean> {
+  if (balance.politik) return (await kiAccess(db, ki, humanId, nowMs)).refuses;
   if (ki.profile === "freibeuter") return false;
   const hours = cfgOrFail().ki.attackBlockHours;
   const [r] = await db.select({ id: tables.battleReport.id }).from(tables.battleReport).where(and(
@@ -49,6 +57,20 @@ export async function kiRefuses(db: DbOrTx, ki: KiPartner, humanId: number, nowM
     gt(tables.battleReport.createdAt, new Date(nowMs - hours * HOUR_MS)),
   )).limit(1);
   return !!r;
+}
+
+/**
+ * Weltpolitik: der KI-Spieler, wie er diesem Menschen gerade anbietet – Vertragsbonus aus der wirksamen Balance
+ * (Handelskrise) plus Ansehen, Kontingent-Anteil nach Ansehen, Ablehnung (refused).
+ */
+export async function kiFor(db: DbOrTx, ki: KiPartner, humanId: number, nowMs: number): Promise<KiPartner & { refused: boolean; ansehen: { value: number; level: string } | null }> {
+  if (!balance.politik) return { ...ki, refused: await kiRefuses(db, ki, humanId, nowMs), ansehen: null };
+  const access = await kiAccess(db, ki, humanId, nowMs);
+  const eff = marketCore.kiProfile(marketCore.contractsOf((await balanceNow(db, nowMs)) as unknown as marketCore.MarketBalance)!, ki.profile) ?? ki.cfg;
+  return {
+    ...ki, cfg: { ...ki.cfg, bonus: (eff.bonus ?? 0) + access.bonusDelta }, quotaShare: access.quotaShare ?? undefined,
+    refused: access.refuses, ansehen: { value: access.value, level: access.level },
+  };
 }
 
 /** Lager der KI (Heimathafen) je Ressource mit zugesagten Mengen; humanId: Anteil dieses Menschen. */
@@ -78,7 +100,9 @@ export async function kiStocks(db: DbOrTx, kiId: number, humanId: number, nowMs:
 /** Freies Kontingent der KI für diesen Menschen (Richtung aus Sicht des Spielers). */
 export function quotaOf(stocks: NonNullable<Awaited<ReturnType<typeof kiStocks>>>, side: marketCore.ContractSide, resource: string, ki: KiPartner): number {
   const s = side === "buy" ? stocks.sell[resource] : stocks.buy[resource];
-  return s ? marketCore.kiQuota(side, s, cfgOrFail(), ki.cfg) : 0;
+  const cfg = cfgOrFail();
+  const eff = ki.quotaShare === undefined ? cfg : { ...cfg, ki: { ...cfg.ki, quotaShare: ki.quotaShare } }; // Weltpolitik: Ansehen
+  return s ? marketCore.kiQuota(side, s, eff, ki.cfg) : 0;
 }
 
 export interface KiDealInput {
@@ -127,9 +151,10 @@ export async function kiDeal(db: DbOrTx, ki: KiPartner, input: KiDealInput, huma
   const dues = input.abo ? marketCore.aboDueTimes(nowMs, input.days) : [nowMs + dayMs(input.days)];
   const convoy = !!ki.cfg.convoy;
   const travel = convoy ? travelMs(kiBase, humanBase) : 0;
+  const effective = await marketBalanceNowFor(db, nowMs); // Weltpolitik: Vertragsgebühr (Gebührensenkung)
   const tranches = dues.map((dueMs) => ({
     dueMs, settleMs: Math.max(nowMs + 60_000, dueMs - travel), qty: input.qty,
-    price: marketCore.contractPrice({ side: input.side, resource: input.resource as ResourceId, qty: input.qty, k: inputs.k, r: inputs.r, rT: inputs.rAt(dueMs), termMs: dueMs - nowMs, bonus: ki.cfg.bonus }, marketBalance),
+    price: marketCore.contractPrice({ side: input.side, resource: input.resource as ResourceId, qty: input.qty, k: inputs.k, r: inputs.r, rT: inputs.rAt(dueMs), termMs: dueMs - nowMs, bonus: ki.cfg.bonus }, effective),
   }));
   const totalQty = tranches.reduce((s, t) => s + t.qty, 0);
   const own = (t: Tranche) => (input.side === "buy" ? t.price.buyerUnit : t.price.sellerUnit);
@@ -147,10 +172,11 @@ export async function kiOffersView(db: DbOrTx, playerId: number, nowMs: number) 
   const kis = await contractKis(db);
   const endMs = await seasonEndMs(db);
   const out = [];
-  for (const ki of kis) {
-    const stocks = await kiStocks(db, ki.id, playerId, nowMs);
+  for (const base of kis) {
+    const stocks = await kiStocks(db, base.id, playerId, nowMs);
     if (!stocks) continue;
-    const refused = await kiRefuses(db, ki, playerId, nowMs);
+    const ki = await kiFor(db, base, playerId, nowMs); // Weltpolitik: Bonus, Kontingent und Ablehnung nach Ansehen
+    const refused = ki.refused;
     const offers: { side: "buy" | "sell"; resource: string; quota: number }[] = [];
     for (const side of ["buy", "sell"] as const) {
       for (const r of side === "buy" ? ki.cfg.sells : ki.cfg.buys) {
@@ -162,7 +188,7 @@ export async function kiOffersView(db: DbOrTx, playerId: number, nowMs: number) 
       id: ki.id, name: ki.name, profile: ki.profile, profileText: PROFILE_TEXT[ki.profile] ?? ki.profile,
       days: marketCore.allowedDays(ki.cfg.days, nowMs, endMs, cfg.seasonEndBufferHours),
       aboDays: ki.cfg.abo ? marketCore.allowedDays(cfg.aboDays, nowMs, endMs, cfg.seasonEndBufferHours) : [],
-      bonus: ki.cfg.bonus, maxQty: ki.cfg.maxQty ?? null, convoy: !!ki.cfg.convoy, refused,
+      bonus: ki.cfg.bonus, maxQty: ki.cfg.maxQty ?? null, convoy: !!ki.cfg.convoy, refused, ansehen: ki.ansehen,
       col: stocks.base.col, row: stocks.base.row,
       offers,
     });

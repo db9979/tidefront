@@ -26,6 +26,7 @@ import {
 import { hexCenter, hexDistanceKm, neighbors, terrainAt } from "@tidefront/world";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, type NoticeJob } from "./context.ts";
+import { politikEventData, politikEventKind } from "./politik-core.ts"; // Weltpolitik: Kartellfehde, Gemeinsame Aktion
 import { nOf } from "./names.ts";
 import type { Handler, HandlerResult } from "./events.ts";
 import { randomSeed, scheduleEvent } from "./store.ts";
@@ -234,6 +235,7 @@ export async function spawnWorldEvent(
     if (d) break;
   }
   if (!d) return null;
+  d.data = await politikEventData(tx, due, d.data); // Weltpolitik: Gemeinsame Aktion (mehr Beute)
   const [row] = await tx
     .insert(tables.worldEvent)
     .values({
@@ -265,7 +267,7 @@ export const worldEventSpawn: Handler = async (tx, ev, due) => {
   const left = season.endsAt.getTime() - due;
   if (left < w.minSeasonHoursLeft * HOUR_MS) return none();
   const until = ordinaryEventsUntil(season); // Saisonfinale: ab der Ankündigung keine gewöhnlichen Ereignisse
-  const wanted = (WORLD_EVENT_KINDS as readonly string[]).includes(String(ev.payload.kind)) ? (ev.payload.kind as WorldEventKind) : "schatzschiff";
+  const wanted = await politikEventKind(tx, due, (WORLD_EVENT_KINDS as readonly string[]).includes(String(ev.payload.kind)) ? (ev.payload.kind as WorldEventKind) : "schatzschiff"); // Weltpolitik: Kartellfehde
   const progress = seasonProgress(season.startsAt.getTime(), season.endsAt.getTime(), due);
   if (due >= until) return none();
   const made = await spawnWorldEvent(tx, due, wanted, season.id, progress);

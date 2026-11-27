@@ -18,6 +18,7 @@ import { runningSeason } from "./season.ts";
 import { amounts, clock, countsText, fmtInt, minutesText, nameOf } from "./names.ts";
 import { harborSub, row, SOON_MS, type LageRow, type LageUrgent } from "./lage-types.ts";
 import { rewardCounts, waitingRows } from "./lage-wait.ts";
+import { politikLage } from "./politik-lage.ts"; // Weltpolitik: Gezeit, Seerat, Gesuche, Ansehen
 
 export type { LageJump, LageRow, LageUrgent } from "./lage-types.ts";
 
@@ -59,11 +60,13 @@ export async function lageView(engine: Engine, playerId: number, opts: { brief?:
   const underway: LageRow[] = [];
   await missionRows(db, playerId, bases, nowMs, soon, underway);
   await convoyRows(db, playerId, bases, nowMs, soon, underway);
-  soon.push(...queueRows(bases), ...(await worldRows(db, bases, nowMs)));
+  const pol = await politikLage(db, playerId, nowMs); // Weltpolitik
+  soon.push(...queueRows(bases), ...(await worldRows(db, bases, nowMs)), ...pol.soon);
+  underway.push(...pol.underway);
   const inWindow = soon.filter((r) => r.atMs !== null && r.atMs > nowMs - 5000 && (r.kind === "angriff" || r.atMs <= nowMs + SOON_MS));
   inWindow.sort((a, b) => Number(b.kind === "angriff") - Number(a.kind === "angriff") || a.atMs! - b.atMs! || a.key.localeCompare(b.key));
   underway.sort((a, b) => (a.atMs ?? Infinity) - (b.atMs ?? Infinity) || a.key.localeCompare(b.key));
-  const waiting = await waitingRows(db, playerId, bases, mods, nowMs, rewards);
+  const waiting = [...(await waitingRows(db, playerId, bases, mods, nowMs, rewards)), ...pol.waiting];
   return { serverNow: nowMs, soon: inWindow, underway, waiting, urgent };
 }
 

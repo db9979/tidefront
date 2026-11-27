@@ -131,3 +131,10 @@ export { contractBandView, contractsView } from "./contracts-view.ts";
 export { voidContracts } from "./contracts-run.ts";
 // Lagezentrum (Meldungen → Lage): alles Anstehende aller eigenen Häfen gebündelt; brief nur die Zahl fürs Navigationszeichen.
 export { lageView, noLage, type LageJump, type LageRow, type LageUrgent, type LageView } from "./lage.ts";
+// Weltpolitik: wirksame Balance, Plan, Seerat, Ansehen, Gesuche (docs/REGELN-WELTPOLITIK.md)
+export { balanceNow, marketBalanceNow, seasonPlan, planAt, politikOff, invalidatePolitikCache, POLITIK_OFF, type PolitikPart } from "./politik-core.ts";
+export { ensurePolitikPlan, POLITIK_HANDLERS } from "./politik-run.ts";
+export { seeratVote, tallySitzung } from "./politik-seerat.ts";
+export { ansehenAll, kiAccess, notoriousOf, notoriousBounty } from "./politik-ansehen.ts";
+export { runGesuche, offerGesuche, settleGesuche, acceptGesuch, declineGesuch } from "./politik-gesuche.ts";
+export { politikOverview, politikKiView, politikMeta, politikAdminView, setPolitikOff, cancelPolitikWindow, effectLines } from "./politik-view.ts";

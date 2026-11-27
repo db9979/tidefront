@@ -7,6 +7,7 @@ import { market as marketCore } from "@tidefront/game-core";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError, marketBalance } from "./context.ts";
 import { marketRefs } from "./market-news.ts";
+import { balanceNow } from "./politik-core.ts"; // Weltpolitik: Tageslimit der Gezeit
 import { homeStorageCapacity, maxHarborLevel } from "./player-wide.ts";
 
 export const CONTRACT_EVENT = "contract_due";
@@ -157,7 +158,8 @@ export async function reservedNext24h(db: DbOrTx, playerId: number, nowMs: numbe
 
 /** Tageslimit des Spielers (Anteil des Heimatlagers) in Einheiten. */
 export async function dailyLimitOf(db: DbOrTx, playerId: number, nowMs: number): Promise<number> {
-  return Math.floor(balance.market.dailyLimitShareOfStorage * (await homeStorageCapacity(db, playerId, nowMs)));
+  const share = (await balanceNow(db, nowMs)).market.dailyLimitShareOfStorage; // Weltpolitik: Tageslimit der Gezeit
+  return Math.floor(share * (await homeStorageCapacity(db, playerId, nowMs)));
 }
 
 /** Prüft: Vertragslieferungen der Ressource in jedem 24-h-Fenster ≤ limitShare × Tageslimit (Code daily_limit). */

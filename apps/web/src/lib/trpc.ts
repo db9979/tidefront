@@ -72,3 +72,18 @@ queryClient.getQueryCache().subscribe((e) => {
   serverTimeFrom = at;
   noteServerTime(data.serverNow);
 });
+
+/**
+ * Weltpolitik: meta liefert die wirksame Balance (Gezeit, Seerat-Beschluss) und politik.validUntilMs, wann sie sich
+ * das nächste Mal ändert. Trotz staleTime Infinity wird meta dann neu geladen (Probekampf, Geleit, Gebühr stimmen).
+ */
+let metaTimer: ReturnType<typeof setTimeout> | null = null;
+queryClient.getQueryCache().subscribe((e) => {
+  if (e.type !== "updated" || e.action.type !== "success") return;
+  const data = e.query.state.data as { politik?: { validUntilMs?: number | null }; serverNow?: number } | undefined;
+  const until = data?.politik?.validUntilMs;
+  if (!data?.politik || typeof until !== "number") return;
+  if (metaTimer) clearTimeout(metaTimer);
+  const wait = Math.min(2 ** 31 - 1, Math.max(1000, until - (data.serverNow ?? Date.now()) + 2000));
+  metaTimer = setTimeout(() => void queryClient.invalidateQueries({ queryKey: trpc.meta.queryKey() }), wait);
+});

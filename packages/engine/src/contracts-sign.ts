@@ -13,7 +13,8 @@ import {
   CONTRACT_EVENT, cfgOrFail, checkCounts, checkCreditLimit, checkWindow, escrowAccount, fail, journal, lockTraders, playerAcc,
   saveTrader, withCredits, type ContractRow,
 } from "./contracts-core.ts";
-import { contractKi, kiDeal, kiRefuses, kiStocks, quotaOf, type KiDealInput } from "./contracts-ki.ts";
+import { contractKi, kiDeal, kiFor, kiStocks, quotaOf, type KiDealInput } from "./contracts-ki.ts";
+import { balanceNow } from "./politik-core.ts"; // Weltpolitik: wirksame Gebühr
 
 const HOUR_MS = 3_600_000;
 
@@ -47,7 +48,7 @@ export interface KiSignInput extends KiDealInput {
 /** Vorschau eines KI-Vertrags (Preis, Anzahlung, Fälligkeit, Börse zum Vergleich). Codes wie beim Abschluss. */
 export async function kiContractQuote(engine: Engine, playerId: number, input: KiDealInput & { baseId?: number }) {
   const nowMs = Date.now();
-  const ki = await contractKi(engine.db, input.kiId);
+  const ki = await kiFor(engine.db, await contractKi(engine.db, input.kiId), playerId, nowMs); // Weltpolitik: Ansehen
   const own = await ownBase(engine.db, playerId, input.baseId);
   const kiHome = await homeBaseOf(engine.db, ki.id);
   if (!kiHome) fail("no_ki");
@@ -56,7 +57,7 @@ export async function kiContractQuote(engine: Engine, playerId: number, input: K
   const quota = stocks ? quotaOf(stocks, input.side, input.resource, ki) : 0;
   // Zum Vergleich: dieselbe Menge (je Tranche) jetzt an der Börse, mit Gebühr.
   const q = await marketQuote(engine, { side: input.side, resource: input.resource, qty: input.qty });
-  const fee = balance.market.fee;
+  const fee = (await balanceNow(engine.db, nowMs)).market.fee; // Weltpolitik: Gebühr der Gezeit
   const instant = q.ok ? q.executionPrice * (input.side === "buy" ? 1 + fee : 1 - fee) : null;
   return {
     ok: true as const,
@@ -68,16 +69,26 @@ export async function kiContractQuote(engine: Engine, playerId: number, input: K
 }
 
 /**
+ * Weltpolitik: Abschluss als Gesuch (politik-gesuche.ts). before läuft vor, after nach dem Abschluss im selben Befehl;
+ * das Kontingent wird nicht geprüft (die Menge hat die KI selbst erbeten).
+ */
+export interface KiSignGesuch {
+  before: (ctx: Ctx) => Promise<void>;
+  after: (ctx: Ctx, contractIds: number[]) => Promise<void>;
+}
+
+/**
  * Vertrag mit einer KI abschließen. Codes: no_contracts, no_ki, ki_refuses, bad_qty, not_offered, no_abo, bad_term,
  * locked, halted, under_attack, quota, too_many_contracts, rate, daily_limit, credit_limit, funds, slippage.
  */
-export function signKiContract(engine: Engine, playerId: number, key: string, input: KiSignInput) {
+export function signKiContract(engine: Engine, playerId: number, key: string, input: KiSignInput, gesuch?: KiSignGesuch) {
   return runCommand<{ ok: true; contractIds: number[]; firstDueMs: number }>(engine, playerId, key, "contractSignKi", async (ctx: Ctx) => {
     const cfg = cfgOrFail();
     const { tx, nowMs } = ctx;
-    const ki = await contractKi(tx, input.kiId);
+    if (gesuch) await gesuch.before(ctx);
+    const ki = await kiFor(tx, await contractKi(tx, input.kiId), playerId, nowMs); // Weltpolitik: Ansehen (statt kiRefuses)
     if (ki.id === playerId) fail("no_ki");
-    if (await kiRefuses(tx, ki, playerId, nowMs)) fail("ki_refuses");
+    if (ki.refused) fail("ki_refuses");
     const ownRow = await ownBase(tx, playerId, input.baseId);
     const kiRow = await homeBaseOf(tx, ki.id);
     if (!kiRow) fail("no_ki");
@@ -92,7 +103,7 @@ export function signKiContract(engine: Engine, playerId: number, key: string, in
     if (input.side === "sell" && (await incomingDetected(tx, own.id, ownState, nowMs))) fail("under_attack");
     const escort = deal.delivery === "konvoi" && input.side === "buy" ? cleanEscort(input.escort) : {};
     const stocks = await kiStocks(tx, ki.id, playerId, nowMs, kiBase);
-    if (!stocks || deal.totalQty > quotaOf(stocks, input.side, input.resource, ki)) fail("quota");
+    if (!stocks || (!gesuch && deal.totalQty > quotaOf(stocks, input.side, input.resource, ki))) fail("quota");
     await checkCounts(tx, playerId, nowMs, true);
     await checkWindow(tx, playerId, input.resource, deal.tranches.map((t) => ({ atMs: t.settleMs, qty: t.qty })), nowMs);
     const traders = await lockTraders(tx, [playerId, ki.id]);
@@ -142,6 +153,7 @@ export function signKiContract(engine: Engine, playerId: number, key: string, in
     await saveTrader(tx, playerId, withCredits(me, -deal.securityCents));
     if (input.side === "sell") await saveTrader(tx, ki.id, { ...kiTrader, credits: kiCredits / 100 });
     else await saveBase(tx, kiBase.id, kiState);
+    if (gesuch) await gesuch.after(ctx, ids);
     ctx.notify.push([[playerId], "base"], [[playerId], "market"]);
     return { ok: true as const, contractIds: ids, firstDueMs: deal.tranches[0].dueMs };
   });

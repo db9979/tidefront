@@ -43,3 +43,9 @@ export * from "./battle-sim.ts"; // Kampfsimulator: Läufe zusammenfassen, Sicht
 export * from "./win-search.ts"; // „Was fehlt zum Sieg?“: günstigster Verband zur Zielsicherheit
 export * from "./escort-advice.ts"; // Empfohlenes Geleit: erwartete Kartellgruppe, Probekampf, Kosten, Abwägung
 export * from "./escort-search.ts"; // Empfohlenes Geleit: günstigste Mischung aus dem Bestand daheim
+// Weltpolitik: wirksame Balance (Gezeit, Beschlüsse), Saisonplan, Ansehen, Seerat, Gesuche
+export * from "./politik-balance.ts";
+export * from "./politik-plan.ts";
+export * from "./politik-ansehen.ts";
+export * from "./politik-seerat.ts";
+export * from "./politik-gesuche.ts";

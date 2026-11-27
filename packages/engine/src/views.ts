@@ -60,6 +60,7 @@ import { homeStorageCapacity, maxHarborLevelOf, settledHome } from "./player-wid
 import { mapViewFor } from "./intel-map.ts"; // Lagebild: Karte nach Sicht
 import { nestKnown } from "./intel-query.ts"; // Lagebild
 import { intelMissionInfo } from "./intel-route.ts"; // Lagebild Stufe 2
+import { balanceNow } from "./politik-core.ts"; // Weltpolitik: wirksame Gebühr und Tageslimit
 
 /**
  * Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband;
@@ -411,6 +412,7 @@ export async function marketView(engine: Engine, playerId: number, baseId?: numb
   // Handelslimit: gleitendes 24-h-Fenster (window.ts); alte Zustände (Kalendertag) werden dabei überführt.
   const window = trader ? marketCore.tradeWindow(trader, nowMs) : [];
   const reserved = await reservedNext24h(engine.db, playerId, nowMs); // Lieferverträge
+  const eff = await balanceNow(engine.db, nowMs); // Weltpolitik: Gezeit und Beschlüsse
   return {
     serverNow: nowMs,
     resources: balance.resources.map((r) => {
@@ -424,7 +426,7 @@ export async function marketView(engine: Engine, playerId: number, baseId?: numb
         haltedUntilMs: st?.haltedUntilMs ?? 0,
         history: st?.history ?? [],
         dailyUsed: marketCore.tradedInWindow({ tradeHours: window }, r as marketCore.ResourceId, nowMs),
-        dailyLimit: Math.floor(balance.market.dailyLimitShareOfStorage * cap),
+        dailyLimit: Math.floor(eff.market.dailyLimitShareOfStorage * cap),
         /** Lieferverträge: für Vertragslieferungen der nächsten 24 h vorgemerkt (freier Rahmen = Limit − Umsatz − Vormerkung). */
         dailyReserved: reserved[r] ?? 0,
         /** Wann (ms) wie viel des Limits wieder frei wird, aufsteigend (Fächer je volle Stunde, 24 h nach Beginn). */
@@ -432,14 +434,16 @@ export async function marketView(engine: Engine, playerId: number, baseId?: numb
       };
     }),
     credits: trader?.credits ?? 0,
-    fee: balance.market.fee,
+    fee: eff.market.fee,
+    /** Weltpolitik: Grundgebühr ohne Gezeit/Beschluss (für „Gebühr 6 % gilt bis …“). */
+    baseFee: balance.market.fee,
   };
 }
 
 export async function marketQuote(engine: Engine, req: { side: "buy" | "sell"; resource: string; qty: number }) {
   const nowMs = Date.now();
   const m = await engine.db.transaction((tx) => loadMarket(tx));
-  return marketCore.quote(m, req as never, marketBalance, nowMs, await effectiveMarketRefs(engine.db, nowMs));
+  return marketCore.quote(m, req as never, (await balanceNow(engine.db, nowMs)) as unknown as marketCore.MarketBalance, nowMs, await effectiveMarketRefs(engine.db, nowMs));
 }
 
 export async function missionsCount(engine: Engine, baseId: number) {

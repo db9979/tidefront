@@ -309,11 +309,12 @@ export const KINDS: Record<string, KindDef> = {
 export const DERIVED_KINDS = new Set(["lager", "produktion", "nachricht", "kommando", "speicherwerk", "stromspeicher", "windsolar", "oekostrom"]);
 
 export function challengeText(kind: string, target: number, param: string | null): string {
+  if (kind === "gesuch") return "Erfülle das angenommene Gesuch"; // Weltpolitik: Gesuch belegt einen Platz
   return KINDS[kind]?.text(target, param) ?? kind;
 }
 
 export function challengeIcon(kind: string): string {
-  return KINDS[kind]?.icon ?? "anker";
+  return KINDS[kind]?.icon ?? (kind === "gesuch" ? "konvoi" : "anker");
 }
 
 // ---------------------------------------------------------------- Auswahl und Belohnung

@@ -5,6 +5,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { tables, type Tx } from "@tidefront/db";
 import type { Engine } from "./context.ts";
 import { scheduleEvent } from "./store.ts";
+import { kiAccess, kiOfParty, notePactCancelled } from "./politik-ansehen.ts"; // Weltpolitik: Pakt mit KI-Spielern
 import {
   act,
   fail,
@@ -81,6 +82,16 @@ export function proposePact(engine: Engine, playerId: number, target: string) {
     const otherName = await partyName(tx, target);
     if (p?.status === "aktiv") fail("pact_exists");
     if (p && p.proposedBy === own) fail("already_offered");
+    // Weltpolitik: ein KI-Spieler nimmt den Pakt sofort an, wenn der Spieler bei ihm „Vertraut“ ist, sonst lehnt er ab.
+    const ki = await kiOfParty(tx, target);
+    if (ki && !(await kiAccess(tx, ki, playerId, nowMs)).pakt) fail("ki_not_trusted");
+    if (ki && !p) await tx.insert(tables.diplomacy).values({ partyA: a, partyB: b, kind: "pakt", status: "aktiv", proposedBy: own, activeFrom: new Date(nowMs) });
+    if (ki) {
+      if (p) await tx.update(tables.diplomacy).set({ status: "aktiv", activeFrom: new Date(nowMs) }).where(eq(tables.diplomacy.id, p.id));
+      await tell(tx, notes, [own, target], "Diplomatie: Nichtangriffspakt",
+        `${ownName} und ${otherName} haben einen Nichtangriffspakt geschlossen. Gegenseitige Überfälle sind ab sofort ausgeschlossen.`);
+      return { ok: true as const, active: true };
+    }
     if (p) {
       await tx.update(tables.diplomacy).set({ status: "aktiv", activeFrom: new Date(nowMs) }).where(eq(tables.diplomacy.id, p.id));
       await tell(tx, notes, [own, target], "Diplomatie: Nichtangriffspakt",
@@ -136,6 +147,8 @@ export function cancelPact(engine: Engine, playerId: number, id: number) {
     await tx.update(tables.diplomacy).set({ endsAt: new Date(endsAtMs) }).where(eq(tables.diplomacy.id, p.id));
     // Erlöschen melden (purgeExpired); spätere Zugriffe räumen ebenfalls auf, gemeldet wird nur einmal.
     await scheduleEvent(tx, "pact_expire", endsAtMs, { diplomacyId: p.id }, null);
+    const ki = await kiOfParty(tx, other); // Weltpolitik: Merker für den Paktbruch (Überfall ≤ 48 h nach Erlöschen)
+    if (ki) await notePactCancelled(tx, playerId, ki.id, endsAtMs, p.id);
     await tell(tx, notes, [own, other], "Diplomatie: Pakt gekündigt",
       `${ownName} hat den Nichtangriffspakt mit ${await partyName(tx, other)} gekündigt. Er gilt noch bis ${fmt(endsAtMs)} Uhr.`);
     return { ok: true as const, endsAtMs };

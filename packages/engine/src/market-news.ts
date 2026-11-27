@@ -17,7 +17,7 @@ export const SCARCITY_KEY = "market_scarcity";
 
 export const RES_NAME: Record<string, string> = { stahl: "Stahl", treibstoff: "Treibstoff", elektronik: "Elektronik", proviant: "Proviant" };
 
-export type NewsSource = "weltereignis" | "kriegslage" | "knappheit" | "saison" | "handelsbilanz";
+export type NewsSource = "weltereignis" | "kriegslage" | "knappheit" | "saison" | "handelsbilanz" | "gezeit"; // gezeit: Weltpolitik (politik-run.ts)
 
 /** Werte aus balance.json; fehlen sie, gibt es keine Marktnachrichten (Richtwert = Grundrichtwert). */
 export function newsBalance(): marketCore.MarketNewsBalance | null {

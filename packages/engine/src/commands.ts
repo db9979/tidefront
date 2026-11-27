@@ -54,6 +54,7 @@ import { FOUNDING_TYPE, TRANSFER_TYPE, launchExpansion } from "./expansion.ts"; 
 import { endBeginnerElsewhere } from "./pvp.ts"; // PvP: Anfängerschutz endet beim ersten Spielerüberfall
 import { latePackState } from "./catch-up.ts"; // Aufholhilfe: Startpaket für Spät-Einsteiger
 import { reservedNext24h } from "./contracts-core.ts"; // Lieferverträge: Vormerkung im Tageslimit
+import { marketBalanceNow } from "./politik-core.ts"; // Weltpolitik: Gebühr und Tageslimit der Gezeit
 
 export type Rejected = { ok: false; code: string };
 type Draft<T> = T | (Rejected & { keepWrites?: boolean });
@@ -448,7 +449,7 @@ export function trade(
         distanceToPortKm: nearestTradePortBySea(b).distanceKm, // Seewege: Lieferung fährt über Wasser
         reservedQty: (await reservedNext24h(ctx.tx, playerId, ctx.nowMs))[request.resource] ?? 0, // Lieferverträge: Vormerkung
       },
-      marketBalance,
+      await marketBalanceNow(ctx.tx, ctx.nowMs), // Weltpolitik: wirksame Gebühr und Tageslimit
       ctx.nowMs,
       // Marktnachrichten: effektiver Richtwert (undefined ohne Verschiebung, dann bit-gleich wie vorher).
       await effectiveMarketRefs(ctx.tx, ctx.nowMs),

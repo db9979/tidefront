@@ -169,6 +169,7 @@ export function rerollChallenge(engine: Engine, playerId: number, key: string, s
     const row = rows.find((r) => r.slot === slot);
     if (!row) fail("no_challenge");
     if (row.completedAt) fail("already_done");
+    if (row.kind === "gesuch") fail("already_done"); // Weltpolitik: ein angenommenes Gesuch belegt den Platz
     const c = await contextFor(ctx.tx, playerId, ctx.nowMs);
     if (!c) fail("no_base");
     const d = drawChallenge(c, slot as Tier, new Set(rows.map((r) => r.kind)), `${playerId}|${today}|${slot}|neu`);

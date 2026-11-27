@@ -16,6 +16,7 @@ import { marketUnlockedFor } from "./player-wide.ts"; // Mehrere Häfen: Freisch
 import { homeBaseOf, lockBases, lockOwnBase, ownBase, readBase, saveBase, scheduleEvent, type BaseRow } from "./store.ts";
 import { fail, membershipOf, systemMessage } from "./alliance-core.ts";
 import { getSetting } from "./settings.ts";
+import { playerTradeFeeFactor } from "./politik-core.ts"; // Weltpolitik: Handelsfrieden
 import { attachSellerEscort, attachTradeEscort, createConvoy } from "./naval.ts"; // See: Konvoi (Lieferungen reisen als Konvoi, Geleitschutz)
 
 /** Gebühr je empfangener Seite ohne Einstellung (server_setting player_trade_fee, 0 bis 0,2). */
@@ -34,7 +35,8 @@ export function tradeAssets(): string[] {
 export async function playerTradeFee(db: Tx | Engine["db"]): Promise<number> {
   const raw = await getSetting(db, PLAYER_TRADE_FEE_SETTING);
   const n = raw === null ? NaN : Number(raw);
-  return Number.isFinite(n) && n >= 0 && n <= 0.2 ? n : PLAYER_TRADE_FEE_DEFAULT;
+  const fee = Number.isFinite(n) && n >= 0 && n <= 0.2 ? n : PLAYER_TRADE_FEE_DEFAULT;
+  return fee * (await playerTradeFeeFactor(db, Date.now())); // Weltpolitik: Handelsfrieden halbiert die Gebühr
 }
 
 /** Gebühr auf eine Menge: Ressourcen ganzzahlig abgerundet, Taler auf Cent abgerundet. */

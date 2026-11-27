@@ -16,6 +16,7 @@ import { homeBaseOf, lockBases, lockOwnBase, readBase, scheduleEvent } from "./s
 import { travelMs } from "./player-trade.ts";
 import { systemMessage } from "./alliance-core.ts";
 import { colluded } from "./pvp.ts";
+import { balanceNow } from "./politik-core.ts"; // Weltpolitik: wirksame Börsengebühr
 import { fmtInt, nameOf } from "./names.ts";
 import type { HandlerResult } from "./events.ts";
 import {
@@ -222,6 +223,6 @@ export function withdrawPlayerContract(engine: Engine, playerId: number, key: st
 export async function playerBand(db: DbOrTx, resource: string, days: number, nowMs: number) {
   if (!isResource(resource)) fail("bad_qty");
   const b = await bandAt(db, resource, nowMs, nowMs + dayMs(days));
-  return { min: b.min, max: b.max, course: b.k, fee: cfgOrFail().baseFee, marketFee: marketBalance.market.fee };
+  return { min: b.min, max: b.max, course: b.k, fee: cfgOrFail().baseFee, marketFee: (await balanceNow(db, nowMs)).market.fee }; // Weltpolitik: Börsengebühr
 }
 
