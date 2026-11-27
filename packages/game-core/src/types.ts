@@ -382,6 +382,8 @@ export interface MissionInput {
   route?: MissionRoute | null;
   /** PvP: Überfall auf einen Spielerhafen – beendet den eigenen Anfängerschutz (balance.pvp.beginnerEndsOnPlayerRaid). */
   playerHarbor?: boolean;
+  /** Aufklärung auf Sicht (balance.intel.sightRecon): Mission „aufklaerung“ kehrt am Wendepunkt um (recon-sight.ts). */
+  sightRecon?: boolean;
 }
 
 /** Seewege: Route eines Verbands mit Schiffen (Wegpunkte als [Spalte, Zeile], Länge in km); siehe @tidefront/world seaRoute. */
@@ -409,6 +411,7 @@ export interface Mission {
   weather?: { avgWind: number; storminess: number; shipFactor: number }; // Wetter bei Abfahrt (v1.6)
   admiralId?: number; // Admirale: Führer des Verbands (Server); fehlt ohne Admiral
   route?: MissionRoute; // Seewege: Route über Wasser (mit Schiffen); fehlt = Luftlinie (auch alte Missionen)
+  sightTurn?: import("./recon-sight.ts").SightTurn; // Aufklärung auf Sicht: Wendepunkt (fehlt = bis ans Ziel)
 }
 
 export interface FleetCheck {

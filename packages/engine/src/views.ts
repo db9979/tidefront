@@ -304,6 +304,7 @@ export async function missionPreview(
       cargo: input.cargo,
       targetProtection: target.kind === "base" ? target.state!.protection : undefined,
       weather,
+      sightRecon: true, // Aufklärung auf Sicht
     },
     nowMs,
     balance,
@@ -315,6 +316,7 @@ export async function missionPreview(
     distanceKm,
     travelSeconds: r.mission.travelSeconds,
     route: r.mission.route ?? null, // Seewege: Wegpunkte und Länge (Planungskarte, Weglänge)
+    sightTurn: r.mission.sightTurn ?? null, // Aufklärung auf Sicht: Wendepunkt (Planungskarte)
     fuelCost: r.mission.fuelCost,
     arriveAtMs: r.mission.arriveAtMs,
     returnAtMs: r.mission.returnAtMs,

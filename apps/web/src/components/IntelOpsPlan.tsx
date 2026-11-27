@@ -116,6 +116,7 @@ export function IntelOpsPlan({ op, base, map, initial, onSent }: {
               <div>Treibstoff {fmtNum(p.fuelCost)} (ganze Fahrt)</div>
               <div>Ankunft {fmtTime(p.arriveAtMs)} · zurück etwa {fmtTime(p.returnAtMs)}</div>
               {p.sightKm !== null && <div>Sicht {fmtNum(p.sightKm)} km{p.sonarKm ? ` · Sonar ${fmtNum(p.sonarKm)} km` : ""}</div>}
+              {p.turnPoints && p.turnPoints.some((t) => t.km > 0) && <div data-testid="campaign-turns">Aufklärung auf Sicht: Umkehr je {fmtNum(Math.round(Math.max(...p.turnPoints.map((t) => t.km))))} km vor dem Ziel, Lagebild dort</div>}
               {p.cost ? <div>Baukosten {Object.entries(p.cost as Record<string, number>).map(([r, v]) => `${fmtNum(v)} ${label(r)}`).join(", ")}</div> : null}
             </div>
           ) : <ReasonLine code={p.code} detail={why} className="text-sm text-red-300" text={errorText(p.code)} open={whyOpen} onOpenChange={setWhyOpen} />}

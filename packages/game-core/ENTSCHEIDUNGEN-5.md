@@ -199,3 +199,18 @@ Vom Nutzer freigegeben (Runde 3–10 Menschen + 3 KI). Rechnung des Analysten: `
 5. **Knappheit je Spieltag:** der Code nutzte schon `gameDayIndex` (Spielzeitzone); nur Kommentar und REGELN.md sagten
    noch „UTC-Tag“ – korrigiert, Servertest prüft den gespeicherten Tag.
 6. **„neu ab“ in der Order** (UTC-Mitternacht) entfällt; ersetzt durch die gleitende Freigabe.
+
+## Aufklärung auf Sicht und lebendige Nester (Vorlage docs/VORLAGE-NESTER.md, Fragen 1–10 jeweils a)
+
+### Teil 1: Aufklärung auf Sicht
+1. **Wendepunkt rein in game-core** (`recon-sight.ts`): exakter Schnittpunkt des Weges (Seeweg-Felderkette bzw. gerade
+   Linie, Projektions-km) mit dem Kreis Lagebild-Reichweite um das Ziel; `km` in den Einheiten der Fahrzeit
+   (Großkreis-km je Abschnitt wie `pointAlongRoute`), damit `routeAt(…, upToKm)` die Position ohne neue Route liefert.
+2. **Einschalter `sightRecon` in `MissionInput`**, gesetzt von `launchMission`, `missionPreview` und `planNaval` (nur
+   für Art „aufklaerung“). Patrouille, Posten, Minen, Geleit usw. planen mit Grundart „aufklaerung“ und dürfen nicht
+   umkehren – deshalb kein Automatismus über die Art. Balance-Block `intel.sightRecon` (fehlt er: wie bisher).
+3. **Kampagne:** Der nächste Abschnitt beginnt am **Feld** des Wendepunkts (Seeweg von dort), nicht am exakten Punkt –
+   die Wegsuche arbeitet mit Feldern; die Abweichung (≤ halbe Feldbreite) ist auf der Karte nicht zu sehen.
+   Mindestfahrzeit nur für den ersten Abschnitt („beim Auslaufen“).
+4. **„Aufklärer gesichtet“** prüft Ausguck und Radar des Zielhafens am Wendepunkt mit `liveLevelAt` und den
+   Gegenmitteln aus `fleetMods` (Funkdisziplin, Tarnanstrich); vorher zählte nur „Hafen hat Radar“.

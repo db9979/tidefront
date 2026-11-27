@@ -256,6 +256,7 @@
       "warshipKm": 105, "transportKm": 40, "droneKm": 200, "aircraftKm": 120,
       "transports": ["landungsschiff", "kolonieschiff", "minenleger"], "drones": ["aufklaerungsdrohne"]
     },
+    "sightRecon": { "minMinutes": 10 },
     "satellite": {
       "launchpad": "startrampe",
       "types": {

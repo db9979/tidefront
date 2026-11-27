@@ -276,6 +276,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
             {p.ok ? (
               <>
                 <div>Reisezeit {fmtSeconds(p.travelSeconds)} je Richtung</div>
+                {"sightTurn" in p && p.sightTurn && <div data-sight-turn={Math.round(p.sightTurn.rangeKm)}>Aufklärung auf Sicht: Lagebild aus {fmtNum(Math.round(p.sightTurn.rangeKm))} km, Umkehr dort{p.sightTurn.km < 1 ? " (Ziel schon in Sicht, Mindestfahrzeit)" : ""}</div>}
                 <div>Treibstoff {fmtNum(p.fuelCost)} (hin und zurück)</div>
                 <div>Ankunft {fmtTime(p.arriveAtMs)} · zurück {fmtTime(p.returnAtMs)}</div>
                 {"intercept" in p && p.intercept && <div>{"finale" in p && p.finale ? "Kampfort" : "Abfangpunkt"} Feld {p.intercept.col}/{p.intercept.row}</div>}

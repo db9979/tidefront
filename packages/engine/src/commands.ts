@@ -328,6 +328,7 @@ export function launchMission(
         targetProtection: target.kind === "base" ? target.state!.protection : undefined,
         weather: missionWeather(b.col, b.row, target.col, target.row, ctx.nowMs),
         playerHarbor: target.kind === "base" && target.playerId !== null, // PvP: beendet den eigenen Anfängerschutz
+        sightRecon: true, // Aufklärung auf Sicht: Wendepunkt in Lagebild-Reichweite
       },
       ctx.nowMs,
       balance,
