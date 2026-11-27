@@ -22,7 +22,7 @@ import {
   missionPreview,
   register,
   renameBase,
-  reportGet,
+  reportViewFor,
   reportList,
   setNightShield,
   trade,
@@ -185,7 +185,7 @@ export const appRouter = t.router({
     list: authed.query(({ ctx }) => reportList(ctx.engine, ctx.player.id)),
     get: authed
       .input(z.object({ id: z.number().int().min(1) }))
-      .query(({ ctx, input }) => reportGet(ctx.engine, ctx.player.id, input.id)),
+      .query(({ ctx, input }) => reportViewFor(ctx.engine, ctx.player.id, input.id)), // mit Bausteinen wie die E-Mail
     /** Persönliche Kampfbilanz der Saison (kurz zwischengespeichert). */
     stats: authed.query(({ ctx }) => battleStats(ctx.engine, ctx.player.id)),
   }),

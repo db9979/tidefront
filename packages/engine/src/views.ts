@@ -42,6 +42,7 @@ import { previewAgainstEvent } from "./world-events-missions.ts";
 import { modifierBreakdown, modsOf } from "./modifiers.ts";
 import { veteranView } from "./veterans.ts";
 import { withLuckFactors } from "./battle-stats.ts";
+import { hideOpponentSetup, opponentIsPlayer } from "./report-sim-view.ts"; // Bericht → Kampfsimulator
 import { researchView } from "./research.ts";
 import { diplomacyBlock } from "./alliance-core.ts";
 import { intelView } from "./espionage.ts";
@@ -388,7 +389,9 @@ export async function reportGet(engine: Engine, playerId: number, id: number) {
     seed: r.seed,
     balanceVersion: r.balanceVersion,
     // Kampfberichte mit Würfen (v1.4) erhalten je Phase den Würfelfaktor für die Anzeige.
-    data: withLuckFactors(r.report as Record<string, unknown>),
+    // Kampfsimulator: Modifikatoren eines Spieler-Gegners bleiben geheim (report-sim-view.ts).
+    data: hideOpponentSetup(withLuckFactors(r.report as Record<string, unknown>), role, opponentIsPlayer(r, role, playerId)),
+    opponentIsPlayer: opponentIsPlayer(r, role, playerId),
   };
 }
 

@@ -2,6 +2,7 @@
 import type { Counts, ResourceMap } from "./types.ts";
 import type { Modifiers } from "./modifiers.ts";
 import type { CombatWeather } from "./weather.ts";
+import type { BattleSetup } from "./battle-setup.ts";
 
 // ---------------------------------------------------------------- Kampf
 
@@ -78,6 +79,8 @@ export interface BattleReport {
   loot: ResourceMap;
   wreck: ResourceMap;
   weather?: CombatWeather; // Wetter am Kampfort (v1.6)
+  /** Eingaben des Kampfs (Modifikatoren, Versorgungsmangel, Beuteregeln); ältere Berichte ohne. */
+  setup?: BattleSetup;
 }
 
 // ---------------------------------------------------------------- Piraten

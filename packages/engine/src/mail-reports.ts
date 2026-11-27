@@ -25,7 +25,14 @@ export interface ReportMailParts {
   heading: string;
   lead: string;
   blocks: MailBlock[];
+  /** Mindestens ein eigener Abschnitt (sonst Standard aus den Zahlen des Berichts). */
+  covered: boolean;
+  /** Echter Kampf im Bericht: „Im Kampfsimulator öffnen“ (Mail-Link, Knopf in der App). */
+  simulable: boolean;
 }
+
+/** Bericht mit nachstellbarem Kampf (alle Kampfarten mit battle, nicht Spionage). */
+export const isSimulable = (kind: string, data: Record<string, unknown>) => !!data.battle && kind !== "spionage";
 
 const SKIP_KEYS = /(^id$|Id$|^seed$|Ms$|^at$)/;
 
@@ -63,7 +70,7 @@ export function reportMailParts(r: ReportView, ctx: ReportCtx = { veterans: {} }
   if (lead && blocks[1]?.type !== "text") blocks.splice(1, 0, { type: "text", text: lead });
   if (blocks.length === 1) blocks.push({ type: "text", text: "Der Bericht liegt im Spiel vor.", tone: "muted" });
   const subject = outs.find((o) => o.subject)?.subject ?? r.title;
-  return { subject, heading: r.title, lead: lead ?? `${kindLabel(r.kind)} vom ${dateTime(r.atMs)}.`, blocks };
+  return { subject, heading: r.title, lead: lead ?? `${kindLabel(r.kind)} vom ${dateTime(r.atMs)}.`, blocks, covered: outs.length > 0, simulable: isSimulable(r.kind, r.data) };
 }
 
 /** Veteranenränge der eigenen Einheiten im beteiligten Hafen (wie unter Truppen); nur bei Kämpfen. */
@@ -89,5 +96,15 @@ export async function reportMailFor(engine: Engine, playerId: number, reportId: 
   const view: ReportView = { id: r.id, kind: r.kind, title: r.title, atMs: r.atMs, role: r.role as ReportView["role"], winner: r.winner, data: r.data ?? {} };
   const ctx = await readerCtx(engine, playerId, reportId, view).catch(() => ({ veterans: {} }));
   return { ...reportMailParts(view, ctx), reportId: r.id };
+}
+
+/** App (report.get): Bericht samt denselben Bausteinen wie die ausführliche E-Mail, damit beide übereinstimmen. */
+export async function reportViewFor(engine: Engine, playerId: number, reportId: number) {
+  const r = await reportGet(engine, playerId, reportId);
+  if (!r) return null;
+  const view: ReportView = { id: r.id, kind: r.kind, title: r.title, atMs: r.atMs, role: r.role as ReportView["role"], winner: r.winner, data: r.data ?? {} };
+  const ctx = await readerCtx(engine, playerId, reportId, view).catch(() => ({ veterans: {} }));
+  const parts = reportMailParts(view, ctx);
+  return { ...r, blocks: parts.blocks, covered: parts.covered, simulable: parts.simulable };
 }
 

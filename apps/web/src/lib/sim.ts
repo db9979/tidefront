@@ -7,6 +7,7 @@ import {
   resolveBattle,
   type AttackerInput,
   type Balance as CoreBalance,
+  type CombatWeather,
   type DefenderInput,
 } from "@tidefront/game-core";
 import type { Balance } from "./trpc.ts";
@@ -86,7 +87,7 @@ export function wilson(p: number, n: number, z = 1.645): [number, number] {
  * Rechnet den Kampf über `runs` Seeds; Fehlercode (unknown_unit, bad_count) statt Ausnahme.
  * Kriegsglück (W20 je Phase und Seite) steckt in resolveBattle und wirkt automatisch, sobald die Balance es enthält.
  */
-export function simulate(attacker: AttackerInput, defender: DefenderInput, balance: Balance, runs = SIM_RUNS): { ok: true; stats: SimStats } | { ok: false; code: string } {
+export function simulate(attacker: AttackerInput, defender: DefenderInput, balance: Balance, runs = SIM_RUNS, weather?: CombatWeather): { ok: true; stats: SimStats } | { ok: false; code: string } {
   const b = core(balance);
   const aLost: Counts[] = [];
   const dLost: Counts[] = [];
@@ -94,7 +95,7 @@ export function simulate(attacker: AttackerInput, defender: DefenderInput, balan
   let wins = 0, landed = 0;
   const runsDetail: SimStats["runsDetail"] = [];
   for (let i = 0; i < runs; i++) {
-    const r = resolveBattle(attacker, defender, b, simSeed(i));
+    const r = resolveBattle(attacker, defender, b, simSeed(i), weather); // Wetter: aus dem Bericht (sonst ohne)
     if (!r.ok) return { ok: false, code: r.code };
     const rep = r.report;
     if (rep.winner === "attacker") wins++;

@@ -2,7 +2,7 @@
 // Rechnet mit resolveBattle aus dem Regelkern; Einheiten kommen generisch aus der Balance.
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { AttackerInput, DefenderInput } from "@tidefront/game-core";
+import type { AttackerInput, CombatWeather, DefenderInput } from "@tidefront/game-core";
 import { trpc, type Balance, type BaseData } from "../lib/trpc.ts";
 import { errorText, fmtNum, label } from "../lib/names.ts";
 import { fmtTime } from "../lib/time.ts";
@@ -67,8 +67,8 @@ export function SimResult({ stats, ownTitle = "Eigene Verluste", enemyTitle = "V
 
 const NOTE = "Je 50 Durchläufe mit festen Seeds. Nicht berücksichtigt: Abschlag für wiederholte Angriffe, Schwachziel-Regel, Wracks.";
 
-function Outcome({ attacker, defender, balance, ownTitle, enemyTitle }: { attacker: AttackerInput; defender: DefenderInput; balance: Balance; ownTitle?: string; enemyTitle?: string }) {
-  const r = useMemo(() => simulate(attacker, defender, balance), [attacker, defender, balance]);
+function Outcome({ attacker, defender, balance, ownTitle, enemyTitle, weather }: { attacker: AttackerInput; defender: DefenderInput; balance: Balance; ownTitle?: string; enemyTitle?: string; weather?: CombatWeather }) {
+  const r = useMemo(() => simulate(attacker, defender, balance, undefined, weather), [attacker, defender, balance, weather]);
   if (Object.keys(attacker.units).length === 0) return <p className="text-sm text-ink2">Angreifer wählen.</p>;
   if (!r.ok) return <p className="text-sm text-siegel">{errorText(r.code)}</p>;
   return <SimResult stats={r.stats} ownTitle={ownTitle} enemyTitle={enemyTitle} />;
@@ -139,17 +139,22 @@ function CountEditor({ ids, counts, onChange, balance }: { ids: string[]; counts
   );
 }
 
-type AttMode = "eigen" | "frei" | "kartell";
+type AttMode = "eigen" | "frei" | "kartell" | "bericht";
+
+/** Vorbelegung aus einem Bericht („Im Kampfsimulator öffnen“): Verbände, Kampfbedingungen, Wetter am Kampfort. */
+export interface FreeSimPreset { attacker: AttackerInput; defender: DefenderInput; weather?: CombatWeather }
 
 /** Freier Simulator: beide Seiten frei wählbar, Vorlagen für Nester, eigenen Hafen und Kartell-Überfall. */
-export function FreeSim({ balance, base }: { balance: Balance; base: BaseData }) {
+export function FreeSim({ balance, base, preset }: { balance: Balance; base: BaseData; preset?: FreeSimPreset }) {
   const home = useMemo(() => positive(Object.fromEntries(base.units.filter((u) => !balance.units[u.id]?.covert).map((u) => [u.id, u.home]))), [base.units, balance]);
   const ownDef = useMemo(() => positive(Object.fromEntries(base.defenses.map((d) => [d.id, d.count]))), [base.defenses]);
   const nestLevels = Object.keys(balance.pirates.nestLevels).sort((a, b) => Number(a) - Number(b));
-  const [attMode, setAttMode] = useState<AttMode>("eigen");
-  const [att, setAtt] = useState<Counts>(home);
-  const [defPreset, setDefPreset] = useState<string>(nestLevels[0] ? `nest:${nestLevels[0]}` : "frei");
+  const fromReport = useMemo(() => (preset ? { att: positive(preset.attacker.units), def: positive({ ...preset.defender.units, ...preset.defender.defenses }) } : null), [preset]);
+  const [attMode, setAttMode] = useState<AttMode>(preset ? "bericht" : "eigen");
+  const [att, setAtt] = useState<Counts>(fromReport?.att ?? home);
+  const [defPreset, setDefPreset] = useState<string>(preset ? "bericht" : nestLevels[0] ? `nest:${nestLevels[0]}` : "frei");
   const [def, setDef] = useState<Counts>(() => {
+    if (fromReport) return fromReport.def;
     const d = nestLevels[0] ? nestAsDefender(Number(nestLevels[0]), balance) : null;
     return d ? { ...d.units, ...d.defenses } : {};
   });
@@ -160,27 +165,31 @@ export function FreeSim({ balance, base }: { balance: Balance; base: BaseData })
       const d = nestAsDefender(Number(v.slice(5)), balance);
       setDef(d ? { ...d.units, ...d.defenses } : {});
     } else if (v === "hafen") setDef({ ...home, ...ownDef });
+    else if (v === "bericht" && fromReport) setDef(fromReport.def);
   };
   const pickAttacker = (m: AttMode) => {
     setAttMode(m);
     if (m === "eigen") setAtt(home);
+    if (m === "bericht" && fromReport) setAtt(fromReport.att);
     if (m === "kartell") pickDefender("hafen");
   };
 
   const playerIds = Object.keys(balance.units).filter((id) => !balance.units[id].covert); // Spione kämpfen nicht
+  const attIds = preset ? [...playerIds, ...Object.keys(balance.npcUnits)] : playerIds; // Bericht: auch Kartell-Angreifer
   const defIds = [...playerIds, ...Object.keys(balance.npcUnits), ...Object.keys(balance.defenses)];
   const split = useMemo(() => splitDefender(def, balance), [def, balance]);
   const attacker = useMemo<AttackerInput>(
     // Eigene Verbände rechnen mit den eigenen Modifikatoren (Forschung, Veteranen).
-    () => (attMode === "kartell" ? raidAgainst(split.units, split.defenses, balance) : { units: positive(att), versorgungsmangel: attMode === "eigen" && base.versorgungsmangel, ...(attMode === "eigen" ? { modifiers: base.modifiers } : {}) }),
-    [attMode, att, split, balance, base.versorgungsmangel, base.modifiers],
+    () => (attMode === "bericht" && preset ? { ...preset.attacker, units: positive(att) } : attMode === "kartell" ? raidAgainst(split.units, split.defenses, balance) : { units: positive(att), versorgungsmangel: attMode === "eigen" && base.versorgungsmangel, ...(attMode === "eigen" ? { modifiers: base.modifiers } : {}) }),
+    [attMode, att, split, balance, base.versorgungsmangel, base.modifiers, preset],
   );
   const defender = useMemo<DefenderInput>(() => {
     const nest = defPreset.startsWith("nest:") ? nestAsDefender(Number(defPreset.slice(5)), balance) : null;
     if (nest) return { ...split, fixedLoot: nest.fixedLoot };
+    if (defPreset === "bericht" && preset) return { ...preset.defender, ...split };
     if (defPreset === "hafen") return { ...split, resources: base.resources, protectedPerResource: base.bunkerProtection, versorgungsmangel: base.versorgungsmangel, modifiers: base.modifiers };
     return split;
-  }, [defPreset, split, balance, base]);
+  }, [defPreset, split, balance, base, preset]);
 
   const tab = (m: AttMode, text: string) => (
     <button key={m} type="button" onClick={() => pickAttacker(m)} className={`tap flex-1 rounded-lg border text-sm ${attMode === m ? "border-ink bg-card font-semibold reticle" : "border-rule"}`}>{text}</button>
@@ -190,25 +199,26 @@ export function FreeSim({ balance, base }: { balance: Balance; base: BaseData })
     <div className="space-y-4">
       <section>
         <h3 className="font-serif text-lg mb-1 flex items-center gap-2"><Icon id="ueberfall" size={24} /> Angreifer</h3>
-        <div className="flex gap-2 mb-2">{tab("eigen", "Eigene")}{tab("frei", "Frei")}{tab("kartell", "Kartell")}</div>
+        <div className="flex gap-2 mb-2">{preset && tab("bericht", "Bericht")}{tab("eigen", "Eigene")}{tab("frei", "Frei")}{tab("kartell", "Kartell")}</div>
         {attMode === "kartell" ? (
           <p className="text-sm">So stellt das Kartell einen Überfall gegen die Verteidigung rechts zusammen: <strong>{Object.entries(attacker.units).map(([id, n]) => `${fmtNum(n)} ${label(id)}`).join(", ")}</strong> (ohne Schwankung).</p>
         ) : (
-          <CountEditor ids={playerIds} counts={att} onChange={(c) => { setAtt(c); setAttMode("frei"); }} balance={balance} />
+          <CountEditor ids={attIds} counts={att} onChange={(c) => { setAtt(c); if (attMode !== "bericht") setAttMode("frei"); }} balance={balance} />
         )}
       </section>
       <section>
         <h3 className="font-serif text-lg mb-1 flex items-center gap-2"><Icon id="schild" size={24} /> Verteidiger</h3>
         <select className="h-11 w-full rounded-lg field px-2 text-sm mb-2" value={defPreset} onChange={(e) => pickDefender(e.target.value)}>
+          {preset && <option value="bericht">Aus dem Bericht</option>}
           {nestLevels.map((l) => <option key={l} value={`nest:${l}`}>Piratennest Stufe {l}</option>)}
           <option value="hafen">Eigener Hafen (daheim)</option>
           <option value="frei">Frei</option>
         </select>
-        <CountEditor ids={defIds} counts={def} onChange={(c) => { setDef(c); if (defPreset === "hafen" || defPreset.startsWith("nest:")) return; setDefPreset("frei"); }} balance={balance} />
+        <CountEditor ids={defIds} counts={def} onChange={(c) => { setDef(c); if (defPreset === "hafen" || defPreset === "bericht" || defPreset.startsWith("nest:")) return; setDefPreset("frei"); }} balance={balance} />
       </section>
       <section className="rounded-xl bg-paper border border-rule p-3">
-        <Outcome attacker={attacker} defender={defender} balance={balance} ownTitle={attMode === "kartell" ? "Verluste des Kartells" : "Verluste des Angreifers"} enemyTitle="Verluste des Verteidigers" />
-        <p className="text-xs text-ink2 mt-2">{NOTE} Beute bei Nestern fest, beim eigenen Hafen aus den Beständen über dem Bunkerschutz.</p>
+        <Outcome attacker={attacker} defender={defender} balance={balance} weather={preset?.weather} ownTitle={attMode === "kartell" ? "Verluste des Kartells" : "Verluste des Angreifers"} enemyTitle="Verluste des Verteidigers" />
+        <p className="text-xs text-ink2 mt-2">{NOTE} Beute bei Nestern fest, beim eigenen Hafen aus den Beständen über dem Bunkerschutz.{preset?.weather ? " Wetter am Kampfort des Berichts eingerechnet." : ""}</p>
       </section>
     </div>
   );

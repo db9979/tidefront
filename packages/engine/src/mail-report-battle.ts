@@ -3,7 +3,7 @@
 // Weltereignis, See, Sammelangriff …) – auch für künftige Arten, solange sie `battle` mitliefern.
 import type { Cell, MailBlock } from "./mail-blocks.ts";
 import {
-  counts, dateTime, int, kindLabel, num, pct, registerReportSection, resText, resourceRows, str, sum, unitLabel,
+  counts, dateTime, int, kindLabel, num, pct, registerReportSection, resText, resourceRows, str, sum, unitCell,
   type Counts, type ReportCtx, type ReportView,
 } from "./mail-report-kit.ts";
 import { nameOf } from "./names.ts";
@@ -44,7 +44,7 @@ function forceTable(title: string, o: Outcome | undefined, vets: Record<string, 
   if (!ids.length) return [{ type: "section", title }, { type: "text", text: "Keine Einheiten im Kampf.", tone: "muted" }];
   const rows: Cell[][] = ids.map((id) => {
     const lost = s.lost(id);
-    return [vets[id] ? `${unitLabel(id)} · ${vets[id]}` : unitLabel(id), int(s.before[id]), lost > 0 ? { v: `−${int(lost)}`, tone: "loss" } : { v: "±0", muted: true }, int(s.left(id))];
+    return [unitCell(id, vets[id]), int(s.before[id]), lost > 0 ? { v: `−${int(lost)}`, tone: "loss" } : { v: "±0", muted: true }, int(s.left(id))];
   });
   const totalLost = ids.reduce((n, id) => n + s.lost(id), 0);
   const totalLeft = ids.reduce((n, id) => n + s.left(id), 0);

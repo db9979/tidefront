@@ -72,6 +72,8 @@ export interface MailContent {
   /** Vorschauzeile im Posteingang; Vorgabe: erster Absatz bzw. Überschrift. */
   preheader?: string;
   button?: { label: string; url: string };
+  /** Zusätzlicher Link unter dem Knopf (z. B. „Im Kampfsimulator öffnen“). */
+  link?: { label: string; url: string };
   /** Abmeldelink in der Fußzeile; fehlt er, steht dort nur der Hinweis. */
   unsubscribeUrl?: string;
   /** Beschriftung des Links in der Fußzeile; Vorgabe „E-Mail-Benachrichtigungen abbestellen“. */
@@ -109,6 +111,9 @@ ${(c.items ?? []).map((s) => `<tr><td width="18" valign="top" class="tf-seal" st
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 6px 0;"><tr><td class="tf-btn" style="border-radius:${t.radius};background:${t.accent};">
 <a href="${esc(c.button.url)}" class="tf-btn-a" style="display:inline-block;padding:14px 26px;font-size:14px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${t.accentText};text-decoration:none;border-radius:${t.radius};font-family:${t.font};">${esc(c.button.label)}</a>
 </td></tr></table>`
+    : "";
+  const link = c.link
+    ? `<p style="margin:10px 0 0 0;font-size:14px;line-height:20px;"><a href="${esc(c.link.url)}" class="tf-text" style="color:${t.text};text-decoration:underline;font-weight:600;">${esc(c.link.label)} &#8250;</a></p>`
     : "";
   const footer = [
     c.footerNote ? esc(c.footerNote) : "Du erhältst diese Nachricht, weil du E-Mail-Benachrichtigungen für TIDEFRONT eingeschaltet hast.",
@@ -149,6 +154,7 @@ ${blocks}
 ${facts}
 ${items}
 ${button}
+${link}
 </td></tr>
 <tr><td class="tf-muted" style="padding:18px 28px;font-size:12px;line-height:18px;color:${t.muted};font-family:${t.font};" align="center">${footer}</td></tr>
 </table>
@@ -167,6 +173,7 @@ ${button}
     ...(c.items ?? []).map((s) => `- ${s}`),
     ...((c.items ?? []).length ? [""] : []),
     ...(c.button ? [`${c.button.label}: ${c.button.url}`, ""] : []),
+    ...(c.link ? [`${c.link.label}: ${c.link.url}`, ""] : []),
     "--",
     c.footerNote ?? "Du erhältst diese Nachricht, weil du E-Mail-Benachrichtigungen für TIDEFRONT eingeschaltet hast.",
     ...(c.unsubscribeUrl ? [`${c.unsubscribeLabel ?? "Abbestellen"}: ${c.unsubscribeUrl}`] : []),

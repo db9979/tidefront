@@ -199,6 +199,8 @@ export async function noticeMail(engine: Engine, playerId: number, n: Notice, un
       return {
         subject: r.subject, heading: r.heading, paragraphs: [], preheader: r.lead, blocks: r.blocks,
         button: { label: "Im Spiel öffnen", url: `${publicUrl()}/?tab=berichte&bericht=${r.reportId}` },
+        // Kampfberichte: direkt den vorbelegten Kampfsimulator öffnen (Rechte prüft report.get).
+        ...(r.simulable ? { link: { label: "Im Kampfsimulator öffnen", url: `${publicUrl()}/?tab=berichte&bericht=${r.reportId}&sim=1` } } : {}),
         unsubscribeUrl,
       };
     }

@@ -76,7 +76,9 @@ test("Landungstrupp: Minenschaden der Landungstruppen −30 %, im Seegefecht kei
   const foe = { units: { zerstoerer: 4 }, defenses: {} };
   const s1 = resolveBattle(sea, foe, balance, 3);
   const s2 = resolveBattle({ ...sea, modifiers: admiralModifiers(["landung"], FULL, "mission", balance) }, foe, balance, 3);
-  assert.deepEqual(s1, s2);
+  assert.ok(s1.ok && s2.ok);
+  // Ergebnis gleich; nur die abgelegten Kampfbedingungen (setup) nennen die Modifikatoren.
+  assert.deepEqual({ ...s1.report, setup: undefined }, { ...s2.report, setup: undefined });
 });
 
 test("Beutemeister: +10 % feste Nestbeute (Rangfaktor), weiter durch den Laderaum begrenzt", () => {

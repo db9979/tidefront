@@ -30,6 +30,7 @@ import type { Modifiers } from "./modifiers.ts";
 import type { CombatWeather } from "./weather.ts";
 import { modValue } from "./modifiers.ts";
 import { luckFactor, luckOf, luckRng, rollDie } from "./luck.ts";
+import { battleSetup } from "./battle-setup.ts"; // Kampfbedingungen im Bericht
 
 /** "Pioniere halbieren den Schaden" der Minensperren (REGELN.md, Abschnitt Kampf). */
 export const PIONEER_MINE_FACTOR = 0.5;
@@ -430,6 +431,7 @@ export function resolveBattle(
       loot,
       wreck,
       ...(weather ? { weather: { ...weather } } : {}),
+      setup: battleSetup(attacker, defender), // Kampfbedingungen für „Im Kampfsimulator öffnen“
     },
   };
 }

@@ -114,15 +114,18 @@ export function resText(c: Counts | null | undefined, fallback = "nichts", limit
 /** Zeilen „Ressource | Menge“ in der Reihenfolge des Spiels; null ohne Inhalt. */
 export function resourceRows(c: Counts | null | undefined, sign = ""): Cell[][] {
   const order = [...(balance.resources as readonly string[]), ...Object.keys(c ?? {}).filter((k) => !isResource(k))];
-  return order.filter((k) => (c?.[k] ?? 0) >= 1).map((k) => [nameOf(k), `${sign}${int(c![k])}`]);
+  return order.filter((k) => (c?.[k] ?? 0) >= 1).map((k) => [{ v: nameOf(k), icon: k }, `${sign}${int(c![k])}`]);
 }
+
+/** Erste Spalte einer Einheitenzeile: Textsymbol + Name (E-Mail), Symbol-ID für die App. */
+export const unitCell = (id: string, vet?: string): Cell => ({ v: vet ? `${unitLabel(id)} · ${vet}` : unitLabel(id), icon: id });
 
 /** Einheiten-Tabelle „Einheit | Anzahl“ (z. B. Lagebild), Anlagen nach Einheiten. */
 export function unitRows(c: Counts, vets: Record<string, string> = {}): Cell[][] {
   return Object.entries(c)
     .filter(([, n]) => n > 0)
     .sort((a, b) => b[1] - a[1])
-    .map(([id, n]) => [vets[id] ? `${unitLabel(id)} · ${vets[id]}` : unitLabel(id), int(n)]);
+    .map(([id, n]) => [unitCell(id, vets[id]), int(n)]);
 }
 
 export function unitTable(title: string | null, c: Counts, head = ["Einheit", "Anzahl"], caption?: string): MailBlock[] {

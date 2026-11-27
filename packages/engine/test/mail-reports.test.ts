@@ -12,7 +12,7 @@ import { nestSites, isCoast, COLS, ROWS } from "@tidefront/world";
 import { spyRollOf, type BaseState, type SpyMission } from "@tidefront/game-core";
 import {
   chooseBase, deliverNotices, ensureFieldPlanner, fieldsView, flushMailDigests, launchMission, mailNotice, processDue, register,
-  renderMail, reportMailParts, saveSmtp, seed, setMailSender, spyLaunch, type Engine, type NoticeJob, type OutgoingMail,
+  renderMail, reportMailParts, reportViewFor, saveSmtp, seed, setMailSender, spyLaunch, type Engine, type NoticeJob, type OutgoingMail,
 } from "../src/index.ts";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -129,6 +129,15 @@ test("Kampfbericht Nest: Sieg, Verbände als Tabelle, Beute, Kurzfazit, Betreff 
   assert.match(mail.subject, /^TIDEFRONT: Sieg bei Piratennest Stufe 1 – Beute [\d.]+ /, mail.subject);
   assert.ok(mail.html.includes(`?tab=berichte&amp;bericht=${arrived.reportId}`), "Knopf öffnet den Bericht");
   assert.ok(mail.text.includes("Korvette · "), "Veteranenrang der eigenen Einheit");
+  // Kampfsimulator: zusätzlicher Link mit sim=1 (HTML und Text).
+  assert.ok(mail.html.includes(`?tab=berichte&amp;bericht=${arrived.reportId}&amp;sim=1`) && mail.html.includes("Im Kampfsimulator öffnen"), "Simulator-Link");
+  assert.ok(mail.text.includes(`Im Kampfsimulator öffnen: `) && mail.text.includes(`bericht=${arrived.reportId}&sim=1`));
+  // App: report.get liefert dieselben Bausteine und die Kampfbedingungen (setup) mit.
+  const v = await reportViewFor(engine, A.playerId, arrived.reportId!);
+  assert.ok(v && v.simulable && v.covered && v.blocks[0].type === "banner");
+  const battle = (v.data as { battle: { setup?: { attacker: object; defender: { fixedLoot?: object } } } }).battle;
+  assert.ok(battle.setup?.defender.fixedLoot, "Nestbeute als Kampfbedingung gespeichert");
+  assert.equal(await reportViewFor(engine, B.playerId, arrived.reportId!), null, "fremder Bericht: nicht sichtbar");
   assert.ok(mail.text.includes("Piratenmiliz") || mail.text.includes("Schnellboot"), "Gegner mit Namen");
   await runTo(arrived.returnAt!.getTime() + 1);
 });
@@ -139,6 +148,7 @@ test("Aufklärung: Spielerhafen mit Lagebild, Piratennest Stufe 2, Rohstofffeld"
   await runTo((scout as { arriveAtMs: number }).arriveAtMs + 1);
   const m = check("aufklaerung-hafen", lastTo(A.email), ["Lagebild von Hafen Bert", "Bestände", "Schützen", "Küstenbatterie", "Gebäude", "Bunkerschutz"]);
   assert.match(m.subject, /Aufklärung: Hafen Bert – \d+ Einheiten, 3 Anlagen/, m.subject);
+  assert.ok(!m.html.includes("sim=1"), "kein Simulator-Link ohne Kampf");
 
   const nest2 = (await db.select().from(tables.nest).where(eq(tables.nest.level, 2)))
     .map((n) => ({ n, d: Math.hypot(n.col - A.col, n.row - A.row) })).sort((x, y) => x.d - y.d)[0].n;
@@ -174,6 +184,12 @@ test("Angriff auf Spielerhafen: Warnung mit Schritten, Kampfbericht für beide S
   assert.match(att.subject, /(Sieg|Niederlage) bei Hafen Bert/);
   const def = check("kampf-hafen-verteidiger", lastTo(B.email), ["Verteidigung Bert (du)", "Plünderung"]);
   assert.match(def.subject, /Hafen Bert (gehalten|überwunden)/, def.subject);
+  // Spieler gegen Spieler: Modifikatoren des Gegners liefert report.get nicht aus.
+  const [br] = await db.select({ id: tables.battleReport.id }).from(tables.battleReport).where(and(eq(tables.battleReport.kind, "ueberfall"), eq(tables.battleReport.defenderPlayerId, B.playerId))).orderBy(sql`${tables.battleReport.id} desc`).limit(1);
+  const forB = await reportViewFor(engine, B.playerId, br.id);
+  const setupB = (forB!.data as { battle: { setup: { attacker: { modifiers?: object; modifiersHidden?: boolean } } } }).battle.setup;
+  assert.equal(setupB.attacker.modifiers, undefined);
+  assert.equal(forB!.opponentIsPlayer, true);
 });
 
 test("Spionage: Dossier für den Absender", async () => {

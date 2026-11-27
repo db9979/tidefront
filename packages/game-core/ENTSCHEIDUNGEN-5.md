@@ -199,3 +199,34 @@ Vom Nutzer freigegeben (Runde 3–10 Menschen + 3 KI). Rechnung des Analysten: `
 5. **Knappheit je Spieltag:** der Code nutzte schon `gameDayIndex` (Spielzeitzone); nur Kommentar und REGELN.md sagten
    noch „UTC-Tag“ – korrigiert, Servertest prüft den gespeicherten Tag.
 6. **„neu ab“ in der Order** (UTC-Mitternacht) entfällt; ersetzt durch die gleitende Freigabe.
+
+## Berichte im Kampfsimulator und Berichtsansicht wie die E-Mail
+
+1. **Kampfbedingungen im Bericht:** `resolveBattle` legt `battle.setup` ab (game-core `battle-setup.ts`): je Seite
+   Versorgungsmangel, kampfwirksame Modifikatoren (attack, attackVs, attackUnit, hp, cargo, loot, nestLoot,
+   mineDamage; neutrale Werte weggelassen), Kartell-Regeln (troopSpaceBonus, unlimitedCargo), Schwachziel,
+   Wiederholungsabschlag, Bunkerschutz, feste Nestbeute. **Bestände des Ziels werden nicht gespeichert** (nur
+   `shareLoot`), damit der Bericht nicht den ganzen Hafenbestand des Gegners offenlegt. Rückwärtskompatibel: optionales Feld.
+2. **Geheimhaltung:** Ist der Gegner des Lesers ein Spieler, entfernt `report.get` dessen Modifikatoren
+   (`modifiersHidden`); der Simulator rechnet ihn neutral und sagt das („Forschung und Admiral des Gegners unbekannt –
+   mit 0 gerechnet“). Kartell, Nester und Weltereignisse sind kein Geheimnis. Gilt auch für alte Berichte.
+3. **Vorbelegung** (`reportSimPreset`, game-core): Verbände = `before` beider Seiten (Verteidiger getrennt in
+   Einheiten/Anlagen), Wetter = `battle.weather`, Kriegsglück des echten Kampfs = Mittel der Würfelfaktoren je Seite
+   (nur zur Anzeige; der Simulator rechnet wie üblich 50× mit festen Seeds). Beute: feste Nestbeute aus `setup`, sonst
+   die tatsächliche Beute als feste Beute (mit Hinweis). **Alte Berichte:** Angreifer-Eingaben aus `data.attacker`
+   (lag dort schon bei Überfall/Nest/Kartell/Welt/Blockade …), Verteidiger neutral, Bunkerschutz aus
+   `data.protectedPerResource`; jeweils mit Hinweis. Option „Mit meinen heutigen Werten rechnen“ ersetzt die eigene
+   Seite durch die aktuellen Modifikatoren/Versorgung des aktiven Hafens.
+4. **Aufklärungsberichte** (Nest mit Besatzung, Hafen-Lagebild): derselbe Knopf rechnet den eigenen Bestand daheim
+   gegen das Ziel (Forschung des Ziels unbekannt). Dazu „Angreifen planen“, Entfernung und Probekampf; „Wiederholen“
+   bleibt Nebenaktion. Sichtungen und Spionage: kein Simulator.
+5. **E-Mail:** Kampfberichte (alle Arten mit `battle`, außer Spionage) erhalten unter dem Knopf den Link
+   „Im Kampfsimulator öffnen“ → `/?tab=berichte&bericht=ID&sim=1`; die App öffnet nach Anmeldung den Bericht und gleich
+   das Simulator-Blatt. Rechte: `report.get` (nur eigene bzw. Allianz-geteilte Berichte). Push öffnet weiter nur den Bericht.
+6. **Berichtsansicht = E-Mail-Aufbau:** `report.get` liefert zusätzlich die Bausteine der ausführlichen E-Mail
+   (`blocks`, `covered`, `simulable`; `reportViewFor`), die App zeichnet sie im eigenen Stil (Banner, Kacheln, Tabellen
+   mit Symbolen, Kennzahlen). Tabellenzellen tragen dafür optional `icon` (Einheit/Anlage/Ressource); die E-Mail
+   nutzt weiter Textsymbole. Der Phasenverlauf (Würfel, Schaden) bleibt als „Gefechtsverlauf“, die bisherigen
+   Spezialansichten stehen unter „Alle Einzelheiten“; Lagebild-Berichte (Posten, Patrouille, Sichtung, Satellit)
+   zeigen ihre eigene Ansicht weiter offen. Arten ohne E-Mail-Abschnitt: nur Banner plus bisherige Ansicht.
+7. Nicht umgesetzt: Siegchance vor dem Kampf im Bericht (wird nicht gespeichert), Fahrzeit (nur Entfernung).

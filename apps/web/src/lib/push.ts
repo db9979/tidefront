@@ -101,7 +101,7 @@ export async function disablePush(): Promise<void> {
   await sub.unsubscribe().catch(() => {});
 }
 
-export type OpenTarget = { tab?: "basis" | "karte" | "truppen" | "berichte" | "boerse"; view?: "settings" | "admin"; /** Mehrere Häfen: diesen Hafen aktiv machen. */ base?: number; /** E-Mail-Link: diesen Bericht öffnen. */ report?: number };
+export type OpenTarget = { tab?: "basis" | "karte" | "truppen" | "berichte" | "boerse"; view?: "settings" | "admin"; /** Mehrere Häfen: diesen Hafen aktiv machen. */ base?: number; /** E-Mail-Link: diesen Bericht öffnen. */ report?: number; /** E-Mail-Link „Im Kampfsimulator öffnen“ (&sim=1, nur mit bericht). */ sim?: boolean };
 
 /** Ziel aus einer App-Adresse (Benachrichtigung): ?tab=berichte, ?view=admin, ?base=12 (Hafen). */
 export function parseOpenUrl(url: string): OpenTarget {
@@ -113,13 +113,20 @@ export function parseOpenUrl(url: string): OpenTarget {
     view: view === "admin" || view === "settings" ? view : undefined,
     base: /^\d{1,9}$/.test(q.get("base") ?? "") ? Number(q.get("base")) : undefined,
     report: /^\d{1,9}$/.test(q.get("bericht") ?? "") ? Number(q.get("bericht")) : undefined,
+    sim: q.get("sim") === "1" && /^\d{1,9}$/.test(q.get("bericht") ?? "") ? true : undefined,
   };
 }
 
-/** Bericht aus dem Start-Link (?bericht=ID, z. B. aus einer E-Mail); wird einmal abgeholt. */
-let openReport: number | undefined = typeof location !== "undefined" ? parseOpenUrl(location.href).report : undefined;
-export function takeOpenReport(): number | null {
-  const id = openReport ?? null;
+/** Bericht aus dem Start-Link (?bericht=ID, z. B. aus einer E-Mail; &sim=1: gleich im Kampfsimulator); wird einmal abgeholt. */
+let openReport: { id: number; sim: boolean } | undefined = (() => {
+  if (typeof location === "undefined") return undefined;
+  const t = parseOpenUrl(location.href);
+  return t.report !== undefined ? { id: t.report, sim: !!t.sim } : undefined;
+})();
+/** Ohne Verbrauch lesen (Zustands-Initialisierer laufen im Entwicklungsmodus doppelt); verbraucht wird per clearOpenReport. */
+export function peekOpenReport(): { id: number; sim: boolean } | null {
+  return openReport ?? null;
+}
+export function clearOpenReport(): void {
   openReport = undefined;
-  return id;
 }

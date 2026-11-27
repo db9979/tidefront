@@ -73,7 +73,7 @@ function Side({ name, before, after }: { name: string; before: Counts; after: Co
   );
 }
 
-export function BattleLog({ b, names, role, protectedPerResource = null, salvage = null }: {
+export function BattleLog({ b, names, role, protectedPerResource = null, salvage = null, phasesOnly = false }: {
   b: Battle;
   names: [string, string];
   role: "attacker" | "defender";
@@ -81,6 +81,8 @@ export function BattleLog({ b, names, role, protectedPerResource = null, salvage
   salvage?: Counts | null;
   /** Bunkerschutz je Ressource des Verteidigers (ältere Berichte: null). */
   protectedPerResource?: number | null;
+  /** Nur der Phasen-Verlauf (Berichtsansicht: Kopf, Verbände und Beute stehen dort in den Bausteinen). */
+  phasesOnly?: boolean;
 }) {
   const won = (b.winner === "attacker") === (role === "attacker");
   // Beute aus Sicht des Lesers: Angreifer erbeutet (+, grün), Verteidiger verliert (−, Siegelrot).
@@ -90,25 +92,7 @@ export function BattleLog({ b, names, role, protectedPerResource = null, salvage
   const wreck = resList(b.wreck);
   const salvaged = gain ? resList(salvage) : "";
   let no = 0;
-  return (
-    <>
-      <section className="text-center pb-3 mb-3 border-b border-rule">
-        <div className="font-display text-[11px] uppercase tracking-[0.22em] text-ink2">Kampfbericht · Logbuch</div>
-        <div className="flex items-center gap-2 mx-10 mt-2" aria-hidden="true">
-          <i className="flex-1 border-t-[3px] border-double border-ink" /><span className="diamond bg-siegel" /><i className="flex-1 border-t-[3px] border-double border-ink" />
-        </div>
-        <h2 className={`font-serif italic text-[46px] leading-none mt-1.5 mb-1 ${won ? "text-ink" : "text-siegel"}`}>{won ? "Sieg" : "Niederlage"}</h2>
-        <div className="font-serif text-[15px]">{names[0]} <em className="text-ink2">gegen</em> {names[1]}</div>
-        <div className="text-[11.5px] text-ink2 mt-1">
-          Luftüberlegenheit: {b.airSuperiority === null ? "keine" : b.airSuperiority === "attacker" ? names[0] : names[1]} · Landung: {b.landed ? "ja" : "nein"}
-        </div>
-        {b.weather && (b.weather.air < 0.995 || b.weather.strike < 0.995) && (
-          <div className="text-[11.5px] text-ink2">
-            Wetter: {b.weather.storm ? "Sturm" : `Wind ${Math.round(b.weather.wind * 100)} %`}, Wolken {Math.round(b.weather.clouds * 100)} % – Flugzeuge ×{fmtNum(b.weather.air, 2)}, Luftschlag ×{fmtNum(b.weather.air * b.weather.strike, 2)}
-          </div>
-        )}
-      </section>
-
+  const phases = (
       <ol className="ml-2 mb-3 border-l border-ink">
         {b.phases.map((p) => {
           if (p.skipped) {
@@ -147,6 +131,28 @@ export function BattleLog({ b, names, role, protectedPerResource = null, salvage
           );
         })}
       </ol>
+  );
+  if (phasesOnly) return phases;
+  return (
+    <>
+      <section className="text-center pb-3 mb-3 border-b border-rule">
+        <div className="font-display text-[11px] uppercase tracking-[0.22em] text-ink2">Kampfbericht · Logbuch</div>
+        <div className="flex items-center gap-2 mx-10 mt-2" aria-hidden="true">
+          <i className="flex-1 border-t-[3px] border-double border-ink" /><span className="diamond bg-siegel" /><i className="flex-1 border-t-[3px] border-double border-ink" />
+        </div>
+        <h2 className={`font-serif italic text-[46px] leading-none mt-1.5 mb-1 ${won ? "text-ink" : "text-siegel"}`}>{won ? "Sieg" : "Niederlage"}</h2>
+        <div className="font-serif text-[15px]">{names[0]} <em className="text-ink2">gegen</em> {names[1]}</div>
+        <div className="text-[11.5px] text-ink2 mt-1">
+          Luftüberlegenheit: {b.airSuperiority === null ? "keine" : b.airSuperiority === "attacker" ? names[0] : names[1]} · Landung: {b.landed ? "ja" : "nein"}
+        </div>
+        {b.weather && (b.weather.air < 0.995 || b.weather.strike < 0.995) && (
+          <div className="text-[11.5px] text-ink2">
+            Wetter: {b.weather.storm ? "Sturm" : `Wind ${Math.round(b.weather.wind * 100)} %`}, Wolken {Math.round(b.weather.clouds * 100)} % – Flugzeuge ×{fmtNum(b.weather.air, 2)}, Luftschlag ×{fmtNum(b.weather.air * b.weather.strike, 2)}
+          </div>
+        )}
+      </section>
+
+      {phases}
 
       <section className="panel rounded-xl p-3.5 mb-3">
         <div className="flex justify-between gap-2 mb-2.5">

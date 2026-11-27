@@ -6,7 +6,11 @@ import type { MailTheme } from "./mail-templates.ts";
 export type Tone = "win" | "loss" | "warn" | "info";
 
 /** Zelle einer Tabelle: Text oder Text mit Färbung/Hervorhebung. */
-export type Cell = string | { v: string; tone?: Tone; bold?: boolean; muted?: boolean };
+export type Cell = string | {
+  v: string; tone?: Tone; bold?: boolean; muted?: boolean;
+  /** Symbol-ID (Einheit, Anlage, Ressource) für die Berichtsansicht in der App; die E-Mail nutzt Textsymbole. */
+  icon?: string;
+};
 
 export type MailBlock =
   | { type: "banner"; tone: Tone; kicker?: string; title: string; sub?: string }
