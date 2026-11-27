@@ -41,3 +41,5 @@ export * from "./report-sim.ts"; // Bericht → Kampfsimulator
 export * from "./battle-victory.ts"; // Sieger und Beute nach Kampfart (Server und Simulator)
 export * from "./battle-sim.ts"; // Kampfsimulator: Läufe zusammenfassen, Sicht der eigenen Seite, Phasen
 export * from "./win-search.ts"; // „Was fehlt zum Sieg?“: günstigster Verband zur Zielsicherheit
+export * from "./escort-advice.ts"; // Empfohlenes Geleit: erwartete Kartellgruppe, Probekampf, Kosten, Abwägung
+export * from "./escort-search.ts"; // Empfohlenes Geleit: günstigste Mischung aus dem Bestand daheim

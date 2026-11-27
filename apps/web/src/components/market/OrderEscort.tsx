@@ -7,6 +7,7 @@ import { trpc, type BaseData } from "../../lib/trpc.ts";
 import { fmtNum } from "../../lib/names.ts";
 import { SmallButton } from "../../ui.tsx";
 import { EscortPicker } from "../Naval.tsx";
+import { EscortAdvice } from "../EscortAdvice.tsx"; // See: Empfohlenes Geleit je Frachtwert
 
 type Counts = Record<string, number>;
 
@@ -23,6 +24,8 @@ export function OrderEscort({ base, resource, qty, value, onChange }: { base: Ba
   const chance = Number.isFinite(km) ? cartelChance(km, worth, b, true) : 0;
   const loss = Number.isFinite(km) ? cartelExpectedLoss(km, worth, b, true) : 0;
   const escorted = Object.values(value).some((n) => n > 0);
+  // Geleitfahrt: zum Handelshafen und mit dem Konvoi heim; die Schiffe fehlen bis zur Ankunft (feste Lieferzeit).
+  const awayHours = market.deliveryTravelMs(b.market as unknown as market.MarketBalance["market"], base.market.port.distanceKm) / 3_600_000;
   return (
     <div className="mb-3 text-sm" data-order-escort>
       <div className="flex items-center justify-between gap-2">
@@ -35,6 +38,10 @@ export function OrderEscort({ base, resource, qty, value, onChange }: { base: Ba
             ? <>Ohne Geleit: Das Kartell fängt diesen Konvoi mit etwa {pct(chance)} ab und nimmt dann {pct(cv.lossShareUnescorted)} der Ladung – im Mittel {pct(loss)} Verlust. Kriegsgegner können ihn abfangen.</>
             : <>Kurze Strecke: Das Kartell fängt hier nicht ab. Kriegsgegner können den Konvoi abfangen.</>}
         </p>
+      )}
+      {worth > 0 && Number.isFinite(km) && (
+        <EscortAdvice base={base} cargoValue={worth} riskKm={km} market trip={{ km: base.market.port.distanceKm, awayHours }} escort={value}
+          onApply={(u) => { onChange(u); setOpen(true); }} />
       )}
       {open && <EscortPicker base={base} value={value} onChange={onChange} hint="Die Schiffe fahren dem Konvoi zum Handelshafen entgegen und kommen mit ihm heim (Treibstoff, ein Missionsplatz). Sie kämpfen, wenn das Kartell oder ein Kriegsgegner abfängt." />}
     </div>

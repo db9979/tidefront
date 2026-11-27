@@ -3,7 +3,10 @@
 import { and, eq, inArray } from "drizzle-orm";
 import {
   allowedBases,
+  commandPoints,
   harborMarketUnlocked,
+  market as marketCore,
+  recommendEscort,
   startTraining,
   storageCapacity,
   trainingCost,
@@ -11,9 +14,9 @@ import {
   type Modifiers,
   type ResourceMap,
 } from "@tidefront/game-core";
-import { hexDistanceKm } from "@tidefront/world";
+import { hexDistanceKm, nearestTradePortBySea } from "@tidefront/world";
 import { tables } from "@tidefront/db";
-import { balance } from "./context.ts";
+import { balance, marketBalance } from "./context.ts";
 import { train, trade } from "./commands.ts";
 import { marketQuote, marketView, missionPreview } from "./views.ts";
 import { acceptOffer, createOffer, offersView } from "./player-trade.ts";
@@ -54,17 +57,37 @@ export async function marketTurn(c: TurnCtx, base: Base, mods: Modifiers): Promi
   if (credits > 500) {
     const price = view.resources.find((y) => y.id === short)?.price ?? ref(short);
     const qty = Math.floor(Math.min((credits * (c.cfg.trade ? 0.6 : 0.4)) / price, 0.25 * cap, room(short)));
-    if (qty >= 100) await doTrade(c, base, "buy", short, qty);
+    if (qty >= 100) await doTrade(c, base, "buy", short, qty, mods);
   }
 }
 
+/** Ab diesem Warenwert (Richtpreis) nehmen KI-Spieler bei Börsenkäufen das empfohlene Geleit, wenn Schiffe daheim sind. */
+export const BOT_ESCORT_MIN_VALUE = 10000;
+
+/** Empfohlenes Geleit für einen großen Börsenkauf (ENTSCHEIDUNGEN-5.md „Empfohlenes Geleit“); null: ohne Geleit. */
+export function botMarketEscort(base: Base, resource: string, qty: number, mods: Modifiers): Record<string, number> | null {
+  const value = qty * ref(resource);
+  if (value < BOT_ESCORT_MIN_VALUE) return null;
+  const port = nearestTradePortBySea(base);
+  const a = recommendEscort({
+    value, riskKm: marketCore.deliveryRiskKm(marketBalance.market, port.distanceKm), market: true,
+    trip: { km: port.distanceKm, awayHours: marketCore.deliveryTravelMs(marketBalance.market, port.distanceKm) / 3600000 },
+    home: base.state.units, modifiers: mods, commandPoints: commandPoints(base.state, balance), fuelAvailable: base.state.resources.treibstoff,
+  }, balance);
+  return a.status === "ok" && !a.fuelShort ? a.units : null;
+}
+
 /** Ein Börsengeschäft zum aktuellen Kurs; Rückgabe: erhaltene Taler (Verkauf), sonst 0. */
-async function doTrade(c: TurnCtx, base: Base, side: "buy" | "sell", resource: string, qty: number): Promise<number> {
+async function doTrade(c: TurnCtx, base: Base, side: "buy" | "sell", resource: string, qty: number, mods?: Modifiers): Promise<number> {
   const q = await marketQuote(c.engine, { side, resource, qty });
   if (!q.ok) return 0;
-  const r = await trade(c.engine, c.bot.id, c.key("trade"), { side, resource, qty, expectedPrice: q.executionPrice, baseId: base.id });
+  // Große Käufe mit empfohlenem Geleit (Schiffe daheim); scheitert das Geleit, ohne.
+  const escort = side === "buy" && mods ? botMarketEscort(base, resource, qty, mods) : null;
+  let r = await trade(c.engine, c.bot.id, c.key("trade"), { side, resource, qty, expectedPrice: q.executionPrice, baseId: base.id, ...(escort ? { escort } : {}) });
+  const escorted = r.ok && !!escort;
+  if (!r.ok && escort) r = await trade(c.engine, c.bot.id, c.key("trade"), { side, resource, qty, expectedPrice: q.executionPrice, baseId: base.id });
   if (!r.ok) return 0;
-  c.log.push(`Börse: ${fmtInt(qty)} ${nameOf(resource)} ${side === "sell" ? "verkauft" : "gekauft"}.`);
+  c.log.push(`Börse: ${fmtInt(qty)} ${nameOf(resource)} ${side === "sell" ? "verkauft" : "gekauft"}${escorted ? " (mit Geleit)" : ""}.`);
   return side === "sell" ? q.totalCredits : 0;
 }
 

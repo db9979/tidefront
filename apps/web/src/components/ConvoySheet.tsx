@@ -10,6 +10,7 @@ import { routeKmOf } from "../lib/convoy.ts";
 import { Button, CountsLine } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 import type { Target } from "../App.tsx";
+import { ConvoyProbe } from "./ConvoyProbe.tsx"; // See: Empfohlenes Geleit – Probekampf gegen das Kartell
 
 type Convoy = Outputs["naval"]["view"]["convoys"][number];
 type Counts = Record<string, number>;
@@ -59,6 +60,7 @@ export function ConvoyCard({ c, now, base, onPlan }: { c: Convoy; now: number; b
         )}
         {c.intel && <span className="block text-[11px] text-ink2">{c.intel.level === "sichtung" ? "Sichtung" : "Erkennung"} durch {c.intel.source}</span>}
         {last && <span className={`block ${last.escortHeld ? "text-moos" : "text-siegel"}`}>{last.by === "kartell" ? "Kartell" : last.by === "minen" ? "Minen" : last.name} griff an: {last.escortHeld ? "abgewehrt" : `verloren ${resLine(last.lost)}`}</span>}
+        {c.own && c.cargo && c.escort && <ConvoyProbe cargo={c.cargo} escort={c.escort} base={base} />}
         {c.enemy && <InterceptBox c={c} base={base} onPlan={onPlan} />}
       </div>
     </div>

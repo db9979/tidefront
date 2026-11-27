@@ -9,6 +9,7 @@ import { useNow } from "../../lib/time.ts";
 import { Badge, Button, Card, ErrorLine } from "../../ui.tsx";
 import { Icon } from "../../icons.tsx";
 import { EscortPicker } from "../Naval.tsx";
+import { ContractEscortAdvice } from "../EscortAdvice.tsx"; // See: Empfohlenes Geleit je Frachtwert
 import { when } from "./calc.ts";
 import { contractsInvalidate, kr, type ContractsData } from "./Contracts.tsx";
 
@@ -66,6 +67,7 @@ function ProposalRow({ p, base, now, busy, onAccept }: { p: Proposal; base: Base
           <p className="text-sm">Du {p.side === "buy" ? "zahlst" : "hinterlegst als Pfand"} jetzt <strong className="mono">{kr(p.securityCredits)}</strong>;
             {p.side === "buy" ? " der Rest wird bei Fälligkeit abgebucht." : " die Ware wird bei Abfahrt des Konvois aus deinem Hafen abgebucht."}</p>
           {p.side === "buy" && <EscortPicker base={base} value={escort} onChange={setEscort} hint="Die Schiffe laufen bei Abfahrt des Konvois aus, wenn sie dann im Hafen sind." />}
+          {p.side === "buy" && <ContractEscortAdvice base={base} resource={p.resource} qty={p.qty} escort={escort} onApply={setEscort} />}
           <div className="flex gap-2 mt-2">
             <Button kind="secondary" className="flex-1" onClick={() => setConfirm(false)}>Abbrechen</Button>
             <Button className="flex-1" disabled={busy} onClick={() => {
@@ -127,6 +129,7 @@ function ProposeForm({ base, data }: { base: BaseData; data: ContractsData }) {
       {b && <p className={`text-xs mt-1 ${okPrice ? "text-ink2" : "text-siegel"}`}>Erlaubt: {fmtNum(b.min, 3)} bis {fmtNum(b.max, 3)} je Einheit (Kurs {fmtNum(b.course, 3)}).
         {side === "sell" ? ` Du bekommst ${fmtNum(price * (1 - b.fee), 3)} nach ${fmtNum(b.fee * 100)} % Grundaufschlag.` : ""}</p>}
       {side === "buy" && <EscortPicker base={base} value={escort} onChange={setEscort} hint="Die Schiffe laufen bei Abfahrt des Konvois aus, wenn sie dann im Hafen sind." />}
+      {side === "buy" && qty > 0 && <ContractEscortAdvice base={base} resource={resource} qty={qty} escort={escort} onApply={setEscort} />}
       <p className="text-xs text-ink2 mt-1">Deine {side === "buy" ? "Anzahlung" : "Pfand"} ({fmtNum(data.cfg.depositShare * 100)} %) geht sofort in Treuhand; das Angebot gilt {data.cfg.offerHours} Stunden.</p>
       {done && <p className="text-moos text-sm mt-1 font-semibold" role="status">{done}</p>}
       <div className="flex justify-end mt-2">

@@ -9,6 +9,7 @@ import { fmtDuration, useNow } from "../../lib/time.ts";
 import { Button, Card, ErrorLine } from "../../ui.tsx";
 import { Icon } from "../../icons.tsx";
 import { EscortPicker } from "../Naval.tsx";
+import { ContractEscortAdvice } from "../EscortAdvice.tsx"; // See: Empfohlenes Geleit je Frachtwert
 import { when } from "./calc.ts";
 import { contractsInvalidate, kr, type ContractsData } from "./Contracts.tsx";
 
@@ -115,6 +116,7 @@ function DealForm({ base, ki, offer, minQty }: { base: BaseData; ki: Ki; offer: 
             Lieferung per Konvoi über die Seewege (Fahrzeit {fmtDuration(q.travelMs)}): das Kartell fängt gelegentlich ab, Kriegsgegner gezielt. Den Verlust trägst du – dafür ist der Preis 2 Punkte billiger.
           </p>
           {buy && <EscortPicker base={base} value={escort} onChange={setEscort} hint="Die Schiffe laufen bei Abfahrt des Konvois aus, wenn sie dann im Hafen sind (Treibstoff, ein Missionsplatz)." />}
+          {buy && <ContractEscortAdvice base={base} resource={offer.resource} qty={qty} travelMs={q.travelMs} escort={escort} onApply={setEscort} />}
         </>}
         <p className="text-xs text-ink2 mt-1">{buy ? "Der Rest wird bei Fälligkeit automatisch abgebucht." : "Die Ware bleibt bis zur Fälligkeit in deinem Hafen und wird dann abgebucht."}</p>
         {done && <p className="text-moos text-sm mt-1 font-semibold" role="status">{done}</p>}

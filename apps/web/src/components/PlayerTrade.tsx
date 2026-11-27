@@ -10,6 +10,7 @@ import { ActionRemedy, ReasonLine } from "./Remedy.tsx"; // „Was hilft?“
 import { Icon } from "../icons.tsx";
 import { DevTag, readerValue, usePrices, ValueLine, type Prices } from "./TradeValue.tsx";
 import { EscortPicker } from "./Naval.tsx"; // See: Konvoi – Geleitschutz
+import { SellerEscortAdvice } from "./EscortAdvice.tsx"; // See: Empfohlenes Geleit je Frachtwert
 
 type Offer = Outputs["playerTrade"]["list"]["open"][number];
 type Res = { ok: boolean; code?: string };
@@ -73,6 +74,7 @@ export function PlayerTrade({ base }: { base: BaseData }) {
         <EscortPicker base={base} value={sellEscort} onChange={setSellEscort}
           hint="Die Schiffe bleiben bis zur Annahme im Hafen; dann begleiten sie deine Ware zum Käufer und fahren heim (Treibstoff, ein Missionsplatz). Fehlen sie dann, fährt die Ware ohne Geleit." />
       )}
+      {give !== "credits" && g > 0 && <SellerEscortAdvice base={base} resource={give} qty={g} escort={sellEscort} onApply={setSellEscort} />}
       {g > 0 && w > 0 && (
         <div className="mb-2 flex items-start gap-2">
           <DevTag v={readerValue(prices, give, g, want, w)} />
