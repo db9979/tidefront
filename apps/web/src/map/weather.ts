@@ -45,6 +45,8 @@ interface Cell {
   y: number;
   lat: number;
   lon: number;
+  col: number;
+  row: number;
   /** Fester Zufallswert je Zelle für Wolkenform und Auswahl. */
   r: number;
 }
@@ -67,6 +69,8 @@ function pressureLabel(low: boolean): Container {
 }
 
 const HAIR = { pixelLine: true } as const;
+/** Versatz zum nächsten Seefeld: erst die direkten Nachbarn, dann die Diagonalen. */
+const NEAR: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]];
 
 export function buildWeatherLayer(wb: WeatherBalance): WeatherLayer {
   const root = new Container();
@@ -85,17 +89,45 @@ export function buildWeatherLayer(wb: WeatherBalance): WeatherLayer {
     for (let col = 1; col < COLS; col += STEP) {
       const { x, y } = hexCenterXY(col, row);
       const { lat, lon } = hexCenter(col, row);
-      cells.push({ x, y, lat, lon, r: ((col * 73856093) ^ (row * 19349663)) % 1000 / 1000 });
+      cells.push({ x, y, lat, lon, col, row, r: ((col * 73856093) ^ (row * 19349663)) % 1000 / 1000 });
     }
   }
   const sea: { col: number; row: number }[] = [];
   for (let row = 0; row < ROWS; row++) for (let col = 0; col < COLS; col++) if (terrainAt(col, row) !== "land") sea.push({ col, row });
+  const vanes = vaneAnchors();
   const cellKm = hexCenterXY(STEP, 0).x - hexCenterXY(0, 0).x;
   const pool: { low: Container[]; high: Container[] } = { low: [], high: [] };
   let slotAt = -1;
   let fieldSamples: FieldSample[] | null = null;
   let fieldBucket = NaN;
   let systems: MapSystem[] = [];
+
+  /**
+   * Anker der Windfahnen: jede zweite Rasterzelle; liegt ihr Feld an Land, das nächste Meer-/Küstenfeld im Umkreis
+   * eines Feldes (hält den Rasterabstand). Liegt auch dort keins, entfällt die Fahne; die Nachbarzelle springt ein,
+   * wenn nur sie See trifft, damit schmale Seegebiete nicht leer bleiben.
+   */
+  function vaneAnchors(): Cell[] {
+    const out: Cell[] = [];
+    const isSea = (col: number, row: number) => col >= 0 && row >= 0 && col < COLS && row < ROWS && terrainAt(col, row) !== "land";
+    const near = (c: Cell): Cell | null => {
+      if (isSea(c.col, c.row)) return c;
+      for (const [dc, dr] of NEAR) {
+        const col = c.col + dc, row = c.row + dr;
+        if (!isSea(col, row)) continue;
+        const { x, y } = hexCenterXY(col, row);
+        const { lat, lon } = hexCenter(col, row);
+        return { x, y, lat, lon, col, row, r: c.r };
+      }
+      return null;
+    };
+    cells.forEach((c, i) => {
+      if (i % 2 === 1) return;
+      const a = near(c) ?? (cells[i + 1] && cells[i + 1].row === c.row ? near(cells[i + 1]) : null);
+      if (a) out.push(a);
+    });
+    return out;
+  }
 
   /** Übersicht: einmal je Zeitfenster, Haarlinien – beim Zoomen bleibt alles stehen. */
   function drawOverview(ms: number): void {
@@ -138,12 +170,12 @@ export function buildWeatherLayer(wb: WeatherBalance): WeatherLayer {
     }
     lines.stroke({ color: SEE, alpha: 0.6, ...HAIR });
 
-    // Windfahnen (jede zweite Zelle, damit es ruhig bleibt).
-    samples.forEach(({ c, w }, i) => {
-      const b = barbsOf(w.wind, wb);
-      if (w.wind < 0.22 || i % 2 === 1) return;
-      drawVane(lines, flags, c.x, c.y, windDir(c.lat, c.lon, systems), half * 1.4, b);
-    });
+    // Windfahnen nur über See (jede zweite Zelle, damit es ruhig bleibt; Anker ggf. aufs nächste Seefeld versetzt).
+    for (const v of vanes) {
+      const w = weatherAt({ lat: v.lat, lon: v.lon }, ms, wb);
+      if (w.wind < 0.22) continue;
+      drawVane(lines, flags, v.x, v.y, windDir(v.lat, v.lon, systems), half * 1.4, barbsOf(w.wind, wb));
+    }
     lines.stroke({ color: INK, alpha: 0.75, ...HAIR });
     flags.fill({ color: INK, alpha: 0.8 });
 

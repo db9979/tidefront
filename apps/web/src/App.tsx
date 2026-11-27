@@ -6,8 +6,9 @@ import { useLive } from "./lib/live.ts";
 import { useNow } from "./lib/time.ts";
 import { ActionBarHost, Loading } from "./ui.tsx";
 import { Icon } from "./icons.tsx";
-import { AuthScreen } from "./screens/Auth.tsx";
-import { ChooseBase } from "./screens/ChooseBase.tsx";
+// Anmeldung und Hafenwahl nur bei Bedarf laden: angemeldete Spieler mit Hafen brauchen sie nicht.
+const AuthScreen = lazy(() => import("./screens/Auth.tsx").then((m) => ({ default: m.AuthScreen })));
+const ChooseBase = lazy(() => import("./screens/ChooseBase.tsx").then((m) => ({ default: m.ChooseBase })));
 import { BaseScreen } from "./screens/Base.tsx";
 const MapScreen = lazy(() => import("./screens/MapScreen.tsx").then((m) => ({ default: m.MapScreen })));
 const TroopsScreen = lazy(() => import("./screens/Troops.tsx").then((m) => ({ default: m.TroopsScreen })));
@@ -77,7 +78,7 @@ export function App() {
   const me = useQuery(trpc.auth.me.queryOptions());
   const player = me.data?.player;
   if (me.isLoading) return <Loading />;
-  if (!player) return <AuthScreen />;
+  if (!player) return <Suspense fallback={<Loading />}><AuthScreen /></Suspense>;
   // Neuer Schlüssel je Spieler: nach Abmelden oder Spielerwechsel beginnen alle Ansichten frisch.
   return <Game key={player.id} playerId={player.id} playerName={player.name} onLoggedOut={() => void me.refetch()} />;
 }
@@ -185,7 +186,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const mainScroll = useViewScroll(`${switchKey}|${help ? "handbuch" : research ? "forschung" : plan ? "planung" : tab === "berichte" ? `berichte:${sub}` : tab}`);
 
   if (base.isLoading || !base.data) return <Loading />;
-  if (!base.data.base) return <ChooseBase />;
+  if (!base.data.base) return <Suspense fallback={<Loading />}><ChooseBase /></Suspense>;
   const b = base.data.base;
   const unread = (reports.data ?? []).filter((r) => r.id > seen).length;
   const unreadMsgs = messages.data?.count ?? 0;

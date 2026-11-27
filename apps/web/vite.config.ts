@@ -14,7 +14,25 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(rootPkg.version),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
   },
-  build: { outDir: "dist", emptyOutDir: true, chunkSizeWarningLimit: 1200 },
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    chunkSizeWarningLimit: 400,
+    rolldownOptions: {
+      output: {
+        // Bibliotheken in eigene, lange cachebare Chunks: ein Spiel-Update lädt nur den App-Code neu.
+        // PixiJS bleibt bewusst außen vor – es hängt nur an der verzögert geladenen Karte.
+        codeSplitting: {
+          groups: [
+            { name: "react", test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/, priority: 20 },
+            { name: "query", test: /node_modules[\\/]@(tanstack|trpc)[\\/]/, priority: 10 },
+            // Alles, was der Start ohnehin braucht, in einen App-Chunk statt vieler Kleinstteile.
+            { name: "app", tags: ["$initial"], priority: 0 },
+          ],
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       "/trpc": { target, changeOrigin: true },
