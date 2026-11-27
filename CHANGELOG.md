@@ -2,6 +2,10 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.36.0 – 27.11.2026
+- **Lagezentrum (Meldungen → „Lage“):** Alles, was gerade läuft, auf einer Seite und nach Zeit sortiert – „Gleich / heute“ (Angriffe rot ganz oben, Ankünfte, Konvois und Lieferungen, Bau, Ausbildung, Forschung, fällige Verträge, Nachtschild, Satelliten, Weltereignisse), „Unterwegs“ mit Fortschrittsbalken, „Wartet auf dich“ (abholbare Belohnungen, leere Bauschlange, freie Plätze, volles Lager, veraltende Lagebilder) und „Zuletzt passiert“. Jede Zeile führt per Tippen direkt dorthin; die Zahl an „Meldungen“ zeigt nur Dringendes.
+- **Börsenlieferung in 4 Stunden – für alle gleich (Balance v1.34):** Jeder Börsenkauf kommt nach genau 4 Stunden an, egal wie weit dein Hafen vom Handelshafen liegt; das Kartell-Risiko ist für alle gleich (im Schnitt rund 1 % Warenverlust ohne Geleit).
+
 ## 0.35.0 – 27.11.2026
 - **Taler statt Kredite:** Die Währung heißt jetzt Taler (kurz „T“, Münzsymbol) – an der Börse, bei Verträgen, Admiralen, Belohnungen, im Handbuch, in E-Mails und Benachrichtigungen. Die Obergrenze, wie viele Taler ein Hafen halten kann, heißt „Kasse“. Beträge und Kontostände bleiben unverändert.
 - **Hilfe bei 0 Talern:** Statt „Zu wenig Kredite“ heißt es „Du hast 0 Taler. Verkaufe zuerst Rohstoffe – z. B. Proviant (Überschuss).“ – ein Knopf schaltet die Order auf Verkaufen und wählt Rohstoff und Menge vor. „Was hilft?“ bietet keine Sprünge mehr zu dem Bildschirm an, auf dem du schon bist.
