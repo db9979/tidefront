@@ -2,6 +2,15 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.20.0 – 27.11.2026
+- **Elektrolyse** (neues Gebäude): wandelt Überschuss aus Wind und Sonne in Treibstoff (10 Strom-Stunden → 1 Treibstoff); Kraftwerksstrom nie. Gasblasen steigen, solange sie arbeitet.
+- **Seekabel** (neues Gebäude): Ökostrom-Überschuss an einen eigenen Hafen oder ein Allianzmitglied abgeben – bis 600 km, 10 % Verlust je 100 km, Preis frei oder als Allianzhilfe, Abrechnung alle 10 Minuten. Kriegsgegner können die Station sabotieren. Verwaltung in der Versorgung: anbieten, annehmen, Preis ändern, trennen.
+- **Grüner Hafen:** ab 60 % Ökostrom in 24 Stunden +3 % Produktion (Quelle „Ökostrom“ im Info-Blatt). Neuer Erfolg „Grüner Hafen“, Wochenziel „Ökostrom“, Saisonauszeichnung „Grünster Hafen“ in der Ruhmeshalle.
+- **Stromkurve** zeigt, wohin der Überschuss geht (→ Treibstoff, → Partner, verfällt), dazu den Ökostrom-Anteil.
+- KI-Händler bauen Wind, Sonne und Elektrolyse.
+- **Behoben:** Außenposten verloren bei jeder Abrechnung ihre Kolonie-Markierung; Gebäude, die nur im Heimathafen erlaubt sind, waren dort deshalb nicht gesperrt.
+- Handbuch „Wetter und Strom“ erweitert, Regeln in docs/REGELN-STROM.md. Balance v1.21.
+
 ## 0.19.2 – 27.11.2026
 - **Bewegte Gebäude**, dezent und nach Spielzustand: Windräder drehen mit dem Wind am Hafen (Flaute oder Sturmabschaltung: still), Rauch steigt und die Fackel flackert nur bei laufender Produktion (bei Strommangel stockend), die Radarschüssel dreht sich, der Leuchtturm blinkt nachts, Chipfabrik-LEDs blinken, das Solarfeld glänzt bei Sonne, das Speicherwerk zeigt seinen Füllstand. Werft, Kaserne und Flugfeld bewegen sich, solange ausgebildet wird; bei laufendem Ausbau steht ein kleiner Baukran am Gebäude.
 - Animationen pausieren außerhalb des Bildschirms und im Hintergrund; bei „Bewegung reduzieren“ (iPhone-Einstellung) bleibt alles still.
