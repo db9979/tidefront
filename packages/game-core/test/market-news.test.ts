@@ -17,6 +17,8 @@ import {
   smoothScarcity,
   stepOffsets,
   targetOffsets,
+  tradeBalancePct,
+  cappedNetBuys,
   warPct,
 } from "../src/market/index.ts";
 import type { MarketBalance, MarketInfluence, MarketNewsBalance, TradeContext } from "../src/market/index.ts";
@@ -193,4 +195,33 @@ test("Kursgrenzen bleiben am Grundrichtwert, auch bei verschobenem Richtwert", (
   const r = executeTrade(market, trader, { side: "buy", resource: "stahl", qty: 2000, expectedPrice: q.executionPrice }, ctx, b, T0, eff);
   assert.equal(r.ok, false);
   assert.equal(!r.ok && r.code, "price_bounds");
+});
+
+test("Handelsbilanz: Ziel 0,5 × Netto-Käufe ÷ (3 × Tiefe), ±15 %, erst ab 3 aktiven Häfen", () => {
+  const cfg = news.tradeBalance!;
+  assert.deepEqual({ f: cfg.factor, w: cfg.windowHours, d: cfg.depthMultiple, m: cfg.max, p: cfg.minPorts, s: cfg.playerShareDivisor }, { f: 0.5, w: 72, d: 3, m: 0.15, p: 3, s: 3 });
+  const depth = balance.market.depth.stahl; // 200.000
+  // drei gleich starke Käufer zählen voll: 3 × 40.000 = 120.000 → 0,5 × 120.000 / 600.000 = 10 %
+  assert.ok(Math.abs(tradeBalancePct([40_000, 40_000, 40_000], depth, 3, cfg) - 0.1) < 1e-9);
+  // unter 3 aktiven Häfen keine Wirkung
+  assert.equal(tradeBalancePct([40_000, 40_000, 40_000], depth, 2, cfg), 0);
+  // Verkäufe senken, Deckel ±15 %
+  assert.ok(Math.abs(tradeBalancePct([-90_000, -90_000, -90_000], depth, 5, cfg) + 0.15) < 1e-12);
+  assert.ok(Math.abs(tradeBalancePct([900_000, 900_000, 900_000], depth, 5, cfg) - 0.15) < 1e-12);
+  assert.equal(tradeBalancePct([], depth, 5, cfg), 0);
+});
+
+test("Handelsbilanz: je Spieler höchstens ⅓ der gesamten Bewegung", () => {
+  const cfg = news.tradeBalance!;
+  // ein einzelner Großkäufer zählt nur zu einem Drittel
+  assert.ok(Math.abs(cappedNetBuys([90_000], cfg.playerShareDivisor) - 90_000 / cfg.playerShareDivisor) < 1e-6);
+  // ein Großer und zwei Kleine: der Große zählt höchstens ⅓ der Summe der Beträge (100.000 → 33.333)
+  const capped = cappedNetBuys([90_000, 5_000, 5_000], cfg.playerShareDivisor);
+  assert.ok(Math.abs(capped - (100_000 / cfg.playerShareDivisor + 10_000)) < 1e-6, String(capped));
+  // gegenläufige Spieler heben sich auf; das Vorzeichen bleibt
+  assert.equal(cappedNetBuys([30_000, -30_000, 30_000, -30_000], cfg.playerShareDivisor), 0);
+  assert.ok(cappedNetBuys([-60_000, 10_000], cfg.playerShareDivisor) < 0);
+  // wirkt im Ziel: ein Spieler mit 120.000 → 0,5 × 40.000 / 600.000 ≈ 3,3 % statt 10 %
+  const one = tradeBalancePct([120_000], balance.market.depth.stahl, 3, cfg);
+  assert.ok(Math.abs(one - (0.5 * 120_000 / cfg.playerShareDivisor) / 600_000) < 1e-9, String(one));
 });

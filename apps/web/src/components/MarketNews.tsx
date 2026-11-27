@@ -14,7 +14,7 @@ export function useMarketNews(enabled = true) {
   return useQuery({ ...trpc.market.news.queryOptions(), enabled, refetchInterval: 60000 });
 }
 
-const SOURCE: Record<string, string> = { weltereignis: "Weltereignis", kriegslage: "Kriegslage", knappheit: "Knappheit", saison: "Saison" };
+const SOURCE: Record<string, string> = { weltereignis: "Weltereignis", kriegslage: "Kriegslage", knappheit: "Knappheit", saison: "Saison", handelsbilanz: "Handelsbilanz" };
 
 /** „+12 %“ / „−4 %“ mit einer Nachkommastelle, wenn nötig. */
 export function fmtPct(pct: number): string {

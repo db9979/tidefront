@@ -3,8 +3,6 @@ import { fmtNum, label } from "../names.ts";
 import { build, go, lvl, marketLevel, missions, training } from "./helpers.ts";
 import type { RemedyTable } from "./types.ts";
 
-/** Uhrzeit (Spielerzeit), zu der das Tageslimit der Börse zurückgesetzt wird (Tageswechsel des Servers). */
-
 const tradePlayers = go("Spielerhandel", { to: "market", seg: "spieler" });
 const own = go("Eigene Angebote", { to: "market", seg: "spieler" });
 
@@ -34,8 +32,8 @@ export const TRADE: RemedyTable = {
     const share = balance?.market.dailyLimitShareOfStorage ?? 0.2;
     const limit = base ? Math.floor(share * base.capacity) : null;
     return {
-      hint: `Je Ressource und Tag lassen sich ${fmtNum(share * 100)} % der Lagergröße handeln${limit !== null ? ` (hier ${fmtNum(limit)}${detail.resource ? ` ${label(detail.resource)}` : ""})` : ""}. Das Limit wird täglich um Mitternacht zurückgesetzt. Mehr geht mit einem größeren Lagerkomplex.`,
-      actions: [build("lagerkomplex")],
+      hint: `Je Ressource lassen sich in 24 Stunden ${fmtNum(share * 100)} % der Lagergröße handeln (Kauf und Verkauf zusammen)${limit !== null ? ` – hier ${fmtNum(limit)}${detail.resource ? ` ${label(detail.resource)}` : ""}` : ""}. Das Limit gleitet: Jede Menge wird 24 Stunden nach der vollen Stunde ihres Handels wieder frei – wann wie viel, steht an der Order unter „Tageslimit“. Bis dahin kleinere Mengen handeln, eine andere Ressource wählen oder mit Spielern handeln; mehr geht mit einem größeren Lagerkomplex.`,
+      actions: [build("lagerkomplex"), tradePlayers],
     };
   },
 

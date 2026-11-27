@@ -177,3 +177,33 @@ export function seasonEndFactor(nowMs: number, seasonEndMs: number, days: number
 export function roundPct(pct: number): number {
   return Math.round(pct * 1000) / 1000;
 }
+
+/**
+ * Handelsbilanz: Netto-Käufe (Käufe − Verkäufe, Einheiten) je Spieler einer Ressource → Summe mit Spielerdeckel. Jeder
+ * Spieler zählt höchstens 1/divisor der gesamten Bewegung (Summe der Beträge aller Spieler), mit seinem Vorzeichen: ein
+ * einzelner Großhändler bewegt den Richtwert bei divisor 3 nur zu einem Drittel, mindestens drei gleich starke Händler
+ * zählen voll.
+ */
+export function cappedNetBuys(netByPlayer: readonly number[], divisor: number): number {
+  const v = netByPlayer.filter((x) => finite(x) && x !== 0);
+  const gross = v.reduce((a, b) => a + Math.abs(b), 0);
+  if (gross === 0) return 0;
+  const cap = gross / Math.max(1, finite(divisor) ? divisor : 1);
+  return v.reduce((sum, x) => sum + Math.sign(x) * Math.min(Math.abs(x), cap), 0);
+}
+
+/**
+ * Zielversatz der Handelsbilanz einer Ressource: factor × gedeckelte Netto-Käufe ÷ (depthMultiple × Tiefe), höchstens
+ * ±max. Weniger als minPorts aktive Häfen: 0 (keine Wirkung). Käufe heben den Richtwert, Verkäufe senken ihn.
+ */
+export function tradeBalancePct(
+  netByPlayer: readonly number[],
+  depth: number,
+  activePorts: number,
+  cfg: NonNullable<MarketNewsBalance["tradeBalance"]>,
+): number {
+  if (!(activePorts >= Math.max(1, cfg.minPorts)) || !(depth > 0) || !(cfg.depthMultiple > 0)) return 0;
+  const net = cappedNetBuys(netByPlayer, cfg.playerShareDivisor);
+  const pct = (cfg.factor * net) / (cfg.depthMultiple * depth);
+  return pct === 0 ? 0 : clamp(pct, -cfg.max, cfg.max);
+}

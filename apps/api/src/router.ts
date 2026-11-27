@@ -17,6 +17,7 @@ import {
   recallOwnMission,
   marketQuote,
   marketNewsView,
+  marketChartView,
   marketView,
   missionPreview,
   register,
@@ -196,6 +197,10 @@ export const appRouter = t.router({
       .query(({ ctx, input }) => marketQuote(ctx.engine, input)),
     /** Marktnachrichten: wirkende und die der letzten 24 Stunden, dazu Grund- und effektiver Richtwert. */
     news: authed.query(({ ctx }) => marketNewsView(ctx.engine.db)),
+    /** Saisonchart: Stundenschlusskurse einer Ressource mit effektivem Richtwert (ganze Saison). */
+    chart: authed
+      .input(z.object({ resource: z.string().max(20) }))
+      .query(({ ctx, input }) => marketChartView(ctx.engine.db, input.resource)),
     trade: authed
       .input(z.object({
         key,

@@ -75,6 +75,21 @@ export interface MarketNewsBalance {
     holdHours: number;
   };
   seasonEnd: { days: number; pct: Record<string, number> };
+  /**
+   * Handelsbilanz (seit v1.30; fehlt der Eintrag, gibt es sie nicht): Ziel = factor × gedeckelte Netto-Käufe aller
+   * Spieler der letzten windowHours ÷ (depthMultiple × Tiefe), höchstens ±max; erst ab minPorts aktiven Häfen; je
+   * Spieler zählt höchstens 1/playerShareDivisor der gesamten Netto-Bewegung (news.ts, tradeBalancePct).
+   */
+  tradeBalance?: {
+    factor: number;
+    windowHours: number;
+    depthMultiple: number;
+    max: number;
+    minPorts: number;
+    /** Je Spieler zählt höchstens 1/playerShareDivisor der gesamten Netto-Bewegung (3 = ein Drittel). */
+    playerShareDivisor: number;
+    holdHours: number;
+  };
 }
 
 /** One point of the price history: the price right after a trade (or at market creation). */
@@ -97,14 +112,26 @@ export interface ResourceMarketState {
 /** Market state: one entry per resource. */
 export type MarketState = Record<ResourceId, ResourceMarketState>;
 
+/** Ein Fach des gleitenden 24-h-Fensters (window.ts): gehandelte Menge (Kauf + Verkauf) je Ressource in einer Stunde. */
+export interface TradeHour {
+  /** Stundennummer floor(ms / 3_600_000). */
+  h: number;
+  q: Partial<Record<ResourceId, number>>;
+}
+
 export interface TraderState {
   /** Credits with two decimals. */
   credits: number;
   stock: Record<ResourceId, number>;
-  /** UTC day index (floor(ms / 86_400_000)) the volumes below belong to. */
-  dailyDayIndex: number;
-  /** Traded quantity (buys plus sells) per resource on dailyDayIndex. */
-  dailyVolume: Record<ResourceId, number>;
+  /**
+   * Gleitendes 24-h-Fenster des Handelslimits (seit v1.30): Fächer je volle Stunde, aufsteigend, nur die letzten 24
+   * Stunden. Fehlt bei Zuständen von vor v1.30 (dann gelten dailyDayIndex/dailyVolume, siehe tradeWindow).
+   */
+  tradeHours?: TradeHour[];
+  /** @deprecated Vor v1.30: Tagesnummer (Spielzeit) der Zähler in dailyVolume; nur noch gelesen (Überführung). */
+  dailyDayIndex?: number;
+  /** @deprecated Vor v1.30: gehandelte Menge je Ressource am Tag dailyDayIndex; nur noch gelesen (Überführung). */
+  dailyVolume?: Record<ResourceId, number>;
   /** Timestamps of recent successful trades (for the per-minute limit). */
   recentTradeTimesMs: number[];
 }

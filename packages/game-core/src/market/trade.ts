@@ -26,33 +26,11 @@ import {
   tradeAmounts,
 } from "./pricing.ts";
 import { buildTradeLedger } from "./ledger.ts";
+import { addToWindow, tradeWindow } from "./window.ts";
 
 const MS_PER_MINUTE = 60_000;
 const MS_PER_HOUR = 3_600_000;
 const MS_PER_DAY = 86_400_000;
-
-/** Spielzeitzone: TZ der Umgebung (Server), sonst Europe/Berlin. */
-function defaultTimeZone(): string {
-  const tz = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.TZ;
-  if (tz && !tz.startsWith(":")) {
-    try { new Intl.DateTimeFormat("en-CA", { timeZone: tz }); return tz; } catch { /* ungültig */ }
-  }
-  return "Europe/Berlin";
-}
-
-/**
- * Tagesnummer (Tage seit 1970) des Kalendertags in der Spielzeitzone; das Tageslimit wechselt um Mitternacht
- * Spielzeit, wie Tagesbefehle (seit 0.24.2; vorher Mitternacht UTC).
- */
-export function gameDayIndex(nowMs: number, timeZone: string = defaultTimeZone()): number {
-  const f = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
-  const p = Object.fromEntries(f.formatToParts(new Date(nowMs)).map((x) => [x.type, x.value]));
-  return Math.floor(Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day)) / MS_PER_DAY);
-}
-
-/** @deprecated Name aus der Zeit vor 0.24.2; gleich gameDayIndex. */
-export const utcDayIndex = (nowMs: number): number => gameDayIndex(nowMs);
-
 function resourceIds(balance: MarketBalance): ResourceId[] {
   return Object.keys(balance.market.refPrice) as ResourceId[];
 }
@@ -76,24 +54,19 @@ export function createMarketState(balance: MarketBalance, nowMs: number): Market
   return market;
 }
 
-/** Fresh trader with the given credits and stock and no trades so far. */
+/** Fresh trader with the given credits and stock and no trades so far (empty 24-hour window; `_nowMs` kept for callers). */
 export function createTraderState(
   balance: MarketBalance,
   credits: number,
   stock: Partial<Record<ResourceId, number>>,
-  nowMs: number,
+  _nowMs: number,
 ): TraderState {
   const fullStock = {} as Record<ResourceId, number>;
-  const dailyVolume = {} as Record<ResourceId, number>;
-  for (const resource of resourceIds(balance)) {
-    fullStock[resource] = stock[resource] ?? 0;
-    dailyVolume[resource] = 0;
-  }
+  for (const resource of resourceIds(balance)) fullStock[resource] = stock[resource] ?? 0;
   return {
     credits,
     stock: fullStock,
-    dailyDayIndex: gameDayIndex(nowMs),
-    dailyVolume,
+    tradeHours: [],
     recentTradeTimesMs: [],
   };
 }
@@ -281,12 +254,11 @@ export function executeTrade(
   );
   if (recent.length >= cfg.tradesPerMinute) return reject("rate");
 
-  // 6. daily_limit
-  const dayIndex = gameDayIndex(nowMs);
-  const sameDay = trader.dailyDayIndex === dayIndex;
-  const tradedToday = sameDay ? (trader.dailyVolume[resource] ?? 0) : 0;
+  // 6. daily_limit: gleitendes 24-h-Fenster (window.ts), Kauf und Verkauf zusammen je Ressource
+  const window = tradeWindow(trader, nowMs);
+  const tradedInWindow = window.reduce((sum, x) => sum + (x.q[resource] ?? 0), 0);
   const dailyLimit = cfg.dailyLimitShareOfStorage * context.storageCapacity[resource];
-  if (!(tradedToday + qty <= dailyLimit)) return reject("daily_limit");
+  if (!(tradedInWindow + qty <= dailyLimit)) return reject("daily_limit");
 
   // 7. under_attack
   if (side === "sell" && context.attackDetected) return reject("under_attack");
@@ -350,11 +322,6 @@ export function executeTrade(
   };
 
   const newStock = { ...trader.stock };
-  const newDailyVolume = {} as Record<ResourceId, number>;
-  for (const id of resourceIds(balance)) {
-    newDailyVolume[id] = sameDay ? (trader.dailyVolume[id] ?? 0) : 0;
-  }
-  newDailyVolume[resource] = tradedToday + qty;
 
   let newCreditsCents: number;
   let delivery: Delivery | null = null;
@@ -377,8 +344,7 @@ export function executeTrade(
   const newTrader: TraderState = {
     credits: centsToCredits(newCreditsCents),
     stock: newStock,
-    dailyDayIndex: dayIndex,
-    dailyVolume: newDailyVolume,
+    tradeHours: addToWindow(window, resource, qty, nowMs),
     recentTradeTimesMs: [...recent, nowMs],
   };
 

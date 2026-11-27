@@ -1,9 +1,11 @@
-// Großes Kursdiagramm der gewählten Ressource: Verlauf (1 h / 24 h), Richtwert gestrichelt,
-// erlaubter Kursbereich (Stunden- und Tagesband, Grenzen) schattiert, Handelspause schraffiert.
+// Großes Kursdiagramm der gewählten Ressource mit Zeitraum-Umschalter. 1 h / 24 h: Verlauf aus den Handeln, Richtwert
+// gestrichelt, erlaubter Kursbereich (Stunden- und Tagesband, Grenzen) schattiert, Handelspause schraffiert.
+// 7 Tage / Saison: Stundenschlusskurse mit Grund- und effektivem Richtwert (SeasonChart).
 import { useId, useState } from "react";
 import { fmtNum, label } from "../../lib/names.ts";
 import { fmtDuration } from "../../lib/time.ts";
 import { allowedRange, changePct, clock, series, signed, trend, DAY, HOUR, TONE_TEXT, type MarketCfg, type MarketRes } from "./calc.ts";
+import { SeasonChart, type LongSpan } from "./SeasonChart.tsx";
 
 const W = 360;
 const H = 190;
@@ -12,16 +14,43 @@ const R = 46;
 const T = 10;
 const B = 22;
 
+type Span = "1h" | "24h" | LongSpan;
+const SPANS: { id: Span; text: string; aria: string }[] = [
+  { id: "1h", text: "1 h", aria: "1 Stunde" },
+  { id: "24h", text: "24 h", aria: "24 Stunden" },
+  { id: "7d", text: "7 T", aria: "7 Tage" },
+  { id: "season", text: "Saison", aria: "Saison" },
+];
+
 export function PriceChart({ r, nowMs, cfg }: { r: MarketRes; nowMs: number; cfg: MarketCfg }) {
-  const [span, setSpan] = useState<"1h" | "24h">("24h");
+  const [span, setSpan] = useState<Span>("24h");
+  return (
+    <div>
+      <div className="grid grid-cols-4 border border-ink rounded-lg overflow-hidden mb-2" role="radiogroup" aria-label="Zeitraum">
+        {SPANS.map((s) => (
+          <button key={s.id} type="button" role="radio" aria-checked={span === s.id} aria-label={s.aria} onClick={() => setSpan(s.id)}
+            className={`tap h-9 mono text-sm ${span === s.id ? "bg-ink text-paper" : "text-ink"}`}>
+            {s.text}
+          </button>
+        ))}
+      </div>
+      {span === "1h" || span === "24h" ? <DetailChart r={r} nowMs={nowMs} cfg={cfg} span={span} /> : <SeasonChart r={r} nowMs={nowMs} span={span} />}
+    </div>
+  );
+}
+
+function DetailChart({ r, nowMs, cfg, span }: { r: MarketRes; nowMs: number; cfg: MarketCfg; span: "1h" | "24h" }) {
   const uid = useId();
   const spanMs = span === "1h" ? HOUR : DAY;
   const hl = cfg.reversionHalfLifeHours;
   const pts = series(r, nowMs, spanMs, hl, span === "1h" ? 60 : 144);
   const range = allowedRange(r, nowMs, cfg);
   const vals = pts.map((p) => p.p);
-  const dataLo = Math.min(r.ref, ...vals);
-  const dataHi = Math.max(r.ref, ...vals);
+  // Grundrichtwert zusätzlich, wenn Marktnachrichten den Richtwert verschieben.
+  const baseRef = r.baseRef ?? r.ref;
+  const showBase = Math.abs(baseRef - r.ref) > baseRef * 0.001;
+  const dataLo = Math.min(r.ref, ...(showBase ? [baseRef] : []), ...vals);
+  const dataHi = Math.max(r.ref, ...(showBase ? [baseRef] : []), ...vals);
   const pad = Math.max((dataHi - dataLo) * 0.25, r.ref * 0.03);
   const lo = dataLo - pad;
   const hi = dataHi + pad;
@@ -59,14 +88,6 @@ export function PriceChart({ r, nowMs, cfg }: { r: MarketRes; nowMs: number; cfg
           <div className="mono text-[28px] leading-none">{fmtNum(r.price, 2)} <span className="text-sm text-ink2">Kr</span></div>
           <div className={`mono text-sm font-semibold ${TONE_TEXT[t.tone]}`}>{t.arrow} {signed(pct, 2)} <span className="font-sans font-normal text-ink2 text-xs">in {span === "1h" ? "1 h" : "24 h"}</span></div>
         </div>
-        <div className="flex border border-ink rounded-lg overflow-hidden" role="radiogroup" aria-label="Zeitraum">
-          {(["1h", "24h"] as const).map((s) => (
-            <button key={s} type="button" role="radio" aria-checked={span === s} onClick={() => setSpan(s)}
-              className={`tap px-3 mono text-sm ${span === s ? "bg-ink text-paper" : "text-ink"}`}>
-              {s === "1h" ? "1 h" : "24 h"}
-            </button>
-          ))}
-        </div>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto bg-[#fffdf8] border border-rule" role="img" aria-labelledby={`${uid}-t ${uid}-d`}>
         <title id={`${uid}-t`}>Kursdiagramm {label(r.id)}</title>
@@ -98,6 +119,7 @@ export function PriceChart({ r, nowMs, cfg }: { r: MarketRes; nowMs: number; cfg
         <path d={`${d} L${x(nowMs)},${y(r.ref)} L${L},${y(r.ref)} Z`} fill="#2f6b47" opacity="0.16" clipPath={`url(#${uid}-above)`} />
         <path d={`${d} L${x(nowMs)},${y(r.ref)} L${L},${y(r.ref)} Z`} fill="#a8331f" opacity="0.16" clipPath={`url(#${uid}-below)`} />
         <path d={d} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+        {showBase && <line x1={L} x2={W - R} y1={y(baseRef)} y2={y(baseRef)} stroke="#7e5a1e" strokeDasharray="1.5 2.5" strokeWidth="1.2" />}
         {/* Richtwert über dem Verlauf, damit er sichtbar bleibt */}
         <line x1={L} x2={W - R} y1={y(r.ref)} y2={y(r.ref)} stroke="#18273a" strokeDasharray="5 4" strokeWidth="1" />
         <text x={L + 3} y={y(r.ref) + (r.price < r.ref ? -4 : 11)} fontSize="9" fill="#18273a" fontFamily="IBM Plex Sans" fontWeight="600">Richtwert {fmtNum(r.ref, 2)}</text>
@@ -113,6 +135,7 @@ export function PriceChart({ r, nowMs, cfg }: { r: MarketRes; nowMs: number; cfg
       </svg>
       <ul className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-ink2 mt-1.5" aria-hidden="true">
         <li className="flex items-center gap-1"><i className="inline-block w-4 border-t border-dashed border-ink2" /> Richtwert</li>
+        {showBase && <li className="flex items-center gap-1"><i className="inline-block w-4 border-t-2 border-dotted border-messing" /> Grundrichtwert <span className="mono">{fmtNum(baseRef, 2)}</span></li>}
         <li className="flex items-center gap-1"><i className="inline-block w-3 h-3 bg-see/15 border border-see/40" /> erlaubt <span className="mono">{fmtNum(range.lo, 2)}–{fmtNum(range.hi, 2)}</span></li>
         <li className="flex items-center gap-1"><i className="inline-block w-px h-2.5 bg-ink" /> Handel</li>
         {showHalt && <li className="flex items-center gap-1 text-siegel"><i className="inline-block w-3 h-3 hatch border border-siegel" /> Pause{halted ? ` noch ${fmtDuration(haltEnd - nowMs)}` : ""}</li>}

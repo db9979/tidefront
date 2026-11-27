@@ -54,7 +54,10 @@ export { finaleAim } from "./finale-battle.ts";
 export {
   clearMarketNews, effectiveMarketRefs, marketNewsAdmin, marketNewsView, marketRefs, pctText, upsertNews, REF_OFFSETS_KEY, SCARCITY_KEY,
 } from "./market-news.ts";
-export { runMarketNews, runMarketNewsTx, scarcityInput, warSituation, worldEventNews, worldEventSpecs } from "./market-news-sources.ts";
+export {
+  activePortCount, netBuysByPlayer, runMarketNews, runMarketNewsTx, scarcityInput, warSituation, worldEventNews, worldEventSpecs,
+} from "./market-news-sources.ts";
+export { marketChartView, recordMarketCloses } from "./market-history.ts"; // Saisonchart der Börse
 export * from "./modifiers.ts";
 export * from "./battle-stats.ts";
 export { veteranView, withAttackExperience, type VeteranInfo } from "./veterans.ts";

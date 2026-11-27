@@ -1,6 +1,6 @@
 // Datenbankschema (drizzle) – Börse: Marktzustand, Journal, Lieferungen, Marktnachrichten.
 // Zusammengeführt in ../schema.ts (drizzle.config.ts liest nur diese Datei).
-import { bigint, bigserial, doublePrecision, index, integer, jsonb, numeric, pgTable, serial, text } from "drizzle-orm/pg-core";
+import { bigint, bigserial, doublePrecision, index, integer, jsonb, numeric, pgTable, primaryKey, serial, text } from "drizzle-orm/pg-core";
 import { ts } from "./columns.ts";
 
 export const market = pgTable("market", {
@@ -16,7 +16,27 @@ export const tradeLedger = pgTable("trade_ledger", {
   account: text("account").notNull(),
   asset: text("asset").notNull(),
   amount: numeric("amount", { precision: 24, scale: 2 }).notNull(),
-}, (t) => [index("ledger_account").on(t.account, t.asset), index("ledger_trade").on(t.tradeId)]);
+}, (t) => [
+  index("ledger_account").on(t.account, t.asset),
+  index("ledger_trade").on(t.tradeId),
+  // Handelsbilanz der Marktnachrichten: Netto-Käufe der letzten 72 h (alle 10 Minuten).
+  index("ledger_t").on(t.tMs),
+]);
+
+/**
+ * Saisonchart: Schlusskurs je Ressource und volle Stunde (Kurs zum Ende der Stunde, Rückkehr eingerechnet) und der
+ * effektive Richtwert zu dem Zeitpunkt (Grundrichtwert steht in balance.json). Der 10-Minuten-Lauf der Marktnachrichten
+ * schreibt jede abgeschlossene Stunde einmal (fehlende bis 24 h rückwirkend); etwa 4 × 24 × 42 ≈ 4.000 Zeilen je
+ * Saison. Wird am Saisonende geleert.
+ */
+export const marketPriceHour = pgTable("market_price_hour", {
+  resource: text("resource").notNull(),
+  /** Ende der Stunde (ms seit 1970, volle Stunde UTC). */
+  hourMs: bigint("hour_ms", { mode: "number" }).notNull(),
+  price: doublePrecision("price").notNull(),
+  /** Effektiver Richtwert (mit Marktnachrichten). */
+  ref: doublePrecision("ref").notNull(),
+}, (t) => [primaryKey({ columns: [t.resource, t.hourMs] })]);
 
 export const delivery = pgTable("delivery", {
   id: text("id").primaryKey(),
