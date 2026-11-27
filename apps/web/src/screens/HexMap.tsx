@@ -186,11 +186,8 @@ export function HexMap(props: HexMapProps) {
         cleanups.push(() => ro.disconnect());
         const world = new Container();
         app.stage.addChild(world);
-        const terrain = buildTerrain();
+        const terrain = buildTerrain(mapClip); // Gelände endet sauber am Kartenrahmen
         world.addChild(terrain.root);
-        const terrainMask = mapClip(); // Gelände endet sauber am Kartenrahmen
-        world.addChild(terrainMask);
-        terrain.root.mask = terrainMask;
         const graticule = new Graticule();
         world.addChild(graticule.lines);
         // Gradnetz endet am Kartenrand (beim Schwenken über den Rand sonst Linien im Leeren).

@@ -99,6 +99,21 @@ export const WATER: readonly Ring[] = [
   [[-87, 51], [-79.5, 51.3], [-78.8, 54], [-76.8, 56], [-77.5, 59], [-77.8, 62.2], [-87, 64]],
 ];
 
+/**
+ * Wasserwege nur für die Darstellung (Kanäle, Meerengen, Fortsetzung über den Kartenrand). Sie ändern das Gelände
+ * der Felder NICHT: Nest- und Feldplätze hängen an den Küstenfeldern und müssen in laufenden Welten gleich bleiben.
+ * Missionen rechnen ohnehin mit der Luftlinie.
+ */
+export const WATER_DRAW: readonly Ring[] = [
+  // Rotes Meer: Fortsetzung nach Süden über den Kartenrand (Richtung Bab al-Mandab)
+  [[35.0, 24.6], [35.9, 22.0], [39.2, 22.0], [38.0, 24.6]],
+  // Suezkanal (Port Said – Suez)
+  [[32.24, 31.32], [32.34, 31.32], [32.40, 30.55], [32.60, 29.95], [32.50, 29.92], [32.30, 30.55]],
+  // Bosporus, Marmarameer und Dardanellen
+  [[29.18, 41.23], [29.10, 41.00], [28.95, 40.95], [27.60, 40.95], [26.95, 40.62], [26.65, 40.40],
+   [26.18, 40.05], [26.12, 40.12], [26.55, 40.48], [27.00, 40.75], [27.55, 40.62], [28.90, 40.85], [29.02, 41.05], [29.06, 41.24]],
+];
+
 /** Kleine Inseln und Inselgruppen: ihr Feld ist immer Land. */
 export const ISLANDS: readonly (readonly [number, number, string])[] = [
   [-25.6, 37.8, "Azoren"], [-28.0, 38.6, "Azoren"], [-31.1, 39.4, "Azoren"], [-16.9, 32.7, "Madeira"],

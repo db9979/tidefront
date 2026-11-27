@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.17.2 – 27.11.2026
+- **Karte:** Suezkanal sowie Bosporus, Marmarameer und Dardanellen sind eingezeichnet; das Rote Meer läuft nach Süden über den Kartenrand weiter. Schwarzes und Rotes Meer wirken damit nicht mehr wie Binnenseen. (Fahrten rechnen wie bisher mit der direkten Entfernung – alle Nester waren und sind erreichbar.)
+
 ## 0.17.1 – 27.11.2026
 - **Karte:** Sauberer Kartenrand mit Rahmen wie auf einer Seekarte. Wetter (Fronten, Tiefs, Wolken), Gradnetz und Gelände enden am Rand, statt beim Schieben über den Rand ins Leere weiterzulaufen; Breiten- und Längenangaben erscheinen nur noch innerhalb der Karte.
 

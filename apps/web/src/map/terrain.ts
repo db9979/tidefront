@@ -2,9 +2,10 @@
 // Meer als helles Papier mit blau getönten Flachwasserstufen und Tiefenlinien (Isobathen). Landmaske aus
 // den Küstenlinien gerastert; einmal je Sitzung berechnet und als Textur wiederverwendet.
 // Darüber: Tintenküste und ein zartes Hexraster.
-import { CanvasSource, Container, Graphics, Sprite, Texture } from "pixi.js";
+import { CanvasSource, Container, Graphics, Rectangle, Sprite, Texture } from "pixi.js";
+import { MAP_BOUNDS } from "./gestures.ts";
 import {
-  COLS, HEX_SIZE_KM, HEX_W, ISLANDS, KM_PER_DEG_LAT, KM_PER_DEG_LON, LAND, LAT1, LON0, ROWS, ROW_H, WATER, hexCenterXY,
+  COLS, HEX_SIZE_KM, HEX_W, ISLANDS, KM_PER_DEG_LAT, KM_PER_DEG_LON, LAND, LAT1, LON0, ROWS, ROW_H, WATER, WATER_DRAW, hexCenterXY,
 } from "@tidefront/world";
 
 export function hexPoints(cx: number, cy: number, size: number): number[] {
@@ -138,6 +139,7 @@ export function terrainCanvas(): HTMLCanvasElement {
   mctx.globalCompositeOperation = "destination-out";
   mctx.beginPath();
   for (const r of WATER) ringPath(mctx, r);
+  for (const r of WATER_DRAW) ringPath(mctx, r); // Kanäle und Meerengen: nur Bild, kein Gelände
   mctx.fill("nonzero");
   mctx.globalCompositeOperation = "source-over";
   for (const [lon, lat] of ISLANDS) {
@@ -223,6 +225,45 @@ export function terrainCanvas(): HTMLCanvasElement {
   return out;
 }
 
+/** Begrenzungsrahmen der Kanäle/Meerengen [lonMin, latMin, lonMax, latMax]. */
+const PASSAGE_BOXES = WATER_DRAW.map((r) => [
+  Math.min(...r.map((p) => p[0])), Math.min(...r.map((p) => p[1])), Math.max(...r.map((p) => p[0])), Math.max(...r.map((p) => p[1])),
+]);
+
+/** Punkt in Polygon (Längen-/Breitengrad, Strahlverfahren). */
+function inPoly(lon: number, lat: number, ring: readonly (readonly [number, number])[]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if ((yi > lat) !== (yj > lat) && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * Geschlossenen Küstenzug in zusammenhängende Stücke außerhalb der Kanäle/Meerengen zerlegen (Teilschritte ~3 km).
+ * `emit` erhält je Stück die Punkte in Weltkoordinaten.
+ */
+function coastRuns(ring: readonly (readonly [number, number])[], emit: (pts: { x: number; y: number }[]) => void): void {
+  const STEP_DEG = 0.03;
+  let run: { x: number; y: number }[] = [];
+  const flush = () => { if (run.length > 1) emit(run); run = []; };
+  for (let i = 0; i < ring.length; i++) {
+    const [ax, ay] = ring[i];
+    const [bx, by] = ring[(i + 1) % ring.length];
+    // Nur Abschnitte nahe einem Kanal fein unterteilen; sonst bleibt es bei den Eckpunkten.
+    const near = PASSAGE_BOXES.some((q) => Math.max(ax, bx) >= q[0] && Math.min(ax, bx) <= q[2] && Math.max(ay, by) >= q[1] && Math.min(ay, by) <= q[3]);
+    const n = near ? Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / STEP_DEG)) : 1;
+    for (let k = 0; k <= n; k++) {
+      const lon = ax + ((bx - ax) * k) / n, lat = ay + ((by - ay) * k) / n;
+      if (WATER_DRAW.some((w) => inPoly(lon, lat, w))) { flush(); continue; }
+      if (k === 0 && run.length > 0) continue; // Eckpunkt schon als Ende des vorigen Stücks enthalten
+      run.push(xyOf(lon, lat));
+    }
+  }
+  flush();
+}
+
 export interface TerrainLayers {
   root: Container;
   /** Zartes Hexraster; Deckkraft je Zoom setzt der Aufrufer. */
@@ -232,38 +273,44 @@ export interface TerrainLayers {
 }
 
 /** Reliefbild, Küstenlinie und Hexraster in Weltkoordinaten (km). */
-export function buildTerrain(): TerrainLayers {
+/**
+ * `clip` erzeugt ein Maskenrechteck der Karte (Weltkoordinaten) für die Küstenlinien; das Reliefbild wird direkt auf
+ * den Kartenrahmen zugeschnitten.
+ */
+export function buildTerrain(clip?: () => Graphics): TerrainLayers {
   const root = new Container();
   // Mipmaps: in der Übersicht wird das Relief sauber verkleinert statt flimmernder Schraffur-Moiré.
   const source = new CanvasSource({ resource: terrainCanvas(), autoGenerateMipmaps: true, scaleMode: "linear", mipmapFilter: "linear", maxAnisotropy: 4 });
-  const sprite = new Sprite(new Texture({ source }));
-  sprite.position.set(X0, Y0);
+  // Bild auf den Kartenrahmen zuschneiden (Textur-Ausschnitt statt Maske): das Relief ist an den Rändern etwas größer.
+  const b = MAP_BOUNDS;
+  const fx = Math.max(0, Math.floor((b.x0 - X0) / KM_PX));
+  const fy = Math.max(0, Math.floor((b.y0 - Y0) / KM_PX));
+  const fw = Math.min(W - fx, Math.ceil((b.x1 - b.x0) / KM_PX));
+  const fh = Math.min(H - fy, Math.ceil((b.y1 - b.y0) / KM_PX));
+  const sprite = new Sprite(new Texture({ source, frame: new Rectangle(fx, fy, fw, fh) }));
+  sprite.position.set(X0 + fx * KM_PX, Y0 + fy * KM_PX);
   sprite.scale.set(KM_PX);
   root.addChild(sprite);
 
+  // Küstenlinien als Teilstücke; in Kanälen und Meerengen (WATER_DRAW) bleiben sie weg, damit dort keine Linie quer
+  // übers Wasser läuft (die Ufer zeichnet die Küstenschraffur im Relief).
   const coast = new Graphics();
   const glow = new Graphics();
-  for (const ring of [...LAND, ...WATER]) {
-    ring.forEach(([lon, lat], i) => {
-      const p = xyOf(lon, lat);
-      if (i === 0) { coast.moveTo(p.x, p.y); glow.moveTo(p.x, p.y); } else { coast.lineTo(p.x, p.y); glow.lineTo(p.x, p.y); }
-    });
-    coast.closePath();
-    glow.closePath();
-  }
+  const hair = new Graphics();
+  for (const ring of [...LAND, ...WATER]) coastRuns(ring, (pts) => {
+    for (const g of [coast, glow, hair]) {
+      g.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) g.lineTo(pts[i].x, pts[i].y);
+    }
+  });
   glow.stroke({ color: 0xf4f1e7, width: 7, alpha: 0.55, join: "round" });
   coast.stroke({ color: 0x18273a, width: 1.8, alpha: 0.9, join: "round" });
   // Übersicht: dieselbe Küste als 1-px-Haarlinie (die Weltbreite würde dort zu Grau verschwimmen)
-  const hair = new Graphics();
-  for (const ring of [...LAND, ...WATER]) {
-    ring.forEach(([lon, lat], i) => {
-      const p = xyOf(lon, lat);
-      if (i === 0) hair.moveTo(p.x, p.y); else hair.lineTo(p.x, p.y);
-    });
-    hair.closePath();
-  }
   hair.stroke({ color: 0x18273a, width: 1, pixelLine: true, alpha: 0.7 });
-  root.addChild(glow, coast, hair);
+  const shoreClip = new Container(); // Küstenlinien enden am Kartenrand
+  shoreClip.addChild(glow, coast, hair);
+  if (clip) { const m = clip(); root.addChild(m); shoreClip.mask = m; }
+  root.addChild(shoreClip);
 
   const grid = new Graphics();
   for (let row = 0; row < ROWS; row++) for (let col = 0; col < COLS; col++) {
