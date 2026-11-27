@@ -4,7 +4,7 @@
 // ist spielerweit (höchste Hafenkommandantur aller Häfen).
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import {
-  fieldBaseYield, fieldsOf, fieldYield, fieldZones, maxFieldsFor, yieldFactor,
+  clampEscort, fieldBaseYield, fieldDefenders, fieldsOf, fieldYield, fieldZones, maxFieldsFor, yieldFactor,
   type Counts, type FieldsBalance, type ResourceMap,
 } from "@tidefront/game-core";
 import { fieldSites, hexCenter, hexDistanceKm, type FieldSite } from "@tidefront/world";
@@ -14,6 +14,7 @@ import { basesOfPlayer, readBase, type BaseRow } from "./store.ts";
 import { modifiersFor, modsOf } from "./modifiers.ts";
 import { maxHarborLevelOf } from "./player-wide.ts";
 import { relationsOf } from "./alliance-core.ts";
+import { fieldIncoming } from "./fields-radar.ts";
 
 export const FIELD_TYPE = "besetzen";
 export const HOUR_MS = 3600000;
@@ -32,6 +33,8 @@ export interface FieldRow {
   guardAt: Date | null;
   capturedAt: Date | null;
   lastTickAt: Date | null;
+  /** Geleitabteilung aus der Besatzung (fields-escort.ts). */
+  escort: unknown;
   createdAt: Date;
 }
 
@@ -193,6 +196,7 @@ export async function fieldsView(engine: Engine, playerId: number, _baseId?: num
   const mine = await ownedBy(db, playerId);
   const rank = new Map(mine.map((m, i) => [m.id, i]));
   const next = await nextTickMs(db);
+  const incoming = await fieldIncoming(db, playerId, mine, nowMs);
   const relationOf = (r: FieldRow) => r.ownerId === null ? (guarded(r) ? "kartell" : "frei")
     : r.ownerId === playerId ? "own" : relations.get(r.ownerId) ?? "neutral";
   const fields = rows.map((r) => {
@@ -214,9 +218,17 @@ export async function fieldsView(engine: Engine, playerId: number, _baseId?: num
   const minePart = mine.map((m) => {
     const z = zones.get(m.id);
     const i = rank.get(m.id)!;
+    const all = m.missionId !== null ? garrison.get(m.missionId) ?? {} : {};
+    const escort = clampEscort(all, (m.escort as Counts) ?? {});
     return {
       id: m.id, col: m.col, row: m.row, kind: m.kind, tier: m.tier, missionId: m.missionId,
-      garrison: m.missionId !== null ? garrison.get(m.missionId) ?? {} : {},
+      garrison: all,
+      /** Geleitabteilung (fährt mit den Ertragskonvois) und wer das Feld verteidigt (Besatzung ohne Geleit). */
+      escort,
+      defenders: fieldDefenders(all, escort),
+      /** Vom Radar erfasste Angriffe (Ankunft) und eigene Verstärkungen unterwegs. */
+      incoming: incoming.attacks.get(m.id) ?? [],
+      reinforcements: incoming.reinforcements.get(m.id) ?? [],
       factor: yieldFactor(i, balance), zoneBonus: !!z?.bonus,
       yieldPerHour: fieldYield(m.kind, m.tier, 1, i, !!z?.bonus, balance) as ResourceMap,
       upkeepPerHour: f.upkeepProviantPerHour[m.tier - 1] ?? 0,

@@ -245,6 +245,10 @@ const ERRORS: Record<string, string> = {
   field_limit: "Höchstzahl an Feldern erreicht – baue die Hafenkommandantur aus oder gib ein Feld auf.",
   field_ships_only: "Felder liegen auf See: nur Schiffe können sie besetzen.",
   garrison_too_weak: "Zu schwach für eine Besatzung: bewaffnete Schiffe mit genug Kommandopunkten mitschicken.",
+  field_no_garrison: "Auf diesem Feld steht keine Besatzung mehr.",
+  field_escort_invalid: "Das Geleit muss aus Schiffen der Besatzung bestehen (ganze Zahlen, höchstens ihr Bestand).",
+  field_escort_too_large: "Zu viel Geleit: Der Rest muss als Besatzung bleiben (bewaffnet, genug Kommandopunkte).",
+  no_fields: "Rohstofffelder sind in dieser Saison abgeschaltet.",
   intercept_needs_ships: "Zum Abfangen gehören Schiffe in den Verband.",
   escort_ships_only: "Geleitschutz stellen nur Schiffe.",
   // Mehrere Häfen: Gründung und Verlegung

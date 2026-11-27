@@ -176,7 +176,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
       </Card>
 
       {type === "blockade" && <HoldHours value={holdHours} onChange={setHoldHours} />}
-      {type === "besetzen" && <StayAllToggle value={stayAll} onChange={setStayAll} balance={balance} />}
+      {type === "besetzen" && <StayAllToggle value={stayAll} onChange={setStayAll} balance={balance} fieldId={target?.fieldId} />}
       {target && Object.keys(chosen).length > 0 && type !== "aufklaerung" && <MineWarning col={target.col} row={target.row} units={chosen} />}
 
       {type !== "stationierung" && <TemplateBar base={base} units={chosen} type={isPlanType(type) ? type : "ueberfall"} onApply={(u, t, n) => { setUnits(u); if (t) setType(t); setNote(n); }} />}

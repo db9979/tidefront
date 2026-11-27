@@ -1,10 +1,11 @@
 // Felder: Ablauf (docs/REGELN-FELDER.md). Globales field_tick alle deliveryHours: Ertrag je besetztem Feld (Rang,
 // Zonenbonus) als Konvoi zum Heimathafen (abfangbar, Blockade hält zurück), Unterhalt in Proviant, Allianzpunkte,
 // Würfel für Kartellangriffe, neue Wachen und Felder. field_delivery: Konvoi läuft ein. field_raid: Kartell greift an.
+// field_warning: Radar-Vorwarnung bei Spielerangriffen (fields-radar.ts).
 import { and, eq, isNull, lte, sql } from "drizzle-orm";
 import {
-  activeUnits, blockadeOf, cartelFieldRaid, deliverCargo, fieldUpkeep, fieldYield, resolveBattle, settle, strandTroops,
-  type Counts,
+  activeUnits, addCounts, blockadeOf, cargoValue, cartelFieldRaid, clampEscort, deliverCargo, fieldDefenders, fieldUpkeep, fieldYield,
+  resolveBattle, settle, strandTroops, type Counts,
 } from "@tidefront/game-core";
 import { hexDistanceKm } from "@tidefront/world";
 import { tables, type Db, type Tx } from "@tidefront/db";
@@ -19,6 +20,9 @@ import { activeBlockade, createConvoy } from "./naval.ts";
 import { pushNotice, storeNavalReport, type Notes } from "./naval-common.ts";
 import { HOUR_MS, allianceMap, garrisonMods, fieldById, fieldName, ownedBy, rules, spawnFields, zonesOf, type FieldRow } from "./fields-core.ts";
 import { endGarrison, releaseField } from "./fields-missions.ts";
+import { fieldEscortOf } from "./fields-escort.ts";
+import { fieldWarning } from "./fields-radar.ts";
+import { recordAchievement } from "./achievements.ts";
 
 const none = (): HandlerResult => ({ notify: [] });
 
@@ -49,8 +53,11 @@ export async function settleField(tx: Tx, f: FieldRow, due: number, notify: Note
   const cargo = fieldYield(f.kind, f.tier, hours, Math.max(0, rank), zone, balance);
   if (Object.keys(cargo).length > 0) {
     const arrive = due + Math.ceil((hexDistanceKm(f, b) / r.convoySpeedKmh) * HOUR_MS);
+    // Geleitabteilung der Besatzung fährt mit (missionId = Besatzung; liveEscort liest ihren aktuellen Bestand).
+    const escort = await fieldEscortOf(tx, f.missionId);
     const convoyId = await createConvoy(tx, {
       kind: "feld", senderId: null, recipientId: f.ownerId, recipientBaseId: b.id, from: f, to: b, cargo, departMs: due, arriveMs: arrive,
+      ...(f.missionId !== null ? { missionId: f.missionId } : {}), escort,
     });
     await scheduleEvent(tx, "field_delivery", arrive, { convoyId }, b.id);
   }
@@ -119,6 +126,8 @@ async function fieldDelivery(tx: Tx, payload: Record<string, unknown>, due: numb
   await tx.update(tables.convoy).set({ status: "arrived" }).where(eq(tables.convoy.id, c.id));
   const b = await lockBase(tx, c.recipientBaseId);
   if (b) await saveBase(tx, b.id, deliverCargo(b.state, c.cargo as Counts, due, balance, await modsOf(tx, b, due)));
+  // Wochenziel „Erträge von Feldern einfahren“ (Wert zum Richtpreis, Stahl-Äquivalent); kein Erfolg.
+  if (b) await recordAchievement(tx, c.recipientId, "feldertrag", cargoValue(c.cargo as Counts, balance), { atMs: due });
   return { notify: [[[c.recipientId], "base"], [[c.recipientId], "market"]] };
 }
 
@@ -130,7 +139,9 @@ async function fieldRaid(tx: Tx, payload: Record<string, unknown>, due: number):
   if (!m || m.status !== "stationed") return none();
   const owner = f.ownerId;
   const units = activeUnits(payload.units as Counts);
-  const garrison = activeUnits((m.returning as Counts | null) ?? {});
+  const all = activeUnits((m.returning as Counts | null) ?? {});
+  const escort = clampEscort(all, (f.escort as Counts) ?? {}); // Geleitabteilung ist mit den Konvois unterwegs
+  const garrison = fieldDefenders(all, escort);
   const seed = randomSeed();
   const res = resolveBattle({ units }, { units: garrison, defenses: {}, modifiers: await garrisonMods(tx, f, due) }, balance, seed, battleWeather(f.col, f.row, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
@@ -138,10 +149,10 @@ async function fieldRaid(tx: Tx, payload: Record<string, unknown>, due: number):
   const name = fieldName(f);
   const notify: Notes = [[null, "map"], [[owner], "reports"], [[owner], "missions"]];
   if (destroyed) {
-    await endGarrison(tx, m.id, {}, due);
+    await endGarrison(tx, m.id, escort, due); // die Geleitabteilung war unterwegs und kehrt heim
     await releaseField(tx, f, due, { ...(rules()!.guard[f.tier - 1] ?? {}) });
   } else {
-    await tx.update(tables.mission).set({ returning: activeUnits(report.defender.final) }).where(eq(tables.mission.id, m.id));
+    await tx.update(tables.mission).set({ returning: addCounts(activeUnits(report.defender.final), escort) }).where(eq(tables.mission.id, m.id));
   }
   if ((report.wreck.stahl ?? 0) + (report.wreck.elektronik ?? 0) > 0) {
     await tx.insert(tables.wreck).values({ col: f.col, row: f.row, stahl: report.wreck.stahl ?? 0, elektronik: report.wreck.elektronik ?? 0, createdAt: new Date(due) });
@@ -159,6 +170,7 @@ export const FIELD_HANDLERS: Record<string, (tx: Tx, ev: { payload: Record<strin
   field_tick: (tx, _ev, due) => fieldTick(tx, due),
   field_delivery: (tx, ev, due) => fieldDelivery(tx, ev.payload, due),
   field_raid: (tx, ev, due) => fieldRaid(tx, ev.payload, due),
+  field_warning: (tx, ev, due) => fieldWarning(tx, ev.payload, due),
 };
 
 /** Worker (alle 10 Minuten, auch nach Saisonwechsel): Felder anlegen und field_tick planen, falls keines ansteht. */

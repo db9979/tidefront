@@ -26,6 +26,8 @@ export const resourceField = pgTable("resource_field", {
   capturedAt: ts("captured_at"),
   /** Bis hierhin ist der Ertrag abgerechnet (Lieferzyklus). */
   lastTickAt: ts("last_tick_at"),
+  /** Geleitabteilung aus der Besatzung (Counts): begleitet die Ertragskonvois, verteidigt das Feld nicht. */
+  escort: jsonb("escort").notNull().default({}),
   createdAt: ts("created_at").notNull().defaultNow(),
 }, (t) => [uniqueIndex("resource_field_site").on(t.siteIndex), uniqueIndex("resource_field_hex").on(t.col, t.row), index("resource_field_owner").on(t.ownerId)]);
 
