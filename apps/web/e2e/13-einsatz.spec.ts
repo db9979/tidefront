@@ -25,7 +25,8 @@ async function closeDialog(page: Page) {
 }
 
 test("Einsatz: Flotte, Ziele, laufende Mission, Kacheln", async ({ page, player, seed }) => {
-  await setBuildings(seed.sql, player.baseId, { werft: 3, kaserne: 2, hafenkommandantur: 2, kommandozentrale: 3 });
+  // Radarstation 8 (470 km): die nächsten Nester liegen sicher in Sicht (Lagebild).
+  await setBuildings(seed.sql, player.baseId, { werft: 3, kaserne: 2, hafenkommandantur: 2, kommandozentrale: 3, radarstation: 8, kraftwerk: 6 });
   await setUnits(seed.sql, player.baseId, { korvette: 6, landungsschiff: 2, schuetzen: 30 });
 
   await page.goto("/");
