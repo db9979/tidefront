@@ -43,7 +43,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     title: "Lagebild",
     items: [
       { icon: <FogSwatch />, text: "Graublauer Schleier: außerhalb jeder Sicht – Stufen, Schutz, Wracks und Verbände dort unbekannt" },
-      { icon: <SensorRing />, text: "Gestrichelter Kreis: Reichweite von Ausguck (Tinte) und Radar (blau), auch der Allianz" },
+      { icon: <SensorRing />, text: "Gestrichelter Kreis mit zart getönter Fläche: Reichweite von Ausguck (Tinte) und Radar (blau), auch der Allianz" },
       { icon: <UnknownNest />, text: "Nest mit „?“: nur die Position ist bekannt – Stufe erst mit Sicht oder Aufklärung" },
       { icon: <span className="opacity-50 flex"><TacticalIcon kind="nest" level={2} /></span>, text: "Blass: bekannt, aber nicht live (Stand im Feld-Blatt); sehr blass: veraltet (über 24 h)" },
       { icon: <FleetArrow />, text: "Pfeil: fremder Verband mit Kurs; K/M/G = klein, mittel, groß; Farbe nur mit Erkennung" },

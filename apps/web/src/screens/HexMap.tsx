@@ -31,7 +31,7 @@ import { buildNavalLayer, type MapNaval } from "../map/naval.ts"; // See: Minen/
 import { buildFieldLayer, type MapField } from "../map/fields.ts"; // Felder: Rohstofffelder und Allianzzonen
 import { drawSelection, type HarborOverlay } from "../map/selection.ts"; // Auswahl, aktiver Hafen, Reichweite
 import { drawMovers, type MapMission } from "../map/movers.ts"; // Routen und eigene Verbände
-import { buildFleetLayer, buildIntelLayer, buildMarkLayer, buildPostLayer, type MapIntel } from "../map/intel.ts"; // Lagebild: Nebel, Sensoren, Verbände, Posten, Wegpunkte
+import { buildFleetLayer, buildIntelLayer, buildMarkLayer, buildPostLayer, type IntelLayer, type MapIntel } from "../map/intel.ts"; // Lagebild: Nebel, Sensoren, Verbände, Posten, Wegpunkte
 
 export type { MapMission };
 
@@ -122,6 +122,7 @@ function relayout(s: Scene): void {
 export function HexMap(props: HexMapProps) {
   const { data, selected, onSelect, selectMode, center, zoom, recenter, free, home, missions, alert, events, weather, naval, fields } = props;
   const weatherLayer = useRef<WeatherLayer | null>(null);
+  const intelLayer = useRef<IntelLayer | null>(null);
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<Scene | null>(null);
   const [ready, setReady] = useState(false);
@@ -249,6 +250,7 @@ export function HexMap(props: HexMapProps) {
             fading = true;
             drawSelection(s.selection, sc, live.current.selected, live.current.harbors);
             s.graticule.redraw(sc);
+            intelLayer.current?.rescale?.(sc);
             // Hexraster erst in der Nahansicht und nur zart; in der Übersicht ganz aus
             s.grid.alpha = Math.max(0, Math.min(0.16, (sc - 0.3) * 0.5));
             s.grid.visible = s.grid.alpha > 0.005;
@@ -412,7 +414,9 @@ export function HexMap(props: HexMapProps) {
     if (!ready || !s || !data.intel) return;
     const layer = buildIntelLayer(data.intel as MapIntel, mapClip, props.showSensors !== false);
     s.world.addChildAt(layer, s.world.getChildIndex(s.free));
-    return () => { layer.destroy({ children: true }); };
+    layer.rescale?.(s.world.scale.x);
+    intelLayer.current = layer;
+    return () => { intelLayer.current = null; layer.destroy({ children: true }); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, intelKey, props.showSensors]);
 

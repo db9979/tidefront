@@ -10,6 +10,10 @@ import { COLS, ROWS, HEX_SIZE_KM, hexAtXY, hexCenterXY } from "@tidefront/world"
 import { liveLevelAt, type SensorCircle, type SensorKind } from "@tidefront/game-core";
 import { hexPoints } from "./terrain.ts";
 import { INK, PAPER, RELATION_COLOR, SEE, SIEGEL, type Relation } from "./symbols.ts";
+import { sensorRing } from "./sensor-ring.ts";
+
+/** Lagebild-Schicht; rescale zeichnet die Reichweitenkreise für die aktuelle Zoomstufe. */
+export type IntelLayer = Container & { rescale?: (sc: number) => void };
 
 export interface MapIntel {
   fog: boolean;
@@ -56,7 +60,7 @@ function dashedV(g: Graphics, x: number, dash: number, gap: number): void {
 const clock = (ms: number) => new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 
 /** Nebel und Sensorgrenzen in Weltkoordinaten (einmal je Datenstand gezeichnet). */
-export function buildIntelLayer(intel: MapIntel, clip: () => Graphics, showSensors: boolean): Container {
+export function buildIntelLayer(intel: MapIntel, clip: () => Graphics, showSensors: boolean): IntelLayer {
   const root = new Container();
   const fog = new Graphics();
   const lines = new Graphics();
@@ -90,20 +94,21 @@ export function buildIntelLayer(intel: MapIntel, clip: () => Graphics, showSenso
       t.position.set((sat.next.x0 + sat.next.x1) / 2, HEX_SIZE_KM * 0.4);
       root.addChild(t);
     }
-    for (const s of intel.sensors) {
-      if (s.strip) continue;
-      // Eigene Verbände auf See zeichnet movers.ts mit wanderndem Kreis; hier nur Häfen, Posten und Fremde der Allianz.
-      if (s.own && MOVING.has(s.kind)) continue;
-      const c = hexCenterXY(s.col, s.row);
-      const n = Math.max(24, Math.round(s.km / 12));
-      for (let i = 0; i < n; i += 2) {
-        const a0 = (i / n) * Math.PI * 2;
-        const a1 = ((i + 1) / n) * Math.PI * 2;
-        lines.moveTo(c.x + Math.cos(a0) * s.km, c.y + Math.sin(a0) * s.km).arc(c.x, c.y, s.km, a0, a1);
+    // Reichweitenkreise mit fester Bildschirmbreite: bei jeder Zoomstufe neu gezeichnet (rescale).
+    const rings = new Graphics();
+    root.addChild(rings);
+    const own = intel.sensors.filter((x) => !x.strip && !(x.own && MOVING.has(x.kind)));
+    (root as IntelLayer).rescale = (sc: number) => {
+      rings.clear();
+      for (const s of own) {
+        // Eigene Verbände auf See zeichnet movers.ts mit wanderndem Kreis; hier nur Häfen, Posten und Fremde der Allianz.
+        const c = hexCenterXY(s.col, s.row);
+        const radar = s.kind === "radar" || s.kind === "posten";
+        const color = radar ? SEE : s.kind === "sonar" ? 0x3d6b4f : INK;
+        const faint = s.kind === "sonar" || s.kind === "flug" ? 0.7 : 1;
+        sensorRing(rings, c.x, c.y, s.km, sc, { color, alpha: (s.own ? 0.85 : 0.55) * faint, fill: s.own ? 0.045 : 0.025, dash: s.own ? 12 : 6 });
       }
-      const radar = s.kind === "radar" || s.kind === "posten";
-      lines.stroke({ color: radar ? SEE : s.kind === "sonar" ? 0x3d6b4f : INK, width: 1.2, pixelLine: true, alpha: (s.own ? 0.95 : 0.6) * (s.kind === "sonar" || s.kind === "flug" ? 0.6 : 1) });
-    }
+    };
   }
   const mask = clip();
   root.addChild(mask);

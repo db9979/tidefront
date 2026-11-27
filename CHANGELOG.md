@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.22.1 – 27.11.2026
+- **Sensor-Reichweiten deutlich erkennbar:** Bordsicht, Ausguck, Radar, Posten und Sonar zeigen ihre Reichweite jetzt als zart getönte Fläche mit Papier-Saum und kräftiger gestrichelter Linie. Strichstärke und Strichlänge bleiben in jeder Zoomstufe gleich, sodass sich die Kreise klar von Windstrichen und Gelände abheben. Eigene Sensoren durchgehend kräftig, die der Allianz feiner gestrichelt.
+
 ## 0.22.0 – 27.11.2026
 - **Lagebild Stufe 3 – Satelliten:** Neue Gebäude **Startrampe** (ab Kommandozentrale 8, Forschungsamt 5, Radarstation 6) und **Störsender**, neuer Forschungszweig **Raumfahrt**. Ein optischer oder ein Radarsatellit überfliegt alle 6 Stunden einen 600 km breiten Streifen, zeigt ihn 20 Minuten live und hält 7 Tage. Der optische sieht nicht durch Wolken, der Radarsatellit sieht nur Verbände, Wracks und Posten. Unter Meldungen → Lagebild steht der nächste Überflug mit Ort; die Karte zeigt die Streifen und den nächsten Überflug mit Uhrzeit.
 - **Gegenmittel:** Tarnnetze (Zweig Heer), Störsender (fremdes Radar bis −50 %), Tarnanstrich gegen Sicht auf reine Flugzeugverbände; ein Admiral mit Aufklärung halbiert fremdes Radar.
