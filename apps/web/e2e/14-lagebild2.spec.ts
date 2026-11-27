@@ -85,8 +85,8 @@ test("Patrouille: Wegpunkte auf der Karte antippen, auslaufen, Nest am Wegpunkt 
     await page.getByRole("navigation").getByRole("button", { name: "Meldungen" }).click();
     await page.getByRole("tab", { name: "Lagebild" }).click();
     const seen = page.getByTestId("lagebild-tab").getByRole("listitem").filter({ hasText: "Piratennest Stufe 3" });
-    await expect(seen).toBeVisible();
-    await expect(seen).toContainText("Patrouille aus");
+    await expect(seen.first()).toBeVisible(); // die Runde kann mehrere Nester der Stufe 3 erfassen
+    await expect(seen.first()).toContainText("Patrouille aus");
     await expectNoHorizontalOverflow(page, "Lagebild mit Sichtung");
   } finally {
     await seed.sql`delete from intel_sighting where kind = 'nest' and object_id = ${n.id}`;
