@@ -153,6 +153,7 @@ const ERRORS: Record<string, string> = {
   target_protected: "Das Ziel steht unter Schutz.",
   nest_empty: "Das Nest ist verlassen.",
   no_target: "Auf diesem Feld gibt es kein Ziel.",
+  no_report: "Diesen Kampfbericht gibt es nicht (oder er ist kein Kampf zwischen Spielern).",
   own_base: "Das ist dein eigener Hafen.",
   transport_needs_base: "Transporte gehen nur an Häfen.",
   empty_fleet: "Keine Einheiten gewählt.",

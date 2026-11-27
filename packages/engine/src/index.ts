@@ -113,3 +113,6 @@ export { runEventWatchdog, REPAIR_GIVE_UP, type WatchdogResult } from "./event-w
 export { listFailedEvents, requeueEvent, type FailedEvent } from "./event-admin.ts"; // Verwaltung → Ereignisse
 export { lockPlayerWide, worldLockExclusive, worldLockShared } from "./world-lock.ts";
 export { bumpMapGeneration, enableMapCache } from "./map-cache.ts"; // world.map: geteilte Weltdaten zwischenspeichern
+export { rankSnapshot, clearRankSnapshot, colluded, bountyByPlayer, type RankSnapshot } from "./pvp.ts"; // Spieler gegen Spieler
+export { recordTies } from "./pvp-ties.ts";
+export { pvpTargetView, suspiciousPairs, setReportExcluded } from "./pvp-view.ts";

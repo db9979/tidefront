@@ -25,6 +25,7 @@ import {
   runMorningSummaries,
   runBotsDue,
   runEventWatchdog,
+  rankSnapshot,
   type Engine,
   type OpsStatus,
 } from "@tidefront/engine";
@@ -92,6 +93,8 @@ async function maintenance(): Promise<void> {
   // Admin-Kennzahlen: Meilensteine aus den Hafen-Zuständen; Spielerbindung: alte Entprellungs-Einträge löschen.
   await step("milestones", () => recordMilestones(db, Date.now()));
   await step("nudge cleanup", () => cleanupNudges(db));
+  // PvP: Rang-Momentaufnahme des Spieltags (Kopfgeld, Mutfaktor) bald nach Mitternacht festhalten.
+  await step("pvp rank snapshot", () => rankSnapshot(db, Date.now()));
 }
 
 async function loop() {

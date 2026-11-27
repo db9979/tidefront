@@ -224,6 +224,8 @@ export interface Balance {
   expansion?: ExpansionDef;
   /** Lagebild (seit v1.17, intel.ts); fehlt es, sieht jeder alles (kein Kartennebel). */
   intel?: import("./intel.ts").IntelBalance;
+  /** Spieler gegen Spieler (Kopfgeld, Mutfaktor, Paarbremse; pvp.ts); fehlt es, zählt jeder Kampf ohne diese Faktoren. */
+  pvp?: import("./pvp.ts").PvpBalance;
 }
 
 /** Wertung (v1.24). Punkte bewerten Ressourcen zum Börsen-Richtpreis (market.refPrice). */
@@ -258,6 +260,8 @@ export interface ProtectionState {
   nightShieldSuspendedUntilMs: number;
   /** Schutz nach verlorener Verteidigung bis zu diesem Zeitpunkt. */
   defeatShieldUntilMs: number;
+  /** PvP-Vorlage: Anfängerschutz vorzeitig beendet (eigener Überfall auf einen Spielerhafen) zu diesem Zeitpunkt. */
+  beginnerEndedAtMs?: number;
   /** Vorgemerkte Nachtschild-Einstellung, gültig ab fromMs (fehlt in älteren Ständen). */
   nightShieldNext?: { startHour: number | null; tzOffsetMinutes: number; timeZone?: string; fromMs: number } | null;
   /** Zeitpunkt der letzten Änderung durch den Spieler (fehlt in älteren Ständen). */
@@ -353,6 +357,8 @@ export interface MissionInput {
   weather?: RouteWeather; // Wetter entlang der Route bei Abfahrt (v1.6); fehlt es, kein Wettereinfluss
   /** Seewege: vorgegebene Route (null = Luftlinie erzwingen); fehlt sie, rechnet planMission sie bei Schiffen selbst. */
   route?: MissionRoute | null;
+  /** PvP: Überfall auf einen Spielerhafen – beendet den eigenen Anfängerschutz (balance.pvp.beginnerEndsOnPlayerRaid). */
+  playerHarbor?: boolean;
 }
 
 /** Seewege: Route eines Verbands mit Schiffen (Wegpunkte als [Spalte, Zeile], Länge in km); siehe @tidefront/world seaRoute. */

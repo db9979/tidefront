@@ -15,6 +15,7 @@ import { AchievementBadge, TIER_LABEL } from "../components/achievement-art.tsx"
 import type { Draft } from "./Messages.tsx";
 import type { Target } from "../App.tsx";
 import { HScroll } from "../components/HScroll.tsx";
+import { BountyMark } from "../components/Pvp.tsx"; // Spieler gegen Spieler: Kopfgeld
 
 type Row = Outputs["social"]["ranking"]["rows"][number];
 type Directory = Outputs["alliance"]["directory"];
@@ -94,7 +95,7 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
                   className={`tap w-full flex items-center gap-2 px-1 py-2 text-left ${r.own ? "bg-sea-400/10 rounded-lg" : ""}`}>
                   <span className="w-7 text-right font-mono tabular-nums text-slate-400">{sort === "total" ? r.rank : i + 1}</span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">{tag(r.playerId) && <span className="mono text-ink2 font-normal">[{tag(r.playerId)}] </span>}{r.name}{r.bot && <BotMark />}{r.hafenmeister && <Hafenmeister />}<Badges badges={r.badges} />{r.own && <span className="text-sea-300 font-normal"> (du)</span>}</span>
+                    <span className="block truncate text-sm font-semibold">{tag(r.playerId) && <span className="mono text-ink2 font-normal">[{tag(r.playerId)}] </span>}{r.name}{r.bot && <BotMark />}<BountyMark pct={r.bounty} />{r.hafenmeister && <Hafenmeister />}<Badges badges={r.badges} />{r.own && <span className="text-sea-300 font-normal"> (du)</span>}</span>
                     <span className="block truncate text-xs text-slate-400">{r.base ? r.base.name : "kein Hafen"}{r.bases > 1 ? ` · ${r.bases} Häfen` : ""}</span>
                   </span>
                   {r.base?.protection && <Icon id="schild" size={16} className="shrink-0 opacity-70" />}
@@ -109,7 +110,7 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
             {all ? "Kurzansicht (Top 10 und du)" : `Alle ${rows.length} zeigen`}
           </Button>
         )}
-        <p className="text-[11px] text-slate-500 mt-2">1 Punkt je 100 Kostenwert (Ressourcen zum Börsen-Richtpreis), Befehle zählen ihre Punkte direkt. Antippen für Details.</p>
+        <p className="text-[11px] text-slate-500 mt-2">1 Punkt je 100 Kostenwert (Ressourcen zum Börsen-Richtpreis), Befehle zählen ihre Punkte direkt. „+50 %“: Kopfgeld auf die Spitze (Stand Tagesbeginn). Antippen für Details.</p>
         <Button kind="secondary" className="w-full mt-3" onClick={() => setInvite(true)}>Freunde einladen</Button>
       </Card>
       {dir.data && dir.data.alliances.length > 0 && <AllianceRanking alliances={dir.data.alliances} />}
@@ -166,6 +167,7 @@ function PlayerDetail({ r, dir, ownId, onCompose, onShowOnMap }: { r: Row; dir: 
         <span><span className="text-slate-400">Allianz </span><strong>{alliance ? `[${alliance.tag}] ${alliance.name}` : "–"}</strong></span>
         {rel && <Badge tone={RELATION_TEXT[rel].tone}>{RELATION_TEXT[rel].text}</Badge>}
       </div>
+      {r.bounty && <p className="text-sm"><BountyMark pct={r.bounty} long /> unter den ersten drei zum Tagesbeginn: Wer schlechter platziert ist und angreift, bekommt mehr Kampfpunkte; die Verteidigung zählt halb.</p>}
       {r.bot && <p className="text-sm text-slate-400"><BotMark /> KI-Spieler: spielt nach denselben Regeln wie alle (siehe Handbuch, „KI-Spieler“).</p>}
       {r.hafenmeister && <p className="flex items-center gap-2 text-sm"><Icon id="hafenmeister" size={24} /> Abzeichen „Hafenmeister“ dieser Saison</p>}
       {r.badges.map((b) => (

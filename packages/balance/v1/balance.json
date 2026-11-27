@@ -122,6 +122,11 @@
     "raidHpWeights": { "see": 0.5, "minenraeumer": 0.1, "minenleger": 0, "landungsschiff": 0, "kolonieschiff": 0 }
   },
   "scoring": { "npcDefenseFactor": 0.25, "npcWorldEventKinds": [] },
+  "pvp": {
+    "bountyByRank": [0.5, 0.35, 0.2], "bountyDefenseFactor": 0.5, "mutMin": 0.5, "mutMax": 1.5, "maxFactor": 2,
+    "pairWindowHours": 72, "pairFactors": [1, 0.5, 0.25, 0], "collusionDays": 7, "suspiciousFights": 3, "suspiciousDays": 7,
+    "beginnerEndsOnPlayerRaid": true
+  },
   "market": {
     "refPrice": { "stahl": 1.0, "treibstoff": 1.8, "elektronik": 3.0, "proviant": 0.6 },
     "depth": { "stahl": 200000, "treibstoff": 120000, "elektronik": 60000, "proviant": 150000 },

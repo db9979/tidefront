@@ -50,6 +50,7 @@ import { STATION_TYPE, stationLaunch } from "./alliance-ops-station.ts"; // Alli
 import { createConvoy, isNavalInput, launchNaval, tradeBlocked, transportConvoyRecall } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 import { launchField } from "./fields-missions.ts"; // Felder
 import { FOUNDING_TYPE, TRANSFER_TYPE, launchExpansion } from "./expansion.ts"; // Mehrere Häfen
+import { endBeginnerElsewhere } from "./pvp.ts"; // PvP: Anfängerschutz endet beim ersten Spielerüberfall
 
 export type Rejected = { ok: false; code: string };
 type Draft<T> = T | (Rejected & { keepWrites?: boolean });
@@ -322,6 +323,7 @@ export function launchMission(
         cargo: input.cargo,
         targetProtection: target.kind === "base" ? target.state!.protection : undefined,
         weather: missionWeather(b.col, b.row, target.col, target.row, ctx.nowMs),
+        playerHarbor: target.kind === "base" && target.playerId !== null, // PvP: beendet den eigenen Anfängerschutz
       },
       ctx.nowMs,
       balance,
@@ -329,6 +331,7 @@ export function launchMission(
     );
     if (!r.ok) return r;
     await saveBase(ctx.tx, b.id, r.base);
+    if (r.base.protection.beginnerEndedAtMs === ctx.nowMs) { await endBeginnerElsewhere(ctx.tx, playerId, b.id, ctx.nowMs); ctx.notify.push([null, "map"]); } // PvP
     const [m] = await ctx.tx
       .insert(tables.mission)
       .values({

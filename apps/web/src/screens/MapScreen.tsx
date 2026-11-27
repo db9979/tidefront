@@ -22,6 +22,7 @@ import { FoundingButton, FoundingInfo, OwnHarborActions } from "../components/Ha
 import { FleetLines, IntelStand, UnknownLine } from "../components/IntelStand.tsx"; // Lagebild
 import { expansionRules, isFreeCoast, isThreat } from "../lib/expansion.ts";
 import { PostSheet } from "../components/PostSheet.tsx"; // Lagebild Stufe 2
+import { PvpTargetHint } from "../components/Pvp.tsx"; // Spieler gegen Spieler
 
 const TERRAIN: Record<string, string> = { sea: "Offene See", coast: "Küste", land: "Binnenland" };
 const RELATION_TEXT: Record<string, string> = {
@@ -197,6 +198,7 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { 
                   {!info.base.known ? <UnknownLine what="Schutzstatus" /> : info.base.protection ? (
                     <div className="text-emerald-300 text-xs">Schutz: {label(info.base.protection)} – kein Überfall möglich</div>
                   ) : !info.base.own && info.base.relation !== "allianz" && info.base.relation !== "pakt" && <div className="text-siegel text-xs">Kein Schutz aktiv – Überfall möglich</div>}
+                  {!info.base.own && info.base.relation !== "allianz" && info.base.relation !== "pakt" && <PvpTargetHint col={sel.col} row={sel.row} beginner={false} />}{/* Kopfgeld, Mutfaktor, Paarbremse */}
                   <IntelStand tag={info.base.intel} now={now} />
                   {isHome && <div className="text-xs text-slate-400">Nächster Handelshafen: {nearestTradePortBySea(home).name} ({fmtNum(nearestTradePortBySea(home).distanceKm)} km)</div>}
                 </div>

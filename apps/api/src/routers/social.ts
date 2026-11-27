@@ -5,6 +5,7 @@ import {
   hallOfFame,
   inbox,
   markRead,
+  pvpTargetView,
   MESSAGE_MAX,
   rankingView,
   seasonView,
@@ -22,6 +23,10 @@ const MSG_WINDOW_SEC = 600;
 
 export const socialRouter = t.router({
   ranking: authed.query(({ ctx }) => rankingView(ctx.engine, ctx.player.id)),
+  /** PvP: Kopfgeld, Mutfaktor, Paarbremse und Ende des Anfängerschutzes für einen Überfall auf den Hafen auf col/row. */
+  pvpTarget: authed
+    .input(z.object({ col: z.number().int().min(0).max(10000), row: z.number().int().min(0).max(10000) }))
+    .query(({ ctx, input }) => pvpTargetView(ctx.engine, ctx.player.id, input)),
   messages: t.router({
     inbox: authed.query(({ ctx }) => inbox(ctx.engine, ctx.player.id)),
     sent: authed.query(({ ctx }) => sentMessages(ctx.engine, ctx.player.id)),

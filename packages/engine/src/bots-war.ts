@@ -18,6 +18,7 @@ import {
 import { hexDistanceKm, neighbors, terrainAt } from "@tidefront/world";
 import { tables } from "@tidefront/db";
 import { balance, type Engine } from "./context.ts";
+import { bountyByPlayer, rankSnapshot, snapshotEntry } from "./pvp.ts"; // PvP: Freibeuter bevorzugt Kopfgeld-Ziele
 import { launchMission, type LaunchInput } from "./commands.ts";
 import { missionPreview } from "./views.ts";
 import { NPC_UNIT_VALUE } from "./scoring.ts";
@@ -197,7 +198,12 @@ export async function playerTargets(c: TurnCtx, base: BaseRow) {
     if (human && (await humanCooldownActive(c, r.playerId))) continue;
     out.push({ id: r.id, playerId: r.playerId, col: r.col, row: r.row, human, d });
   }
-  return out.sort((a, b) => a.d - b.d);
+  // PvP: der Freibeuter nimmt Kopfgeld-Ziele (Rang 1–3, Stand Tagesbeginn) zuerst, sonst das nächste Ziel.
+  const snap = c.bot.profile === "freibeuter" ? await rankSnapshot(c.engine.db, c.nowMs) : null;
+  const bounty = snap ? bountyByPlayer(snap) : new Map<number, number>();
+  const mine = snap ? snapshotEntry(snap, c.bot.id).rank : null;
+  const prize = (t: { playerId: number }) => (snap && (mine === null || mine > (snapshotEntry(snap, t.playerId).rank ?? Infinity)) ? bounty.get(t.playerId) ?? 0 : 0);
+  return out.sort((a, b) => prize(b) - prize(a) || a.d - b.d);
 }
 
 async function lastScout(c: TurnCtx, targetBaseId: number): Promise<ScoutReport | null> {

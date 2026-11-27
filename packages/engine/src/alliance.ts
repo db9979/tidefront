@@ -4,6 +4,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { tables, type Tx } from "@tidefront/db";
 import type { Engine } from "./context.ts";
 import { allianceOpsExit } from "./alliance-ops-raid.ts"; // Allianz-Ops
+import { recordTies } from "./pvp-ties.ts"; // PvP: Absprache-Sperre nach Austritt
 import {
   act,
   allianceMaxSize,
@@ -206,6 +207,7 @@ export function leaveAlliance(engine: Engine, playerId: number) {
       .where(eq(tables.allianceMember.allianceId, m.allianceId))
       .orderBy(tables.allianceMember.joinedAt);
     const name = await playerNameOf(tx, playerId);
+    await recordTies(tx, [playerId], rest.map((r) => r.playerId), Date.now()); // PvP: kein Kopfgeld unter Ex-Verbündeten
     await allianceOpsExit(tx, notes, [playerId], m.allianceId); // Allianz-Ops: Stationierungen heim, Teilnahmen enden
     if (rest.length === 0) {
       await removeAlliance(tx, notes, m.allianceId, `[${m.tag}] ${m.name} hat sich aufgelöst: das letzte Mitglied ist ausgetreten.`);
@@ -233,6 +235,7 @@ export function kickMember(engine: Engine, playerId: number, targetId: number) {
     if (!t || t.allianceId !== m.allianceId) fail("not_member");
     if (RANK[t.role] >= RANK[m.role]) fail("no_rights");
     await tx.delete(tables.allianceMember).where(eq(tables.allianceMember.playerId, targetId));
+    await recordTies(tx, [targetId], await memberIds(tx, m.allianceId), Date.now()); // PvP: kein Kopfgeld unter Ex-Verbündeten
     await allianceOpsExit(tx, notes, [targetId], m.allianceId); // Allianz-Ops
     const name = await playerNameOf(tx, targetId);
     await systemMessage(tx, notes, [targetId], "Allianz: ausgeschlossen", `Du wurdest aus [${m.tag}] ${m.name} ausgeschlossen.`);
@@ -265,9 +268,11 @@ async function removeAlliance(tx: Tx, notes: Notes, allianceId: number, text: st
   const party = `a:${allianceId}`;
   const ids = await memberIds(tx, allianceId);
   const treaties = await tx.select().from(tables.diplomacy).where(sql`${tables.diplomacy.partyA} = ${party} or ${tables.diplomacy.partyB} = ${party}`);
+  await recordTies(tx, ids, ids, Date.now()); // PvP: kein Kopfgeld unter Ex-Verbündeten
   for (const d of treaties) {
     const other = d.partyA === party ? d.partyB : d.partyA;
     await systemMessage(tx, notes, await partyMembers(tx, other), "Diplomatie: Vertrag erloschen", `${text} Verträge mit ihr sind erloschen.`);
+    if (d.kind === "pakt" && d.status === "aktiv") await recordTies(tx, ids, await partyMembers(tx, other), Date.now()); // PvP
   }
   await tx.delete(tables.diplomacy).where(sql`${tables.diplomacy.partyA} = ${party} or ${tables.diplomacy.partyB} = ${party}`);
   await systemMessage(tx, notes, ids, "Allianz aufgelöst", text);
