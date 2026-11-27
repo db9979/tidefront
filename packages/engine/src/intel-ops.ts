@@ -59,6 +59,7 @@ export async function previewIntelOp(engine: Engine, playerId: number, i: IntelO
       ok: true as const, distanceKm: Math.round(far), travelSeconds: m.travelSeconds, route: m.route ?? null, fuelCost: m.fuelCost,
       arriveAtMs: m.arriveAtMs, returnAtMs: m.returnAtMs, sightKm: m.patrol?.sightKm ?? null, sonarKm: m.patrol?.sonarKm ?? null,
       cost: "cost" in r ? r.cost : null,
+      turnPoints: ("turnPoints" in r ? r.turnPoints : null) as { x: number; y: number; km: number }[] | null, // Aufklärung auf Sicht: Wendepunkte der Kampagne
     };
   } catch (err) {
     if (err instanceof GameError) return { ok: false as const, code: err.code };

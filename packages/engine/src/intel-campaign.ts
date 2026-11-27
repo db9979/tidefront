@@ -5,16 +5,17 @@
 // Meldung „Aufklärer gesichtet“ (scoutSighted).
 import { and, eq, sql } from "drizzle-orm";
 import {
-  activeUnits, campaignCheck, campaignOf, fuelCost, hasShipUnits, travelSeconds, validateFleet,
-  type BaseState, type Counts, type Mission,
+  activeUnits, campaignCheck, liveLevelAt, campaignOf, fuelCost, hasShipUnits, reconRangeKm, sightTurn, travelSeconds, validateFleet,
+  type BaseState, type Counts, type Mission, type MissionRoute, type SightTurn,
 } from "@tidefront/game-core";
-import { hexDistanceKm, seaRoute, seaRouteCopy, type Hex } from "@tidefront/world";
+import { hexCenterXY, hexDistanceKm, seaRoute, seaRouteCopy, type Hex } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError, type NoticeJob } from "./context.ts";
 import { activeMissionCount, saveBase, scheduleEvent, type BaseRow } from "./store.ts";
 import { modsOf } from "./modifiers.ts";
 import { insertMission, planNaval, playerName, pushNotice, storeNavalReport, type Notes } from "./naval-common.ts";
 import { intelRules, partyOf, sensorsOfBase } from "./intel-sight.ts";
+import { counterWorld, fleetMods } from "./intel-counter.ts";
 import type { CampaignPlan } from "./intel-route.ts";
 
 export interface CampaignInput {
@@ -27,6 +28,25 @@ type Target = CampaignPlan["targets"][number];
 /** Seewege: Abschnittslänge mit Schiffen über Wasser, sonst Luftlinie. */
 function legKm(units: Counts, a: Hex, b: Hex): number {
   return hasShipUnits(units, balance) ? Math.max(hexDistanceKm(a, b), seaRoute(a, b).km) : hexDistanceKm(a, b);
+}
+
+/**
+ * Aufklärung auf Sicht: ein Abschnitt von `from` zum Ziel endet am Wendepunkt (Lagebild-Reichweite des Verbands).
+ * km: gefahrene Strecke; end: Feld, an dem der nächste Abschnitt bzw. die Heimfahrt beginnt.
+ */
+export function campaignLeg(units: Counts, from: Hex, to: Hex): { km: number; turn: SightTurn | null; route: MissionRoute | null; end: Hex } {
+  const ships = hasShipUnits(units, balance);
+  const route = ships ? seaRouteCopy(seaRoute(from, to)) : null;
+  const full = route ? Math.max(hexDistanceKm(from, to), route.km) : hexDistanceKm(from, to);
+  const turn = balance.intel?.sightRecon ? sightTurn(from, to, route, reconRangeKm(units, balance.units, balance.intel.fleetSight)) : null;
+  if (!turn) return { km: full, turn: null, route, end: { col: to.col, row: to.row } };
+  const km = Math.min(full, turn.km);
+  return { km, turn: { ...turn, km }, route, end: { col: turn.col, row: turn.row } };
+}
+
+/** Feld, an dem der laufende Abschnitt endet (Wendepunkt oder Ziel). */
+function legEnd(plan: { sightTurn?: SightTurn }, target: Hex): Hex {
+  return plan.sightTurn ? { col: plan.sightTurn.col, row: plan.sightTurn.row } : { col: target.col, row: target.row };
 }
 
 /** Ziel auf einem Feld: fremder Hafen, Nest oder Rohstofffeld. Codes: no_target, own_base. */
@@ -57,24 +77,30 @@ export async function planCampaign(db: DbOrTx, playerId: number, own: BaseRow, i
   const first = targets[0];
   const r = planNaval(own, { type: "aufklaerung", baseType: "aufklaerung", units: input.units, col: first.col, row: first.row, activeMissions: await activeMissionCount(db, own.id), mods }, nowMs);
   if (!r.ok) return r;
-  // Weitere Abschnitte und die Heimfahrt vom letzten Ziel statt vom ersten.
+  // Weitere Abschnitte (je bis zum Wendepunkt) und die Heimfahrt vom letzten Wendepunkt statt vom ersten.
   const factor = r.mission.weather?.shipFactor ?? 1;
   const legSec = (km: number) => (travelSeconds(input.units, km, balance, mods) ?? 0) * factor;
   let extraKm = 0;
   let at = r.mission.arriveAtMs;
+  let pos = legEnd(r.mission, first);
+  const turns: (SightTurn | null)[] = [r.mission.sightTurn ?? null];
   for (let i = 1; i < targets.length; i++) {
-    const km = legKm(input.units, targets[i - 1], targets[i]);
-    extraKm += km;
-    at += Math.ceil(legSec(km) * 1000);
+    const l = campaignLeg(input.units, pos, targets[i]);
+    extraKm += l.km;
+    at += Math.ceil(legSec(l.km) * 1000);
+    pos = l.end;
+    turns.push(l.turn);
   }
-  const homeKm = legKm(input.units, targets[targets.length - 1], own);
-  extraKm += homeKm - legKm(input.units, first, own);
+  const homeKm = legKm(input.units, pos, own);
+  extraKm += homeKm - (r.mission.sightTurn ? r.mission.sightTurn.km : legKm(input.units, first, own));
   const extra = Math.max(0, fuelCost(input.units, extraKm, balance, mods, 1));
   if ((r.base.resources.treibstoff ?? 0) < extra) return { ok: false as const, code: "fuel" };
   r.base.resources = { ...r.base.resources, treibstoff: (r.base.resources.treibstoff ?? 0) - extra };
   const campaign: CampaignPlan = { targets, index: 0, legFrom: { col: own.col, row: own.row }, legDepartMs: nowMs };
   const mission = { ...r.mission, fuelCost: r.mission.fuelCost + extra, returnAtMs: at + Math.ceil(legSec(homeKm) * 1000), campaign };
-  return { ok: true as const, base: r.base, mission, targets, lastArriveAtMs: at };
+  // Planung und Karte: Wendepunkte der Abschnitte (Projektions-km), null = bis ans Ziel.
+  const turnPoints = turns.map((t, i) => t ? { x: t.x, y: t.y, km: t.rangeKm } : { ...hexCenterXY(targets[i].col, targets[i].row), km: 0 });
+  return { ok: true as const, base: r.base, mission, targets, lastArriveAtMs: at, turnPoints };
 }
 
 export async function launchCampaign(tx: Tx, playerId: number, own: BaseRow, input: CampaignInput, nowMs: number, notify: Notes) {
@@ -101,17 +127,22 @@ export async function campaignContinue(tx: Tx, missionId: number, due: number): 
   if (Object.keys(units).length === 0) return false;
   const [home] = await tx.select({ col: tables.base.col, row: tables.base.row }).from(tables.base).where(eq(tables.base.id, m.baseId));
   if (!home) return false;
-  const cur = c.targets[c.index];
+  const cur = legEnd(plan, c.targets[c.index]);
   const next = c.targets[c.index + 1];
   const factor = plan.weather?.shipFactor ?? 1;
   const sec = (km: number) => (travelSeconds(units, km, balance) ?? 0) * factor;
-  const arrive = due + Math.ceil(sec(legKm(units, cur, next)) * 1000);
-  const back = sec(legKm(units, next, home));
-  // Seewege: Route des aktuellen Abschnitts und des Heimwegs vom neuen Ziel (intel-route.ts fleetPosition).
+  // Aufklärung auf Sicht: der Abschnitt endet am Wendepunkt; liegt das Ziel schon in Reichweite, sofort.
+  const l = campaignLeg(units, cur, next);
+  const arrive = due + Math.ceil(sec(l.km) * 1000);
+  const back = sec(legKm(units, l.end, home));
+  // Seewege: Route des aktuellen Abschnitts und des Heimwegs vom neuen Wendepunkt (intel-route.ts fleetPosition).
   const ships = hasShipUnits(units, balance);
+  const rest: Mission & { campaign?: CampaignPlan } = { ...plan };
+  delete rest.sightTurn;
   const nextPlan = {
-    ...plan, arriveAtMs: arrive, returnAtMs: arrive + Math.ceil(back * 1000), travelSeconds: back,
-    ...(ships ? { route: seaRouteCopy(seaRoute(cur, next)), homeRoute: seaRouteCopy(seaRoute(next, home)) } : {}),
+    ...rest, arriveAtMs: arrive, returnAtMs: arrive + Math.ceil(back * 1000), travelSeconds: back,
+    ...(ships && l.route ? { route: l.route, homeRoute: seaRouteCopy(seaRoute(l.end, home)) } : {}),
+    ...(l.turn ? { sightTurn: l.turn } : {}),
     campaign: { ...c, index: c.index + 1, legFrom: { col: cur.col, row: cur.row }, legDepartMs: due },
   };
   await tx.execute(sql`delete from game_event where type = 'mission_return' and status = 'pending' and payload->>'missionId' = ${String(m.id)}`);
@@ -123,14 +154,22 @@ export async function campaignContinue(tx: Tx, missionId: number, due: number): 
   return true;
 }
 
-/** Aufklärer am Hafen angekommen: hat der Hafen Radar, bekommt der Besitzer die Meldung „Aufklärer gesichtet“. */
-export async function scoutSighted(tx: Tx, m: { playerId: number | null; baseId: number | null; targetKind: string; targetId: number | null }, due: number, push: NoticeJob[]): Promise<void> {
+/**
+ * Aufklärer am Wendepunkt (Aufklärung auf Sicht; ohne Wendepunkt am Hafen): Liegt der Wendepunkt im Ausguck oder in der
+ * Radarreichweite des Zielhafens, bekommt der Besitzer die Meldung „Aufklärer gesichtet“. Funkdisziplin (Admiral) und
+ * Tarnanstrich (reine Flugverbände) verkürzen die Reichweiten wie auf der Karte (intel-counter.ts fleetMods).
+ */
+export async function scoutSighted(tx: Tx, m: { id: number; playerId: number | null; baseId: number | null; targetKind: string; targetId: number | null; plan: unknown }, due: number, push: NoticeJob[]): Promise<void> {
   const ib = intelRules();
   if (!ib || m.targetKind !== "base" || m.targetId === null || m.playerId === null) return;
   const [b] = await tx.select().from(tables.base).where(eq(tables.base.id, m.targetId));
   if (!b || b.playerId === m.playerId) return;
   if ((await partyOf(tx, m.playerId)).members.includes(b.playerId)) return;
-  if (!sensorsOfBase({ ...b, state: b.state as BaseState }, due, ib).some((s) => s.kind === "radar")) return;
+  const plan = m.plan as Mission;
+  const at = plan.sightTurn ? { x: plan.sightTurn.x, y: plan.sightTurn.y } : hexCenterXY(b.col, b.row);
+  const mods = fleetMods(await counterWorld(tx, due), new Set([b.playerId]), at.x, at.y, { id: m.id, playerId: m.playerId }, plan.units ?? {}, balance.units);
+  const sensors = sensorsOfBase({ ...b, state: b.state as BaseState }, due, ib).filter((s) => s.kind === "ausguck" || s.kind === "radar");
+  if (!liveLevelAt(sensors, at.x, at.y, "object", mods)) return;
   const who = await playerName(tx, m.playerId);
   await storeNavalReport(tx, {
     kind: "sichtung", title: `Aufklärer gesichtet bei ${b.name}`, attackerPlayerId: null, defenderPlayerId: b.playerId, defenderBaseId: b.id,

@@ -32,6 +32,8 @@ export interface IntelBalance {
   sonar?: import("./intel-ops.ts").SonarBalance;
   /** Bordsicht (Entscheidung 27.11.2026): jeder eigene Verband auf See sieht um seine Position. */
   fleetSight?: import("./intel-ops.ts").FleetSightBalance;
+  /** Aufklärung auf Sicht (27.11.2026): Wendepunkt in Lagebild-Reichweite, Mindestfahrzeit; fehlt er, bis ans Ziel. */
+  sightRecon?: import("./recon-sight.ts").SightReconBalance;
   /** Stufe 3 (seit v1.23, intel-sat.ts): Satelliten und Gegenmittel; fehlt ein Teil, gibt es ihn nicht. */
   satellite?: import("./intel-sat.ts").SatelliteBalance;
   counter?: import("./intel-sat.ts").CounterBalance;

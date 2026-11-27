@@ -248,7 +248,8 @@ Abweichungen (begründet):
   oder Pakt besteht; Radarreichweite des Hafens wie in 5.2. Sind alle Einheiten abgeschossen, endet die Mission.
 - **„Fremde Patrouille gesichtet“:** Bericht (Art „sichtung“) und Push, einmal je Spieler und Patrouille, wenn die
   Patrouille seinen Hafen sieht und selbst im Ausguck oder Radar dieses Hafens liegt. Felder und Posten lösen keine
-  Meldung aus. Ebenso „Aufklärer gesichtet“ (5.5): bei Ankunft jeder Aufklärung an einem fremden Hafen mit Radar.
+  Meldung aus. Ebenso „Aufklärer gesichtet“ (5.5): seit der Aufklärung auf Sicht (5.9), wenn der Wendepunkt im
+  Ausguck oder in der Radarreichweite des Zielhafens liegt (Funkdisziplin und Tarnanstrich wirken wie auf der Karte).
 - **Kampagne:** Planung prüft jedes Ziel (Luft: jedes in Reichweite); Treibstoff für die ganze Runde. Die
   Erkennung um die Route gilt für jede Aufklärung auf der Hinfahrt (auch mit einem Ziel). Ein Rückruf auf einem
   späteren Abschnitt rechnet die Heimfahrt ab der ersten Abfahrt (einfach, eher zu lang).
@@ -338,3 +339,36 @@ Abweichungen (begründet):
      Nest-Angriffe mit vs. ohne Lagebild) und gegebenenfalls nachjustieren.
 4. **Kartennebel abschaltbar:** Server-Einstellung `intel_fog` (Verwaltung, Vorgabe an). Aus = alle sehen alles wie bis
    0.17; Sensoren und Aufklärung laufen weiter, ihre Daten werden nur nicht mehr gebraucht.
+
+## 5.9 Aufklärung auf Sicht (umgesetzt 27.11.2026, Vorlage docs/VORLAGE-NESTER.md 2)
+
+- Die Mission „Aufklärung“ (auch jeder Abschnitt einer Kampagne und die Aufklärung von Feldern) endet am **ersten
+  Punkt ihres Weges, an dem das Ziel in Lagebild-Reichweite liegt**, und kehrt dort um. Schiffe fahren den Seeweg,
+  Flugzeuge die Luftlinie; gemessen wird der gerade Abstand zum Ziel in Projektions-km.
+- **Lagebild-Reichweite** = Objektsicht der besten Einheit (`intel.fleetSight`): Aufklärungsdrohne 200 km, Kriegsschiff
+  105 km, Transporter 40 km. Ohne Objektsicht (nur Jäger/Bomber, nur U-Boote) bis ans Ziel.
+- Liegt das Ziel beim Auslaufen schon in Reichweite: **Mindestfahrzeit 10 min** (`intel.sightRecon.minMinutes`).
+- Fahrzeit und Treibstoff nach der verkürzten Strecke (hin und zurück bis zum Wendepunkt). Am Wendepunkt entsteht das
+  volle Lagebild (Bericht „Aufklärung“). Rückruf unverändert.
+- **Kampagne:** Jeder Abschnitt endet am Wendepunkt des nächsten Ziels, der nächste beginnt dort (Feld des
+  Wendepunkts); liegt das nächste Ziel schon in Reichweite, ist es im selben Augenblick aufgeklärt. Heimfahrt ab dem
+  letzten Wendepunkt.
+- Karte: Weg nur bis zum Wendepunkt, dort ein Ring und eine feine Sichtlinie zum Ziel. Planung: „Aufklärung auf Sicht:
+  Lagebild aus N km“.
+- Umgesetzt in `packages/game-core/src/recon-sight.ts` (Wendepunkt, Reichweite), `mission.ts` (`sightRecon`),
+  `route-position.ts` (Position), `engine/src/intel-campaign.ts` (Abschnitte, „Aufklärer gesichtet“).
+
+## 5.10 Lebendige Nester im Lagebild (umgesetzt 27.11.2026, Vorlage docs/VORLAGE-NESTER.md 3.4)
+
+| Kenntnis | Nest zeigt |
+|---|---|
+| Sichtung (Radarsatellit, Tarnnetz-Fall) | nur Position |
+| Erkennung (Bordsicht, Ausguck, Radar, Patrouille, Kampagne unterwegs, optischer Satellit) | Stufe, besetzt/leer, Wiederkehr; Besatzung als Spanne, Anlagen „unbekannt“ (mögliche Spanne im Tipp), Beute 100–130 % |
+| Lagebild (Aufklärung, Kampfbericht, auch verlorener Überfall; Hafenamt beim Start-Nest) | Wurf, aktuelle Besatzung, Anlagen, Beute – mit Stand; die Karte rechnet Erholung und Beute hoch |
+
+- Gespeichert in `intel_sighting.data.lagebild` (`atMs`, `roll`, `garrison`, `garrisonAtMs`, `lootAtMs`). Eine spätere
+  Erkennung überschreibt Stufe und Zustand, behält aber `data.lagebild` mit dessen eigenem Stand (SQL beim Upsert).
+- Genau, solange jünger als `staleHours` (24 h) und ohne Wiederbesetzung seither (gleiche Besetzung `lootAtMs`); sonst
+  zeigt `world.map` kein Lagebild (`lagebild: null`) und Karte, Planung und KI rechnen mit der Spanne.
+- Ohne Kartennebel (`intel_fog` aus) sieht jeder Stufe und Zustand; Wurf und Besatzung weiter nur mit Lagebild.
+

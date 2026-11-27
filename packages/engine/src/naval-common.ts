@@ -92,6 +92,7 @@ export function planNaval(
       type: opts.baseType, units: opts.units, origin: hexCenter(own.col, own.row), target: hexCenter(opts.col, opts.row),
       activeMissions: opts.activeMissions, targetProtection: opts.targetProtection,
       weather: missionWeather(own.col, own.row, opts.col, opts.row, nowMs),
+      sightRecon: opts.type === "aufklaerung", // Aufklärung auf Sicht (Kampagne, Felder)
     },
     nowMs,
     balance,

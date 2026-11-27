@@ -18,6 +18,7 @@ import { endBeginnerProtection, protectionStatus, suspendNightShield } from "./p
 import type { Modifiers } from "./modifiers.ts";
 import { modEntry, modValue } from "./modifiers.ts";
 import { hexAtLonLat, inGrid, seaRoute, seaRouteCopy } from "@tidefront/world";
+import { reconRangeKm, sightTravelSeconds, sightTurn, type SightTurn } from "./recon-sight.ts";
 
 export const MISSION_TYPES: readonly MissionType[] = ["ueberfall", "aufklaerung", "transport"];
 
@@ -176,6 +177,10 @@ export function planMission(
   // die Reichweitenprüfung der Flugzeuge oben bleibt bei der Luftlinie (sie fliegen vom Verband aus).
   const route = !hasShips ? null : input.route !== undefined ? input.route : missionRoute(input.units, input.origin, input.target, balance);
   const travelKm = route ? Math.max(distance, route.km) : distance;
+  // Aufklärung auf Sicht: Wendepunkt in Lagebild-Reichweite; Fahrt und Treibstoff nur bis dorthin (hin und zurück).
+  const sr = input.sightRecon && type === "aufklaerung" ? balance.intel?.sightRecon : undefined;
+  const turn = sr ? reconTurn(input, route, balance) : null;
+  const tripKm = turn ? Math.min(travelKm, turn.km) : travelKm;
 
   if (type === "ueberfall" && input.targetProtection !== undefined) {
     if (protectionStatus(input.targetProtection, nowMs, balance).protected) {
@@ -200,7 +205,7 @@ export function planMission(
   else if (type === "gruendung") {
     const { [ship!]: one, ...escort } = input.units;
     fuel = fuelCost(escort, travelKm, balance, mods) + fuelCost({ [ship!]: one }, travelKm, balance, mods, 1);
-  } else fuel = fuelCost(input.units, travelKm, balance, mods);
+  } else fuel = fuelCost(input.units, tripKm, balance, mods);
   if ((next.resources.treibstoff ?? 0) < fuel) return { ok: false, code: "fuel" };
   next.resources = subtractResources(next.resources, { treibstoff: fuel });
   if (!hasResources(next.resources, cargo)) return { ok: false, code: "insufficient_resources" };
@@ -219,7 +224,8 @@ export function planMission(
   }
 
   const shipFactor = hasShips && input.weather ? input.weather.shipFactor : 1;
-  const seconds = (travelSeconds(input.units, travelKm, balance, mods) ?? 0) * shipFactor;
+  const rawSeconds = (travelSeconds(input.units, tripKm, balance, mods) ?? 0) * shipFactor;
+  const seconds = sr && turn ? sightTravelSeconds(rawSeconds, sr) : rawSeconds;
   const travelMs = Math.ceil(seconds * 1000);
   const mission: Mission = {
     type,
@@ -236,8 +242,15 @@ export function planMission(
     ...(mods?.stealth !== undefined && mods.stealth !== 1 ? { warningFactor: mods.stealth } : {}),
     ...(input.weather ? { weather: { avgWind: input.weather.avgWind, storminess: input.weather.storminess, shipFactor } } : {}),
     ...(route ? { route } : {}),
+    ...(turn ? { sightTurn: { ...turn, km: tripKm } } : {}),
   };
   return { ok: true, base: next, mission };
+}
+
+/** Wendepunkt einer Aufklärung auf Sicht (Felder aus den Geo-Punkten, Route oder Luftlinie); null = bis ans Ziel. */
+function reconTurn(input: MissionInput, route: MissionRoute | null, balance: Balance): SightTurn | null {
+  const range = reconRangeKm(input.units, balance.units, balance.intel?.fleetSight);
+  return sightTurn(hexAtLonLat(input.origin.lon, input.origin.lat), hexAtLonLat(input.target.lon, input.target.lat), route, range);
 }
 
 /**

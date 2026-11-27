@@ -30,7 +30,9 @@ export * from "./expansion.ts"; // Mehrere Häfen: Gründung, Verlegung
 export * from "./intel.ts"; // Lagebild: Sensoren, Kenntnisstufen, Alter
 export * from "./intel-ops.ts"; // Lagebild Stufe 2: Patrouille, Kampagne, Radarposten, Sonar
 export * from "./intel-sat.ts"; // Lagebild Stufe 3: Satelliten, Tarnnetze, Störsender
+export * from "./recon-sight.ts"; // Aufklärung auf Sicht: Wendepunkt in Lagebild-Reichweite
 export * from "./route-position.ts"; // Seewege: Position unterwegs (Route, Rückruf, Patrouille, Kampagne)
+export * from "./nest-living.ts"; // Lebendige Nester: Wurf, Erholung, Beutewachstum, Spanne
 export * from "./raid-plan.ts"; // Einstieg: kleinster siegreicher Verband gegen ein Nest
 export * from "./pvp.ts"; // Spieler gegen Spieler: Kopfgeld, Mutfaktor, Paarbremse
 export * from "./catch-up.ts"; // Aufholhilfe: Baugutschrift für kleine Häfen und Spät-Einsteiger

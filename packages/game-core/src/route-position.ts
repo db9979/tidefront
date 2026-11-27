@@ -42,6 +42,7 @@ export interface CampaignPlan {
 
 /** homeRoute: Seewege der Kampagne – Heimweg vom aktuellen Ziel (route gilt dem aktuellen Abschnitt). */
 export type RoutedPlan = Partial<Mission> & { patrol?: PatrolPlan; campaign?: CampaignPlan; homeRoute?: MissionRoute };
+// sightTurn (Aufklärung auf Sicht) steckt in Mission: Hin- und Rückweg enden bzw. beginnen am Wendepunkt.
 
 const lerp = (a: XY, b: XY, t: number) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
 const frac = (now: number, t0: number, t1: number) => Math.max(0, Math.min(1, (now - t0) / Math.max(1, t1 - t0)));
@@ -75,38 +76,42 @@ export function fleetPosition(m: { status: string; arriveAt: Date; returnAt: Dat
   const arrive = m.arriveAt.getTime();
   const travel = (plan.travelSeconds ?? 0) * 1000 || Math.max(1, arrive - (plan.departAtMs ?? arrive - 3600000));
   if (plan.patrol && m.status === "holding") return patrolAt(plan.patrol, nowMs);
+  // Aufklärung auf Sicht: Der Weg endet am Wendepunkt (gerade: Punkt; Route: km bis dorthin).
+  const turn = plan.sightTurn;
+  const end: XY = turn ? { x: turn.x, y: turn.y } : target;
+  const upTo = turn && plan.route && plan.route.hexes.length >= 2 ? turn.km : undefined;
   if (m.status === "outbound") {
     const c = plan.campaign;
     if (c && c.index > 0) {
       const from = hexCenterXY(c.legFrom.col, c.legFrom.row);
-      return leg(plan, from, target, frac(nowMs, c.legDepartMs, arrive));
+      return leg(plan, from, end, frac(nowMs, c.legDepartMs, arrive), false, upTo);
     }
     const depart = plan.departAtMs ?? arrive - travel;
     if (nowMs < depart) return null;
-    return leg(plan, origin, target, frac(nowMs, depart, arrive));
+    return leg(plan, origin, end, frac(nowMs, depart, arrive), false, upTo);
   }
   if (m.status !== "returning" || !m.returnAt) return null;
-  const end = m.returnAt.getTime();
+  const finish = m.returnAt.getTime();
   if (plan.recalledAtMs !== undefined && plan.departAtMs !== undefined) {
     // Rückruf auf der Hinfahrt: Heimfahrt ab dem Punkt des Rückrufs (mit Route: dasselbe Stück der Route zurück).
     const done = Math.max(0, Math.min(1, (plan.recalledAtMs - plan.departAtMs) / Math.max(1, arrive - plan.departAtMs)));
-    const f = frac(nowMs, plan.recalledAtMs, end);
-    if (plan.route && plan.route.hexes.length >= 2) return leg(plan, origin, target, f, true, plan.route.km * done);
-    const turn = lerp(origin, target, done);
-    return { at: lerp(turn, origin, f), from: turn, to: origin };
+    const f = frac(nowMs, plan.recalledAtMs, finish);
+    if (plan.route && plan.route.hexes.length >= 2) return leg(plan, origin, end, f, true, (upTo ?? plan.route.km) * done);
+    const back = lerp(origin, end, done);
+    return { at: lerp(back, origin, f), from: back, to: origin };
   }
   if (plan.patrol?.endAt && plan.patrol.endMs !== undefined) {
-    const f = frac(nowMs, plan.patrol.endMs, end);
+    const f = frac(nowMs, plan.patrol.endMs, finish);
     if (plan.patrol.homePath && plan.patrol.homePath.length >= 2) return alongPath(plan.patrol.homePath, f);
     return { at: lerp(plan.patrol.endAt, origin, f), from: plan.patrol.endAt, to: origin };
   }
-  // Kampagne nach dem ersten Ziel: Heimweg vom letzten Ziel (homeRoute vorwärts, ohne Route gerade).
+  // Kampagne nach dem ersten Ziel: Heimweg vom letzten Ziel bzw. Wendepunkt (homeRoute vorwärts, ohne Route gerade).
   if (plan.campaign && plan.campaign.index > 0) {
-    const f = frac(nowMs, end - travel, end);
+    const f = frac(nowMs, finish - travel, finish);
     if (plan.homeRoute && plan.homeRoute.hexes.length >= 2) { const p = routeAt(plan.homeRoute, f); return { at: { x: p.x, y: p.y }, from: p.from, to: p.to }; }
-    return { at: lerp(target, origin, f), from: target, to: origin };
+    return { at: lerp(end, origin, f), from: end, to: origin };
   }
-  return leg(plan, target, origin, frac(nowMs, end - travel, end), true);
+  return leg(plan, end, origin, frac(nowMs, finish - travel, finish), true, upTo);
 }
 
 /** Punkte der Runde einer Patrouille (Projektions-km). */

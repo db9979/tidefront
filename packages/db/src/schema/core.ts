@@ -62,6 +62,15 @@ export const nest = pgTable("nest", {
   row: integer("row").notNull(),
   level: integer("level").notNull(),
   defeatedAt: ts("defeated_at"),
+  /**
+   * Lebendige Nester (game-core nest-living.ts): Wurf der laufenden bzw. nächsten Besetzung ({ factor, defenses }; bei
+   * der Eroberung schon für die Wiederbesetzung gewürfelt, geheim bis dahin), Überlebende nach gewonnener Abwehr
+   * ({ units, defenses }) mit Zeitpunkt, Besetzung (Beutewachstum). null: alter Stand (Mitte, keine Schwächung).
+   */
+  roll: jsonb("roll"),
+  garrison: jsonb("garrison"),
+  garrisonAt: ts("garrison_at"),
+  lootAt: ts("loot_at"),
 }, (t) => [uniqueIndex("nest_field").on(t.col, t.row)]);
 
 export const mission = pgTable("mission", {

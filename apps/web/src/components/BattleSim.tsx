@@ -7,7 +7,9 @@ import { trpc, type Balance, type BaseData } from "../lib/trpc.ts";
 import { errorText, fmtNum, label } from "../lib/names.ts";
 import { fmtTime } from "../lib/time.ts";
 import { unitTone } from "../lib/info.ts";
-import { nestAsDefender, positive, raidAgainst, simulate, splitDefender, type Counts, type Range, type SimStats } from "../lib/sim.ts";
+import { nestDefenderOf, nestRangeRates } from "../lib/sim-nest.ts"; // Lebendige Nester
+import { nestProbeDefenders, type MapNestLagebild } from "../lib/nest-intel.ts";
+import { positive, raidAgainst, simulate, splitDefender, type Counts, type Range, type SimStats } from "../lib/sim.ts";
 import { Icon, IconTile } from "../icons.tsx";
 import { Bar, Button, ResChips, Stepper } from "../ui.tsx";
 import { SimHistogram } from "./SimHistogram.tsx";
@@ -75,7 +77,7 @@ function Outcome({ attacker, defender, balance, ownTitle, enemyTitle, weather }:
 }
 
 export type ProbeTarget =
-  | { kind: "nest"; level: number; empty: boolean }
+  | { kind: "nest"; level: number; empty: boolean; lagebild?: MapNestLagebild | null } // Lebendige Nester
   | { kind: "base"; col: number; row: number; name: string };
 
 /** Probekampf in der Missionsplanung: gewählter Verband gegen Nest-Besatzung oder letztes Lagebild. */
@@ -84,7 +86,7 @@ export function ProbeKampf({ balance, units, versorgungsmangel, modifiers, targe
   // Eigene Modifikatoren (Forschung, Veteranen) rechnen mit; das Ziel ohne (sein Stand ist unbekannt).
   const attacker = useMemo<AttackerInput>(() => ({ units: positive(units), versorgungsmangel, ...(modifiers ? { modifiers } : {}) }), [units, versorgungsmangel, modifiers]);
   const defender = useMemo<DefenderInput | null>(() => {
-    if (target.kind === "nest") return nestAsDefender(target.level, balance);
+    if (target.kind === "nest") return target.lagebild ? nestProbeDefenders(target.level, target.lagebild, Date.now(), balance)[0] : nestDefenderOf(target.level, "mid", balance);
     const s = scout.data;
     return s ? { units: s.units, defenses: s.defenses, resources: s.resources, protectedPerResource: s.protectedPerResource } : null;
   }, [target, scout.data, balance]);
@@ -108,9 +110,23 @@ export function ProbeKampf({ balance, units, versorgungsmangel, modifiers, targe
       {target.kind === "base" && scout.data && (
         <p className="text-xs text-ink2 mb-2">Lagebild vom {fmtTime(scout.data.atMs)}. Der Hafen kann sich seither verändert haben.</p>
       )}
-      {target.kind === "nest" && <p className="text-xs text-ink2 mb-2">Besatzung von Nest Stufe {target.level} laut Balance {balance.version}.</p>}
+      {target.kind === "nest" && target.lagebild && <p className="text-xs text-ink2 mb-2">Genau gegen das Lagebild vom {fmtTime(target.lagebild.atMs)} (Erholung und Beute hochgerechnet).</p>}
+      {target.kind === "nest" && !target.lagebild && <NestRangeLine level={target.level} attacker={attacker} balance={balance} onScout={onScout} />}
       <Outcome attacker={attacker} defender={defender} balance={balance} />
       <p className="text-xs text-ink2 mt-2">{NOTE}{versorgungsmangel ? " Dein Versorgungsmangel ist eingerechnet." : ""}</p>
+    </div>
+  );
+}
+
+/** Probekampf ohne Lagebild: Siegchance über die Spanne (ungünstigster Wurf … günstigster, im Mittel). */
+function NestRangeLine({ level, attacker, balance, onScout }: { level: number; attacker: AttackerInput; balance: Balance; onScout: () => void }) {
+  const r = useMemo(() => nestRangeRates(attacker, level, balance), [attacker, level, balance]);
+  if (!r || r.min === r.max) return <p className="text-xs text-ink2 mb-2">Besatzung von Nest Stufe {level} (fest).</p>;
+  return (
+    <div className="text-sm mb-2" data-testid="probe-spanne">
+      <p>Siegchance <strong>{pct(r.min)}–{pct(r.max)}</strong>, im Mittel <strong>{pct(r.mean)}</strong> <span className="text-xs text-ink2">(unterer Wert: ungünstigster Wurf)</span></p>
+      <p className="text-xs text-ink2">Ohne Lagebild ist nur die Spanne der Besatzung bekannt; unten die Rechnung gegen die Mitte. Mit Lagebild genauer –</p>
+      <Button kind="secondary" className="mt-1" onClick={onScout}>Aufklärung schicken</Button>
     </div>
   );
 }
@@ -155,17 +171,24 @@ export function FreeSim({ balance, base, preset }: { balance: Balance; base: Bas
   const [defPreset, setDefPreset] = useState<string>(preset ? "bericht" : nestLevels[0] ? `nest:${nestLevels[0]}` : "frei");
   const [def, setDef] = useState<Counts>(() => {
     if (fromReport) return fromReport.def;
-    const d = nestLevels[0] ? nestAsDefender(Number(nestLevels[0]), balance) : null;
+    const d = nestLevels[0] ? nestDefenderOf(Number(nestLevels[0]), "mid", balance) : null;
     return d ? { ...d.units, ...d.defenses } : {};
   });
-
+  // Lebendige Nester: Vorlagen „Mitte“, „ungünstig“ und „aus Lagebild“ (genaue Lagebilder der Karte).
+  const map = useQuery(trpc.world.map.queryOptions());
+  const known = (map.data?.nests ?? []).filter((n) => n.level !== null && !n.empty && n.lagebild);
+  const presetDefender = (v: string): DefenderInput | null => {
+    const [kind, a, b] = v.split(":");
+    if (kind === "nest") return nestDefenderOf(Number(a), b === "worst" ? "worst" : "mid", balance);
+    if (kind === "lagebild") { const n = known.find((x) => x.id === Number(a)); return n ? nestProbeDefenders(n.level!, n.lagebild, Date.now(), balance)[0] : null; }
+    return null;
+  };
   const pickDefender = (v: string) => {
     setDefPreset(v);
-    if (v.startsWith("nest:")) {
-      const d = nestAsDefender(Number(v.slice(5)), balance);
-      setDef(d ? { ...d.units, ...d.defenses } : {});
-    } else if (v === "hafen") setDef({ ...home, ...ownDef });
-    else if (v === "bericht" && fromReport) setDef(fromReport.def);
+    if (v === "bericht" && fromReport) { setDef(fromReport.def); return; }
+    const d = presetDefender(v);
+    if (d) setDef({ ...d.units, ...d.defenses });
+    else if (v === "hafen") setDef({ ...home, ...ownDef });
   };
   const pickAttacker = (m: AttMode) => {
     setAttMode(m);
@@ -184,7 +207,7 @@ export function FreeSim({ balance, base, preset }: { balance: Balance; base: Bas
     [attMode, att, split, balance, base.versorgungsmangel, base.modifiers, preset],
   );
   const defender = useMemo<DefenderInput>(() => {
-    const nest = defPreset.startsWith("nest:") ? nestAsDefender(Number(defPreset.slice(5)), balance) : null;
+    const nest = defPreset.startsWith("nest:") || defPreset.startsWith("lagebild:") ? presetDefender(defPreset) : null;
     if (nest) return { ...split, fixedLoot: nest.fixedLoot };
     if (defPreset === "bericht" && preset) return { ...preset.defender, ...split };
     if (defPreset === "hafen") return { ...split, resources: base.resources, protectedPerResource: base.bunkerProtection, versorgungsmangel: base.versorgungsmangel, modifiers: base.modifiers };
@@ -210,11 +233,13 @@ export function FreeSim({ balance, base, preset }: { balance: Balance; base: Bas
         <h3 className="font-serif text-lg mb-1 flex items-center gap-2"><Icon id="schild" size={24} /> Verteidiger</h3>
         <select className="h-11 w-full rounded-lg field px-2 text-sm mb-2" value={defPreset} onChange={(e) => pickDefender(e.target.value)}>
           {preset && <option value="bericht">Aus dem Bericht</option>}
-          {nestLevels.map((l) => <option key={l} value={`nest:${l}`}>Piratennest Stufe {l}</option>)}
+          {nestLevels.map((l) => <option key={l} value={`nest:${l}`}>Nest Stufe {l} (Mitte)</option>)}
+          {nestLevels.map((l) => <option key={`w${l}`} value={`nest:${l}:worst`}>Nest Stufe {l} ungünstig</option>)}
+          {known.map((n) => <option key={`l${n.id}`} value={`lagebild:${n.id}`}>Nest Stufe {n.level} aus Lagebild ({n.col}/{n.row})</option>)}
           <option value="hafen">Eigener Hafen (daheim)</option>
           <option value="frei">Frei</option>
         </select>
-        <CountEditor ids={defIds} counts={def} onChange={(c) => { setDef(c); if (defPreset === "hafen" || defPreset === "bericht" || defPreset.startsWith("nest:")) return; setDefPreset("frei"); }} balance={balance} />
+        <CountEditor ids={defIds} counts={def} onChange={(c) => { setDef(c); if (defPreset === "hafen" || defPreset === "bericht" || defPreset.startsWith("nest:") || defPreset.startsWith("lagebild:")) return; setDefPreset("frei"); }} balance={balance} />
       </section>
       <section className="rounded-xl bg-paper border border-rule p-3">
         <Outcome attacker={attacker} defender={defender} balance={balance} weather={preset?.weather} ownTitle={attMode === "kartell" ? "Verluste des Kartells" : "Verluste des Angreifers"} enemyTitle="Verluste des Verteidigers" />

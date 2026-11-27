@@ -6,6 +6,7 @@ import { intelAge, isNestRespawned, nestRespawnHours, protectionStatus, type Bas
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance } from "./context.ts";
 import { intelRules, partyOf, type Sight } from "./intel-sight.ts";
+import { nestLagebild, type NestRow } from "./nest-live.ts"; // Lebendige Nester
 
 export type IntelKind = "base" | "nest" | "field" | "wreck" | "fleet" | "post"; // post: Radarposten (Stufe 2)
 
@@ -74,7 +75,8 @@ export async function recordSightings(db: DbOrTx, owner: string, rows: SightingI
       .values(rows.slice(i, i + 200).map((r) => ({ owner, kind: r.kind, objectId: r.objectId, level: r.level, source: r.source, seenAt, data: r.data })))
       .onConflictDoUpdate({
         target: [tables.intelSighting.owner, tables.intelSighting.kind, tables.intelSighting.objectId],
-        set: { level: sql`excluded.level`, source: sql`excluded.source`, seenAt: sql`excluded.seen_at`, data: sql`excluded.data` },
+        // Lebendige Nester: eine neue Erkennung behält das gespeicherte Lagebild (data.lagebild, eigener Stand).
+        set: { level: sql`excluded.level`, source: sql`excluded.source`, seenAt: sql`excluded.seen_at`, data: sql`case when excluded.kind = 'nest' and not (excluded.data ? 'lagebild') and ${tables.intelSighting.data} ? 'lagebild' then excluded.data || jsonb_build_object('lagebild', ${tables.intelSighting.data}->'lagebild') else excluded.data end` },
         setWhere: sql`${tables.intelSighting.seenAt} <= excluded.seen_at`,
       });
   }
@@ -104,6 +106,12 @@ export function nestData(n: { level: number; defeatedAt: Date | null }, nowMs: n
   return { level: n.level, empty, respawnAtMs: n.defeatedAt ? n.defeatedAt.getTime() + nestRespawnHours(balance, n.level) * 3600000 : null };
 }
 
+/** Lagebild eines Nests: Stand und – besetzt – Wurf, Überlebende und Besetzung (lebendige Nester, nest-live.ts). */
+export function nestIntelData(n: NestRow, atMs: number) {
+  const lagebild = nestLagebild(n, atMs);
+  return { ...nestData(n, atMs), ...(lagebild ? { lagebild } : {}) };
+}
+
 /** Kampfberichte, aus denen der Verteidiger den Angreifer kennt (Stufe 2: Wissen des Verteidigers). */
 const BATTLE_KINDS = new Set(["ueberfall", "feld", "posten", "sammelangriff", "blockade_angriff", "abfangen"]);
 
@@ -128,7 +136,7 @@ export async function recordReportIntel(db: DbOrTx, v: { kind: string; attackerP
   }
   if (v.nestId !== null) {
     const [n] = await db.select().from(tables.nest).where(inArray(tables.nest.id, [v.nestId]));
-    if (n) rows.push({ kind: "nest", objectId: n.id, level: "lagebild", source, data: nestData(n, v.atMs) });
+    if (n) rows.push({ kind: "nest", objectId: n.id, level: "lagebild", source, data: nestIntelData(n, v.atMs) });
   }
   const fieldId = (v.report as { field?: { id?: number } } | null)?.field?.id;
   if (typeof fieldId === "number") {

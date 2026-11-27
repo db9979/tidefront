@@ -2,8 +2,8 @@
 // aktuellen Position, Warnring am Hafen. Die Position rechnet dieselbe Funktion wie der Server (game-core fleetPosition:
 // Route, Rückruf, Patrouillenrunde, Kampagne). Läuft gedrosselt im Ticker der Hexkarte (HexMap.tsx).
 import { Container, Graphics } from "pixi.js";
-import { hexCenterXY, routePointsXY } from "@tidefront/world";
-import { fleetPosition, patrolPoints, type MissionRoute, type PatrolPlan, type RoutedPlan } from "@tidefront/game-core";
+import { hexCenterXY, routePointsXY, routePrefixXY } from "@tidefront/world";
+import { fleetPosition, patrolPoints, type MissionRoute, type PatrolPlan, type RoutedPlan, type SightTurn } from "@tidefront/game-core";
 import { serverNow } from "../lib/time.ts";
 import { INK, SIEGEL, alertRing, planeSymbol, shipSymbol } from "./symbols.ts";
 import { sensorRing } from "./sensor-ring.ts";
@@ -33,6 +33,8 @@ export interface MapMission {
   homeRoute?: MissionRoute | null;
   recalledAtMs?: number | null;
   travelSeconds?: number | null;
+  /** Aufklärung auf Sicht: Wendepunkt (Projektions-km); der Verband fährt nur bis dorthin. */
+  sightTurn?: SightTurn | null;
 }
 
 /** Bordsicht: Reichweitenkreis, wandert mit dem Verband. */
@@ -56,6 +58,7 @@ function planOf(m: MapMission): RoutedPlan {
     departAtMs: m.departAtMs,
     ...(m.recalledAtMs != null ? { recalledAtMs: m.recalledAtMs } : {}),
     ...(m.travelSeconds != null ? { travelSeconds: m.travelSeconds } : {}),
+    ...(m.sightTurn ? { sightTurn: m.sightTurn } : {}),
     ...(m.route ? { route: m.route } : {}),
     ...(m.homeRoute ? { homeRoute: m.homeRoute } : {}),
     ...(p ? {
@@ -69,16 +72,22 @@ function planOf(m: MapMission): RoutedPlan {
   };
 }
 
-/** Gezeichneter Weg: Route (Seewege) oder gerade Linie; Kampagne nach dem ersten Ziel ab dem letzten Ziel. */
+/**
+ * Gezeichneter Weg: Route (Seewege) oder gerade Linie; Kampagne nach dem ersten Ziel ab dem letzten Ziel bzw.
+ * Wendepunkt. Aufklärung auf Sicht: nur bis zum Wendepunkt (Route: Teilstück).
+ */
 function pathOf(m: MapMission, plan: RoutedPlan, home: XY, tgt: XY): XY[] {
   const c = m.campaign;
+  const t = m.sightTurn;
+  const end = t ? { x: t.x, y: t.y } : tgt;
+  const routed = (r: MissionRoute) => (t ? [...routePrefixXY(r, t.km), end] : routePointsXY(r));
   if (m.status === "returning" && plan.patrol?.homePath && plan.patrol.homePath.length >= 2) return plan.patrol.homePath;
   if (m.status === "returning" && plan.patrol?.endAt) return [plan.patrol.endAt, home];
   if (c && c.index > 0) {
-    if (m.status === "returning") return m.homeRoute ? routePointsXY(m.homeRoute) : [tgt, home];
-    return m.route ? routePointsXY(m.route) : [hexCenterXY(c.legFrom.col, c.legFrom.row), tgt];
+    if (m.status === "returning") return m.homeRoute ? routePointsXY(m.homeRoute) : [end, home];
+    return m.route ? routed(m.route) : [hexCenterXY(c.legFrom.col, c.legFrom.row), end];
   }
-  return m.route && m.route.hexes.length >= 2 ? routePointsXY(m.route) : [home, tgt];
+  return m.route && m.route.hexes.length >= 2 ? routed(m.route) : [home, end];
 }
 
 function dashed(g: Graphics, a: XY, b: XY, dash: number): void {
@@ -144,6 +153,13 @@ export function drawMovers(s: Scene, live: { home?: { col: number; row: number }
       s.routes.stroke({ color, width: 1.8 / sc, alpha: 0.95 });
       s.routes.moveTo(tgt.x - 8 / sc, tgt.y).lineTo(tgt.x + 8 / sc, tgt.y).moveTo(tgt.x, tgt.y - 8 / sc).lineTo(tgt.x, tgt.y + 8 / sc);
       s.routes.stroke({ color, width: 1.2 / sc });
+      if (m.sightTurn) {
+        // Aufklärung auf Sicht: Wendepunkt (Ring) und Sichtlinie zum Ziel (fein gepunktet).
+        const t = m.sightTurn;
+        s.routes.circle(t.x, t.y, 5 / sc).stroke({ color, width: 1.6 / sc, alpha: 0.95 });
+        dashed(s.routes, t, tgt, 2 / sc);
+        s.routes.stroke({ color, width: 0.9 / sc, alpha: 0.6 });
+      }
       const key = m.id * 2 + (outbound ? 0 : 1);
       let ship = s.ships.get(key);
       if (!ship) {

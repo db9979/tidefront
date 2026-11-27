@@ -15,6 +15,7 @@ export function intelMissionInfo(plan: unknown): {
   homeRoute: { hexes: [number, number][]; km: number } | null;
   recalledAtMs: number | null;
   travelSeconds: number | null;
+  sightTurn: { x: number; y: number; km: number; col: number; row: number; rangeKm: number } | null;
 } {
   const rp = plan as RoutedPlan;
   const p = rp.patrol;
@@ -31,5 +32,6 @@ export function intelMissionInfo(plan: unknown): {
     homeRoute: rp.homeRoute ? { hexes: rp.homeRoute.hexes, km: rp.homeRoute.km } : null,
     recalledAtMs: rp.recalledAtMs ?? null,
     travelSeconds: rp.travelSeconds ?? null,
+    sightTurn: rp.sightTurn ?? null, // Aufklärung auf Sicht: Wendepunkt (Karte)
   };
 }

@@ -27,7 +27,8 @@ import { fleetPosition } from "./intel-route.ts";
 import { postsInSight } from "./intel-post-view.ts"; // Lagebild Stufe 2: Radarposten auf der Karte
 import { fleetMods, revealedJammers } from "./intel-counter.ts"; // Stufe 3: Gegenmittel
 import { satelliteView, stripCells } from "./intel-sat.ts"; // Stufe 3: Satelliten
-import { cachedWorld } from "./map-cache.ts"; // geteilte Weltdaten für world.map zwischenspeichern
+import { cachedWorld } from "./map-cache.ts";
+import { ensureNestRolls, lagebildExact, type NestLagebild } from "./nest-live.ts"; // Lebendige Nester // geteilte Weltdaten für world.map zwischenspeichern
 
 type XY = { x: number; y: number };
 export type FleetRelation = Relation | "kartell";
@@ -74,14 +75,21 @@ export async function sightingsIn(db: DbOrTx, playerId: number, sight: Sight, at
 type BaseIn = { id: number; name: string; col: number; row: number; playerId: number; owner: string; state: unknown };
 
 async function mapViewFrom(db: DbOrTx, playerId: number, nowMs: number, bases: BaseIn[], only?: Sight) {
-  const nests = await db.select().from(tables.nest);
+  let nests = await db.select().from(tables.nest);
+  if (await ensureNestRolls(db, nowMs, nests)) nests = await db.select().from(tables.nest); // Lebendige Nester: Wurf fehlt
   const wrecks = await db.select().from(tables.wreck);
   // Freund/Feind aus Sicht des Betrachters (nur eigene Allianz, eigene Pakte und Kriege).
   const relations = await relationsOf(db, playerId, nowMs);
   const fog = only ? true : await intelFogOn(db, nowMs);
   const ib = intelRules();
   const sight = only ?? (ib ? await sightOf(db, playerId, nowMs) : null);
-  const known = fog && sight && !only ? await knownFor(db, sight, nowMs, ["base", "nest", "wreck", "fleet"]) : new Map();
+  // Ohne Kartennebel zählt vom Wissen nur das Lagebild der Nester (Wurf und Besatzung bleiben geheim).
+  const known = sight && !only ? await knownFor(db, sight, nowMs, fog ? ["base", "nest", "wreck", "fleet"] : ["nest"]) : new Map();
+  // Lebendige Nester: genaues Lagebild (≤ staleHours, keine Wiederbesetzung seither), sonst null (Karte zeigt Spannen).
+  const lagebildOf = (n: (typeof nests)[number]): NestLagebild | null => {
+    const lb = knownGet(known, "nest", n.id)?.data.lagebild as NestLagebild | undefined;
+    return lagebildExact(lb, n, nowMs) ? lb! : null;
+  };
   const mates = new Set(sight?.members ?? [playerId]);
   const rows: SightingInput[] = [];
   // Häfen und Nester: nur Erkennung zeigt mehr als die Position (Sichtung, z. B. Radarsatellit oder Tarnnetz, nicht).
@@ -116,19 +124,20 @@ async function mapViewFrom(db: DbOrTx, playerId: number, nowMs: number, bases: B
   const outNests = nests.map((n) => {
     const data = nestData(n, nowMs);
     const pos = { id: n.id, col: n.col, row: n.row };
-    if (!fog) return { ...pos, ...data, known: true, intel: null as IntelTag | null };
+    const lagebild = lagebildOf(n);
+    if (!fog) return { ...pos, ...data, known: true, intel: null as IntelTag | null, lagebild };
     const lvl = seeObject(n.col, n.row);
     if (lvl) {
       const source = srcAt(n.col, n.row);
       rows.push({ kind: "nest", objectId: n.id, level: lvl, source, data });
-      return { ...pos, ...data, known: true, intel: live(nowMs, source, lvl) };
+      return { ...pos, ...data, known: true, intel: live(nowMs, source, lvl), lagebild };
     }
     const k = knownGet(known, "nest", n.id);
-    if (!k) return { ...pos, level: null, empty: null, respawnAtMs: null, known: false, intel: null };
+    if (!k) return { ...pos, level: null, empty: null, respawnAtMs: null, known: false, intel: null, lagebild: null };
     const d = k.data as ReturnType<typeof nestData>;
     // Bekannte Wiederkehr: nach Ablauf gilt das Nest als wieder besetzt (das weiß jeder, der die Zeit kennt).
     const empty = d.empty && (d.respawnAtMs === null || d.respawnAtMs > nowMs);
-    return { ...pos, level: d.level, empty, respawnAtMs: empty ? d.respawnAtMs : null, known: true, intel: { age: k.age, atMs: k.seenAtMs, source: k.source, level: k.level } as IntelTag };
+    return { ...pos, level: d.level, empty, respawnAtMs: empty ? d.respawnAtMs : null, known: true, intel: { age: k.age, atMs: k.seenAtMs, source: k.source, level: k.level } as IntelTag, lagebild };
   });
 
   const outWrecks: { id: number; col: number; row: number; stahl: number; elektronik: number; intel: IntelTag | null }[] = [];

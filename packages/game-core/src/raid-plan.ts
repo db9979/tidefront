@@ -3,7 +3,8 @@
 // Auftragsbuch (Vorschlag siegt gegen Nest Stufe 1).
 import { resolveBattle } from "./combat.ts";
 import { nestDefender } from "./pirates.ts";
-import type { AttackerInput, Balance, Counts } from "./types.ts";
+import { liveNestDefender, midRoll, nestVaries, rollFactors, sampleRolls, stateOf, worstRoll, type NestRoll } from "./nest-living.ts";
+import type { AttackerInput, Balance, Counts, DefenderInput } from "./types.ts";
 import type { Modifiers } from "./modifiers.ts";
 
 /** Zielsicherheit des Vorschlags (Anteil gewonnener Probekämpfe; 90 %, damit die Streuung des echten Kampfes den ersten Überfall nicht unter ~85 % drückt). */
@@ -19,17 +20,44 @@ export interface RaidPlanOpts {
   modifiers?: Modifiers;
   target?: number;
   runs?: number;
+  /**
+   * Lebendige Nester: Verteidiger statt der festen Stufe. Ein Eintrag = genaues Lagebild; mehrere = Probekampf über die
+   * Spanne (Lauf i gegen defenders[i mod n], je ein Seed). Fehlt es: Stufe wie im Handbuch (Mitte).
+   */
+  defenders?: DefenderInput[];
+}
+
+/** Verteidiger für den Probekampf: „range“ Würfe aus der Verteilung, „worst“/„best“ ungünstigster/günstigster Wurf, „mid“ Mitte. */
+export function nestDefenders(level: number, balance: Balance, mode: "range" | "worst" | "best" | "mid"): DefenderInput[] {
+  const of = (r: NestRoll) => liveNestDefender(level, stateOf(r), 0, balance);
+  if (mode === "worst") return [of(worstRoll(level, balance))];
+  if (mode === "mid") return [of(midRoll(level, balance))];
+  if (mode === "best") {
+    const mid = midRoll(level, balance);
+    const f = rollFactors(level, balance)[0];
+    return [of(nestVaries(level, balance) ? { factor: f, defenses: Object.fromEntries(Object.entries(mid.defenses).map(([id, n]) => [id, Math.max(0, n - 1)])) } : mid)];
+  }
+  return sampleRolls(level, balance).map(of);
+}
+
+/** Siegchance über die Spanne: ungünstigster Wurf, Mittel über die Verteilung, günstigster Wurf (null: unbekannt). */
+export function nestWinRange(units: Counts, level: number, balance: Balance, opts: RaidPlanOpts = {}): { min: number; mean: number; max: number } | null {
+  const min = nestWinRate(units, level, balance, { ...opts, defenders: nestDefenders(level, balance, "worst") });
+  const mean = nestWinRate(units, level, balance, { ...opts, defenders: nestDefenders(level, balance, "range") });
+  const max = nestWinRate(units, level, balance, { ...opts, defenders: nestDefenders(level, balance, "best") });
+  return min === null || mean === null || max === null ? null : { min, mean, max };
 }
 
 /** Siegquote eines Verbands gegen ein Nest der Stufe (null: Stufe oder Einheit unbekannt). */
 export function nestWinRate(units: Counts, level: number, balance: Balance, opts: RaidPlanOpts = {}): number | null {
   const d = nestDefender(level, balance);
   if (!d.ok) return null;
+  const defs = opts.defenders && opts.defenders.length > 0 ? opts.defenders : [d.defender];
   const runs = opts.runs ?? RAID_PLAN_RUNS;
   const att: AttackerInput = { units, ...(opts.versorgungsmangel ? { versorgungsmangel: true } : {}), ...(opts.modifiers ? { modifiers: opts.modifiers } : {}) };
   let wins = 0;
   for (let i = 0; i < runs; i++) {
-    const r = resolveBattle(att, d.defender, balance, raidPlanSeed(i));
+    const r = resolveBattle(att, defs[i % defs.length], balance, raidPlanSeed(i));
     if (!r.ok) return null;
     if (r.report.winner === "attacker") wins++;
   }

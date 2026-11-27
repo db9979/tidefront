@@ -15,7 +15,7 @@ import {
   forceHp,
   isNestRespawned,
   isWeakTarget,
-  nestDefender,
+  liveNestDefender,
   resolveBattle,
   settle,
   sharePercents,
@@ -28,6 +28,7 @@ import {
   type Modifiers,
   type ResourceMap,
 } from "@tidefront/game-core";
+import { nestConquered, nestDefended, nestState } from "./nest-live.ts"; // Lebendige Nester
 import { tables, type Tx } from "@tidefront/db";
 import { balance, type NoticeJob } from "./context.ts";
 import type { Handler, HandlerResult } from "./events.ts";
@@ -123,15 +124,15 @@ async function fightNest(tx: Tx, joint: ReturnType<typeof combineForces>, nestId
   if (nest.defeatedAt !== null && !isNestRespawned(nest.defeatedAt.getTime(), due, balance, nest.level)) {
     return { ...base, kind: "leer", title: `${name} ist verlassen`, report: null, loot: {}, extra: { nestLevel: nest.level } };
   }
-  const def = nestDefender(nest.level, balance);
-  if (!def.ok) throw new Error(def.code);
+  // Lebendige Nester: Kampf gegen die aktuelle Besatzung; Eroberung bzw. Schwächung wie beim Einzelüberfall.
+  const defender = liveNestDefender(nest.level, nestState(nest), due, balance);
   const seed = randomSeed();
-  const res = resolveBattle(joint, def.defender, balance, seed, battleWeather(nest.col, nest.row, due));
+  const res = resolveBattle(joint, defender, balance, seed, battleWeather(nest.col, nest.row, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
   if (res.report.winner === "attacker") {
-    await tx.update(tables.nest).set({ defeatedAt: new Date(due) }).where(eq(tables.nest.id, nest.id));
+    await nestConquered(tx, nest, due);
     notify.push([null, "map"]);
-  }
+  } else await nestDefended(tx, nest, res.report.defender.final, due);
   return { ...base, kind: "sammelangriff", title: `Sammelangriff auf ${name}`, report: res.report, loot: res.report.loot, extra: { seed } };
 }
 

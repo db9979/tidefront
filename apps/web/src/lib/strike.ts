@@ -1,5 +1,6 @@
 // Truppen → Einsatz: Rechenhilfen für den Kopf „Flotte daheim“ und die Karte „Lohnende Ziele“.
 // Reine Funktionen auf Basis- und Kartendaten, ohne Serveraufruf.
+import type { MapNestLagebild } from "./nest-intel.ts"; // Lebendige Nester
 import { hexDistanceKm } from "@tidefront/world";
 import type { Balance, BaseData, MapData } from "./trpc.ts";
 
@@ -105,14 +106,19 @@ export function travelMs(units: Counts, distanceKm: number, balance: Balance, mo
   return v && v > 0 ? (distanceKm / v) * 3600_000 : null;
 }
 
-export type NestInfo = { id: number; col: number; row: number; distanceKm: number; level: number | null; empty: boolean; respawnAtMs: number | null };
+export type NestInfo = {
+  id: number; col: number; row: number; distanceKm: number; level: number | null; empty: boolean; respawnAtMs: number | null;
+  /** Lebendige Nester: genaues Lagebild (null: nur Erkennung bzw. unbekannt) und Stand der Erkennung. */
+  lagebild?: MapNestLagebild | null;
+  intel?: { age: string; atMs: number; source: string; level: string } | null;
+};
 
 /**
  * Nächste Piratennester (nicht verlassen) ab dem Hafen. Die Stufe kann künftig fehlen (Kartennebel):
  * dann level = null – „Stufe unbekannt“.
  */
 export function nearestNests(map: MapData | undefined, base: { col: number; row: number }, count = 3): NestInfo[] {
-  const nests = (map?.nests ?? []) as unknown as { id: number; col: number; row: number; level?: number | null; empty?: boolean; respawnAtMs?: number | null }[];
+  const nests = (map?.nests ?? []) as unknown as { id: number; col: number; row: number; level?: number | null; empty?: boolean; respawnAtMs?: number | null; lagebild?: MapNestLagebild | null; intel?: NestInfo["intel"] }[];
   return nests
     .filter((n) => !n.empty)
     .map((n) => ({
@@ -121,6 +127,8 @@ export function nearestNests(map: MapData | undefined, base: { col: number; row:
       level: typeof n.level === "number" ? n.level : null,
       empty: !!n.empty,
       respawnAtMs: n.respawnAtMs ?? null,
+      lagebild: n.lagebild ?? null,
+      intel: n.intel ?? null,
     }))
     .sort((a, b) => a.distanceKm - b.distanceKm)
     .slice(0, count);

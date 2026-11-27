@@ -5,7 +5,9 @@
 import { and, desc, eq, gt, inArray, ne } from "drizzle-orm";
 import {
   fleetTotals,
-  nestDefender,
+  liveNestDefender,
+  nestDefenders,
+  nestVaries,
   resolveBattle,
   trainingCost,
   type AttackerInput,
@@ -16,6 +18,7 @@ import {
   type ScoutReport,
 } from "@tidefront/game-core";
 import { hexDistanceKm, neighbors, terrainAt } from "@tidefront/world";
+import type { NestLagebild } from "./nest-live.ts"; // Lebendige Nester
 import { tables } from "@tidefront/db";
 import { balance, type Engine } from "./context.ts";
 import { bountyByPlayer, rankSnapshot, snapshotEntry } from "./pvp.ts"; // PvP: Freibeuter bevorzugt Kopfgeld-Ziele
@@ -130,6 +133,12 @@ async function tryLaunch(c: TurnCtx, input: LaunchInput, text: string): Promise<
   return r.ok;
 }
 
+/** Lebendige Nester: Verteidiger, gegen den die KI probt – genaues Lagebild (hochgerechnet), sonst ungünstigster Wurf. */
+export function botNestDefender(n: { level: number; lagebild?: NestLagebild | null }, nowMs: number): DefenderInput {
+  const lb = n.lagebild;
+  return lb ? liveNestDefender(n.level, { roll: lb.roll, garrison: lb.garrison, garrisonAtMs: lb.garrisonAtMs, lootAtMs: lb.lootAtMs }, nowMs, balance) : nestDefenders(n.level, balance, "worst")[0];
+}
+
 /** Überfall auf ein Piratennest, wenn der Verband es sicher schafft. */
 export async function raidNest(c: TurnCtx, base: BaseRow & { state: BaseState }, mods: Modifiers): Promise<boolean> {
   if (!c.cfg.attackNests || c.cfg.probeRuns <= 0) return false;
@@ -143,23 +152,31 @@ export async function raidNest(c: TurnCtx, base: BaseRow & { state: BaseState },
     .map((n) => ({ ...n, d: hexDistanceKm(base, n) }))
     .filter((n) => n.d <= MAX_RANGE_KM)
     .sort((a, b) => b.level - a.level || a.d - b.d);
-  // Probekampf je Stufe nur einmal (gleicher Verband): Mit viel Wissen (Satellit, Stufe 3) stehen oben viele starke
-  // Nester; früher endete die Liste nach 12 Einträgen, bevor eine schaffbare Stufe kam.
-  const fits = new Map<number, boolean>();
+  // Lebendige Nester: Probekampf je Nest – mit genauem Lagebild gegen die hochgerechnete Besatzung, sonst gegen den
+  // ungünstigsten Wurf (die KI soll nicht „Glück haben“); ohne Lagebild je Stufe nur einmal. Höchstens botMaxNests
+  // Probekämpfe je Zug (Pi-Last), danach höchstens 6 Startversuche.
+  const fits = new Map<string, boolean>();
+  const maxProbes = balance.pirates.living?.botMaxNests ?? 6;
+  let probes = 0;
   let tries = 0;
   for (const n of nests) {
-    if (!fits.has(n.level)) {
-      const d = nestDefender(n.level, balance);
-      const p = d.ok ? probe({ units: force, modifiers: mods }, d.defender, c.cfg.probeRuns) : null;
-      fits.set(n.level, !!p && p.winRate >= c.cfg.probeWinRate && p.lootValue >= 0.8 * p.lossValue);
+    const lb = n.lagebild;
+    const k = lb ? `n${n.id}` : `l${n.level}`;
+    if (!fits.has(k)) {
+      if (probes >= maxProbes) break;
+      probes++;
+      const p = probe({ units: force, modifiers: mods }, botNestDefender(n, c.nowMs), c.cfg.probeRuns);
+      fits.set(k, p.winRate >= c.cfg.probeWinRate && p.lootValue >= 0.8 * p.lossValue);
     }
-    if (!fits.get(n.level)) continue;
+    if (!fits.get(k)) continue;
     if (++tries > 6) break;
     if (await tryLaunch(c, { type: "ueberfall", units: force, col: n.col, row: n.row, baseId: base.id }, `Überfall auf Piratennest Stufe ${n.level} (${Math.round(n.d)} km).`)) return true;
   }
   // Lagebild: unbekannte Nester in Reichweite aufklären (Kampagne; Freibeuter laufend, Festung mit Pause), danach entscheidet der Probekampf.
   if (!scoutsUnknown(c, "nest")) return false;
-  const unknown = map.nests.filter((n) => !n.known).map((n) => ({ key: `n${n.id}`, col: n.col, row: n.row, label: `Piratennest ${n.col}/${n.row}` }));
+  // Lebendige Nester: Freibeuter und Festung klären auch erkannte Nester ohne genaues Lagebild auf (Händler nicht).
+  const unknown = map.nests.filter((n) => !n.known || (c.bot.profile !== "haendler" && n.level !== null && n.empty === false && !n.lagebild && nestVaries(n.level, balance) && n.level <= (c.cfg.nestMaxLevel ?? Infinity)))
+    .map((n) => ({ key: `n${n.id}`, col: n.col, row: n.row, label: `Piratennest ${n.col}/${n.row}` }));
   return scoutNearest(c, base, unknown, MAX_RANGE_KM);
 }
 
