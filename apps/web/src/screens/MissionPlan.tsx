@@ -6,6 +6,7 @@ import { errorText, fmtNum, label } from "../lib/names.ts";
 import { Icon, IconTile } from "../icons.tsx";
 import { unitTone } from "../lib/info.ts";
 import { fmtSeconds, fmtTime } from "../lib/time.ts";
+import { useLiveBase } from "../lib/live-base.ts";
 import type { Target } from "../App.tsx";
 import { HexMap } from "./LazyHexMap.tsx";
 import { ActionBar, BackButton, Button, Card, ErrorLine, Loading, Stepper, SmallButton } from "../ui.tsx";
@@ -123,10 +124,12 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   const naval = target?.blockadeId ? { blockadeId: target.blockadeId } : target?.convoyId ? { convoyId: target.convoyId } : type === "blockade" ? { holdHours } : target?.fieldId ? { fieldId: target.fieldId, ...(type === "besetzen" ? { stayAll } : {}) } : {}; // See, Felder
   const input = target ? { type, units: chosen, col: target.col, row: target.row, cargo: cargoSent, ...(target.eventId ? { eventId: target.eventId } : {}), ...(admiralId ? { admiralId } : {}), ...naval } : null;
   const event = target?.eventId ? worldEvents.data?.events.find((e) => e.id === target.eventId) : undefined;
+  const stock = useLiveBase(base).resources; // Ladung: Bestand live hochgerechnet
   const preview = useQuery({
     ...trpc.mission.preview.queryOptions(input ?? { type, units: {}, col: 0, row: 0 }),
     enabled: !!input && Object.keys(chosen).length > 0 && type !== "spionage",
     placeholderData: keepPreviousData,
+    refetchInterval: 60_000, // Ankunft/Rückkehr (Uhrzeit) und Wetter bleiben aktuell, solange die Planung offen ist
   });
 
   if (!meta.data || !map.data) return <Loading cards={3} />;
@@ -243,8 +246,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         <Card title="Ladung">
           {balance.resources.map((r) => (
             <div key={r} className="py-1 flex items-center justify-between gap-2">
-              <span className="flex items-center gap-1 min-w-0 flex-1"><Icon id={r} size={20} /><span className="min-w-0 break-words leading-tight">{label(r)} <span className="text-xs text-slate-400 whitespace-nowrap">({fmtNum(base.resources[r] ?? 0)})</span></span></span>
-              <Stepper value={cargo[r] ?? 0} max={Math.floor(base.resources[r] ?? 0)} onChange={(v) => setCargo({ ...cargo, [r]: v })} />
+              <span className="flex items-center gap-1 min-w-0 flex-1"><Icon id={r} size={20} /><span className="min-w-0 break-words leading-tight">{label(r)} <span className="text-xs text-slate-400 whitespace-nowrap">({fmtNum(stock[r] ?? 0)})</span></span></span>
+              <Stepper value={cargo[r] ?? 0} max={Math.floor(stock[r] ?? 0)} onChange={(v) => setCargo({ ...cargo, [r]: v })} />
             </div>
           ))}
         </Card>

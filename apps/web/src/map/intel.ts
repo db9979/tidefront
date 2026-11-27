@@ -11,6 +11,7 @@ import { liveLevelAt, type SensorCircle, type SensorKind } from "@tidefront/game
 import { hexPoints } from "./terrain.ts";
 import { INK, PAPER, RELATION_COLOR, SEE, SIEGEL, type Relation } from "./symbols.ts";
 import { sensorRing } from "./sensor-ring.ts";
+import { fmtAt } from "../lib/time.ts";
 
 /**
  * Lagebild-Schicht; rescale zeichnet die Reichweitenkreise für die aktuelle Zoomstufe, moving spart den Nebel um die
@@ -64,7 +65,7 @@ function dashedV(g: Graphics, x: number, dash: number, gap: number): void {
   for (let y = MAP_TOP; y < MAP_BOTTOM; y += dash + gap) g.moveTo(x, y).lineTo(x, Math.min(MAP_BOTTOM, y + dash));
 }
 
-const clock = (ms: number) => new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+const clock = (ms: number) => fmtAt(ms); // einheitlich: „18:00“, „morgen 06:00“
 
 /**
  * Nebel und Sensorgrenzen in Weltkoordinaten (einmal je Datenstand gezeichnet). `followed`: Missionen, deren eigene

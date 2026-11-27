@@ -5,7 +5,7 @@ import { hexAtXY, hexDistanceKm } from "@tidefront/world";
 import { trpc, trpcClient, type BaseData, type Outputs } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { errorText, fmtNum, label } from "../lib/names.ts";
-import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
+import { fmtDuration, fmtTime, useCountdownNow, useNow } from "../lib/time.ts";
 import { Button, Card, CountsLine, ErrorLine, Stepper, SmallButton } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 import type { Target } from "../App.tsx";
@@ -29,12 +29,13 @@ const resLine = (m: Counts | null | undefined) => {
 export function BlockadeBanner() {
   const q = useNaval();
   const b = q.data?.ownBlockade;
-  if (!b) return null;
+  const now = useCountdownNow(b?.endsAtMs);
+  if (!b || b.endsAtMs <= now) return null; // abgelaufen: ausblenden, bis die nächste Abfrage kommt
   return (
     <div className="rounded-[3px] bg-card border border-siegel border-l-4 p-3 mb-3 flex gap-3 items-start" role="status">
       <Icon id="blockade" size={40} />
       <div className="text-sm">
-        <div className="font-display uppercase text-siegel text-[12px] tracking-wider">Hafen blockiert bis {fmtTime(b.endsAtMs)}</div>
+        <div className="font-display uppercase text-siegel text-[12px] tracking-wider">Hafen blockiert bis {fmtTime(b.endsAtMs)} · noch {fmtDuration(b.endsAtMs - now)}</div>
         <p className="text-ink2">Produktion −{Math.round((1 - b.factor) * 100)} %, eingehende Lieferungen werden zurückgehalten, Börsenverkäufe gesperrt. Greife den Blockadeverband über die Karte an – Verbündete können helfen.</p>
       </div>
     </div>
@@ -179,11 +180,12 @@ export function LiftBlockade({ missionId }: { missionId: number }) {
   const q = useNaval();
   const lift = useCommand((i: { key: string; blockadeId: number }) => trpcClient.naval.liftBlockade.mutate(i), () => [trpc.base.pathFilter().queryKey, trpc.naval.pathFilter().queryKey]);
   const b = q.data?.blockades.find((x) => x.role === "own");
+  const now = useNow();
   void missionId;
   if (!b) return null;
   return (
     <div className="mt-1">
-      <span className="text-xs text-ink2 block">Hält die Blockade vor {b.targetName} noch {fmtDuration(b.endsAtMs - Date.now())}.</span>
+      <span className="text-xs text-ink2 block">Hält die Blockade vor {b.targetName} noch {fmtDuration(b.endsAtMs - now)}.</span>
       <Button kind="secondary" disabled={lift.busy} onClick={() => void lift.run({ blockadeId: b.id })}>Blockade aufheben</Button>
       <ErrorLine text={lift.error} code={lift.code} />
     </div>

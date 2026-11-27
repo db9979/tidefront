@@ -113,10 +113,10 @@ export const WORLD: RemedyTable = {
   },
 
   // Schutz und Einstellungen
-  shield_cooldown: ({ base, balance }) => {
+  shield_cooldown: ({ base, balance, now }) => {
     const p = base?.protection as { nightShieldChangedAtMs?: number } | undefined;
     const at = p?.nightShieldChangedAtMs !== undefined && balance ? p.nightShieldChangedAtMs + balance.protection.nightShieldChangeHours * 3_600_000 : null;
-    return { hint: `Der Nachtschild lässt sich nur einmal je ${balance?.protection.nightShieldChangeHours ?? 24} Stunden umstellen.${at && at > Date.now() ? ` Wieder ab ${fmtTime(at)}.` : ""}` };
+    return { hint: `Der Nachtschild lässt sich nur einmal je ${balance?.protection.nightShieldChangeHours ?? 24} Stunden umstellen.${at && at > now ? ` Wieder ab ${fmtTime(at)}.` : ""}` };
   },
 
   // Aufträge, Tagesbefehle, Erfolge

@@ -49,7 +49,7 @@ export function IntelOpsPlan({ op, base, map, initial, onSent }: {
     : op === "postenangriff" ? { op, units: chosen, postId: initial?.postId ?? 0 }
     : { op, units: chosen, col: points[0]?.col, row: points[0]?.row };
   const ready = Object.keys(chosen).length > 0 && (op === "postenangriff" ? !!initial?.postId : points.length > 0);
-  const preview = useQuery({ ...trpc.intel.preview.queryOptions(input), enabled: ready, placeholderData: keepPreviousData });
+  const preview = useQuery({ ...trpc.intel.preview.queryOptions(input), enabled: ready, placeholderData: keepPreviousData, refetchInterval: 60_000 }); // Ankunftszeit aktuell
   const launch = useCommand((i: typeof input & { key: string }) => trpcClient.intel.launch.mutate(i), () => [trpc.base.pathFilter().queryKey, trpc.world.map.pathFilter().queryKey]);
   if (!meta.data) return null;
   const balance = meta.data.balance;

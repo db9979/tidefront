@@ -6,7 +6,7 @@
 import { Container, Graphics, Text } from "pixi.js";
 import { hexCenterXY, routePointsXY } from "@tidefront/world";
 import { convoyXY, type MapConvoy } from "../lib/convoy.ts";
-import { serverNow } from "../lib/time.ts";
+import { fmtDuration, serverNow } from "../lib/time.ts";
 import { INK, PAPER, SIEGEL, SEE } from "./symbols.ts";
 
 export interface MapNaval {
@@ -81,9 +81,9 @@ function dashedLine(g: Graphics, pts: { x: number; y: number }[], dash: number):
   }
 }
 
+/** Restzeit im einheitlichen Format (lib/time.ts); das Kartenbild wird minütlich neu gebaut (HexMap). */
 function hours(ms: number): string {
-  const h = Math.max(0, ms) / 3600000;
-  return h >= 1 ? `${Math.floor(h)} h` : `${Math.max(1, Math.round(h * 60))} min`;
+  return fmtDuration(Math.max(1000, ms));
 }
 
 export function buildNavalLayer(n: MapNaval, now: number): { root: Container; pinned: { obj: Container; min?: number }[] } {

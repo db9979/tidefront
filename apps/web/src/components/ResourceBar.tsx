@@ -2,6 +2,8 @@ import type { BaseData } from "../lib/trpc.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { RES_ORDER, liveAmount } from "../lib/live.res.ts";
 import { useState } from "react";
+import { useNow } from "../lib/time.ts";
+import { liveStoredAt } from "../lib/live-base.ts";
 import { Icon } from "../icons.tsx";
 import { ResourceSheet } from "./ResourceSheet.tsx";
 import { HarborSwitcher } from "./HarborSwitcher.tsx";
@@ -23,10 +25,10 @@ const sum = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a +
  * Ausgeglichen (Kraftwerk regelt nach, Bilanz 0) steht „gedeckt“; ohne Speicher zeigt die zweite Zeile die
  * Kraftwerk-Auslastung statt eines Strichs.
  */
-function PowerField({ base, onOpen }: { base: BaseData; onOpen: () => void }) {
+function PowerField({ base, now, onOpen }: { base: BaseData; now: number; onOpen: () => void }) {
   const g = base.grid;
   const bal = Math.round(sum(g.now.supply) - sum(g.now.demand));
-  const fill = g.now.capacity > 0 ? Math.min(1, g.now.stored / g.now.capacity) : 0;
+  const fill = g.now.capacity > 0 ? Math.min(1, liveStoredAt(base, now) / g.now.capacity) : 0; // Speicher live
   const warn = g.warning;
   const sign = bal > 0 ? "+" : bal < 0 ? "−" : "±";
   const demand = Math.round(sum(g.now.demand));
@@ -58,9 +60,10 @@ function PowerField({ base, onOpen }: { base: BaseData; onOpen: () => void }) {
 }
 
 /** Kopfleiste: Hafenwahl (ab zwei Häfen), Papierstreifen mit vier Ressourcen (Stich, Bestand, Rate, Füllstand), Stromfeld und Menü. */
-export function ResourceBar({ base, asOf, now, onMenu, onSwitchBase, onPlanFounding, onPower }: { base: BaseData; asOf: number; now: number; onMenu: (item: MenuItem) => void; onSwitchBase: (id: number) => void; onPlanFounding: () => void; onPower: () => void }) {
+export function ResourceBar({ base, asOf, onMenu, onSwitchBase, onPlanFounding, onPower }: { base: BaseData; asOf: number; onMenu: (item: MenuItem) => void; onSwitchBase: (id: number) => void; onPlanFounding: () => void; onPower: () => void }) {
   const [open, setOpen] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
+  const now = useNow(); // gemeinsame Uhr: Bestände sekündlich hochgerechnet
   return (
     <header className="sticky top-0 z-30 bg-paper border-b-[3px] border-double border-ink" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       <HarborSwitcher base={base} now={now} onSwitch={onSwitchBase} onPlanFounding={onPlanFounding} />
@@ -85,7 +88,7 @@ export function ResourceBar({ base, asOf, now, onMenu, onSwitchBase, onPlanFound
             </button>
           );
         })}
-        <PowerField base={base} onOpen={onPower} />
+        <PowerField base={base} now={now} onOpen={onPower} />
         <button type="button" onClick={() => setMenu(true)} aria-haspopup="dialog" aria-expanded={menu}
           className="tap shrink-0 rounded-lg border border-ink text-ink flex flex-col items-center justify-center gap-[3px] px-1">
           <span aria-hidden className="flex flex-col gap-[3px] w-4">{[0, 1, 2].map((i) => <span key={i} className="block h-[2px] bg-ink rounded-full" />)}</span>

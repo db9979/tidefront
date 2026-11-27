@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { trpc, type BaseData } from "../lib/trpc.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { isThreat, TRANSFER } from "../lib/expansion.ts"; // Mehrere Häfen
-import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
+import { fmtAt, fmtDuration, useNow } from "../lib/time.ts";
 import { Icon } from "../icons.tsx";
 import { Card, SmallButton } from "../ui.tsx";
 
@@ -78,7 +78,7 @@ export function Timeline({ base, limit = SHOWN }: { base: BaseData; limit?: numb
               <span className={`flex-1 min-w-0 text-sm truncate ${i.alert ? "text-siegel font-semibold" : ""}`}>{i.text}</span>
               <span className="text-right leading-tight">
                 <span className={`block mono text-[13px] ${i.alert ? "text-siegel" : ""}`}>{i.atMs <= now ? "jetzt" : fmtDuration(i.atMs - now)}</span>
-                <span className="block mono text-[11px] text-ink2">{fmtTime(i.atMs)}</span>
+                <span className="block mono text-[11px] text-ink2">{fmtAt(i.atMs, now)}</span>
               </span>
             </li>
           ))}

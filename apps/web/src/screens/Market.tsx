@@ -12,6 +12,7 @@ import { trpc, type BaseData } from "../lib/trpc.ts";
 import { label } from "../lib/names.ts";
 import { Icon } from "../icons.tsx";
 import { fmtDuration, useNow } from "../lib/time.ts";
+import { liveBaseAt } from "../lib/live-base.ts"; // Bestand live hochgerechnet
 import { Card, Loading, SegmentPanel, Segments, useSegment } from "../ui.tsx";
 import { WhatHelps } from "../components/Remedy.tsx";
 import { PlayerTrade } from "../components/PlayerTrade.tsx";
@@ -100,7 +101,7 @@ export function MarketScreen({ base, initialResource, initialOrder }: { base: Ba
         <Card id="tf-order" title={<><Icon id="credits" size={18} /> Order {label(sel.id)}</>} right={<span className="text-[11px] text-ink2">Gebühr {cfg.fee * 100} %</span>}>
           {unlocked ? (
             <OrderTicket r={sel} cfg={cfg} nowMs={now}
-              ctx={{ credits, creditLimit: base.market.creditLimit, stock: base.resources[sel.id] ?? 0, port, travelMs, siege, attack }} base={base}
+              ctx={{ credits, creditLimit: base.market.creditLimit, stock: liveBaseAt(base, now).resources[sel.id] ?? 0, port, travelMs, siege, attack }} base={base}
               initial={initialOrder && sel.id === initialResource ? initialOrder : undefined} />
           ) : (
             <div className="flex gap-3 items-center rounded-lg border border-dashed border-ink/50 bg-inset p-3" role="status">

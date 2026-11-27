@@ -3,7 +3,7 @@ import { useViewScroll } from "./lib/view-scroll.ts";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc.ts";
 import { useLive } from "./lib/live.ts";
-import { useNow } from "./lib/time.ts";
+import { useDueRefresh } from "./lib/due.ts"; // Bau fertig, Mission angekommen: Daten nachholen
 import { ActionBarHost, Loading, openCard } from "./ui.tsx";
 import { Icon } from "./icons.tsx";
 // Anmeldung und Hafenwahl nur bei Bedarf laden: angemeldete Spieler mit Hafen brauchen sie nicht.
@@ -110,7 +110,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const claimable = (daily.data?.claimable ?? 0) + (guide.data?.claimable ?? 0);
   const lageBadge = useLageBadge(hasBase, claimable);
   useLive(loggedIn);
-  const now = useNow();
+  useDueRefresh(base.data?.base ?? null);
   // Ziel aus einer Benachrichtigung (?tab=…, ?view=…) beim Start und per Nachricht vom Service Worker.
   const [opened] = useState<OpenTarget>(() => parseOpenUrl(location.href));
   const [tab, setTab] = useState<Tab>(opened.tab ?? "basis");
@@ -306,7 +306,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
     <NavContext.Provider value={{ go: navTo, base: b, here }}>
     {/* Desktop ab 1024 px: breiter (max-w-3xl), die Karte volle Breite; mobil bleibt alles wie gehabt. */}
     <div className={`h-full flex flex-col w-full max-w-xl mx-auto ${fullBleed ? "lg:max-w-none" : "lg:max-w-3xl"}`}>
-      <ResourceBar base={b} asOf={base.data.serverNow} now={now} onSwitchBase={switchBase} onPlanFounding={() => go("karte")} onPower={() => { setSheet(null); go("basis"); openCard("basis-versorgung", "versorgung"); }} onMenu={(i) => {
+      <ResourceBar base={b} asOf={base.data.serverNow} onSwitchBase={switchBase} onPlanFounding={() => go("karte")} onPower={() => { setSheet(null); go("basis"); openCard("basis-versorgung", "versorgung"); }} onMenu={(i) => {
         if (i === "logout") { void logout(); return; }
         setPlan(null); setResearch(false);
         setHelpView(i === "handbuch" ? null : i);
