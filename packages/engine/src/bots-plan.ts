@@ -9,6 +9,7 @@ import {
   plannedLevel,
   productionRates,
   researchCost,
+  satelliteOf,
   startResearch,
   startTraining,
   startUpgrade,
@@ -321,8 +322,14 @@ export function chooseResearch(c: PlanCtx): string | null {
   // Forschung nur bis zu ihrem Anteil am Gebäudewert, sonst fehlt das Geld für den Ausbau.
   let spent = 0;
   for (const [tech, lvl] of Object.entries(s.research?.levels ?? {})) for (let l = 0; l < lvl; l++) spent += value(researchCost(tech, l, balance));
-  if (spent > c.cfg.researchShare * buildingsValue(s)) return null;
-  for (const tech of RESEARCH[c.profile]) {
+  // Lagebild Stufe 3: steht die Startrampe, kommen die Satelliten-Techniken (aus balance.intel) zuerst, mit doppeltem
+  // Forschungsanteil – sonst stiegen erst die früheren Techniken weiter, und kein Bot startete je einen Satelliten.
+  const sat = satelliteOf(balance.intel);
+  const space = sat && c.profile !== "haendler" && (s.buildings[sat.launchpad] ?? 0) >= 1
+    ? Object.values(sat.types).map((t) => t.tech).filter((t) => balance.research?.techs[t] && (s.research?.levels?.[t] ?? 0) < 1)
+    : [];
+  if (spent > c.cfg.researchShare * (space.length > 0 ? 2 : 1) * buildingsValue(s)) return null;
+  for (const tech of [...space, ...RESEARCH[c.profile]]) {
     const r = startResearch(s, tech, c.nowMs, balance, c.mods, 1);
     if (r.ok) return tech;
     if (r.code === "insufficient_resources") return null;
