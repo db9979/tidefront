@@ -117,7 +117,7 @@ async function fightNest(tx: Tx, joint: ReturnType<typeof combineForces>, nestId
   const [nest] = await tx.select().from(tables.nest).where(eq(tables.nest.id, nestId)).for("update");
   const name = `Piratennest Stufe ${nest.level}`;
   const base = { defenderPlayerId: null, defenderBaseId: null, nestId: nest.id, defenderName: "Freibeuter-Kartell" };
-  if (nest.defeatedAt !== null && !isNestRespawned(nest.defeatedAt.getTime(), due, balance)) {
+  if (nest.defeatedAt !== null && !isNestRespawned(nest.defeatedAt.getTime(), due, balance, nest.level)) {
     return { ...base, kind: "leer", title: `${name} ist verlassen`, report: null, loot: {}, extra: { nestLevel: nest.level } };
   }
   const def = nestDefender(nest.level, balance);

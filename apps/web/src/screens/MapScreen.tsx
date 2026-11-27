@@ -27,7 +27,7 @@ const RELATION_TEXT: Record<string, string> = {
   krieg: "Kriegsgegner",
   neutral: "Neutral",
 };
-const LEVEL_TEXT =["", "schwach besetzt", "kleine Bande", "befestigt", "Festung", "Hauptquartier"];
+const LEVEL_TEXT =["", "schwach besetzt", "kleine Bande", "befestigt", "Festung", "Hauptquartier", "Inselfestung – Spätspiel"];
 
 export function MapScreen({ base, focus, onPlan, onSwitchBase }: { base: BaseData; focus: Target | null; onPlan: (t: Target) => void; onSwitchBase: (id: number) => void }) {
   const map = useQuery({ ...trpc.world.map.queryOptions(), refetchInterval: 60000 });
@@ -178,11 +178,12 @@ export function MapScreen({ base, focus, onPlan, onSwitchBase }: { base: BaseDat
                     <div className="text-xs text-slate-300 mt-0.5">
                       <div>
                         Besatzung:{" "}
-                        {Object.entries(garrison).filter(([k, v]) => k !== "loot" && typeof v === "number" && v > 0).map(([k, v]) => `${fmtNum(v as number)} ${countLabel(k, v as number)}`).join(", ")}
+                        {Object.entries(garrison).filter(([k, v]) => k !== "loot" && k !== "respawnHours" && typeof v === "number" && v > 0).map(([k, v]) => `${fmtNum(v as number)} ${countLabel(k, v as number)}`).join(", ")}
                       </div>
                       <div className="text-emerald-300">
                         Beute: {Object.entries(garrison.loot as Record<string, number>).map(([r, v]) => `${fmtNum(v)} ${label(r)}`).join(", ")}
                       </div>
+                      {typeof garrison.respawnHours === "number" && <div>Nach einem Sieg erst nach {garrison.respawnHours} Stunden wieder besetzt.</div>}
                     </div>
                   ) : null}
                 </div>

@@ -32,6 +32,7 @@ import { runRaidSim } from "./raids.ts"; // v1.13: Bunkerlinie, Flotte daheim
 import { runVeteranSim } from "./veterans.ts"; // v1.13: Veteranen über eine Saison
 import { runUbootNpcSim } from "./uboot-npc.ts"; // v1.13: U-Jagd für Kartell und Nester?
 import { runSeason42Sim } from "./season42.ts"; // Saison 42 Tage: Stillstand, KZ 9, Felder, Weltereignisse
+import { runNest6Sim } from "./nest6.ts"; // v1.15: Nest Stufe 6 (Spätspiel, 42-Tage-Saison)
 
 const balance = JSON.parse(
   readFileSync(new URL("../../balance/v1/balance.json", import.meta.url), "utf8"),
@@ -280,6 +281,7 @@ runRaidSim(balance, snaps);
 runVeteranSim(balance, 42); // Saison 42 Tage (SEASON_DAYS)
 runSeason42Sim(balance);
 runUbootNpcSim(balance);
+runNest6Sim(balance); // v1.15: Nest Stufe 6
 
 /** Der Bot schickt alles, was daheim steht (die Doktrin hält ihn innerhalb der Kommandopunkte). */
 function sentFleet(s: BotSnapshot): Counts {

@@ -256,7 +256,7 @@ const missionArrive: Handler = async (tx, ev, due) => {
     }
   } else if (m.targetKind === "nest") {
     const [nest] = await tx.select().from(tables.nest).where(eq(tables.nest.id, m.targetId!)).for("update");
-    const empty = nest.defeatedAt !== null && !isNestRespawned(nest.defeatedAt.getTime(), due, balance);
+    const empty = nest.defeatedAt !== null && !isNestRespawned(nest.defeatedAt.getTime(), due, balance, nest.level);
     if (m.type === "aufklaerung") {
       const g = nestGarrison(nest.level, balance);
       reportId = await storeReport(tx, {

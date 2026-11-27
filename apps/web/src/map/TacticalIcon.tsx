@@ -5,7 +5,7 @@ const SIEGEL = "#a8331f";
 const SEE = "#2d5b7a";
 const ALLY = "#3d6b4f";
 const PAKT = "#9a7424";
-const ROMAN = ["", "I", "II", "III", "IV", "V"];
+const ROMAN = ["", "I", "II", "III", "IV", "V", "VI"];
 
 /** Farben der Verhältnisse (wie map/symbols.ts). */
 export const RELATION_HEX = { own: INK, allianz: ALLY, pakt: PAKT, krieg: SIEGEL, neutral: SEE } as const;
@@ -36,7 +36,7 @@ function Anchor({ color, k = 1 }: { color: string; k?: number }) {
 }
 
 export function TacticalIcon({ kind, level = 1, size = 28 }: { kind: TacticalKind; level?: number; size?: number }) {
-  const roman = ROMAN[Math.max(1, Math.min(5, level))];
+  const roman = ROMAN[Math.max(1, Math.min(ROMAN.length - 1, level))];
   return (
     <svg viewBox="-17 -17 34 34" width={size} height={size} aria-hidden="true" className="shrink-0">
       {kind === "own" && (<><circle r="14" fill={INK} /><circle r="11" fill="none" stroke={PAPER} strokeWidth="0.8" /><Anchor color={PAPER} k={1.15} /></>)}
@@ -57,6 +57,7 @@ export function TacticalIcon({ kind, level = 1, size = 28 }: { kind: TacticalKin
       {kind === "dotNest" && (<><polygon points="0,-11 11,0 0,11 -11,0" fill={PAPER} /><polygon points="0,-9 9,0 0,9 -9,0" fill={SIEGEL} /></>)}
       {kind === "nest" && (
         <>
+          {level >= 6 && <polygon points="0,-16 16,0 0,16 -16,0" fill="none" stroke={SIEGEL} strokeWidth="1.2" />}
           <polygon points="0,-13 13,0 0,13 -13,0" fill={SIEGEL} />
           <polygon points="0,-9 9,0 0,9 -9,0" fill="none" stroke={PAPER} strokeWidth="0.8" />
           <text x="0" y="3.5" textAnchor="middle" fontSize={roman.length > 2 ? 7.5 : 9.5} fontFamily="Fraunces, Georgia, serif" fontWeight="600" fill={PAPER}>{roman}</text>

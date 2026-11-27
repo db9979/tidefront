@@ -34,7 +34,7 @@ test("Besatzung und Beute eines Nests nach Stufe", () => {
 
 test("Nestbeute wächst mit der Stufe", () => {
   let last = 0;
-  for (let level = 1; level <= 5; level++) {
+  for (let level = 1; level <= 6; level++) {
     const g = nestGarrison(level, balance);
     assert.ok(g.ok);
     const total = Object.values(g.nest.loot).reduce((x, y) => x + y, 0);
@@ -45,7 +45,7 @@ test("Nestbeute wächst mit der Stufe", () => {
 
 test("Nester werden mit der Stufe stärker; unbekannte Stufe wird abgelehnt", () => {
   let last = 0;
-  for (let level = 1; level <= 5; level++) {
+  for (let level = 1; level <= 6; level++) {
     const g = nestGarrison(level, balance);
     assert.ok(g.ok);
     const hp = defenseHp(g.nest.units, g.nest.defenses, balance);
@@ -53,7 +53,7 @@ test("Nester werden mit der Stufe stärker; unbekannte Stufe wird abgelehnt", ()
     last = hp;
   }
   assert.deepEqual(nestGarrison(0, balance), { ok: false, code: "unknown_nest_level" });
-  assert.deepEqual(nestGarrison(6, balance), { ok: false, code: "unknown_nest_level" });
+  assert.deepEqual(nestGarrison(7, balance), { ok: false, code: "unknown_nest_level" });
 });
 
 test("nestDefender liefert feste Beute und verändert die Balance nicht", () => {

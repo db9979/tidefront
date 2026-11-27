@@ -83,3 +83,4 @@ export {
 export { botTurn, runBotsDue, runOneBot } from "./bots-run.ts";
 export { botsAdminView } from "./bots-admin.ts";
 export { isBot, botIds } from "./bots-flag.ts";
+export { ensureNests } from "./nest-sites.ts"; // Nestplätze nachtragen (Stufe 6, v1.15)

@@ -83,7 +83,7 @@ export async function targetProblem(db: DbOrTx, playerId: number, t: { targetKin
   if (t.targetKind === "nest") {
     const [n] = await db.select().from(tables.nest).where(eq(tables.nest.id, t.targetId));
     if (!n) return { code: "no_target" };
-    if (n.defeatedAt && !isNestRespawned(n.defeatedAt.getTime(), nowMs, balance)) return { code: "nest_empty" };
+    if (n.defeatedAt && !isNestRespawned(n.defeatedAt.getTime(), nowMs, balance, n.level)) return { code: "nest_empty" };
     return { code: null };
   }
   const ev = await readWorldEvent(db, t.targetId);

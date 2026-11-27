@@ -956,3 +956,49 @@ Regeln: `docs/REGELN-KI.md`. Code: `packages/engine/src/bots-*.ts`. Testlauf: `p
     alle gewonnen, Beute 510–534 Punkte), Festung 3–4 Nester, Händler keine; Gebäudestufen 59–70 (Start 0).
     Offen: Rohstofffelder nimmt im Testlauf noch niemand (alle anfangs bewacht, die Heimwache an Schiffen ist klein),
     Gründungen erst nach Tag 10 (Kolonieschiff braucht Hafenkommandantur 6).
+
+## N. Nest Stufe 6 als Spätspiel-Ziel (Balance v1.15)
+
+Anlass: Saison 42 statt 28 Tage. Nest 5 fällt ab Tag 21 zu 99–100 %, danach fehlt ein schwereres Ziel (Balance-Prüfung
+der 42-Tage-Saison, Abschnitt L8 auf dem Balance-Zweig: Nest 5 × 1,2 / 1,3 / 1,4 an Tag 28/35/42 zu 82/100/100,
+25/82/82 bzw. 4/62/62 %). Ziel: Nest 6 im Fenster Tag 35–42, d. h. ein bezahlbarer Verband siegt um Tag 35–38 mit
+≥ 70 %, an Tag 28 deutlich darunter.
+
+Simulation `sim/nest6.ts` (in `npm run sim`, einzeln `node packages/game-core/sim/nest6.ts`), 400 Seeds je Fall. Verband
+= Bot mit 45 % Rüstung, alles daheim (Tag 28 Kommandopunkte 269,5/270, ab Tag 35 299/300 – der Verband an Tag 35 und
+42 ist gleich). „+2 L frei“: zwei Landungsschiffe zusätzlich über die Kommandopunkte hinaus (Forschung/Admiral),
+„gleiche KP“: zwei Landungsschiffe statt 67 Schützen. Sieg in %:
+
+| Nest | Tag 21 | Tag 28 | Tag 35–42 | +2 L frei Tag 28 / 35 | gleiche KP Tag 28 / 35 |
+|---|---|---|---|---|---|
+| Nest 5 | 99 | 100 | 100 | 100 / 100 | 100 / 100 |
+| Nest 5 × 1,3 | 8 | 28 | 83 | 85 / 97 | 53 / 80 |
+| **Nest 5 × 1,35 = Nest 6** | 3 | **15** | **74** | 76 / 94 | 44 / 70 |
+| Nest 5 × 1,4 | 1 | 6 | 63 | 67 / 89 | 33 / 63 |
+| Nest 5 × 1,45 | 0 | 3 | 54 | 58 / 83 | 22 / 52 |
+| Nest 5 × 1,5 | 0 | 0 | 40 | 44 / 67 | 9 / 43 |
+
+1. **Faktor 1,35** (Besatzung und Anlagen, gerundet): 35 Schnellboote, 338 Piratenmiliz, 4 Flakstellungen,
+   3 Küstenbatterien, 3 Bunkerlinien. Der Verband mit vollen Kommandopunkten siegt an Tag 28 zu 15 %, ab Tag 35 zu
+   74 % – genau das Fenster Tag 35–42. ×1,3 wäre schon an Tag 28 mit zwei zusätzlichen Landungsschiffen (85 %) zu
+   haben, ×1,4 erreicht 70 % mit vollen Kommandopunkten nie.
+2. **Beute** 8000 Stahl, 8000 Treibstoff, 11 000 Elektronik, 2000 Proviant = 56 600 zum Richtwert (Nest 5: 33 200), also
+   48 h Produktion des Bots an Tag 35 und 43 h an Tag 38–42 (Nest 5 dort 25 h). Bewusst elektroniklastig: Die Menge
+   (29 000) passt fast ganz in die 7 Landungsschiffe des Verbands (28 000); mehr Menge würde der Laderaum kappen.
+   Netto je Angriff (Beute − bleibende Verluste − Treibstoff, mit 26 % Niederlagen): Tag 35 +10 200 (8,7 h), mit
+   2 Landungsschiffen statt Schützen +18 100 (15,4 h); an Tag 28 −23 100 (Angriff lohnt dort nicht). Nest 6 ist ein
+   *zusätzliches* Ziel neben Nest 5 (Netto +20 100), kein Ersatz.
+3. **Wiederkehr 24 h** statt 12 h (`respawnHours` in der Stufe, neu und optional; ohne Angabe gilt
+   `nestRespawnHours`). Wenige Plätze für den ganzen Server, also eine Trophäe je Tag und Platz, nicht zweimal täglich
+   abzuernten. `respawnHours` ist kein Besatzungsschlüssel (`nestGarrison` überspringt ihn).
+4. **Plätze:** 5 feste Inseln (`LATE_NEST_POINTS` in `@tidefront/world`), an `nestSites()` angehängt, sodass die ersten
+   70 Plätze (Stufen 1–5) unverändert bleiben: Bermuda (Westatlantik), Azoren/São Miguel (Atlantik-Mitte), Jan Mayen
+   (Nordmeer), Balearen/Mallorca (westliches Mittelmeer), Rhodos (östliches Mittelmeer). Alle auf Inselfeldern ohne
+   Festlandküste, mindestens 175 km vom nächsten anderen Nest; Mittelmeer und Nordamerika haben je eins in Reichweite.
+5. **Laufende Welten:** `ensureNests` legt beim migrate/Seed fehlende Plätze an (`on conflict do nothing` auf dem
+   Feld), vorhandene Nester bleiben unverändert. Steht auf einem neuen Platz schon ein Hafen, wird er übersprungen
+   und beim Saisonwechsel (nach dem Löschen der Häfen) angelegt.
+6. **Kein Freischalten nach Saisontag:** Ein „ab Tag 28 sichtbar“ bräuchte den Saisonstand in Karte, Missionsstart,
+   Ankunft und Allianz-Ops (fünf Stellen) und eine eigene Anzeige. Die Stärke ist die Schwelle (Tag 21: 3 %, Tag 28:
+   15 %), Aufklärung und Probekampf zeigen das vorher. Tagesbefehle und Wochenziele verlangen weiter höchstens Stufe 5
+   (`nestCap`), weil es nur fünf Plätze gibt; Erfolge zählen Nest 6 wie jedes Nest.

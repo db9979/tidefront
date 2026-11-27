@@ -193,6 +193,10 @@ Nach dem Kampf:
   Tag 21–28 mit mindestens 70 %. In den Wochen 5 und 6 bleibt Stufe 5 das höchste Nest; Ziele sind dann Weltereignisse
   (werden mit dem Saisonfortschritt stärker und reicher), Felder, der 3. Hafen und andere Spieler. Die Beute einer Stufe passt
   ungefähr in die Ladung der Landungsschiffe eines solchen Verbands.
+- Stufe 6 (seit v1.15, „Inselfestung“, Spätspiel Woche 5–6): ≈ Stufe 5 × 1,35; ein voller Verband siegt an Tag 28 zu
+  etwa 15 %, ab Tag 35 zu 74 %. Fünf feste Inseln (`LATE_NEST_POINTS`, an `nestSites()` angehängt), eigene Wiederkehr
+  `respawnHours` 24 h, Beute 29 000 Einheiten (viel Elektronik). migrate/Seed trägt fehlende Plätze nach (vorhandene
+  Nester bleiben; Feld mit Hafen erst beim Saisonwechsel). Kein Freischalten nach Saisontag (ENTSCHEIDUNGEN.md M).
 - Überfälle auf Spieler alle `raidIntervalHours` je Stützpunkt. Stärke (seit v1.1):
   - Verteidigungs-Lebenspunkte = Lebenspunkte aller Schiffe (auch U-Boote), Bodentruppen und Anlagen daheim (Flugzeuge zählen nicht).
     Seit v1.13 gewichtet mit `raidHpWeights` (je ID, sonst je Gattung, sonst 1): Schiffe kämpfen nicht am Boden und zählen

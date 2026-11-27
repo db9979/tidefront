@@ -121,6 +121,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
         <>
           <P><strong>Überfall:</strong> Kampf am Ziel. Bei Sieg kommt Beute mit den Landungsschiffen heim. Ziele: Piratennester und andere Spieler ohne Schutz.</P>
           <P><strong>Aufklärung:</strong> Lagebild ohne Kampf – Besatzung eines Nests oder Bestände, Gebäude und Truppen eines Spielers.</P>
+          <P><strong>Piratennester</strong> haben die Stufen I bis V, verteilt über alle Küsten, und sind nach einem Sieg {b?.pirates.nestRespawnHours ?? 12} Stunden verlassen. Dazu kommen wenige <strong>Inselfestungen der Stufe VI</strong> auf abgelegenen Inseln (Bermuda, Azoren, Jan Mayen, Balearen, Rhodos) – das Ziel für die letzten Saisonwochen: Ein voller Verband schafft sie etwa ab der fünften Woche, vorher kaum. Sie geben die größte Beute (viel Elektronik; nimm genug Landungsschiffe mit) und sind nach einem Sieg {Number(b?.pirates.nestLevels["6"]?.respawnHours ?? 24)} Stunden verlassen.</P>
           <P><strong>Transport:</strong> Ladung an einen anderen Spielerhafen.</P>
           <P>Treibstoff für Hin- und Rückweg wird beim Auslaufen bezahlt. Die Reisezeit richtet sich nach dem langsamsten Schiff. Wie viele Missionen gleichzeitig laufen, bestimmt die Hafenkommandantur; wie groß ein Verband sein darf, die Kommandopunkte.</P>
           <P>Bodentruppen fahren nur auf Landungsschiffen ({fmtNum(lander?.troopSpace ?? 100)} Plätze je Schiff, Panzer brauchen {b?.units.kampfpanzer?.size ?? 10}). Flugzeuge fliegen nur innerhalb ihrer Reichweite mit.</P>

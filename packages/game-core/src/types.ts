@@ -95,7 +95,9 @@ export interface DefenseDef {
 
 export interface NestLevelDef {
   loot: ResourceMap;
-  [unitOrDefenseId: string]: number | ResourceMap;
+  /** Optional (v1.15): eigene Wiederkehr in Stunden statt pirates.nestRespawnHours. Kein Teil der Besatzung. */
+  respawnHours?: number;
+  [unitOrDefenseId: string]: number | ResourceMap | undefined;
 }
 
 export interface MarketBalance {

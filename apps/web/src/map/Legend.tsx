@@ -20,6 +20,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     title: "Kartell und See",
     items: [
       { icon: <TacticalIcon kind="nest" level={3} />, text: "Kartellnest (Piraten), Stufe I–V" },
+      { icon: <TacticalIcon kind="nest" level={6} />, text: "Inselfestung des Kartells, Stufe VI (Spätspiel)" },
       { icon: <TacticalIcon kind="nestEmpty" level={2} />, text: "Nest verlassen, wird neu besetzt" },
       { icon: <TacticalIcon kind="wreck" />, text: "Wrackfeld, bergbar" },
       { icon: <TacticalIcon kind="port" />, text: "Handelshafen der Börse" },

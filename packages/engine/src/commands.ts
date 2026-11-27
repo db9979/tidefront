@@ -254,13 +254,15 @@ export interface MissionTarget {
   /** Mehrere Häfen: Ziel ist ein Heimathafen (für Modifikatoren des Verteidigers). */
   isHome?: boolean;
   defeatedAt?: Date | null;
+  /** Nest: Stufe (eigene Wiederkehr je Stufe, v1.15). */
+  level?: number;
 }
 
 export async function targetAt(tx: Tx, col: number, row: number): Promise<MissionTarget | null> {
   const [b] = await tx.select().from(tables.base).where(and(eq(tables.base.col, col), eq(tables.base.row, row)));
   if (b) return { kind: "base", id: b.id, col, row, playerId: b.playerId, isHome: b.isHome, state: withSite(b.state as BaseState, col, row) };
   const [n] = await tx.select().from(tables.nest).where(and(eq(tables.nest.col, col), eq(tables.nest.row, row)));
-  if (n) return { kind: "nest", id: n.id, col, row, playerId: null, defeatedAt: n.defeatedAt };
+  if (n) return { kind: "nest", id: n.id, col, row, playerId: null, defeatedAt: n.defeatedAt, level: n.level };
   return null;
 }
 
@@ -285,7 +287,7 @@ export function launchMission(
     // Allianzen/Diplomatie: kein Überfall auf Verbündete (ally) oder Paktpartner (pact).
     if (input.type === "ueberfall" && target.kind === "base" && target.playerId !== null) { const d = await diplomacyBlock(ctx.tx, playerId, target.playerId, ctx.nowMs); if (d) fail(d); }
     if (input.type === "transport" && target.kind !== "base") fail("transport_needs_base");
-    if (input.type === "ueberfall" && target.kind === "nest" && target.defeatedAt && !isNestRespawned(target.defeatedAt.getTime(), ctx.nowMs, balance)) {
+    if (input.type === "ueberfall" && target.kind === "nest" && target.defeatedAt && !isNestRespawned(target.defeatedAt.getTime(), ctx.nowMs, balance, target.level)) {
       fail("nest_empty");
     }
     // Admirale: Führer des Verbands (Tempo, Treibstoff, Tarnung …); prüft Besitz und Verfügbarkeit.
