@@ -34,7 +34,7 @@ test("Registrieren, Heimathafen wählen, abmelden, anmelden", async ({ page, see
   await picks.nth(testInfo.repeatEachIndex % 7).click();
   await expect(page.getByText("Handelshafen")).toBeVisible();
   const harbor = `Heimat ${name.slice(-4)}`;
-  await page.getByLabel("Name des Stützpunkts").fill(harbor);
+  await page.getByLabel("Name des Hafens").fill(harbor);
   await expectNoHorizontalOverflow(page, "Hafenwahl mit Auswahl");
   await page.getByRole("button", { name: "Heimathafen gründen" }).click();
 
@@ -43,7 +43,7 @@ test("Registrieren, Heimathafen wählen, abmelden, anmelden", async ({ page, see
   await expect(dialog.getByRole("heading", { name: "Dein Heimathafen steht" })).toBeVisible();
   await expectNoHorizontalOverflow(page, "Begrüßung");
   for (let i = 0; i < 3; i++) await dialog.getByRole("button", { name: "Weiter" }).click();
-  await dialog.getByRole("button", { name: "Los geht's" }).click();
+  await dialog.getByRole("button", { name: "Los geht’s" }).click();
   await expect(dialog).toHaveCount(0);
 
   await expect(page.getByRole("heading", { level: 1, name: harbor })).toBeVisible();

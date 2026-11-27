@@ -12,7 +12,7 @@ type IntelRules = { lookoutKm: number; radarBaseKm: number; radarKmPerLevel: num
 export function LagebildChapter({ b }: { b: Balance | undefined }) {
   const i = (b as unknown as { intel?: IntelRules } | undefined)?.intel;
   const fog = Math.round((b?.weather?.fogRadarMax ?? 0.3) * 100);
-  if (!i) return <P>In dieser Welt gibt es keinen Kartennebel: Du siehst alles.</P>;
+  if (!i) return <P>In dieser Saison gibt es keinen Kartennebel: Du siehst alles.</P>;
   return (
     <>
       <P><strong>Was du immer siehst:</strong> Küsten, Handelshäfen, die Positionen, Namen und Besitzer aller Häfen und die Positionen der Piratennester und Rohstofffelder (mit Art und Stufe). Weltereignisse werden wie bisher öffentlich angekündigt, Minenfelder folgen ihren eigenen Regeln.</P>

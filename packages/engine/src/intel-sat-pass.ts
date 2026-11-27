@@ -13,6 +13,7 @@ import { counterWorld, objectMods } from "./intel-counter.ts";
 import { sightingsIn } from "./intel-map.ts";
 import { MAP_WIDTH_KM, SAT_NAME, passSensor, satRules, stripPlace } from "./intel-sat.ts";
 import { pushNotice, storeNavalReport } from "./naval-common.ts";
+import { nOf } from "./names.ts";
 
 /** Felder im Streifen (Erkennung; Tarnnetz Stufe 2 des Besitzers: nur Sichtung, zählt nicht). */
 async function fieldRows(tx: Tx, sight: Sight, source: string): Promise<SightingInput[]> {
@@ -90,7 +91,7 @@ export async function satelliteEnd(tx: Tx, payload: Record<string, unknown>, due
   const sb = satRules();
   return {
     notify: [[[b.playerId], "base"], [[b.playerId], "reports"], [null, "map"]],
-    push: [pushNotice(b.playerId, "report", `${name} verglüht`, `${sat.passes ?? 0} Überflüge, ${sat.seen ?? 0} Sichtungen.${sb ? " Ein neuer Start ist an der Startrampe möglich." : ""}`, "meldungen", reportId)],
+    push: [pushNotice(b.playerId, "report", `${name} verglüht`, `${nOf(sat.passes ?? 0, "Überflug", "Überflüge")}, ${nOf(sat.seen ?? 0, "Sichtung", "Sichtungen")}.${sb ? " Ein neuer Start ist an der Startrampe möglich." : ""}`, "meldungen", reportId)],
   };
 }
 

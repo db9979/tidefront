@@ -24,8 +24,8 @@ function ago(v: string | Date | null | undefined): string {
   if (!v) return "nie";
   const min = Math.round((Date.now() - new Date(v).getTime()) / 60000);
   if (min < 2) return "gerade eben";
-  if (min < 60) return `vor ${min} Min.`;
-  if (min < 48 * 60) return `vor ${Math.round(min / 60)} Std.`;
+  if (min < 60) return `vor ${min} min`;
+  if (min < 48 * 60) return `vor ${Math.round(min / 60)} h`;
   return `vor ${Math.round(min / 1440)} Tagen`;
 }
 
@@ -77,7 +77,7 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
           ["Rückstau (> 2 Min.)", s.backlog.count ? `${s.backlog.count}, ältestes ${Math.round(s.backlog.oldestOverdueSec / 60)} Min.` : "keiner"],
           ["Fehlgeschlagene Ereignisse", String(s.failed.count)],
           ["Letzter Prüflauf", s.audit ? `${s.audit.ok ? "ok" : "FEHLER"}, ${when(s.audit.at)}` : "–"],
-          ["Letzte Sicherung", s.backup ? `${when(s.backup.at)} (${Math.round(s.backup.ageHours)} Std.)` : "keine erfasst"],
+          ["Letzte Sicherung", s.backup ? `${when(s.backup.at)} (${Math.round(s.backup.ageHours)} h)` : "keine erfasst"],
           ["Letzte E-Mail", s.mail.lastSentAt ? when(s.mail.lastSentAt) : "–"],
           ["Letzter Mail-Fehler", s.mail.lastError ? when(s.mail.lastError.at) : "–"],
         ]} />

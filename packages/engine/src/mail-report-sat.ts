@@ -1,7 +1,7 @@
 // Lagebild Stufe 3 in der E-Mail: Satellitenstart (Kosten, Bahn, erster Überflug) und Ende der Lebensdauer
 // (Zusammenfassung aller Überflüge). Dieselben Daten wie der Bericht im Spiel (report.satellite).
 import type { MailBlock } from "./mail-blocks.ts";
-import { counts, dateTime, int, num, registerReportSection, resourceRows, str, type ReportView } from "./mail-report-kit.ts";
+import { counts, dateTime, int, nOf, num, registerReportSection, resourceRows, str, type ReportView } from "./mail-report-kit.ts";
 
 interface SatData {
   event?: "start" | "end";
@@ -35,8 +35,8 @@ function renderSatellite(r: ReportView) {
       ] },
       { type: "text", text: "Das gespeicherte Wissen bleibt wie jede Sichtung bis zu 72 Stunden erhalten. Ein neuer Satellit startet an der Startrampe (Meldungen → Lagebild)." },
     ];
-    if (s.last) blocks.push({ type: "text", tone: "muted", text: `Letzter Überflug ${dateTime(s.last.atMs)}${s.last.where ? ` über ${s.last.where}` : ""}: ${int(s.last.nests)} Nester, ${int(s.last.bases)} Häfen, ${int(s.last.fleets)} Verbände.` });
-    return { subject: `${name} verglüht – ${int(num(s.passes) ?? 0)} Überflüge, ${int(num(s.seen) ?? 0)} Sichtungen`, lead: `${name} hat seine Lebensdauer erreicht.`, blocks };
+    if (s.last) blocks.push({ type: "text", tone: "muted", text: `Letzter Überflug ${dateTime(s.last.atMs)}${s.last.where ? ` über ${s.last.where}` : ""}: ${nOf(s.last.nests, "Nest", "Nester")}, ${nOf(s.last.bases, "Hafen", "Häfen")}, ${nOf(s.last.fleets, "Verband", "Verbände")}.` });
+    return { subject: `${name} verglüht – ${nOf(num(s.passes) ?? 0, "Überflug", "Überflüge")}, ${nOf(num(s.seen) ?? 0, "Sichtung", "Sichtungen")}`, lead: `${name} hat seine Lebensdauer erreicht.`, blocks };
   }
   const blocks: MailBlock[] = [
     { type: "banner", tone: "win", kicker: "Raumfahrt", title: `${name} gestartet`, sub: `${str(s.baseName)} · ${dateTime(r.atMs)}` },

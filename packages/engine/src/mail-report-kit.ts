@@ -70,7 +70,7 @@ export const num = (v: unknown): number | null => (typeof v === "number" && Numb
 export const int = (n: number) => fmtInt(Number.isFinite(n) ? n : 0);
 
 /** „1 Anlage“ / „3 Anlagen“. */
-export const nOf = (n: number, one: string, many: string) => `${int(n)} ${n === 1 ? one : many}`;
+export { nOf } from "./names.ts";
 
 export const pct = (part: number, whole: number) => (whole > 0 ? `${Math.round((part / whole) * 100)} %` : "0 %");
 
@@ -137,6 +137,7 @@ const KIND_LABEL: Record<string, string> = {
   abgewiesen: "Kartell abgewiesen", weltereignis: "Weltereignis", weltereignis_leer: "Weltereignis", spionage: "Spionage",
   sabotage: "Sabotage", sammelangriff: "Sammelangriff", minen: "Minen", blockade: "Seeblockade", blockadekampf: "Blockadekampf",
   konvoi: "Konvoi", feld: "Rohstofffeld", gruendung: "Gründung", verlegung: "Verlegung", satellit: "Satellit",
+  posten: "Radarposten", sichtung: "Sichtung", patrouille: "Patrouille", kampagne: "Aufklärungskampagne",
 };
 
 export function kindLabel(kind: string): string {

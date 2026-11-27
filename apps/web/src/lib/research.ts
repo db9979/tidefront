@@ -1,6 +1,7 @@
 // Forschung in der Oberfläche: Namen, Texte, Symbole der Techniken und Wirkungen als lesbarer Text.
 // Modifikatoren kommen vom Server (base.modifiers); hier wird nur angezeigt, nichts gerechnet, was zählt.
 import type { BaseData } from "./trpc.ts";
+import { countLabel, label } from "./names.ts";
 
 export type Mods = BaseData["modifiers"];
 
@@ -48,11 +49,11 @@ export const TECH: Record<string, { name: string; icon: string; text: string }> 
 const FUGEN = [
   "Dampf|turbinen", "Schiffs|panzerung", "Prisen|recht", "Torpedo|leit|systeme", "Infanterie|waffen", "Drill|ausbildung",
   "Verbund|panzerung", "Pionier|technik", "Festungs|bau", "Funkmess|technik", "Strahl|triebwerke", "Luftkampf|taktik",
-  "Tarn|anstrich", "Präzisions|bomben", "Lager|technik", "Stahlbeton|bunker", "Ver|schlüsselung", "Agenten|schulung",
+  "Tarn|anstrich", "Präzisions|bomben", "Lager|technik", "Stahlbeton|bunker", "Verschlüs|selung", "Agenten|schulung",
   "Hafen|kommandantur", "Kommando|zentrale", "Nachrichten|dienst", "Versorgungs|hof", "Lager|komplex", "Speicher|werk",
   "Radar|station", "Forschungs|amt", "Aufklärungs|drohne", "Landungs|schiff", "Kolonie|schiff", "Minen|räumer",
   "Minen|leger", "Abfang|jäger", "Jagd|bomber", "Kampf|panzer", "Küsten|batterie", "Flak|stellung", "Bunker|linie",
-  "Start|rampe", "Stör|sender", "Radar|satellit", "Tarn|netze",
+  "Start|rampe", "Stör|sender", "Radar|satellit", "Tarn|netze", "Chip|fabrik", "Tief|bunker", "Minen|sperre", "Piraten|miliz",
 ];
 const FUGE = new Map(FUGEN.map((f) => [f.replaceAll("|", ""), f.replaceAll("|", "\u00AD")]));
 
@@ -106,7 +107,14 @@ const PATH_LABEL: Record<string, string> = {
 };
 
 export function pathLabel(path: string): string {
-  return PATH_LABEL[path] ?? path;
+  if (PATH_LABEL[path]) return PATH_LABEL[path];
+  // Rückfall für Pfade ohne eigenen Text (z. B. Veteranen-Boni je Einheit): nie die Rohkennung zeigen.
+  const [k, e] = path.split(".");
+  if (k === "attackUnit" && e) return `Angriff ${countLabel(e, 2)}`;
+  if (k === "trainingTime" && e) return `Ausbildungszeit ${label(e)}`;
+  if (k === "speed" && e === "land") return "Tempo Bodentruppen";
+  if (k === "production" && e) return `Produktion ${label(e)}`;
+  return label(path.replace(/\./g, " "));
 }
 
 /** Faktor als Prozent mit Vorzeichen, z. B. „+8 %“ oder „−10 %“. */

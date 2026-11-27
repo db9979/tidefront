@@ -8,8 +8,8 @@ const supply = go("Versorgung", { to: "base" });
 
 export const POWER: RemedyTable = {
   cable_station_required: () => ({
-    hint: "Beide Häfen brauchen eine Seekabel-Station (Stufe 1 oder höher). Baue sie in diesem Hafen aus; ein Partner baut seine eigene.",
-    actions: [build("seekabel", "Seekabel-Station bauen")],
+    hint: "Beide Häfen brauchen das Gebäude Seekabel (Stufe 1 oder höher). Baue es in diesem Hafen; ein Partner baut sein eigenes.",
+    actions: [build("seekabel", "Seekabel bauen")],
   }),
   cable_busy: () => ({
     hint: "Jeder Hafen hat höchstens ein Seekabel. Trenne das bestehende Kabel (Versorgung → Seekabel) oder wähle einen anderen Hafen.",

@@ -32,7 +32,7 @@ export async function scheduleFieldWarning(tx: Tx, missionId: number, field: Fie
 
 const minutesText = (ms: number) => {
   const min = Math.max(1, Math.round(ms / 60000));
-  return min >= 120 ? `${Math.floor(min / 60)} Std. ${min % 60} Min.` : `${min} Min.`;
+  return min >= 120 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")} min` : `${min} min`;
 };
 
 /** game_event field_warning: Angriff auf ein Feld erkannt (sonst neu planen, solange der Verband unterwegs ist). */

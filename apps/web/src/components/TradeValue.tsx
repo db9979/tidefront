@@ -26,10 +26,10 @@ export function ValueLine({ v, you = "du" }: { v: market.TradeValue | null; you?
   if (!v) return null;
   const pct = Math.round(Math.abs(v.pct));
   const dir = v.pct < 0 ? "unter" : "über";
-  const rel = pct === 0 ? "etwa Börsenwert" : `${fmtNum(pct)} % ${dir} Börse (${v.diff >= 0 ? "+" : "−"}${fmtNum(Math.abs(v.diff))} Kr)`;
+  const rel = pct === 0 ? "etwa Börsenwert" : `${fmtNum(pct)} % ${dir} Börse (${v.diff >= 0 ? "+" : "−"}${fmtNum(Math.abs(v.diff))} Kredite)`;
   return (
     <div className="text-xs mt-1">
-      <span className="text-ink2">Börsenwert: {you} gibst <span className="mono">{fmtNum(v.give)} Kr</span>, bekommst <span className="mono">{fmtNum(v.get)} Kr</span> – {rel}</span>
+      <span className="text-ink2">Börsenwert: {you} gibst <span className="mono">{fmtNum(v.give)} Kredite</span>, bekommst <span className="mono">{fmtNum(v.get)} Kredite</span> – {rel}</span>
       {v.strong && (
         <div className={`font-semibold ${v.pct < 0 ? "text-siegel" : "text-messing"}`} role="note">
           {v.pct < 0 ? "Deutlich unter Börsenwert: du bekommst viel weniger, als du gibst." : "Deutlich über Börsenwert: du bekommst viel mehr, als du gibst."}

@@ -10,7 +10,7 @@ function P({ children }: { children: ReactNode }) {
 
 export function AdmiralChapter({ b }: { b: Balance | undefined }) {
   const a = b?.admirals;
-  if (!a) return <P>Admirale gibt es in dieser Welt nicht.</P>;
+  if (!a) return <P>Admirale gibt es in dieser Saison nicht.</P>;
   const r = a.risk;
   const second = a.ranks[a.secondSpecFromRank - 1];
   return (

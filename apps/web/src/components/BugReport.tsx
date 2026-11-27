@@ -75,7 +75,7 @@ export function BugReportSheet({ draft, playerName, onClose }: { draft: BugDraft
         <p className="text-sm mb-3">
           {done.mailed
             ? `Danke! Meldung #${done.id} ist per E-Mail an die Verwaltung gegangen.`
-            : `Danke! Meldung #${done.id} ist gespeichert – die Verwaltung sieht sie im Admin-Menü.`}
+            : `Danke! Meldung #${done.id} ist gespeichert – die Verwaltung sieht sie unter Einstellungen → Verwaltung.`}
         </p>
         <Button className="w-full" onClick={onClose}>Schließen</Button>
       </Sheet>

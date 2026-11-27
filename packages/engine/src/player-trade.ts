@@ -10,6 +10,7 @@ import { settle, deliverCargo, market as marketCore, type Counts } from "@tidefr
 import { hexDistanceKm, seaRoute } from "@tidefront/world";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, type Engine } from "./context.ts";
+import { fmtInt } from "./names.ts";
 import { runCommand, type Ctx } from "./commands.ts";
 import { marketUnlockedFor } from "./player-wide.ts"; // Mehrere Häfen: Freischaltung spielerweit
 import { homeBaseOf, lockBases, lockOwnBase, ownBase, readBase, saveBase, scheduleEvent, type BaseRow } from "./store.ts";
@@ -237,7 +238,7 @@ export function acceptOffer(engine: Engine, playerId: number, key: string, offer
       .where(eq(tables.playerOffer.id, o.id));
     const [buyer] = await ctx.tx.select({ name: tables.player.name }).from(tables.player).where(eq(tables.player.id, playerId));
     await systemMessage(ctx.tx, ctx.notify, [o.sellerId], "Handel: Angebot angenommen",
-      `${buyer?.name ?? "?"} hat dein Angebot angenommen: ${o.giveQty} ${resLabel(o.give)} gegen ${o.wantQty} ${resLabel(o.want)}. ` +
+      `${buyer?.name ?? "?"} hat dein Angebot angenommen: ${fmtInt(o.giveQty)} ${resLabel(o.give)} gegen ${fmtInt(o.wantQty)} ${resLabel(o.want)}. ` +
       (o.want === "credits" ? "Die Kredite sind gutgeschrieben." : "Die Ware ist per Konvoi unterwegs.") +
       (!hasSellerEscort || o.give === "credits" ? "" : sellerEscortCode === null ? " Dein Geleit begleitet deine Ware." : ` Dein Geleit konnte nicht auslaufen (${ESCORT_FAIL[sellerEscortCode] ?? sellerEscortCode}); die Ware fährt ohne Geleit.`));
     ctx.notify.push([[playerId, o.sellerId], "base"], [null, "market"]);

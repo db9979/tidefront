@@ -35,7 +35,7 @@ export function Supply({ base }: { base: BaseData }) {
         </div>
         <p className="text-xs text-ink2">Jede Einheit isst Proviant, auch unterwegs. Der Saldo steht oben in der Leiste bei Proviant. Ist er negativ, schrumpft der Vorrat; bei 0 droht Versorgungsmangel.</p>
         {(base.rates.proviant ?? 0) < 0 && !base.versorgungsmangel && <p className="text-siegel text-xs">Deine Truppen essen mehr, als du erzeugst: Vorrat reicht noch {fmtNum(Math.floor((base.resources.proviant ?? 0) / -(base.rates.proviant ?? -1)))} h. Versorgungshof ausbauen oder Proviant kaufen.</p>}
-        {base.versorgungsmangel && <p className="text-red-300">Versorgungsmangel: keine Ausbildung, Angriffswert −20 %. Versorgungshof ausbauen oder Proviant kaufen.</p>}
+        {base.versorgungsmangel && <p className="text-red-300">Versorgungsmangel: keine Ausbildung, Angriff −20 %. Versorgungshof ausbauen oder Proviant kaufen.</p>}
         {base.deliveries.length > 0 && <DeliveryList base={base} />}
       </div>
     </Card>
@@ -99,7 +99,7 @@ export function Protection({ base, now }: { base: BaseData; now: number }) {
           {p.defeatShieldUntilMs > now && <div className="text-xs text-slate-400">Schutz nach Niederlage bis {fmtTime(p.defeatShieldUntilMs)}</div>}
           {win && (
             <div className="text-xs text-slate-400">
-              {now >= win.startMs && now < win.endMs ? `Nachtschild bis ${fmtTime(win.endMs)}` : `Nächster Nachtschild ${fmtTime(win.startMs)} – ${fmtTime(win.endMs)}`}
+              {now >= win.startMs && now < win.endMs ? `Nachtschild bis ${fmtTime(win.endMs)}` : `Nächster Nachtschild ${fmtTime(win.startMs)}–${fmtTime(win.endMs)}`}
               {p.nightShieldSuspendedUntilMs > now ? " (durch eigenen Angriff aufgehoben)" : ""}
             </div>
           )}

@@ -11,7 +11,7 @@ import { mailReady, sendMail } from "./mail.ts";
 import { pushToPlayer } from "./push.ts";
 import { publicUrl } from "./settings.ts";
 import { rankingView } from "./social.ts";
-import { amounts, fmtInt, nameOf } from "./names.ts";
+import { amounts, countName, fmtInt } from "./names.ts";
 
 const HOUR_MS = 3600000;
 /** Nach der gewählten Uhrzeit wird höchstens so lange nachgeholt (z. B. nach einem Neustart). */
@@ -155,7 +155,7 @@ function clockIn(ms: number, timeZone: string): string {
 }
 
 const unitsText = (c: Counts) => {
-  const parts = Object.entries(c).filter(([, n]) => n > 0).map(([id, n]) => `${fmtInt(n)} ${nameOf(id)}`);
+  const parts = Object.entries(c).filter(([, n]) => n > 0).map(([id, n]) => `${fmtInt(n)} ${countName(id, n)}`);
   return parts.length ? parts.join(", ") : "keine";
 };
 

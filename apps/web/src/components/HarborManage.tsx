@@ -100,7 +100,7 @@ function Abandon({ base, onDone }: { base: BaseData; onDone: () => void }) {
           <div className="text-xs"><CountsLine counts={d.resources} /></div>
           {Object.keys(d.units).length > 0 && <div className="text-xs"><CountsLine counts={d.units} /></div>}
           {Object.keys(d.defenses).length > 0 && <div className="text-xs"><CountsLine counts={d.defenses} /></div>}
-          <div className="text-xs text-ink2">{fmtNum(d.buildingLevels)} Gebäudestufen{d.admirals > 0 ? ` · ${d.admirals} Admiral${d.admirals > 1 ? "e" : ""} wechselt in den Heimathafen` : ""}</div>
+          <div className="text-xs text-ink2">{fmtNum(d.buildingLevels)} Gebäudestufen{d.admirals > 0 ? ` · ${d.admirals} ${d.admirals > 1 ? "Admirale wechseln" : "Admiral wechselt"} in den Heimathafen` : ""}</div>
           <label className="block text-xs mt-2">
             Zur Bestätigung den Hafennamen eingeben:
             <input value={typed} onChange={(e) => setTyped(e.target.value)} aria-label="Hafenname zur Bestätigung" className="block w-full mt-0.5 h-11 rounded-lg field px-2" />

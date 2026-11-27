@@ -26,6 +26,7 @@ import {
 import { hexCenter, hexDistanceKm, neighbors, terrainAt } from "@tidefront/world";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, type NoticeJob } from "./context.ts";
+import { nOf } from "./names.ts";
 import type { Handler, HandlerResult } from "./events.ts";
 import { randomSeed, scheduleEvent } from "./store.ts";
 import { worldEventNews } from "./market-news-sources.ts";
@@ -148,7 +149,7 @@ async function draftTreasure(tx: Tx, rng: Rng, due: number, cands: Candidate[], 
       kind: "schatzschiff", col: start.col, row: start.row, targetBaseId: null, units: comp.units, activeAtMs: due, endsAtMs,
       data: { initialHp: forceHp(comp.units, balance), strength: strengthFactor(progress, balance), path, route, harbor: goal.nest, loot: comp.loot },
       subject: "Schatzschiff gesichtet",
-      body: `Ein Schatzschiff des Kartells läuft mit ${comp.units.schnellboot} Schnellbooten Begleitschutz in ${hours} Stunden ` +
+      body: `Ein Schatzschiff des Kartells läuft mit ${nOf(comp.units.schnellboot, "Schnellboot", "Schnellbooten")} als Begleitschutz in ${nOf(hours, "Stunde", "Stunden")} ` +
         `in einen Kartellhafen ein. An Bord: ${resText(comp.loot)}. Nur der erste Verband, der den Begleitschutz versenkt, ` +
         "erhält die Beute. Plane auf der Karte eine Mission – der Abfangpunkt wird beim Planen berechnet.",
       pushes: onePerPlayer(nearby).map((c) => [c.playerId, "fleet", `Ein Schatzschiff fährt in der Nähe von ${c.name}.`]),
@@ -182,12 +183,12 @@ function draftArmada(rng: Rng, due: number, cands: Candidate[], progress: number
     },
     subject: "Großflotte des Kartells sammelt sich",
     body: `Das Kartell sammelt eine Großflotte (${comp.units.schnellboot} Schnellboote, ${comp.units.piratenmiliz} Milizionäre). ` +
-      `In ${g.announceHours} Stunden läuft sie aus und greift nacheinander diese Häfen an: ${names}. ` +
+      `In ${nOf(g.announceHours, "Stunde", "Stunden")} läuft sie aus und greift nacheinander diese Häfen an: ${names}. ` +
       "Jeder Verband, der sie vorher auf See angreift, schwächt sie dauerhaft und erhält Beute anteilig zum Schaden.",
     pushes: onePerPlayer(targets).map((x) => {
       const mine = targets.filter((y) => y.playerId === x.playerId).map((y) => y.name);
       const what = mine.length > 1 ? `deine Häfen ${mine.join(", ")}` : `deinen Hafen ${mine[0]}`;
-      return [x.playerId, "attack", `Die Großflotte greift in ${g.announceHours} Stunden ${what} an.`] as [number, "attack", string];
+      return [x.playerId, "attack", `Die Großflotte greift in ${nOf(g.announceHours, "Stunde", "Stunden")} ${what} an.`] as [number, "attack", string];
     }),
   };
 }
@@ -207,7 +208,7 @@ async function draftSiege(rng: Rng, due: number, focus: Candidate[], progress: n
     },
     subject: `Belagerung von ${target.name}`,
     body: `Das Kartell legt mit ${comp.units.schnellboot} Schnellbooten einen Belagerungsring um ${target.name}. ` +
-      `${s.durationHours} Stunden lang: keine Börsenkäufe, Produktion −${Math.round(s.productionPenalty * 100)} %. ` +
+      `${nOf(s.durationHours, "Stunde", "Stunden")} lang: keine Börsenkäufe, Produktion −${Math.round(s.productionPenalty * 100)} %. ` +
       "Andere Spieler können den Ring mit einem Überfall brechen und erhalten Beute anteilig zum Schaden.",
     pushes: [[target.playerId, "attack", `Belagerungsring um ${target.name}: keine Börsenkäufe, Produktion gedrosselt.`]],
   };

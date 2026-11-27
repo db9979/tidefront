@@ -45,10 +45,15 @@ function renderMines(r: ReportView) {
   return { blocks };
 }
 
+/** Gründe, aus denen eine Blockade nicht beginnt (Fehlercodes aus der Diplomatieprüfung). */
+const BLOCK_TEXT: Record<string, string> = {
+  ally: "Hafen deiner Allianz", pact: "Nichtangriffspakt", no_target: "Ziel nicht mehr vorhanden", fleet_lost: "Verband verloren",
+};
+
 function renderBlockade(r: ReportView) {
   const b = r.data.blockade as { targetName?: string; attackerName?: string; endsAtMs?: number; refused?: string; factor?: number };
   const text = b.refused
-    ? `Die Blockade vor ${str(b.targetName, "?")} begann nicht (${b.refused === "fleet_lost" ? "Verband verloren" : nameOf(b.refused)}).`
+    ? `Die Blockade vor ${str(b.targetName, "?")} begann nicht (${BLOCK_TEXT[b.refused] ?? "abgelehnt"}).`
     : `${str(b.attackerName, "?")} blockiert ${str(b.targetName, "?")} bis ${dateTime(b.endsAtMs ?? 0)}: Produktion −${Math.round((1 - (b.factor ?? 1)) * 100)} %, Lieferungen zurückgehalten, Börsenverkäufe gesperrt.`;
   return { lead: text, blocks: [{ type: "text", text } as MailBlock] };
 }

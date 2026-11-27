@@ -10,7 +10,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
   {
     title: "Häfen",
     items: [
-      { icon: <TacticalIcon kind="own" />, text: "Eigener Stützpunkt" },
+      { icon: <TacticalIcon kind="own" />, text: "Eigener Hafen" },
       { icon: <TacticalIcon kind="ally" />, text: "Allianzmitglied (grün, Doppelring)" },
       { icon: <TacticalIcon kind="pact" />, text: "Paktpartner: Nichtangriffspakt (ocker)" },
       { icon: <TacticalIcon kind="war" />, text: "Kriegsgegner (rot, Peilstriche)" },
@@ -20,7 +20,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
   {
     title: "Kartell und See",
     items: [
-      { icon: <TacticalIcon kind="nest" level={3} />, text: "Kartellnest (Piraten), Stufe I–V" },
+      { icon: <TacticalIcon kind="nest" level={3} />, text: "Piratennest (Kartell), Stufe I–V" },
       { icon: <TacticalIcon kind="nest" level={6} />, text: "Inselfestung des Kartells, Stufe VI (Spätspiel)" },
       { icon: <TacticalIcon kind="nestEmpty" level={2} />, text: "Nest verlassen, wird neu besetzt" },
       { icon: <TacticalIcon kind="wreck" />, text: "Wrackfeld, bergbar" },
@@ -62,7 +62,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     items: [
       { icon: <><TacticalIcon kind="dotAlly" size={18} /><TacticalIcon kind="dotPact" size={18} /></>, text: "Punkt: Hafen von Allianz (grün) oder Paktpartner (ocker)" },
       { icon: <><TacticalIcon kind="dotWar" size={18} /><TacticalIcon kind="dotOther" size={18} /></>, text: "Punkt: Kriegsgegner (rot, größer) oder neutral (blau)" },
-      { icon: <TacticalIcon kind="dotNest" size={18} />, text: "Raute: Kartellnest, größer = höhere Stufe" },
+      { icon: <TacticalIcon kind="dotNest" size={18} />, text: "Raute: Piratennest, größer = höhere Stufe" },
       { icon: <TacticalIcon kind="dotPort" size={18} />, text: "Hohler Ring: Handelshafen" },
     ],
   },

@@ -29,7 +29,19 @@ const NAMES: Record<string, string> = {
   // Lagebild Stufe 3 (v1.23): Satelliten und Gegenmittel
   startrampe: "Startrampe", stoersender: "Störsender", satellit: "Satellit", optisch: "Optischer Satellit", radar: "Radarsatellit",
   raumfahrt: "Raumfahrt", tarnnetze: "Tarnnetze", optischer_satellit: "Optischer Satellit", radarsatellit: "Radarsatellit",
+  // Weltereignisse (Kartell-Aufklärung: „Nächstes Unternehmen“)
+  schatzschiff: "Schatzschiff", grossflotte: "Großflotte", belagerung: "Belagerung",
 };
+
+/** Gibt es einen eigenen deutschen Namen (nicht nur den Rückfall von label())? Für Tests. */
+export function hasLabel(id: string): boolean {
+  return id in NAMES;
+}
+
+/** Gibt es einen Text für diesen Fehlercode? Für Tests. */
+export function hasErrorText(code: string): boolean {
+  return code in ERRORS || code === "rate";
+}
 
 const PLURAL: Record<string, string> = {
   korvette: "Korvetten", zerstoerer: "Zerstörer", landungsschiff: "Landungsschiffe", uboot: "U-Boote", schuetzen: "Schützen", pioniere: "Pioniere",
@@ -38,6 +50,11 @@ const PLURAL: Record<string, string> = {
   bunkerlinie: "Bunkerlinien", minensperre: "Minensperren", spion: "Spione", minenleger: "Minenleger", minenraeumer: "Minenräumer",
   kolonieschiff: "Kolonieschiffe",
 };
+
+/** Zahl mit passendem Wort, z. B. nOf(1, "Nest", "Nester") → „1 Nest“, nOf(1200, …) → „1.200 Nester“. */
+export function nOf(n: number, one: string, many: string): string {
+  return `${fmtNum(n)} ${n === 1 ? one : many}`;
+}
 
 /** Name mit passender Zahlform für eine Menge. */
 export function countLabel(id: string, n: number): string {
@@ -135,8 +152,8 @@ const ERRORS: Record<string, string> = {
   target_protected: "Das Ziel steht unter Schutz.",
   nest_empty: "Das Nest ist verlassen.",
   no_target: "Auf diesem Feld gibt es kein Ziel.",
-  own_base: "Das ist der eigene Stützpunkt.",
-  transport_needs_base: "Transporte gehen nur an Stützpunkte.",
+  own_base: "Das ist dein eigener Hafen.",
+  transport_needs_base: "Transporte gehen nur an Häfen.",
   empty_fleet: "Keine Einheiten gewählt.",
   no_combat_units: "Keine Kampfeinheiten daheim.",
   units_unavailable: "So viele Einheiten sind nicht daheim.",
@@ -150,6 +167,10 @@ const ERRORS: Record<string, string> = {
   unknown_building: "Unbekanntes Gebäude.",
   no_order: "Kein laufender Auftrag.",
   already_finished: "Der Auftrag ist schon fertig.",
+  not_finished: "Der Auftrag ist noch nicht fertig.",
+  duplicate: "Dieser Befehl wurde schon ausgeführt.",
+  bad_input: "Ungültige Eingabe. Bitte die Angaben prüfen.",
+  unknown_nest_level: "Unbekannte Neststufe.",
   locked: "Börse und Spielerhandel öffnen ab Hafenkommandantur Stufe 3 (in einem deiner Häfen).",
   halted: "Handel mit dieser Ressource ist pausiert.",
   bad_qty: "Ungültige Menge.",
@@ -176,7 +197,7 @@ const ERRORS: Record<string, string> = {
   bad_login: "Name oder Passwort falsch.",
   not_coast: "Nur Küstenfelder sind erlaubt.",
   field_taken: "Das Feld ist schon belegt – oder jemand war schneller.",
-  has_base: "Du hast schon einen Stützpunkt.",
+  has_base: "Du hast schon einen Hafen.",
   no_base: "Dieser Hafen gehört dir nicht (mehr) – zurück zum Heimathafen.",
   rate_limited: "Zu viele Versuche. Bitte kurz warten.",
   network: "Keine Verbindung zum Server. Bitte erneut versuchen.",
@@ -200,6 +221,8 @@ const ERRORS: Record<string, string> = {
   already_requested: "Du hast schon angefragt.",
   no_request: "Diese Einladung oder Anfrage gibt es nicht mehr.",
   not_member: "Dieser Spieler ist kein Mitglied.",
+  bad_role: "Diese Rolle gibt es nicht.",
+  no_recipient: "Diesen Spieler gibt es nicht.",
   self: "Das geht nicht mit dir selbst.",
   empty: "Der Text ist leer.",
   bad_target: "Unbekanntes Gegenüber.",
@@ -223,7 +246,7 @@ const ERRORS: Record<string, string> = {
   no_breakthrough: "Kein Durchbruch, der auf eine Wahl wartet.",
   already_chosen: "Die Belohnung ist schon gewählt.",
   bad_choice: "Ungültige Wahl.",
-  no_research: "Forschung ist nicht verfügbar.",
+  no_research: "Forschung ist in dieser Saison nicht verfügbar.",
   // Nachrichtendienst
   covert_unit: "Spione fahren nicht in Verbänden mit – sie reisen nur mit Spionageaufträgen.",
   unit_cap: "Höchstzahl erreicht: der Nachrichtendienst führt je Stufe nur wenige Spione.",
@@ -235,16 +258,16 @@ const ERRORS: Record<string, string> = {
   sabotage_cooldown: "Dieser Hafen wurde vor Kurzem sabotiert und ist noch in Alarmbereitschaft (höchstens eine Sabotage je 24 Stunden).",
   // Seekabel (v1.21)
   cable_sabotage_war: "Ein Seekabel sabotierst du nur bei einem Kriegsgegner.",
-  no_cable: "Seekabel sind nicht verfügbar.",
+  no_cable: "Seekabel gibt es in dieser Saison nicht.",
   cable_self: "Ein Seekabel verbindet zwei verschiedene Häfen.",
-  cable_station_required: "Beide Häfen brauchen eine Seekabel-Station (Stufe 1).",
+  cable_station_required: "Beide Häfen brauchen das Gebäude Seekabel (Stufe 1).",
   cable_busy: "Einer der Häfen hat schon ein Seekabel (oder eine offene Anfrage).",
   cable_too_far: "Die Häfen liegen zu weit auseinander für ein Seekabel.",
   cable_not_ally: "Seekabel zu fremden Häfen nur innerhalb der eigenen Allianz.",
   cable_price: "Ungültiger Preis für den Kabelstrom.",
   cable_gone: "Dieses Seekabel gibt es nicht mehr.",
   cable_not_party: "Das darf bei diesem Seekabel nur die andere Seite.",
-  no_espionage: "Spionage ist nicht verfügbar.",
+  no_espionage: "Spionage ist in dieser Saison nicht verfügbar.",
   bad_spy_kind: "Unbekannte Auftragsart.",
   // See: Minen/Blockade/Konvoi
   not_sea: "Minen lassen sich nur auf offener See legen und räumen.",
@@ -279,7 +302,7 @@ const ERRORS: Record<string, string> = {
   field_has_admiral: "Die Besatzung dieses Felds hat schon einen Admiral.",
   field_no_admiral: "Diese Besatzung führt kein Admiral.",
   // Mehrere Häfen: Gründung und Verlegung
-  expansion_off: "Gründen und Verlegen sind auf diesem Server noch nicht freigeschaltet.",
+  expansion_off: "Gründen und Verlegen sind in dieser Saison noch nicht freigeschaltet.",
   base_limit: "Kein weiterer Hafen möglich: Höchstzahl erreicht oder die Kommandozentrale des Heimathafens ist noch zu klein.",
   too_close: "Zu nah an einem anderen Hafen. Wähle ein Küstenfeld mit mehr Abstand.",
   home_only: "Das geht nur im Heimathafen.",
@@ -307,16 +330,16 @@ const ERRORS: Record<string, string> = {
   offers_open: "Aus diesem Hafen stehen noch Handelsangebote offen – erst zurückziehen.",
   field_held: "Ein Rohstofffeld liefert an diesen Hafen – erst aufgeben.",
   // Lagebild Stufe 2: Patrouille, Kampagne, Radarposten
-  patrol_off: "Patrouillen gibt es auf diesem Server nicht.",
+  patrol_off: "Patrouillen gibt es in dieser Saison nicht.",
   patrol_units: "Auf Patrouille fahren nur Korvetten, Zerstörer, U-Boote und Aufklärungsdrohnen.",
   patrol_waypoints: "Eine Patrouille braucht 2 bis 4 Wegpunkte.",
   patrol_sea: "Wegpunkte müssen auf offener See liegen.",
   patrol_hours: "Dauer 4, 8 oder 12 Stunden wählen.",
   patrol_drone_hours: "Drohnen fliegen höchstens 6 Stunden – mit Drohnen nur 4 Stunden Patrouille.",
   patrol_drone_range: "Ein Wegpunkt liegt außerhalb der Drohnenreichweite (800 km vom Hafen).",
-  campaign_off: "Aufklärungskampagnen gibt es auf diesem Server nicht.",
+  campaign_off: "Aufklärungskampagnen gibt es in dieser Saison nicht.",
   campaign_targets: "Eine Kampagne hat 1 bis 4 verschiedene Ziele.",
-  post_off: "Radarposten gibt es auf diesem Server nicht.",
+  post_off: "Radarposten gibt es in dieser Saison nicht.",
   post_crew: "Ein Radarposten braucht mindestens 5 Pioniere und ein Landungsschiff.",
   post_radar: "Radarposten errichtet nur ein Hafen mit Radarstation Stufe 3.",
   post_site: "Hier kann kein Radarposten stehen: nur auf freier Küste oder einem eigenen Rohstofffeld.",
@@ -326,11 +349,16 @@ const ERRORS: Record<string, string> = {
   own_post: "Das ist dein eigener Radarposten.",
   // Lagebild Stufe 3: Satelliten, Voraussetzungen von Gebäuden
   building_requires: "Dafür fehlen Voraussetzungen (andere Gebäude dieses Hafens).",
-  sat_off: "Satelliten gibt es auf diesem Server nicht.",
+  sat_off: "Satelliten gibt es in dieser Saison nicht.",
   sat_type: "Diese Satellitenart gibt es nicht.",
   sat_pad: "Satelliten starten nur von einer Startrampe.",
   sat_tech: "Diese Satellitenart ist noch nicht erforscht (Zweig Raumfahrt).",
   sat_limit: "Höchstzahl Satelliten erreicht – erst wenn einer verglüht, startet der nächste.",
+  // Verwaltung (sonst meist mit eigenem Text an Ort und Stelle)
+  not_failed: "Das Ereignis ist nicht mehr fehlgeschlagen.",
+  already_pending: "Für dasselbe Objekt ist bereits ein Ereignis dieses Typs offen.",
+  bad_screenshot: "Der Screenshot ist zu groß oder beschädigt.",
+  no_file: "Die Sicherung ist nicht mehr vorhanden.",
 };
 
 export function errorText(code: string): string {

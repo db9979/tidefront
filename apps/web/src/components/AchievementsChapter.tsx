@@ -11,7 +11,7 @@ function P({ children }: { children: ReactNode }) {
 
 export function AchievementsChapter({ b }: { b: Balance | undefined }) {
   const a = b?.achievements;
-  if (!a) return <P>Erfolge und Wochenziele gibt es in dieser Welt nicht.</P>;
+  if (!a) return <P>Erfolge und Wochenziele gibt es in dieser Saison nicht.</P>;
   return (
     <>
       <P><strong>Erfolge</strong> sind dauerhafte Abzeichen: Sie bleiben über alle Saisons erhalten. Jedes hat drei Stufen – <strong>Bronze, Silber, Gold</strong>. Erreichst du eine Stufe, bekommst du eine Nachricht (und einen Push, falls eingeschaltet); die Belohnung holst du unter <strong>Meldungen → Erfolge</strong> mit <strong>Abholen</strong> ab, je Stufe genau einmal. Deine drei höchsten Abzeichen stehen in der Rangliste neben deinem Namen.</P>

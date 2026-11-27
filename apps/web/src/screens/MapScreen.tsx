@@ -190,7 +190,7 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { 
                   <div className="font-serif text-[19px] leading-tight flex items-center gap-2 mt-0.5">
                     <TacticalIcon kind={info.base.own ? "own" : relationKind(info.base.relation)} size={26} /> {info.base.name}
                   </div>
-                  <div className="text-xs text-slate-300">{isHome ? (base.bases.length > 1 ? "Dein aktiver Hafen" : "Dein Stützpunkt") : info.base.own ? "Dein Hafen – zum Verwalten hierhin wechseln" : `Stützpunkt von ${info.base.owner}`}</div>
+                  <div className="text-xs text-slate-300">{isHome ? (base.bases.length > 1 ? "Dein aktiver Hafen" : "Dein Hafen") : info.base.own ? "Dein Hafen – zum Verwalten hierhin wechseln" : `Hafen von ${info.base.owner}`}</div>
                   {!info.base.own && (
                     <div className="text-xs font-semibold" style={{ color: RELATION_HEX[info.base.relation] }}>{RELATION_TEXT[info.base.relation]}</div>
                   )}
@@ -246,7 +246,7 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { 
               <FieldSheet data={fields.data} sel={sel} onPlan={onPlan} />
               <PostSheet map={map.data} sel={sel} now={now} freeCoast={freeCoast} sea={terrainAt(sel.col, sel.row) === "sea"} onPlan={onPlan} />{/* Lagebild Stufe 2 */}
               {!info.base && !info.nest && !info.wreck && !info.event && !info.naval && !info.field && !freeCoast && info.fleets.length === 0 && !(map.data.posts ?? []).some((p) => p.col === sel.col && p.row === sel.row) && (
-                <div className="text-slate-400 mt-1">Hier ist nichts. Ziele sind Piratennester (rote Raute), Rohstofffelder und fremde Stützpunkte.</div>
+                <div className="text-slate-400 mt-1">Hier ist nichts. Ziele sind Piratennester (rote Raute), Rohstofffelder und fremde Häfen.</div>
               )}
               {!isHome && (info.base || info.nest || info.field) && (
                 <div className="text-xs text-slate-400 mt-1">Fahrzeit etwa: Korvette {eta("korvette")}, Landungsschiff {eta("landungsschiff")}</div>

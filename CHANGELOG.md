@@ -19,9 +19,8 @@
 - **Lagebild Stufe 3 – Satelliten:** Neue Gebäude **Startrampe** (ab Kommandozentrale 8, Forschungsamt 5, Radarstation 6) und **Störsender**, neuer Forschungszweig **Raumfahrt**. Ein optischer oder ein Radarsatellit überfliegt alle 6 Stunden einen 600 km breiten Streifen, zeigt ihn 20 Minuten live und hält 7 Tage. Der optische sieht nicht durch Wolken, der Radarsatellit sieht nur Verbände, Wracks und Posten. Unter Meldungen → Lagebild steht der nächste Überflug mit Ort; die Karte zeigt die Streifen und den nächsten Überflug mit Uhrzeit.
 - **Gegenmittel:** Tarnnetze (Zweig Heer), Störsender (fremdes Radar bis −50 %), Tarnanstrich gegen Sicht auf reine Flugzeugverbände; ein Admiral mit Aufklärung halbiert fremdes Radar.
 - Berichte und E-Mails zu Start und Ende eines Satelliten, Handbuch, Legende und „Was hilft?“ für alle neuen Sperren.
-- **KI-Spieler** starten im Spätspiel Satelliten. **Behoben:** Bei viel Wissen fanden Bots kein passendes Nest mehr für Überfälle.
+- **KI-Spieler** starten im Spätspiel Satelliten. **Behoben:** Bei viel Wissen fanden KI-Spieler kein passendes Nest mehr für Überfälle.
 - **Balance v1.23.**
-- **Behoben (Test):** Ein Servertest erwartete noch das immer voll laufende Kraftwerk.
 
 ## 0.21.3 – 27.11.2026
 - **Kraftwerk regelt nach:** Es liefert nur noch, was Wind, Sonne, Seekabel und Speicher offen lassen, und verbrennt entsprechend weniger Treibstoff (ein reiner Kraftwerkshafen spart rund ein Sechstel, ein gemischter deutlich mehr). Die Versorgung zeigt die aktuelle Auslastung; der rote Hinweis erscheint nur noch bei echtem Treibstoffmangel. Das Kraftwerk lädt den Speicher nicht mehr – der lädt aus Ökostrom.
@@ -50,12 +49,12 @@
 
 ## 0.20.0 – 27.11.2026
 - **Elektrolyse** (neues Gebäude): wandelt Überschuss aus Wind und Sonne in Treibstoff (10 Strom-Stunden → 1 Treibstoff); Kraftwerksstrom nie. Gasblasen steigen, solange sie arbeitet.
-- **Seekabel** (neues Gebäude): Ökostrom-Überschuss an einen eigenen Hafen oder ein Allianzmitglied abgeben – bis 600 km, 10 % Verlust je 100 km, Preis frei oder als Allianzhilfe, Abrechnung alle 10 Minuten. Kriegsgegner können die Station sabotieren. Verwaltung in der Versorgung: anbieten, annehmen, Preis ändern, trennen.
+- **Seekabel** (neues Gebäude): Ökostrom-Überschuss an einen eigenen Hafen oder ein Allianzmitglied abgeben – bis 600 km, 10 % Verlust je 100 km, Preis frei oder als Allianzhilfe, Abrechnung alle 10 Minuten. Kriegsgegner können das Seekabel sabotieren. Verwaltung in der Versorgung: anbieten, annehmen, Preis ändern, trennen.
 - **Grüner Hafen:** ab 60 % Ökostrom in 24 Stunden +3 % Produktion (Quelle „Ökostrom“ im Info-Blatt). Neuer Erfolg „Grüner Hafen“, Wochenziel „Ökostrom“, Saisonauszeichnung „Grünster Hafen“ in der Ruhmeshalle.
 - **Stromkurve** zeigt, wohin der Überschuss geht (→ Treibstoff, → Partner, verfällt), dazu den Ökostrom-Anteil.
 - KI-Händler bauen Wind, Sonne und Elektrolyse.
 - **Behoben:** Außenposten verloren bei jeder Abrechnung ihre Kolonie-Markierung; Gebäude, die nur im Heimathafen erlaubt sind, waren dort deshalb nicht gesperrt.
-- Handbuch „Wetter und Strom“ erweitert, Regeln in docs/REGELN-STROM.md. Balance v1.21.
+- Handbuch „Wetter und Strom“ erweitert. Balance v1.21.
 
 ## 0.19.2 – 27.11.2026
 - **Bewegte Gebäude**, dezent und nach Spielzustand: Windräder drehen mit dem Wind am Hafen (Flaute oder Sturmabschaltung: still), Rauch steigt und die Fackel flackert nur bei laufender Produktion (bei Strommangel stockend), die Radarschüssel dreht sich, der Leuchtturm blinkt nachts, Chipfabrik-LEDs blinken, das Solarfeld glänzt bei Sonne, das Speicherwerk zeigt seinen Füllstand. Werft, Kaserne und Flugfeld bewegen sich, solange ausgebildet wird; bei laufendem Ausbau steht ein kleiner Baukran am Gebäude.
@@ -63,7 +62,7 @@
 - **Stromfeld in der Kopfleiste:** Strombilanz (grün/rot), Speicherstand und Warnpunkt bei drohendem Mangel; Antippen öffnet die Versorgung.
 
 ## 0.19.1 – 27.11.2026
-- **Hinweis-Karten statt Textzeile:** Sperrgründe erscheinen als Karte mit Kurzfassung im Kopf (z. B. „Fehlt 48 Elektronik · ca. 9 h 36 min“ oder „1 von 1 belegt“). Aufgeklappt zeigt sie fehlende Mengen als Fortschrittszeile (Bestand / Bedarf mit Wartezeit), eine kurze Erklärung und die Sprungziele als Kacheln mit Symbol. Gilt überall, wo es „Was hilft“ gibt.
+- **Hinweis-Karten statt Textzeile:** Sperrgründe erscheinen als Karte mit Kurzfassung im Kopf (z. B. „Fehlt: 48 Elektronik · ca. 9 h 36 min“ oder „1 von 1 belegt“). Aufgeklappt zeigt sie fehlende Mengen als Fortschrittszeile (Bestand / Bedarf mit Wartezeit), eine kurze Erklärung und die Sprungziele als Kacheln mit Symbol. Gilt überall, wo es „Was hilft“ gibt.
 - Ist die Börse noch gesperrt, führt der Hinweis zur Hafenkommandantur statt zur Börse.
 
 ## 0.19.0 – 27.11.2026
@@ -103,8 +102,8 @@
 - **Karte:** Sauberer Kartenrand mit Rahmen wie auf einer Seekarte. Wetter (Fronten, Tiefs, Wolken), Gradnetz und Gelände enden am Rand, statt beim Schieben über den Rand ins Leere weiterzulaufen; Breiten- und Längenangaben erscheinen nur noch innerhalb der Karte.
 
 ## 0.17.0 – 27.11.2026
-- **KI-Spieler:** Drei Mitspieler mit eigener Spielweise – **Händler** (leicht: Wirtschaft, Börse, Spielerhandel), **Festung** (mittel: Verteidigung, Forschung, Nester) und **Freibeuter** (stark: Überfälle mit Aufklärung und Probekampf, Minen, frühe Kolonien). Sie spielen nach denselben Regeln wie alle, haben Ruhezeiten mit Nachtschild und besetzen auch Rohstofffelder. In Rangliste und Spielerübersicht tragen sie das Zeichen **KI**. Ob ein KI-Spieler Menschen angreifen darf, stellt die Verwaltung je Bot ein (zu Beginn: nein); dann gelten alle Schutzregeln und 12 Stunden Pause je Spieler.
-- **Saison 6 statt 4 Wochen.** Die laufende Saison endet am 7. Januar.
+- **KI-Spieler:** Drei Mitspieler mit eigener Spielweise – **Händler** (leicht: Wirtschaft, Börse, Spielerhandel), **Festung** (mittel: Verteidigung, Forschung, Nester) und **Freibeuter** (stark: Überfälle mit Aufklärung und Probekampf, Minen, frühe Kolonien). Sie spielen nach denselben Regeln wie alle, haben Ruhezeiten mit Nachtschild und besetzen auch Rohstofffelder. In Rangliste und Spielerübersicht tragen sie das Zeichen **KI**. Ob ein KI-Spieler Menschen angreifen darf, stellt die Verwaltung je KI-Spieler ein (zu Beginn: nein); dann gelten alle Schutzregeln und 12 Stunden Pause je Spieler.
+- **Saisons dauern 6 statt 4 Wochen.** Die laufende Saison endet am 7. Januar.
 - **Inselfestungen (Nest Stufe VI)** auf Bermuda, den Azoren, Jan Mayen, Mallorca und Rhodos: das Ziel für die letzten Saisonwochen, etwa ab Woche 5 mit einem vollen Verband zu schlagen. Größte Beute im Spiel mit viel Elektronik – genug Landungsschiffe mitnehmen. Nach einem Sieg 24 Stunden verlassen.
 - **Dritter Hafen** schon ab Kommandozentrale 8 (bisher 9).
 - **Kartell:** Eine Flotte daheim lockt keine stärkeren Überfälle mehr an – Kriegsschiffe zählen nur halb, Landungs-, Kolonieschiffe und Minenleger gar nicht. Die Miliz greift die Bunkerlinie so hart an wie Truppen: Sie bleibt starker Schutz, hält aber nicht mehr jeden Überfall auf. Dasselbe gilt für die Großflotte.
@@ -137,7 +136,7 @@
 - **Weitere Häfen früher:** Den zweiten Hafen gibt es jetzt ab Kommandozentrale 5 (bisher 8), den dritten ab Stufe 9 (bisher 14). Für das Kolonieschiff braucht es weiterhin Werft 6 und Hafenkommandantur 6.
 
 ## 0.15.0 – 27.11.2026
-- **Mehrere Häfen** (Welle 3, Teil 2): Gründe bis zu zwei Außenposten zusätzlich zu deinem Heimathafen – den zweiten ab Kommandozentrale 8, den dritten ab 14.
+- **Mehrere Häfen:** Gründe bis zu zwei Außenposten zusätzlich zu deinem Heimathafen – den zweiten ab Kommandozentrale 8, den dritten ab 14.
 - **Kolonieschiff** aus der Werft (ab Stufe 6, Hafenkommandantur 6): Es fährt zu einem freien Küstenfeld (höchstens 900 km vom Heimathafen, mit Abstand zu anderen Häfen) und wird dort zum neuen Hafen – mit Grundbeständen und der mitgebrachten Ladung. Wer zuerst ankommt, bekommt das Feld.
 - Neue Häfen übernehmen den Anfängerschutz des Heimathafens und haben 24 Stunden Gründungsschutz; das Kartell greift frühestens nach 48 Stunden an.
 - **Hafenwahl** oben in der Kopfleiste: Alle Seiten zeigen den gewählten Hafen – Gebäude, Truppen, Börse, Missionen. Auf der Karte hat der aktive Hafen einen Doppelring; freie Küstenfelder bieten „Außenposten gründen“, eigene Häfen „Hierhin wechseln“, „Transport“ und „Verlegen“.
@@ -149,7 +148,7 @@
 - Vorbereitung für mehrere Häfen je Spieler (Heimathafen, Besitzprüfung je Hafen). Für dich ändert sich noch nichts.
 
 ## 0.14.0 – 27.11.2026
-- **Rohstofffelder einnehmen** (Welle 3, Teil 1): Auf See liegen Ölfelder (Treibstoff), Erzbuchten (Stahl), Fischgründe (Proviant) und Elektronik-Wracks – in drei Größen, bevorzugt zwischen den Häfen. Neutrale Felder bewacht das Kartell.
+- **Rohstofffelder einnehmen:** Auf See liegen Ölfelder (Treibstoff), Erzbuchten (Stahl), Fischgründe (Proviant) und Elektronik-Wracks – in drei Größen, bevorzugt zwischen den Häfen. Neutrale Felder bewacht das Kartell.
 - **Besetzen**: Aufklären, mit bewaffneten Schiffen besetzen, die Wache schlagen. Eine Besatzung bleibt vor Ort (belegt einen Missionsplatz, kostet Proviant) und verteidigt das Feld. Alle 4 Stunden fährt der Ertrag als Konvoi zum Hafen – Kriegsgegner und Kartell können ihn abfangen, eine Blockade hält ihn zurück.
 - **Umkämpft**: Das Kartell greift besetzte Felder gelegentlich an (mit Vorwarnung), andere Spieler können sie erobern (gleiche Schutzregeln wie beim Überfall). Eine Mindestbesatzung hält auf großen Feldern nicht lange – stärkere Besatzungen schon.
 - **Grenzen**: 1 Feld je 4 Stufen Hafenkommandantur (höchstens 5), jedes weitere bringt weniger (100/85/70/55/45 %).
@@ -160,7 +159,7 @@
 - **Weniger Scrollen** (nach Messung durch einen Game-Designer): Die Seiten sind deutlich kürzer – Basis von 6 auf unter 3 Bildschirmhöhen, Truppen je Bereich etwa 1–2 statt bis zu 5,5, Börse von 3,6 auf unter 2.
 - Jeder Reiter merkt sich, wie weit du gescrollt hast; Missionsplanung, Handbuch und Forschung öffnen oben.
 - **Basis „Hafen zuerst“**: Bauhof und Gebäude stehen oben. Auftragsbuch, Tagesbefehle und Wochenziele sind eine kompakte Leiste „Aufträge“ mit Zähler, was abholbereit ist – antippen öffnet die Details. Versorgung und Schutz sind einklappbar.
-- **Truppen** mit Umschalter „Einsatz · Ausbilden · Abwehr“; jede Einheit ist eine Zeile, Werte und Kosten im Infoblatt (ⓘ). Forschung als Knopf oben.
+- **Truppen** mit Umschalter „Einsatz · Ausbilden · Abwehr“; jede Einheit ist eine Zeile, Werte und Kosten im Info-Blatt (ⓘ). Forschung als Knopf oben.
 - **Feste Aktionsleiste** über der Navigation: „Auslaufen“, Kaufen/Verkaufen und „Angebot einstellen“ sind immer erreichbar.
 - **Börse** mit Unterreitern „Handel · Spieler · Nachrichten“; Tipp auf eine Ware holt die Order ins Bild, der Kursverlauf ist einklappbar.
 - Karte: Das Infofeld nimmt höchstens 45 % der Höhe ein. Erfolge, Rangliste (Top 10 + eigener Platz), Berichte (Filter, „Weitere laden“), Handbuch (Kapitelleiste), Forschung (Zweige als Umschalter) und Einstellungen sind gestrafft.
@@ -174,7 +173,7 @@
 - Die Uhr im Spiel springt beim Nachladen nicht mehr kurz zurück.
 
 ## 0.12.1 – 27.11.2026
-- **Ressourcen antippen**: Ein Tipp auf Stahl, Treibstoff, Elektronik oder Proviant in der Kopfleiste öffnet ein Infoblatt – Art und Verwendung, Bestand und Lager mit Füllstand, „voll in …“ bzw. „leer in …“, Produktion nach Quellen (Gebäude, Grundproduktion, Verbrauch durch Truppen oder Kraftwerk), Strommangel und Wirkungen wie Blockade oder Sabotage, Bunkerschutz, Börsenkurs und Wert des Bestands.
+- **Ressourcen antippen**: Ein Tipp auf Stahl, Treibstoff, Elektronik oder Proviant in der Kopfleiste öffnet ein Info-Blatt – Art und Verwendung, Bestand und Lager mit Füllstand, „voll in …“ bzw. „leer in …“, Produktion nach Quellen (Gebäude, Grundproduktion, Verbrauch durch Truppen oder Kraftwerk), Strommangel und Wirkungen wie Blockade oder Sabotage, Bunkerschutz, Börsenkurs und Wert des Bestands.
 
 ## 0.12.0 – 27.11.2026
 - **Admirale**: Ernenne bis zu drei Admirale (Truppen → Admirale). Sie führen einen Verband auf Mission oder als Hafenkommandant daheim die Verteidigung. Sechs Spezialisierungen (Angriff, Verteidigung, Logistik, Aufklärung, Beutemeister, U-Boot-Taktik), Erfahrung aus gewonnenen Kämpfen, Beförderung bis zum Admiral. Nach schweren Niederlagen entscheidet ein W20 über Verwundung, Gefangenschaft oder Tod.
@@ -222,7 +221,7 @@
 - **Wetter**: Tiefs und Hochs ziehen von West nach Ost über die Karte, dazu Nebelküsten, Tag und Nacht. Die Karte zeigt Wolken, Sturm und Nebel (Knopf „Wetter an/aus“). Sturm verlängert Seefahrten, hält Flugzeuge am Boden und schwächt sie im Kampf; Nebel verkürzt die Radar-Vorwarnung und macht Aufklärung ungenau.
 - **Strom**: Neue Gebäude **Windpark**, **Solarfeld** und **Speicherwerk**. Das Kraftwerk verbraucht jetzt Treibstoff. Fehlt Strom, wird nach Rang versorgt: Radar, Produktion, Ausbildung, Forschung. Die Basis zeigt Angebot, Bedarf, Speicher, eine 24-Stunden-Kurve und die Wettervorhersage.
 - **Nachrichtendienst**: Spione ausbilden und losschicken – Erkunden, Desinformation, Sabotage (ein Gebäude fällt 6 Stunden aus) und Kartell-Aufklärung. Jeder Auftrag wird mit dem W20 gewürfelt; wer enttarnt wird, verliert seine Spione. Neue Forschung Verschlüsselung und Agentenschulung.
-- **Fehler melden**: Im Handbuch und in den Einstellungen. Ein Screenshot der aktuellen Ansicht und das Fehlerprotokoll werden automatisch angehängt; du ergänzt nur noch, was passiert ist. Die Verwaltung bekommt eine E-Mail und sieht alle Meldungen im Admin-Menü.
+- **Fehler melden**: Im Handbuch und in den Einstellungen. Ein Screenshot der aktuellen Ansicht und das Fehlerprotokoll werden automatisch angehängt; du ergänzt nur noch, was passiert ist. Die Verwaltung bekommt eine E-Mail und sieht alle Meldungen unter Einstellungen → Verwaltung.
 - Neue Gebäude haben eigene Bilder je Ausbaustufe.
 
 ## 0.10.2 – 27.11.2026

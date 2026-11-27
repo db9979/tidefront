@@ -47,7 +47,7 @@ export function Welcome({ playerId, onDone }: { playerId: number; onDone: () => 
         </div>
         <div className="flex gap-2">
           <Button kind="secondary" className="flex-1 !px-2 !tracking-[0.06em]" onClick={close}>Überspringen</Button>
-          <Button className="flex-1 !px-2 !tracking-[0.06em]" onClick={() => (last ? close() : setStep(step + 1))}>{last ? "Los geht's" : "Weiter"}</Button>
+          <Button className="flex-1 !px-2 !tracking-[0.06em]" onClick={() => (last ? close() : setStep(step + 1))}>{last ? "Los geht’s" : "Weiter"}</Button>
         </div>
       </div>
     </div>

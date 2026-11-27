@@ -23,6 +23,7 @@ import { runCommand } from "./commands.ts";
 import { baseOfPlayer, lockBase, randomSeed, saveBase, scheduleEvent } from "./store.ts";
 import { modsOf } from "./modifiers.ts";
 import { trackProgress } from "./challenges.ts";
+import { TECH_NAMES } from "./names.ts";
 
 async function ownLocked(tx: Parameters<Handler>[0], playerId: number) {
   const own = await baseOfPlayer(tx, playerId); // Mehrere Häfen: bewusst Heimathafen (Forschung spielerweit, Forschungsamt nur dort)
@@ -94,15 +95,7 @@ export const researchComplete: Handler = async (tx, ev, due) => {
 };
 
 /** Anzeigename einer Technik für Nachrichten (die Oberfläche hat ihre eigenen Texte). */
-export const TECH_NAMES: Record<string, string> = {
-  dampfturbinen: "Dampfturbinen", schiffspanzerung: "Schiffspanzerung", sonar: "Sonar", prisenrecht: "Prisenrecht",
-  torpedoleitsysteme: "Torpedoleitsysteme", infanteriewaffen: "Infanteriewaffen", drillausbildung: "Drillausbildung",
-  verbundpanzerung: "Verbundpanzerung", pioniertechnik: "Pioniertechnik", festungsbau: "Festungsbau",
-  funkmesstechnik: "Funkmesstechnik", strahltriebwerke: "Strahltriebwerke", luftkampftaktik: "Luftkampftaktik",
-  tarnanstrich: "Tarnanstrich", praezisionsbomben: "Präzisionsbomben", hochofen: "Hochofen", logistik: "Logistik",
-  lagertechnik: "Lagertechnik", fertigbau: "Fertigbau", stahlbetonbunker: "Stahlbetonbunker",
-  tarnnetze: "Tarnnetze", optischer_satellit: "Optischer Satellit", radarsatellit: "Radarsatellit", // Lagebild Stufe 3
-};
+export { TECH_NAMES }; // Tabelle in names.ts (eine Quelle für Push, E-Mail und KI-Protokoll)
 
 function techName(id: string): string {
   return TECH_NAMES[id] ?? id;

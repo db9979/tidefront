@@ -75,7 +75,7 @@ test("Fehlende Ressourcen beim Ausbau → Was hilft? → Börse mit Elektronik",
   await expect(up).toHaveAttribute("aria-disabled", "true");
   await up.click({ force: true });
   const hint = sheet.locator("[data-remedy]");
-  await expect(hint).toContainText(/Fehlt \d+ Elektronik/); // Kurzfassung im Kopf
+  await expect(hint).toContainText(/Fehlt: \d+ Elektronik/); // Kurzfassung im Kopf
   await expect(hint).toContainText(/\d+ \/ \d+/); // Fortschrittszeile Bestand / Bedarf
   await expect(hint).toContainText(/an der Börse/);
   await expectNoHorizontalOverflow(page, "Gebäudeblatt mit „Was hilft?“");

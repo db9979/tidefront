@@ -40,7 +40,7 @@ export const INTEL: RemedyTable = {
     const list = need.map(([b, l]) => `${label(b)} ${l} (jetzt ${lvl(base, b)})`);
     return {
       hint: need.length ? `${label(id)} braucht ${list.join(", ")}.` : "Es fehlen Voraussetzungen in diesem Hafen.",
-      summary: need.length ? `Fehlt ${list.join(", ")}` : undefined,
+      summary: need.length ? `Fehlt: ${list.join(", ")}` : undefined,
       actions: need.slice(0, 3).map(([b]) => build(b)).concat(first && !need.length ? [build(first.id)] : []),
     };
   },

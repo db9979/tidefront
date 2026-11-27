@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
-import { fmtNum } from "../lib/names.ts";
+import { fmtNum, nOf } from "../lib/names.ts";
 import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
 import { Button, Card, Cost, ErrorLine } from "../ui.tsx";
 import { ReasonLine } from "./Remedy.tsx"; // „Was hilft?“
@@ -141,7 +141,7 @@ function AdmiralItem({ a, v, now }: { a: Admiral; v: View; now: number }) {
           </div>
           <div className="text-xs text-ink2">
             {a.specs.map(specName).join(" und ")} · Erfahrung {fmtNum(a.xp)}{a.next ? ` · ${a.next.name} ab ${fmtNum(a.next.minXp)}` : " · höchster Rang"}
-            {a.battles > 0 ? ` · ${a.wins} Siege in ${a.battles} Kämpfen` : ""}
+            {a.battles > 0 ? ` · ${nOf(a.wins, "Sieg", "Siege")} in ${a.battles} ${a.battles === 1 ? "Kampf" : "Kämpfen"}` : ""}
           </div>
           {a.mission.length > 0 && <div className="text-[11.5px] text-ink2">Auf Mission: {modLineText(a.mission)}</div>}
           {a.defense.length > 0 && <div className="text-[11.5px] text-ink2">Verteidigung: {modLineText(a.defense)}</div>}

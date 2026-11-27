@@ -48,7 +48,7 @@ export const ECONOMY: RemedyTable = {
     const tech = techOf(ctx);
     const id = tech ? ctx.balance!.research!.building : builtIn(ctx);
     if (!id || id === "anlagen") return null;
-    return { hint: `Dafür brauchst du ein ${label(id)} (mindestens Stufe 1).`, actions: [build(id, `${label(id)} bauen`)] };
+    return { hint: `Dafür brauchst du: ${label(id)} Stufe 1.`, actions: [build(id, `${label(id)} bauen`)] };
   },
 
   building_level: (ctx) => {
@@ -109,7 +109,7 @@ export const ECONOMY: RemedyTable = {
     const def = unit ? balance?.units[unit] : undefined;
     const where = def?.builtIn ?? e?.building ?? "nachrichtendienst";
     const cap = base && balance && unit === e?.unit ? spyCap(stateOf(base) as BaseState, balance) : null;
-    if (def?.maxPerLevel === undefined) return { hint: `Höchstzahl erreicht. Mehr gibt es, wenn du ${label(where)} ausbaust.`, actions: [build(where)] };
+    if (def?.maxPerLevel === undefined) return { hint: `Höchstzahl erreicht. Mehr gibt es mit dem Ausbau von ${label(where)}.`, actions: [build(where)] };
     return {
       hint: `${unit ? label(unit) : "Diese Einheit"}: höchstens ${fmtNum(def.maxPerLevel, 1)} je Stufe von ${label(where)} (jetzt Stufe ${lvl(base, where)}${cap !== null ? `, also ${fmtNum(cap)}` : ""}) – daheim, unterwegs und in Ausbildung zusammen. Mehr gibt es mit dem nächsten Ausbau.`,
       actions: [build(where)],

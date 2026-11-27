@@ -59,7 +59,7 @@ function nestWhy(bal: Balance | undefined): string {
   const crew = n
     ? Object.entries(n).filter(([k, v]) => k !== "loot" && typeof v === "number" && v > 0).map(([k, v]) => `${fmtNum(v as number)} ${countLabel(k, v as number)}`).join(" und ")
     : "einige Schnellboote und Milizionäre";
-  return `Nester liegen an den Küsten; eines der Stufe 1 liegt höchstens 300 km von deinem Hafen. Stufe 1 hat ${crew}. Empfohlen: ein Landungsschiff mit mindestens ${GOALS.schuetzen} Schützen, dazu deine Korvetten. Unter Truppen → Einsatz → „Lohnende Ziele“ steht der passende Verband mit seiner Siegchance aus dem Probekampf.`;
+  return `Nester liegen an den Küsten; eines der Stufe 1 liegt höchstens 300 km von deinem Hafen entfernt. Stufe 1 hat ${crew}. Empfohlen: ein Landungsschiff mit mindestens ${GOALS.schuetzen} Schützen, dazu deine Korvetten. Unter Truppen → Einsatz → „Lohnende Ziele“ steht der passende Verband mit seiner Siegchance aus dem Probekampf.`;
 }
 
 const whyText = (s: Step, bal: Balance | undefined) => (typeof s.why === "function" ? s.why(bal) : s.why);

@@ -291,3 +291,21 @@ Nicht geändert.
    („KW 64 %“); Produktionsgebäude nennen die Grundproduktion; Forschungsstatus als Zeile im Bauhof; Ladeanzeigen
    erkennen Drosselung (429) und Fehler und bieten „Erneut versuchen“; Inhalte laden mit Kartenskelett. Desktop ab
    1024 px: Inhalt bis max-w-3xl, Karte volle Breite.
+
+## Lektorat 0.22 – Sprache und Einheitlichkeit (Kürzel lek)
+
+1. **Namen statt Kennungen:** Weltereignis-Arten, Sabotageziel Seekabel, Berichtsarten (posten, sichtung, patrouille,
+   kampagne), Missionsarten und alle Techniken haben deutsche Namen in Web und Engine. Die Techniknamen der Engine
+   stehen nur noch in `engine/src/names.ts` (`TECH_NAMES`, von research.ts weitergereicht). `nameOf()` macht
+   unbekannte IDs wie `label()` lesbar (ae → ä …). Test `game-core/test/namen.test.ts` verlangt für jede Balance-ID,
+   jede Missionsart und jeden Fehlercode (aus den Quellen gelesen) einen Namen bzw. Text.
+2. **Mehrzahl:** gemeinsame Hilfen `nOf(n, eins, viele)` (Web `lib/names.ts`, Engine `names.ts`, mail-report-kit
+   reicht sie weiter) und `countName/countsText` (Engine, Tabelle wie Web-`PLURAL`) für Push und Morgenbericht.
+3. **Begriffe:** „Hafen“ statt „Stützpunkt“, „KI-Spieler“ statt „Bot“ (Verwaltung darf „Bot“), „Piratennest“,
+   Gebäude „Seekabel“, abgeschaltete Funktionen „in dieser Saison“, „Einstellungen → Verwaltung“ statt „Admin-Menü“,
+   Versorgungsmangel „Angriff −20 %“, „Kredite“ im Fließtext („Kr“ nur in Kurszetteln und Zahlenzeilen).
+4. **Zeiten:** Sabotage-Ende in Serverzeit (`clock`), nicht UTC; das Börsen-Tageslimit nennt die Uhrzeit des
+   Tageswechsels in Spielerzeit. Dauern in Zahlenzeilen „h“/„min“, im Satz „Stunden“.
+5. **Zahlen:** Faktoren mit Dezimalkomma („×0,85“), Mengen mit Tausenderpunkt auch in Engine-Texten.
+6. **Handbuch:** Zahl und Namen der Forschungszweige und die Spanne der Forschungsamt-Stufen kommen aus der Balance.
+7. **Remedy-Kurzfassungen** im Stichwortstil „Fehlt: …“.

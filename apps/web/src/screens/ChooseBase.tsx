@@ -107,7 +107,7 @@ export function ChooseBase() {
                 <span className="flex items-center gap-1"><TacticalIcon kind="port" size={16} /> Handelshafen</span><span className="text-right">{f.port.name}, {fmtNum(f.port.distanceKm)} km</span>
                 <span className="flex items-center gap-1"><TacticalIcon kind="other" size={16} /> Nächster Spieler</span><span className="text-right">{f.other === undefined ? "keiner" : `${fmtNum(f.other)} km`}</span>
               </div>
-              <input aria-label="Name des Stützpunkts" maxLength={32} className="w-full h-12 rounded-lg field px-3" placeholder="Name des Stützpunkts (2–32 Zeichen)" value={name} onChange={(e) => setName(e.target.value)} />
+              <input aria-label="Name des Hafens" maxLength={32} className="w-full h-12 rounded-lg field px-3" placeholder="Name des Hafens (2–32 Zeichen)" value={name} onChange={(e) => setName(e.target.value)} />
               <label className="flex items-center gap-2 text-sm">
                 Nachtschild ab
                 <select className="h-11 rounded-lg field px-2" value={nightHour ?? ""} onChange={(e) => setNightHour(e.target.value === "" ? null : Number(e.target.value))}>

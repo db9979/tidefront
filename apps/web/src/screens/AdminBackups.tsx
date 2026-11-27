@@ -106,7 +106,7 @@ export function AdminBackups() {
           <Badge tone={STATUS[last.status]?.tone ?? "slate"}>{STATUS[last.status]?.text ?? last.status}</Badge>
           <span className="text-ink2">
             {last.status === "pending" && (waitedMin >= 3
-              ? `Seit ${waitedMin} Min. kein Start – läuft der Dienst „backup“?`
+              ? `Seit ${waitedMin} Minuten kein Start – läuft der Dienst „backup“?`
               : "Der Sicherungsdienst übernimmt den Auftrag innerhalb einer Minute.")}
             {last.status === "running" && `gestartet ${when(last.startedAt)}`}
             {last.status === "done" && <>Auftrag von {last.requestedBy ?? "?"}: <span className="mono">{last.file}</span></>}

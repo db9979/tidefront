@@ -10,7 +10,7 @@ import type { MailContent } from "./mail-templates.ts";
 import { EMAIL_DEFAULTS, mailReady, sendMail } from "./mail.ts";
 import { wants, type Prefs } from "./push.ts";
 import { publicUrl } from "./settings.ts";
-import { amounts, fmtInt } from "./names.ts";
+import { amounts, fmtInt, nOf } from "./names.ts";
 import { modsOf } from "./modifiers.ts";
 import { computeStandings } from "./scoring.ts";
 import { runningSeason } from "./season.ts";
@@ -56,12 +56,12 @@ export function winbackMail(d: WinbackData, unsubscribeUrl: string): MailContent
   facts.push(["Angriffe auf dich", d.attacks.count ? `${d.attacks.count} (${d.attacks.held} abgewehrt)` : "keine"]);
   if (d.attacks.count > d.attacks.held) facts.push(["Geplündert", amounts(d.attacks.lost)]);
   if (d.storage?.full) facts.push(["Produktion", "Lager voll – Nachschub geht verloren"]);
-  if (d.lostStreak) facts.push(["Tagesserie", `gerissen (${d.lostStreak} Tage)`]);
+  if (d.lostStreak) facts.push(["Tagesserie", `gerissen (${nOf(d.lostStreak, "Tag", "Tage")})`]);
   blocks.push({ type: "section", title: "Während du weg warst" }, { type: "facts", facts });
   const steps: string[] = ["Drei neue Tagesbefehle abholen – Rohstoffe und Saisonpunkte."];
   if (d.idleQueue) steps.push("Die Bauschlange ist leer: nächsten Ausbau in Auftrag geben.");
   if (d.storage?.full) steps.push("Vorräte ausgeben oder an der Börse verkaufen, bevor weitere Produktion verfällt.");
-  if (d.season && d.season.days - d.season.day > 0) steps.push(`Noch ${d.season.days - d.season.day} Tage bis Saisonende – Zeit genug für Plätze in der Rangliste.`);
+  if (d.season && d.season.days - d.season.day > 0) steps.push(`Noch ${nOf(d.season.days - d.season.day, "Tag", "Tage")} bis Saisonende – Zeit genug für Plätze in der Rangliste.`);
   blocks.push({ type: "section", title: "Was sich jetzt lohnt" }, { type: "list", items: steps });
   return {
     subject: d.season ? `Dein Hafen wartet – Saison ${d.season.number}, Tag ${d.season.day}` : "Dein Hafen wartet",

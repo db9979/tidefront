@@ -385,7 +385,7 @@
       { "credits": 1000, "stahl": 6400, "treibstoff": 4000, "elektronik": 2400, "proviant": 3200 }
     ],
     "list": {
-      "nestjaeger": { "title": "Nestjäger", "description": "Kartell-Nester ausgehoben", "counter": "nester", "thresholds": [5, 25, 100] },
+      "nestjaeger": { "title": "Nestjäger", "description": "Piratennester ausgehoben", "counter": "nester", "thresholds": [5, 25, 100] },
       "freibeuter": { "title": "Freibeuter", "description": "Überfälle auf Mitspieler gewonnen", "counter": "ueberfaelle", "thresholds": [3, 15, 50] },
       "bollwerk": { "title": "Bollwerk", "description": "Angriffe abgewehrt, ohne Einheiten oder Anlagen zu verlieren", "counter": "abwehr_ohne_verluste", "thresholds": [1, 5, 20] },
       "prisenmeister": { "title": "Prisenmeister", "description": "Beute aus Überfällen insgesamt (Ressourcen)", "counter": "beute", "thresholds": [25000, 250000, 2000000] },

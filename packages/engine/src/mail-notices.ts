@@ -7,7 +7,7 @@ import {
 } from "@tidefront/game-core";
 import { balance, type Notice } from "./context.ts";
 import type { MailBlock } from "./mail-blocks.ts";
-import { dateTime, int, sum, unitRows } from "./mail-report-kit.ts";
+import { dateTime, int, nOf, sum, unitRows } from "./mail-report-kit.ts";
 import { clock, minutesText } from "./names.ts";
 
 const SIZE_TEXT: Record<string, string> = { klein: "klein", mittel: "mittel", gross: "groß" };
@@ -37,11 +37,13 @@ export function attackWarningMail(input: {
   if (shield.protected) {
     steps.push(`Dein ${PROTECTION_TEXT[shield.reason ?? ""] ?? "Schutz"} gilt bei Ankunft – der Verband dreht voraussichtlich ohne Kampf ab.`);
   } else {
-    steps.push(home > 0 ? `Truppen daheim lassen: ${int(home)} Einheiten und ${int(defs)} Anlagen verteidigen ${input.targetName}.` : `Keine Einheiten daheim – nur ${int(defs)} Anlagen verteidigen. Verbände zurückrufen oder neue ausbilden.`);
-    if (away > 0) steps.push(`${int(away)} Einheiten sind unterwegs – zurückrufen, wenn sie vor ${clock(input.arriveAtMs)} Uhr heimkommen.`);
+    steps.push(home > 0
+      ? `Truppen daheim lassen: ${nOf(home, "Einheit", "Einheiten")} und ${nOf(defs, "Anlage", "Anlagen")} verteidigen ${input.targetName}.`
+      : `Keine Einheiten daheim – nur ${nOf(defs, "Anlage", "Anlagen")} ${defs === 1 ? "verteidigt" : "verteidigen"}. Verbände zurückrufen oder neue ausbilden.`);
+    if (away > 0) steps.push(`${away === 1 ? "1 Einheit ist" : `${int(away)} Einheiten sind`} unterwegs – zurückrufen, wenn sie vor ${clock(input.arriveAtMs)} Uhr heimkommen.`);
     if (sum(exposed) > 0) steps.push(`Vorräte über dem Bunkerschutz (${int(prot)} je Ressource) ausgeben oder verschicken – nur sie können geplündert werden.`);
     steps.push("Verbündete um Stationierung im Hafen bitten (Allianz).");
-    if (s.protection.nightShieldStartHour === null) steps.push(`Nachtschild einrichten – wirkt erst nach ${balance.protection.nightShieldChangeHours} Std. Vorlauf, also für künftige Nächte.`);
+    if (s.protection.nightShieldStartHour === null) steps.push(`Nachtschild einrichten – wirkt erst nach ${balance.protection.nightShieldChangeHours} Stunden Vorlauf, also für künftige Nächte.`);
   }
   const blocks: MailBlock[] = [
     { type: "banner", tone: "warn", kicker: "Radar-Warnung", title: `Ankunft in ${left}`, sub: `${input.attacker} greift ${input.targetName} an · ${clock(input.arriveAtMs)} Uhr` },

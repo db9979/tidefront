@@ -12,7 +12,7 @@ const pct = (x: number) => `${Math.round(x * 100)} %`;
 
 export function FieldsChapter({ b }: { b: Balance | undefined }) {
   const f = fieldsRules(b);
-  if (!f) return <P>Rohstofffelder gibt es in dieser Welt nicht.</P>;
+  if (!f) return <P>Rohstofffelder gibt es in dieser Saison nicht.</P>;
   return (
     <>
       <P><strong>Felder</strong> liegen auf See vor den Küsten, bevorzugt zwischen den Häfen mehrerer Spieler, nie näher als {fmtNum(f.minKmFromBase)} km an einem Hafen. Es gibt vier Arten in drei Stufen: {Object.entries(f.kinds).map(([k, v]) => `${KIND_TEXT[k]} (${label(v.resource)} ${v.yieldPerHour.join("/")} je Stunde)`).join(", ")}. Zum Saisonwechsel werden alle Felder neu verteilt, Besitz verfällt.</P>

@@ -1,7 +1,7 @@
 // Berichte Lagebild Stufe 2: Radarposten (errichtet, abgelehnt, zerstört/gehalten), Drohnen abgefangen, Sichtung fremder
 // Patrouillen und Aufklärer. Kampfverläufe zeigt der allgemeine Kampfbericht darunter.
 // Stufe 3: Satellit gestartet (Bahn, Kosten, erster Überflug) und verglüht (Überflüge, Sichtungen).
-import { errorText, fmtNum } from "../lib/names.ts";
+import { errorText, fmtNum, nOf } from "../lib/names.ts";
 import { fmtTime } from "../lib/time.ts";
 import { Card, Cost, UnitChips } from "../ui.tsx";
 
@@ -18,7 +18,7 @@ export function IntelOpsReport({ d }: { d: D }) {
   return (
     <Card>
       {sat && (sat.event === "end" ? (
-        <div className="text-sm space-y-1" data-testid="sat-report"><p>{sat.name} aus {sat.baseName} ist verglüht: {fmtNum(sat.passes ?? 0)} von {fmtNum(sat.plannedPasses ?? 0)} Überflügen, {fmtNum(sat.seen ?? 0)} Sichtungen{(sat.clouded ?? 0) > 0 ? `, ${fmtNum(sat.clouded ?? 0)} Ziele unter Wolken` : ""}.</p><p className="text-xs text-ink2">Das Wissen bleibt wie jede Sichtung bis zu 72 Stunden erhalten. Ein neuer Start unter Meldungen → Lagebild.</p></div>
+        <div className="text-sm space-y-1" data-testid="sat-report"><p>{sat.name} aus {sat.baseName} ist verglüht: {fmtNum(sat.passes ?? 0)} von {fmtNum(sat.plannedPasses ?? 0)} Überflügen, {nOf(sat.seen ?? 0, "Sichtung", "Sichtungen")}{(sat.clouded ?? 0) > 0 ? `, ${nOf(sat.clouded ?? 0, "Ziel", "Ziele")} unter Wolken` : ""}.</p><p className="text-xs text-ink2">Das Wissen bleibt wie jede Sichtung bis zu 72 Stunden erhalten. Ein neuer Start unter Meldungen → Lagebild.</p></div>
       ) : (
         <div className="text-sm space-y-1" data-testid="sat-report">
           <p>{sat.name} von der Startrampe {sat.baseName}: alle {sat.periodHours} h ein Überflug, {fmtNum(sat.stripKm ?? 600)} km breit, je {sat.liveMinutes} min live. {sat.level === "sichtung" ? "Sieht durch Wolken und Nebel, nur Sichtung." : "Erkennung, aber nicht unter Wolken."}</p>

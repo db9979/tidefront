@@ -104,7 +104,7 @@ export function BattleLog({ b, names, role, protectedPerResource = null, salvage
         </div>
         {b.weather && (b.weather.air < 0.995 || b.weather.strike < 0.995) && (
           <div className="text-[11.5px] text-ink2">
-            Wetter: {b.weather.storm ? "Sturm" : `Wind ${Math.round(b.weather.wind * 100)} %`}, Wolken {Math.round(b.weather.clouds * 100)} % – Flugzeuge ×{b.weather.air.toFixed(2)}, Luftschlag ×{(b.weather.air * b.weather.strike).toFixed(2)}
+            Wetter: {b.weather.storm ? "Sturm" : `Wind ${Math.round(b.weather.wind * 100)} %`}, Wolken {Math.round(b.weather.clouds * 100)} % – Flugzeuge ×{fmtNum(b.weather.air, 2)}, Luftschlag ×{fmtNum(b.weather.air * b.weather.strike, 2)}
           </div>
         )}
       </section>

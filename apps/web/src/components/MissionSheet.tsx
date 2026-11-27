@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, type BaseData, type MapData } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
-import { fmtNum, label } from "../lib/names.ts";
+import { fmtNum, label, nOf } from "../lib/names.ts";
 import { fmtDuration, fmtTime } from "../lib/time.ts";
 import { Bar, Button, ErrorLine, Sheet, UnitChips } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
@@ -98,7 +98,7 @@ export function MissionPanel({ mission, now, home, onClose, onShowTarget }: {
         <Icon id={m.type} size={36} />
         <div className="flex-1 min-w-0">
           <div className="font-serif text-[18px] leading-tight">{kind} <span className="text-ink2 font-sans text-xs">· {phase}</span></div>
-          <div className="text-xs text-ink2 mono">Jetzt bei Feld {at.col}/{at.row} · {fmtNum(total)} Einheiten</div>
+          <div className="text-xs text-ink2 mono">Jetzt bei Feld {at.col}/{at.row} · {nOf(total, "Einheit", "Einheiten")}</div>
         </div>
         <button type="button" className="tap rounded-[4px] border border-navy-600 text-slate-300" onClick={onClose} aria-label="Schließen">✕</button>
       </div>

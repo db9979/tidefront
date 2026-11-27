@@ -10,7 +10,7 @@ function P({ children }: { children: ReactNode }) {
 export function IntelChapter({ b }: { b: Balance | undefined }) {
   const e = b?.espionage;
   const spy = b?.units.spion;
-  if (!e) return <P>Der Nachrichtendienst ist in dieser Welt nicht verfügbar.</P>;
+  if (!e) return <P>Der Nachrichtendienst ist in dieser Saison nicht verfügbar.</P>;
   const k = e.kinds;
   return (
     <>
