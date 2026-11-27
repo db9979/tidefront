@@ -25,7 +25,7 @@ import {
   type Mission,
   type ResourceMap,
 } from "@tidefront/game-core";
-import { hexCenter, isCoast, isTradePortHex, nearestTradePort } from "@tidefront/world";
+import { hexCenter, isCoast, isTradePortHex, nearestTradePortBySea } from "@tidefront/world";
 import { tables, type Tx } from "@tidefront/db";
 import { nestKnown } from "./intel-query.ts"; // Lagebild
 import { balance, marketBalance, GameError, type ChangeKind, type Engine } from "./context.ts";
@@ -435,7 +435,7 @@ export function trade(
         harborLevel: await maxHarborLevel(ctx.tx, playerId, { id: b.id, state }), // höchste Hafenkommandantur
         storageCapacity: storage,
         attackDetected: await incomingDetected(ctx.tx, b.id, state, ctx.nowMs, mods),
-        distanceToPortKm: nearestTradePort(b).distanceKm,
+        distanceToPortKm: nearestTradePortBySea(b).distanceKm, // Seewege: Lieferung fährt über Wasser
       },
       marketBalance,
       ctx.nowMs,
