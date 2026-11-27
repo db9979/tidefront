@@ -19,7 +19,7 @@ export interface ExpansionRules {
 
 const DEFAULTS: Omit<ExpansionRules, "live"> = {
   maxBases: 3,
-  unlockCommandLevels: [8, 14],
+  unlockCommandLevels: [5, 9],
   colonyShip: COLONY_SHIP,
   minDistanceHex: 4,
   maxRangeKm: 900,

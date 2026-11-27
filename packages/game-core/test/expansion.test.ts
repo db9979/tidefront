@@ -12,13 +12,13 @@ const balance = loadBalance();
 const e = balance.expansion!;
 const ship = e.colonyShip;
 
-test("Freischaltung: 1 Hafen, ab Kommandozentrale 8 zwei, ab 14 drei, höchstens maxBases", () => {
-  assert.equal(allowedBases(makeBase(balance, { buildings: { kommandozentrale: 7 } }), balance), 1);
-  assert.equal(allowedBases(makeBase(balance, { buildings: { kommandozentrale: 8 } }), balance), 2);
-  assert.equal(allowedBases(makeBase(balance, { buildings: { kommandozentrale: 14 } }), balance), 3);
+test("Freischaltung: 1 Hafen, ab Kommandozentrale 5 zwei, ab 9 drei, höchstens maxBases", () => {
+  assert.equal(allowedBases(makeBase(balance, { buildings: { kommandozentrale: 4 } }), balance), 1);
+  assert.equal(allowedBases(makeBase(balance, { buildings: { kommandozentrale: 5 } }), balance), 2);
+  assert.equal(allowedBases(makeBase(balance, { buildings: { kommandozentrale: 9 } }), balance), 3);
   assert.equal(allowedBases(makeBase(balance, { buildings: { kommandozentrale: 20 } }), balance), e.maxBases);
-  assert.equal(nextUnlockLevel(makeBase(balance, { buildings: { kommandozentrale: 9 } }), balance), 14);
-  assert.equal(nextUnlockLevel(makeBase(balance, { buildings: { kommandozentrale: 14 } }), balance), null);
+  assert.equal(nextUnlockLevel(makeBase(balance, { buildings: { kommandozentrale: 6 } }), balance), 9);
+  assert.equal(nextUnlockLevel(makeBase(balance, { buildings: { kommandozentrale: 9 } }), balance), null);
   const { expansion: _, ...off } = balance;
   assert.equal(allowedBases(makeBase(balance, { buildings: { kommandozentrale: 20 } }), off), 1);
 });
@@ -43,7 +43,7 @@ function check(patch: Partial<FoundingCheck> = {}): FoundingCheck {
 
 test("Gründung: freies Küstenfeld erlaubt, alle Ablehnungsgründe", () => {
   assert.equal(foundingBlocker(check(), balance), null);
-  assert.equal(foundingBlocker(check({ homeState: makeBase(balance, { buildings: { kommandozentrale: 7 } }) }), balance), "command_level");
+  assert.equal(foundingBlocker(check({ homeState: makeBase(balance, { buildings: { kommandozentrale: 4 } }) }), balance), "command_level");
   assert.equal(foundingBlocker(check({ pendingFoundings: 1 }), balance), "command_level", "laufende Gründung zählt mit");
   const kz20 = makeBase(balance, { buildings: { kommandozentrale: 20 } });
   assert.equal(foundingBlocker(check({ homeState: kz20, ownBases: 2, pendingFoundings: 1 }), balance), "base_limit");

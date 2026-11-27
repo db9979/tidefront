@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.15.1 – 27.11.2026
+- **Weitere Häfen früher:** Den zweiten Hafen gibt es jetzt ab Kommandozentrale 5 (bisher 8), den dritten ab Stufe 9 (bisher 14). Für das Kolonieschiff braucht es weiterhin Werft 6 und Hafenkommandantur 6.
+
 ## 0.15.0 – 27.11.2026
 - **Mehrere Häfen** (Welle 3, Teil 2): Gründe bis zu zwei Außenposten zusätzlich zu deinem Heimathafen – den zweiten ab Kommandozentrale 8, den dritten ab 14.
 - **Kolonieschiff** aus der Werft (ab Stufe 6, Hafenkommandantur 6): Es fährt zu einem freien Küstenfeld (höchstens 900 km vom Heimathafen, mit Abstand zu anderen Häfen) und wird dort zum neuen Hafen – mit Grundbeständen und der mitgebrachten Ladung. Wer zuerst ankommt, bekommt das Feld.

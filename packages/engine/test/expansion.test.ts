@@ -61,7 +61,7 @@ async function stateOf(baseId: number): Promise<BaseState> {
   return b.state as BaseState;
 }
 
-async function newPlayer(name: string, field: Hex, kz = 8) {
+async function newPlayer(name: string, field: Hex, kz = 5) {
   const p = await register(db, { inviteCode: "TEST", name, password: "geheim123" });
   const r = await chooseBase(engine, p.playerId, key(), { ...field, name: `Hafen ${name}`, nightShieldStartHour: 23, tzOffsetMinutes: 60 });
   assert.equal(r.ok, true, JSON.stringify(r));
@@ -114,7 +114,7 @@ test("Gründung: Vorschau, Ablehnungen, Obergrenze inkl. laufender Gründung, ne
 
   const go = await launchMission(engine, A.playerId, key(), { type: "gruendung", units, col: target.col, row: target.row, cargo: { stahl: 1500 } });
   assert.equal(go.ok, true, JSON.stringify(go));
-  // Obergrenze: Kommandozentrale 8 erlaubt 2 Häfen – die laufende Gründung zählt mit.
+  // Obergrenze: Kommandozentrale 5 erlaubt 2 Häfen – die laufende Gründung zählt mit.
   const other = await freeCoast(A, 350, 800, E.minDistanceHex + 1, [target]);
   assert.equal(code(await launchMission(engine, A.playerId, key(), { type: "gruendung", units: { [SHIP]: 1 }, col: other.col, row: other.row })), "command_level");
   let s = await stateOf(A.baseId);
@@ -165,16 +165,16 @@ test("Forschungsamt in der Kolonie gesperrt, Mindestabstand zu fremden Häfen", 
   assert.equal(code(await upgrade(engine, A.playerId, key(), "forschungsamt", colonyId)), "home_only");
   assert.equal(code(await upgrade(engine, A.playerId, key(), "stahlwerk", colonyId)), "ok");
   const col = (await basesOfPlayer(db, A.playerId)).find((b) => b.id === colonyId)!;
-  const B = await newPlayer("Nachbar", await freeCoast(col, 600, 900), 14);
+  const B = await newPlayer("Nachbar", await freeCoast(col, 600, 900), 9);
   // Feld 1–3 Schritte neben A's Kolonie: zu nah an fremdem Hafen.
   const close = coastAround(col, 1, E.minDistanceHex - 1);
   assert.equal(code(await missionPreview(engine, B.playerId, { type: "gruendung", units: { [SHIP]: 1 }, ...close })), "too_close");
 });
 
 test("Wettlauf um ein Feld: der zweite bekommt „Feld besetzt“, Kolonieschiff und Ladung kehren heim", async () => {
-  const P = await newPlayer("Erster", await freeCoast(null, 0, 0), 14);
+  const P = await newPlayer("Erster", await freeCoast(null, 0, 0), 9);
   const target = await freeCoast(P, 300, 500);
-  const Q = await newPlayer("Zweiter", await freeCoast(target, 350, 700, E.minDistanceHex + 1, [target]), 14);
+  const Q = await newPlayer("Zweiter", await freeCoast(target, 350, 700, E.minDistanceHex + 1, [target]), 9);
   const a = await launchMission(engine, P.playerId, key(), { type: "gruendung", units: { [SHIP]: 1 }, ...target, cargo: { stahl: 1000 } });
   const b = await launchMission(engine, Q.playerId, key(), { type: "gruendung", units: { [SHIP]: 1, korvette: 1 }, ...target, cargo: { stahl: 1000 } });
   assert.equal(a.ok && b.ok, true, JSON.stringify([a, b]));
