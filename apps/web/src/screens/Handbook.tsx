@@ -21,6 +21,7 @@ import { BotsChapter } from "../components/BotsChapter.tsx"; // KI-Spieler
 import { LagebildChapter } from "../components/LagebildChapter.tsx"; // Lagebild
 import { FinaleChapter } from "../components/FinaleChapter.tsx"; // Saisonfinale
 import { CatchUpChapter } from "../components/CatchUpChapter.tsx"; // Aufholhilfe
+import { ContractsChapter } from "../components/ContractsChapter.tsx"; // Lieferverträge (v1.31)
 import { requestBugReport } from "../lib/bug-log.ts";
 import { HScroll } from "../components/HScroll.tsx";
 
@@ -209,6 +210,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
         </>
       ),
     },
+    { id: "vertraege", icon: "credits", title: "Lieferverträge", body: <ContractsChapter b={b} /> }, // Lieferverträge (v1.31)
     {
       id: "forschung", icon: "forschungsamt", title: "Forschung",
       body: (

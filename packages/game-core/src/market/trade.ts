@@ -254,11 +254,13 @@ export function executeTrade(
   );
   if (recent.length >= cfg.tradesPerMinute) return reject("rate");
 
-  // 6. daily_limit: gleitendes 24-h-Fenster (window.ts), Kauf und Verkauf zusammen je Ressource
+  // 6. daily_limit: gleitendes 24-h-Fenster (window.ts), Kauf und Verkauf zusammen je Ressource; freier Rahmen
+  //    abzüglich der für Lieferverträge der nächsten 24 h vorgemerkten Menge (v1.31).
   const window = tradeWindow(trader, nowMs);
   const tradedInWindow = window.reduce((sum, x) => sum + (x.q[resource] ?? 0), 0);
   const dailyLimit = cfg.dailyLimitShareOfStorage * context.storageCapacity[resource];
-  if (!(tradedInWindow + qty <= dailyLimit)) return reject("daily_limit");
+  const reserved = context.reservedQty !== undefined && context.reservedQty > 0 ? context.reservedQty : 0;
+  if (!(tradedInWindow + reserved + qty <= dailyLimit)) return reject("daily_limit");
 
   // 7. under_attack
   if (side === "sell" && context.attackDetected) return reject("under_attack");

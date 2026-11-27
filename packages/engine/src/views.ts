@@ -37,6 +37,7 @@ import { processDueForBase } from "./events.ts";
 import { activeMissionCount, ADMIRAL_RETURN_TYPE, basesOfPlayer, homeBaseOf, ownBase, type BaseRow } from "./store.ts";
 import { loadMarket, targetAt, type LaunchInput } from "./commands.ts";
 import { effectiveMarketRefs, marketRefs } from "./market-news.ts";
+import { reservedNext24h } from "./contracts-core.ts"; // Lieferverträge: Vormerkung im Tageslimit
 // Weltereignisse: Vorschau einer Mission gegen ein Ereignis.
 import { previewAgainstEvent } from "./world-events-missions.ts";
 import { modifierBreakdown, modsOf } from "./modifiers.ts";
@@ -404,6 +405,7 @@ export async function marketView(engine: Engine, playerId: number, baseId?: numb
   const cap = await homeStorageCapacity(engine.db, playerId, nowMs);
   // Handelslimit: gleitendes 24-h-Fenster (window.ts); alte Zustände (Kalendertag) werden dabei überführt.
   const window = trader ? marketCore.tradeWindow(trader, nowMs) : [];
+  const reserved = await reservedNext24h(engine.db, playerId, nowMs); // Lieferverträge
   return {
     serverNow: nowMs,
     resources: balance.resources.map((r) => {
@@ -418,6 +420,8 @@ export async function marketView(engine: Engine, playerId: number, baseId?: numb
         history: st?.history ?? [],
         dailyUsed: marketCore.tradedInWindow({ tradeHours: window }, r as marketCore.ResourceId, nowMs),
         dailyLimit: Math.floor(balance.market.dailyLimitShareOfStorage * cap),
+        /** Lieferverträge: für Vertragslieferungen der nächsten 24 h vorgemerkt (freier Rahmen = Limit − Umsatz − Vormerkung). */
+        dailyReserved: reserved[r] ?? 0,
         /** Wann (ms) wie viel des Limits wieder frei wird, aufsteigend (Fächer je volle Stunde, 24 h nach Beginn). */
         dailyReleases: marketCore.windowReleases({ tradeHours: window }, r as marketCore.ResourceId, nowMs),
       };

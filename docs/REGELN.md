@@ -433,6 +433,69 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
   `market.chart` liefert sie für die Börse (Zeitraum 24 h aus den Handeln, 7 Tage und Saison aus den Stundenkursen, mit
   Grund- und effektivem Richtwert). Am Saisonende wird die Tabelle geleert; die Kurse starten wieder am Grundrichtwert.
 
+## Lieferverträge
+
+Seit v1.31 (`market.contracts`; Kern `packages/game-core/src/market/contracts.ts`, Server `packages/engine/src/contracts-*.ts`,
+Entscheidungen in `packages/game-core/ENTSCHEIDUNGEN-5.md`). Ein Liefervertrag legt Menge und Preis heute fest; geliefert
+und bezahlt wird bei Fälligkeit. Gegenpartei ist ein KI-Spieler oder ein anderer Spieler. Börse, Reiter „Verträge“.
+
+- **Arten:** Kauf (Spieler bekommt Ware), Verkauf (Spieler liefert), Laufzeit `durationsDays` (1, 2, 3, 5, 7 Tage); **Abo**
+  täglich X für `aboDays` (3–7) Tage, erste Tranche nach 24 h, jede Tranche ein eigener Vertrag mit eigener Laufzeit (Anzeige:
+  Durchschnittspreis). Mindestmenge `minQty` (500) je Vertrag bzw. Tranche. Höchstens `maxOpen` (5) offene Verträge je Spieler
+  (Abo = einer, eigene Angebote an Spieler zählen mit), höchstens `perHour` (3) Abschlüsse je Stunde.
+- **Preis** (K Kurs jetzt, R effektiver Richtwert jetzt, R_T Richtwert bei Fälligkeit = R plus die angekündigte
+  Saisonend-Nachricht, T Laufzeit): erwarteter Kurs `E = R_T + (K − R) · 0,5^(T / reversionHalfLifeHours)`; Aufschlag
+  `a = baseFee + perDay · Tage + Menge / (depthDivisor · Tiefe) − Charakterbonus`; **Kauf `max(K, E) · (1 + a)`, Verkauf
+  `min(K, E) · (1 − a)`**, immer innerhalb `[floorFactor, ceilFactor] · Grundrichtwert`. Der Grundaufschlag `baseFee ·
+  Bezugskurs` geht in den Gebührentopf (beim Kauf aus dem Preis, beim Verkauf zahlt ihn die KI zusätzlich). Angebote werden
+  wie an der Börse mit dem gesehenen Preis bestätigt (`slippage` bei mehr als `slippageTolerance` Abweichung). Keine neuen
+  Verträge während der Handelspause der Ressource (`halted`).
+- **Sicherheit:** Käufer `depositShare` (25 %) Anzahlung, Verkäufer 25 % Pfand in Kredite, sofort in Treuhand
+  (`escrow:mc-<id>`; nicht plünderbar, nicht übertragbar). Eine KI legt als Verkäuferin die ganze Ware, als Käuferin den
+  ganzen Preis in Treuhand. Bei Fälligkeit wird so weit erfüllt, wie Kredite (Anzahlung deckt 25 % je erfüllter Einheit) und
+  Ware reichen; sonst `graceHours` (12) Nachfrist, danach anteilig. Für den nicht erfüllten Teil verfallen `penaltyShare`
+  (25 %) seines Werts aus der Sicherheit der säumigen Seite (beide, wenn beide säumig sind); der Rest geht zurück.
+  **Kündigung** vor Fälligkeit (auch in der Nachfrist, Abo: alle offenen Tranchen): 25 % des gekündigten Werts verfallen.
+  Strafen gehen an die KI bzw. bei Spielerverträgen in den Gebührentopf.
+- **Ereignisse:** `contract_due` mit Schritt `remind` (`remindHours` = 6 h vor der Abwicklung; Nachricht und Push „Lieferung“,
+  nur wenn Kredite bzw. Ware fehlen), `settle`, `grace`, `expire` (Angebot an Spieler). Nichts läuft periodisch.
+- **KI-Spieler:** nur aktive KI mit Charakter (`ki.profiles`): Händler (Reederei Albers) alle Ressourcen in beide Richtungen,
+  Abos, 1–7 Tage; Festung (Bastion Falkenberg) kauft Stahl und Elektronik, 2–7 Tage, Abschlag 2 Punkte kleiner; Freibeuter
+  (Kapitän Rotbart) verkauft Treibstoff und Elektronik, 1–2 Tage, Aufschlag 2 Punkte kleiner, höchstens 2.000 je Vertrag,
+  kein Abo. **Kontingente aus dem echten Lager** (Heimathafen, bei jedem Abruf gerechnet): verkaufen ab `sellFromFill` (40 %)
+  Füllung, `quotaShare` (25 %) des Bestands einschließlich Treuhand abzüglich zugesagter Mengen; kaufen bis `buyToFill` (60 %)
+  Füllung einschließlich zugesagter Käufe, 25 % des freien Platzes abzüglich zugesagter Käufe; je Mensch höchstens
+  1/`perHumanDivisor` (⅓); Anzeige in Stufen von `quotaStep` (500). Händler und Festung schließen `attackBlockHours` (24 h)
+  nichts mit einem Spieler ab, der sie überfallen hat. Keine Verträge zwischen KI-Spielern.
+- **Lieferung:** Händler und Festung abstrakt zur Fälligkeit (darf das Lager überschreiten, nicht abfangbar). Rotbart und
+  Spielerverträge **als Konvoi über die Seewege** (Abwicklung und Abfahrt zur Fälligkeit minus Fahrzeit; ist der Seeweg
+  länger als die Laufzeit, fährt er sofort und kommt später): Kartellwürfel, Abfangen durch Kriegsgegner und Minen wie beim
+  Spielerhandel; Geleit des Käufers (beim Abschluss angegeben) läuft bei Abfahrt aus, wenn die Schiffe dann im Hafen sind.
+  Verlust trägt der Käufer. **Belagerung** des Käuferhafens bzw. **Blockade** des Verkäuferhafens halten die Abwicklung in
+  Stundenschritten höchstens `holdHours` (24 h) zurück. Bei erkanntem Angriff keine neuen Verkaufsverträge (`under_attack`).
+- **Tageslimit:** Jede Vertragslieferung zählt bei Lieferung ins gleitende Tageslimit beider Menschen (scheitert nie daran).
+  Beim Abschluss: Vertragslieferungen einer Ressource in jedem 24-h-Fenster ≤ `limitShare` (50 %) des Tageslimits
+  (`daily_limit`). Börse: **freier Rahmen = Tageslimit − Umsatz der letzten 24 h − Vertragslieferungen der nächsten 24 h**
+  (`market.get` → `dailyReserved`, Anzeige „davon für Verträge vorgemerkt“).
+- **Kreditlimit:** Käufer: offene Restzahlungen + neue ≤ Kreditlimit; Verkäufer: Kredite + offene Erlöse + neue ≤ Kreditlimit
+  (`credit_limit`). Bei Lieferung wird voll gutgeschrieben, auch über das Limit.
+- **Handelsbilanz:** Vertragslieferungen an bzw. von Menschen zählen bei Lieferung wie Börsenumsatz (Journal `mc-…`), die KI-Seite
+  nicht.
+- **Verträge zwischen Spielern:** Angebot an alle oder an einen Spieler, gültig `player.offerHours` (24 h, höchstens bis 1 h vor
+  Fälligkeit), die Sicherheit des Anbietenden geht sofort in Treuhand. Preis im Band `[(1 − band) · min(K, E), (1 + band) ·
+  max(K, E)]` (±20 %), geprüft beim Angebot und bei der Annahme (`price_band`). Käufer zahlt den Preis, Verkäufer bekommt ihn
+  abzüglich `baseFee` (4 %, Gebührentopf). **Paarbremse:** Börsenwert (Menge × Kurs beim Abschluss) aller Verträge eines Paars
+  in 7 Tagen ≤ `player.pairWeekValue` (20.000; `pair_limit`). **Verbundene Spieler** (PvP-Absprache, `colluded`: Allianz,
+  Pakt, Handel, Transport, Stationierung in `collusionDays`) dürfen abschließen; der Vertrag zählt dann nicht für Erfolge und
+  Tagesbefehle. Jede Lieferung eines Spielervertrags verbindet das Paar (`pvp_ties`, 7 Tage: kein Kopfgeld). Angebote an
+  einen bestimmten Spieler gehen nicht an KI-Spieler; öffentliche Angebote nimmt ein KI-Händler in seinem Zug an, wenn sie
+  ihm mindestens 3 % gegenüber dem Kurs bringen und sein Lager es trägt.
+- **Erfolge und Tagesbefehle „Handel“:** zählen bei Lieferung, je Vertrag bzw. Tranche einmal, ab 500 Kredite.
+- **Saisonende:** Fälligkeit (jeder Tranche) spätestens `seasonEndBufferHours` (24 h) vor Saisonende (`bad_term`). Was beim
+  Saisonwechsel noch offen ist, wird rückabgewickelt (Treuhand gegen `season:<n>` ausgebucht, Status `rueckabgewickelt`).
+- **Garantie, die Tests prüfen:** Kauf auf Termin und Verkauf bei Lieferung an der Börse (bzw. Leerverkauf) verliert ohne
+  unvorhergesehene Kursbewegung immer; ebenso Sofortkauf + Terminverkauf und Terminkauf + Terminverkauf.
+
 ## Saison und Wertung
 
 - Eine Saison dauert `SEASON_DAYS` Tage (Betriebseinstellung, Vorgabe 42). Es läuft immer genau eine Saison.

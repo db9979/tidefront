@@ -470,6 +470,7 @@ export const HANDLERS: Record<string, Handler> = {
     await m.purgeExpired(tx, due, notify);
     return { notify };
   }),
+  contract_due: (tx, ev, due) => import("./contracts-run.ts").then((m) => m.contractDue(tx, ev, due)), // Lieferverträge (v1.31)
   research_complete: (tx, ev, due) => import("./research.ts").then((m) => m.researchComplete(tx, ev, due)),
   // Nachrichtendienst und Spionage (espionage-run.ts)
   spy_arrive: (tx, ev, due) => import("./espionage-run.ts").then((m) => m.spyArrive(tx, ev, due)),

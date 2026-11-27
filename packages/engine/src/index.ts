@@ -123,3 +123,9 @@ export { rankSnapshot, clearRankSnapshot, colluded, bountyByPlayer, type RankSna
 export { recordTies } from "./pvp-ties.ts";
 export { pvpTargetView, suspiciousPairs, setReportExcluded } from "./pvp-view.ts";
 export * from "./catch-up.ts"; // Aufholhilfe: Baugutschrift (stündlicher Lauf, Startpaket)
+// Lieferverträge (v1.31): KI-Verträge, Verträge zwischen Spielern, Kündigung, Reiter „Verträge“
+export { kiContractQuote, signKiContract } from "./contracts-sign.ts";
+export { acceptPlayerContract, proposePlayerContract, withdrawPlayerContract } from "./contracts-player.ts";
+export { cancelContract } from "./contracts-cancel.ts";
+export { contractBandView, contractsView } from "./contracts-view.ts";
+export { voidContracts } from "./contracts-run.ts";

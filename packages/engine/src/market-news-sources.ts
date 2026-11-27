@@ -209,9 +209,17 @@ export async function netBuysByPlayer(tx: Tx, sinceMs: number): Promise<Record<s
     from trade_ledger m
     join trade_ledger p on p.trade_id = m.trade_id and p.asset = 'credits' and p.account like 'player:%'
     where m.t_ms > ${sinceMs} and m.account = 'market' and m.asset <> 'credits' and m.trade_id like 't-%'
-    group by p.account, m.asset`);
+    group by p.account, m.asset
+    union all
+    -- Lieferverträge (v1.31): Ware an bzw. von Menschen bei Lieferung (KI-Spieler zählen nicht).
+    select l.account as player, l.asset as resource, sum(l.amount)::float8 as net
+    from trade_ledger l join player pl on l.account = 'player:' || pl.id
+    where l.t_ms > ${sinceMs} and l.trade_id like 'mc-%' and l.account like 'player:%' and l.asset <> 'credits' and pl.bot_profile is null
+    group by l.account, l.asset`);
   const out: Record<string, number[]> = Object.fromEntries(balance.resources.map((r) => [r, [] as number[]]));
-  for (const r of rows) if (out[r.resource] && Number(r.net) !== 0) out[r.resource].push(Number(r.net));
+  const sum = new Map<string, number>(); // Börse und Lieferverträge je Spieler zusammen
+  for (const r of rows) if (out[r.resource]) sum.set(`${r.player}|${r.resource}`, (sum.get(`${r.player}|${r.resource}`) ?? 0) + Number(r.net));
+  for (const [k, net] of sum) if (net !== 0) out[k.split("|")[1]].push(net);
   return out;
 }
 

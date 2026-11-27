@@ -2,6 +2,7 @@
 // kompakter Marktlage:
 //   Handel      – Kurstafel, Order direkt darunter (Knopf in der Aktionsleiste), Kursverlauf (eingeklappt), Konvois
 //   Spieler     – Handel mit Spielern (Angebot einstellen in der Aktionsleiste) und Statistik
+//   Verträge    – Lieferverträge (v1.31): Angebote der KI-Spieler, Verträge mit Spielern, eigene Verträge
 //   Marktlage   – Marktnachrichten (Schlüssel bleibt „nachrichten“, damit gemerkte Wahl und Sprungziele gelten)
 
 import { useState } from "react";
@@ -23,11 +24,13 @@ import { OrderTicket } from "../components/market/OrderTicket.tsx";
 import type { MarketCfg } from "../components/market/calc.ts";
 import { MarketNews } from "../components/MarketNews.tsx";
 import { ConvoyList, useNaval } from "../components/Naval.tsx"; // See: Konvois, Blockade
+import { Contracts } from "../components/market/Contracts.tsx"; // Lieferverträge (v1.31)
 
-type Seg = "handel" | "spieler" | "nachrichten";
+type Seg = "handel" | "spieler" | "vertraege" | "nachrichten";
 const SEGS: { id: Seg; label: string }[] = [
   { id: "handel", label: "Handel" },
   { id: "spieler", label: "Spieler" },
+  { id: "vertraege", label: "Verträge" },
   { id: "nachrichten", label: "Marktlage" },
 ];
 
@@ -120,6 +123,8 @@ export function MarketScreen({ base, initialResource }: { base: BaseData; initia
         <PlayerTrade base={base} />
         <PlayerTradeStats />
       </>}
+
+      {seg === "vertraege" && <Contracts base={base} />}
 
       {seg === "nachrichten" && (
         <Card title={<><Icon id="nav-bericht" size={18} /> Marktlage</>}>

@@ -44,6 +44,80 @@ export interface MarketBalance {
     convoySpeedKmh: number;
     /** Marktnachrichten (seit v1.5); fehlt der Eintrag, gibt es keine. */
     news?: MarketNewsBalance;
+    /** Lieferverträge (seit v1.31, contracts.ts); fehlt der Eintrag, gibt es keine. */
+    contracts?: ContractsBalance;
+  };
+}
+
+/** Charakter eines KI-Spielers als Vertragspartner (balance.json market.contracts.ki.profiles). */
+export interface ContractKiProfile {
+  /** Ressourcen, die die KI verkauft (der Spieler kauft auf Termin). */
+  sells: string[];
+  /** Ressourcen, die die KI kauft (der Spieler liefert auf Termin). */
+  buys: string[];
+  /** Erlaubte Laufzeiten in Tagen. */
+  days: number[];
+  /** Abos (tägliche Tranchen) möglich. */
+  abo: boolean;
+  /** Aufschlag bzw. Abschlag um so viel kleiner (0,02 = 2 Prozentpunkte). */
+  bonus: number;
+  /** Höchstmenge je Vertrag bzw. Tranche (fehlt: nur das Kontingent begrenzt). */
+  maxQty?: number;
+  /** Lieferung als Konvoi über die Seewege (sonst abstrakt wie die Börsenlieferung). */
+  convoy?: boolean;
+}
+
+/** Lieferverträge (seit v1.31): Preisformel, Sicherheiten, Grenzen, KI-Kontingente, Verträge zwischen Spielern. */
+export interface ContractsBalance {
+  /** Grundaufschlag (wie Börsengebühr); geht in den Gebührentopf. */
+  baseFee: number;
+  /** Aufschlag je Tag Laufzeit. */
+  perDay: number;
+  /** Mengenaufschlag = Menge ÷ (depthDivisor × Tiefe). */
+  depthDivisor: number;
+  durationsDays: number[];
+  /** Mögliche Abo-Längen in Tagen (eine Tranche je Tag, erste nach 24 h). */
+  aboDays: number[];
+  minQty: number;
+  /** Offene Verträge je Spieler (ein Abo zählt als einer; eigene Vertragsangebote an Spieler zählen mit). */
+  maxOpen: number;
+  /** Abschlüsse je Stunde und Spieler. */
+  perHour: number;
+  /** Anzahlung (Käufer) bzw. Pfand (Verkäufer) als Anteil des Vertragswerts. */
+  depositShare: number;
+  /** Verfall je nicht erfülltem bzw. gekündigtem Teil als Anteil seines Werts. */
+  penaltyShare: number;
+  graceHours: number;
+  /** Erinnerung so viele Stunden vor Fälligkeit, wenn Kredite bzw. Ware nicht reichen. */
+  remindHours: number;
+  /** Vertragslieferungen einer Ressource je 24-h-Fenster höchstens dieser Anteil des Tageslimits. */
+  limitShare: number;
+  /** Fälligkeit spätestens so viele Stunden vor Saisonende. */
+  seasonEndBufferHours: number;
+  /** Belagerung/Blockade des Hafens hält eine fällige Lieferung höchstens so lange zurück. */
+  holdHours: number;
+  ki: {
+    /** KI verkauft nur ab diesem Lagerfüllstand. */
+    sellFromFill: number;
+    /** KI kauft nur bis zu diesem Lagerfüllstand. */
+    buyToFill: number;
+    /** Kontingent: Anteil des Bestands (Verkauf) bzw. des freien Lagerplatzes (Kauf). */
+    quotaShare: number;
+    /** Je Mensch höchstens 1/perHumanDivisor des Kontingents einer KI je Ressource und Richtung. */
+    perHumanDivisor: number;
+    /** Kontingente in Stufen dieser Größe (verrät den Lagerstand nur grob). */
+    quotaStep: number;
+    /** Händler und Festung schließen so lange nichts mit einem Spieler ab, der sie überfallen hat. */
+    attackBlockHours: number;
+    profiles: Record<string, ContractKiProfile>;
+  };
+  player: {
+    /** Preisband: Preis ≥ (1 − band) × min(K, E) und ≤ (1 + band) × max(K, E). */
+    band: number;
+    /** Höchster Börsenwert aller Verträge eines Spielerpaars in 7 Tagen (Paarbremse). */
+    pairWeekValue: number;
+    /** Ein Vertragsangebot an Spieler gilt so viele Stunden. */
+    offerHours: number;
   };
 }
 
@@ -157,6 +231,8 @@ export interface TradeContext {
   attackDetected: boolean;
   /** Distance from the base to the trade port in km. */
   distanceToPortKm: number;
+  /** Lieferverträge (v1.31): für Vertragslieferungen der nächsten 24 h vorgemerkte Menge dieser Ressource. */
+  reservedQty?: number;
 }
 
 export interface Quote {

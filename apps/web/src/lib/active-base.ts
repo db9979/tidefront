@@ -73,9 +73,9 @@ export function useActiveBaseId(): number | null {
  * Hafenbezogene Prozeduren (nehmen `baseId` an): ganze Teilrouter und einzelne Pfade. Ohne baseId gilt serverseitig
  * der Heimathafen. base.choose (Erstwahl) und spielerweite Abfragen der Teilrouter bleiben außen vor.
  */
-const BASE_ROUTERS = ["base.", "mission.", "market.", "espionage.", "research.", "admiral.", "allianceOps.", "naval.", "playerTrade.", "fields.", "worldEvents."];
+const BASE_ROUTERS = ["base.", "mission.", "market.", "espionage.", "research.", "admiral.", "allianceOps.", "naval.", "playerTrade.", "fields.", "worldEvents.", "contracts."]; // contracts: Lieferverträge (v1.31)
 const BASE_PATHS = new Set(["comfort.repeat", "comfort.recentMissions", "power.cables"]); // Seekabel (v1.21): Ansicht je Hafen
-const NOT_BASE = new Set(["base.choose", "market.quote", "market.news"]);
+const NOT_BASE = new Set(["base.choose", "market.quote", "market.news", "contracts.band", "contracts.withdraw", "contracts.cancel"]);
 
 export function isBasePath(path: string): boolean {
   if (NOT_BASE.has(path)) return false;
