@@ -8,6 +8,7 @@ import { Icon } from "../icons.tsx";
 import { Badge, Card, StatTable } from "../ui.tsx";
 import { DayBars, HBars, LevelGrid, RateBar } from "../components/Charts.tsx";
 import { AdminKpi } from "./AdminKpi.tsx";
+import { AdminBalance } from "./AdminBalance.tsx"; // Welle 2: Rohstoffbilanz, Zuflüsse, Welt & Worker, Nutzung
 
 type Days = 7 | 28;
 
@@ -71,6 +72,7 @@ export function AdminStats() {
       </Card>
 
       <AdminKpi days={days} />
+      <AdminBalance days={days} />
 
       <Card title="Ressourcenfluss">
         <Sub>Produktion je Stunde (alle Häfen, netto, mit Modifikatoren)</Sub>

@@ -40,8 +40,18 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
   wird für die dringendste Einheit gespart; je Auftrag höchstens 45 % des Vorrats jedes Rohstoffs. Truppen nur mit
   Transportraum (fehlt das Landungsschiff, wird dafür gespart statt weiterer Truppen).
 - **Forschung:** feste Reihenfolge je Spielweise, höchstens bis zu einem Anteil am Gebäudewert (10/20/8 %).
-- **Börse:** Überschuss verkaufen, knappe Ressource zukaufen (alle; Händler früher und mehr). **Spielerhandel**
+- **Börse** (seit Welle 2 nach Stunden Produktion, jeder Hafen mit Börse): Bestand über 24 h Produktion (Händler
+  12 h) und über dem Bedarf der drei billigsten nächsten Ausbauten wird verkauft (bis zu drei Rohstoffe je Zug, Lose
+  unter der Preiswirkungsgrenze); unter 6 h Produktion oder unter dem Bedarf wird bis 12 h zugekauft (Händler bis 60 %,
+  sonst 40 % der Taler). So bleiben KI-Lager klein. **Spielerhandel**
   (Händler): fremde Angebote annehmen, die zum Richtwert mindestens gleichwertig sind; bis zu zwei eigene Angebote.
+- **Tagesbefehle:** an etwa 60 % der Tage (fest je Bot und Tag, höchstens alle 3 h) vergibt sich die KI ihre
+  Tagesbefehle und Wochenziele und holt Erledigtes ab – wie ein Mensch, der nicht jeden Tag hineinsieht.
+- **Heimwache:** der Anteil `homeGuardShare` jeder Kampfeinheit bleibt daheim – auch Truppen (Landungsschiffe fahren
+  ganz mit, Laderaum); die Festung hält mindestens die Hälfte daheim.
+- **Weltereignisse:** Freibeuter und Festung greifen Schatzschiff, Großflotte und Belagerungsring in bis zu 900 km an,
+  wenn der Probekampf (Ereignis vernichtet, ohne Truppen) zu ≥ 90 % gewinnt und der erwartete Verlust höchstens 35 %
+  des Verbands ist; ein Missionsplatz bleibt frei. Der Händler nicht.
 - **Felder:** alle drei Spielweisen nehmen Rohstofffelder in bis zu 700 km (nahe und niedrige Stufen zuerst). Bewachte
   Felder nur nach Probekampf gegen die Kartell-Wache (bekanntes Lagebild, sonst Wache der Stufe aus dem Handbuch;
   Sieg = Wache vernichtet wie im Feldkampf). Der kleinste Teil der Schiffe, der die Wache schlägt **und** als ganze
@@ -70,7 +80,13 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
   Gründungsschutz, Diplomatie). Zusätzlich: **Sperrfrist** `bots.humanAttackCooldownHours` (12 h) – derselbe Bot
   greift denselben Menschen erst wieder an, wenn sein letzter Überfall auf ihn (Bericht) länger her ist und kein
   Überfall auf ihn unterwegs ist.
-- Bots greifen sich untereinander und Piratennester ohne Sperrfrist an (normale Regeln).
+- Andere **KI-Spieler** überfällt nur der Freibeuter, höchstens alle 48–72 h (zuerst Menschen, falls erlaubt, sonst die
+  KI mit dem vollsten Lager laut Aufklärung). Piratennester ohne Sperrfrist (normale Regeln); kein zweiter eigener
+  Verband zum selben Nest oder Weltereignis.
+- **Nestwahl:** alle 6 h bestimmt die KI je Hafen die höchste Neststufe, die ihr ganzer Verband (daheim und unterwegs,
+  ohne Heimwache) schafft; überfallen werden Nester ab dieser Stufe − 1 (bzw. ab dem höchsten erreichbaren bekannten
+  Nest − 1). Probekampf ohne genaues Lagebild: im Mittel über die Würfe ≥ 90 % **und** gegen den ungünstigsten Wurf
+  ≥ 50 %; mit genauem Lagebild gegen die hochgerechnete Besatzung mit der Siegquote der Spielweise.
 - Vor einem Angriff auf einen Hafen schickt der Bot eine **Aufklärung** (Drohne oder Korvette) und rechnet mit dem
   Lagebild (höchstens `reconMaxAgeHours`, 6 h alt) einen **Probekampf** (`resolveBattle`, feste Seeds). Bei Nestern
   dient die öffentliche Besatzungstabelle als Lagebild.
@@ -79,7 +95,7 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
 
 - Der Worker ruft jede Minute `runBotsDue` auf: Entfernen fortsetzen, dann höchstens `turnsPerMinute` (2) fällige
   Bots, ältester Termin zuerst, innerhalb von `turnBudgetMs` (8 s). Mehr Bots verteilen sich so von selbst.
-- Ein Zug dauert im Test (Entwicklungsrechner, PostgreSQL lokal) 10–17 ms im Median, 95 % unter 45 ms, Höchstwert unter 250 ms; auf dem Raspberry Pi ist ein Mehrfaches zu erwarten, die Grenze `turnBudgetMs` hält den Takt trotzdem kurz.
+- Ein Zug dauert im Saisonlauf (`npm run sim:saison`, Entwicklungsrechner, PostgreSQL lokal, Welle 2) im Mittel etwa 50 ms je Aufruf von `runBotsDue`, Höchstwert rund 1 s; auf dem Raspberry Pi ist ein Mehrfaches zu erwarten, die Grenze `turnBudgetMs` hält den Takt trotzdem kurz. Die Dauer steht je Tag in der Verwaltung („Welt & Worker“, Schritt „bot turns“).
 - Fehler eines Bots: Eintrag in seinem Protokoll und im Worker-Log, nächster Versuch nach 10–60 Minuten.
 - Abschalten: Server-Einstellung `bots_enabled` (Verwaltung) oder Umgebungsvariable `BOTS_DISABLED=1` im Worker.
 

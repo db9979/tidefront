@@ -39,6 +39,7 @@ import { runNest6Sim } from "./nest6.ts"; // v1.15: Nest Stufe 6
 import { runIntelSim } from "./intel.ts"; // v1.20: Lagebild Stufe 2 (Spätspiel, 42-Tage-Saison)
 import { runSatelliteSim } from "./satellite.ts"; // v1.23: Lagebild Stufe 3 (Satellit gegen Wert des Wissens)
 import { runV124Sim } from "./v124.ts"; // v1.24: Wertung und Balance
+import { runMessungSim } from "./messung.ts"; // Welle 2: Kartellkosten je Tag, Nest-6-Beute nach Laderaum, Punkteanteil je Quelle
 
 const balance = JSON.parse(
   readFileSync(new URL("../../balance/v1/balance.json", import.meta.url), "utf8"),
@@ -294,6 +295,7 @@ console.log("\n" + runNestLiving(balance).join("\n")); // Lebendige Nester: Ziel
 runIntelSim(balance, snaps); // v1.20: Lagebild Stufe 2 (Patrouille, Kampagne, Radarposten, Bordsicht)
 runSatelliteSim(balance); // v1.23: Lagebild Stufe 3 (Tag 28 und 35)
 runV124Sim(balance); // v1.24: Kartellstärke, Kommandopunkte über KZ 8, Lagerwachstum, Vorhersage
+runMessungSim(balance); // Welle 2: Messbarkeit (Kartellkosten je Tag, Nest-6-Beute nach Laderaum, Punkteanteil je Quelle)
 
 /** Der Bot schickt alles, was daheim steht (die Doktrin hält ihn innerhalb der Kommandopunkte). */
 function sentFleet(s: BotSnapshot): Counts {

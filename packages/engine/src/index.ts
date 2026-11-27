@@ -131,3 +131,6 @@ export { contractBandView, contractsView } from "./contracts-view.ts";
 export { voidContracts } from "./contracts-run.ts";
 // Lagezentrum (Meldungen → Lage): alles Anstehende aller eigenen Häfen gebündelt; brief nur die Zahl fürs Navigationszeichen.
 export { lageView, noLage, type LageJump, type LageRow, type LageUrgent, type LageView } from "./lage.ts";
+export * from "./metrics.ts"; // Messbarkeit (Welle 2): Tagesschnappschuss je Hafen, Nutzungszähler je System
+export * from "./worker-steps.ts"; // Worker-Schritte als Liste (Worker und Saisonlauf), Schrittdauer je Tag
+export * from "./admin-balance.ts"; // Verwaltung: Rohstoffbilanz, Zuflüsse, Welt & Worker, Nutzung je System

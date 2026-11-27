@@ -17,11 +17,12 @@ export function BotsChapter({ b }: { b: Balance | undefined }) {
       <P><strong>Drei Spielweisen:</strong></P>
       <ul className="text-sm text-slate-200 mb-2 list-disc pl-5 space-y-1">
         <li><strong>Händler</strong> (leicht): baut Wirtschaft und Lager aus, verkauft Überschuss an der Börse, stellt Angebote im Spielerhandel ein und nimmt faire Angebote an. Überfällt nur leichte Piratennester (bis Stufe {traderNests}), greift keine Spieler an.</li>
-        <li><strong>Festung</strong> (mittel): Küstenbatterien, Flak, Bunker, Radar und Forschung. Überfällt Piratennester, Spieler nur selten.</li>
-        <li><strong>Freibeuter</strong> (stark): rüstet stark, klärt vor Angriffen auf und rechnet einen Probekampf durch, legt Minen und gründet früh Außenposten.</li>
+        <li><strong>Festung</strong> (mittel): Küstenbatterien, Flak, Bunker, Radar und Forschung; mindestens die Hälfte des Verbands bleibt daheim. Überfällt Piratennester und Weltereignisse, Spieler nur selten.</li>
+        <li><strong>Freibeuter</strong> (stark): rüstet stark, klärt vor Angriffen auf und rechnet einen Probekampf durch, jagt Weltereignisse, legt Minen und gründet früh Außenposten.</li>
       </ul>
       {fieldsAll && <P>Alle drei nehmen <strong>Rohstofffelder</strong> und bieten <strong>Lieferverträge</strong> an; bei großen Börsenkäufen schicken sie Geleit mit.</P>}
-      <P><strong>Angriffe auf Menschen</strong> sind je KI-Spieler in der Verwaltung einstellbar und zunächst aus. Ist es erlaubt, gelten Anfängerschutz, Nachtschild, Schutz nach Niederlage, Gründungsschutz und Diplomatie wie bei jedem Spieler; zusätzlich greift derselbe KI-Spieler denselben Menschen höchstens alle {cooldown} Stunden an. Untereinander und gegen Nester kämpfen die KI-Spieler ohne diese Sperrfrist.</P>
+      <P>Alle KI-Spieler verkaufen Überschuss an der Börse (was über etwa einen Tag Produktion hinausgeht) und kaufen Knappes zu – ihr Lager bleibt klein. An den meisten Tagen holen sie auch ihre Tagesbefehle ab.</P>
+      <P><strong>Angriffe auf Menschen</strong> sind je KI-Spieler in der Verwaltung einstellbar und zunächst aus. Ist es erlaubt, gelten Anfängerschutz, Nachtschild, Schutz nach Niederlage, Gründungsschutz und Diplomatie wie bei jedem Spieler; zusätzlich greift derselbe KI-Spieler denselben Menschen höchstens alle {cooldown} Stunden an. Andere KI-Spieler überfällt nur der Freibeuter, und höchstens alle zwei bis drei Tage; gegen Nester gilt keine Sperrfrist.</P>
       <P><strong>Tagesablauf:</strong> KI-Spieler sind nicht rund um die Uhr wach. Jeder hat eigene aktive Stunden (mit Nachtschild) und zieht in unregelmäßigen Abständen – der Händler selten, der Freibeuter oft.</P>
       <P>KI-Spieler können sich nicht anmelden, bekommen keine Push-Benachrichtigungen oder E-Mails, und nach einem Saisonwechsel gründen sie wie alle einen neuen Hafen. Du kannst mit ihnen handeln, sie überfallen (Schutzregeln gelten auch für sie) und ihnen Nachrichten schreiben – lesen werden sie sie allerdings nicht.</P>
     </>

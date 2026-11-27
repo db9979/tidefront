@@ -8,16 +8,18 @@ import { fmtNum } from "../lib/names.ts";
 import { Badge, Card, StatTable } from "../ui.tsx";
 import { DayBars, RateBar } from "../components/Charts.tsx";
 
-function Sub({ children }: { children: string }) {
+export function Sub({ children }: { children: string }) {
   return <h3 className="font-serif text-base mt-3 mb-1.5 pb-0.5 border-b border-dotted border-rule">{children}</h3>;
 }
 
 const pct = (v: number | null) => (v === null ? "–" : `${Math.round(v * 100)} %`);
 const share = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)} %` : "–");
 const dm = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
+/** Median später als das Soll? */
+const late = (target: number | null, median: number | null) => target !== null && median !== null && median > target;
 
 /** Schmale Tabelle: erste Spalte links, übrige rechts (Mono). */
-function Grid({ head, rows, cols }: { head: string[]; rows: ReactNode[][]; cols: string }) {
+export function Grid({ head, rows, cols }: { head: string[]; rows: ReactNode[][]; cols: string }) {
   return (
     <div className="grid text-xs gap-x-2" style={{ gridTemplateColumns: cols }} role="table">
       {head.map((h, i) => (
@@ -78,21 +80,22 @@ export function AdminKpi({ days }: { days: 7 | 28 }) {
         )}
       </Card>
 
-      <Card title="Meilensteine" right={<span className="text-xs text-ink2">Saisontag: erster · Median</span>}>
+      <Card title="Meilensteine" right={<span className="text-xs text-ink2">erreicht/Spieler · Tag erster · Median</span>}>
         {k.milestones.length === 0 ? <p className="text-sm text-ink2 italic font-serif">Noch keine Meilensteine in dieser Saison.</p> : (
           <Grid
-            cols="1fr 2rem 4.25rem 2rem 4.25rem"
-            head={["", "Mensch", "Tag", "KI", "Tag"]}
+            cols="1fr 2.25rem 2.75rem 4rem 2.75rem 4rem"
+            head={["", "Soll", "Mensch", "Tag", "KI", "Tag"]}
             rows={k.milestones.map((m) => [
               <span title={m.label}>{m.label}</span>,
-              String(m.humans.count),
-              m.humans.count ? `${m.humans.firstDay} · ${m.humans.medianDay}` : "–",
-              String(m.bots.count),
-              m.bots.count ? `${m.bots.firstDay} · ${m.bots.medianDay}` : "–",
+              m.target === null ? "–" : `T${m.target}`,
+              <span title={m.humans.onTime === null ? undefined : `${m.humans.onTime} bis Tag ${m.target}`}>{`${m.humans.count}/${m.humans.of}`}</span>,
+              <span className={late(m.target, m.humans.medianDay) ? "text-siegel" : undefined}>{m.humans.count ? `${m.humans.firstDay} · ${m.humans.medianDay}` : "–"}</span>,
+              <span title={m.bots.onTime === null ? undefined : `${m.bots.onTime} bis Tag ${m.target}`}>{`${m.bots.count}/${m.bots.of}`}</span>,
+              <span className={late(m.target, m.bots.medianDay) ? "text-siegel" : undefined}>{m.bots.count ? `${m.bots.firstDay} · ${m.bots.medianDay}` : "–"}</span>,
             ])}
           />
         )}
-        <p className="text-xs text-ink2 mt-2">KZ-Stufe, Missionsplätze und Startrampe erfasst der Worker alle 10 Minuten; Nester und zweiter Hafen aus den Berichten bzw. Häfen.</p>
+        <p className="text-xs text-ink2 mt-2">Soll: spätester Saisontag laut Modell (KZ: Referenz-Bot 45 % Rüstung; Nester: Ende des Zielfensters). Rot: Median nach dem Soll. Nenner: Spieler mit Hafen. KZ-Stufe, Missionsplätze und Startrampe erfasst der Worker alle 10 Minuten; Nester und zweiter Hafen aus den Berichten bzw. Häfen.</p>
       </Card>
 
       <Card title={`Abschlussquoten · ${days} Tage`} right={<span className="text-xs text-ink2">Menschen</span>}>
