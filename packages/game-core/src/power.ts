@@ -46,7 +46,7 @@ export interface PowerSnapshot {
   supply: { kraftwerk: number; wind: number; solar: number; storage: number; cable: number };
   /**
    * Überschuss nach Bedarf und Speicher (Strom je Stunde): fuel → Elektrolyse, cable → ins Seekabel,
-   * wasted → verfällt (Kraftwerksstrom immer, Ökostrom ohne Abnehmer).
+   * wasted → verfällt (Ökostrom ohne Abnehmer; Kraftwerksstrom nur bei fester Auslastung, s. loadFollow).
    */
   surplus: { fuel: number; cable: number; wasted: number };
   /** Davon verfallender Ökostrom (Wind/Sonne ohne Abnehmer; Kraftwerksüberschuss nicht). */
@@ -67,8 +67,13 @@ export interface PowerSnapshot {
   charge: number;
   stored: number;
   storageCapacity: number;
-  /** Auslastung des Kraftwerks 0–1 (unter 1 nur bei Treibstoff 0). */
+  /**
+   * Auslastung des Kraftwerks 0–1. Das Kraftwerk regelt nach (Lastfolge): Es deckt nur, was Ökostrom, Kabelbezug
+   * und Speicher offen lassen; bei Treibstoff 0 zusätzlich nur so weit, wie Treibstoff nachkommt.
+   */
   throttle: number;
+  /** Die Auslastung ist durch fehlenden Treibstoff begrenzt (nicht durch geringen Bedarf). */
+  fuelLimited: boolean;
   fuelPerHour: number;
   /** Netto-Raten der Ressourcen je Stunde und Gebäudeproduktion in diesem Augenblick. */
   perHour: ResourceMap;
@@ -130,7 +135,8 @@ interface GridState {
 /**
  * Netz in einem Augenblick mit Kraftwerk-Auslastung `throttle`, Speicher- und Pufferstand `st`, Wetter `w`.
  * Reine Rechnung, keine Fortschreibung. Ökostrom deckt den Bedarf zuerst, dann lädt er den Speicher; der Rest
- * (nur Ökostrom) geht in die Elektrolyse, danach ins Seekabel. Kraftwerksüberschuss verfällt immer.
+ * (nur Ökostrom) geht in die Elektrolyse, danach ins Seekabel. Bei `throttle` 1 verfiele Kraftwerksüberschuss; solvePiece
+ * regelt deshalb nach (siehe loadFollow).
  */
 function piece(base: BaseState, t: number, w: Weather | null, st: GridState, throttle: number, balance: Balance, mods?: Modifiers): PowerSnapshot {
   const supply = { kraftwerk: 0, wind: 0, solar: 0, storage: 0, cable: 0 };
@@ -209,7 +215,7 @@ function piece(base: BaseState, t: number, w: Weather | null, st: GridState, thr
   const used = greenToDemand + supply.cable + supply.storage * frac;
   return {
     atMs: t, weather: w, supply, demand, served, charge, stored: st.stored, storageCapacity: spec.capacity,
-    throttle, fuelPerHour, perHour, buildingPerHour,
+    throttle, fuelLimited: false, fuelPerHour, perHour, buildingPerHour,
     surplus: { fuel: Math.max(0, toFuel), cable: toCable, wasted: Math.max(0, surplus - Math.max(0, toFuel) - toCable) },
     greenWasted: Math.max(0, greenSurplus - Math.max(0, toFuel) - toCable),
     fuelMade, green: { used: Math.min(used, consumed), total: consumed }, greenCharge, buffer: st.buffer,
@@ -217,21 +223,35 @@ function piece(base: BaseState, t: number, w: Weather | null, st: GridState, thr
 }
 
 /**
- * Netz bei gegebenem Bestand: Bei Treibstoff 0 läuft das Kraftwerk nur so weit, wie Treibstoff nachkommt
- * (Grundrate, Raffinerie, Elektrolyse), sonst voll. Die Auslastung wird per Bisektion bestimmt (Treibstoff-Rate ≥ 0;
- * die Rate fällt mit der Auslastung, weil Kraftwerksstrom nie in die Elektrolyse geht).
+ * Lastfolge: Auslastung, bei der das Kraftwerk genau den Bedarf deckt, den Ökostrom, Kabelbezug und Speicher offen
+ * lassen. Kein Kraftwerksstrom lädt den Speicher oder verfällt (er ginge nie in Elektrolyse oder Kabel).
+ */
+function loadFollow(base: BaseState, t: number, w: Weather | null, st: GridState, balance: Balance, mods?: Modifiers): number {
+  const off = piece(base, t, w, st, 0, balance, mods);
+  const max = piece(base, t, w, st, 1, balance, mods).supply.kraftwerk;
+  if (max <= EPS) return 1;
+  const need = off.demand.radar + off.demand.production + off.demand.training + off.demand.research;
+  const open = need - (off.supply.wind + off.supply.solar + off.supply.storage + off.supply.cable);
+  return Math.min(1, Math.max(0, open / max));
+}
+
+/**
+ * Netz bei gegebenem Bestand: Das Kraftwerk regelt nach Bedarf (loadFollow). Bei Treibstoff 0 läuft es höchstens so
+ * weit, wie Treibstoff nachkommt (Grundrate, Raffinerie, Elektrolyse); die Auslastung wird dann per Bisektion bestimmt
+ * (Treibstoff-Rate ≥ 0; die Rate fällt mit der Auslastung, weil Kraftwerksstrom nie in die Elektrolyse geht).
  */
 function solvePiece(base: BaseState, t: number, w: Weather | null, st: GridState, fuel: number, balance: Balance, mods?: Modifiers): PowerSnapshot {
-  const full = piece(base, t, w, st, 1, balance, mods);
+  const top = loadFollow(base, t, w, st, balance, mods);
+  const full = piece(base, t, w, st, top, balance, mods);
   if (fuel > EPS || full.fuelPerHour <= 0 || (full.perHour.treibstoff ?? 0) >= 0) return full;
   let lo = 0;
-  let hi = 1;
+  let hi = top;
   for (let i = 0; i < 24; i++) {
     const mid = (lo + hi) / 2;
     if ((piece(base, t, w, st, mid, balance, mods).perHour.treibstoff ?? 0) >= 0) lo = mid;
     else hi = mid;
   }
-  return piece(base, t, w, st, lo, balance, mods);
+  return { ...piece(base, t, w, st, lo, balance, mods), fuelLimited: true };
 }
 
 /** Anfangszustand des Netzes aus dem Stützpunkt. */

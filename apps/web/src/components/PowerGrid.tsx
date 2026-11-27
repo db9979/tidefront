@@ -112,9 +112,11 @@ export function PowerGrid({ base }: { base: BaseData }) {
       )}
       <SurplusNow g={g} />
       <GreenLine g={g} />
-      {g.now.throttle < 0.999 && (
+      {g.now.fuelLimited ? (
         <p className="text-xs text-red-300">Kein Treibstoff: Das Kraftwerk läuft nur mit {pct(g.now.throttle)} (verbrennt, was nachkommt).</p>
-      )}
+      ) : g.now.supply.kraftwerk > 0.5 || g.now.throttle < 0.999 ? (
+        <p className="text-xs text-ink2">Kraftwerk regelt nach: {pct(g.now.throttle)} Auslastung, {fmtNum(g.now.fuelPerHour)} Treibstoff/h – es deckt nur, was Ökostrom und Speicher offen lassen.</p>
+      ) : null}
       <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 text-xs">
         {RANKS.map((r) => (
           <div key={r.key} className="contents">
@@ -266,7 +268,7 @@ function SurplusAhead({ curve }: { curve: Hour[] }) {
           </span>
         ))}
       </div>
-      {greenWasted >= 50 && <p>Davon Ökostrom ohne Abnehmer: {fmtNum(greenWasted)} – Elektrolyse (mehr Stufen) oder ein Seekabel könnten ihn nutzen. Kraftwerksüberschuss verfällt immer.</p>}
+      {greenWasted >= 50 && <p>Davon Ökostrom ohne Abnehmer: {fmtNum(greenWasted)} – Elektrolyse (mehr Stufen) oder ein Seekabel könnten ihn nutzen.</p>}
     </div>
   );
 }

@@ -29,23 +29,26 @@ function first(base: BaseState, w: Weather): PowerSnapshot {
   return snap!;
 }
 
-test("Elektrolyse: nur Ökostrom-Überschuss wird Treibstoff, Kraftwerksstrom verfällt", () => {
+test("Elektrolyse: nur Ökostrom-Überschuss wird Treibstoff; das Kraftwerk regelt nach", () => {
   // Kraftwerk 2 (120 Strom), Stahlwerk 1 (Bedarf 10), Elektrolyse 2 (80 Strom/h Aufnahme).
   const base = makeBase(balance, { buildings: { kraftwerk: 2, stahlwerk: 1, elektrolyse: 2 }, resources: full });
   const dark = first(base, calm);
   assert.equal(dark.fuelMade, 0);
   assert.equal(dark.surplus.fuel, 0);
-  assert.ok(approx(dark.surplus.wasted, 110));
-  assert.ok(approx(dark.perHour.treibstoff, 10 - 6));
+  // Lastfolge: Das Kraftwerk deckt nur den Bedarf 10 von 120 → 1/12 von 6 Treibstoff/h, nichts verfällt.
+  assert.ok(approx(dark.surplus.wasted, 0));
+  assert.ok(approx(dark.throttle, 10 / 120));
+  assert.ok(approx(dark.perHour.treibstoff, 10 - 0.5));
   // Windpark 2 bei Wind 0,5: 90 Ökostrom. Bedarf 10 aus Ökostrom, 80 in die Elektrolyse → 8 Treibstoff/h.
   const windy = makeBase(balance, { buildings: { kraftwerk: 2, stahlwerk: 1, elektrolyse: 2, windpark: 2 }, resources: full });
   const w = first(windy, breeze);
   assert.ok(approx(w.surplus.fuel, 80));
   assert.ok(approx(w.fuelMade, 8));
-  assert.ok(approx(w.surplus.wasted, 120), `${w.surplus.wasted}`);
-  assert.ok(approx(w.perHour.treibstoff, 10 - 6 + 8));
+  assert.ok(approx(w.surplus.wasted, 0), `${w.surplus.wasted}`);
+  assert.equal(w.supply.kraftwerk, 0); // Wind deckt den Bedarf, das Kraftwerk ruht
+  assert.ok(approx(w.perHour.treibstoff, 10 + 8));
   const later = integrateGrid(windy, T0 + 2 * HOUR, balance, undefined, undefined, fixed(breeze));
-  assert.ok(approx(later.resources.treibstoff, 1000 + 2 * 12, 1e-6));
+  assert.ok(approx(later.resources.treibstoff, 1000 + 2 * 18, 1e-6));
   assert.ok(approx(later.powerLog!.fuelMade, 16, 1e-6));
 });
 
@@ -111,10 +114,10 @@ test("Speicher: aus Ökostrom geladen zählt beim Entladen als Ökostrom, aus de
   const night = integrateGrid(day, T0 + 8 * HOUR, balance, undefined, undefined, fixed(calm));
   const s = greenShare(night, T0 + 8 * HOUR, balance);
   assert.ok(approx(s.share, 1, 1e-9), `${s.share}`);
-  // Kraftwerk lädt: grauer Speicher, Entladung zählt nicht.
+  // Lastfolge: Das Kraftwerk lädt den Speicher nicht (es deckt nur den Bedarf), es entsteht kein grauer Speicher.
   const coal = makeBase(balance, { buildings: { kraftwerk: 1, speicherwerk: 1, stahlwerk: 3 }, resources: full, powerStored: 0 });
   const c1 = integrateGrid(coal, T0 + 6 * HOUR, balance, undefined, undefined, fixed(calm));
-  assert.ok(approx(c1.powerStored!, 180, 1e-6));
+  assert.ok(approx(c1.powerStored!, 0, 1e-6));
   assert.equal(c1.powerLog!.storedGreen, 0);
 });
 
@@ -124,7 +127,7 @@ test("Seekabel: Abgebender schickt nur Ökostrom-Rest nach Elektrolyse bis zur S
   const s = first(out, breeze);
   assert.ok(approx(s.surplus.fuel, 40));
   assert.ok(approx(s.surplus.cable, 30));
-  assert.ok(approx(s.surplus.wasted, 10 + 60));
+  assert.ok(approx(s.surplus.wasted, 10)); // Kraftwerk ruht (Lastfolge), nur Ökostrom-Rest verfällt
   const later = integrateGrid(out, T0 + 2 * HOUR, balance, undefined, undefined, fixed(breeze));
   assert.ok(approx(later.cable!.sent!, 60, 1e-6));
   // Sabotage an der Station: nichts ins Kabel, bis sie endet.

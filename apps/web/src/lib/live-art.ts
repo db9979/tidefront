@@ -30,7 +30,7 @@ export function buildingLive(base: BaseData, id: string, level: number, now: num
     live.powerShort = g.served.production < 0.999;
   } else if (id === "kraftwerk") {
     live.producing = g.supply.kraftwerk > 0.01;
-    live.powerShort = g.throttle < 0.5;
+    live.powerShort = !!g.fuelLimited && g.throttle < 0.5;
   } else if (id === "radarstation") {
     live.producing = true;
     live.powerShort = g.served.radar < 0.999;

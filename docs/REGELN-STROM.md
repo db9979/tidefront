@@ -10,13 +10,14 @@ Abschnitt O; Simulation `node packages/game-core/sim/power-green.ts`.
 
 - **Ökostrom** ist Strom aus Windpark und Solarfeld, außerdem Strom aus einem Seekabel (es trägt nur Ökostrom) und die
   Ladung des Speichers, soweit sie aus Ökostrom stammt.
-- Reihenfolge je Augenblick: Ökostrom deckt den Bedarf zuerst, dann lädt er den Speicher; das Kraftwerk deckt den Rest
-  und lädt, was noch fehlt. Der Speicher merkt sich den Ökostrom-Anteil seiner Ladung (`powerLog.storedGreen`) und gibt
+- Reihenfolge je Augenblick: Ökostrom deckt den Bedarf zuerst, dann lädt er den Speicher; das Kraftwerk deckt den Rest.
+  **Lastfolge (0.21.3):** Das Kraftwerk regelt nach – es liefert genau, was Ökostrom, Kabelbezug und Speicher offen
+  lassen, und verbrennt anteilig Treibstoff (Auslastung = offener Bedarf ÷ Volllast). Es lädt den Speicher nicht. Der Speicher merkt sich den Ökostrom-Anteil seiner Ladung (`powerLog.storedGreen`) und gibt
   ihn beim Entladen anteilig ab.
 - **Überschuss** = Erzeugung − Bedarf − Speicherladung. Davon ist nur der Ökostrom-Rest nutzbar, in dieser Reihenfolge:
   1. **Elektrolyse** (bis zu ihrer Aufnahme), 2. **Seekabel** des abgebenden Hafens (bis zur Stationsleistung),
-  3. der Rest **verfällt**. Kraftwerksüberschuss verfällt immer – das Kraftwerk läuft wie bisher voll, solange
-  Treibstoff da ist.
+  3. der Rest **verfällt**. Kraftwerksüberschuss entsteht nicht mehr, weil das Kraftwerk
+  nachregelt; ohne Treibstoff läuft es nur so weit, wie Treibstoff nachkommt.
 - Die Stromkurve (Basis → Versorgung) zeigt den Überschuss je Stunde als Streifen unter der Achse: „→ Treibstoff“,
   „→ Partner“, „verfällt“, dazu den verfallenden Ökostrom als Hinweis auf Elektrolyse oder Kabel.
 

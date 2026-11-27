@@ -350,6 +350,17 @@ Versorgungshof 6 = Bedarf 302 Strom), 28 Tage stündlich mit echtem Wetter, Grü
    35). Ziel = Höchstwert × 30 → 119–181 % erreichbar bei gemischtem Ausbau. Erfolg: Saison (42 Tage) 150 000–400 000
    bei mittlerem Ausbau ab Tag ~10; Bronze 10 000 (ein bis zwei Tage), Silber 75 000, Gold 300 000 (nur grüne Häfen
    im Norden über die ganze Saison).
+### O.1 Kraftwerk regelt nach (Lastfolge, 0.21.3)
+
+Bisher lief das Kraftwerk immer voll, solange Treibstoff da war; Überschuss verfiel oder lud den Speicher grau. Auf
+Wunsch des Nutzers regelt es jetzt nach: Auslastung = (Bedarf − Wind − Sonne − Kabelbezug − Speicherentladung) ÷
+Volllast, begrenzt auf 0–1; der Treibstoffverbrauch sinkt anteilig. Das Kraftwerk lädt den Speicher nicht mehr (Laden
+nur aus Ökostrom), deshalb entsteht kein grauer Speicher. Ohne Treibstoff gilt weiter die Bisektion („verbrennt, was
+nachkommt“), jetzt mit Obergrenze Lastfolge; `fuelLimited` unterscheidet in der Anzeige Treibstoffmangel von geringer
+Last. Kein Balance-Schalter: Kraftwerksstrom hatte außer Bedarf und grauem Speicher keinen Abnehmer, Lastfolge spart
+also nur Treibstoff, ohne Strom wegzunehmen. Wirkung: Treibstoff wird spürbar knapper verbraucht (typisch statt
+3/h je Stufe nur Bedarf ÷ 20); Elektrolyse bleibt der Weg, Treibstoff *dazu* zu gewinnen.
+
 ## P. Lagebild Stufe 2: Aufklärung, Radarposten, Sonar, Bordsicht (Balance v1.20)
 
 Regeln: `docs/REGELN-LAGEBILD.md` 5.3–5.5, 5.7, 5.8 (Bordsicht, Entscheidung vom 27.11.2026). Zahlen aus

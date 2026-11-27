@@ -21,15 +21,15 @@ test("Gebäudeproduktion wächst mit productionGrowth^(L-1)", () => {
   const base = makeBase(balance, { buildings: { stahlwerk: 3, kraftwerk: 5 } });
   const rates = productionRates(base, balance);
   assert.ok(approx(rates.perHour.stahl, 20 + 120 * 1.15 ** 2));
-  // v1.6: Das Kraftwerk verbrennt fuelPerHourPerLevel (3) je Stufe.
-  assert.equal(rates.perHour.treibstoff, 10 - 5 * 3);
+  // v1.6: fuelPerHourPerLevel (3) je Stufe bei Volllast; 0.21.3: Das Kraftwerk regelt nach (Bedarf 3 × 10 von 300 → 10 %).
+  assert.ok(approx(rates.perHour.treibstoff, 10 - 5 * 3 * (30 / 300)));
 });
 
 test("Fortschreibung über Zeit", () => {
   const base = makeBase(balance, { buildings: { stahlwerk: 1, kraftwerk: 1 } });
   const later = settle(base, T0 + 2 * HOUR, balance);
   assert.ok(approx(later.resources.stahl, 2000 + 2 * 140));
-  assert.ok(approx(later.resources.treibstoff, 1000 + 2 * (10 - 3)));
+  assert.ok(approx(later.resources.treibstoff, 1000 + 2 * (10 - 3 * (10 / 60)))); // Lastfolge: 10 von 60 Strom
   assert.equal(later.resUpdatedAt, T0 + 2 * HOUR);
   // Eingabe unverändert
   assert.equal(base.resources.stahl, 2000);

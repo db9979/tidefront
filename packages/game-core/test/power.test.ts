@@ -25,25 +25,41 @@ const stahl = (l: number) => 120 * 1.15 ** (l - 1);
 test("Kraftwerk verbraucht Treibstoff je Stufe", () => {
   const base = makeBase(balance, { buildings: { kraftwerk: 3, stahlwerk: 1 } });
   const g = powerAt(base, T0, balance);
-  assert.equal(g.fuelPerHour, 9);
-  assert.equal(g.supply.kraftwerk, 180);
-  assert.equal(g.perHour.treibstoff, 10 - 9);
+  // Volllast 180 Strom / 9 Treibstoff; Lastfolge: Bedarf 10 → 1/18 Auslastung.
+  assert.ok(approx(g.throttle, 10 / 180));
+  assert.ok(approx(g.fuelPerHour, 0.5));
+  assert.ok(approx(g.supply.kraftwerk, 10));
+  assert.ok(approx(g.perHour.treibstoff, 10 - 0.5));
+  assert.equal(g.fuelLimited, false);
+  assert.equal(g.served.production, 1);
+});
+
+test("Kraftwerk regelt nach: mehr Bedarf, mehr Brennstoff; nie über Volllast", () => {
+  const small = powerAt(makeBase(balance, { buildings: { kraftwerk: 5, stahlwerk: 2 } }), T0, balance);
+  const large = powerAt(makeBase(balance, { buildings: { kraftwerk: 5, stahlwerk: 5 } }), T0, balance);
+  assert.ok(approx(small.fuelPerHour, 15 * 20 / 300));
+  assert.ok(approx(large.fuelPerHour, 15 * 50 / 300));
+  const over = powerAt(makeBase(balance, { buildings: { kraftwerk: 1, stahlwerk: 9 } }), T0, balance);
+  assert.equal(over.throttle, 1);
+  assert.ok(over.served.production < 1);
 });
 
 test("Kraftwerk ohne Treibstoff: verbrennt nur, was nachkommt; Bestand bleibt 0", () => {
-  // Bedarf 5 * 10 = 50; Kraftwerk 5 (300 Strom, 15 Treibstoff/h), Zufluss nur Grundrate 10/h.
-  const base = makeBase(balance, { buildings: { kraftwerk: 5, stahlwerk: 5 }, resources: { treibstoff: 0 } });
-  const g = powerAt(base, T0, balance);
-  assert.ok(Math.abs(g.throttle - 10 / 15) < 1e-5, `${g.throttle}`);
+  // Bedarf 5 * 10 = 50; Kraftwerk 5 (300 Strom, 15 Treibstoff/h), Lastfolge braucht 2,5/h. Zufluss nur 1/h.
+  const low = { ...balance, baseTricklePerHour: { ...balance.baseTricklePerHour, treibstoff: 1 } };
+  const base = makeBase(low, { buildings: { kraftwerk: 5, stahlwerk: 5 }, resources: { treibstoff: 0 } });
+  const g = powerAt(base, T0, low);
+  assert.ok(Math.abs(g.throttle - 1 / 15) < 1e-5, `${g.throttle}`);
+  assert.equal(g.fuelLimited, true);
   assert.ok(g.perHour.treibstoff >= 0 && g.perHour.treibstoff < 1e-3);
-  assert.equal(g.served.production, 1);
-  const later = settle(base, T0 + 10 * HOUR, balance);
+  assert.ok(approx(g.served.production, 20 / 50, 1e-4));
+  const later = settle(base, T0 + 10 * HOUR, low);
   assert.ok(later.resources.treibstoff < 0.01);
-  // Mit 5 Treibstoff: nach 1 h leer (netto −5/h), danach gedrosselt.
-  const some = makeBase(balance, { buildings: { kraftwerk: 5, stahlwerk: 5 }, resources: { treibstoff: 5 } });
-  const s1 = settle(some, T0 + 0.5 * HOUR, balance);
-  assert.ok(approx(s1.resources.treibstoff, 2.5));
-  const s2 = settle(some, T0 + 3 * HOUR, balance);
+  // Mit 5 Treibstoff: netto −1,5/h, nach 3⅓ h leer, danach gedrosselt.
+  const some = makeBase(low, { buildings: { kraftwerk: 5, stahlwerk: 5 }, resources: { treibstoff: 5 } });
+  const s1 = settle(some, T0 + 0.5 * HOUR, low);
+  assert.ok(approx(s1.resources.treibstoff, 5 - 0.75));
+  const s2 = settle(some, T0 + 4 * HOUR, low);
   assert.ok(s2.resources.treibstoff < 0.01);
   // Ohne jeden Zufluss liefert es nichts: Stahl nur aus der Grundrate.
   const dry = makeBase(balance, { buildings: { kraftwerk: 5, stahlwerk: 5 }, resources: { treibstoff: 0 } });
@@ -88,10 +104,9 @@ test("Speicherwerk lädt Überschuss und puffert Mangel", () => {
   const sp = balance.buildings.speicherwerk;
   const cap = sp.storagePerLevel!;
   const rate = sp.storageRatePerLevel!;
-  // Angebot 60, Bedarf 20 → Überschuss 40, geladen mit höchstens `rate` je Stunde bis zur Kapazität.
+  // Lastfolge: Das Kraftwerk deckt nur den Bedarf und lädt den Speicher nicht (Laden nur aus Ökostrom, s. power-green).
   const base = makeBase(balance, { buildings: { kraftwerk: 1, stahlwerk: 2, speicherwerk: 1 } });
-  assert.ok(approx(settle(base, T0 + 2 * HOUR, balance).powerStored!, 2 * Math.min(40, rate)));
-  assert.equal(settle(base, T0 + 48 * HOUR, balance).powerStored, cap);
+  assert.equal(settle(base, T0 + 2 * HOUR, balance).powerStored ?? 0, 0);
   // Voller Speicher ohne Kraftwerk: 20/h Entladung → cap/20 h volle Produktion, dann nichts.
   const stored: BaseState = { ...makeBase(balance, { buildings: { stahlwerk: 2, speicherwerk: 1 } }), powerStored: cap };
   const g = powerAt(stored, T0, balance);

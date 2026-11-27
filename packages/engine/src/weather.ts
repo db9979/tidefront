@@ -136,6 +136,7 @@ export function gridView(state: BaseState, nowMs: number, mods?: Modifiers) {
       capacity: now.storageCapacity,
       charge: now.charge,
       throttle: now.throttle,
+      fuelLimited: now.fuelLimited,
       fuelPerHour: now.fuelPerHour,
       weather: now.weather,
     },
