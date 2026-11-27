@@ -2,6 +2,22 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.17.0 – 27.11.2026
+- **KI-Spieler:** Drei Mitspieler mit eigener Spielweise – **Händler** (leicht: Wirtschaft, Börse, Spielerhandel), **Festung** (mittel: Verteidigung, Forschung, Nester) und **Freibeuter** (stark: Überfälle mit Aufklärung und Probekampf, Minen, frühe Kolonien). Sie spielen nach denselben Regeln wie alle, haben Ruhezeiten mit Nachtschild und besetzen auch Rohstofffelder. In Rangliste und Spielerübersicht tragen sie das Zeichen **KI**. Ob ein KI-Spieler Menschen angreifen darf, stellt die Verwaltung je Bot ein (zu Beginn: nein); dann gelten alle Schutzregeln und 12 Stunden Pause je Spieler.
+- **Saison 6 statt 4 Wochen.** Die laufende Saison endet am 7. Januar.
+- **Inselfestungen (Nest Stufe VI)** auf Bermuda, den Azoren, Jan Mayen, Mallorca und Rhodos: das Ziel für die letzten Saisonwochen, etwa ab Woche 5 mit einem vollen Verband zu schlagen. Größte Beute im Spiel mit viel Elektronik – genug Landungsschiffe mitnehmen. Nach einem Sieg 24 Stunden verlassen.
+- **Dritter Hafen** schon ab Kommandozentrale 8 (bisher 9).
+- **Kartell:** Eine Flotte daheim lockt keine stärkeren Überfälle mehr an – Kriegsschiffe zählen nur halb, Landungs-, Kolonieschiffe und Minenleger gar nicht. Die Miliz greift die Bunkerlinie so hart an wie Truppen: Sie bleibt starker Schutz, hält aber nicht mehr jeden Überfall auf. Dasselbe gilt für die Großflotte.
+- **Rohstofffelder:** Die Geleitabteilung verteidigt das Feld gegen angekündigte Kartellangriffe mit. Fahren mehrere Ertragskonvois zugleich, teilt sich das Geleit nach Warenwert auf.
+- **Admirale** führen jetzt auch Feldmissionen und Verbände gegen Weltereignisse. Nach einer Einnahme bleibt der Admiral bei der Besatzung; **„Admiral abziehen“** schickt ihn allein heim, die Besatzung hält das Feld.
+- **Minen** wirken auch auf der Rückfahrt. Handelskonvois verlieren in feindlichen Minenfeldern Ladung – Minenräumer im Geleit schützen sie (Börsenlieferungen bleiben ausgenommen).
+- **Spielerhandel:** Wer ein Angebot einstellt, kann Geleit für seine Ware eintragen.
+- **Karte:** Die Knöpfe sitzen als schmale Leiste am rechten Rand, das Wetter am Hafen ist ein kleines Kärtchen (antippen für Details), die Legende ein „i“ unten links. Die Karte lässt sich ein Stück über den Rand schieben, damit auch Randfelder frei antippbar sind. Wetterkarte mit Kalt-, Warmfronten und Okklusionen.
+- **Basis:** „Hafen verwalten“ ist ein Zahnrad oben rechts neben dem Hafennamen.
+- **Tagesbefehle:** neu „Windpark oder Solarfeld ausbauen“ und „Strom aus Wind und Sonne“. Befehle wie Vorrat, Produktion oder Ökostrom zählen jetzt auch, wenn man nicht nachsieht.
+- **Behoben:** Ein Heimathafen ließ sich direkt auf einen Handelshafen legen (Börsenlieferungen kamen dann sofort an).
+- **Verwaltung:** KI-Spieler anlegen, pausieren und entfernen; Regler **Kartell-Stärke** (25–300 %); Statistik mit Veteranen.
+
 ## 0.16.0 – 27.11.2026
 - **Hafen verwalten** (Link oben auf der Basis): Häfen **umbenennen** und eine Kolonie **aufgeben**. Aufgeben geht nur, wenn dort nichts mehr unterwegs ist; was im Hafen liegt, verfällt. Wertvolles also vorher verlegen.
 - Neue Kolonien heißen nach dem **nächstgelegenen Küstenort** („Küste bei Bergen“) statt „<Name> II“.
