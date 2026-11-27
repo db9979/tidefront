@@ -17,7 +17,7 @@ export function targetName(map: MapData | undefined, col: number, row: number): 
   // Kein doppeltes „Hafen Hafen …“, wenn der Name schon so beginnt.
   if (b) return /^hafen\b/i.test(b.name) ? b.name : `Hafen ${b.name}`;
   const n = map?.nests.find((x) => x.col === col && x.row === row);
-  if (n) return `Nest Stufe ${n.level}`;
+  if (n) return n.level == null ? "Piratennest (Stufe unbekannt)" : `Nest Stufe ${n.level}`; // Lagebild: Stufe nur mit Sicht
   return `Feld ${col}/${row}`;
 }
 
