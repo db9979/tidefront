@@ -62,9 +62,12 @@ test("Börsen-Order: Empfehlung übernehmen setzt das Geleit; Konvoi-Blatt: Prob
   const p = convoyPosition({ route: seaRoute(from, to), from, to, departAtMs: now - 5 * DAY, arriveAtMs: now + 5 * DAY }, Date.now()).at;
   await page.goto("/");
   await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
-  await tapHex(page, player, hexAtXY(p.x, p.y));
   const card = page.locator(`[data-convoy="${cv.id}"]`);
-  await expect(card).toBeVisible();
+  // Seedaten (Konvois) laden nach der Karte: Antippen wiederholen, bis das Konvoi-Blatt erscheint.
+  await expect(async () => {
+    await tapHex(page, player, hexAtXY(p.x, p.y));
+    await expect(card).toBeVisible({ timeout: 4000 });
+  }).toPass({ timeout: 30_000 });
   await card.getByRole("button", { name: "Probekampf gegen das Kartell" }).click();
   const res = card.locator("[data-convoy-probe-result]");
   await expect(res.getByText(/Kartellgruppe für diese Ladung: \d+ Schnellboote?/)).toBeVisible();
