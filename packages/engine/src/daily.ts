@@ -22,6 +22,7 @@ import {
 } from "./challenge-pool.ts";
 import { challengePoints, contextFor, ensureAssigned, refreshDerived, type ChallengeRow } from "./challenges.ts";
 import { runningSeason } from "./season.ts";
+import { addLost, rewardStorage } from "./reward-storage.ts";
 
 const dc = tables.dailyChallenge;
 
@@ -89,17 +90,19 @@ export async function dailyView(engine: Engine, playerId: number) {
       rerollAvailable: rows.length > 0 && !rows.some((r) => r.rerolled) && rows.some((r) => !r.completedAt),
       seasonPoints: points,
       streak: { ...streak, nextBonusPoints: streakBonus(streak.nextMilestone, 0)?.points ?? 0 },
+      /** Lager des Heimathafens (Belohnungen gehen dorthin, bis zur Lagergrenze): Warnung vor dem Abholen. */
+      storage: await rewardStorage(tx, playerId, nowMs),
     };
   });
 }
 
 /**
- * Belohnung eines erledigten Befehls abholen (genau einmal). Ressourcen gehen in den Hafen, auch über die
- * Lagerkapazität. Sind danach alle drei Befehle dieses Tages abgeholt, wächst die Serie (Serienbonus).
+ * Belohnung eines erledigten Befehls abholen (genau einmal). Ressourcen gehen in den Heimathafen, bis zur
+ * Lagergrenze; der Rest verfällt und steht in `lost` (Belohnung und Serienbonus zusammen). Sind danach alle drei Befehle dieses Tages abgeholt, wächst die Serie (Serienbonus).
  * Codes: no_base, no_challenge, not_done, already_claimed.
  */
 export function claimChallenge(engine: Engine, playerId: number, key: string, challengeId: number) {
-  return runCommand<{ ok: true; reward: ResourceMap; points: number; streak: number | null; bonus: { points: number; reward: ResourceMap } | null }>(
+  return runCommand<{ ok: true; reward: ResourceMap; points: number; streak: number | null; bonus: { points: number; reward: ResourceMap } | null; lost: ResourceMap }>(
     engine, playerId, key, "dailyClaim", async (ctx) => {
       const own = await baseOfPlayer(ctx.tx, playerId); // Mehrere Häfen: bewusst Heimathafen (Belohnung dorthin)
       if (!own) fail("no_base");
@@ -112,7 +115,9 @@ export function claimChallenge(engine: Engine, playerId: number, key: string, ch
       if (!row.completedAt) fail("not_done");
       const reward = row.reward as ResourceMap;
       const mods = await modsOf(ctx.tx, b, ctx.nowMs);
-      let state = deliverToStorage(b.state, reward, ctx.nowMs, mods).state; // bis zur Lagergrenze (wie Auftragsbuch)
+      const first = deliverToStorage(b.state, reward, ctx.nowMs, mods); // bis zur Lagergrenze (wie Auftragsbuch)
+      let state = first.state;
+      const lost = addLost({}, first.lost);
       await ctx.tx.update(dc).set({ claimedAt: new Date(ctx.nowMs) }).where(eq(dc.id, row.id));
 
       // Tagesabschluss: alle drei Befehle des Tages abgeholt.
@@ -130,14 +135,16 @@ export function claimChallenge(engine: Engine, playerId: number, key: string, ch
             .onConflictDoUpdate({ target: tables.dailyStreak.playerId, set: { lastDay: row.day, length: streak, best, updatedAt: new Date(ctx.nowMs) } });
           bonus = streakBonus(streak, b.state.buildings.kommandozentrale ?? 0);
           if (bonus) {
-            state = deliverToStorage(state, bonus.reward, ctx.nowMs, mods).state;
+            const d = deliverToStorage(state, bonus.reward, ctx.nowMs, mods);
+            state = d.state;
+            addLost(lost, d.lost);
             await ctx.tx.update(dc).set({ bonusPoints: bonus.points }).where(eq(dc.id, row.id));
           }
         }
       }
       await saveBase(ctx.tx, b.id, state);
       ctx.notify.push([[playerId], "base"]);
-      return { ok: true as const, reward, points: row.points, streak, bonus };
+      return { ok: true as const, reward, points: row.points, streak, bonus, lost };
     },
   );
 }

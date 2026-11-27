@@ -1,6 +1,7 @@
 // Erfolge und Wochenziele für Spieler: Ansichten und Abholen der Belohnungen (genau einmal, Befehle mit
 // Idempotenz-Schlüssel über runCommand). Kredite laufen über das Journal (Konto „rewards“), damit die
-// Prüfung von Journal und Kreditständen stimmt; Ressourcen gehen in den Hafen, auch über die Lagerkapazität.
+// Prüfung von Journal und Kreditständen stimmt; Ressourcen gehen in den Heimathafen bis zur Lagergrenze, der Rest
+// verfällt und steht in `lost` der Antwort. Die Ansichten liefern dazu das Lager des Heimathafens (`storage`).
 import { and, asc, desc, eq, isNotNull, isNull, lt } from "drizzle-orm";
 import { deliverToStorage } from "./guide.ts";
 import { tables, type Tx } from "@tidefront/db";
@@ -8,6 +9,7 @@ import { balance, GameError, type Engine } from "./context.ts";
 import { runCommand } from "./commands.ts";
 import { baseOfPlayer, lockBase, saveBase } from "./store.ts";
 import { modsOf } from "./modifiers.ts";
+import { addLost, rewardStorage } from "./reward-storage.ts";
 import { recordAchievement, refreshAchievementState, refreshGreenCounter, topBadges } from "./achievements.ts";
 import { ensureWeekly, refreshWeeklyDerived, weeklyContextFor, type WeeklyRow } from "./weekly.ts";
 import {
@@ -35,15 +37,18 @@ function fail(code: string): never {
   throw new GameError(code);
 }
 
-/** Belohnung gutschreiben: Ressourcen in den Hafen, Kredite über das Journal. */
-async function payReward(tx: Tx, playerId: number, reward: Record<string, number>, nowMs: number, tradeId: string): Promise<void> {
+/** Belohnung gutschreiben: Ressourcen in den Heimathafen (bis zur Lagergrenze), Kredite über das Journal. Gibt den verfallenen Rest zurück. */
+async function payReward(tx: Tx, playerId: number, reward: Record<string, number>, nowMs: number, tradeId: string): Promise<Record<string, number>> {
   const { credits, resources } = splitReward(reward);
+  let lost: Record<string, number> = {};
   if (Object.keys(resources).length > 0) {
     const own = await baseOfPlayer(tx, playerId); // Mehrere Häfen: bewusst Heimathafen (Belohnung dorthin)
     if (!own) fail("no_base");
     const b = (await lockBase(tx, own.id))!;
     const mods = await modsOf(tx, b, nowMs);
-    await saveBase(tx, b.id, deliverToStorage(b.state, resources, nowMs, mods).state); // bis zur Lagergrenze (wie Auftragsbuch)
+    const d = deliverToStorage(b.state, resources, nowMs, mods); // bis zur Lagergrenze (wie Auftragsbuch)
+    await saveBase(tx, b.id, d.state);
+    lost = d.lost;
   }
   if (credits > 0) {
     const [p] = await tx.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, playerId)).for("update");
@@ -55,6 +60,7 @@ async function payReward(tx: Tx, playerId: number, reward: Record<string, number
       { tradeId, tMs: nowMs, account: "rewards", asset: "credits", amount: (-credits).toFixed(2) },
     ]);
   }
+  return lost;
 }
 
 // ---------------------------------------------------------------- Erfolge
@@ -104,13 +110,15 @@ export async function achievementsView(engine: Engine, playerId: number) {
       unlocked: tiers.length,
       total: list.length * 3,
       badges,
+      /** Lager des Heimathafens: Warnung vor dem Abholen, wenn etwas verfiele. */
+      storage: await rewardStorage(tx, playerId, nowMs),
     };
   });
 }
 
 /** Belohnung einer freigeschalteten Stufe abholen (genau einmal). Codes: no_base, not_unlocked, already_claimed. */
 export function claimAchievement(engine: Engine, playerId: number, key: string, achievementId: string, tier: number) {
-  return runCommand<{ ok: true; reward: Record<string, number> }>(engine, playerId, key, "achievementClaim", async (ctx) => {
+  return runCommand<{ ok: true; reward: Record<string, number>; lost: Record<string, number> }>(engine, playerId, key, "achievementClaim", async (ctx) => {
     const t = tables.achievementTier;
     const [row] = await ctx.tx.select().from(t)
       .where(and(eq(t.playerId, playerId), eq(t.achievementId, achievementId), eq(t.tier, tier)))
@@ -118,10 +126,10 @@ export function claimAchievement(engine: Engine, playerId: number, key: string, 
     if (!row || !achievementById(achievementId)) fail("not_unlocked");
     if (row.claimedAt) fail("already_claimed");
     const reward = row.reward as Record<string, number>;
-    await payReward(ctx.tx, playerId, reward, ctx.nowMs, `erfolg-${row.id}`);
+    const lost = await payReward(ctx.tx, playerId, reward, ctx.nowMs, `erfolg-${row.id}`);
     await ctx.tx.update(t).set({ claimedAt: new Date(ctx.nowMs) }).where(eq(t.id, row.id));
     ctx.notify.push([[playerId], "base"]);
-    return { ok: true as const, reward };
+    return { ok: true as const, reward, lost };
   });
 }
 
@@ -171,6 +179,8 @@ export async function weeklyView(engine: Engine, playerId: number) {
       older: older.map(shapeGoal),
       claimable: all.filter((r) => r.completedAt && !r.claimedAt).length,
       bonus: { reward: ordered(weeklyBonus(c?.stage ?? 0)), paid: rows.some((r) => r.bonus !== null) },
+      /** Lager des Heimathafens: Warnung vor dem Abholen (Ziel und ggf. Wochenbonus). */
+      storage: rows.length > 0 ? await rewardStorage(tx, playerId, nowMs) : null,
     };
   });
 }
@@ -180,7 +190,7 @@ export async function weeklyView(engine: Engine, playerId: number) {
  * abgeholt, gibt es einmal den Wochenbonus. Codes: no_base, no_goal, not_done, already_claimed.
  */
 export function claimWeekly(engine: Engine, playerId: number, key: string, goalId: number) {
-  return runCommand<{ ok: true; reward: Record<string, number>; bonus: Record<string, number> | null }>(
+  return runCommand<{ ok: true; reward: Record<string, number>; bonus: Record<string, number> | null; lost: Record<string, number> }>(
     engine, playerId, key, "weeklyClaim", async (ctx) => {
       const wg = tables.weeklyGoal;
       await refreshGreenCounter(ctx.tx, playerId, ctx.nowMs); // Ökostrom (v1.21)
@@ -190,7 +200,7 @@ export function claimWeekly(engine: Engine, playerId: number, key: string, goalI
       const [row] = await refreshWeeklyDerived(ctx.tx, playerId, [found], ctx.nowMs);
       if (!row.completedAt) fail("not_done");
       const reward = row.reward as Record<string, number>;
-      await payReward(ctx.tx, playerId, reward, ctx.nowMs, `woche-${row.id}`);
+      const lost = await payReward(ctx.tx, playerId, reward, ctx.nowMs, `woche-${row.id}`);
       await ctx.tx.update(wg).set({ claimedAt: new Date(ctx.nowMs) }).where(eq(wg.id, row.id));
 
       // Wochenbonus: alle drei Ziele der Woche abgeholt, noch kein Bonus gezahlt (Zeilen gesperrt).
@@ -199,12 +209,12 @@ export function claimWeekly(engine: Engine, playerId: number, key: string, goalI
       if (week.length >= 3 && week.every((r) => r.claimedAt !== null || r.id === row.id) && !week.some((r) => r.bonus !== null)) {
         const own = await baseOfPlayer(ctx.tx, playerId); // Mehrere Häfen: bewusst Heimathafen (Bonus nach dessen Kommandozentrale)
         bonus = weeklyBonus(own?.state.buildings.kommandozentrale ?? 0);
-        await payReward(ctx.tx, playerId, bonus, ctx.nowMs, `woche-${row.week}-bonus-${playerId}`);
+        addLost(lost, await payReward(ctx.tx, playerId, bonus, ctx.nowMs, `woche-${row.week}-bonus-${playerId}`));
         await ctx.tx.update(wg).set({ bonus }).where(eq(wg.id, row.id));
       }
       await recordAchievement(ctx.tx, playerId, "wochenziele", 1, { atMs: ctx.nowMs });
       ctx.notify.push([[playerId], "base"]);
-      return { ok: true as const, reward, bonus };
+      return { ok: true as const, reward, bonus, lost };
     },
   );
 }

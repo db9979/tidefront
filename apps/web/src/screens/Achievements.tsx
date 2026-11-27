@@ -7,8 +7,10 @@ import { trpc, trpcClient, type Outputs } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum } from "../lib/names.ts";
 import { fmtTime } from "../lib/time.ts";
-import { Badge, Bar, Button, Card, ErrorLine, Loading, ResChips, Sheet } from "../ui.tsx";
+import { Badge, Bar, Card, ErrorLine, Loading, ResChips, Sheet } from "../ui.tsx";
 import { AchievementBadge, TIER_LABEL } from "../components/achievement-art.tsx";
+import { RewardClaim, lostNote } from "../components/RewardClaim.tsx";
+import { useNav } from "../lib/nav.ts";
 
 type View = Outputs["achievements"]["get"];
 type Item = View["achievements"][number];
@@ -25,6 +27,8 @@ const TONE = ["slate", "brass", "sea", "brass"] as const;
 export function AchievementsScreen() {
   const q = useAchievements();
   const [open, setOpen] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const nav = useNav();
   const claim = useCommand((i: { key: string; id: string; tier: number }) => trpcClient.achievements.claim.mutate(i), invalidate);
   if (!q.data) return <Loading />;
   const v = q.data;
@@ -32,6 +36,13 @@ export function AchievementsScreen() {
   const claimNext = (a: Item) => a.tiers.find((t) => t.unlocked && !t.claimed);
   const won = v.achievements.filter((a) => a.tier > 0 || claimNext(a));
   const locked = v.achievements.filter((a) => !(a.tier > 0 || claimNext(a)));
+  const claimTier = async (id: string, tier: number) => {
+    setNote(null);
+    const r = await claim.run({ id, tier });
+    if (r?.ok) setNote(`Belohnung abgeholt.${lostNote(r.lost)}`);
+  };
+  // Zum Lagerkomplex aus dem Detailblatt: erst schließen, dann über die App-Navigation.
+  const expandFromSheet = () => { setOpen(null); nav.go({ to: "building", id: "lagerkomplex" }); };
 
   return (
     <div>
@@ -47,6 +58,7 @@ export function AchievementsScreen() {
           </div>
         )}
         {v.claimable > 0 && <p className="text-sm text-moos" role="status">{v.claimable} {v.claimable === 1 ? "Belohnung wartet" : "Belohnungen warten"} auf dich.</p>}
+        {note && <p className="text-sm text-moos" role="status">{note}</p>}
         <ErrorLine text={claim.error} code={claim.code} />
       </Card>
 
@@ -69,11 +81,7 @@ export function AchievementsScreen() {
                     : a.next === null ? `${fmtNum(a.value)} – höchste Stufe` : `${fmtNum(a.value)}/${fmtNum(a.next)}`}
                 </div>
               </div>
-              {next && (
-                <Button className="w-full mt-1.5" disabled={claim.busy} onClick={() => void claim.run({ id: a.id, tier: next.tier })}>
-                  Abholen
-                </Button>
-              )}
+              {next && <RewardClaim storage={v.storage} rewards={[next.reward]} busy={claim.busy} className="w-full mt-1.5 text-left" onClaim={() => void claimTier(a.id, next.tier)} />}
             </li>
           );
         })}
@@ -113,12 +121,13 @@ export function AchievementsScreen() {
                     {t.unlockedAtMs && <div className="text-[11px] text-ink2">seit {fmtTime(t.unlockedAtMs)}</div>}
                     <div className="text-xs mt-1"><ResChips values={t.reward} /></div>
                     {t.unlocked && !t.claimed && (
-                      <Button className="w-full mt-1.5" disabled={claim.busy} onClick={() => void claim.run({ id: item.id, tier: t.tier })}>Abholen</Button>
+                      <RewardClaim storage={v.storage} rewards={[t.reward]} busy={claim.busy} onExpand={expandFromSheet} onClaim={() => void claimTier(item.id, t.tier)} />
                     )}
                   </div>
                 </li>
               ))}
             </ol>
+            {note && <p className="text-sm text-moos" role="status">{note}</p>}
             <ErrorLine text={claim.error} code={claim.code} />
           </div>
         )}

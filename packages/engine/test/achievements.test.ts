@@ -216,6 +216,34 @@ test("Abholen: Belohnung genau einmal, Kredite im Journal, Push über den Worker
   assert.equal(await flushAchievementNotices(engine), 0);
 });
 
+test("Volles Lager: Erfolg und Wochenziel melden den verfallenen Rest (`lost`), Ansichten liefern das Lager", async () => {
+  const C = await newPlayer("Lagervoll", 7);
+  await patchBase(C.baseId, (s) => { for (const r of Object.keys(s.resources)) s.resources[r] = 1_000_000; });
+  await recordAchievement(db, C.playerId, "nester", 5);
+  const v = await achievementsView(engine, C.playerId);
+  assert.ok(v.storage && v.storage.capacity > 0 && v.storage.resources.stahl === 1_000_000, JSON.stringify(v.storage));
+  const r = await claimAchievement(engine, C.playerId, key(), "nestjaeger", 1);
+  assert.equal(r.ok, true, JSON.stringify(r));
+  const ok = r as { reward: Record<string, number>; lost: Record<string, number> };
+  const res = Object.fromEntries(Object.entries(ok.reward).filter(([k, n]) => k !== "credits" && n > 0));
+  assert.ok(Object.keys(res).length > 0);
+  assert.deepEqual(ok.lost, res); // Kredite verfallen nie
+  assert.equal((await stateOf(C.baseId)).resources.stahl, 1_000_000);
+
+  // Wochenziel: ein Ziel erfüllt abholen, alles verfällt.
+  const w = await weeklyView(engine, C.playerId);
+  assert.ok(w.storage && w.storage.capacity > 0);
+  const wg = tables.weeklyGoal;
+  await db.update(wg).set({ kind: "gebaeudestufen", param: null, target: 1, progress: 0, completedAt: null, claimedAt: null, bonus: null })
+    .where(and(eq(wg.id, w.goals[0].id)));
+  await recordAchievement(db, C.playerId, "gebaeudestufen", 1);
+  const rw = await claimWeekly(engine, C.playerId, key(), w.goals[0].id);
+  assert.equal(rw.ok, true, JSON.stringify(rw));
+  const okw = rw as { reward: Record<string, number>; lost: Record<string, number> };
+  assert.deepEqual(okw.lost, Object.fromEntries(Object.entries(okw.reward).filter(([k, n]) => k !== "credits" && n > 0)));
+  assert.equal((await auditLedger(engine)).ok, true);
+});
+
 test("Berichte aus Ereignissen: Nest, Abwehr ohne Verluste, Spionage – jeder Bericht genau einmal", async () => {
   const [nest] = await db.select().from(tables.nest).limit(1);
   const ev = { id: 0, type: "mission_arrive", dueAt: new Date(), payload: {}, baseId: null } as EventRow;
