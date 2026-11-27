@@ -2,6 +2,16 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.19.0 – 27.11.2026
+- **Lagebild (Stufe 1):** Fremde Nest-Stufen, Schutzstatus, Wracks, Feldbesitzer und Verbände auf See sieht man nur noch mit Sicht. Hafen- und Nestpositionen bleiben immer sichtbar.
+- **Sensoren:** Ausguck an jedem Hafen (120 km). Die Radarstation sieht 150 km plus 40 km je Stufe; Strommangel halbiert die Reichweite, Nebel kürzt sie bis 30 %, Sabotage schaltet sie ab. U-Boote bleiben unsichtbar. Die Allianz teilt Sicht und Wissen.
+- **Wissen hat ein Alter:** bekannt (unter 24 h, blasser, „Stand: vor X h (Quelle)“), veraltet (bis 72 h, in Klammern), danach vergessen. Aufklärung und Kampfberichte liefern ein Lagebild.
+- **Karte:** Kartennebel als graublaue Überlagerung, gestrichelte Sensorgrenzen (neuer Knopf „Sensoren“), unbekannte Nester als „?“, fremde Verbände als Pfeil mit Größenklasse und Kurs.
+- **Planung:** Ohne Erkennung „Lage unbekannt“ und kein Probekampf; unbekannte Nester dürfen trotzdem angegriffen werden.
+- **Verwaltung → Lagebild:** Kartennebel an oder aus (Vorgabe an). KI-Spieler sehen genau so viel wie Menschen; der Freibeuter klärt vor Angriffen auf.
+- **Truppen → Einsatz neu gestaltet:** Kopf „Flotte daheim“ (See/Land/Luft, Kommandopunkte als Balken, Missionsplätze als Punkte), **„Lohnende Ziele“** mit den nächsten Nestern samt Stufe, Entfernung, Fahrzeit und Siegchance – „Angreifen“ öffnet die Planung mit Ziel und vorgeschlagenem Verband, „Aufklären“ mit Drohne oder schnellem Schiff. Laufende Missionen als Karten mit Phase, Fortschritt und Restzeit; ohne Mission eine Zeichnung des ruhigen Hafens. Admirale, Rohstofffelder, Vorlagen und Kampfsimulator als Kacheln.
+- Neues Handbuch-Kapitel „Lagebild“, Legende ergänzt. Balance v1.19.
+
 ## 0.18.1 – 27.11.2026
 - **„Zurück“** ist überall ein schmaler Knopf mit Pfeil („‹ Zurück“), der nicht mehr mitten im Wort umbricht (Forschung, Einstellungen, Verwaltung, Handbuch, Berichte).
 - **Silbentrennung:** Lange Wörter werden deutsch getrennt statt ohne Trennstrich mitten in der Silbe umbrochen; Technik-, Gebäude- und Einheitennamen trennen an der Wortfuge („Schiffs-panzerung“, „Torpedoleit-systeme“).
