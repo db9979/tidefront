@@ -12,6 +12,7 @@ import { AllianceMembers } from "../components/AllianceMembers.tsx";
 import { AllianceDiplomacy } from "../components/AllianceDiplomacy.tsx";
 import { AllianceRaids } from "../components/AllianceRaids.tsx"; // Allianz-Ops
 import type { Draft } from "./Messages.tsx";
+import { HScroll } from "../components/HScroll.tsx";
 
 type View = Outputs["alliance"]["get"];
 type Sub = "uebersicht" | "chat" | "mitglieder" | "diplomatie" | "sammelangriffe";
@@ -27,14 +28,14 @@ export function AllianceScreen({ onCompose }: { onCompose: (d: Draft) => void })
   const active = subs.some((s) => s.id === sub) ? sub : "uebersicht";
   return (
     <div>
-      <div className="flex gap-1 overflow-x-auto mb-3" role="tablist" aria-label="Allianz">
+      <div className="mb-3"><HScroll className="gap-1" role="tablist" label="Allianz" watch={active}>
         {subs.map((s) => (
           <button key={s.id} type="button" role="tab" aria-selected={active === s.id} onClick={() => setSub(s.id)}
             className={`tap shrink-0 flex-auto rounded-lg px-2 text-xs font-semibold ${active === s.id ? "bg-ink text-paper" : "bg-navy-950/60 text-slate-400"}`}>
             {s.label}
           </button>
         ))}
-      </div>
+      </HScroll></div>
       {active === "diplomatie" ? <AllianceDiplomacy /> : !own ? <NoAlliance data={v.data} /> : active === "chat" ? (
         <AllianceChat />
       ) : active === "sammelangriffe" ? (

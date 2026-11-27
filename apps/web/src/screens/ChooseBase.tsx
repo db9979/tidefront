@@ -8,6 +8,7 @@ import { HexMap } from "./LazyHexMap.tsx";
 import { TacticalIcon } from "../map/TacticalIcon.tsx";
 import { Button, ErrorLine, Loading } from "../ui.tsx";
 import { NewSeasonNotice } from "../components/Season.tsx";
+import { HScroll } from "../components/HScroll.tsx";
 
 type Hex = { col: number; row: number };
 
@@ -86,7 +87,7 @@ export function ChooseBase() {
         )}
       </div>
       <div className="bg-navy-800/95 border-t border-navy-600">
-        <div className="flex gap-2 overflow-x-auto px-3 pt-3 pb-1" role="list" aria-label="Schnellwahl">
+        <HScroll className="gap-2 px-3 pt-3 pb-1" role="list" label="Schnellwahl" fade="from-navy-800">
           {QUICK_PICKS.map((q) => (
             <button key={q.name} type="button" role="listitem" onClick={() => quick(q.lon, q.lat)}
               className="tap shrink-0 rounded-[4px] bg-navy-800 border border-navy-600 px-3 py-1 text-left active:bg-navy-700">
@@ -94,7 +95,7 @@ export function ChooseBase() {
               <div className="text-[11px] text-slate-400 whitespace-nowrap">{q.hint}</div>
             </button>
           ))}
-        </div>
+        </HScroll>
         <div className="p-3 pt-2">
           {!sel && <p className="text-sm text-slate-300">Einen Vorschlag aus der Schnellwahl direkt hier darüber oder ein blau markiertes Küstenfeld auf der Karte antippen.</p>}
           {sel && !isFree && <p className="text-sm text-red-300">Dieses Feld ist keine freie Küste – wähle ein blau markiertes Feld.</p>}

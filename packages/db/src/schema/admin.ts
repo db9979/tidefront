@@ -80,9 +80,11 @@ export const mailDigest = pgTable("mail_digest", {
 export const backupRequest = pgTable("backup_request", {
   id: serial("id").primaryKey(),
   requestedBy: integer("requested_by").references(() => player.id, { onDelete: "set null" }),
+  /** backup (Jetzt sichern) | delete (Sicherung „file“ löschen; das API-Verzeichnis ist schreibgeschützt) */
+  kind: text("kind").notNull().default("backup"),
   /** pending | running | done | failed */
   status: text("status").notNull().default("pending"),
-  /** Dateiname der fertigen Sicherung. */
+  /** Dateiname der fertigen bzw. zu löschenden Sicherung. */
   file: text("file"),
   error: text("error"),
   createdAt: ts("created_at").notNull().defaultNow(),

@@ -1,4 +1,4 @@
-// Verwaltung → Sicherungen: Liste, „Jetzt sichern“ (Auftrag an den Sicherungsdienst) und Herunterladen.
+// Verwaltung → Sicherungen: Liste, „Jetzt sichern“ und „Löschen“ (Aufträge an den Sicherungsdienst) und Herunterladen.
 // Download: einmaliges Token (60 s) per tRPC holen, dann die Datei über /api/admin/backups/<name> laden.
 // Wiederherstellen gibt es hier bewusst nicht (Konsole, siehe README).
 import { useState } from "react";
@@ -30,10 +30,10 @@ export function AdminBackups() {
   const q = useQuery({
     ...trpc.adminStats.backups.queryOptions(),
     // Solange ein Auftrag offen ist, alle 3 s nachsehen; sonst jede Minute.
-    refetchInterval: (query) => (query.state.data?.requests.some((r) => r.status === "pending" || r.status === "running") ? 3000 : 60000),
+    refetchInterval: (query) => (query.state.data?.requests.some((r) => r.status === "pending" || r.status === "running") || query.state.data?.deleting.length ? 3000 : 60000),
   });
   if (!q.data) return null;
-  const { mounted, files, requests } = q.data;
+  const { mounted, files, requests, deleting } = q.data;
   const last = requests[0];
   const open = last && (last.status === "pending" || last.status === "running");
   const waitedMin = last ? Math.floor((Date.now() - new Date(last.createdAt).getTime()) / 60000) : 0;
@@ -76,6 +76,21 @@ export function AdminBackups() {
     }
   };
 
+  const remove = async (name: string, at: string) => {
+    if (!confirm(`Sicherung vom ${when(at)} endgültig löschen?\n${name}\n\nDas lässt sich nicht rückgängig machen.`)) return;
+    setBusy(name);
+    setError(null);
+    try {
+      const r = await trpcClient.adminStats.backupDelete.mutate({ name });
+      if (!r.ok) setError(r.code === "no_file" ? "Die Sicherung ist nicht mehr vorhanden." : errorText(r.code));
+      await queryClient.invalidateQueries(trpc.adminStats.backups.pathFilter());
+    } catch (err) {
+      setError(failText(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <Card title="Sicherungen" right={<Badge tone={mounted ? "slate" : "red"}>{mounted ? `${files.length} ${files.length === 1 ? "Datei" : "Dateien"}` : "nicht eingehängt"}</Badge>}>
       {!mounted && (
@@ -108,9 +123,18 @@ export function AdminBackups() {
               <div className="font-bold">{when(f.at)} {f.source === "manuell" ? <Badge tone="brass">manuell</Badge> : <Badge>täglich</Badge>}</div>
               <div className="text-xs text-ink2 mono break-all">{f.name} · {size(f.bytes)}</div>
             </div>
-            <Button kind="secondary" className="text-xs" disabled={busy !== null} onClick={() => download(f.name)}>
-              {busy === f.name ? "…" : "Herunterladen"}
-            </Button>
+            {deleting.includes(f.name) ? (
+              <span className="text-xs text-ink2 italic shrink-0">wird gelöscht …</span>
+            ) : (
+              <div className="flex gap-1.5 shrink-0">
+                <Button kind="secondary" className="text-xs px-2.5 tracking-[0.06em]" disabled={busy !== null} onClick={() => download(f.name)}>
+                  {busy === f.name ? "…" : "Laden"}
+                </Button>
+                <Button kind="danger" className="text-xs px-2.5 tracking-[0.06em]" disabled={busy !== null} onClick={() => remove(f.name, f.at)}>
+                  Löschen
+                </Button>
+              </div>
+            )}
           </li>
         ))}
       </ul>

@@ -1,0 +1,1 @@
+ALTER TABLE "backup_request" ADD COLUMN "kind" text DEFAULT 'backup' NOT NULL;

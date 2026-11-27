@@ -17,6 +17,7 @@ import { NavalChapter } from "../components/NavalChapter.tsx"; // See: Minen/Blo
 import { FieldsChapter } from "../components/FieldsChapter.tsx"; // Felder
 import { HarborsChapter } from "../components/HarborsChapter.tsx"; // Mehrere Häfen
 import { requestBugReport } from "../lib/bug-log.ts";
+import { HScroll } from "../components/HScroll.tsx";
 
 /** Kachel im Schnellzugriff oben im Handbuch. */
 function QuickButton({ onClick, title, icon, mark, accent = false }: { onClick: () => void; title: string; icon?: string; mark?: string; accent?: boolean }) {
@@ -307,14 +308,14 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
       </div>
       {/* Sprungleiste: klebt oben, ein Tipp öffnet das Kapitel und springt hin. */}
       <nav className="sticky -top-3 z-10 -mx-3 mb-2 px-3 py-1.5 bg-paper border-b border-rule" aria-label="Kapitel">
-        <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
+        <HScroll className="gap-1.5" watch={open}>
           {chapters.map((c) => (
             <button key={c.id} type="button" onClick={() => setOpen(c.id)} aria-current={open === c.id ? "true" : undefined}
               className={`shrink-0 h-8 rounded-full border px-3 text-[12.5px] whitespace-nowrap ${open === c.id ? "bg-ink text-paper border-ink" : "bg-card text-ink2 border-rule"}`}>
               {c.title}
             </button>
           ))}
-        </div>
+        </HScroll>
       </nav>
       {chapters.map((c) => (
         <section key={c.id} id={`hb-${c.id}`} className="panel rounded-xl mb-2 overflow-hidden scroll-mt-14">

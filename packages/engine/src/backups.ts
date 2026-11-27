@@ -120,7 +120,7 @@ export async function requestBackup(db: Db, playerId: number, nowMs = Date.now()
     const [open] = await tx
       .select({ id: tables.backupRequest.id })
       .from(tables.backupRequest)
-      .where(inArray(tables.backupRequest.status, ["pending", "running"]))
+      .where(and(eq(tables.backupRequest.kind, "backup"), inArray(tables.backupRequest.status, ["pending", "running"])))
       .orderBy(desc(tables.backupRequest.id))
       .limit(1);
     if (open) return { id: open.id, created: false };
@@ -132,7 +132,35 @@ export async function requestBackup(db: Db, playerId: number, nowMs = Date.now()
   });
 }
 
-/** Letzte Aufträge, neueste zuerst. */
+/**
+ * Auftrag „Sicherung löschen“ für den backup-Dienst (das Verzeichnis ist im api-Dienst schreibgeschützt).
+ * Codes: no_file (Name ungültig oder Datei fehlt). Ein offener Löschauftrag für dieselbe Datei wird wiederverwendet.
+ */
+export async function requestBackupDelete(db: Db, playerId: number, name: string, dir = backupDir(), nowMs = Date.now()): Promise<{ ok: true; id: number } | { ok: false; code: string }> {
+  if (!(await backupFile(dir, name))) return { ok: false, code: "no_file" };
+  const [open] = await db
+    .select({ id: tables.backupRequest.id })
+    .from(tables.backupRequest)
+    .where(and(eq(tables.backupRequest.kind, "delete"), eq(tables.backupRequest.file, name), inArray(tables.backupRequest.status, ["pending", "running"])))
+    .limit(1);
+  if (open) return { ok: true, id: open.id };
+  const [r] = await db
+    .insert(tables.backupRequest)
+    .values({ kind: "delete", file: name, requestedBy: playerId, createdAt: new Date(nowMs) })
+    .returning({ id: tables.backupRequest.id });
+  return { ok: true, id: r.id };
+}
+
+/** Dateien mit offenem Löschauftrag (für „wird gelöscht …“ in der Liste). */
+export async function pendingBackupDeletes(db: Db): Promise<string[]> {
+  const rows = await db
+    .select({ file: tables.backupRequest.file })
+    .from(tables.backupRequest)
+    .where(and(eq(tables.backupRequest.kind, "delete"), inArray(tables.backupRequest.status, ["pending", "running"])));
+  return rows.map((r) => r.file).filter((f): f is string => !!f);
+}
+
+/** Letzte Aufträge „Jetzt sichern“, neueste zuerst (Löschaufträge nicht). */
 export async function backupRequests(db: Db, limit = 5): Promise<BackupRequestView[]> {
   const rows = await db
     .select({
@@ -147,6 +175,7 @@ export async function backupRequests(db: Db, limit = 5): Promise<BackupRequestVi
     })
     .from(tables.backupRequest)
     .leftJoin(tables.player, eq(tables.player.id, tables.backupRequest.requestedBy))
+    .where(eq(tables.backupRequest.kind, "backup"))
     .orderBy(desc(tables.backupRequest.id))
     .limit(limit);
   const iso = (d: Date | null) => (d ? d.toISOString() : null);

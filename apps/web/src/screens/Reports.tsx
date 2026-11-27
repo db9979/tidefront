@@ -16,6 +16,7 @@ import { AllianceOpsReport } from "../components/AllianceOps.tsx"; // Allianz-Op
 const KIND_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "kartell", aufklaerung: "aufklaerung", transport: "transport", leer: "kartell", abgewiesen: "schild", weltereignis: "kartell", weltereignis_leer: "kartell", spionage: "spionage", sabotage: "sabotage", sammelangriff: "sammelangriff", minen: "mine", blockade: "blockade", blockadekampf: "blockade", konvoi: "konvoi" };
 import { NavalReport } from "../components/Naval.tsx"; // See: Minen/Blockade/Konvoi
 import { FieldReport } from "../components/Fields.tsx"; // Felder
+import { HScroll } from "../components/HScroll.tsx";
 const NAVAL_KINDS = ["minen", "blockade", "blockadekampf", "konvoi"]; // See: kein „Wiederholen“
 
 type Counts = Record<string, number>;
@@ -64,14 +65,14 @@ export function ReportsScreen() {
   return (
     <div>
       {list.data.length > 0 && (
-        <div className="flex gap-1.5 overflow-x-auto mb-2 [scrollbar-width:none]" role="radiogroup" aria-label="Berichte filtern">
+        <div className="mb-2"><HScroll className="gap-1.5" role="radiogroup" label="Berichte filtern" watch={filter}>
           {FILTERS.map((f) => (
             <button key={f.id} type="button" role="radio" aria-checked={filter === f.id} onClick={() => { setFilter(f.id); setLimit(PAGE); }}
               className={`tap shrink-0 rounded-full border px-3 text-[13px] ${filter === f.id ? "bg-ink text-paper border-ink" : "bg-card text-ink2 border-rule"}`}>
               {f.label} <span className="mono text-[11px] opacity-75">{count(f.id)}</span>
             </button>
           ))}
-        </div>
+        </HScroll></div>
       )}
       {list.data.length === 0 && (
         <div className="panel rounded-xl p-5 text-center text-ink2">

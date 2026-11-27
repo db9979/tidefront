@@ -1,7 +1,7 @@
 #!/bin/sh
 # Sicherung der Datenbank (läuft im backup-Container, postgres-Image).
 #   loop             tägliche Sicherung um BACKUP_HOUR Uhr, beim Start sofort, falls die letzte älter als 24 h ist;
-#                    dazu jede Minute: offene Aufträge „Jetzt sichern“ aus der Verwaltung (Tabelle backup_request)
+#                    dazu jede Minute: offene Aufträge „Jetzt sichern“ bzw. „Löschen“ aus der Verwaltung (backup_request)
 #   once             eine Sicherung jetzt (Datei mit Zusatz -manuell)
 #   requests         offene Aufträge einmal abarbeiten (sonst macht das der loop jede Minute)
 #   health           0, wenn die letzte erfolgreiche Sicherung höchstens 26 Stunden alt ist
@@ -37,16 +37,40 @@ backup_once() {
 # Offene Aufträge aus der Verwaltung abarbeiten, je Aufruf höchstens einen (der nächste folgt in der nächsten Minute).
 # Fehlt die Tabelle (Migration noch nicht eingespielt) oder ist die Datenbank nicht erreichbar, passiert nichts.
 run_requests() {
-  id=$(psql -qAtc "update backup_request set status = 'running', started_at = now()
+  row=$(psql -qAtc "update backup_request set status = 'running', started_at = now()
       where id = (select id from backup_request where status = 'pending' order by id limit 1 for update skip locked)
-      returning id" 2>/dev/null | head -n 1) || return 0
+      returning id, kind, coalesce(file, '')" 2>/dev/null | head -n 1) || return 0
+  id=${row%%|*}
+  rest=${row#*|}
+  kind=${rest%%|*}
+  file=${rest#*|}
   case "$id" in ''|*[!0-9]*) return 0 ;; esac
+  # Löschen geht sofort; danach gleich den nächsten offenen Auftrag nehmen.
+  if [ "$kind" = "delete" ]; then delete_request "$id" "$file"; run_requests; return 0; fi
   echo "Auftrag $id: Sicherung läuft"
   if backup_once -manuell; then
     psql -qAtc "update backup_request set status = 'done', file = '$LAST_FILE', finished_at = now() where id = $id" >/dev/null \
       || echo "Auftrag $id nicht als erledigt vermerkt"
   else
     psql -qAtc "update backup_request set status = 'failed', error = 'pg_dump fehlgeschlagen', finished_at = now() where id = $id" >/dev/null \
+      || echo "Auftrag $id nicht als fehlgeschlagen vermerkt"
+  fi
+}
+
+# Löschauftrag: nur Dateien nach dem Muster tidefront-<Buchstaben, Ziffern, _ und ->.dump direkt im Verzeichnis.
+delete_request() {
+  id=$1
+  file=$2
+  ok=1
+  case "$file" in tidefront-*.dump) ;; *) ok=0 ;; esac
+  case "$file" in */*|*..*|*[!A-Za-z0-9_.-]*) ok=0 ;; esac
+  if [ "$ok" = 1 ] && [ -f "$DIR/$file" ] && [ ! -L "$DIR/$file" ] && rm -f "$DIR/$file"; then
+    echo "Auftrag $id: $file gelöscht"
+    psql -qAtc "update backup_request set status = 'done', finished_at = now() where id = $id" >/dev/null \
+      || echo "Auftrag $id nicht als erledigt vermerkt"
+  else
+    echo "Auftrag $id: $file nicht gelöscht"
+    psql -qAtc "update backup_request set status = 'failed', error = 'Datei nicht gefunden oder ungültig', finished_at = now() where id = $id" >/dev/null \
       || echo "Auftrag $id nicht als fehlgeschlagen vermerkt"
   fi
 }

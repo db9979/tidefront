@@ -26,7 +26,9 @@ import {
   isBackupName,
   listBackups,
   register,
+  pendingBackupDeletes,
   requestBackup,
+  requestBackupDelete,
   seed,
   type Engine,
 } from "../src/index.ts";
@@ -115,6 +117,7 @@ test("Zugriffsschutz: alle Prozeduren nur für Admins (ohne Anmeldung 401, Spiel
     (c: ReturnType<typeof caller>) => c.backups(),
     (c: ReturnType<typeof caller>) => c.backupNow(),
     (c: ReturnType<typeof caller>) => c.backupToken({ name: "tidefront-20261120-040000.dump" }),
+    (c: ReturnType<typeof caller>) => c.backupDelete({ name: "tidefront-20261120-040000.dump" }),
   ];
   for (const call of calls) {
     await assert.rejects(call(caller(ctxFor(null))), (e: unknown) => e instanceof TRPCError && e.code === "UNAUTHORIZED");
@@ -246,6 +249,28 @@ test("Sicherungsauftrag: höchstens einer offen, Fortschritt sichtbar, verwaiste
   const [stale] = await db.select().from(tables.backupRequest).where(eq(tables.backupRequest.id, c.id));
   assert.equal(stale.status, "failed");
   assert.match(stale.error ?? "", /Zeitüberschreitung/);
+  await db.execute(sql`update backup_request set status = 'failed' where status = 'pending'`);
+});
+
+test("Löschauftrag: nur vorhandene Sicherungen, je Datei einer, stört „Jetzt sichern“ nicht", async () => {
+  const name = "tidefront-20261120-040000.dump";
+  assert.deepEqual(await requestBackupDelete(db, admin.id, "../etc/passwd", dir), { ok: false, code: "no_file" });
+  assert.deepEqual(await requestBackupDelete(db, admin.id, "tidefront-20990101-000000.dump", dir), { ok: false, code: "no_file" });
+  const a = await requestBackupDelete(db, admin.id, name, dir);
+  assert.equal(a.ok, true);
+  assert.deepEqual(await requestBackupDelete(db, admin.id, name, dir), a, "offener Auftrag wird wiederverwendet");
+  assert.deepEqual(await pendingBackupDeletes(db), [name]);
+  // Löschaufträge erscheinen nicht unter „Jetzt sichern“ und blockieren keinen neuen Sicherungsauftrag.
+  assert.ok((await backupRequests(db)).every((r) => r.file !== name || r.status !== "pending"));
+  const b = await requestBackup(db, admin.id);
+  assert.equal(b.created, true);
+  // So arbeitet scripts/backup.sh den ältesten Auftrag ab: id, kind und file in einer Zeile.
+  const [row] = await db.execute<{ id: number; kind: string; file: string }>(sql`update backup_request set status = 'running', started_at = now()
+    where id = (select id from backup_request where status = 'pending' order by id limit 1 for update skip locked)
+    returning id, kind, coalesce(file, '') as file`);
+  assert.deepEqual([row.kind, row.file], ["delete", name]);
+  await db.execute(sql`update backup_request set status = 'done', finished_at = now() where id = ${row.id}`);
+  assert.deepEqual(await pendingBackupDeletes(db), []);
   await db.execute(sql`update backup_request set status = 'failed' where status = 'pending'`);
 });
 

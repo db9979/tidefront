@@ -121,10 +121,11 @@ export function AdminMail() {
         <input id="smtp-name" className={input} maxLength={80} value={f.fromName} onChange={(e) => set({ fromName: e.target.value })} />
         <label className="text-sm text-slate-300" htmlFor="smtp-from">Absenderadresse</label>
         <input id="smtp-from" className={input} type="email" maxLength={254} required value={f.fromAddress} onChange={(e) => set({ fromAddress: e.target.value })} autoCapitalize="none" />
-        <div className="flex flex-wrap gap-2 mt-1">
-          <Button onClick={() => save()} className="flex-1">Speichern</Button>
-          <Button kind="secondary" onClick={test} className="flex-1">Test-E-Mail senden</Button>
-          {d.passwordSet && <Button kind="ghost" onClick={() => save(true)}>Passwort löschen</Button>}
+        {/* Zwei gleich breite, einzeilige Knöpfe – auch auf schmalen iPhones kein Umbruch. */}
+        <div className="grid grid-cols-2 gap-2 mt-1">
+          <Button onClick={() => save()} className="whitespace-nowrap px-2 tracking-[0.06em]">Speichern</Button>
+          <Button kind="secondary" onClick={test} className="whitespace-nowrap px-2 tracking-[0.06em]">Testmail</Button>
+          {d.passwordSet && <Button kind="ghost" onClick={() => save(true)} className="col-span-2 whitespace-nowrap tracking-[0.06em]">Passwort löschen</Button>}
         </div>
         <ErrorLine text={error} />
       </fieldset>

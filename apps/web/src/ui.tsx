@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { countLabel, fmtNum, label } from "./lib/names.ts";
 import { Icon } from "./icons.tsx";
 import { useBackLayer } from "./lib/back.ts";
+import { HScroll } from "./components/HScroll.tsx";
 
 /** Auf-/Zu-Zustand, auf Wunsch in localStorage gemerkt (Schlüssel „tf-open:…“). */
 export function useStoredOpen(storageKey: string | undefined, defaultOpen: boolean): [boolean, (v: boolean) => void] {
@@ -264,7 +265,7 @@ export function UnitChips({ counts }: { counts: Record<string, number> | null | 
 export function Segments<T extends string>({ items, value, onChange, label: aria }: { items: { id: T; label: ReactNode; badge?: number }[]; value: T; onChange: (v: T) => void; label: string }) {
   return (
     <div className="mb-3 sticky -top-3 -mx-3 z-10 bg-paper border-b border-rule">
-      <div className="flex gap-1 overflow-x-auto px-3 pt-1 [scrollbar-width:none]" role="tablist" aria-label={aria}>
+      <HScroll className="gap-1 px-3 pt-1" role="tablist" label={aria} watch={value}>
         {items.map((t) => (
           <button key={t.id} type="button" role="tab" aria-selected={value === t.id} onClick={() => onChange(t.id)}
             className={`tap flex-auto shrink-0 px-3 whitespace-nowrap text-[14px] font-serif flex items-center justify-center gap-1.5 border-b-[3px] -mb-px ${value === t.id ? "border-siegel text-ink" : "border-transparent text-ink2"}`}>
@@ -272,7 +273,7 @@ export function Segments<T extends string>({ items, value, onChange, label: aria
             {!!t.badge && <span className="shrink-0 min-w-5 h-5 px-1 rounded-full bg-siegel text-white text-[11px] font-sans mono grid place-items-center">{t.badge}</span>}
           </button>
         ))}
-      </div>
+      </HScroll>
     </div>
   );
 }

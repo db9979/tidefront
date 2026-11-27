@@ -169,6 +169,8 @@ Verwaltung → „Sicherungen“ (nur Admins) listet die Dateien `tidefront-*.du
   `backup`-Dienst prüft jede Minute, sichert (`tidefront-JJJJMMTT-HHMMSS-manuell.dump`), trägt `backup_run` ein und
   meldet den Auftrag erledigt. Die Verwaltung zeigt „wartet“, „läuft“, „fertig“ oder den Fehler. Offen ist höchstens
   ein Auftrag; einer, der nach 15 Minuten nicht fertig ist, gilt als fehlgeschlagen.
+- **Löschen:** ebenfalls als Auftrag (`backup_request.kind = 'delete'`), weil das Verzeichnis im api-Dienst nur lesbar
+  eingehängt ist. Der `backup`-Dienst löscht nur Dateien nach dem Muster `tidefront-*.dump` direkt im Verzeichnis.
 - **Wiederherstellen** gibt es in der Verwaltung bewusst nicht; das bleibt Sache der Konsole (`restore`, siehe oben).
 
 ## Entwickeln

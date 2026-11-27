@@ -2,6 +2,10 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.15.2 – 27.11.2026
+- **Schiebeleisten** (Reiter in Meldungen, Truppen, Allianz, Rangliste, Berichtfilter, Handbuch-Kapitel): Ein Pfeil links oder rechts zeigt, dass es weitere Einträge gibt – antippen schiebt weiter. Die Leisten wackeln nicht mehr nach oben und unten.
+- Verwaltung: **Sicherungen lassen sich löschen** (mit Rückfrage; der Sicherungsdienst löscht die Datei innerhalb einer Minute). Die Knöpfe bei den E-Mail-Einstellungen bleiben auf dem iPhone einzeilig.
+
 ## 0.15.1 – 27.11.2026
 - **Weitere Häfen früher:** Den zweiten Hafen gibt es jetzt ab Kommandozentrale 5 (bisher 8), den dritten ab Stufe 9 (bisher 14). Für das Kolonieschiff braucht es weiterhin Werft 6 und Hafenkommandantur 6.
 
