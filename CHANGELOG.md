@@ -2,6 +2,13 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.31.0 – 27.11.2026
+- **Aufklärung auf Sicht:** Eine Aufklärung dreht um, sobald das Ziel in Bordsicht liegt (Drohne 200 km, Kriegsschiff 105 km, Transporter 40 km) – mit vollem Lagebild, aber kürzerer Fahrt und weniger Treibstoff. Die Karte zeigt den Wendepunkt.
+- **Lebendige Piratennester (Balance v1.31):** Jede Neubesetzung würfelt die Besatzung (80–120 % der Stufe) und die Anlagen neu – Stufe 1 bleibt fest. Nach einer abgewehrten Attacke erholt sich ein Nest (sofort auf 70 %, dann +5 % je Stunde); die Beute wächst, solange niemand angreift (+1 % je Stunde bis 130 %).
+- **Aufklärung lohnt sich:** Ohne Lagebild zeigen Karte und Probekampf nur Spannen („Siegchance 22–100 %, im Mittel 90 %“), Anlagen bleiben unbekannt. Ein Lagebild ist 24 Stunden genau und wird hochgerechnet.
+- **„Lohnende Ziele“** zeigen bei aufgeklärten Nestern Besatzung, Anlagen, Beute, Alter des Lagebilds und eine Netto-Einschätzung (Beute minus Treibstoff und erwartete Verluste); lohnende Ziele stehen oben.
+- Kampfsimulator: Nest-Vorlagen „Mitte“, „ungünstig“ und „aus Lagebild“.
+
 ## 0.30.0 – 27.11.2026
 - **Berichte neu aufbereitet – wie die E-Mails:** Ergebnis-Kopf, Kurzfazit, Kennzahlen und Tabellen mit Einheiten-, Anlagen- und Ressourcensymbolen; Kampfberichte mit Gefechtsverlauf. Alle Einzelheiten aufklappbar.
 - **„Im Kampfsimulator öffnen“** an jedem Kampfbericht: Der Simulator startet mit beiden Verbänden vor dem Kampf, Anlagen, Wetter und Boni (Forschung des Gegners bleibt geheim). Zum Vergleich steht das Kriegsglück des echten Kampfs daneben; danach frei änderbar („Was, wenn ich 5 Korvetten mehr gehabt hätte?“).
