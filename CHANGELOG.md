@@ -2,6 +2,16 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.39.0 – 27.11.2026
+
+- Neue Navigation: Die Basis startet mit „Lage“ – was gerade auf dich wartet, mit „Alle abholen“. Gebäude, Versorgung und Schutz liegen im Unterreiter „Hafen“.
+- Karte: Das frühere Lagebild heißt „Sichtungen“ und öffnet sich direkt auf der Karte. Die Wetter-Ebene ist standardmäßig aus; die Legende erklärt die „?“-Raute.
+- Meldungen mit Unterreitern Berichte, Nachrichten, Allianz und Rangliste (Wertung, Bilanz, Erfolge).
+- Eine Zahl je Reiter: Basis zählt Neues aus der Lage und abholbereite Belohnungen (rot bei Angriff), Meldungen ungelesene Berichte und Nachrichten.
+- Breite Bildschirme ab 1024 px: Leiste links, Karte immer sichtbar, Inhalte in einer Seitenleiste rechts.
+- Nester in der Nähe: Bei unbekannter Stufe oder geringer Siegchance ist „Aufklären“ der Hauptknopf; unter 10 % fragt „Angreifen“ nach. Netto-Beute nennt den Treibstoff.
+- Kleinere Korrekturen: Silbentrennung beim Ausbilden, Stromfeld, größerer Hafenwechsler, Startrampen-Hinweis, Banner springt zum Ereignis, Wind überall in Beaufort.
+
 ## 0.38.1 – 27.11.2026
 
 - Weltereignisse: keine Flut mehr vor Finale-Ankündigung und Saisonende. Ein neues Ereignis entsteht frühestens 48 h nach dem letzten; höchstens 2 laufen gleichzeitig (das Finale zählt nicht mit, Admin-Ereignisse auch nicht).
