@@ -42,6 +42,11 @@ test("Kampfpunkte: Abwehr von Kartell und NPC nur × npcDefenseFactor, Spielerk�
     assert.equal(r.attacker!.kampf, v * f, weKind);
     assert.equal(r.attacker!.beute, resValue({ stahl: 300 }));
   }
+  // Nutzerentscheid 27.11.2026: Angriffe auf Großflotte und Belagerungsring zählen voll (npcWorldEventKinds leer).
+  for (const weKind of ["grossflotte", "belagerung"]) {
+    if ((balance.scoring!.npcWorldEventKinds ?? []).includes(weKind)) continue;
+    assert.equal(reportScore({ kind: "weltereignis", weKind, attackerPlayerId: 7, defenderPlayerId: null, al: {}, dl: boats, loot: null }).attacker!.kampf, v, weKind);
+  }
   assert.equal(reportScore({ kind: "weltereignis", weKind: "schatzschiff", attackerPlayerId: 7, defenderPlayerId: null, al: {}, dl: boats, loot: null }).attacker!.kampf, v);
   // Nest und Spieler gegen Spieler: voll für beide Seiten.
   assert.equal(reportScore({ kind: "ueberfall", attackerPlayerId: 7, defenderPlayerId: null, al: {}, dl: boats, loot: null }).attacker!.kampf, v);
@@ -102,7 +107,7 @@ test("Neuberechnung: alte Berichte (v1.23) zählen sofort nach den neuen Regeln,
   await add("kartell", null, kai, { attacker: { losses: { schnellboot: 40 } }, defender: { losses: {} }, loot: {} });
   // Lea überfällt Kai: Kai verliert 2 Korvetten, Beute 1000 Elektronik.
   await add("ueberfall", lea, kai, { attacker: { losses: {} }, defender: { losses: { korvette: 2 } }, loot: { elektronik: 1000 } });
-  // Lea schlägt die Großflotte: 8 Schnellboote.
+  // Lea schlägt die Großflotte: 8 Schnellboote – zählt voll (Nutzerentscheid 27.11.: nur passive Abwehr × npcDefenseFactor).
   await add("weltereignis", lea, null, { attacker: { losses: {} }, defender: { losses: { schnellboot: 8 } }, loot: {} }, { kind: "grossflotte" });
 
   const first = await computeStandings(db, season.startsAt.getTime(), Date.now());
@@ -112,7 +117,7 @@ test("Neuberechnung: alte Berichte (v1.23) zählen sofort nach den neuen Regeln,
   const l = first.find((r) => r.playerId === lea)!;
   const boat = unitValue("schnellboot");
   assert.equal(k.kampf, Math.floor((40 * boat * f) / 100));
-  assert.equal(l.kampf, Math.floor((2 * unitValue("korvette") + 8 * boat * f) / 100));
+  assert.equal(l.kampf, Math.floor((2 * unitValue("korvette") + 8 * boat) / 100));
   assert.equal(l.beute, Math.floor((1000 * price.elektronik) / 100));
   assert.equal(k.total, k.ausbau + k.militaer + k.kampf + k.beute + k.befehle);
 });

@@ -289,7 +289,7 @@ test("Fortschritt aus Kampf: Nest, Beute, Wrack, Kartell abgewehrt; Nachricht un
   assert.equal(v2.challenges[2].progress, 1);
 });
 
-test("Abholen genau einmal, Belohnung auch über die Lagerkapazität", async () => {
+test("Abholen genau einmal, Belohnung nur bis zur Lagerkapazität", async () => {
   const rows = await rowsOf(A.playerId);
   const done = rows.find((r) => r.completedAt && !r.claimedAt)!;
   const open = rows.find((r) => !r.completedAt);
@@ -299,7 +299,8 @@ test("Abholen genau einmal, Belohnung auch über die Lagerkapazität", async () 
   const r1 = await claimChallenge(engine, A.playerId, k, done.id);
   assert.equal(r1.ok, true, JSON.stringify(r1));
   const after = (await stateOf(A.baseId)).resources.stahl;
-  assert.ok(Math.abs(after - before - (done.reward as Record<string, number>).stahl) < 1, `${after} - ${before}`);
+  // Seit 27.11.2026 wie das Auftragsbuch: Lager voll → nichts kommt dazu, Bestand darüber bleibt.
+  assert.ok(Math.abs(after - before) < 1, `${after} - ${before}`);
   // Gleicher Schlüssel: gleiche Antwort, keine zweite Gutschrift. Neuer Schlüssel: abgelehnt.
   assert.deepEqual(await claimChallenge(engine, A.playerId, k, done.id), r1);
   assert.deepEqual(await claimChallenge(engine, A.playerId, key(), done.id), { ok: false, code: "already_claimed" });
