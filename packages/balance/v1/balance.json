@@ -1,5 +1,5 @@
 {
-  "version": "v1.19",
+  "version": "v1.20",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -201,7 +201,22 @@
   "intel": {
     "lookoutKm": 120, "radarBaseKm": 150, "radarKmPerLevel": 40, "radarPowerShortageFactor": 0.5,
     "staleHours": 24, "forgetHours": 72, "fleetMemoryHours": 2, "cacheSeconds": 60,
-    "sizeSmallMax": 10, "sizeMediumMax": 40, "roundUnits": 5, "roundDefenses": 2
+    "sizeSmallMax": 10, "sizeMediumMax": 40, "roundUnits": 5, "roundDefenses": 2,
+    "patrol": {
+      "units": ["korvette", "zerstoerer", "uboot", "aufklaerungsdrohne"], "hours": [4, 8, 12], "minWaypoints": 2, "maxWaypoints": 4,
+      "shipSightKm": 100, "droneSightKm": 200, "droneMaxHours": 6, "droneMaxRangeKm": 800,
+      "interceptPerFighter": 0.15, "interceptMax": 0.75, "tickMinutes": 30
+    },
+    "campaign": { "maxTargets": 4, "revealKm": 150 },
+    "post": {
+      "crewUnit": "pioniere", "minCrew": 5, "carrier": "landungsschiff", "minCarriers": 1, "cost": { "stahl": 1500, "elektronik": 1000 },
+      "radarLevel": 3, "rangeKm": 250, "fuelPerHour": 3, "max": 2, "maxHarbor": 3, "harborLevel": 8, "minDistanceKm": 300, "hp": 20, "refund": 0.5
+    },
+    "sonar": { "baseKm": 60, "perLevelKm": 40, "subKm": 60 },
+    "fleetSight": {
+      "warshipKm": 80, "transportKm": 40, "droneKm": 200, "aircraftKm": 120,
+      "transports": ["landungsschiff", "kolonieschiff", "minenleger"], "drones": ["aufklaerungsdrohne"]
+    }
   },
   "blockade": { "minHours": 2, "maxHours": 12, "minCommandPoints": 12, "productionFactor": 0.75, "deliveryHoldMinutes": 60 },
   "convoys": {

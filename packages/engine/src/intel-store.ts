@@ -7,7 +7,7 @@ import { tables, type DbOrTx } from "@tidefront/db";
 import { balance } from "./context.ts";
 import { intelRules, partyOf, type Sight } from "./intel-sight.ts";
 
-export type IntelKind = "base" | "nest" | "field" | "wreck" | "fleet";
+export type IntelKind = "base" | "nest" | "field" | "wreck" | "fleet" | "post"; // post: Radarposten (Stufe 2)
 
 /** Stand einer Angabe für die Oberfläche: Alter, Zeitpunkt, Quelle, Kenntnisstufe. */
 export interface IntelTag {
@@ -104,13 +104,22 @@ export function nestData(n: { level: number; defeatedAt: Date | null }, nowMs: n
   return { level: n.level, empty, respawnAtMs: n.defeatedAt ? n.defeatedAt.getTime() + nestRespawnHours(balance, n.level) * 3600000 : null };
 }
 
+/** Kampfberichte, aus denen der Verteidiger den Angreifer kennt (Stufe 2: Wissen des Verteidigers). */
+const BATTLE_KINDS = new Set(["ueberfall", "feld", "posten", "sammelangriff", "blockade_angriff", "abfangen"]);
+
 /**
  * Bericht als Lagebild (Aufklärung, Spionage, Kampf): der Absender (Angreifer) kennt das Ziel jetzt genau.
  * Hafenziele (defenderBaseId), Nester (nestId) und Felder (report.field.id); Fehler im Lagebild brechen nichts ab.
+ * Stufe 2: Nach einem Kampf kennt auch der Verteidiger den Ausgangshafen des Angreifers (attackerBaseId).
  */
-export async function recordReportIntel(db: DbOrTx, v: { kind: string; attackerPlayerId: number | null; defenderBaseId: number | null; nestId: number | null; report: unknown; atMs: number }): Promise<void> {
-  if (!intelRules() || v.attackerPlayerId === null) return;
-  if (v.kind === "transport") return;
+export async function recordReportIntel(db: DbOrTx, v: { kind: string; attackerPlayerId: number | null; defenderPlayerId?: number | null; attackerBaseId?: number | null; defenderBaseId: number | null; nestId: number | null; report: unknown; atMs: number }): Promise<void> {
+  if (!intelRules()) return;
+  if (v.defenderPlayerId && v.attackerBaseId && v.attackerPlayerId !== null && v.attackerPlayerId !== v.defenderPlayerId && BATTLE_KINDS.has(v.kind)) {
+    const [a] = await db.select({ state: tables.base.state }).from(tables.base).where(inArray(tables.base.id, [v.attackerBaseId]));
+    if (a) await recordSightings(db, (await partyOf(db, v.defenderPlayerId)).party, [{ kind: "base", objectId: v.attackerBaseId, level: "lagebild", source: "Kampfbericht (Verteidigung)", data: { protection: protectionOf(a.state, v.atMs) } }], v.atMs);
+  }
+  if (v.attackerPlayerId === null) return;
+  if (v.kind === "transport" || v.kind === "sichtung") return;
   const source = v.kind === "aufklaerung" ? "Aufklärung" : v.kind === "spionage" ? "Spionage" : "Kampfbericht";
   const rows: SightingInput[] = [];
   if (v.defenderBaseId !== null) {

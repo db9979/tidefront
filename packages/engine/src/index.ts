@@ -90,3 +90,7 @@ export { intelFogOn, setIntelFog, sightOf, clearSightCache, INTEL_FOG_SETTING, t
 export { purgeIntel, knownFor, recordSightings, clearPersistThrottle, type IntelTag } from "./intel-store.ts";
 export { mapViewFor, fleetPosition } from "./intel-map.ts";
 export { nestKnown } from "./intel-query.ts";
+// Lagebild Stufe 2: Patrouille, Aufklärungskampagne, Radarposten, Übersicht „Lagebild“
+export { launchIntelOp, previewIntelOp, endPatrol, type IntelOp, type IntelOpInput } from "./intel-ops.ts";
+export { dismantlePost } from "./intel-post.ts";
+export { intelOverview } from "./intel-overview.ts";

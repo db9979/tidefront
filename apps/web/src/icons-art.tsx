@@ -150,6 +150,16 @@ export const ART: Record<string, ReactNode> = {
   fischgrund: (<><path d="M10 30 Q24 16 40 30 Q24 44 10 30 Z M40 30 L52 22 V38 Z" {...h} /><circle cx="18" cy="28" r="1.8" fill={INK} /><path d="M4 12 L60 12 M8 6 V18 M20 6 V18 M32 6 V18 M44 6 V18 M56 6 V18" {...ln} strokeWidth={1.2} />{WATER}</>),
   elektronikwrack: (<><path d="M6 44 L48 34 L58 46 L12 54 Z" {...h} /><path d="M22 41 V30 H30 V39" {...p} strokeWidth={2} /><path d="M40 6 L32 18 H40 L34 30" fill="none" stroke={SIEGEL} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />{WATER}</>),
   besetzen: (<><path d="M30 6 V44" {...ln} /><path d="M31 7 L54 13 L31 20 Z" {...red} /><path d="M16 44 H44 L40 52 H20 Z" {...h} /><circle cx="30" cy="40" r="3" {...p} strokeWidth={1.8} />{WATER}</>),
+  // ---------------------------------------------------------------- Lagebild Stufe 2: Patrouille, Kampagne, Radarposten
+  // Patrouille: Kreisroute aus Strichen mit zwei Wegpunkten, kleines Schiff darauf.
+  patrouille: (<><path d="M12 30 A20 14 0 1 0 52 30 A20 14 0 1 0 12 30" fill="none" stroke={INK} strokeWidth={2} strokeDasharray="5 4" /><circle cx="12" cy="30" r="4" {...red} /><circle cx="52" cy="30" r="4" {...red} /><path d="M24 44 H40 L37 49 H27 Z" {...h} strokeWidth={1.8} /><path d="M30 44 V39 H35 V44" {...p} strokeWidth={1.4} />{WATER}</>),
+  // Kampagne: Auge mit drei nummerierten Zielpunkten auf einer Linie.
+  kampagne: (<><path d="M8 26 Q32 6 56 26 Q32 46 8 26 Z" {...p} /><circle cx="32" cy="26" r="7" {...h} /><path d="M8 52 L24 46 L40 52 L56 46" {...ln} strokeWidth={1.8} />{[8, 24, 40, 56].map((x, i) => <circle key={x} cx={x} cy={i % 2 ? 46 : 52} r="3.2" {...red} />)}</>),
+  // Radarposten: Mast mit Schirm auf einer Küste, Funkbögen.
+  radarposten: (<><path d="M4 52 L22 44 H60 V56 H4 Z" {...h} /><path d="M32 44 V22" {...ln} /><path d="M20 22 Q32 34 44 22 Z" {...p} /><path d="M46 12 Q52 18 46 24 M50 8 Q60 18 50 28" {...ln} strokeWidth={1.8} stroke={SIEGEL} /></>),
+  posten: (<><path d="M4 52 L22 44 H60 V56 H4 Z" {...h} /><path d="M32 44 V22" {...ln} /><path d="M20 22 Q32 34 44 22 Z" {...p} /></>),
+  postenangriff: (<><path d="M4 52 L22 44 H60 V56 H4 Z" {...h} /><path d="M32 44 V22" {...ln} /><path d="M20 22 Q32 34 44 22 Z" {...p} /><path d="M44 6 L58 20 M58 6 L44 20" {...ln} stroke={SIEGEL} strokeWidth={3} /></>),
+  sichtung: (<><circle cx="26" cy="28" r="14" {...p} /><path d="M36 38 L54 56" {...ln} strokeWidth={4} /><path d="M20 28 Q26 20 32 28 Q26 36 20 28 Z" {...h} strokeWidth={1.6} /></>),
   // ---------------------------------------------------------------- Mehrere Häfen: Kolonieschiff, Gründung, Verlegung
   // Kolonieschiff: bauchiger Frachter mit Kisten und zwei Hausgiebeln an Deck (Siedler), Wimpel am Mast.
   kolonieschiff: (<><path d="M3 38 H61 L56 50 H9 Z" {...h} /><path d="M10 38 V30 H20 V38 M22 38 V32 H30 V38" {...p} strokeWidth={1.8} /><path d="M34 38 V29 L40 24 L46 29 V38 Z M46 38 V31 L51 27 L56 31 V38 Z" {...p} strokeWidth={1.8} /><path d="M40 38 V33 H43 V38" {...ln} strokeWidth={1.4} /><path d="M27 32 V10" {...ln} strokeWidth={1.8} /><path d="M27 11 L39 14 L27 17 Z" {...red} />{WATER}</>),

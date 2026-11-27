@@ -153,6 +153,7 @@ export const seasonEnd: Handler = async (tx, ev, due) => {
   await tx.delete(tables.allianceRaid); // Allianz-Ops (Teilnehmer per Kaskade)
   await tx.delete(tables.wreck);
   await tx.delete(tables.intelSighting); // Lagebild: Wissen gilt je Saison
+  await tx.delete(tables.radarPost); // Lagebild Stufe 2: Radarposten verfallen
   await tx.delete(tables.battleReport);
   await tx.delete(tables.commandLog);
   await tx

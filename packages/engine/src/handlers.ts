@@ -50,6 +50,7 @@ import { mineReturnFor } from "./naval-mines.ts"; // See: Minen auf der Rückfah
 import { fieldArrive } from "./fields-missions.ts"; // Felder: Aufklärung/Besetzen
 import { FIELD_HANDLERS } from "./fields-run.ts"; // Felder: field_tick, field_delivery, field_raid
 import { expansionArrive, isExpansionType } from "./expansion.ts"; // Mehrere Häfen: Gründung/Verlegung
+import { INTEL_HANDLERS, withIntelArrive } from "./intel-ops.ts"; // Lagebild Stufe 2: Patrouille, Kampagne, Radarposten
 
 const HOUR_MS = 3600000;
 const none = (): HandlerResult => ({ notify: [] });
@@ -447,7 +448,7 @@ const deliveryArrive: Handler = async (tx, ev, due) => {
 export const HANDLERS: Record<string, Handler> = {
   build_complete: buildComplete,
   training_complete: trainingComplete,
-  mission_arrive: missionArrive,
+  mission_arrive: withIntelArrive(missionArrive), // Lagebild Stufe 2
   mission_return: missionReturn,
   raid_launch: raidLaunch,
   raid_arrive: raidArrive,
@@ -457,6 +458,7 @@ export const HANDLERS: Record<string, Handler> = {
   ...WORLD_EVENT_HANDLERS,
   ...NAVAL_HANDLERS, // See: Minen/Blockade/Konvoi (blockade_end, convoy_raid)
   ...FIELD_HANDLERS, // Felder
+  ...INTEL_HANDLERS, // Lagebild Stufe 2 (patrol_tick, patrol_end, radar_post_tick)
   pact_expire: (tx, _ev, due) => import("./alliance-core.ts").then(async (m) => {
     const notify: HandlerResult["notify"] = [];
     await m.purgeExpired(tx, due, notify);

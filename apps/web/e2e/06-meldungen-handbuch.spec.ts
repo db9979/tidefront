@@ -7,8 +7,8 @@ test("Meldungen: alle Unterreiter", async ({ page, player }) => {
   await page.goto("/");
   await page.getByRole("navigation").getByRole("button", { name: /^Meldungen/ }).click();
   const tabs = page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab");
-  await expect(tabs).toHaveCount(6);
-  for (const name of ["Berichte", "Bilanz", "Erfolge", "Nachrichten", "Rangliste", "Allianz"]) {
+  await expect(tabs).toHaveCount(7);
+  for (const name of ["Berichte", "Lagebild", "Bilanz", "Erfolge", "Nachrichten", "Rangliste", "Allianz"]) {
     await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}`) }).click();
     await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}`) })).toHaveAttribute("aria-selected", "true");
     await expectNoHorizontalOverflow(page, `Meldungen · ${name}`);

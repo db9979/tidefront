@@ -445,7 +445,7 @@ export type MissionType = "ueberfall" | "aufklaerung" | "transport"
   // See: Minen/Blockade/Konvoi – nur serverseitig geplant (naval-*.ts), nicht in MISSION_TYPES.
   | "minen" | "raeumen" | "blockade" | "abfangen" | "geleit"
   | "besetzen" // Felder: Rohstofffeld besetzen (fields-*.ts)
-  | "gruendung" | "verlegung"; // Mehrere Häfen (expansion.ts): Außenposten gründen, Einheiten verlegen
+  | "gruendung" | "verlegung" | "patrouille" | "radarposten"; // Mehrere Häfen (expansion.ts); Lagebild Stufe 2 (intel-ops.ts)
 
 export interface MissionInput {
   type: string;

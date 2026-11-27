@@ -44,6 +44,7 @@ export interface Target { col: number; row: number; eventId?: number; /** Karte:
 export interface Target { col: number; row: number; eventId?: number; blockadeId?: number; convoyId?: number; naval?: "minen" | "raeumen" | "blockade" } // See: Seeziele
 export interface Target { fieldId?: number; fieldMission?: "besetzen" | "aufklaerung" } // Felder
 export interface Target { expansion?: "gruendung" | "verlegung" | "transport" } // Mehrere Häfen: Art vorbelegen
+export interface Target { postId?: number; intelOp?: "patrouille" | "kampagne" | "radarposten" } // Lagebild Stufe 2
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "basis", label: "Basis", icon: "nav-basis" },

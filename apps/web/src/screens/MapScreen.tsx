@@ -21,6 +21,7 @@ import { FieldSheet, fieldAt, fieldsRules, useFields } from "../components/Field
 import { FoundingButton, FoundingInfo, OwnHarborActions } from "../components/HarborMapSheet.tsx"; // Mehrere Häfen
 import { FleetLines, IntelStand, UnknownLine } from "../components/IntelStand.tsx"; // Lagebild
 import { expansionRules, isFreeCoast, isThreat } from "../lib/expansion.ts";
+import { PostSheet } from "../components/PostSheet.tsx"; // Lagebild Stufe 2
 
 const TERRAIN: Record<string, string> = { sea: "Offene See", coast: "Küste", land: "Binnenland" };
 const RELATION_TEXT: Record<string, string> = {
@@ -230,7 +231,8 @@ export function MapScreen({ base, focus, onPlan, onSwitchBase }: { base: BaseDat
               {meta.data?.balance.weather && terrainAt(sel.col, sel.row) !== "land" && <WeatherLine at={sel} wb={meta.data.balance.weather} now={now} home={home} radar={hasRadar} />}
               <NavalSheet data={naval.data} sel={sel} onPlan={onPlan} />
               <FieldSheet data={fields.data} sel={sel} onPlan={onPlan} />
-              {!info.base && !info.nest && !info.wreck && !info.event && !info.naval && !info.field && !freeCoast && info.fleets.length === 0 && (
+              <PostSheet map={map.data} sel={sel} now={now} freeCoast={freeCoast} sea={terrainAt(sel.col, sel.row) === "sea"} onPlan={onPlan} />{/* Lagebild Stufe 2 */}
+              {!info.base && !info.nest && !info.wreck && !info.event && !info.naval && !info.field && !freeCoast && info.fleets.length === 0 && !(map.data.posts ?? []).some((p) => p.col === sel.col && p.row === sel.row) && (
                 <div className="text-slate-400 mt-1">Hier ist nichts. Ziele sind Piratennester (rote Raute), Rohstofffelder und fremde Stützpunkte.</div>
               )}
               {!isHome && (info.base || info.nest || info.field) && (

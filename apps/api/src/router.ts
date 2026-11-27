@@ -48,6 +48,7 @@ import { allianceOpsRouter } from "./routers/alliance-ops.ts"; // Allianz-Ops
 import { navalRouter } from "./routers/naval.ts"; // See: Minen/Blockade/Konvoi
 import { fieldsRouter } from "./routers/fields.ts"; // Felder
 import { botsRouter } from "./routers/bots.ts"; // KI-Spieler (Verwaltung)
+import { intelRouter } from "./routers/intel.ts"; // Lagebild Stufe 2
 
 export type { Ctx };
 
@@ -207,6 +208,7 @@ export const appRouter = t.router({
   allianceOps: allianceOpsRouter, // Allianz-Ops: Sammelangriff, Stationierung
   naval: navalRouter, // See: Minen/Blockade/Konvoi
   fields: fieldsRouter, // Felder
+  intel: intelRouter, // Lagebild Stufe 2: Patrouille, Kampagne, Radarposten, Übersicht
 });
 
 export type AppRouter = typeof appRouter;

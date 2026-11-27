@@ -191,14 +191,16 @@ test("Aufklärung schreibt ein Lagebild; Planung verrät ein leeres unbekanntes 
   const n = await nestOf(A.playerId, nFar, arrive + 2000);
   assert.equal(n.level, 2);
   assert.equal(n.empty, true);
-  assert.equal(n.intel?.source, "Aufklärung");
-  assert.equal(n.intel?.level, "lagebild");
+  // Stufe 2 (Bordsicht): der Aufklärer steht noch am Ziel und sieht es live; sonst gilt das Lagebild der Aufklärung.
+  assert.match(n.intel?.source ?? "", /^(Aufklärung|Verband aus)/);
+  assert.ok(n.intel?.level === "lagebild" || n.intel?.level === "erkennung");
   await db.update(tables.nest).set({ defeatedAt: null }).where(eq(tables.nest.id, nFar));
 });
 
 test("Fremde Verbände: Radar sichtet (Größe, Kurs), Ausguck erkennt (Besitzer), U-Boote bleiben unsichtbar", async () => {
   await db.delete(tables.mission);
-  await patchBase(A.baseId, (s) => { s.buildings.radarstation = 8; s.buildings.kraftwerk = 5; s.resUpdatedAt = Date.now(); });
+  // Stufe 2: ohne U-Jagd im Hafen (sonst sähe das Sonar die U-Boote).
+  await patchBase(A.baseId, (s) => { s.buildings.radarstation = 8; s.buildings.kraftwerk = 5; s.resUpdatedAt = Date.now(); s.units = {}; s.unitsAway = {}; });
   const now = Date.now();
   const mk = async (target: { col: number; row: number }, units: Record<string, number>, frac: number) => {
     const T = 10 * HOUR;

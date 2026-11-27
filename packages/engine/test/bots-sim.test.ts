@@ -1,7 +1,9 @@
 // Testlauf KI-Spieler über mehrere Spieltage (TEST_DATABASE_URL; die Datenbank wird geleert): drei Bots spielen mit
 // verstellter Uhr (Date.now) gegen die echte Engine – Ereignisse, Kartell-Überfälle, Felder und Befehle wie im Betrieb.
-// Erwartung: jeder Bot wächst sinnvoll, der Freibeuter (stark) liegt vor dem Händler (leicht), Festung oder Freibeuter
-// halten ein Rohstofffeld. Zahlen im Testprotokoll (Felder je Tag; BOT_SIM_SHIPS=1: Schiffe und gemerktes Feldziel).
+// Erwartung: jeder Bot wächst sinnvoll, der Freibeuter (stark) liegt vor dem Händler (leicht) und gewinnt Überfälle;
+// mit Kartennebel klären Festung und Freibeuter Nester auf und die Bots befassen sich mit Feldern (Aufklärung, Kampf
+// oder Besitz). Die Bedingungen prüfen das Verhalten, nicht zufällige Ergebnisse einzelner Kämpfe (früher: „hält ein
+// Feld“ – schlug sporadisch fehl). Zahlen im Testprotokoll (Felder je Tag; BOT_SIM_SHIPS=1: Schiffe und gemerktes Feldziel).
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { sql } from "drizzle-orm";
@@ -69,6 +71,9 @@ test(`Testlauf über ${DAYS} Spieltage: alle Bots wachsen, Freibeuter stärker a
   const byProfile = new Map<string, (typeof standings)[number]>();
   const lines: string[] = [];
   const fieldsHeld = new Map<string, number>();
+  const raidsWon = new Map<string, number>();
+  const nestScouts = new Map<string, number>();
+  let fieldActivity = 0;
   const checks: (() => void)[] = [];
   for (const b of await loadBots(db)) {
     const s = standings.find((r) => r.playerId === b.id)!;
@@ -80,9 +85,12 @@ test(`Testlauf über ${DAYS} Spieltage: alle Bots wachsen, Freibeuter stärker a
     const [fields] = await db.execute<{ n: number }>(sql`select count(*)::int as n from resource_field where player_id = ${b.id}`);
     const [taken] = await db.execute<{ n: number }>(sql`select count(*)::int as n from battle_report where attacker_player_id = ${b.id} and kind = 'feld' and winner = 'attacker'`);
     fieldsHeld.set(b.profile, fields.n);
+    raidsWon.set(b.profile, raids.won);
     const [trades] = await db.execute<{ n: number }>(sql`select count(*)::int as n from command_log where player_id = ${b.id} and command in ('trade', 'offerCreate', 'offerAccept')`);
     const [scouts] = await db.execute<{ n: number; nest: number; field: number }>(sql`select count(*)::int as n, count(*) filter (where nest_id is not null)::int as nest,
       count(*) filter (where report ? 'field')::int as field from battle_report where attacker_player_id = ${b.id} and kind = 'aufklaerung'`);
+    nestScouts.set(b.profile, scouts.nest);
+    fieldActivity += fields.n + taken.n + scouts.field;
     lines.push(`${b.name} (${b.profile}): Züge ${turns.get(b.id)}, Häfen ${bases.length}, Gebäudestufen ${levels}, ` +
       `Punkte ${s.total} (Ausbau ${s.ausbau}, Militär ${s.militaer}, Kampf ${s.kampf}, Beute ${s.beute}), ` +
       `Überfälle ${raids.n} (gewonnen ${raids.won}), Felder ${fields.n} (Feldkämpfe gewonnen ${taken.n}), Handel ${trades.n}, ` +
@@ -100,6 +108,12 @@ test(`Testlauf über ${DAYS} Spieltage: alle Bots wachsen, Freibeuter stärker a
   console.log(`# Bot-Zug: ${turnMs.length} Züge, Median ${sorted[Math.floor(sorted.length / 2)]} ms, 95 % ${sorted[Math.floor(sorted.length * 0.95)]} ms, max ${sorted[sorted.length - 1]} ms`);
   for (const c of checks) c();
   assert.ok(byProfile.get("freibeuter")!.total > byProfile.get("haendler")!.total, "Freibeuter stärker als Händler");
-  // Felder (M.10): Festung und Freibeuter nehmen bewachte Felder nach Probekampf.
-  assert.ok((fieldsHeld.get("festung") ?? 0) + (fieldsHeld.get("freibeuter") ?? 0) >= 1, "Festung oder Freibeuter halten ein Feld");
+  assert.ok((raidsWon.get("freibeuter") ?? 0) >= 1, "Freibeuter gewinnt Überfälle");
+  // Felder (M.10): Bots befassen sich mit Feldern – aufklären, angreifen oder halten (unabhängig vom Kampfglück).
+  if (process.env.BOT_SIM_FOG !== "0") {
+    assert.ok(fieldActivity >= 1, "Bots klären Felder auf oder nehmen sie");
+    // Lagebild Stufe 2: ohne Aufklärung sähen Festung und Freibeuter keine Nester (früher: Festung 0 Überfälle).
+    assert.ok((nestScouts.get("festung") ?? 0) >= 1, "Festung klärt Nester auf");
+    assert.ok((nestScouts.get("freibeuter") ?? 0) >= 1, "Freibeuter klärt Nester auf");
+  }
 });

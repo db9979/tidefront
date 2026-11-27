@@ -294,3 +294,41 @@ Simulation `sim/nest6.ts` (in `npm run sim`, einzeln `node packages/game-core/si
    Ankunft und Allianz-Ops (fünf Stellen) und eine eigene Anzeige. Die Stärke ist die Schwelle (Tag 21: 3 %, Tag 28:
    15 %), Aufklärung und Probekampf zeigen das vorher. Tagesbefehle und Wochenziele verlangen weiter höchstens Stufe 5
    (`nestCap`), weil es nur fünf Plätze gibt; Erfolge zählen Nest 6 wie jedes Nest.
+
+## O. Lagebild Stufe 2: Aufklärung, Radarposten, Sonar, Bordsicht (Balance v1.20)
+
+Regeln: `docs/REGELN-LAGEBILD.md` 5.3–5.5, 5.7, 5.8 (Bordsicht, Entscheidung vom 27.11.2026). Zahlen aus
+`npm run sim` (Abschnitt „Lagebild Stufe 2“), Richtwert der Börse in Stahl-Gegenwert, Produktion des Wirtschafts-Bots
+Tag 7 ≈ 620/h, Tag 14 ≈ 780/h, Tag 28 ≈ 1 130/h.
+
+1. **Patrouille** (Block `intel.patrol`): Werte wie freigegeben (4/8/12 h, Schiffe 100 km, Drohnen 200 km, Drohnen
+   ≤ 6 h und ≤ 800 km, Abfangen 15 % je Jäger bis 75 %). Kosten sind bewusst klein: 2 Korvetten 300 km vor dem Hafen
+   kosten 68/87/106 Treibstoff (4/8/12 h) ≈ 120–190 Stahl-Gw. (0,16–0,24 h Produktion an Tag 14) und überstreichen
+   79–175 Tsd. km². Aufklärung soll alltäglich sein; der Preis ist der gebundene Missionsplatz und das Risiko.
+   Drohnen sehen am meisten (2 Drohnen 4 h: 606 Tsd. km² für 65 Stahl-Gw.), sterben aber in fremder Radarreichweite:
+   bei 3 Jägern gehen ⌀ 0,9 von 2 Drohnen verloren (beide in 20 %), ab 5 Jägern ⌀ 1,5 (beide in 57 %) – 476 Stahl-Gw.
+   je Drohne. Das ist das Gegenmittel gegen Dauerüberwachung; Schiffe bleiben in Stufe 2 unbehelligt (Regelwerk).
+   Abgefangen wird einmal je Hafen und Patrouille (sonst würde der Prüftakt die Chance vervielfachen).
+2. **Kampagne** (`intel.campaign`): bis 4 Ziele, Erkennung 150 km um die Position. 4 Nester mit 1 Korvette: 70 statt
+   160 Treibstoff (56 % gespart) und 1 statt 4 Missionsplätzen. Gegen die Beute eines Nests 3 (≈ 15 300 Stahl-Gw.) ist
+   eine Kampagne (≈ 130) vernachlässigbar – gewollt, damit Lagebild kein Engpass vor jedem Überfall ist.
+3. **Radarposten** (`intel.post`): Bau 4 500 Stahl-Gw. (7,3 h Produktion an Tag 7, 4 h an Tag 28), Betrieb 130/Tag,
+   Abbau gibt 2 250 zurück. Eine Woche Betrieb mit Abbau kostet ≈ 3 160 Stahl-Gw. ≈ 0,2 Nest-3-Beuten; dafür 196 Tsd.
+   km² Dauersicht (Radarstation 3: 229 Tsd. km² um den eigenen Hafen) an einer selbst gewählten Küste. Werte wie
+   freigegeben. Ohne Treibstoff fällt der Posten erst aus, wenn der Hafen leer ist (die Grundrate liefert sonst schon
+   genug) – Strafe für völlige Leere, nicht für knappe Bestände.
+4. **Sonar** (`intel.sonar`): 60 km + 40 km je Stufe der vorhandenen Forschung „sonar“ (Stufe 2: 140 km) für
+   Korvetten und Zerstörer im Hafen, auf Patrouille und unterwegs; U-Boote auf Patrouille 60 km.
+5. **Bordsicht** (`intel.fleetSight`, Auftrag des Nutzers): jeder Verband auf See sieht um seine Position, beste
+   Einheit zählt: Kriegsschiff 80 km, Transporter 40 km, Drohne 200 km (Erkennung), Flugzeuge 120 km nur Sichtung von
+   Verbänden. Ein Überfall auf ein Ziel 500 km entfernt deckt nebenbei einen Streifen von 160 Tsd. km² auf (Kriegsschiff,
+   hin und zurück) – mehr als eine 4-h-Patrouille (79 Tsd. km²), aber nicht dort, wo man hinschauen will. Patrouillen
+   behalten die größeren Werte (100/200 km) und sind das Werkzeug für gezielte Aufklärung. Gespeichert wird beim
+   Kartenabruf (höchstens alle 60 s je Partei), nicht im Takt der Verbände.
+6. **KI-Spieler:** Ohne Aufklärung griff die Festung im Nebel nie an (8-Tage-Lauf, 4 Läufe: 0 Überfälle, 0 Nester
+   aufgeklärt; ohne Nebel ebenfalls 0, ihr Probekampf verlangt 100 % Siegquote). Neu: Festung Kampagnen gegen Nester
+   (alle 6 h, Felder alle 12 h), Händler einmal am Tag gegen Felder, Freibeuter laufend Kampagnen und alle 12 h eine
+   Patrouille (2 Korvetten) über unbekannte Nester. Ergebnis (je 4–6 Läufe): Festung 3–12 Nester aufgeklärt, 0–2
+   Überfälle (gewonnen), 0–1 Feld; Händler 2–8 Felder aufgeklärt, 0–2 Felder; Freibeuter 2–9 Überfälle (alle gewonnen),
+   4–12 Aufklärungen, 6 Patrouillen je Lauf. Der Bot-Testlauf prüft jetzt das Verhalten (Freibeuter gewinnt Überfälle,
+   Festung und Freibeuter klären auf, Bots befassen sich mit Feldern) statt „hält ein Feld“ (Kampfglück).

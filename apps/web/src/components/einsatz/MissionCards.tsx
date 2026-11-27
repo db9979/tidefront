@@ -13,6 +13,7 @@ import { OpsMissionLine } from "../AllianceOps.tsx"; // Allianz-Ops
 import { LiftBlockade } from "../Naval.tsx"; // See: Blockade aufheben
 import { FieldMissionLine } from "../Fields.tsx"; // Felder
 import { CalmHarborArt } from "./art.tsx";
+import { PatrolLine } from "../PatrolLine.tsx"; // Lagebild Stufe 2
 
 type MissionData = BaseData["missions"][number];
 
@@ -23,6 +24,7 @@ function title(m: MissionData): string {
 function phaseBadge(m: MissionData) {
   if (m.status === "outbound") return <Badge tone="sea">Hinfahrt</Badge>;
   if (m.status === "returning") return <Badge tone={m.recalled ? "brass" : "slate"}>{m.recalled ? "zurückgerufen" : "Rückfahrt"}</Badge>;
+  if (m.status === "holding" && m.patrol) return <Badge tone="sea">auf Station</Badge>; // Lagebild Stufe 2
   if (m.status === "holding") return <Badge tone="red">Blockade</Badge>;
   if (m.status === "stationed") return <Badge tone="green">vor Ort</Badge>;
   if (m.status === "staged") return <Badge tone="brass">bereit</Badge>;
@@ -77,7 +79,7 @@ function MissionItem({ m, base, map, now, onShowOnMap, onRecall }: { m: MissionD
         <div className="mt-2">
           <div className="flex items-center justify-between gap-2 text-xs mb-1">
             <span className="mono">{m.status === "outbound" ? "Ankunft" : "Zurück"} in {fmtDuration(Math.max(0, left))}</span>
-            <span className="text-ink2" aria-hidden="true">{m.status === "outbound" ? "Hafen → Ziel" : "Ziel → Hafen"}</span>
+            <span className="text-ink2" aria-hidden="true">{m.campaign ? `Ziel ${m.campaign.index + 1} von ${m.campaign.targets.length}` : m.status === "outbound" ? "Hafen → Ziel" : "Ziel → Hafen"}</span>
           </div>
           <Bar value={ph.progress} tone={m.status === "returning" ? "brass" : "sea"} />
         </div>
@@ -90,6 +92,7 @@ function MissionItem({ m, base, map, now, onShowOnMap, onRecall }: { m: MissionD
 
       {m.type === "besetzen" && m.status === "stationed" ? <div className="text-sm mt-1"><FieldMissionLine missionId={m.id} /></div>
         : m.status === "staged" || m.status === "stationed" ? <div className="text-sm mt-1"><OpsMissionLine m={m} /></div>
+        : m.status === "holding" && m.patrol ? <PatrolLine m={m} now={now} />
         : m.status === "holding" ? <div className="text-sm mt-1"><div className="text-sea-300">Blockade läuft</div><LiftBlockade missionId={m.id} /></div>
         : null}
 

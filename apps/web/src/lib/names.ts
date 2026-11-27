@@ -20,6 +20,7 @@ const NAMES: Record<string, string> = {
   minenleger: "Minenleger", minenraeumer: "Minenräumer", minen: "Minen legen", raeumen: "Minen räumen", blockade: "Blockade",
   abfangen: "Konvoi abfangen", geleit: "Geleitschutz", konvoi: "Konvoi", blockadekampf: "Blockadekampf", mine: "Minenfeld",
   // Felder: Rohstofffelder
+  patrouille: "Patrouille", kampagne: "Aufklärungskampagne", radarposten: "Radarposten", sichtung: "Sichtung", posten: "Radarposten", // Lagebild Stufe 2
   besetzen: "Besetzen", admiral_heimkehr: "Admiral auf Heimfahrt", feld: "Rohstofffeld", oelfeld: "Ölfeld", erzbucht: "Erzbucht", fischgrund: "Fischgrund", elektronikwrack: "Elektronik-Wrack",
   // Mehrere Häfen
   kolonieschiff: "Kolonieschiff", gruendung: "Gründung", verlegung: "Verlegung", heimathafen: "Heimathafen", aussenposten: "Außenposten",
@@ -288,6 +289,24 @@ const ERRORS: Record<string, string> = {
   deliveries_underway: "Lieferungen (Börse, Handel oder Feldertrag) sind auf dem Weg in diesen Hafen.",
   offers_open: "Aus diesem Hafen stehen noch Handelsangebote offen – erst zurückziehen.",
   field_held: "Ein Rohstofffeld liefert an diesen Hafen – erst aufgeben.",
+  // Lagebild Stufe 2: Patrouille, Kampagne, Radarposten
+  patrol_off: "Patrouillen gibt es auf diesem Server nicht.",
+  patrol_units: "Auf Patrouille fahren nur Korvetten, Zerstörer, U-Boote und Aufklärungsdrohnen.",
+  patrol_waypoints: "Eine Patrouille braucht 2 bis 4 Wegpunkte.",
+  patrol_sea: "Wegpunkte müssen auf offener See liegen.",
+  patrol_hours: "Dauer 4, 8 oder 12 Stunden wählen.",
+  patrol_drone_hours: "Drohnen fliegen höchstens 6 Stunden – mit Drohnen nur 4 Stunden Patrouille.",
+  patrol_drone_range: "Ein Wegpunkt liegt außerhalb der Drohnenreichweite (800 km vom Hafen).",
+  campaign_off: "Aufklärungskampagnen gibt es auf diesem Server nicht.",
+  campaign_targets: "Eine Kampagne hat 1 bis 4 verschiedene Ziele.",
+  post_off: "Radarposten gibt es auf diesem Server nicht.",
+  post_crew: "Ein Radarposten braucht mindestens 5 Pioniere und ein Landungsschiff.",
+  post_radar: "Radarposten errichtet nur ein Hafen mit Radarstation Stufe 3.",
+  post_site: "Hier kann kein Radarposten stehen: nur auf freier Küste oder einem eigenen Rohstofffeld.",
+  post_limit: "Höchstzahl Radarposten erreicht.",
+  post_too_close: "Zu nah an einem eigenen Radarposten (mindestens 300 km Abstand).",
+  no_post: "Diesen Radarposten gibt es nicht mehr.",
+  own_post: "Das ist dein eigener Radarposten.",
 };
 
 export function errorText(code: string): string {

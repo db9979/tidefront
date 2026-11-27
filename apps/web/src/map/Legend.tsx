@@ -47,6 +47,11 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { icon: <UnknownNest />, text: "Nest mit „?“: nur die Position ist bekannt – Stufe erst mit Sicht oder Aufklärung" },
       { icon: <span className="opacity-50 flex"><TacticalIcon kind="nest" level={2} /></span>, text: "Blass: bekannt, aber nicht live (Stand im Feld-Blatt); sehr blass: veraltet (über 24 h)" },
       { icon: <FleetArrow />, text: "Pfeil: fremder Verband mit Kurs; K/M/G = klein, mittel, groß; Farbe nur mit Erkennung" },
+      // Lagebild Stufe 2
+      { icon: <SensorRing />, text: "Kreis um deinen Verband auf See: Bordsicht, wandert mit (Kriegsschiff 80 km, Transporter 40, Drohne 200)" },
+      { icon: <Icon id="patrouille" size={22} />, text: "Rote gestrichelte Runde: deine Patrouille auf Station; nummerierte Ringe: Wegpunkte bzw. Ziele beim Planen" },
+      { icon: <PostMark />, text: "Mast im Kreis: Radarposten (blau eigener, rot fremder; blass: ohne Treibstoff oder nicht live)" },
+      { icon: <SonarRing />, text: "Grüner Kreis: Sonar – nur U-Boote werden darin sichtbar" },
     ],
   },
   {
@@ -185,4 +190,17 @@ export function MapLegend() {
       </div>
     </div>
   );
+}
+
+function PostMark() {
+  return (
+    <svg width="22" height="22" viewBox="-11 -11 22 22" aria-hidden="true">
+      <circle r="9" fill="#fbf8f0" stroke="#2d5b7a" strokeWidth={1.3} />
+      <path d="M0 5 V-3 M-4 -6 Q0 -1 4 -6" fill="none" stroke="#2d5b7a" strokeWidth={1.5} />
+    </svg>
+  );
+}
+
+function SonarRing() {
+  return <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9" fill="none" stroke="#3d6b4f" strokeWidth={1.3} strokeDasharray="3 3" /></svg>;
 }

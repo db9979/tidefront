@@ -1,16 +1,17 @@
 // Lagebild auf der Karte: Kartennebel (leichte graublaue Überlagerung der Felder außerhalb jeder Sicht), gestrichelte
-// Sensorgrenzen (Ausguck, Radar; eigene und der Allianz) und fremde Verbände als Pfeil mit Größenklasse und Kurs.
+// Sensorgrenzen (Ausguck, Radar, Posten, Patrouillen, Bordsicht der Verbände, Sonar; eigene und der Allianz), fremde
+// Verbände als Pfeil mit Größenklasse und Kurs, Radarposten und Wegpunkte der Planung (Stufe 2).
 // Nebel feldweise (keine inverse Maske: die erzeugt in Pixi Randartefakte); die Ebene endet über eine normale Maske am
 // Kartenrahmen. Die Sicht prüft dieselben Kreise in Projektions-km wie der Server (packages/game-core/src/intel.ts).
 import { Container, Graphics, Text } from "pixi.js";
 import { COLS, ROWS, HEX_SIZE_KM, hexCenterXY } from "@tidefront/world";
-import { liveLevelAt, type SensorCircle } from "@tidefront/game-core";
+import { liveLevelAt, type SensorCircle, type SensorKind } from "@tidefront/game-core";
 import { hexPoints } from "./terrain.ts";
 import { INK, PAPER, RELATION_COLOR, SEE, SIEGEL, type Relation } from "./symbols.ts";
 
 export interface MapIntel {
   fog: boolean;
-  sensors: { col: number; row: number; km: number; kind: "ausguck" | "radar"; label: string; own: boolean }[];
+  sensors: { col: number; row: number; km: number; kind: SensorKind; label: string; own: boolean }[];
 }
 
 export interface MapFleetIn {
@@ -22,6 +23,9 @@ export interface MapFleetIn {
   relation: string | null;
   intel: { age: string };
 }
+
+/** Sensoren, die mit einem Verband wandern. */
+const MOVING = new Set(["patrouille", "aufklaerer", "verband", "flug"]);
 
 /** Graublau des Kartennebels. */
 const FOG = 0x5d6f82;
@@ -48,6 +52,8 @@ export function buildIntelLayer(intel: MapIntel, clip: () => Graphics, showSenso
   }
   if (showSensors) {
     for (const s of intel.sensors) {
+      // Eigene Verbände auf See zeichnet movers.ts mit wanderndem Kreis; hier nur Häfen, Posten und Fremde der Allianz.
+      if (s.own && MOVING.has(s.kind)) continue;
       const c = hexCenterXY(s.col, s.row);
       const n = Math.max(24, Math.round(s.km / 12));
       for (let i = 0; i < n; i += 2) {
@@ -55,7 +61,8 @@ export function buildIntelLayer(intel: MapIntel, clip: () => Graphics, showSenso
         const a1 = ((i + 1) / n) * Math.PI * 2;
         lines.moveTo(c.x + Math.cos(a0) * s.km, c.y + Math.sin(a0) * s.km).arc(c.x, c.y, s.km, a0, a1);
       }
-      lines.stroke({ color: s.kind === "radar" ? SEE : INK, width: 1.2, pixelLine: true, alpha: s.own ? 0.95 : 0.6 });
+      const radar = s.kind === "radar" || s.kind === "posten";
+      lines.stroke({ color: radar ? SEE : s.kind === "sonar" ? 0x3d6b4f : INK, width: 1.2, pixelLine: true, alpha: (s.own ? 0.95 : 0.6) * (s.kind === "sonar" || s.kind === "flug" ? 0.6 : 1) });
     }
   }
   const mask = clip();
@@ -100,4 +107,67 @@ export function buildFleetLayer(fleets: MapFleetIn[]): { root: Container; pinned
     pinned.push({ obj: s, min: 0.12 });
   }
   return { root, pinned };
+}
+
+export interface MapPostIn {
+  id: number;
+  col: number;
+  row: number;
+  own: boolean;
+  offline: boolean | null;
+  intel: { age: string } | null;
+}
+
+/** Radarposten: kleiner Mast mit Bogen (eigene Tinte, fremde Siegelrot; aus = blass). */
+export function postSymbol(p: MapPostIn): Container {
+  const c = new Container();
+  const color = p.own ? SEE : SIEGEL;
+  const g = new Graphics();
+  g.circle(0, 0, 9).fill({ color: PAPER, alpha: 0.95 }).stroke({ color, width: 1.3 });
+  g.moveTo(0, 5).lineTo(0, -3).stroke({ color, width: 1.6 });
+  g.arc(0, -3, 5, Math.PI * 1.15, Math.PI * 1.85).stroke({ color, width: 1.4 });
+  c.addChild(g);
+  c.alpha = p.offline ? 0.45 : p.intel && p.intel.age !== "live" ? 0.55 : 1;
+  return c;
+}
+
+export function buildPostLayer(posts: MapPostIn[]): { root: Container; pinned: { obj: Container; min?: number }[] } {
+  const root = new Container();
+  const pinned: { obj: Container; min?: number }[] = [];
+  for (const p of posts) {
+    const xy = hexCenterXY(p.col, p.row);
+    const s = postSymbol(p);
+    s.position.set(xy.x, xy.y);
+    root.addChild(s);
+    pinned.push({ obj: s, min: 0.12 });
+  }
+  return { root, pinned };
+}
+
+/**
+ * Wegpunkte bzw. Ziele der Planung (Patrouille, Kampagne): nummerierte Ringe, verbunden in Reihenfolge; als Runde
+ * (Patrouille) zurück zum ersten Punkt. Weltkoordinaten; endet über die Maske am Kartenrahmen.
+ */
+export function buildMarkLayer(marks: { col: number; row: number }[], loop: boolean, clip: () => Graphics): Container {
+  const root = new Container();
+  const g = new Graphics();
+  root.addChild(g);
+  const pts = marks.map((m) => hexCenterXY(m.col, m.row));
+  if (pts.length > 1) {
+    g.moveTo(pts[0].x, pts[0].y);
+    for (const p of pts.slice(1)) g.lineTo(p.x, p.y);
+    if (loop && pts.length > 2) g.lineTo(pts[0].x, pts[0].y);
+    g.stroke({ color: SIEGEL, width: 4, alpha: 0.85 });
+  }
+  pts.forEach((p, i) => {
+    g.circle(p.x, p.y, HEX_SIZE_KM * 0.55).fill({ color: PAPER, alpha: 0.95 }).stroke({ color: SIEGEL, width: 4 });
+    const t = new Text({ text: String(i + 1), style: { fontFamily: "'IBM Plex Mono', monospace", fontSize: HEX_SIZE_KM * 0.7, fill: SIEGEL, fontWeight: "700" } });
+    t.anchor.set(0.5);
+    t.position.set(p.x, p.y);
+    root.addChild(t);
+  });
+  const mask = clip();
+  root.addChild(mask);
+  root.mask = mask;
+  return root;
 }

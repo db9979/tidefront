@@ -19,6 +19,7 @@ import { baseModifiers } from "./modifiers.ts";
 import { weatherModifiers } from "./weather.ts";
 import { getSetting, setSetting } from "./settings.ts";
 import { withSite } from "./store.ts";
+import { mobileSensors } from "./intel-mobile.ts"; // Lagebild Stufe 2
 
 export const INTEL_FOG_SETTING = "intel_fog";
 
@@ -46,6 +47,8 @@ export interface Sight {
   keys: string[];
   sensors: Sensor[];
   atMs: number;
+  /** Häfen der Partei (für bewegte Sensoren und Sonar; nur im Zwischenspeicher). */
+  bases?: { id: number; playerId: number; name: string; col: number; row: number; state: BaseState; isHome: boolean }[];
 }
 
 const sightCache = new Map<string, Sight>();
@@ -106,21 +109,28 @@ export function sensorsOfBase(b: { id: number; playerId: number; name: string; c
   return out;
 }
 
-/** Sicht der Partei eines Spielers (zwischengespeichert für cacheSeconds, Uhr der Spiellogik). */
+/**
+ * Sicht der Partei eines Spielers. Die Hafensensoren (Ausguck, Radar) werden cacheSeconds zwischengespeichert (Uhr der
+ * Spiellogik); bewegte Sensoren (Stufe 2: Verbände auf See, Patrouillen, Posten) kommen bei jedem Abruf frisch dazu –
+ * zwei kleine Abfragen, dafür stimmen Position und neue Missionen sofort.
+ */
 export async function sightOf(db: DbOrTx, playerId: number, nowMs: number): Promise<Sight> {
   const ib = intelRules();
   const { party, members } = await partyOf(db, playerId);
-  const hit = sightCache.get(party);
+  let hit = sightCache.get(party);
   const ttl = (ib?.cacheSeconds ?? 60) * 1000;
-  if (hit && nowMs >= hit.atMs && nowMs - hit.atMs < ttl && hit.members.length === members.length && members.every((m) => hit.members.includes(m))) return hit;
-  const rows = ib ? await db.select().from(tables.base).where(inArray(tables.base.playerId, members)) : [];
-  const sensors = ib ? rows.flatMap((b) => sensorsOfBase({ ...b, state: b.state as BaseState }, nowMs, ib)) : [];
-  const keys = party.startsWith("a:") ? [party, ...members.map((m) => `p:${m}`)] : [party];
-  const sight: Sight = { party, members, keys, sensors, atMs: nowMs };
-  sightCache.set(party, sight);
-  // Der Speicher wächst höchstens mit der Zahl der Parteien; alte Einträge räumen.
-  if (sightCache.size > 500) for (const [k, v] of sightCache) if (nowMs - v.atMs > ttl) sightCache.delete(k);
-  return sight;
+  if (!(hit && nowMs >= hit.atMs && nowMs - hit.atMs < ttl && hit.members.length === members.length && members.every((m) => hit!.members.includes(m)))) {
+    const rows = ib ? await db.select().from(tables.base).where(inArray(tables.base.playerId, members)) : [];
+    const bases = rows.map((b) => ({ ...b, state: b.state as BaseState }));
+    const sensors = ib ? bases.flatMap((b) => sensorsOfBase(b, nowMs, ib)) : [];
+    const keys = party.startsWith("a:") ? [party, ...members.map((m) => `p:${m}`)] : [party];
+    hit = { party, members, keys, sensors, atMs: nowMs, bases };
+    sightCache.set(party, hit);
+    // Der Speicher wächst höchstens mit der Zahl der Parteien; alte Einträge räumen.
+    if (sightCache.size > 500) for (const [k, v] of sightCache) if (nowMs - v.atMs > ttl) sightCache.delete(k);
+  }
+  if (!ib) return hit;
+  return { ...hit, sensors: [...hit.sensors, ...(await mobileSensors(db, members, hit.bases ?? [], nowMs, ib))] };
 }
 
 /** Kenntnisstufe, mit der die Partei ein Objekt auf Feld col/row jetzt sieht (null = außerhalb jeder Sicht). */
@@ -129,12 +139,12 @@ export function liveAt(sight: Sight, col: number, row: number, target: "object" 
   return liveLevelAt(sight.sensors, x, y, target);
 }
 
-/** Bester Sensor (Name der Quelle) für einen Punkt, für „Stand: … (Quelle)“. */
+/** Bester Sensor (Name der Quelle) für einen Punkt, für „Stand: … (Quelle)“. Sonar nur für U-Boote. */
 export function sourceAt(sight: Sight, x: number, y: number): string {
   let best: Sensor | null = null;
   for (const s of sight.sensors) {
-    if ((s.x - x) ** 2 + (s.y - y) ** 2 > s.km * s.km) continue;
-    if (!best || (best.kind === "radar" && s.kind === "ausguck")) best = s;
+    if (s.kind === "sonar" || (s.x - x) ** 2 + (s.y - y) ** 2 > s.km * s.km) continue;
+    if (!best || ((best.kind === "radar" || best.kind === "posten") && s.kind !== "radar" && s.kind !== "posten")) best = s;
   }
   return best?.label ?? "Sensor";
 }

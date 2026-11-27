@@ -27,6 +27,7 @@ import { HoldHours, MineWarning } from "../components/Naval.tsx"; // See: Minen/
 import { FieldTargetLine, StayAllToggle, fieldsRules, useFields } from "../components/Fields.tsx"; // Felder
 import { ExpansionTargetLine, OriginLine, OwnHarborPick } from "../components/ExpansionPlan.tsx"; // Mehrere Häfen
 import { expansionRules } from "../lib/expansion.ts";
+import { IntelOpsPlan, type IntelOpKind } from "../components/IntelOpsPlan.tsx"; // Lagebild Stufe 2
 
 const TYPES = [
   { id: "ueberfall", text: "Überfall", hint: "Kampf am Ziel, Beute bei Sieg" },
@@ -43,7 +44,13 @@ const TYPES = [
   // Mehrere Häfen
   { id: "gruendung", text: "Gründen", hint: "Ein Kolonieschiff gründet auf einem freien Küstenfeld einen Außenposten; das Schiff wird dabei verbraucht" },
   { id: "verlegung", text: "Verlegen", hint: "Einheiten (und Admiral) ziehen dauerhaft in einen anderen eigenen Hafen" },
+  // Lagebild Stufe 2
+  { id: "patrouille", text: "Patrouille", hint: "Schiffe oder Drohnen fahren 4–12 h über 2–4 Wegpunkte und erkennen alles im Umkreis" },
+  { id: "kampagne", text: "Kampagne", hint: "Aufklärung von bis zu 4 Zielen nacheinander, je Ziel ein Lagebild" },
+  { id: "radarposten", text: "Radarposten", hint: "Pioniere und ein Landungsschiff errichten auf einer Küste einen Radarposten (250 km)" },
+  { id: "postenangriff", text: "Posten angreifen", hint: "Angriff auf einen fremden Radarposten" },
 ] as const;
+const INTEL_OPS = new Set<string>(["patrouille", "kampagne", "radarposten", "postenangriff"]); // Lagebild Stufe 2
 type PlanKind = (typeof TYPES)[number]["id"];
 
 /** Bestätigung nach dem Auslaufen, passend zur Art der Mission. */
@@ -60,12 +67,16 @@ const SENT_TEXT: Record<string, string> = {
   besetzen: "Nach dem Sieg hält deine Besatzung das Feld; den Ertrag und den Rückruf findest du unter „Truppen“ → Meine Felder.", // Felder
   gruendung: "Bei Ankunft entsteht dein Außenposten; wechsle dann oben in der Kopfleiste dorthin.",
   verlegung: "Bei Ankunft gehören die Einheiten zum Zielhafen; die Bestätigung erscheint unter „Meldungen“.",
+  patrouille: "Ab dem ersten Wegpunkt fährt der Verband seine Runde; was er sieht, steht auf der Karte und unter „Meldungen“ → Lagebild.",
+  kampagne: "Je Ziel kommt ein Lagebild unter „Meldungen“; der Verband fährt danach zum nächsten Ziel.",
+  radarposten: "Bei Ankunft steht der Posten; verwalten unter „Meldungen“ → Lagebild.",
+  postenangriff: "Den Kampfbericht findest du nach der Ankunft unter „Meldungen“.",
 };
 
 export function MissionPlan({ base, initialTarget, onClose, preset }: { base: BaseData; initialTarget: Target | null; onClose: () => void; onPickOnMap?: () => void; preset?: PlanPreset }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const map = useQuery(trpc.world.map.queryOptions());
-  const [type, setType] = useState<PlanKind>(preset?.type ?? initialTarget?.expansion ?? initialTarget?.naval ?? initialTarget?.fieldMission ?? (initialTarget?.convoyId ? "abfangen" : "ueberfall"));
+  const [type, setType] = useState<PlanKind>(preset?.type ?? initialTarget?.expansion ?? initialTarget?.naval ?? initialTarget?.fieldMission ?? initialTarget?.intelOp ?? (initialTarget?.postId ? "postenangriff" : initialTarget?.convoyId ? "abfangen" : "ueberfall"));
   const [holdHours, setHoldHours] = useState(4); // See: Blockade
   const [stayAll, setStayAll] = useState(false); // Felder: ganzer Verband bleibt
   const fieldsQ = useFields(); // Felder: Feldzeichen auf der Zielkarte
@@ -81,7 +92,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   // Art: nach der Auswahl auf eine Zeile mit „ändern“ eingeklappt (vorbelegt = schon gewählt).
   const [whyOpen, setWhyOpen] = useState(false); // „Was hilft?“ in der Vorschau
   const [barOpen, setBarOpen] = useState(false); // … und über der Aktionsleiste (grauer Knopf)
-  const [typeOpen, setTypeOpen] = useState(!preset?.type && !initialTarget?.naval && !initialTarget?.convoyId && !initialTarget?.expansion);
+  const [typeOpen, setTypeOpen] = useState(!preset?.type && !initialTarget?.naval && !initialTarget?.convoyId && !initialTarget?.expansion && !initialTarget?.intelOp && !initialTarget?.postId);
   // Frische Bestände beim Öffnen
   useEffect(() => {
     void queryClient.invalidateQueries(trpc.base.pathFilter());
@@ -148,7 +159,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           </div>
         ) : <>
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-          {TYPES.filter((t) => (t.id !== "abfangen" || target?.convoyId) && (t.id !== "besetzen" || target?.fieldId) && (t.id !== "verlegung" || base.bases.length > 1) && (t.id !== "gruendung" || base.bases.length < xRules.maxBases)).map((t) => (
+          {TYPES.filter((t) => (t.id !== "abfangen" || target?.convoyId) && (t.id !== "postenangriff" || target?.postId) && (!INTEL_OPS.has(t.id) || !!balance.intel?.patrol) && (t.id !== "besetzen" || target?.fieldId) && (t.id !== "verlegung" || base.bases.length > 1) && (t.id !== "gruendung" || base.bases.length < xRules.maxBases)).map((t) => (
             <button key={t.id} type="button" onClick={() => { setType(t.id); setTypeOpen(false); }} className={`tap rounded-xl px-1 py-2 text-sm flex flex-col items-center gap-1 border ${type === t.id ? "border-sea-400 bg-sea-400/10 font-semibold reticle" : "border-navy-600 bg-navy-900"}`}>
               <Icon id={t.id} size={32} />
               {t.text}
@@ -159,7 +170,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         </>}
       </Card>
 
-      {type === "spionage" ? <SpyPlan base={base} map={map.data} target={target} setTarget={setTarget} center={initialTarget ?? { col: base.col, row: base.row }} onClose={onClose} /> : <>
+      {type === "spionage" ? <SpyPlan base={base} map={map.data} target={target} setTarget={setTarget} center={initialTarget ?? { col: base.col, row: base.row }} onClose={onClose} />
+        : INTEL_OPS.has(type) ? <IntelOpsPlan op={type as IntelOpKind} base={base} map={map.data} initial={initialTarget} onSent={(at) => setSent({ arriveAtMs: at, type })} /> : <>
 
       <Card title="Ziel">
         <OriginLine base={base} />
