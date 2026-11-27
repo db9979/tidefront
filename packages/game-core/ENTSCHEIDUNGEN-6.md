@@ -312,3 +312,16 @@ aktiv; Bauhof-Countdown läuft ohne Neuladen.
   „Einladung in die Allianz“ unter „Wartet auf dich“, Sprung `{ to: "alliance" }`; „Anfängerschutz endet in …“ in den
   letzten 24 h als dringender Termin; Belohnungstext nennt nur Quellen mit Anzahl, `urgent.rewardSources`.
 - Keine Schemaänderung.
+
+### Nachtrag Welle 1: Nutzerentscheide Ruhezeit und Kaufmann
+
+- **Kaufmann-Schwellen bleiben** bei 400 / 2.000 / 8.000 Taler Börsengebühr (Nutzerentscheid).
+- **Ruhezeit für Pushes einstellbar** (ersetzt „Ruhezeit = nur Nachtschild“ aus AN-07): Jeder Spieler stellt sie in
+  den Einstellungen ein (Karte „Ruhezeit“, volle Stunden), Vorgabe 23–7 Uhr Spielzeitzone, abschaltbar; gilt für alle
+  Geräte. Mit laufendem Nachtschild gilt dessen Fenster zusätzlich (das spätere Ende zählt). Angriffe, Allianz-Ops und
+  die Testnachricht gehen immer sofort; der Morgenbericht (selbst gewählte Uhrzeit) ebenfalls.
+  Kern `engine/push-quiet.ts` (`quietEndMs` rein, Fenster über Mitternacht), Schnittstelle `push.quiet` /
+  `push.setQuiet({ on, fromMin, toMin })` (Code `bad_time`, wenn Beginn = Ende).
+- **Ablage ohne Schemaänderung** in `server_setting` unter `push_quiet:<Spieler-ID>` (JSON); fehlt der Eintrag, gilt
+  die Vorgabe. Bewusst keine neue Tabelle/Spalte, weil sie eine Migration bräuchte. Soll es sauberer werden, wäre
+  eine Spalte `push_quiet jsonb` an `player` oder eine Tabelle `push_quiet(player_id, on, from_min, to_min)` der Ort.

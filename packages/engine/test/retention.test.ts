@@ -11,7 +11,7 @@ import {
   addDays, adminKpi, chooseBase, cohorts, dailyReminderJobs, dayKey, dayStartMs, deliverJobs, EMAIL_DEFAULTS, ensureVapid,
   hasNudge, milestoneKeys, milestoneRows, nestRespawnJobs, percentile, processDue, pushSubscribe, recordActivity,
   recordMilestones, recordRpc, register, resetRpcTimings, RPC_RING, rpcTimings, runReminders, runWinback, saveSmtp, seed,
-  setMailSender, setPushSender, summarySettings, touchLastSeen, unsubscribeEmail, upgrade, wants, winbackMail,
+  setMailSender, setPushSender, setQuietHours, summarySettings, touchLastSeen, unsubscribeEmail, upgrade, wants, winbackMail,
   type Engine, type NoticeJob, type OutgoingMail,
 } from "../src/index.ts";
 
@@ -183,6 +183,7 @@ test("Tagesbefehle bereit: nur wer heute noch nicht da war; einmal je Tag; Morge
   const sent: string[] = [];
   setPushSender(async (_sub, payload) => { sent.push(JSON.parse(payload).title); });
   await pushSubscribe(db, A.playerId, { endpoint: "https://push.example/anke", keys: { p256dh: "p".repeat(20), auth: "a".repeat(16) } });
+  await setQuietHours(db, A.playerId, { on: false, fromMin: 23 * 60, toMin: 7 * 60 }); // Ruhezeit (Vorgabe 23–7) unabhängig von der Uhrzeit des Laufs
   assert.equal(await runReminders(engine, at(10)), 1);
   assert.equal(await runReminders(engine, at(11)), 0, "einmal je Tag");
   assert.deepEqual(sent, ["Tagesbefehle bereit"]);

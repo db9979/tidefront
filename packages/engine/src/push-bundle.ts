@@ -1,14 +1,16 @@
 // Push bündeln und Ruhezeit (AN-07, Abschlussprüfung 0.38). Vorher ~45 Pushes je Tag (Bau, Ausbildung, Bauschlange
 // leer …) ohne Ruhezeit. Jetzt:
 //  - Dringendes (Angriff, Allianz-Ops, Test) geht immer sofort.
-//  - Ruhezeit = das Nachtschild-Fenster des Heimathafens (wer einen Nachtschild gewählt hat, schläft dann meist):
-//    alles andere wird gesammelt und nach dem Ende der Ruhezeit als ein Push zugestellt.
+//  - Ruhezeit = die eigene, in den Einstellungen gewählte Ruhezeit (Vorgabe 23–7 Uhr Spielzeitzone, abschaltbar,
+//    push-quiet.ts) und zusätzlich ein laufendes Nachtschild-Fenster des Heimathafens: alles andere wird gesammelt
+//    und nach dem Ende der Ruhezeit als ein Push zugestellt.
 //  - Routinemeldungen (BUNDLE_PUSH_KINDS) werden auch tagsüber gesammelt: höchstens ein Push je PUSH_BUNDLE_MS.
 // Ablage ohne Schemaänderung in mail_digest mit kind "push:<art>" (die Mail-Bündelung überspringt diese Zeilen).
 import { and, eq, isNull, like, sql } from "drizzle-orm";
 import { nightShieldWindow, type ProtectionState } from "@tidefront/game-core";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance, type Engine, type NoticeKind } from "./context.ts";
+import { getQuietHours, quietEndMs } from "./push-quiet.ts";
 
 export const PUSH_BUNDLE_MS = 15 * 60_000;
 /** Immer sofort, auch in der Ruhezeit. */
@@ -17,14 +19,16 @@ export const URGENT_PUSH_KINDS: readonly NoticeKind[] = ["attack", "ops", "test"
 export const BUNDLE_PUSH_KINDS: readonly NoticeKind[] = ["build", "training", "fleet", "delivery", "idle", "market"];
 const PREFIX = "push:";
 
-/** Ende der laufenden Ruhezeit (Nachtschild-Fenster des Heimathafens) oder null. */
+/** Ende der laufenden Ruhezeit oder null: eigene Ruhezeit und Nachtschild-Fenster des Heimathafens, das spätere Ende. */
 export async function pushQuietUntil(db: DbOrTx, playerId: number, nowMs: number): Promise<number | null> {
+  const own = quietEndMs(await getQuietHours(db, playerId), nowMs);
   const [home] = await db.select({ state: tables.base.state }).from(tables.base)
     .where(and(eq(tables.base.playerId, playerId), eq(tables.base.isHome, true))).limit(1);
   const p = (home?.state as { protection?: ProtectionState } | undefined)?.protection;
-  if (!p) return null;
-  const w = nightShieldWindow(p, nowMs, balance);
-  return w && nowMs >= w.startMs && nowMs < w.endMs ? w.endMs : null;
+  const w = p ? nightShieldWindow(p, nowMs, balance) : null;
+  const shield = w && nowMs >= w.startMs && nowMs < w.endMs ? w.endMs : null;
+  if (own === null) return shield;
+  return shield === null ? own : Math.max(own, shield);
 }
 
 /** Sofort senden oder sammeln? Gesammelte Meldungen landen in der Ablage (Rückgabe "queued"). */

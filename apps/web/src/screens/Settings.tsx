@@ -113,6 +113,51 @@ function PushCard({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
+/** Ruhezeit für Pushes (alle Geräte): Routinemeldungen werden gesammelt und danach als ein Push zugestellt. */
+function QuietCard() {
+  const q = useQuery(trpc.push.quiet.queryOptions());
+  const [error, setError] = useState<string | null>(null);
+  const d = q.data;
+  const save = async (next: { on: boolean; fromMin: number; toMin: number }) => {
+    setError(null);
+    try {
+      const r = await trpcClient.push.setQuiet.mutate(next);
+      if (!r.ok) setError("Beginn und Ende der Ruhezeit müssen sich unterscheiden.");
+      await queryClient.invalidateQueries(trpc.push.quiet.queryFilter());
+    } catch (err) {
+      setError(failText(err));
+    }
+  };
+  const hours = Array.from({ length: 24 }, (_, h) => h);
+  const hourSelect = (label: string, value: number, set: (h: number) => void) => (
+    <label className="flex items-center gap-2 text-sm">
+      {label}
+      <select aria-label={`Ruhezeit ${label}`} className="h-10 rounded-lg field px-2" value={Math.floor(value / 60)}
+        disabled={!d?.on} onChange={(e) => set(Number(e.target.value))}>
+        {hours.map((h) => <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>)}
+      </select>
+    </label>
+  );
+  return (
+    <Card title="Ruhezeit">
+      <p className="text-sm text-slate-300 mb-2">
+        In der Ruhezeit hält der Server Push-Meldungen zurück und schickt sie danach gesammelt. Angriffe kommen immer sofort.
+        Läuft dein Nachtschild, gilt dessen Fenster zusätzlich. Uhrzeiten in Spielzeit{d ? ` (${d.timeZone})` : ""}.
+      </p>
+      {d && (
+        <>
+          <Switch label="Ruhezeit an" on={d.on} onChange={(on) => void save({ ...d, on })} />
+          <div className="flex gap-4 mt-2" data-quiet-hours>
+            {hourSelect("von", d.fromMin, (h) => void save({ ...d, fromMin: h * 60 }))}
+            {hourSelect("bis", d.toMin, (h) => void save({ ...d, toMin: h * 60 }))}
+          </div>
+        </>
+      )}
+      <ErrorLine text={error} />
+    </Card>
+  );
+}
+
 function EmailCard({ isAdmin }: { isAdmin: boolean }) {
   const acc = useQuery(trpc.account.get.queryOptions());
   const e = acc.data?.email;
@@ -235,6 +280,7 @@ export function SettingsScreen({ onClose, initialAdmin = false, onAdmin }: { onC
         <TickerSetting />
       </Card>
       <PushCard isAdmin={isAdmin} />
+      <QuietCard />
       <EmailCard isAdmin={isAdmin} />
       {/* Einklappbar: selten gebraucht, aber lang. */}
       <Card title="Freunde einladen" collapsible storageKey="einstellungen-einladen" defaultOpen={false} summary="Einladungslink oder E-Mail an Freunde schicken."><InvitePanel playerName={me.data?.player?.name} /></Card>

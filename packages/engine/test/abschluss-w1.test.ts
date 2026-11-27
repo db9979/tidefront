@@ -7,11 +7,11 @@ import assert from "node:assert/strict";
 import { and, eq, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
 import { COLS, ROWS, hexDistanceKm, isCoast, isTradePortHex, nestSites, nearestTradePortBySea, seaRoute } from "@tidefront/world";
-import type { BaseState } from "@tidefront/game-core";
+import { gameTimeZone, type BaseState } from "@tidefront/game-core";
 import {
   acceptPlayerContract, baseView, chooseBase, claimAllRewards, contractBandView, contractsView, createAlliance, dayKey, dayStartMs,
   ensureVapid, flushPushes, guideView, isRetryableDbError, lageView, marketQuote, proposePlayerContract, pushSubscribe, pushToPlayer,
-  queuedPushes, register, requestJoin, runCommand, runSeasonNotice, runWinback, seed, setPushSender, trade, type Engine, type PushTarget,
+  queuedPushes, quietEndMs, register, requestJoin, setQuietHours, getQuietHours, runCommand, runSeasonNotice, runWinback, seed, setPushSender, trade, type Engine, type PushTarget,
 } from "../src/index.ts";
 import { addSecondHarbor } from "./multi-base.ts";
 
@@ -65,6 +65,8 @@ async function subscribe(playerId: number): Promise<string> {
   const endpoint = `https://push.test/${playerId}-${Date.now()}`;
   const sub: PushTarget = { endpoint, keys: { p256dh: "p", auth: "a" } };
   await pushSubscribe(db, playerId, sub);
+  // Eigene Ruhezeit (Vorgabe 23–7 Uhr) hier aus, damit die Tests zu jeder Uhrzeit gleich laufen; eigener Test unten.
+  await setQuietHours(db, playerId, { on: false, fromMin: 23 * 60, toMin: 7 * 60 });
   return endpoint;
 }
 
@@ -281,3 +283,36 @@ test("AN-06: zweite Rückhol-Stufe (10–14 Tage) als Push ohne Adresse; Saisonw
     await db.update(tables.season).set({ startsAt: oldStart }).where(eq(tables.season.id, s.id));
   }
 });
+
+// ---------------------------------------------------------------- Einstellbare Ruhezeit (Nutzerentscheid)
+
+test("Ruhezeit: Vorgabe 23–7 Uhr, einstellbar und abschaltbar; Angriff sofort; Nachtschild zusätzlich", async () => {
+  const tz = "Europe/Berlin";
+  const at = (h: number, m = 0) => Date.parse(`2026-01-15T${String(h - 1).padStart(2, "0")}:${String(m).padStart(2, "0")}:00Z`); // Winter: UTC+1
+  const def = { on: true, fromMin: 23 * 60, toMin: 7 * 60 };
+  assert.equal(quietEndMs(def, at(22, 59), tz), null);
+  assert.equal(quietEndMs(def, at(23), tz), at(23) + 8 * H);
+  assert.equal(quietEndMs(def, at(3, 30), tz), at(7));
+  assert.equal(quietEndMs(def, at(7), tz), null);
+  assert.equal(quietEndMs({ on: true, fromMin: 13 * 60, toMin: 15 * 60 }, at(14), tz), at(15), "am Tag ohne Mitternacht");
+  assert.equal(quietEndMs({ ...def, on: false }, at(3), tz), null, "abgeschaltet");
+
+  const q = await player("Ruhig");
+  const ep = await subscribe(q.playerId); // schaltet aus
+  assert.deepEqual(await getQuietHours(db, q.playerId), { on: false, fromMin: 23 * 60, toMin: 7 * 60 });
+  assert.deepEqual(await setQuietHours(db, q.playerId, { on: true, fromMin: 600, toMin: 600 }), { ok: false, code: "bad_time" });
+  // Ruhezeit so legen, dass sie jetzt (Spielzeitzone) läuft: von der laufenden Stunde bis zwei Stunden später.
+  const now = Date.now();
+  const nowHour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: gameTimeZone(), hour: "2-digit", hourCycle: "h23" }).format(now));
+  assert.deepEqual(await setQuietHours(db, q.playerId, { on: true, fromMin: nowHour * 60, toMin: ((nowHour + 2) % 24) * 60 }), { ok: true });
+  const mine = () => sentPushes.filter((p) => p.endpoint === ep);
+  assert.equal(await pushToPlayer(engine, q.playerId, { kind: "report", title: "Leise", body: "x" }, { nowMs: now }), 0, "zurückgehalten");
+  assert.equal(await pushToPlayer(engine, q.playerId, { kind: "attack", title: "Angriff!", body: "z" }, { nowMs: now }), 1, "Angriff sofort");
+  assert.equal(await flushPushes(engine, now + 20 * 60_000), 0, "noch Ruhezeit");
+  assert.equal(await flushPushes(engine, now + 2 * H + 60_000), 1, "nach der Ruhezeit");
+  assert.equal(mine().at(-1)!.payload.title, "Leise");
+  // Abgeschaltet: geht sofort.
+  await setQuietHours(db, q.playerId, { on: false, fromMin: nowHour * 60, toMin: ((nowHour + 2) % 24) * 60 });
+  assert.equal(await pushToPlayer(engine, q.playerId, { kind: "report", title: "Laut", body: "y" }, { nowMs: now }), 1);
+});
+
