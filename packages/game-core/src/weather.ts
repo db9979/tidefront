@@ -2,10 +2,12 @@
 // und Seed. Wenige ziehende Wettersysteme: Tiefs ziehen nach Nordost (stärkster Wind im Ring um den Kern und an der
 // Südflanke, im Winter kräftiger), Hochs ziehen langsam und leben länger. Dazu regionale Klimatendenzen (Nordatlantik
 // windiger und wolkiger, Mittelmeer sonniger, regionale Winde: Mistral, Meltemi, Levante bei Gibraltar, Bora),
+// Wolken der Tiefs nach ihren Fronten (weather-fronts.ts: Schirm vor der Warmfront, Band an der Kaltfront, Okklusion),
 // weiches Rauschen über Raum und Zeit, Nebel an den Nebelküsten (jahreszeitlich) und Tageslicht aus dem Sonnenstand.
 // Einzige Zufallsquelle: mulberry32.
 import type { GeoPoint } from "./types.ts";
 import { mulberry32 } from "./rng.ts";
+import { frontClouds, frontLines, type FrontLine } from "./weather-fronts.ts";
 
 const HOUR_MS = 3600000;
 const RAD = Math.PI / 180;
@@ -132,6 +134,18 @@ function activeSystems(h: number, wb: WeatherBalance): { sys: WeatherSystem; env
   return out;
 }
 
+/** Zugrichtung eines Systems als Peilung (Grad, 0 = Nord, im Uhrzeigersinn). */
+function headingOf(sys: WeatherSystem): number {
+  const east = sys.vLon * KM_PER_DEG * Math.cos(sys.lat0 * RAD);
+  const north = sys.vLat * KM_PER_DEG;
+  return Math.atan2(east, north) / RAD;
+}
+
+/** Fronten eines Tiefs im Alter `age` (Stunden) in km um den Kern. */
+function linesOf(sys: WeatherSystem, age: number): FrontLine[] {
+  return frontLines(headingOf(sys), age / sys.lifeH, sys.radiusKm);
+}
+
 // ---------------------------------------------------------------- Rauschen über Raum und Zeit
 
 function lattice(seed: number, x: number, y: number, z: number): number {
@@ -249,9 +263,8 @@ function computeWeather(lat: number, lon: number, ms: number, wb: WeatherBalance
       // Wind: im Kern schwächer, am stärksten im Ring um etwa einen Radius, an der Südflanke kräftiger.
       const south = 1 - 0.3 * Math.max(-1, Math.min(1, dy / sys.radiusKm));
       windAdd += 0.35 * s * season * south * (0.3 * g + 0.7 * q * Math.exp(1 - q));
-      // Wolkenschirm etwas nach Osten versetzt (Warmfront voraus).
-      const qc = ((dx - 0.4 * sys.radiusKm) ** 2 + dy * dy) / (sys.radiusKm * sys.radiusKm);
-      cloudAdd += 0.45 * s * Math.exp(-qc / 1.7);
+      // Wolkenschirm nach den Fronten: breit vor der Warmfront, Band an der Kaltfront, dicht um Kern und Okklusion.
+      cloudAdd += s * frontClouds(dx, dy, linesOf(sys, age), sys.radiusKm);
     } else {
       windAdd -= 0.07 * s * g;
       cloudAdd -= 0.15 * s * g;
@@ -399,4 +412,31 @@ export function weatherSystemsAt(ms: number, wb: WeatherBalance): { lat: number;
     const age = h - sys.bornH;
     return { lat: sys.lat0 + sys.vLat * age, lon: sys.lon0 + sys.vLon * age, radiusKm: sys.radiusKm, sign: sys.sign, strength: sys.intensity * env };
   });
+}
+
+/** Kartendarstellung der Fronten: Tiefs ab `minStrength` (wie die T-Schilder), Linienzüge in Breite und Länge. */
+export interface WeatherFront {
+  kind: FrontLine["kind"];
+  points: GeoPoint[];
+}
+
+export function weatherFrontsAt(ms: number, wb: WeatherBalance, minStrength = 0.35): WeatherFront[] {
+  const h = ms / HOUR_MS;
+  const out: WeatherFront[] = [];
+  for (const { sys, env } of activeSystems(h, wb)) {
+    if (sys.sign < 0 || sys.intensity * env < minStrength) continue;
+    const age = h - sys.bornH;
+    const cLat = sys.lat0 + sys.vLat * age;
+    const cLon = sys.lon0 + sys.vLon * age;
+    for (const f of linesOf(sys, age)) {
+      out.push({
+        kind: f.kind,
+        points: f.pts.map((p) => {
+          const lat = cLat + p.y / KM_PER_DEG;
+          return { lat, lon: cLon + p.x / (KM_PER_DEG * Math.cos(lat * RAD)) };
+        }),
+      });
+    }
+  }
+  return out;
 }

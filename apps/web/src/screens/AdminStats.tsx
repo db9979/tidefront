@@ -1,4 +1,4 @@
-// Verwaltung → Statistik: Aktivität, Registrierungen, Ressourcenfluss, Kampf (Balance), Nester, Wirtschaft,
+// Verwaltung → Statistik: Aktivität, Registrierungen, Ressourcenfluss, Kampf (Balance), Nester, Veteranen, Wirtschaft,
 // Auffälligkeiten, Marktnachrichten. Der Server rechnet und speichert 60 s zwischen; Zeitraum 7 oder 28 Tage.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -70,7 +70,7 @@ export function AdminStats() {
       </Card>
 
       <Card title="Ressourcenfluss">
-        <Sub>Produktion je Stunde (alle Häfen, netto)</Sub>
+        <Sub>Produktion je Stunde (alle Häfen, netto, mit Modifikatoren)</Sub>
         <HBars rows={resRows(s.flow.productionPerHour)} tone="moos" unit="/h" />
 
         <Sub>Beute im Zeitraum</Sub>
@@ -111,6 +111,27 @@ export function AdminStats() {
         <Sub>Nester (höchste besiegte Stufe, Saison)</Sub>
         {s.nests.length === 0 ? <p className="text-sm text-ink2 italic font-serif">Noch kein Nest angegriffen.</p> : (
           <HBars rows={s.nests.map((n) => ({ key: String(n.playerId), label: n.name, value: n.maxLevel ?? 0, note: `${n.wins}/${n.attempts}` }))} tone="ink" />
+        )}
+      </Card>
+
+      <Card title="Veteranen" right={<span className="text-xs text-ink2">alle Häfen</span>}>
+        <Sub>Einheiten je Rang (daheim und unterwegs)</Sub>
+        <HBars rows={s.veterans.ranks.map((r) => ({ key: r.id, label: r.name, value: r.units, note: `${r.bases} ${r.bases === 1 ? "Hafen" : "Häfen"}${r.attackBonus ? ` · +${fmtNum(r.attackBonus * 100)} %` : ""}` }))} tone="messing" />
+        <Sub>Je Einheitentyp (Ø Erfahrung)</Sub>
+        {s.veterans.byUnit.length === 0 ? <p className="text-sm text-ink2 italic font-serif">Keine Einheiten.</p> : (
+          <ul className="text-sm space-y-1">
+            {s.veterans.byUnit.map((u) => (
+              <li key={u.id}>
+                <div className="flex justify-between gap-2">
+                  <span className="inline-flex items-center gap-1 min-w-0"><Icon id={u.id} size={16} /> <span className="truncate">{label(u.id)}</span></span>
+                  <span className="mono shrink-0">{fmtNum(u.units)} · Ø {fmtNum(u.avgXp, 1)} EP</span>
+                </div>
+                <div className="text-xs text-ink2 pl-6">
+                  {s.veterans.ranks.filter((r) => u.ranks[r.id]).map((r) => `${r.name} ${fmtNum(u.ranks[r.id])}`).join(" · ")}
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </Card>
 

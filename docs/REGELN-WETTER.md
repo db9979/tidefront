@@ -21,8 +21,13 @@ Rein und deterministisch aus Ort, Zeit und `weather.seed`; einzige Zufallsquelle
 - **Klimawind** mäßig (Grund 0,27, Norden +0,05, Mittelmeer −0,05, Süden −0,04, im Winter im Norden etwas mehr); Stürme
   bringen die Tiefs. Regionale Winde: **Mistral** (Golf von Lion, Winter), **Meltemi** (Ägäis, Sommer), **Levante/Poniente**
   (Straße von Gibraltar, ganzjährig), **Bora** (Adria, Winter).
-- **Bewölkung** = Klima (Norden wolkiger, Mittelmeer im Sommer fast klar, im Winter halb bedeckt) + Wolkenschirm der Tiefs
-  (um 0,4 Radien nach Osten versetzt, Warmfront voraus) − Hochs + Rauschen.
+- **Bewölkung** = Klima (Norden wolkiger, Mittelmeer im Sommer fast klar, im Winter halb bedeckt) + Wolken der Tiefs nach
+  ihren **Fronten** − Hochs + Rauschen. Jedes Tief trägt eine Warmfront (vom Kern nach Ost bis Südost, 1,4 Radien) und
+  eine Kaltfront (nach Süd bis Südwest, 1,8 Radien), bezogen auf seine Zugrichtung; ab der Lebensmitte holt die Kaltfront
+  die Warmfront ein, vom Kern bis zum Okklusionspunkt (bis 0,9 Radien) liegt die Okklusion. Wolken: breiter Schirm vor
+  der Warmfront (dichtester Streifen 0,35 Radien voraus), schmales Schauerband an der Kaltfront, dicht um Kern und
+  Okklusion, lichter Warmsektor dazwischen. Die Wetterkarte zeichnet die Fronten der Tiefs ab Stärke 0,35: Kaltfront blau
+  mit Dreiecken, Warmfront rot mit Halbkreisen, Okklusion violett im Wechsel; die Zeichen zeigen die Zugrichtung.
 - **Nebel** an den Nebelküsten – Neufundlandbank, Nordsee, Ärmelkanal, Portugal – nach Jahreszeit (Sommer am meisten,
   Übergangszeiten mittel, Winter wenig), nur bei wenig Wind (`still = 1 − (Wind − 0,2)/0,45`, ab Wind 0,65 kein Nebel, also
   nie bei Sturm), nachts etwas dichter und unter Hochdruck häufiger.

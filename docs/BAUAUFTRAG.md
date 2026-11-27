@@ -106,7 +106,9 @@ Auslegungen stehen in `packages/game-core/ENTSCHEIDUNGEN.md` und `packages/game-
 - Prüflauf (`audit.ts`) zusätzlich: Treuhand je Angebot = angebotene Menge, solange offen, sonst 0 (`escrowMismatches`).
 - Oberfläche: Reiter „Allianz“ unter Meldungen (Übersicht, Chat, Mitglieder, Diplomatie; Reiterleiste scrollbar),
   Allianzwertung und Kürzel in der Rangliste, Beziehung und Einladen in der Spielerübersicht, „Handel mit Spielern“
-  als Abschnitt der Börse (`components/PlayerTrade.tsx`). Die Karte markiert Verbündete noch nicht.
+  als Abschnitt der Börse (`components/PlayerTrade.tsx`). Erledigt: Die Karte markiert Verbündete (`mapView` liefert
+  `relation` aus `relationsOf`: Allianz grün mit Doppelring, Paktpartner ocker, Kriegsgegner rot mit Peilstrichen, neutral
+  blau; in der Übersicht als farbige Punkte), mit Legende und Verhältnis im Feld-Blatt.
 
 ## Festlegungen: Freunde einladen
 
