@@ -44,6 +44,7 @@ async function taken(sql: Sql): Promise<Set<string>> {
 }
 
 test("Patrouille: Wegpunkte auf der Karte antippen, auslaufen, Nest am Wegpunkt erkennen", async ({ page, player, seed }) => {
+  test.slow(); // lange Abläufe; unter Parallel-Last sonst über 60 s
   await setBuildings(seed.sql, player.baseId, { werft: 3, kommandozentrale: 4, hafenkommandantur: 4 });
   await setUnits(seed.sql, player.baseId, { korvette: 3 });
   await setResources(seed.sql, player.baseId, { treibstoff: 5000 });

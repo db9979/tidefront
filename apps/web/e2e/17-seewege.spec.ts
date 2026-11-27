@@ -7,6 +7,7 @@ import { setBuildings, setResources, setUnits } from "./game.ts";
 type Hex = { col: number; row: number };
 
 test("Missionsplanung zeigt den Seeweg und zeichnet die Route; die Karte zeichnet die laufende Fahrt entlang der Route", async ({ page, player, seed }) => {
+  test.slow(); // lange Abläufe; unter Parallel-Last sonst über 60 s
   await setBuildings(seed.sql, player.baseId, { werft: 3, kommandozentrale: 4, hafenkommandantur: 3, radarstation: 8, kraftwerk: 6 });
   await setUnits(seed.sql, player.baseId, { korvette: 4 });
   await setResources(seed.sql, player.baseId, { treibstoff: 20000 });
