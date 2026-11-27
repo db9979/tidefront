@@ -2,6 +2,10 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.21.3 – 27.11.2026
+- **Kraftwerk regelt nach:** Es liefert nur noch, was Wind, Sonne, Seekabel und Speicher offen lassen, und verbrennt entsprechend weniger Treibstoff (ein reiner Kraftwerkshafen spart rund ein Sechstel, ein gemischter deutlich mehr). Die Versorgung zeigt die aktuelle Auslastung; der rote Hinweis erscheint nur noch bei echtem Treibstoffmangel. Das Kraftwerk lädt den Speicher nicht mehr – der lädt aus Ökostrom.
+- **Bewegte Symbole:** Schiffe schaukeln, das U-Boot taucht leicht, Flugzeuge und Drohne schweben, Waffen und Werkzeuge der Truppen bewegen sich. Auch die Forschungsbilder leben: Turbine und Zahnrad drehen, Sonar pulsiert, Radar schwenkt, Kran-Last pendelt. Kleine Symbole bleiben ruhig; „Bewegung reduzieren“ des Geräts wird beachtet.
+
 ## 0.21.2 – 27.11.2026
 - **Behoben:** Nach „Auf der Karte zeigen“ (aus Truppen oder Meldungen) öffnete sich die Missionsleiste unten bei jeder Rückkehr zur Karte erneut. Jetzt springt die Karte nur einmal zum Ziel; danach bleibt sie frei.
 

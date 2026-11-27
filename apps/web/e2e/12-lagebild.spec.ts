@@ -5,6 +5,7 @@ import { awayFromEdge, expect, expectNoHorizontalOverflow, tapHex, test } from "
 import { setBuildings, setUnits } from "./game.ts";
 
 test("Fremdes Nest: ohne Sicht keine Stufe, in Radarreichweite schon", async ({ page, player, seed }) => {
+  test.slow(); // ~20 s allein, unter voller Parallel-Last sonst über 60 s
   // Radarstation 10 (550 km, bei dichtem Nebel mindestens 385 km) mit genug Strom.
   await setBuildings(seed.sql, player.baseId, { radarstation: 10, kraftwerk: 3, werft: 3, kommandozentrale: 4 });
   await setUnits(seed.sql, player.baseId, { korvette: 4 });

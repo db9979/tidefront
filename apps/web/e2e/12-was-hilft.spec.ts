@@ -8,6 +8,7 @@ test.describe("Missionsplätze", () => {
   test.use({ spawnNear: "nest" });
 
   test("Alle Missionsplätze belegt → Was hilft? → Hafenkommandantur", async ({ page, player, seed }) => {
+    test.slow(); // ~20 s allein, unter voller Parallel-Last sonst über 60 s
     await setBuildings(seed.sql, player.baseId, { werft: 3, kaserne: 2, hafenkommandantur: 1, kommandozentrale: 3 });
     await setUnits(seed.sql, player.baseId, { korvette: 6, landungsschiff: 2 });
     const nest = (await seed.sql`select col, row from nest where defeated_at is null`)
