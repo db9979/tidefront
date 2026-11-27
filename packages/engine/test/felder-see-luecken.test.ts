@@ -222,7 +222,9 @@ test("Felder: Admiral ohne Rückruf abziehen – fährt allein heim, Besatzung h
   const r = await fieldAdmiralRecall(engine, a.playerId, key(), f.id);
   assert.equal(r.ok, true, JSON.stringify(r));
   const back = (r as { returnAtMs: number }).returnAtMs;
-  const hours = hexDistanceKm(f, a) / 60; // schnellstes Schiff (Korvette) 60 km/h
+  // Seewege: das Boot fährt die Route der Besatzung zurück (schnellstes Schiff, Korvette 60 km/h).
+  const route = ((await missionRow(gid)).plan as { route?: { km: number } }).route;
+  const hours = Math.max(hexDistanceKm(f, a), route?.km ?? 0) / 60;
   assert.ok(Math.abs((back - t0) / HOUR - hours) < 0.05, `Fahrzeit ${(back - t0) / HOUR} h statt ${hours} h`);
   // Besatzung bleibt, ohne Admiral; das Feld gehört weiter dem Spieler.
   const g = await missionRow(gid);

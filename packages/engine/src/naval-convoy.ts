@@ -23,7 +23,7 @@ import {
   type Mission,
   type ResourceMap,
 } from "@tidefront/game-core";
-import { hexAtLonLat, hexCenter } from "@tidefront/world";
+import { hexAtLonLat, hexCenter, seaRoute } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError, type NoticeJob } from "./context.ts";
 import { activeMissionCount, randomSeed, readBase, saveBase, scheduleEvent, type BaseRow } from "./store.ts";
@@ -62,7 +62,8 @@ export interface ConvoyRow {
 
 type ConvoyEvent = { atMs: number; by: "kartell" | "spieler" | "minen"; name: string; lost: ResourceMap; escortHeld: boolean | null };
 
-const route = (c: ConvoyRow) => buildRoute([hexCenter(c.fromCol, c.fromRow), hexCenter(c.toCol, c.toRow)], c.departAt.getTime(), c.arriveAt.getTime());
+// Seewege: Konvois fahren über Wasser (Wegpunkte der Route, zwischengespeichert); Abfangen und Position entlang der Route.
+const route = (c: ConvoyRow) => buildRoute(seaRoute({ col: c.fromCol, row: c.fromRow }, { col: c.toCol, row: c.toRow }).hexes.map(([col, row]) => hexCenter(col, row)), c.departAt.getTime(), c.arriveAt.getTime());
 
 /** Legt einen Konvoi an und würfelt einmal, ob (und wann) das Kartell abfängt. */
 export async function createConvoy(

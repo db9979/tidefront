@@ -80,7 +80,8 @@ Größenklassen für Verbände: **klein** bis 10 Einheiten, **mittel** bis 40, *
 - Verband aus **Korvetten, Zerstörern, U-Booten** und/oder **Aufklärungsdrohnen**. Dazu **2–4 Wegpunkte** auf See,
   die er im Kreis abfährt.
 - **Dauer** 4, 8 oder 12 h, danach Heimfahrt. Treibstoff wie eine normale Fahrt über die ganze Strecke.
-- **Sichtweite** um die aktuelle Position, Stufe **Erkennung**: Schiffe **100 km**, Drohnen **200 km**.
+- **Sichtweite** um die aktuelle Position, Stufe **Erkennung**: Schiffe **105 km** (seit „Seewege“: eigenes Feld und die
+  sechs Nachbarfelder), Drohnen **200 km**.
   U-Boote sehen nur andere U-Boote (Sonar, siehe 5.7).
 - **Drohnen** sind schnell (300 km/h) und brauchen höchstens 800 km Reichweite bis zum fernsten Wegpunkt. Sie fliegen
   höchstens 6 h.
@@ -124,16 +125,22 @@ Größenklassen für Verbände: **klein** bis 10 Einheiten, **mittel** bis 40, *
 - **Jeder eigene Verband auf See sieht unterwegs** – auf Hin- und Rückfahrt, bei allen Missionsarten (Überfall,
   Transport, Verlegung, Gründung, Feldmissionen, Allianz-Ops, Blockade vor dem Ziel). Sicht um die aktuelle Position;
   maßgeblich ist die beste Einheit im Verband:
-  - Kriegsschiffe (Korvette, Zerstörer, Minenräumer) **80 km** Erkennung,
+  - Kriegsschiffe (Korvette, Zerstörer, Minenräumer) **105 km** Erkennung (vorher 80 km; die Mittelpunkte der
+    Nachbarfelder liegen rund 100,5 km entfernt, 105 km erfassen das eigene Feld und alle sechs Nachbarn),
   - Transporter (Landungsschiff, Kolonieschiff, Minenleger) **40 km** Erkennung,
   - Aufklärungsdrohne **200 km** Erkennung,
   - Flugzeuge (Jäger, Bomber) **120 km**, nur Sichtung von Verbänden (Objekte erfassen sie nicht),
   - U-Boote sehen nur andere U-Boote (Sonar, 5.7).
 - Live während der Fahrt. Was der Verband überfährt, bleibt als „bekannt“ im Wissen (Quelle „Verband aus …“); gespeichert
   wird sparsam beim Kartenabruf, höchstens alle 60 s je Partei. Die Allianz teilt mit.
-- Patrouillen behalten ihre größeren Werte (Schiffe 100 km, Drohnen 200 km) und bleiben das Werkzeug für gezielte
-  Aufklärung. Balance-Block `intel.fleetSight`.
-- **Karte:** gestrichelter Sichtkreis um eigene Verbände, der mitwandert (am Kartenrahmen beschnitten).
+- Patrouillen: Schiffe ebenfalls 105 km, Drohnen 200 km; sie bleiben das Werkzeug für gezielte Aufklärung (Runde,
+  Dauer, Sonar). Balance-Block `intel.fleetSight`.
+- **Karte:** gestrichelter Sichtkreis um eigene Verbände, der mitwandert (am Kartenrahmen beschnitten). Die Aufhellung
+  des Kartennebels wandert mit: Für eigene bewegte Sensoren (Verband, Flug, Patrouille, Aufklärer) rechnet die Karte die
+  Sicht im Browser mit der aktuellen Position nach (gedrosselt, nur die Felder um die Kreise); die übrigen Sensoren
+  kommen weiter mit dem Datenstand vom Server.
+- **Unterwegs entlang der Route:** Verbände mit Schiffen fahren den Seeweg (REGELN.md, Missionen); Bordsicht, Karte und
+  Patrouillenrunde folgen der Route, nicht der Luftlinie.
 
 ## 6. Gegenmittel
 

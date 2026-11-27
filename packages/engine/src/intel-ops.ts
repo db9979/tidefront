@@ -56,7 +56,7 @@ export async function previewIntelOp(engine: Engine, playerId: number, i: IntelO
     const m = r.mission as Mission & { patrol?: PatrolPlan };
     const far = i.op === "patrouille" ? Math.max(0, ...(i.waypoints ?? []).map((w) => hexDistanceKm(own, w))) : m.distanceKm;
     return {
-      ok: true as const, distanceKm: Math.round(far), travelSeconds: m.travelSeconds, fuelCost: m.fuelCost,
+      ok: true as const, distanceKm: Math.round(far), travelSeconds: m.travelSeconds, route: m.route ?? null, fuelCost: m.fuelCost,
       arriveAtMs: m.arriveAtMs, returnAtMs: m.returnAtMs, sightKm: m.patrol?.sightKm ?? null, sonarKm: m.patrol?.sonarKm ?? null,
       cost: "cost" in r ? r.cost : null,
     };

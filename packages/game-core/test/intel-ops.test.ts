@@ -16,12 +16,12 @@ const defs = balance.units as unknown as Record<string, { branch?: string; subme
 
 test("Balance v1.20: Stufe-2-Werte wie im Regelwerk", () => {
   assert.deepEqual(pb.hours, [4, 8, 12]);
-  assert.equal(pb.shipSightKm, 100);
+  assert.equal(pb.shipSightKm, 105); // Seewege: Bordsicht erfasst die Nachbarfelder
   assert.equal(pb.droneSightKm, 200);
   assert.equal(ib.post!.rangeKm, 250);
   assert.equal(ib.campaign!.revealKm, 150);
   assert.equal(ib.sonar!.baseKm, 60);
-  assert.equal(ib.fleetSight!.warshipKm, 80);
+  assert.equal(ib.fleetSight!.warshipKm, 105);
 });
 
 test("patrolCheck: Einheiten, Wegpunkte, Dauer, Drohnen", () => {
@@ -50,8 +50,8 @@ test("Runde: Länge und Position wandern im Kreis", () => {
   assert.equal(p.y, 5);
 });
 
-test("Sicht und Sonar: Drohnen 200, Schiffe 100, U-Boote nur Sonar; U-Jagd 60 + 40 je Stufe", () => {
-  assert.equal(patrolSightKm({ korvette: 1 }, defs, pb), 100);
+test("Sicht und Sonar: Drohnen 200, Schiffe shipSightKm, U-Boote nur Sonar; U-Jagd 60 + 40 je Stufe", () => {
+  assert.equal(patrolSightKm({ korvette: 1 }, defs, pb), pb.shipSightKm);
   assert.equal(patrolSightKm({ korvette: 1, aufklaerungsdrohne: 1 }, defs, pb), 200);
   assert.equal(patrolSightKm({ uboot: 3 }, defs, pb), 0);
   assert.equal(sonarKm({ korvette: 1 }, defs, 0, ib.sonar, false), 60);
@@ -96,7 +96,7 @@ test("Desinformation: Größenklasse genau eine Stufe daneben", () => {
 
 test("Bordsicht: beste Einheit zählt; Flugzeuge nur Sichtung von Verbänden", () => {
   const fs = ib.fleetSight;
-  assert.deepEqual(fleetSightKm({ korvette: 1, landungsschiff: 2 }, defs, fs), { recognizeKm: 80, sightKm: 0 });
+  assert.deepEqual(fleetSightKm({ korvette: 1, landungsschiff: 2 }, defs, fs), { recognizeKm: fs!.warshipKm, sightKm: 0 });
   assert.deepEqual(fleetSightKm({ landungsschiff: 2, schuetzen: 10 }, defs, fs), { recognizeKm: 40, sightKm: 0 });
   assert.deepEqual(fleetSightKm({ aufklaerungsdrohne: 1 }, defs, fs), { recognizeKm: 200, sightKm: 0 });
   assert.deepEqual(fleetSightKm({ jagdbomber: 4 }, defs, fs), { recognizeKm: 0, sightKm: 120 });

@@ -12,12 +12,15 @@ import { hexPoints } from "./terrain.ts";
 import { INK, PAPER, RELATION_COLOR, SEE, SIEGEL, type Relation } from "./symbols.ts";
 import { sensorRing } from "./sensor-ring.ts";
 
-/** Lagebild-Schicht; rescale zeichnet die Reichweitenkreise für die aktuelle Zoomstufe. */
-export type IntelLayer = Container & { rescale?: (sc: number) => void };
+/**
+ * Lagebild-Schicht; rescale zeichnet die Reichweitenkreise für die aktuelle Zoomstufe, moving spart den Nebel um die
+ * aktuellen Positionen der eigenen bewegten Sensoren aus (Seewege/C: die Aufhellung wandert mit, movers.ts).
+ */
+export type IntelLayer = Container & { rescale?: (sc: number) => void; moving?: (sights: readonly { x: number; y: number; km: number }[]) => void };
 
 export interface MapIntel {
   fog: boolean;
-  sensors: { col: number; row: number; km: number; kind: SensorKind; label: string; own: boolean; strip?: { x0: number; x1: number; hidden: [number, number][] } }[];
+  sensors: { col: number; row: number; km: number; kind: SensorKind; label: string; own: boolean; missionId?: number; strip?: { x0: number; x1: number; hidden: [number, number][] } }[];
   /** Stufe 3: Satelliten der Partei mit nächstem Überflug. */
   satellites?: { id: number; type: string; own: boolean; live: { x0: number; x1: number } | null; next: { x0: number; x1: number; atMs: number } | null }[];
 }
@@ -34,6 +37,10 @@ export interface MapFleetIn {
 
 /** Sensoren, die mit einem Verband wandern. */
 const MOVING = new Set(["patrouille", "aufklaerer", "verband", "flug"]);
+/** Bewegte Sensoren, deren Nebel-Aussparung die Karte selbst mitführt (movers.ts liefert Position und Reichweite). */
+const FOLLOWED = new Set(["patrouille", "verband"]);
+/** Kantenlänge eines Nebel-Blocks in Feldern: nur Blöcke mit geänderten Feldern werden neu gezeichnet. */
+const CHUNK = 8;
 
 /** Graublau des Kartennebels. */
 const FOG = 0x5d6f82;
@@ -59,21 +66,68 @@ function dashedV(g: Graphics, x: number, dash: number, gap: number): void {
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 
-/** Nebel und Sensorgrenzen in Weltkoordinaten (einmal je Datenstand gezeichnet). */
-export function buildIntelLayer(intel: MapIntel, clip: () => Graphics, showSensors: boolean): IntelLayer {
-  const root = new Container();
-  const fog = new Graphics();
+/**
+ * Nebel und Sensorgrenzen in Weltkoordinaten (einmal je Datenstand gezeichnet). `followed`: Missionen, deren eigene
+ * Bordsicht/Patrouille die Karte mit der aktuellen Position nachführt (movers.ts) – deren Server-Kreise zählen für
+ * den Nebel nicht, stattdessen spart moving() die aktuellen Kreise aus (nur die betroffenen Blöcke werden neu gezeichnet).
+ */
+export function buildIntelLayer(intel: MapIntel, clip: () => Graphics, showSensors: boolean, followed: ReadonlySet<number> = new Set()): IntelLayer {
+  const root = new Container() as IntelLayer;
+  const fogRoot = new Container();
   const lines = new Graphics();
-  root.addChild(fog, lines);
-  const sensors = circles(intel);
+  root.addChild(fogRoot, lines);
+  const isFollowed = (s: MapIntel["sensors"][number]) => s.own && s.missionId !== undefined && followed.has(s.missionId) && FOLLOWED.has(s.kind);
+  const sensors = circles({ ...intel, sensors: intel.sensors.filter((s) => !isFollowed(s)) });
   if (intel.fog) {
-    // Felder außerhalb jeder Sicht: ein Polygon je Feld, eine Füllung für alle.
+    // Felder außerhalb jeder (festen) Sicht; je Block ein Graphics mit einem Polygon je Feld und einer Füllung.
+    const fogged = new Uint8Array(COLS * ROWS);
     for (let row = 0; row < ROWS; row++) for (let col = 0; col < COLS; col++) {
       const p = hexCenterXY(col, row);
-      if (liveLevelAt(sensors, p.x, p.y, "object")) continue;
-      fog.poly(hexPoints(p.x, p.y, HEX_SIZE_KM + 0.6));
+      if (!liveLevelAt(sensors, p.x, p.y, "object")) fogged[row * COLS + col] = 1;
     }
-    fog.fill({ color: FOG, alpha: 0.26 });
+    let lit = new Uint8Array(COLS * ROWS);
+    const ccols = Math.ceil(COLS / CHUNK);
+    const chunks: Graphics[] = [];
+    for (let i = 0; i < ccols * Math.ceil(ROWS / CHUNK); i++) { const g = new Graphics(); chunks.push(g); fogRoot.addChild(g); }
+    const draw = (ci: number) => {
+      const g = chunks[ci];
+      g.clear();
+      const c0 = (ci % ccols) * CHUNK;
+      const r0 = Math.floor(ci / ccols) * CHUNK;
+      let any = false;
+      for (let row = r0; row < Math.min(ROWS, r0 + CHUNK); row++) for (let col = c0; col < Math.min(COLS, c0 + CHUNK); col++) {
+        const i = row * COLS + col;
+        if (!fogged[i] || lit[i]) continue;
+        const p = hexCenterXY(col, row);
+        g.poly(hexPoints(p.x, p.y, HEX_SIZE_KM + 0.6));
+        any = true;
+      }
+      if (any) g.fill({ color: FOG, alpha: 0.26 });
+    };
+    const chunkOf = (i: number) => Math.floor(Math.floor(i / COLS) / CHUNK) * ccols + Math.floor((i % COLS) / CHUNK);
+    root.moving = (sights) => {
+      const next = new Uint8Array(COLS * ROWS);
+      for (const s of sights) {
+        // Nur Felder im Umkreis (Begrenzungsrechteck des Kreises), Test wie liveLevelAt.
+        const r0 = Math.max(0, Math.floor((s.y - s.km) / (1.5 * HEX_SIZE_KM)) - 1);
+        const r1 = Math.min(ROWS - 1, Math.ceil((s.y + s.km) / (1.5 * HEX_SIZE_KM)) + 1);
+        for (let row = r0; row <= r1; row++) {
+          const c0 = hexAtXY(s.x - s.km, row * 1.5 * HEX_SIZE_KM).col - 1;
+          const c1 = hexAtXY(s.x + s.km, row * 1.5 * HEX_SIZE_KM).col + 1;
+          for (let col = Math.max(0, c0); col <= Math.min(COLS - 1, c1); col++) {
+            const p = hexCenterXY(col, row);
+            if ((p.x - s.x) ** 2 + (p.y - s.y) ** 2 <= s.km * s.km) next[row * COLS + col] = 1;
+          }
+        }
+      }
+      const dirty = new Set<number>();
+      for (let i = 0; i < next.length; i++) if (next[i] !== lit[i] && fogged[i]) dirty.add(chunkOf(i));
+      lit = next;
+      for (const ci of dirty) draw(ci);
+    };
+    for (let ci = 0; ci < chunks.length; ci++) draw(ci);
+    // Bis zum ersten Takt der Karte: die Server-Positionen der nachgeführten Sensoren.
+    root.moving(intel.sensors.filter(isFollowed).map((s) => ({ ...hexCenterXY(s.col, s.row), km: s.km })));
   }
   if (showSensors) {
     // Stufe 3: live Satellitenstreifen (durchgehend gestrichelt) und der nächste Überflug je Satellit (lang gestrichelt).
@@ -98,7 +152,7 @@ export function buildIntelLayer(intel: MapIntel, clip: () => Graphics, showSenso
     const rings = new Graphics();
     root.addChild(rings);
     const own = intel.sensors.filter((x) => !x.strip && !(x.own && MOVING.has(x.kind)));
-    (root as IntelLayer).rescale = (sc: number) => {
+    root.rescale = (sc: number) => {
       rings.clear();
       for (const s of own) {
         // Eigene Verbände auf See zeichnet movers.ts mit wanderndem Kreis; hier nur Häfen, Posten und Fremde der Allianz.

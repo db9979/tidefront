@@ -108,10 +108,13 @@ export function fieldAdmiralRecall(engine: Engine, playerId: number, key: string
     if (a.captiveUntil && a.captiveUntil.getTime() > ctx.nowMs) throw new GameError("admiral_busy");
     const home = await readBase(ctx.tx, m.baseId);
     if (!home) throw new GameError("no_field");
-    const returnAtMs = ctx.nowMs + Math.round((hexDistanceKm(field, home) / admiralBoatKmh()) * 3600000);
+    // Seewege: das Boot fährt die Route der Besatzung zurück (Hafen → Feld, rückwärts); ohne Route Luftlinie.
+    const routed = plan.route && plan.route.hexes.length >= 2 ? plan.route : null;
+    const km = routed ? Math.max(hexDistanceKm(field, home), routed.km) : hexDistanceKm(field, home);
+    const returnAtMs = ctx.nowMs + Math.round((km / admiralBoatKmh()) * 3600000);
     const [r] = await ctx.tx.insert(tables.mission).values({
       playerId, baseId: home.id, type: ADMIRAL_RETURN_TYPE, targetKind: "field", targetId: field.id, targetCol: field.col, targetRow: field.row,
-      plan: { ...plan, units: {}, admiralId: a.id, departAtMs: ctx.nowMs, arriveAtMs: ctx.nowMs, returnAtMs, recalledAtMs: undefined },
+      plan: { ...plan, units: {}, admiralId: a.id, departAtMs: ctx.nowMs, arriveAtMs: ctx.nowMs, returnAtMs, recalledAtMs: undefined, travelSeconds: (returnAtMs - ctx.nowMs) / 1000 },
       status: "returning", returning: {}, cargoHome: {}, arriveAt: new Date(ctx.nowMs), returnAt: new Date(returnAtMs),
     }).returning({ id: tables.mission.id });
     await scheduleEvent(ctx.tx, "mission_return", returnAtMs, { missionId: r.id }, home.id);

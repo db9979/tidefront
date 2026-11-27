@@ -6,10 +6,10 @@
 // Meldung „Fremde Patrouille gesichtet“.
 import { eq, ne } from "drizzle-orm";
 import {
-  activeUnits, dronesShot, fuelCost, interceptChance, patrolCheck, patrolOf, patrolSightKm, slowestSpeedKmh, sonarKm,
+  activeUnits, dronesShot, fuelCost, hasShipUnits, interceptChance, patrolCheck, patrolOf, patrolSightKm, slowestSpeedKmh, sonarKm,
   techLevel, type BaseState, type Counts, type Mission,
 } from "@tidefront/game-core";
-import { hexCenterXY, hexDistanceKm, inGrid, terrainAt } from "@tidefront/world";
+import { hexAtXY, hexCenterXY, hexDistanceKm, inGrid, loopRouteHexes, routePointsXY, seaRoute, terrainAt } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError, type NoticeJob } from "./context.ts";
 import { activeMissionCount, homeBaseOf, randomSeed, saveBase, scheduleEvent, type BaseRow } from "./store.ts";
@@ -51,6 +51,8 @@ export async function planPatrol(db: DbOrTx, playerId: number, own: BaseRow, inp
     waypoints: input.waypoints.map((w) => ({ col: w.col, row: w.row })), hours: input.hours, speedKmh,
     sightKm: patrolSightKm(input.units, defs(), pb),
     sonarKm: sonarKm(input.units, defs(), home ? techLevel(home.state, "sonar") : 0, intelRules()?.sonar, true),
+    // Seewege: mit Schiffen fährt die Runde zwischen den Wegpunkten über Wasser (einmal hier gerechnet).
+    ...(hasShipUnits(input.units, balance) ? { loop: loopRouteHexes(input.waypoints) } : {}),
   };
   const travel = r.mission.arriveAtMs - r.mission.departAtMs;
   const mission = { ...r.mission, fuelCost: r.mission.fuelCost + extra, returnAtMs: r.mission.arriveAtMs + input.hours * HOUR_MS + travel, patrol };
@@ -86,9 +88,17 @@ export async function endPatrolAt(tx: Tx, missionId: number, due: number): Promi
   const [b] = await tx.select({ col: tables.base.col, row: tables.base.row }).from(tables.base).where(eq(tables.base.id, m.baseId));
   const pos = patrolAt(plan.patrol, due).at;
   const home = b ? hexCenterXY(b.col, b.row) : pos;
-  const hours = plan.patrol.speedKmh > 0 ? Math.hypot(home.x - pos.x, home.y - pos.y) / plan.patrol.speedKmh : 0;
+  // Seewege: Schiffe fahren von der aktuellen Position über die Route heim (Linienzug ab der Position).
+  let homePath: { x: number; y: number }[] | undefined;
+  if (b && hasShipUnits(plan.units, balance)) {
+    const h = hexAtXY(pos.x, pos.y);
+    const pts = routePointsXY(seaRoute(h, { col: b.col, row: b.row }));
+    homePath = [pos, ...pts.slice(1)];
+  }
+  const pathKm = homePath ? homePath.slice(1).reduce((s, p, i) => s + Math.hypot(p.x - homePath![i].x, p.y - homePath![i].y), 0) : Math.hypot(home.x - pos.x, home.y - pos.y);
+  const hours = plan.patrol.speedKmh > 0 ? pathKm / plan.patrol.speedKmh : 0;
   const returnAt = due + Math.ceil(hours * HOUR_MS);
-  const next = { ...plan, patrol: { ...plan.patrol, endMs: due, endAt: pos } };
+  const next = { ...plan, patrol: { ...plan.patrol, endMs: due, endAt: pos, ...(homePath ? { homePath } : {}) } };
   await tx.update(tables.mission).set({ status: "returning", plan: next, returnAt: new Date(returnAt) }).where(eq(tables.mission.id, m.id));
   await scheduleEvent(tx, "mission_return", returnAt, { missionId: m.id }, m.baseId);
   return returnAt;

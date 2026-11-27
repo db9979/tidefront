@@ -212,7 +212,7 @@
     "sizeSmallMax": 10, "sizeMediumMax": 40, "roundUnits": 5, "roundDefenses": 2,
     "patrol": {
       "units": ["korvette", "zerstoerer", "uboot", "aufklaerungsdrohne"], "hours": [4, 8, 12], "minWaypoints": 2, "maxWaypoints": 4,
-      "shipSightKm": 100, "droneSightKm": 200, "droneMaxHours": 6, "droneMaxRangeKm": 800,
+      "shipSightKm": 105, "droneSightKm": 200, "droneMaxHours": 6, "droneMaxRangeKm": 800,
       "interceptPerFighter": 0.15, "interceptMax": 0.75, "tickMinutes": 30
     },
     "campaign": { "maxTargets": 4, "revealKm": 150 },
@@ -222,7 +222,7 @@
     },
     "sonar": { "baseKm": 60, "perLevelKm": 40, "subKm": 60 },
     "fleetSight": {
-      "warshipKm": 80, "transportKm": 40, "droneKm": 200, "aircraftKm": 120,
+      "warshipKm": 105, "transportKm": 40, "droneKm": 200, "aircraftKm": 120,
       "transports": ["landungsschiff", "kolonieschiff", "minenleger"], "drones": ["aufklaerungsdrohne"]
     },
     "satellite": {

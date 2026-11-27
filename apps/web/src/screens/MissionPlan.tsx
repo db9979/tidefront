@@ -177,7 +177,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         <OriginLine base={base} />
         {(type === "transport" || type === "verlegung") && <OwnHarborPick base={base} target={target} onPick={setTarget} />}
         <div className="h-56 rounded-lg overflow-hidden mb-2">
-          <HexMap data={map.data} selected={target} onSelect={(h) => { const f = fieldsQ.data?.fields.find((x) => x.col === h.col && x.row === h.row); setTarget(f ? { ...h, fieldId: f.id } : h); }} center={initialTarget ?? { col: base.col, row: base.row }} fields={fieldLayer} />
+          <HexMap data={map.data} selected={target} onSelect={(h) => { const f = fieldsQ.data?.fields.find((x) => x.col === h.col && x.row === h.row); setTarget(f ? { ...h, fieldId: f.id } : h); }} center={initialTarget ?? { col: base.col, row: base.row }} fields={fieldLayer} plannedRoute={p?.ok && "route" in p ? p.route : null} />
         </div>
         <p className="text-sm">
           {!target && "Ziel auf der Karte antippen."}
@@ -251,7 +251,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           <p className="text-sm text-slate-400">Berechne …</p>
         ) : (
           <div className="text-sm">
-            {"distanceKm" in p && <div>Entfernung {fmtNum(p.distanceKm)} km</div>}
+            {"distanceKm" in p && <div>Entfernung {fmtNum(p.distanceKm)} km{p.ok && "route" in p && p.route && p.route.km > p.distanceKm + 1 && <> · Seeweg {fmtNum(Math.round(p.route.km))} km</>}</div>}
             {p.ok ? (
               <>
                 <div>Reisezeit {fmtSeconds(p.travelSeconds)} je Richtung</div>

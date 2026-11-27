@@ -39,6 +39,8 @@ export interface Sensor extends SensorCircle {
   playerId: number;
   /** Anzeigename der Quelle, z. B. „Radar Hafen Brest“. */
   label: string;
+  /** Bewegte Sensoren eines Verbands: Mission (die Karte lässt die Aufhellung mit der Position mitwandern). */
+  missionId?: number;
 }
 
 /** Sicht einer Partei zu einem Zeitpunkt. */

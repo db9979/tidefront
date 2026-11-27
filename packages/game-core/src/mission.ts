@@ -3,8 +3,10 @@ import type {
   BaseState,
   Counts,
   FleetCheck,
+  GeoPoint,
   Mission,
   MissionInput,
+  MissionRoute,
   MissionType,
   ResourceMap,
   Result,
@@ -15,6 +17,7 @@ import { distanceKm } from "./geo.ts";
 import { protectionStatus, suspendNightShield } from "./protection.ts";
 import type { Modifiers } from "./modifiers.ts";
 import { modEntry, modValue } from "./modifiers.ts";
+import { hexAtLonLat, inGrid, seaRoute, seaRouteCopy } from "@tidefront/world";
 
 export const MISSION_TYPES: readonly MissionType[] = ["ueberfall", "aufklaerung", "transport"];
 
@@ -98,6 +101,28 @@ export function slowestSpeedKmh(units: Counts, balance: Balance, mods?: Modifier
   return ship ?? air;
 }
 
+/** Hat der Verband Schiffe (dann fährt er den Seeweg)? */
+export function hasShipUnits(units: Counts, balance: Balance): boolean {
+  return Object.entries(units).some(([id, n]) => n > 0 && balance.units[id]?.branch === "see");
+}
+
+/**
+ * Seewege: Route eines Verbands zwischen zwei Punkten (Feldmittelpunkten). Mit Schiffen die Wegsuche über Wasser
+ * (@tidefront/world seaRoute, zwischengespeichert), ohne Schiffe null (Luftlinie). Kopie, darf in den Plan.
+ */
+export function missionRoute(units: Counts, origin: GeoPoint, target: GeoPoint, balance: Balance): MissionRoute | null {
+  if (!hasShipUnits(units, balance)) return null;
+  const a = hexAtLonLat(origin.lon, origin.lat);
+  const b = hexAtLonLat(target.lon, target.lat);
+  if (!inGrid(a.col, a.row) || !inGrid(b.col, b.row)) return null; // außerhalb der Karte (nur Tests): Luftlinie
+  return seaRouteCopy(seaRoute(a, b));
+}
+
+/** Gefahrene Strecke einer Mission: Länge der Route, sonst die Luftlinie (alte Missionen, reine Luftverbände). */
+export function missionTravelKm(m: { distanceKm: number; route?: MissionRoute | null }): number {
+  return m.route ? Math.max(m.distanceKm, m.route.km) : m.distanceKm;
+}
+
 /** Reisezeit für eine Strecke in Sekunden; null ohne Schiffe und Flugzeuge. */
 export function travelSeconds(units: Counts, distance: number, balance: Balance, mods?: Modifiers): number | null {
   const speed = slowestSpeedKmh(units, balance, mods);
@@ -145,8 +170,12 @@ export function planMission(
   const fleet = validateFleet(base, input.units, distance, balance, mods);
   if (!fleet.ok) return fleet;
 
-  const hasShips = Object.entries(input.units).some(([id, n]) => n > 0 && balance.units[id]?.branch === "see");
+  const hasShips = hasShipUnits(input.units, balance);
   if (input.weather?.stormAtOrigin && !hasShips) return { ok: false, code: "storm" };
+  // Seewege: mit Schiffen fährt der Verband die Route über Wasser (Fahrzeit und Treibstoff nach ihrer Länge);
+  // die Reichweitenprüfung der Flugzeuge oben bleibt bei der Luftlinie (sie fliegen vom Verband aus).
+  const route = !hasShips ? null : input.route !== undefined ? input.route : missionRoute(input.units, input.origin, input.target, balance);
+  const travelKm = route ? Math.max(distance, route.km) : distance;
 
   if (type === "ueberfall" && input.targetProtection !== undefined) {
     if (protectionStatus(input.targetProtection, nowMs, balance).protected) {
@@ -167,11 +196,11 @@ export function planMission(
 
   const next = settle(base, nowMs, balance, mods);
   let fuel: number;
-  if (type === "verlegung") fuel = fuelCost(input.units, distance, balance, mods, 1);
+  if (type === "verlegung") fuel = fuelCost(input.units, travelKm, balance, mods, 1);
   else if (type === "gruendung") {
     const { [ship!]: one, ...escort } = input.units;
-    fuel = fuelCost(escort, distance, balance, mods) + fuelCost({ [ship!]: one }, distance, balance, mods, 1);
-  } else fuel = fuelCost(input.units, distance, balance, mods);
+    fuel = fuelCost(escort, travelKm, balance, mods) + fuelCost({ [ship!]: one }, travelKm, balance, mods, 1);
+  } else fuel = fuelCost(input.units, travelKm, balance, mods);
   if ((next.resources.treibstoff ?? 0) < fuel) return { ok: false, code: "fuel" };
   next.resources = subtractResources(next.resources, { treibstoff: fuel });
   if (!hasResources(next.resources, cargo)) return { ok: false, code: "insufficient_resources" };
@@ -188,7 +217,7 @@ export function planMission(
   }
 
   const shipFactor = hasShips && input.weather ? input.weather.shipFactor : 1;
-  const seconds = (travelSeconds(input.units, distance, balance, mods) ?? 0) * shipFactor;
+  const seconds = (travelSeconds(input.units, travelKm, balance, mods) ?? 0) * shipFactor;
   const travelMs = Math.ceil(seconds * 1000);
   const mission: Mission = {
     type,
@@ -204,13 +233,15 @@ export function planMission(
     returnAtMs: type === "verlegung" ? nowMs + travelMs : nowMs + 2 * travelMs,
     ...(mods?.stealth !== undefined && mods.stealth !== 1 ? { warningFactor: mods.stealth } : {}),
     ...(input.weather ? { weather: { avgWind: input.weather.avgWind, storminess: input.weather.storminess, shipFactor } } : {}),
+    ...(route ? { route } : {}),
   };
   return { ok: true, base: next, mission };
 }
 
 /**
  * Rückruf auf der Hinfahrt: Der Verband kehrt sofort um und ist nach der bereits gefahrenen Zeit wieder
- * daheim (Rückkehr = jetzt + (jetzt - Abfahrt)). Treibstoff wird nicht erstattet; Transportgut kommt
+ * daheim (Rückkehr = jetzt + (jetzt - Abfahrt)). Seewege: Er fährt dasselbe Stück der Route zurück (Position beim
+ * Rückruf: Anteil der Fahrzeit auf der Route, siehe engine intel-route.ts fleetPosition). Treibstoff wird nicht erstattet; Transportgut kommt
  * mit zurück (der Aufrufer bucht es bei der Rückkehr über returnMission). Ob die Mission noch auf der
  * Hinfahrt ist und dem Spieler gehört, prüft der Aufrufer.
  * Codes: already_recalled, already_arrived.
@@ -229,6 +260,7 @@ export function recallMission(mission: Mission, nowMs: number): Result<{ mission
       origin: { ...mission.origin },
       target: { ...mission.target },
       cargo: { ...mission.cargo },
+      ...(mission.route ? { route: { ...mission.route, hexes: mission.route.hexes.map(([c, r]) => [c, r] as [number, number]) } } : {}),
       recalledAtMs: nowMs,
       returnAtMs,
     },

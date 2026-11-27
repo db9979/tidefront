@@ -7,7 +7,7 @@ import {
   activeUnits, blockadeOf, cargoValue, cartelFieldRaid, clampEscort, combineModifiers, deliverCargo, fieldUpkeep, fieldYield,
   resolveBattle, settle, strandTroops, type Counts,
 } from "@tidefront/game-core";
-import { hexDistanceKm } from "@tidefront/world";
+import { seaRoute } from "@tidefront/world";
 import { tables, type Db, type Tx } from "@tidefront/db";
 import { balance, type NoticeJob } from "./context.ts";
 import type { HandlerResult } from "./events.ts";
@@ -54,7 +54,7 @@ export async function settleField(tx: Tx, f: FieldRow, due: number, notify: Note
   await saveBase(tx, b.id, state);
   const cargo = fieldYield(f.kind, f.tier, hours, Math.max(0, rank), zone, balance);
   if (Object.keys(cargo).length > 0) {
-    const arrive = due + Math.ceil((hexDistanceKm(f, b) / r.convoySpeedKmh) * HOUR_MS);
+    const arrive = due + Math.ceil((seaRoute(f, b).km / r.convoySpeedKmh) * HOUR_MS); // Seewege: Konvoi fährt über Wasser
     // Geleitabteilung der Besatzung fährt mit (missionId = Besatzung; liveEscort liest ihren aktuellen Bestand).
     const escort = await fieldEscortOf(tx, f.missionId);
     const convoyId = await createConvoy(tx, {

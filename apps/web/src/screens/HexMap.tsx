@@ -30,7 +30,7 @@ import { buildWorldEventLayer, type MapWorldEvent } from "../map/world-events.ts
 import { buildNavalLayer, type MapNaval } from "../map/naval.ts"; // See: Minen/Blockade/Konvoi
 import { buildFieldLayer, type MapField } from "../map/fields.ts"; // Felder: Rohstofffelder und Allianzzonen
 import { drawSelection, type HarborOverlay } from "../map/selection.ts"; // Auswahl, aktiver Hafen, Reichweite
-import { drawMovers, type MapMission } from "../map/movers.ts"; // Routen und eigene Verbände
+import { buildRouteLayer, drawMovers, followedMissionIds, type MapMission } from "../map/movers.ts"; // Routen und eigene Verbände
 import { buildFleetLayer, buildIntelLayer, buildMarkLayer, buildPostLayer, type IntelLayer, type MapIntel } from "../map/intel.ts"; // Lagebild: Nebel, Sensoren, Verbände, Posten, Wegpunkte
 
 export type { MapMission };
@@ -73,6 +73,8 @@ export interface HexMapProps {
   showSensors?: boolean;
   /** Lagebild Stufe 2: Wegpunkte bzw. Ziele der Planung (nummeriert), loop = Runde der Patrouille. */
   marks?: { list: { col: number; row: number }[]; loop: boolean } | null;
+  /** Seewege: geplante Route der Missionsplanung (Wegpunkte); fehlt = keine Route gezeichnet. */
+  plannedRoute?: { hexes: [number, number][] } | null;
 }
 
 export interface Scene {
@@ -132,6 +134,7 @@ export function HexMap(props: HexMapProps) {
   onMissionRef.current = props.onMissionTap;
   const ownCount = data.bases.filter((b) => b.own).length;
   const intelKey = JSON.stringify(data.intel); // Lagebild: Nebel nur bei geänderter Sicht neu zeichnen
+  const followedKey = followedMissionIds(missions).join(","); // Seewege: Aufhellung der eigenen Verbände wandert mit
   const harbors = props.harbors ? { ...props.harbors, multi: ownCount > 1 } : null;
   const live = useRef({ selected, home, missions, alert, focus: props.focusMission ?? null, harbors });
   live.current = { selected, home, missions, alert, focus: props.focusMission ?? null, harbors };
@@ -271,7 +274,10 @@ export function HexMap(props: HexMapProps) {
           const now = performance.now();
           if (now - lastMove > 250) {
             lastMove = now;
-            drawMovers(s, live.current);
+            const mv = drawMovers(s, live.current);
+            intelLayer.current?.moving?.(mv.sights); // Nebel um die aktuellen Positionen der eigenen Verbände
+            const hostEl = host.current;
+            if (hostEl && hostEl.dataset.missionRoute !== String(mv.routePoints)) hostEl.dataset.missionRoute = String(mv.routePoints);
             const wl = weatherLayer.current;
             if (wl) wl.update(serverNow(), sc);
           }
@@ -412,13 +418,13 @@ export function HexMap(props: HexMapProps) {
   useEffect(() => {
     const s = scene.current;
     if (!ready || !s || !data.intel) return;
-    const layer = buildIntelLayer(data.intel as MapIntel, mapClip, props.showSensors !== false);
+    const layer = buildIntelLayer(data.intel as MapIntel, mapClip, props.showSensors !== false, new Set(followedKey ? followedKey.split(",").map(Number) : []));
     s.world.addChildAt(layer, s.world.getChildIndex(s.free));
     layer.rescale?.(s.world.scale.x);
     intelLayer.current = layer;
     return () => { intelLayer.current = null; layer.destroy({ children: true }); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, intelKey, props.showSensors]);
+  }, [ready, intelKey, props.showSensors, followedKey]);
 
   // Lagebild Stufe 2: Wegpunkte und Ziele der Planung über den Routen (endet am Kartenrahmen).
   const marksKey = JSON.stringify(props.marks ?? null);
@@ -430,6 +436,18 @@ export function HexMap(props: HexMapProps) {
     return () => { layer.destroy({ children: true }); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, marksKey]);
+
+  // Seewege: Route der Planung unter den Zeichen (endet am Kartenrahmen).
+  const routeKey = JSON.stringify(props.plannedRoute?.hexes ?? null);
+  useEffect(() => {
+    const s = scene.current;
+    if (!ready || !s || !props.plannedRoute || props.plannedRoute.hexes.length < 2) return;
+    const layer = buildRouteLayer(props.plannedRoute.hexes, mapClip);
+    layer.label = "geplante-route";
+    s.world.addChildAt(layer, s.world.getChildIndex(s.markerLayer));
+    return () => { layer.destroy({ children: true }); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, routeKey]);
 
   // Wetterschicht unter den Zeichen (an- und abschaltbar).
   useEffect(() => {
@@ -465,7 +483,7 @@ export function HexMap(props: HexMapProps) {
   };
   return (
     <div className="w-full h-full relative">
-      <div ref={host} className="w-full h-full overflow-hidden select-none" />
+      <div ref={host} className="w-full h-full overflow-hidden select-none" data-planned-route={props.plannedRoute?.hexes.length ?? 0} />
       {/* Eine schmale Knopfleiste am rechten Rand (44 px): Zoom und die Knöpfe des Bildschirms. */}
       <div className="absolute right-1.5 top-3 flex flex-col gap-1">
         <button type="button" className={MAP_BTN} onClick={() => zoomBy(1.5)} aria-label="Hineinzoomen">+</button>
