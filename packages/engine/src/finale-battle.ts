@@ -15,7 +15,7 @@ import {
   finaleWarHp,
   forceHp,
   resolveBattle,
-  strandTroops,
+  settleBattle, victoryRuleOf, // Sieger nach Kampfart (wie der Simulator)
   type AttackerInput,
   type BattleReport,
   type Counts,
@@ -81,7 +81,7 @@ function sectorBattle(ev: WorldEventRow, attacker: AttackerInput, k: number, col
   const seed = randomSeed();
   const res = resolveBattle(attacker, { units: sector.defender, defenses: {} }, balance, seed, battleWeather(col, row, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
-  const { report, destroyed } = strandTroops(res.report, balance);
+  const { report, destroyed } = settleBattle(res.report, balance, victoryRuleOf("weltereignis"));
   const survivors = activeUnits(report.defender.final);
   const destroyedHp = forceHp(sector.defender, balance) - forceHp(survivors, balance);
   const left = afterSector(ev.units as Counts, sector.defender, survivors);

@@ -17,7 +17,7 @@ import {
   routePosition,
   slowestSpeedKmh,
   splitCargo,
-  strandTroops,
+  settleBattle, victoryRuleOf, // Sieger nach Kampfart (wie der Simulator)
   type AttackerInput,
   type Counts,
   type Mission,
@@ -180,7 +180,7 @@ async function fightEscort(tx: Tx, c: ConvoyRow, attacker: AttackerInput, escort
   const escortMods = !src ? {} : from && from.playerId === src.playerId ? await modsOf(tx, from, due) : await modifiersFor(tx, src.playerId, { nowMs: due });
   const res = resolveBattle(attacker, { units: escort, defenses: {}, modifiers: escortMods }, balance, seed, battleWeather(hex.col, hex.row, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
-  const { report, destroyed } = strandTroops(res.report, balance);
+  const { report, destroyed } = settleBattle(res.report, balance, victoryRuleOf("konvoi"));
   const left = activeUnits(report.defender.final);
   if (c.kind === "feld") await fieldEscortLosses(tx, c.missionId, escort, left); // Felder: Verluste der Besatzung
   c.escort = left;

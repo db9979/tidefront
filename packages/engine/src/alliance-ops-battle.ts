@@ -21,7 +21,7 @@ import {
   sharePercents,
   shareLoot,
   splitOutcome,
-  strandTroops,
+  settleBattle, victoryRuleOf, // Sieger nach Kampfart (wie der Simulator)
   type BattleReport,
   type DefenderInput,
   type Mission,
@@ -148,7 +148,7 @@ async function fightEvent(tx: Tx, parts: Part[], joint: ReturnType<typeof combin
   const seed = randomSeed();
   const res = resolveBattle(joint, { units: activeUnits(ev.units), defenses: {} }, balance, seed, battleWeather(col, row, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
-  const { report: raw, destroyed } = strandTroops(res.report, balance);
+  const { report: raw, destroyed } = settleBattle(res.report, balance, victoryRuleOf("weltereignis"));
   const left = activeUnits(raw.defender.final);
   const destroyedHp = forceHp(activeUnits(ev.units), balance) - forceHp(left, balance);
   const loot = damageLoot(ev.data.lootPool ?? {}, ev.data.paid ?? {}, destroyedHp, ev.data.initialHp, Number.MAX_SAFE_INTEGER);

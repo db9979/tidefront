@@ -398,13 +398,17 @@ export interface CombatWeather {
 }
 
 export function combatWeather(point: GeoPoint, ms: number, wb: WeatherBalance): CombatWeather {
-  const w = weatherAt(point, ms, wb);
+  return combatWeatherOf(weatherAt(point, ms, wb), wb);
+}
+
+/** Kampffaktoren aus Wind und Wolken (auch für vorhergesagtes Wetter: Probekampf zur Ankunft). */
+export function combatWeatherOf(w: { wind: number; clouds: number }, wb: WeatherBalance): CombatWeather {
   return {
     air: 1 - wb.airStormPenalty * stormShare(w.wind, wb),
     strike: 1 - wb.cloudStrikePenalty * w.clouds,
     wind: w.wind,
     clouds: w.clouds,
-    storm: w.storm,
+    storm: w.wind >= wb.stormFrom,
   };
 }
 

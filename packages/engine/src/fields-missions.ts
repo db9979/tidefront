@@ -4,7 +4,7 @@
 // (launchMission), views.ts (missionPreview) und handlers.ts (missionArrive). Regeln: docs/REGELN-FELDER.md.
 import { eq } from "drizzle-orm";
 import {
-  activeUnits, addCounts, clampEscort, fieldDefenders, garrisonCheck, guardDefender, resolveBattle, splitGarrison, strandTroops,
+  activeUnits, addCounts, clampEscort, fieldDefenders, garrisonCheck, guardDefender, resolveBattle, splitGarrison, settleBattle, victoryRuleOf,
   combineModifiers, type AttackerInput, type Counts, type DefenderInput, type Mission, type Modifiers,
 } from "@tidefront/game-core";
 import { hexDistanceKm } from "@tidefront/world";
@@ -208,7 +208,7 @@ export async function fieldArrive(tx: Tx, m: MissionRowLike, plan: Mission, orig
       : guardDefender(defenderUnits);
     const res = resolveBattle(attacker, defender, balance, seed, battleWeather(field.col, field.row, due));
     if (!res.ok) throw new Error(`battle: ${res.code}`);
-    const s = strandTroops(res.report, balance);
+    const s = settleBattle(res.report, balance, victoryRuleOf("feld"));
     destroyed = s.destroyed;
     survivors = activeUnits(s.report.attacker.final);
     defenderLeft = activeUnits(s.report.defender.final);

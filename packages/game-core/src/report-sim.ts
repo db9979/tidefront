@@ -7,6 +7,7 @@ import type { AttackerInput, DefenderInput, Side } from "./types-combat.ts";
 import type { CombatWeather } from "./weather.ts";
 import type { BattleSetup, BattleSetupSide } from "./battle-setup.ts";
 import type { Modifiers } from "./modifiers.ts";
+import { victoryRuleOf, type LootRule, type VictoryRule } from "./battle-victory.ts";
 
 export interface ReportSimPreset {
   /** kampf: echter Kampf nachgestellt; aufklaerung: aufgeklärtes Ziel, Angreifer = eigener Bestand. */
@@ -21,6 +22,11 @@ export interface ReportSimPreset {
   /** Mittleres Kriegsglück je Seite im echten Kampf (Faktor), null ohne Würfe. */
   luck: { attacker: number; defender: number } | null;
   winner: Side | null;
+  /** Siegregel der Kampfart (wie der Server) und Beuteregel für den Simulator. */
+  rule: VictoryRule;
+  loot: LootRule;
+  /** Bestände des Ziels unbekannt und eigene Seite verteidigt: die Oberfläche setzt die heutigen eigenen Bestände ein. */
+  ownStockNeeded?: boolean;
   /** Transparenz: was geschätzt oder unbekannt ist. */
   notes: string[];
 }
@@ -66,22 +72,24 @@ export function reportSimPreset(
   kind: string,
   role: string,
   data: Obj,
-  balance: Pick<Balance, "defenses">,
+  balance: Pick<Balance, "defenses"> & Partial<Pick<Balance, "npcUnits">>,
   opts: { opponentIsPlayer?: boolean } = {},
 ): ReportSimPreset | null {
   const mine: Side = role === "defender" ? "defender" : "attacker";
   const opp: Side = mine === "attacker" ? "defender" : "attacker";
   const names: [string, string] = [typeof data.attackerName === "string" ? data.attackerName : "Angreifer", typeof data.defenderName === "string" ? data.defenderName : "Verteidiger"];
   const battle = obj(data.battle);
-  if (battle && kind !== "spionage") return fromBattle(battle, data, mine, opp, names, balance, !!opts.opponentIsPlayer);
+  if (battle && kind !== "spionage") return fromBattle(kind, battle, data, mine, opp, names, balance, !!opts.opponentIsPlayer);
   return fromScout(data, names);
 }
 
-function fromBattle(battle: Obj, data: Obj, mine: Side, opp: Side, names: [string, string], balance: Pick<Balance, "defenses">, oppPlayer: boolean): ReportSimPreset | null {
+function fromBattle(kind: string, battle: Obj, data: Obj, mine: Side, opp: Side, names: [string, string], balance: Pick<Balance, "defenses"> & Partial<Pick<Balance, "npcUnits">>, oppPlayer: boolean): ReportSimPreset | null {
   const aUnits = counts(obj(battle.attacker)?.before);
   const dAll = counts(obj(battle.defender)?.before);
   if (!hasAny(aUnits)) return null;
   const notes: string[] = [];
+  // Kartell (nur Kartell-Einheiten): hat keine Forschung, kein Admiral – kein Hinweis auf fehlende Modifikatoren.
+  const cartel = !!balance.npcUnits && Object.keys(aUnits).every((id) => Object.hasOwn(balance.npcUnits!, id));
   const stored = obj(battle.setup) as BattleSetup | null;
   let a: BattleSetupSide;
   let d: BattleSetupSide;
@@ -100,7 +108,7 @@ function fromBattle(battle: Obj, data: Obj, mine: Side, opp: Side, names: [strin
       weakTarget: old.weakTarget === true || undefined,
       priorAttacksInWindow: typeof old.priorAttacksInWindow === "number" ? old.priorAttacksInWindow : undefined,
     } : {};
-    if (!old || !old.modifiers) notes.push("Modifikatoren des Angreifers nicht gespeichert – mit 0 gerechnet.");
+    if ((!old || !old.modifiers) && !cartel) notes.push("Modifikatoren des Angreifers nicht gespeichert – mit 0 gerechnet.");
     d = typeof data.protectedPerResource === "number" ? { protectedPerResource: data.protectedPerResource, shareLoot: true } : {};
     notes.push("Forschung, Admiral und Versorgung des Verteidigers nicht gespeichert – mit 0 gerechnet.");
   }
@@ -114,11 +122,28 @@ function fromBattle(battle: Obj, data: Obj, mine: Side, opp: Side, names: [strin
   }
   if (stored && sides[mine].modifiers) notes.push("Deine Modifikatoren (Forschung, Admiral, Veteranen) wie im echten Kampf.");
   const loot = counts(battle.loot);
+  const winner = battle.winner === "attacker" || battle.winner === "defender" ? battle.winner : null;
+  const rule = victoryRuleOf(kind, data);
+  let lootRule: LootRule = { kind: "kampf" };
   let fixedLoot: ResourceMap | undefined = sides.defender.fixedLoot;
-  if (!fixedLoot) {
-    // Bestände des Ziels sind nicht gespeichert: die tatsächliche Beute dient als feste Beute.
-    fixedLoot = loot as ResourceMap;
-    if (hasAny(loot) || sides.defender.shareLoot) notes.push("Bestände des Ziels nicht gespeichert – Beute mit der tatsächlichen Beute angesetzt.");
+  let fixedLootFinal = false;
+  let ownStockNeeded = false;
+  if (rule === "vernichtung") {
+    lootRule = destroyLoot(data, loot, notes);
+  } else if (!fixedLoot) {
+    if (hasAny(loot)) {
+      // Bestände des Ziels sind nicht gespeichert: die tatsächliche Beute dient als feste Beute (schon mit Beute-Boni).
+      fixedLoot = loot as ResourceMap;
+      fixedLootFinal = true;
+      notes.push("Bestände des Ziels nicht gespeichert – Beute mit der tatsächlichen Beute angesetzt.");
+    } else if (winner === "attacker" || mine === "attacker") {
+      // Verlorener Überfall (oder Sieg ohne Beute): Beute nicht ableitbar – unbekannt statt 0.
+      lootRule = { kind: "unbekannt" };
+      if (sides.defender.shareLoot || mine === "attacker") notes.push("Bestände des Ziels nicht gespeichert – Beute unbekannt.");
+    } else if (sides.defender.shareLoot) {
+      // Abwehr (eigener Hafen): die Oberfläche rechnet mit den heutigen eigenen Beständen.
+      ownStockNeeded = true;
+    }
   }
   const weather = obj(battle.weather) as CombatWeather | null;
   if (!weather) notes.push("Wetter nicht gespeichert – ohne Wettereinfluss gerechnet.");
@@ -134,7 +159,8 @@ function fromBattle(battle: Obj, data: Obj, mine: Side, opp: Side, names: [strin
   const split = splitForces(dAll, balance);
   const defender: DefenderInput = {
     ...split,
-    fixedLoot,
+    ...(fixedLoot ? { fixedLoot } : {}),
+    ...(fixedLootFinal ? { fixedLootFinal: true } : {}),
     ...(sides.defender.versorgungsmangel ? { versorgungsmangel: true } : {}),
     ...(sides.defender.modifiers ? { modifiers: sides.defender.modifiers } : {}),
     ...(sides.defender.protectedPerResource !== undefined ? { protectedPerResource: sides.defender.protectedPerResource } : {}),
@@ -142,8 +168,8 @@ function fromBattle(battle: Obj, data: Obj, mine: Side, opp: Side, names: [strin
   if (sides.attacker.versorgungsmangel || sides.defender.versorgungsmangel) {
     notes.push(`Versorgungsmangel eingerechnet (${[sides.attacker.versorgungsmangel ? names[0] : null, sides.defender.versorgungsmangel ? names[1] : null].filter(Boolean).join(", ")}).`);
   }
-  const winner = battle.winner === "attacker" || battle.winner === "defender" ? battle.winner : null;
-  return { source: "kampf", mine, names, attacker, defender, ...(weather ? { weather } : {}), luck: avgLuck(battle.phases), winner, notes };
+  if (rule === "vernichtung") notes.push("Sieg wie im echten Kampf: alle Einheiten des Gegners vernichtet (Truppen ohne Schiffe ertrinken).");
+  return { source: "kampf", mine, names, attacker, defender, ...(weather ? { weather } : {}), luck: avgLuck(battle.phases), winner, rule, loot: lootRule, ...(ownStockNeeded ? { ownStockNeeded } : {}), notes };
 }
 
 function fromScout(data: Obj, names: [string, string]): ReportSimPreset | null {
@@ -153,7 +179,7 @@ function fromScout(data: Obj, names: [string, string]): ReportSimPreset | null {
     return {
       source: "aufklaerung", mine: "attacker", names: ["Dein Verband", `Piratennest Stufe ${String(nest.level ?? "?")}`], attacker: null,
       defender: { units: counts(garrison.units), defenses: counts(garrison.defenses), fixedLoot: counts(garrison.loot) as ResourceMap },
-      luck: null, winner: null, notes: ["Besatzung laut Aufklärung; Angreifer: dein Bestand daheim mit deinen aktuellen Modifikatoren."],
+      luck: null, winner: null, rule: "landung", loot: { kind: "kampf" }, notes: ["Besatzung laut Aufklärung; Angreifer: dein Bestand daheim mit deinen aktuellen Modifikatoren."],
     };
   }
   const scout = obj(data.scout);
@@ -169,6 +195,36 @@ function fromScout(data: Obj, names: [string, string]): ReportSimPreset | null {
       units, defenses, resources: counts(scout.resources) as ResourceMap,
       ...(typeof scout.protectedPerResource === "number" ? { protectedPerResource: scout.protectedPerResource } : {}),
     },
-    luck: null, winner: null, notes,
+    luck: null, winner: null, rule: "landung", loot: { kind: "kampf" }, notes,
   };
+}
+
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+const addRes = (a: ResourceMap, b: ResourceMap): ResourceMap => {
+  const out: ResourceMap = { ...a };
+  for (const [r, v] of Object.entries(b)) out[r] = (out[r] ?? 0) + v;
+  return out;
+};
+
+/** Beuteregel der Kämpfe „Gegner vernichtet“ aus den Berichtsdaten (Weltereignis, Finale, Konvoi; Feld/Blockade: keine). */
+function destroyLoot(data: Obj, loot: Counts, notes: string[]): LootRule {
+  const ev = obj(data.worldEvent);
+  if (ev) {
+    if (ev.kind === "finale") return { kind: "finale" };
+    if (ev.kind === "schatzschiff") {
+      if (ev.destroyed === true && hasAny(loot)) return { kind: "beiVernichtung", loot: loot as ResourceMap };
+      notes.push("Ladung des Schatzschiffs unbekannt – Beute nicht gerechnet.");
+      return { kind: "unbekannt" };
+    }
+    const hp = num(ev.destroyedHp);
+    if (hp > 0 && hasAny(loot)) {
+      notes.push("Beute je vernichtetem Lebenspunkt aus dem echten Kampf geschätzt (Beutepool und Laderaum begrenzen).");
+      return { kind: "jeLp", perHp: Object.fromEntries(Object.entries(loot).map(([r, v]) => [r, v / hp])) };
+    }
+    notes.push("Beutepool des Ereignisses unbekannt – Beute nicht gerechnet.");
+    return { kind: "unbekannt" };
+  }
+  const convoy = obj(data.convoy);
+  if (convoy && convoy.by === "spieler") return { kind: "konvoi", cargo: addRes(counts(convoy.cargoLeft) as ResourceMap, counts(convoy.lost) as ResourceMap) };
+  return { kind: "keine" };
 }

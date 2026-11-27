@@ -5,11 +5,11 @@ import { and, eq, like, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
 import { nestSites, isCoast, hexCenter, hexDistanceKm, COLS, ROWS } from "@tidefront/world";
 import {
-  buildRoute, productionRates, settle, storageCapacity, worldEventsBalance,
-  type BaseState, type WorldEventKind,
+  buildRoute, productionRates, reportSimPreset, resolveBattle, settle, settleBattle, simulateBattle, storageCapacity, victoryRuleOf, worldEventsBalance,
+  type Balance, type BaseState, type WorldEventKind,
 } from "@tidefront/game-core";
 import {
-  balance, chooseBase, computeStandings, ensureWorldEventPlanner, launchMission, missionPreview, processDue, register,
+  balance, chooseBase, computeStandings, reportGet, ensureWorldEventPlanner, launchMission, missionPreview, processDue, register,
   runningSeason, seed, siegeEffects, spawnWorldEvent, trade, worldEventsView, type Engine,
 } from "../src/index.ts";
 import { addSecondHarbor } from "./multi-base.ts";
@@ -359,4 +359,32 @@ test("Saisonende räumt Ereignisse ab, der Planer setzt in der neuen Saison neu 
   assert.equal(pending.length, 0);
   const at = await ensureWorldEventPlanner(db, Date.now());
   assert.equal(at, s2.startsAt.getTime() + w().firstSpawnAfterHours * HOUR);
+});
+
+test("Simulator wie Server (F1): Großflotte zerschlagen – gleiche Sieger-Funktion, gleicher Seed, gleiches Ergebnis", async () => {
+  const a = await newPlayer("SimZiel", 120);
+  const c = await newPlayer("SimJaeger", coastNear(a, 1));
+  const id = await spawn("grossflotte", a.baseId);
+  const e = await eventRow(id);
+  const boats = (e.units as Record<string, number>).schnellboot;
+  const fleet = { korvette: Math.max(30, boats * 3), zerstoerer: Math.max(10, boats), landungsschiff: 2 };
+  await arm(c.baseId, fleet);
+  const m = await launchMission(engine, c.playerId, key(), { type: "ueberfall", units: fleet, col: 0, row: 0, eventId: id });
+  assert.equal(m.ok, true, JSON.stringify(m));
+  await runUntil((m as { arriveAtMs: number }).arriveAtMs + 1000);
+  const [row] = await db.select().from(tables.battleReport).where(and(eq(tables.battleReport.kind, "weltereignis"), eq(tables.battleReport.attackerPlayerId, c.playerId)));
+  assert.equal(row.winner, "attacker", "Großflotte zerschlagen");
+  const rep = await reportGet(engine, c.playerId, row.id);
+  const core = balance as unknown as Balance;
+  const p = reportSimPreset(rep!.kind, rep!.role, rep!.data as Record<string, unknown>, core);
+  assert.ok(p && p.attacker);
+  assert.equal(p.rule, victoryRuleOf("weltereignis"));
+  // Nachgestellt mit dem Seed des echten Kampfs: dieselbe Sieger-Funktion ergibt denselben Sieger.
+  const raw = resolveBattle(p.attacker, p.defender, core, row.seed!, p.weather);
+  assert.ok(raw.ok);
+  assert.equal(raw.report.winner, "defender", "nach der Landungsregel wäre es eine Niederlage");
+  assert.equal(settleBattle(raw.report, core, p.rule).report.winner, row.winner);
+  // Simulator: Siegchance > 0 (vorher 0 % bei „Großflotte zerschlagen“), Beute je Lebenspunkt.
+  const sim = simulateBattle(p.attacker, p.defender, core, { rule: p.rule, loot: p.loot, ...(p.weather ? { weather: p.weather } : {}) });
+  assert.ok(sim.ok && sim.stats.winRate > 0.5, JSON.stringify(sim.ok && sim.stats.winRate));
 });

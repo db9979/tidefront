@@ -8,7 +8,7 @@ import {
   blockadeOf,
   blockadeProductionFactor,
   resolveBattle,
-  strandTroops,
+  settleBattle, victoryRuleOf, // Sieger nach Kampfart (wie der Simulator)
   type AttackerInput,
   type Counts,
   type Mission,
@@ -245,7 +245,7 @@ export async function blockadeAttackArrive(tx: Tx, m: MissionRowLike, plan: Miss
   const seed = randomSeed();
   const res = resolveBattle(attacker, { units: activeUnits(b.units as Counts), defenses: {}, modifiers: defMods }, balance, seed, battleWeather(b.col, b.row, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
-  const { report: raw, destroyed } = strandTroops(res.report, balance);
+  const { report: raw, destroyed } = settleBattle(res.report, balance, victoryRuleOf("blockadekampf"));
   const report = { ...raw, loot: {} };
   const left = activeUnits(raw.defender.final);
   await tx.update(tables.blockade).set({ units: left }).where(eq(tables.blockade.id, b.id));

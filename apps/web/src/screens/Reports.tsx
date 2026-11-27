@@ -119,6 +119,7 @@ const INTEL_OPS = ["posten", "patrouille", "sichtung", "satellit"];
 function ReportDetail({ id, openSim, onBack }: { id: number; openSim: boolean; onBack: () => void }) {
   const q = useQuery(trpc.report.get.queryOptions({ id }));
   const [sim, setSim] = useState(openSim);
+  const [missing, setMissing] = useState(false); // „Was hätte gefehlt?“
   if (!q.data) return q.isLoading ? <Loading /> : <p>Bericht nicht gefunden.</p>;
   const r = q.data;
   const d = r.data as Record<string, unknown>;
@@ -149,7 +150,7 @@ function ReportDetail({ id, openSim, onBack }: { id: number; openSim: boolean; o
       </div>
       {!blocks.length && <p className="text-xs mono text-slate-400 mb-3">{fmtTime(r.atMs)}</p>}{/* sonst im Kopf */}
       <ReportBlocks blocks={blocks} only={covered ? undefined : ["banner"]} />
-      <ReportActions r={{ id: r.id, kind: r.kind, role: r.role, data: d, simulable: r.simulable }} onSim={() => setSim(true)} />
+      <ReportActions r={{ id: r.id, kind: r.kind, role: r.role, data: d, simulable: r.simulable }} onSim={() => { setMissing(false); setSim(true); }} onMissing={() => { setMissing(true); setSim(true); }} />
       {r.role === "attacker" && r.kind !== "kartell" && r.kind !== "spionage" && r.kind !== "sammelangriff" && !d.allianceRaid && !r.kind.startsWith("weltereignis") && !NAVAL_KINDS.includes(r.kind) && r.kind !== "feld" && <RepeatButton reportId={r.id} />}
       {INTEL_OPS.includes(r.kind) && <IntelOpsReport d={d} />}
       {battle ? <PvpReportNote d={d} /> : null}{/* PvP: Kopfgeld, Mutfaktor */}
@@ -193,7 +194,7 @@ function ReportDetail({ id, openSim, onBack }: { id: number; openSim: boolean; o
           <p className="mono">Seed {r.seed} · Balance {r.balanceVersion}</p>
         </details>
       )}
-      {sim && <ReportSimSheet report={{ kind: r.kind, role: r.role, data: d, opponentIsPlayer: r.opponentIsPlayer }} title={r.title} onClose={() => setSim(false)} />}
+      {sim && <ReportSimSheet report={{ id: r.id, kind: r.kind, role: r.role, data: d, opponentIsPlayer: r.opponentIsPlayer }} title={r.title} missing={missing} onClose={() => setSim(false)} />}
     </div>
   );
 }

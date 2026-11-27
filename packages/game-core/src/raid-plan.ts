@@ -6,11 +6,16 @@ import { nestDefender } from "./pirates.ts";
 import { liveNestDefender, midRoll, nestVaries, rollFactors, sampleRolls, stateOf, worstRoll, type NestRoll } from "./nest-living.ts";
 import type { AttackerInput, Balance, Counts, DefenderInput } from "./types.ts";
 import type { Modifiers } from "./modifiers.ts";
+import type { CombatWeather } from "./weather.ts";
 
 /** Zielsicherheit des Vorschlags (Anteil gewonnener Probekämpfe; 90 %, damit die Streuung des echten Kampfes den ersten Überfall nicht unter ~85 % drückt). */
 export const RAID_PLAN_TARGET = 0.9;
 /** Probekämpfe je Prüfung (fester Seed je Lauf: gleiche Eingabe, gleiches Ergebnis; 100, damit die Halbierungssuche nicht auf wenige glückliche Seeds passt). */
 export const RAID_PLAN_RUNS = 100;
+
+/** Prüfung des Vorschlags mit anderen Seeds (ab diesem Index, so viele Läufe): die Suche passt sich nicht an ihre Seeds an. */
+export const RAID_PLAN_VERIFY_OFFSET = 10000;
+export const RAID_PLAN_VERIFY_RUNS = 200;
 
 /** Fester Seed je Durchlauf (wie der Simulator im Browser). */
 export const raidPlanSeed = (i: number): number => Math.imul(i + 1, 0x9e3779b1) >>> 0;
@@ -25,6 +30,10 @@ export interface RaidPlanOpts {
    * Spanne (Lauf i gegen defenders[i mod n], je ein Seed). Fehlt es: Stufe wie im Handbuch (Mitte).
    */
   defenders?: DefenderInput[];
+  /** Wetter am Ziel (Vorhersage zur Ankunft), sonst ohne Wetter. */
+  weather?: CombatWeather;
+  /** Erster Seed-Index (Prüf-Seeds). */
+  seedOffset?: number;
 }
 
 /** Verteidiger für den Probekampf: „range“ Würfe aus der Verteilung, „worst“/„best“ ungünstigster/günstigster Wurf, „mid“ Mitte. */
@@ -57,7 +66,7 @@ export function nestWinRate(units: Counts, level: number, balance: Balance, opts
   const att: AttackerInput = { units, ...(opts.versorgungsmangel ? { versorgungsmangel: true } : {}), ...(opts.modifiers ? { modifiers: opts.modifiers } : {}) };
   let wins = 0;
   for (let i = 0; i < runs; i++) {
-    const r = resolveBattle(att, defs[i % defs.length], balance, raidPlanSeed(i));
+    const r = resolveBattle(att, defs[i % defs.length], balance, raidPlanSeed(i + (opts.seedOffset ?? 0)), opts.weather);
     if (!r.ok) return null;
     if (r.report.winner === "attacker") wins++;
   }
@@ -121,8 +130,31 @@ export function smallestWinningRaid(full: Counts, level: number, balance: Balanc
   };
   for (const id of order) shrink(id);
   for (const id of order.filter(carrier)) shrink(id); // Truppen sind weniger geworden: Landungsschiffe nachziehen
-  const out = clean(cur);
-  return { units: out, winRate: rate(out), enough: true };
+  return verifiedPlan(clean(cur), units, level, balance, opts, target);
+}
+
+/**
+ * Prüft den Vorschlag gegen andere Seeds (RAID_PLAN_VERIFY_RUNS ab RAID_PLAN_VERIFY_OFFSET): Die Halbierungssuche
+ * landet knapp über dem Ziel ihrer eigenen Seeds; hält der Vorschlag gegen frische Würfe nicht, wächst er zwischen
+ * Vorschlag und vollem Bestand (Halbierung über den Anteil), bis er hält. Siegquote im Ergebnis: die geprüfte.
+ */
+function verifiedPlan(cur: Counts, full: Counts, level: number, balance: Balance, opts: RaidPlanOpts, target: number): RaidPlan {
+  const vopts = { ...opts, runs: RAID_PLAN_VERIFY_RUNS, seedOffset: RAID_PLAN_VERIFY_OFFSET };
+  const check = (c: Counts) => nestWinRate(c, level, balance, vopts) ?? 0;
+  const at = (t: number): Counts => clean(Object.fromEntries(Object.keys(full).map((id) => [id, Math.min(full[id], Math.ceil((cur[id] ?? 0) + t * (full[id] - (cur[id] ?? 0)) - 1e-9))])));
+  const first = check(cur);
+  if (first >= target) return { units: cur, winRate: first, enough: true };
+  const top = check(full);
+  if (top < target) return { units: full, winRate: top, enough: false };
+  let lo = 0, hi = 1;
+  for (let k = 0; k < 6; k++) {
+    const mid = (lo + hi) / 2;
+    const c = at(mid);
+    if (troopsFit(c, balance) && check(c) >= target) hi = mid;
+    else lo = mid;
+  }
+  const out = at(hi);
+  return { units: out, winRate: check(out), enough: true };
 }
 
 /**
