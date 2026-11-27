@@ -46,7 +46,7 @@ async function lockOwnAdmiral(ctx: Ctx, admiralId: number): Promise<AdmiralRow> 
 /** Taler abbuchen (mit Journal wie im Handel). Code admiral_funds. */
 async function payCredits(ctx: Ctx, amount: number, tradeId: string): Promise<void> {
   if (amount <= 0) return;
-  const [p] = await ctx.tx.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, ctx.playerId)).for("update");
+  const [p] = await ctx.tx.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, ctx.playerId)).for("no key update");
   const trader = p.trader as { credits: number };
   if (trader.credits + 1e-9 < amount) fail("admiral_funds");
   await ctx.tx.update(tables.player).set({ trader: { ...trader, credits: cents(trader.credits - amount) } }).where(eq(tables.player.id, ctx.playerId));

@@ -3,7 +3,7 @@
 // Richtwert-Steuerung: Zielversatz = Summe der Einflüsse (gedeckelt ±maxTotal); der effektive Versatz folgt ihm
 // höchstens maxChangePerHour je Stunde. Gespeichert wird nur der zuletzt fortgeschriebene Stand (server_setting
 // "market_ref_offsets"); Börse, Angebot und Handel schreiben ihn zur Anfrage hin lazy fort (deterministisch).
-import { and, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { market as marketCore } from "@tidefront/game-core";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, type Engine, type NoticeJob } from "./context.ts";
@@ -73,30 +73,61 @@ export async function upsertNews(tx: Tx, spec: NewsSpec, nowMs: number): Promise
   if (last && live && Math.abs(last.pct - pct) < 1e-9) {
     if (last.endsAt.getTime() === spec.endMs && last.fadeMinutes === fadeMinutes && last.reason === spec.reason) return false;
     await tx.update(tables.marketNews)
-      .set({ endsAt: new Date(spec.endMs), fadeMinutes, reason: spec.reason })
+      .set({ endsAt: new Date(spec.endMs), fadeMinutes, reason: spec.reason, effectiveUntil: until(spec.endMs, fadeMinutes) })
       .where(eq(tables.marketNews.id, last.id));
     return true;
   }
   let changed = false;
   if (last && live) {
+    const end = Math.min(nowMs, last.endsAt.getTime());
     await tx.update(tables.marketNews)
-      .set({ endsAt: new Date(Math.min(nowMs, last.endsAt.getTime())), fadeMinutes: 0 })
+      .set({ endsAt: new Date(end), fadeMinutes: 0, effectiveUntil: new Date(end) })
       .where(eq(tables.marketNews.id, last.id));
     changed = true;
   }
   if (Math.abs(pct) < cfg.minPct) return changed;
+  // Hotfix 0.38.1 (AN-02): eine Nachricht, die schon ausgeklungen wäre (beendetes Ereignis im Abgleich), nicht neu anlegen.
+  if (spec.endMs + fadeMinutes * MIN_MS <= nowMs) return changed;
   await tx.insert(tables.marketNews).values({
     key: spec.key, source: spec.source, resource: spec.resource, pct, reason: spec.reason,
-    startsAt: new Date(spec.startMs), endsAt: new Date(spec.endMs), fadeMinutes,
+    startsAt: new Date(spec.startMs), endsAt: new Date(spec.endMs), fadeMinutes, effectiveUntil: until(spec.endMs, fadeMinutes),
   });
   return true;
+}
+
+/** Ende der Wirkung (Spalte effective_until). */
+function until(endMs: number, fadeMinutes: number): Date {
+  return new Date(endMs + fadeMinutes * MIN_MS);
+}
+
+/** Wirkung endet nach `ms` (Index market_news_live; Zeilen von vor dem Hotfix ohne effective_until wie bisher). */
+function liveAfter(ms: number) {
+  return or(
+    gt(tables.marketNews.effectiveUntil, new Date(ms)),
+    and(isNull(tables.marketNews.effectiveUntil), sql`${tables.marketNews.endsAt} + ${tables.marketNews.fadeMinutes} * interval '1 minute' > ${tsParam(ms)}`),
+  )!;
+}
+
+/**
+ * Wartung (Hotfix 0.38.1, AN-02): effective_until für alte Zeilen nachtragen und Nachrichten löschen, die seit mehr als
+ * keepHours ausgeklungen und älter sind (market.news zeigt 24 Stunden zurück). Rückgabe: gelöschte Zeilen.
+ */
+export async function pruneMarketNews(db: DbOrTx, nowMs: number, keepHours = 48): Promise<number> {
+  await db.update(tables.marketNews)
+    .set({ effectiveUntil: sql`${tables.marketNews.endsAt} + ${tables.marketNews.fadeMinutes} * interval '1 minute'` })
+    .where(isNull(tables.marketNews.effectiveUntil));
+  const cut = new Date(nowMs - keepHours * HOUR_MS);
+  const gone = await db.delete(tables.marketNews)
+    .where(and(lt(tables.marketNews.effectiveUntil, cut), lt(tables.marketNews.createdAt, cut)))
+    .returning({ id: tables.marketNews.id });
+  return gone.length;
 }
 
 /** Beendet alle noch wirkenden Zeilen eines Anlasses sofort (z. B. Knappheit bei weniger als 3 aktiven Häfen). */
 export async function closeNews(tx: Tx, key: string, nowMs: number): Promise<boolean> {
   const rows = await tx
     .update(tables.marketNews)
-    .set({ endsAt: new Date(nowMs), fadeMinutes: 0 })
+    .set({ endsAt: new Date(nowMs), fadeMinutes: 0, effectiveUntil: new Date(nowMs) })
     .where(and(eq(tables.marketNews.key, key), gt(tables.marketNews.endsAt, new Date(nowMs))))
     .returning({ id: tables.marketNews.id });
   return rows.length > 0;
@@ -107,7 +138,7 @@ async function liveRows(db: DbOrTx, nowMs: number): Promise<NewsRow[]> {
   return db
     .select()
     .from(tables.marketNews)
-    .where(sql`${tables.marketNews.endsAt} + ${tables.marketNews.fadeMinutes} * interval '1 minute' > ${tsParam(nowMs)}`);
+    .where(liveAfter(nowMs));
 }
 
 function parseOffsets(raw: string | null): marketCore.RefOffsets | null {
@@ -167,7 +198,7 @@ export async function marketNewsView(db: DbOrTx, nowMs = Date.now()) {
       .select()
       .from(tables.marketNews)
       .where(or(
-        sql`${tables.marketNews.endsAt} + ${tables.marketNews.fadeMinutes} * interval '1 minute' > ${tsParam(nowMs - DAY_MS)}`,
+        liveAfter(nowMs - DAY_MS),
         gt(tables.marketNews.createdAt, since),
       ))
       .orderBy(desc(tables.marketNews.startsAt), desc(tables.marketNews.id))

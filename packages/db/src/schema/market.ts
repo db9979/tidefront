@@ -73,4 +73,12 @@ export const marketNews = pgTable("market_news", {
   /** Push „Marktnachricht“ verschickt (oder bewusst übersprungen). */
   pushedAt: ts("pushed_at"),
   createdAt: ts("created_at").notNull().defaultNow(),
-}, (t) => [index("market_news_key").on(t.key, t.resource, t.id), index("market_news_ends").on(t.endsAt)]);
+  /**
+   * Hotfix 0.38.1 (AN-02): Wirkung endet = ends_at + fade_minutes (vom Server bei jedem Schreiben gesetzt), damit die
+   * wirkenden Zeilen über einen Index gefunden werden. null nur bei Zeilen von vor dem Hotfix (Wartung trägt nach).
+   */
+  effectiveUntil: ts("effective_until"),
+}, (t) => [
+  index("market_news_key").on(t.key, t.resource, t.id), index("market_news_ends").on(t.endsAt),
+  index("market_news_live").on(t.effectiveUntil),
+]);
