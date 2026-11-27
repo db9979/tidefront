@@ -6,8 +6,10 @@ import {
   harborMarketUnlocked,
   startTraining,
   storageCapacity,
+  trainingCost,
   type BaseState,
   type Modifiers,
+  type ResourceMap,
 } from "@tidefront/game-core";
 import { hexDistanceKm } from "@tidefront/world";
 import { tables } from "@tidefront/db";
@@ -94,25 +96,45 @@ export async function offersTurn(c: TurnCtx, base: Base, mods: Modifiers): Promi
   if (r.ok) c.log.push(`Handel: Angebot ${giveQty} ${give} gegen ${wantQty} ${want} eingestellt.`);
 }
 
-/** Gründung: Kolonieschiff bauen lassen und zu einem freien Küstenfeld schicken (ab einer Stufe der Kommandozentrale). */
-export async function expansionTurn(c: TurnCtx, bases: Base[], mods: Map<number, Modifiers>): Promise<void> {
+/** Hinweise der Gründung an die Wirtschaft des Heimathafens (bots-plan.ts: Rücklage, Vorrang, freie Werft). */
+export interface ExpansionPlan { reserve?: ResourceMap; boost?: string[]; keepFree?: string[] }
+
+/**
+ * Gründung: ab expandFromCommandLevel ein Kolonieschiff bauen und zu einem freien Küstenfeld schicken. Läuft vor der
+ * Wirtschaft des Zugs: fehlen Werft- oder Hafenkommandantur-Stufe, bekommen sie Vorrang (schon eine Stufe der
+ * Kommandozentrale vorher); fehlen Rohstoffe, werden die Kosten zurückgelegt und die Werft bleibt frei (früher
+ * belegten Korvetten die Werft und nahmen die Rohstoffe – kein Bot gründete einen zweiten Hafen).
+ */
+export async function expansionTurn(c: TurnCtx, bases: Base[], mods: Map<number, Modifiers>): Promise<ExpansionPlan> {
   const home = bases.find((b) => b.isHome);
   const exp = balance.expansion;
-  if (!home || !exp) return;
-  if ((home.state.buildings.kommandozentrale ?? 0) < c.cfg.expandFromCommandLevel) return;
-  if (bases.length >= allowedBases(home.state, balance)) return;
+  if (!home || !exp) return {};
+  const kz = home.state.buildings.kommandozentrale ?? 0;
+  if (kz < c.cfg.expandFromCommandLevel - 1) return {};
+  // Eine Stufe vor der Schwelle wird nur vorbereitet (der zweite Hafen ist dann meist noch nicht freigeschaltet).
+  const prep = kz < c.cfg.expandFromCommandLevel;
+  if (bases.length >= (prep ? Math.max(2, allowedBases(home.state, balance)) : allowedBases(home.state, balance))) return {};
   const pending = await c.engine.db.select({ id: tables.mission.id }).from(tables.mission)
     .where(and(eq(tables.mission.playerId, c.bot.id), eq(tables.mission.type, FOUNDING_TYPE), inArray(tables.mission.status, ["outbound"])));
-  if (pending.length > 0) return;
+  if (pending.length > 0) return {};
+  const ship = balance.units[exp.colonyShip];
+  const yard = ship?.builtIn ?? "werft";
   const withShip = bases.find((b) => (b.state.units[exp.colonyShip] ?? 0) > 0);
   if (!withShip) {
     const queued = bases.some((b) => b.state.trainingQueue.some((o) => o.id === exp.colonyShip));
-    if (queued) return;
+    if (queued) return {};
+    // Vorbereitung: Werft und Hafenkommandantur auf die nötige Stufe, Lager groß genug für das Schiff.
+    const boost: string[] = [];
+    if ((home.state.buildings[yard] ?? 0) < (ship?.requiresLevel ?? 1)) boost.push(yard);
+    if ((home.state.buildings.hafenkommandantur ?? 0) < exp.harborLevelForShip) boost.push("hafenkommandantur");
+    const cost = trainingCost(exp.colonyShip, 1, balance);
+    if (Object.values(cost).some((n) => n > storageCapacity(home.state, balance, mods.get(home.id)))) boost.push("lagerkomplex");
+    if (boost.length > 0 || prep) return { boost };
     const r = startTraining(home.state, exp.colonyShip, 1, c.nowMs, balance, mods.get(home.id));
-    if (!r.ok) return;
+    if (!r.ok) return r.code === "insufficient_resources" || r.code === "queue_busy" ? { reserve: cost, keepFree: [yard] } : {};
     const t = await train(c.engine, c.bot.id, c.key("colonyship"), exp.colonyShip, 1, home.id);
     if (t.ok) c.log.push("Kolonieschiff in Auftrag gegeben.");
-    return;
+    return {};
   }
   const taken = new Set((await c.engine.db.select({ col: tables.base.col, row: tables.base.row }).from(tables.base)).map((b) => `${b.col},${b.row}`));
   const sites = coastFields()
@@ -128,7 +150,8 @@ export async function expansionTurn(c: TurnCtx, bases: Base[], mods: Map<number,
     const r = await launchMission(c.engine, c.bot.id, c.key("found"), input);
     if (r.ok) {
       c.log.push(`Kolonieschiff läuft zur Gründung auf Feld ${f.col}/${f.row} aus.`);
-      return;
+      return {};
     }
   }
+  return {};
 }

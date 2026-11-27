@@ -463,14 +463,15 @@
     "profiles": {
       "haendler": {
         "activeHours": [7, 22], "turnMinutes": [60, 120], "nightShieldStartHour": 23, "noise": 0.35,
-        "buildQueue": 1, "militaryShare": 0.2, "researchShare": 0.1, "homeGuardShare": 1, "attackNests": false, "attackPlayers": 0,
+        "buildQueue": 1, "militaryShare": 0.2, "researchShare": 0.1, "homeGuardShare": 0.5, "attackNests": true,
+        "nestMaxLevel": 2, "attackPlayers": 0,
         "probeRuns": 8, "probeWinRate": 1,
-        "expandFromCommandLevel": 7, "fields": "all", "trade": true
+        "expandFromCommandLevel": 5, "fields": "all", "trade": true
       },
       "festung": {
         "activeHours": [6, 23], "turnMinutes": [30, 60], "nightShieldStartHour": 0, "noise": 0.15,
         "buildQueue": 2, "militaryShare": 0.4, "researchShare": 0.2, "homeGuardShare": 0.5, "attackNests": true, "attackPlayers": 0.1,
-        "probeRuns": 3, "probeWinRate": 1, "expandFromCommandLevel": 9, "fields": "all", "trade": false
+        "probeRuns": 3, "probeWinRate": 1, "expandFromCommandLevel": 5, "fields": "all", "trade": false
       },
       "freibeuter": {
         "activeHours": [9, 26], "turnMinutes": [12, 25], "nightShieldStartHour": 3, "noise": 0.05,

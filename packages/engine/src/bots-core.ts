@@ -35,6 +35,8 @@ export interface ProfileConfig {
   /** Anteil der Kampfeinheiten, der bei Angriffen daheim bleibt. */
   homeGuardShare: number;
   attackNests: boolean;
+  /** Höchste Neststufe, die der Bot überfällt (fehlt: jede, die der Probekampf erlaubt). */
+  nestMaxLevel?: number;
   /** Neigung zu Angriffen auf Spieler (0 = nie, 1 = sobald lohnend). */
   attackPlayers: number;
   /** Bauaufträge, die der Bot höchstens in der Schlange hält (leicht 1, stark 3). */
@@ -85,6 +87,8 @@ export interface BotState {
   errors?: number;
   /** Rohstofffeld, für das Schiffe fehlen: Überfälle lassen diesen Verband daheim, die Rüstung legt Schiffe nach. */
   fieldTarget?: { fieldId: number; baseId: number; units: Record<string, number>; untilMs: number };
+  /** Wirtschaftsphase je Hafen-ID (bots-run.ts): erst Rüstung bis zum Zielanteil, dann Ausbau. */
+  phase?: Record<string, "mil" | "build">;
 }
 
 export interface BotRow { id: number; name: string; profile: BotProfile; settings: BotSettings; state: BotState }

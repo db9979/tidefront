@@ -24,16 +24,21 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
 | Bauschlange genutzt | 1 | 2 | 3 |
 | Ungenauigkeit | 35 % | 15 % | 5 % |
 | Rüstungsanteil | 20 % | 40 % | 45 % |
-| Angriffe | keine | Nester; Spieler selten | Nester, Bots, Menschen (falls erlaubt) |
-| Probekampf | – | 3 Durchläufe, alle gewonnen | 12 Durchläufe, ≥ 75 % Siege |
+| Angriffe | leichte Nester (bis Stufe 2) | Nester; Spieler selten | Nester, Bots, Menschen (falls erlaubt) |
+| Probekampf | 8 Durchläufe, alle gewonnen | 3 Durchläufe, alle gewonnen | 12 Durchläufe, ≥ 75 % Siege |
 | Besonderes | Börse, Spielerhandel | Anlagen, Radar, Bunker, Forschung | Aufklärung, Minen, U-Boote, frühe Kolonie |
 
-- **Bauen:** Gewichte je Spielweise gegen die Kosten der nächsten Stufe; Strommangel zuerst ein Kraftwerk; Lager bei
-  vollem Lager. Mittel und stark ziehen zusätzlich den Erzeuger der knappsten Ressource vor und bauen die
+- **Bauen:** Gewichte je Spielweise gegen die Kosten der nächsten Stufe; Strommangel (unter 99,5 %) zuerst Strom
+  (Kraftwerk, Wind/Sonne, Raffinerie; Kraftwerk am Deckel: Kommandozentrale); Lager bei vollem Lager. Fehlen Rohstoffe
+  für den besten Ausbau, werden seine Kosten zurückgelegt (Rücklage), die Ausbildung nimmt nur den Rest. Freibeuter
+  und Festung ziehen die Voraussetzungen der Startrampe (aus der Balance) zwei Stufen der Kommandozentrale vorher nach. Mittel und stark ziehen zusätzlich den Erzeuger der knappsten Ressource vor und bauen die
   Kommandozentrale, sobald sie andere Gebäude deckelt.
 - **Rüstung:** Doktrin (Zielanteile am Rüstungswert) wie im Simulations-Bot; Landungsschiffe nach Truppenbedarf;
   Kommandopunkte und Proviantbilanz werden eingehalten. Der Rüstungsanteil wächst mit der Kommandozentrale (bis
-  Stufe 3) auf den Zielwert. Liegt die Rüstung darunter und fehlt Geld für die dringendste Einheit, wird gespart.
+  Stufe 3) auf den Zielwert. Phasen je Hafen: **Rüstung zuerst**, bis der Zielanteil erreicht ist, dann **Ausbau
+  zuerst** (mit Rücklage auch bei voller Bauschlange), bis der Anteil unter 75 % des Ziels fällt. In der Rüstungsphase
+  wird für die dringendste Einheit gespart; je Auftrag höchstens 45 % des Vorrats jedes Rohstoffs. Truppen nur mit
+  Transportraum (fehlt das Landungsschiff, wird dafür gespart statt weiterer Truppen).
 - **Forschung:** feste Reihenfolge je Spielweise, höchstens bis zu einem Anteil am Gebäudewert (10/20/8 %).
 - **Börse:** Überschuss verkaufen, knappe Ressource zukaufen (alle; Händler früher und mehr). **Spielerhandel**
   (Händler): fremde Angebote annehmen, die zum Richtwert mindestens gleichwertig sind; bis zu zwei eigene Angebote.
@@ -46,7 +51,11 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
   daheim, die Rüstung baut zusätzlich Korvetten und Zerstörer. Hält eine Besatzung nach Verlusten den nächsten
   Kartellangriff nicht mehr, schickt er eine Verstärkung. Händler nehmen Felder nur mit ganz sicherem Probekampf
   (alle Durchläufe gewonnen) – zusätzlicher Ertrag passt zur Handelsspielweise.
-- **Gründung:** ab Kommandozentrale 7 (Händler) / 9 (Festung) / 5 (Freibeuter), sobald ein Platz frei ist.
+- **Gründung:** ab Kommandozentrale 5 (alle Spielweisen, `expandFromCommandLevel`), sobald ein Platz frei ist. Eine
+  Stufe vorher bekommen Werft, Hafenkommandantur und ggf. Lager Vorrang (Stufen des Kolonieschiffs aus der Balance).
+  Fehlen Rohstoffe, werden die Kosten des Kolonieschiffs zurückgelegt und die Werft bleibt frei.
+- **Patrouille** (Freibeuter): höchstens alle 24 h, nur wenn in diesem Zug kein Angriff möglich war und mindestens
+  zwei Auftragsplätze frei sind.
 
 ## Angriffe und Schutz
 
