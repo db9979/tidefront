@@ -123,7 +123,7 @@ function ChallengeItem(props: { c: Challenge; busy: boolean; canReroll: boolean;
           {c.done && !c.claimed && <Button className="flex-1" disabled={props.busy} onClick={props.onClaim}>Abholen</Button>}
           {c.claimed && <Badge tone="green">abgeholt</Badge>}
           {props.canReroll && (
-            <Button kind="ghost" className="px-0" disabled={props.busy} onClick={props.onReroll}>Neu würfeln</Button>
+            <Button kind="ghost" className="px-3" disabled={props.busy} onClick={props.onReroll}>Neu würfeln</Button>
           )}
         </div>
       </div>

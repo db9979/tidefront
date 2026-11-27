@@ -56,8 +56,22 @@ const KIND: Record<BtnKind, string> = {
   primary: "btn-primary",
   secondary: "btn-secondary",
   danger: "btn-danger",
-  ghost: "bg-transparent text-see underline underline-offset-4 normal-case tracking-normal",
+  ghost: "btn-quiet",
 };
+
+/** Kleiner leiser Knopf für Kartenköpfe und Nebenaktionen in einer Zeile (44 px Tippfläche, schmal). */
+export function SmallButton(props: { children: ReactNode; onClick?: () => void; disabled?: boolean; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={props.onClick}
+      disabled={props.disabled}
+      className={`tap inline-flex items-center justify-center rounded-lg px-3 btn-quiet font-display uppercase text-[11px] tracking-[0.1em] disabled:opacity-45 ${props.className ?? ""}`}
+    >
+      {props.children}
+    </button>
+  );
+}
 
 export function Button(props: { children: ReactNode; onClick?: () => void; disabled?: boolean; kind?: BtnKind; className?: string; type?: "button" | "submit" }) {
   return (

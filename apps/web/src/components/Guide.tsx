@@ -126,9 +126,9 @@ export function Guide({ base, onAction }: { base: BaseData; onAction: (a: GuideA
       ) : (
         <FinalCard g={g} busy={busy} onClaim={() => void claimFinal.run({})} />
       )}
-      <button type="button" className="tap w-full text-left text-sm text-see underline underline-offset-4 mt-1" onClick={() => setShowAll((v) => !v)}>
+      <Button kind="ghost" className="w-full mt-2" onClick={() => setShowAll((v) => !v)}>
         {showAll ? "Liste ausblenden" : "Alle Aufträge zeigen"}
-      </button>
+      </Button>
       {showAll && (
         <ol className="mt-1 space-y-1">
           {STEPS.map((s) => {

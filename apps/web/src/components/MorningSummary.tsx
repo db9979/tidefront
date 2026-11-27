@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient, trpc, trpcClient } from "../lib/trpc.ts";
 import { errorText, failText } from "../lib/names.ts";
-import { Card, ErrorLine } from "../ui.tsx";
+import { Card, ErrorLine, SmallButton } from "../ui.tsx";
 import { Switch } from "./Switch.tsx";
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -63,7 +63,7 @@ export function SummaryCard() {
           </label>
           <div className="text-xs text-slate-400 flex items-center justify-between gap-2">
             <span>Zeitzone {s.timeZone}</span>
-            {zone && zone !== s.timeZone && <button type="button" className="tap text-see underline" onClick={() => void save({ timeZone: zone })}>{zone} übernehmen</button>}
+            {zone && zone !== s.timeZone && <SmallButton onClick={() => void save({ timeZone: zone })}>{zone} übernehmen</SmallButton>}
           </div>
           <Switch label="Zusätzlich als Push" on={s.push} disabled={busy} onChange={(v) => void save({ push: v })} />
           {!verified && <p className="text-xs text-brass-300">Ohne bestätigte E-Mail-Adresse kommt der Bericht nur als Push (falls eingeschaltet).</p>}

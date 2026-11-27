@@ -115,6 +115,9 @@ input, select, textarea { color: var(--color-ink); }
 .btn-danger:active { background: #8e2a18; }
 .btn-secondary { background: transparent; color: var(--color-ink); border: 1px solid var(--color-ink); }
 .btn-secondary:active { background: var(--color-inset); }
+/* Leiser Knopf (Nebenaktionen wie „alle zeigen“, „ändern“): Rahmen statt unterstrichenem Link. */
+.btn-quiet { background: var(--color-card); color: var(--color-ink); border: 1px solid var(--color-rule); }
+.btn-quiet:active { background: var(--color-inset); }
 .field { background: #fffdf8; border: 1px solid var(--color-rule); color: var(--color-ink); }
 .field:focus { border-color: var(--color-ink); }
 

@@ -8,7 +8,7 @@ import { unitTone } from "../lib/info.ts";
 import { fmtSeconds, fmtTime } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
 import { HexMap } from "./LazyHexMap.tsx";
-import { ActionBar, Button, Card, ErrorLine, Loading, Stepper } from "../ui.tsx";
+import { ActionBar, Button, Card, ErrorLine, Loading, Stepper, SmallButton } from "../ui.tsx";
 import { RouteWeather } from "../components/RouteWeather.tsx"; // Wetter auf der Route (v1.6)
 // Komfort: Vorlagen, Wiederholen, Probekampf
 import { fitUnits, isPlanType, type PlanPreset } from "../lib/plan-request.ts";
@@ -134,7 +134,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         <Button kind="ghost" onClick={onClose}>Schließen</Button>
       </div>
 
-      <Card title="Art" right={!typeOpen ? <button type="button" className="tap -my-3 text-sm text-see underline underline-offset-4" onClick={() => setTypeOpen(true)}>ändern</button> : undefined}>
+      <Card title="Art" right={!typeOpen ? <SmallButton className="-my-3" onClick={() => setTypeOpen(true)}>Ändern</SmallButton> : undefined}>
         {!typeOpen ? (
           <div className="flex items-center gap-2">
             <Icon id={type} size={30} />

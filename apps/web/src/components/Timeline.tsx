@@ -7,7 +7,7 @@ import { fmtNum, label } from "../lib/names.ts";
 import { isThreat, TRANSFER } from "../lib/expansion.ts"; // Mehrere Häfen
 import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
 import { Icon } from "../icons.tsx";
-import { Card } from "../ui.tsx";
+import { Card, SmallButton } from "../ui.tsx";
 
 const DAY_MS = 86400000;
 const SHOWN = 6;
@@ -67,7 +67,7 @@ export function Timeline({ base, limit = SHOWN }: { base: BaseData; limit?: numb
   const items = timelineItems(base, now, { seasonEndMs: season.data?.season?.endsAtMs ?? null, beginnerDays: meta.data?.balance.protection.beginnerDays });
   const shown = all ? items : items.slice(0, limit);
   return (
-    <Card title="Als Nächstes" right={items.length > limit ? <button type="button" className="tap text-xs text-see underline" onClick={() => setAll(!all)}>{all ? "weniger" : `mehr (${items.length})`}</button> : undefined}>
+    <Card title="Als Nächstes" right={items.length > limit ? <SmallButton className="-my-3" onClick={() => setAll(!all)}>{all ? "Weniger" : `Mehr (${items.length})`}</SmallButton> : undefined}>
       {items.length === 0 ? (
         <p className="text-sm text-ink2">Nichts geplant. Baue aus, bilde aus oder schicke einen Verband los.</p>
       ) : (

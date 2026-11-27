@@ -6,7 +6,7 @@ import { trpc, trpcClient, type BaseData, type Outputs } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
-import { Button, Card, CountsLine, ErrorLine, Stepper } from "../ui.tsx";
+import { Button, Card, CountsLine, ErrorLine, Stepper, SmallButton } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 import type { Target } from "../App.tsx";
 
@@ -96,7 +96,7 @@ export function NavalSheet({ data, sel, onPlan }: { data: NavalData | undefined;
           <span>
             <strong>Minenfeld</strong> {f.own ? "(deins)" : f.allied ? `(Allianz: ${f.owner})` : `von ${f.owner}`} · Stärke {f.strength}/{f.maxStrength} · verfällt in {fmtDuration(f.expiresAtMs - now)}
             {!f.own && !f.allied && <span className="text-siegel"> – fremde Schiffe, die hindurchfahren, sinken. {f.via === "radar" ? "(vom Radar erfasst)" : ""}</span>}
-            {!f.own && !f.allied && <button type="button" className="tap underline text-sea-300 ml-1" onClick={() => onPlan({ col: f.col, row: f.row, naval: "raeumen" })}>Räumen</button>}
+            {!f.own && !f.allied && <SmallButton className="ml-1 mt-1" onClick={() => onPlan({ col: f.col, row: f.row, naval: "raeumen" })}>Räumen</SmallButton>}
           </span>
         </div>
       ))}

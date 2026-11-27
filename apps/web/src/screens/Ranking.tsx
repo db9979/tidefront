@@ -105,9 +105,9 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
           </ol>
         )}
         {(hidden > 0 || all) && rows.length > TOP && (
-          <button type="button" className="tap w-full text-sm text-see underline underline-offset-4" onClick={() => setAll(!all)}>
-            {all ? "Kurzansicht (Top 10 und deine Position)" : `alle ${rows.length} zeigen`}
-          </button>
+          <Button kind="ghost" className="w-full mt-1" onClick={() => setAll(!all)}>
+            {all ? "Kurzansicht (Top 10 und du)" : `Alle ${rows.length} zeigen`}
+          </Button>
         )}
         <p className="text-[11px] text-slate-500 mt-2">1 Punkt je 100 Ressourcen Kostenwert, Befehle zählen ihre Punkte direkt. Antippen für Details.</p>
         <Button kind="secondary" className="w-full mt-3" onClick={() => setInvite(true)}>Freunde einladen</Button>

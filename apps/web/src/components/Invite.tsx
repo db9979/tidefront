@@ -191,14 +191,14 @@ function MyInvites(props: {
             {(i.canRevoke || (i.resendAtMs !== null && (i.status === "sent" || i.status === "expired"))) && (
               <div className="flex flex-wrap gap-x-3 mt-1">
                 {i.url && i.channel === "link" && (
-                  <Button kind="ghost" className="!px-0" disabled={busy} onClick={() => void shareLink(i.url!, props.playerName).then(setMsg)}>Link teilen</Button>
+                  <Button kind="ghost" className="!px-3" disabled={busy} onClick={() => void shareLink(i.url!, props.playerName).then(setMsg)}>Link teilen</Button>
                 )}
                 {i.channel === "email" && (i.status === "sent" || i.status === "expired") && i.resendAtMs !== null && (
                   i.canResend
-                    ? <Button kind="ghost" className="!px-0" disabled={busy} onClick={() => void resend(i)}>Erneut senden</Button>
+                    ? <Button kind="ghost" className="!px-3" disabled={busy} onClick={() => void resend(i)}>Erneut senden</Button>
                     : <span className="text-xs text-ink2 self-center">Erneut senden ab {dayTime(i.resendAtMs)}</span>
                 )}
-                {i.canRevoke && <Button kind="ghost" className="!px-0" disabled={busy} onClick={() => void revoke(i)}>Zurückziehen</Button>}
+                {i.canRevoke && <Button kind="ghost" className="!px-3" disabled={busy} onClick={() => void revoke(i)}>Zurückziehen</Button>}
               </div>
             )}
           </li>

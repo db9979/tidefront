@@ -5,7 +5,7 @@ import { trpc, trpcClient } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { label } from "../lib/names.ts";
 import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
-import { Button, ErrorLine, Stepper, UnitChips } from "../ui.tsx";
+import { Button, ErrorLine, Stepper, UnitChips, SmallButton } from "../ui.tsx";
 
 type Counts = Record<string, number>;
 
@@ -21,7 +21,7 @@ export function FieldEscortEditor({ fieldId, garrison, escort }: { fieldId: numb
     return (
       <div className="text-xs flex items-center gap-2 flex-wrap">
         <span>Geleit für Ertragskonvois:</span> {has ? <UnitChips counts={escort} /> : <span className="text-ink2">keines</span>}
-        <button type="button" className="tap text-sea-300 underline" onClick={() => { setPick(escort); setOpen(true); }}>{has ? "ändern" : "einteilen"}</button>
+        <SmallButton onClick={() => { setPick(escort); setOpen(true); }}>{has ? "Ändern" : "Einteilen"}</SmallButton>
       </div>
     );
   }

@@ -43,9 +43,9 @@ export function FreeSimCard({ balance, base, asLink = false }: { balance: Balanc
   );
   if (asLink) return (
     <>
-      <button type="button" className="tap flex items-center gap-2 text-sm text-see underline underline-offset-4" onClick={() => setOpen(true)}>
+      <Button kind="ghost" className="w-full flex items-center justify-center gap-2" onClick={() => setOpen(true)}>
         <Icon id="korvette" size={22} /> Kampfsimulator öffnen
-      </button>
+      </Button>
       {sheet}
     </>
   );
