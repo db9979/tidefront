@@ -16,6 +16,7 @@ import { AllianceOpsChapter } from "../components/AllianceOps.tsx"; // Allianz-O
 import { NavalChapter } from "../components/NavalChapter.tsx"; // See: Minen/Blockade/Konvoi
 import { FieldsChapter } from "../components/FieldsChapter.tsx"; // Felder
 import { HarborsChapter } from "../components/HarborsChapter.tsx"; // Mehrere Häfen
+import { BotsChapter } from "../components/BotsChapter.tsx"; // KI-Spieler
 import { requestBugReport } from "../lib/bug-log.ts";
 import { HScroll } from "../components/HScroll.tsx";
 
@@ -262,6 +263,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
       ),
     },
     { id: "allianz-ops", icon: "sammelangriff", title: "Sammelangriff und Stationierung", body: <AllianceOpsChapter b={b} /> },
+    { id: "ki", icon: "anker", title: "KI-Spieler", body: <BotsChapter b={b} /> }, // KI-Spieler
     {
       id: "einheiten", icon: "kampfpanzer", title: "Einheiten im Überblick",
       body: b ? (

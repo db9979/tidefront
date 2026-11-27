@@ -898,7 +898,7 @@ erweiterte Würfel-Varianten in `sim/luck.ts`). Kartell: 400 Seeds je Fall, Ress
    - **3. Hafen und Felder:** Kommandozentrale 5 an Tag 16 (Wirtschafts-Bot Tag 10), Kommandozentrale 9 nur der
      Wirtschafts-Bot an Tag 37 (Rüstungs-Bot erreicht bis Tag 42 nur 8). Felder: 2 ab Hafenkommandantur 4, 3 ab
      Hafenkommandantur 8 (Tag 30 bzw. 23), 4 Felder (Stufe 12) erreicht keiner. Der 3. Hafen bleibt wie in v1.12 gewollt
-     ein Ziel für gezielten Ausbau (nach 3 Tagen bezahlt, K3) – **nicht geändert**; Option, falls er häufiger kommen soll:
+     ein Ziel für gezielten Ausbau (nach 3 Tagen bezahlt, K3) – **nicht geändert**; Umgesetzt (v1.14, K1): Freischaltung
      `expansion.unlockCommandLevels` [5, 8].
    - **Saisonfortschritt skaliert sinnvoll:** `seasonGrowth`, `lootSeasonGrowth` und die Großflotten-/Belagerungsbeute
      rechnen mit dem Anteil der Saison (0 … 1), nicht mit Tagen; sie steigen über 42 Tage langsamer, enden aber gleich
@@ -914,5 +914,43 @@ erweiterte Würfel-Varianten in `sim/luck.ts`). Kartell: 400 Seeds je Fall, Ress
      umgesetzt): Nest 5 × 1,3 (Besatzung, Anlagen, Beute) schlägt der Bot-Verband an Tag 28 / 35 / 42 zu 25 / 82 / 82 %,
      × 1,4 zu 4 / 62 / 62 %, × 1,2 zu 82 / 100 / 100 %. Ein Nest 6 ≈ Nest 5 × 1,3–1,4 passte ins Fenster Tag 35–42. Es
      ist aber mehr als ein Balance-Wert: Die Nestplätze und ihre Stufen erzeugt `@tidefront/world` (`nestSites`), der
-     Server legt sie nur beim Seed an. **Nicht umgesetzt** (kein neues System in diesem Auftrag); bis dahin sind
+     Server legt sie nur beim Seed an. Umsetzung als eigenes Paket (Nest 6); bis dahin sind
      Weltereignisse, Felder, 3. Hafen und Spieler das Spätspiel. Balance bleibt **v1.13**.
+
+## M. KI-Spieler (Bots, Balance-Block `bots`)
+
+Regeln: `docs/REGELN-KI.md`. Code: `packages/engine/src/bots-*.ts`. Testlauf: `packages/engine/test/bots-sim.test.ts`.
+
+1. **Nur Befehle.** Bots rufen dieselben Befehlsfunktionen wie der Client auf (Idempotenz-Schlüssel, Transaktion,
+   Prüfungen). Vorher prüfen sie mit den reinen Kernfunktionen (`startUpgrade`, `startTraining`, `startResearch`) bzw.
+   `missionPreview`, damit das Befehlsprotokoll nicht mit Ablehnungen volläuft. Keine direkten Schreibzugriffe auf
+   Spielzustand; einzige eigene Spalten sind `player.bot_profile`, `bot_settings`, `bot_state`. Gelesen wird nur, was
+   auch ein Mensch sieht (eigener Zustand, Karte, Nest-Tabelle aus dem Handbuch, Schutzstatus, eigene Berichte).
+2. **Stärke über Entscheidungsqualität und Takt**, nicht über Vorteile: leicht = selten (60–120 Min.), 35 %
+   Zufallsentscheidungen, nur ein Bauauftrag in der Schlange, keine Knappheitsplanung; mittel = 30–60 Min., Probekampf
+   mit 3 Durchläufen; stark = 12–25 Min., drei Bauaufträge, Aufklärung vor jedem Spielerangriff und Probekampf mit
+   12 Durchläufen (≥ 75 % Siege, Beute ≥ 0,5–0,8 × erwartete Verluste). Ziele, die im Probekampf durchfallen,
+   meidet der Bot für 12 h (sonst schickt er im Dauertakt Aufklärer).
+3. **Rüstungsanteil wächst mit der Kommandozentrale** (voll ab Stufe 3). Erste Fassung rüstete ab Minute 1 auf 45–55 %
+   und lag an Tag 1 bei der Hälfte der Punkte der anderen; Wirtschaft zuerst wie bei Menschen. Liegt die Rüstung unter
+   dem Ziel und fehlt Geld für die dringendste Einheit, wird gespart (sonst verhungert die Rüstung am Ausbau – erste
+   Fassung: Militär 9 Punkte nach 6 Tagen).
+4. **Forschung gedeckelt** (10/20/8 % des Gebäudewerts). Ohne Deckel steckte die Festung ab Tag 3 alles in Forschung
+   (Kosten ×2) und stand mit Kommandozentrale 1 still.
+5. **Truppen und Landungsschiffe.** Landungsschiffe in Losen von höchstens 2 nach Truppenbedarf; ist die Werft belegt,
+   wird die Truppe trotzdem ausgebildet. Erste Fassung baute nur Korvetten (Truppe immer durch belegte Werft
+   blockiert) und gewann kein einziges Nest.
+6. **Menschen.** Angriffserlaubnis je Bot, Vorgabe aus. Mit Erlaubnis: Schutzregeln der Befehle plus Sperrfrist 12 h je
+   Bot und Mensch (Bericht oder Überfall unterwegs). Keine Aufklärung und keine Minen gegen Menschen ohne Erlaubnis.
+7. **Takt und Last (Raspberry Pi).** Höchstens 2 Züge je Minute, Budget 8 s, ältester Termin zuerst; mehr Bots
+   strecken sich so über die Zeit statt die Minute zu sprengen. Ein Zug kostet lokal ~10–17 ms (Median).
+8. **Aktivitätszeiten.** Fenster je Spielweise in Europe/Berlin, täglich um ±45 Min. verschoben, dazu ein Nachtschild
+   in der Schlafzeit – Bots wirken nicht wie 24/7-Maschinen und sind nachts so geschützt wie Menschen.
+9. **Entfernen** nutzt die vorhandene Mechanik (Angebot zurückziehen, Feld/Verband zurückrufen, Kolonie aufgeben,
+   Hinderungsgründe von `abandonBlockers`); erst danach werden Heimathafen und Spieler gelöscht (Kaskade). Berichte,
+   Journal und Nachrichten bleiben.
+10. **Testlauf** (`BOT_SIM_DAYS=10`, verstellte Uhr, echte Engine mit Kartell-Überfällen): Punkte an Tag 10
+    Freibeuter 2524 / 2338, Festung 1959 / 1855, Händler 1541 / 1035 (zwei Läufe); Freibeuter 10–13 Überfälle (fast
+    alle gewonnen, Beute 510–534 Punkte), Festung 3–4 Nester, Händler keine; Gebäudestufen 59–70 (Start 0).
+    Offen: Rohstofffelder nimmt im Testlauf noch niemand (alle anfangs bewacht, die Heimwache an Schiffen ist klein),
+    Gründungen erst nach Tag 10 (Kolonieschiff braucht Hafenkommandantur 6).

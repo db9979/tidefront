@@ -44,6 +44,11 @@ function Badges({ badges, size = 16 }: { badges: Row["badges"]; size?: number })
   return <span className="inline-flex gap-0.5 ml-1 align-[-3px]">{badges.map((b) => <AchievementBadge key={b.id} id={b.id} tier={b.tier} size={size} title={b.title} />)}</span>;
 }
 
+/** Dezentes Kennzeichen für KI-Spieler. */
+function BotMark() {
+  return <span title="KI-Spieler (Computergegner)" className="ml-1 align-[1px] rounded border border-navy-600 px-1 text-[10px] font-semibold text-slate-400">KI</span>;
+}
+
 function ProtectionBadge({ p }: { p: string | null }) {
   if (!p) return <Badge tone="slate">ungeschützt</Badge>;
   return <Badge tone={p === "nachtschild" ? "sea" : "green"}>{label(p)}</Badge>;
@@ -89,7 +94,7 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
                   className={`tap w-full flex items-center gap-2 px-1 py-2 text-left ${r.own ? "bg-sea-400/10 rounded-lg" : ""}`}>
                   <span className="w-7 text-right font-mono tabular-nums text-slate-400">{sort === "total" ? r.rank : i + 1}</span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">{tag(r.playerId) && <span className="mono text-ink2 font-normal">[{tag(r.playerId)}] </span>}{r.name}{r.hafenmeister && <Hafenmeister />}<Badges badges={r.badges} />{r.own && <span className="text-sea-300 font-normal"> (du)</span>}</span>
+                    <span className="block truncate text-sm font-semibold">{tag(r.playerId) && <span className="mono text-ink2 font-normal">[{tag(r.playerId)}] </span>}{r.name}{r.bot && <BotMark />}{r.hafenmeister && <Hafenmeister />}<Badges badges={r.badges} />{r.own && <span className="text-sea-300 font-normal"> (du)</span>}</span>
                     <span className="block truncate text-xs text-slate-400">{r.base ? r.base.name : "kein Hafen"}{r.bases > 1 ? ` · ${r.bases} Häfen` : ""}</span>
                   </span>
                   {r.base?.protection && <Icon id="schild" size={16} className="shrink-0 opacity-70" />}
@@ -161,6 +166,7 @@ function PlayerDetail({ r, dir, ownId, onCompose, onShowOnMap }: { r: Row; dir: 
         <span><span className="text-slate-400">Allianz </span><strong>{alliance ? `[${alliance.tag}] ${alliance.name}` : "–"}</strong></span>
         {rel && <Badge tone={RELATION_TEXT[rel].tone}>{RELATION_TEXT[rel].text}</Badge>}
       </div>
+      {r.bot && <p className="text-sm text-slate-400"><BotMark /> KI-Spieler: spielt nach denselben Regeln wie alle (siehe Handbuch, „KI-Spieler“).</p>}
       {r.hafenmeister && <p className="flex items-center gap-2 text-sm"><Icon id="hafenmeister" size={24} /> Abzeichen „Hafenmeister“ dieser Saison</p>}
       {r.badges.map((b) => (
         <p key={b.id} className="flex items-center gap-2 text-sm"><AchievementBadge id={b.id} tier={b.tier} size={28} /> Erfolg „{b.title}“ in {TIER_LABEL[b.tier]}</p>

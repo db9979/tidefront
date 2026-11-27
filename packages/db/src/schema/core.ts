@@ -15,6 +15,12 @@ export const player = pgTable("player", {
   isAdmin: boolean("is_admin").notNull().default(false),
   /** Letzte Aktivität (höchstens alle paar Minuten fortgeschrieben). */
   lastSeenAt: ts("last_seen_at"),
+  /** KI-Spieler: Spielweise ("haendler" | "festung" | "freibeuter"); null = Mensch. */
+  botProfile: text("bot_profile"),
+  /** KI-Spieler: Einstellungen der Verwaltung ({ active, attackHumans }). */
+  botSettings: jsonb("bot_settings"),
+  /** KI-Spieler: Laufzustand (nächster Zug, letzte Aktionen, Gedächtnis). */
+  botState: jsonb("bot_state"),
 }, (t) => [uniqueIndex("player_name_lower").on(sql`lower(${t.name})`)]);
 
 export const session = pgTable("session", {

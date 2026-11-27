@@ -92,7 +92,8 @@ export async function login(db: Db, input: { name: string; password: string }) {
     .select()
     .from(tables.player)
     .where(sql`lower(${tables.player.name}) = lower(${input.name})`);
-  if (!p || !(await verifyPassword(input.password, p.passHash))) throw new GameError("bad_login");
+  // KI-Spieler: kein nutzbares Passwort, Anmeldung immer abgelehnt.
+  if (!p || p.botProfile !== null || !(await verifyPassword(input.password, p.passHash))) throw new GameError("bad_login");
   return { playerId: p.id, token: await createSession(db, p.id) };
 }
 

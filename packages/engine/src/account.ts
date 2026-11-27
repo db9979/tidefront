@@ -81,8 +81,9 @@ function normCode(code: string): string {
 
 /** Verwaltung: einmaliger Rücksetzcode, 24 h gültig; ältere offene Codes des Spielers verfallen. Code: no_player. */
 export async function createResetCode(db: Db, adminId: number, playerId: number): Promise<{ code: string; expiresAt: Date; name: string }> {
-  const [p] = await db.select({ name: tables.player.name }).from(tables.player).where(eq(tables.player.id, playerId));
+  const [p] = await db.select({ name: tables.player.name, bot: tables.player.botProfile }).from(tables.player).where(eq(tables.player.id, playerId));
   if (!p) throw new GameError("no_player");
+  if (p.bot !== null) throw new GameError("bot_player"); // KI-Spieler können sich nicht anmelden
   const code = readableCode();
   const expiresAt = new Date(Date.now() + RESET_HOURS * 3600000);
   await db.transaction(async (tx) => {
@@ -105,7 +106,7 @@ export async function resetPassword(db: Db, input: { name?: string; code: string
   const hash2 = sha256(raw);
   const playerId = await db.transaction(async (tx) => {
     const [r] = await tx
-      .select({ id: tables.passwordReset.id, playerId: tables.passwordReset.playerId, name: tables.player.name })
+      .select({ id: tables.passwordReset.id, playerId: tables.passwordReset.playerId, name: tables.player.name, bot: tables.player.botProfile })
       .from(tables.passwordReset)
       .innerJoin(tables.player, eq(tables.player.id, tables.passwordReset.playerId))
       .where(and(
@@ -114,7 +115,7 @@ export async function resetPassword(db: Db, input: { name?: string; code: string
         gt(tables.passwordReset.expiresAt, new Date()),
       ))
       .for("update");
-    if (!r) throw new GameError("bad_reset");
+    if (!r || r.bot !== null) throw new GameError("bad_reset"); // KI-Spieler: kein Passwort
     if (input.name && input.name.trim().toLowerCase() !== r.name.toLowerCase()) throw new GameError("bad_reset");
     await tx.update(tables.passwordReset).set({ usedAt: new Date() }).where(eq(tables.passwordReset.id, r.id));
     await tx.update(tables.player).set({ passHash: await hashPassword(input.password) }).where(eq(tables.player.id, r.playerId));
@@ -155,6 +156,8 @@ export async function listPlayers(db: Db) {
       isAdmin: tables.player.isAdmin,
       createdAt: tables.player.createdAt,
       lastSeenAt: tables.player.lastSeenAt,
+      /** KI-Spieler: Spielweise (sonst null). */
+      botProfile: tables.player.botProfile,
       baseName: tables.base.name,
       /** Mehrere Häfen: Anzahl der Häfen (baseName = Heimathafen). */
       baseCount: sql<number>`(select count(*)::int from base b2 where b2.player_id = ${tables.player.id})`,

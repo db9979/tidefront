@@ -1,4 +1,4 @@
-// Worker: verarbeitet fällige Ereignisse, Prüflauf der Börse, Marktnachrichten, Aufräumen, Betriebsalarm, gebündelte E-Mails.
+// Worker: verarbeitet fällige Ereignisse, Prüflauf der Börse, Marktnachrichten, Aufräumen, Betriebsalarm, gebündelte E-Mails, KI-Spieler.
 import { createServer } from "node:http";
 import Valkey from "iovalkey";
 import { createDb } from "@tidefront/db";
@@ -17,6 +17,7 @@ import {
   processDue,
   runMarketNews,
   runMorningSummaries,
+  runBotsDue,
   type Engine,
   type OpsStatus,
 } from "@tidefront/engine";
@@ -80,6 +81,15 @@ async function loop() {
           if (badges > 0) log("achievement notices", { sent: badges });
         } catch (err) {
           log("ops check failed", String(err));
+        }
+        // KI-Spieler: höchstens bots.turnsPerMinute fällige Bots reihum (abschaltbar: Server-Einstellung bots_enabled).
+        if (process.env.BOTS_DISABLED !== "1") {
+          try {
+            const bots = await runBotsDue(engine, Date.now());
+            if (bots.turns > 0) log("bot turns", bots);
+          } catch (err) {
+            log("bot tick failed", String(err));
+          }
         }
       }
       lastLoop = Date.now();

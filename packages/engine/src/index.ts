@@ -75,3 +75,11 @@ export { fieldsView, spawnFields, FIELD_KIND_TEXT } from "./fields-core.ts";
 export { fieldRecall } from "./fields-missions.ts";
 export { setFieldEscort } from "./fields-escort.ts";
 export { ensureFieldPlanner, clearFields } from "./fields-run.ts";
+// KI-Spieler (Bots)
+export {
+  addBot, ensureStartBots, updateBot, removeBotStep, setBotsServer, botsEnabled, botsMax, loadBots, loadBot, BOT_PROFILES, PROFILE_TEXT,
+  isActiveTime, nextTurnAt, type BotProfile, type BotRow, type BotSettings, type BotState,
+} from "./bots-core.ts";
+export { botTurn, runBotsDue, runOneBot } from "./bots-run.ts";
+export { botsAdminView } from "./bots-admin.ts";
+export { isBot, botIds } from "./bots-flag.ts";
