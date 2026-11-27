@@ -2,6 +2,12 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.24.1 – 27.11.2026
+- **Sprache überarbeitet:** Überall stehen jetzt Namen statt interner Kennungen – etwa bei Blockaden, Großflotte und Schatzschiff, Sabotage am Seekabel und den wirksamen Forschungseffekten. Push-Meldungen und Morgenbericht sagen „12 Korvetten“ statt „12 Korvette“, überall gilt richtige Einzahl („1 Einheit“).
+- Zahlen durchgehend deutsch (Dezimalkomma, Tausenderpunkt), einheitliche Begriffe (Hafen, KI-Spieler, Piratennest, Kredite), Zeiten in deiner Uhrzeit statt UTC.
+- Das Handbuch nennt die sechs Forschungszweige und die Stufen des Forschungsamts nach den aktuellen Regeln.
+- Fehlermeldungen, die bisher nur einen Code zeigten, haben jetzt einen verständlichen Text.
+
 ## 0.24.0 – 27.11.2026
 - **Echte Seewege:** Schiffe fahren über Wasser statt quer über Land – um Küsten herum und durch Gibraltar, Ärmelkanal, Öresund, Messina, Bosporus, Kertsch und Suez. Fahrzeit und Treibstoff richten sich nach der echten Weglänge; die Karte zeigt den Kurs, und ein Rückruf wendet mitten auf der Route. Auch Kartell-Überfälle und Börsenlieferungen folgen dem Seeweg. Flugzeuge und Drohnen fliegen weiter direkt.
 - **Bordsicht:** Kriegsschiffe und Patrouillen sehen 105 km weit – das eigene Feld und alle sechs Nachbarfelder. Die Aufhellung im Kartennebel wandert flüssig mit dem Schiff.

@@ -367,7 +367,7 @@ beim Freibeuter ab Tag 14–28, Festung meist 2–3); die Festung erreicht die S
 `bots-sim.test.ts` läuft jetzt mit fester Startzeit (`BOT_SIM_T0`) und prüft zusätzlich: Freibeuter gewinnt mehr
 Überfälle als der Händler.
 
-## Lektorat 0.22 – Sprache und Einheitlichkeit (Kürzel lek)
+## Y. Lektorat 0.22 – Sprache und Einheitlichkeit
 
 1. **Namen statt Kennungen:** Weltereignis-Arten, Sabotageziel Seekabel, Berichtsarten (posten, sichtung, patrouille,
    kampagne), Missionsarten und alle Techniken haben deutsche Namen in Web und Engine. Die Techniknamen der Engine
