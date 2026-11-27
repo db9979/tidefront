@@ -102,7 +102,8 @@ export function ChooseBase() {
           {sel && isFree && f && (
             <div className="space-y-2">
               <div className="text-xs text-slate-300 grid grid-cols-2 gap-x-2 gap-y-0.5 font-mono">
-                <span className="flex items-center gap-1"><TacticalIcon kind="nest" size={16} /> Nester ≤ 900 km</span><span className="text-right">{f.near.length} (nächstes St. {f.nearest?.n.level}, {fmtNum(f.nearest?.d ?? 0)} km)</span>
+                <span className="flex items-center gap-1"><TacticalIcon kind="nest" size={16} /> Nester ≤ 900 km</span><span className="text-right">{f.near.length}{f.nearest ? ` (nächstes ${typeof f.nearest.n.level === "number" ? `St. ${f.nearest.n.level}, ` : ""}${fmtNum(f.nearest.d)} km)` : ""}</span>
+                <span className="col-span-2 text-[11px] text-slate-400 font-sans">Ein Nest der Stufe 1 in höchstens 300 km ist dir sicher – fehlt es, legt die Hafengründung eines an.</span>
                 <span className="flex items-center gap-1"><TacticalIcon kind="port" size={16} /> Handelshafen</span><span className="text-right">{f.port.name}, {fmtNum(f.port.distanceKm)} km</span>
                 <span className="flex items-center gap-1"><TacticalIcon kind="other" size={16} /> Nächster Spieler</span><span className="text-right">{f.other === undefined ? "keiner" : `${fmtNum(f.other)} km`}</span>
               </div>

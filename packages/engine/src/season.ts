@@ -170,7 +170,7 @@ export const seasonEnd: Handler = async (tx, ev, due) => {
   // Marktnachrichten verfallen; die Börse steht wieder auf dem Grundrichtwert.
   await clearMarketNews(tx);
   await tx.update(tables.nest).set({ defeatedAt: null });
-  await ensureNests(tx); // Plätze, die ein Hafen belegt hatte (z. B. Stufe 6 nachgetragen), jetzt anlegen
+  await ensureNests(tx, { dropStartNests: true }); // Plätze, die ein Hafen belegt hatte (z. B. Stufe 6 nachgetragen), jetzt anlegen; Start-Nester weg
   const market = marketCore.createMarketState(marketBalance, due);
   for (const [resource, state] of Object.entries(market)) {
     await tx

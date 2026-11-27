@@ -38,6 +38,7 @@ import { diplomacyBlock } from "./alliance-core.ts"; // Allianzen/Diplomatie
 // Weltereignisse: Missionen gegen Ereignisse, Belagerung sperrt Börsenkäufe.
 import { launchAgainstEvent } from "./world-events-missions.ts";
 import { siegeEffects } from "./world-events.ts";
+import { ensureStartNest, revealStartNest } from "./start-nest.ts"; // Einstieg: Nest Stufe 1 in ≤ 300 km
 import { effectiveMarketRefs } from "./market-news.ts";
 import { modifiersFor, modsOf } from "./modifiers.ts";
 import { applyPendingBoost } from "./guide.ts";
@@ -145,6 +146,12 @@ export function chooseBase(engine: Engine, playerId: number, key: string, input:
     if (inserted.length === 0) fail("field_taken");
     const id = inserted[0].id;
     await scheduleEvent(ctx.tx, "raid_launch", ctx.nowMs + balance.pirates.raidIntervalHours * 3600000, {}, id);
+    // Einstieg: Menschen bekommen ein erreichbares Nest der Stufe 1 (KI-Spieler suchen sich ihre Ziele selbst).
+    const [who] = await ctx.tx.select({ bot: tables.player.botProfile }).from(tables.player).where(eq(tables.player.id, playerId));
+    if (who && who.bot === null) {
+      const start = await ensureStartNest(ctx.tx, { col: input.col, row: input.row }, ctx.nowMs);
+      if (start) await revealStartNest(ctx.tx, playerId, start.id, ctx.nowMs);
+    }
     ctx.notify.push([null, "map"]);
     return { ok: true as const, baseId: id };
   });

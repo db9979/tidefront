@@ -450,3 +450,36 @@ Stahl-Gegenwert, Produktion des Militär-Bots (45 % Rüstung) Tag 28 ≈ 1 130/h
    `BOT_SIM_SPACE=1` (Startrampe, Raumfahrt und 20 000 je Ressource ab Tag 0) starten Freibeuter und Festung in jedem
    Lauf je einen Satelliten (4 Läufe). Dabei fiel ein Fehler im Nest-Überfall auf: Mit viel Wissen standen oben
    viele zu starke Nester, die Liste endete nach 12 Einträgen – jetzt Probekampf je Stufe einmal, bis zu 6 Startversuche.
+
+## Einstieg für neue Spieler (Prüfbericht 0.22)
+
+1. **Erster Nest-Überfall gewinnbar.** Probekampf (100 feste Seeds) gegen Nest Stufe 1 (4 Schnellboote, 18 Miliz):
+   2 Korvetten + 1 Landungsschiff + 20 Schützen siegen zu 1 %, mit 25 zu 73 %, 28 zu 95 %, 30 zu 100 %. Korvetten
+   ändern gegen Stufe 1 nichts (Landungsschiff + 28 Schützen ebenfalls 95 %). **Entscheidung:** Auftrag „wache“ fordert
+   30 Schützen (`GUIDE_GOALS`, Paket unverändert), „flotte“ bleibt bei 2 Korvetten und 1 Landungsschiff (für stärkere
+   Nester). „Lohnende Ziele“ schlägt je Nest den kleinsten Verband aus dem Bestand vor, der im Probekampf ≥ 90 % siegt
+   (game-core `smallestWinningRaid`: Halbierungssuche je Typ, teure zuerst, Truppen müssen auf die Landungsschiffe
+   passen). 90 % statt der geforderten ~85 %, weil die Suche auf die festen Seeds passt (bei 30 Seeds schlug sie 25
+   Schützen mit „87 %“ vor, echt 73 %); mit 100 Seeds und 90 % landet sie bei Stufe 1 auf 28 Schützen (echt ~95 %).
+   Reicht der Bestand nicht, bleibt der volle Verband stehen mit dem Hinweis, wie viele Schützen fehlen.
+2. **Start-Nest in ≤ 300 km.** Bei 5 von 8 Schnellwahl-Orten lag Stufe 1 bei 500–1 071 km. chooseBase legt für
+   Menschen (nicht KI) ein Nest Stufe 1 an, wenn keins offen in 300 km liegt: auf einem **Seefeld vor der Küste**
+   (Breitensuche über Meer/Küste ab dem Hafen, 90–300 km, Wunsch 180 km, möglichst 120 km zum nächsten Nest), nicht
+   auf Häfen, Nestern, Rohstofffeldern und künftigen Feldplätzen, Handelshäfen. Seefeld statt Küste, damit nie ein
+   Küstenfeld (Hafenplatz) belegt wird – auf Küste kollidierten die Start-Nester sofort mit Hafenwahl und Gründungen
+   (15 Server-Tests fielen). Kein Schema: Start-Nester sind Zeilen der Tabelle nest außerhalb der Weltplätze und
+   verfallen beim Saisonwechsel (`ensureNests(tx, { dropStartNests: true })` in season.ts). Bekannt ist das
+   Nest über einen Lagebild-Eintrag („Hafenamt“, verblasst nach forgetHours) und dauerhaft über `guide.get.nestTarget`
+   (nächstes offenes Nest Stufe 1, solange der Nest-Auftrag offen ist) – „Lohnende Ziele“ zeigt es mit Stufe und
+   Markierung „Auftragsziel“, dazu immer alle bekannten Stufe-1-Nester in 300 km.
+3. **Auftragsbuch sofort aktuell.** Live-Meldungen base/missions/reports (und season) invalidieren jetzt auch
+   guide.get und achievements.weekly; zusätzlich holt die Auftragsleiste 1,5 s nach dem Ende eines Bau- oder
+   Ausbildungs-Countdowns neu (falls die Live-Verbindung fehlt).
+4. **Belohnung und Lager.** Bisher landeten Auftragsbuch-Pakete über der Lagergrenze. **Entscheidung:** Sie füllen
+   das Lager nur bis zur Grenze (`deliverToStorage`), der Rest verfällt; vor dem Abholen warnt das Auftragsbuch mit der
+   Menge und bietet „Lagerkomplex ausbauen“ an – kein zusätzlicher Auftrag, weil Pakete die ganze Saison abholbar
+   bleiben (warten kostet nichts) und ein zwölfter Auftrag Zähler, Abzeichen und Texte („elf“) verschieben würde.
+   Tagesbefehle und Wochenziele schreiben weiter über die Grenze gut (nicht Teil dieses Auftrags).
+5. Kleinkram: Zähler „abholbereit“ zählte die Abschlussbelohnung doppelt (guideView zählt sie schon); „Los“ beim
+   Schützen-/Schiffe-Auftrag öffnet Truppen → Ausbilden, beim Nest-Auftrag Truppen → Einsatz (lohnende Ziele);
+   Hafenwahl zeigt die Nest-Stufe nur, wenn sie bekannt ist.

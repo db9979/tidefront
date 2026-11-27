@@ -405,7 +405,7 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
 ## Auftragsbuch
 
 - Elf Grundaufträge auf der Basis (Reihenfolge wie in der Oberfläche): Kraftwerk Stufe 1; Stahlwerk Stufe 1; Raffinerie
-  und Versorgungshof Stufe 1; Kommandozentrale Stufe 1; Kaserne Stufe 1; 20 Schützen (daheim und unterwegs); Werft
+  und Versorgungshof Stufe 1; Kommandozentrale Stufe 1; Kaserne Stufe 1; 30 Schützen (daheim und unterwegs; `GUIDE_GOALS`); Werft
   Stufe 1; 2 Korvetten und 1 Landungsschiff; ein eigener gewonnener Überfall auf ein Piratennest (Kampfbericht der
   Saison); Hafenkommandantur Stufe 3; Radarstation und Tiefbunker Stufe 1.
 - Erfüllung prüft der Server aus dem Stand des Hafens (packages/engine/src/guide.ts), auch für früher Erledigtes.
@@ -418,7 +418,7 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
   | Raffinerie und Versorgungshof | Stahl 400, Treibstoff 100, Elektronik 100 |
   | Kommandozentrale | Stahl 300, Treibstoff 50, Proviant 200 |
   | Kaserne | Stahl 600, Proviant 400 |
-  | 20 Schützen | Stahl 300, Proviant 600 |
+  | 30 Schützen | Stahl 300, Proviant 600 |
   | Werft | Stahl 800, Treibstoff 300, Elektronik 100 |
   | 2 Korvetten, 1 Landungsschiff | Stahl 400, Proviant 400 |
   | Piratennest | Treibstoff 800, Elektronik 200 |
@@ -434,7 +434,19 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
   Auftragsbuch liegt nach dem Abschluss gleichbleibend etwa 1,5 Tage vor dem ohne (Tag 28: +9 % Ausgaben); der Vorsprung
   wächst nicht weiter.
 - Abholen ist ein Befehl mit Idempotenz-Schlüssel (`guide.claim`, `guide.claimFinal`) und gelingt je Spieler, Saison und
-  Auftrag genau einmal, auch bei gleichzeitigen Aufrufen. Ressourcen werden auch über die Lagerkapazität gutgeschrieben.
+  Auftrag genau einmal, auch bei gleichzeitigen Aufrufen. Ressourcen füllen den Heimathafen höchstens bis zur
+  Lagerkapazität (Bestände darüber bleiben, sinken aber nicht); der Rest verfällt und steht als `lost` in der Antwort.
+  Die Oberfläche warnt vor dem Abholen und bietet „Lagerkomplex ausbauen“ an; abholbar bleibt jeder Auftrag die Saison.
+- Start-Nest (Einstieg): Bei der Hafenwahl eines menschlichen Spielers (chooseBase) gibt es ein unbesiegtes Nest der
+  Stufe 1 in höchstens 300 km (`START_NEST_KM`, Luftlinie). Fehlt es, legt der Server eines auf einem freien Seefeld
+  direkt vor der Küste an, übers Wasser vom Hafen erreichbar, 90–300 km entfernt (Wunsch 180 km, möglichst 120 km
+  Abstand zu anderen Nestern), nicht auf Häfen, Nestern, Rohstofffeldern/-plätzen oder Handelshäfen; das Gelände bleibt.
+  Das Nest steht im Lagebild des Spielers (Quelle „Hafenamt“), und das Auftragsbuch nennt es mit Stufe als Ziel des
+  Nest-Auftrags (`nestTarget`, auch unter Kartennebel), solange der Auftrag offen ist. KI-Spieler bekommen keins.
+  Start-Nester verfallen beim Saisonwechsel (die Weltplätze bleiben).
+- „Lohnende Ziele“ (Truppen → Einsatz): je Nest der kleinste Verband aus dem Bestand daheim, der im Probekampf
+  (100 feste Seeds, ohne Wetter) mindestens 90 % gewinnt (game-core `smallestWinningRaid`); reicht der Bestand nicht,
+  der volle Verband und wie viele Schützen fehlen. Stufe-1-Nester in 300 km und das Auftragsziel stehen immer dabei.
 - Saison: Abholungen werden je Saison gespeichert (Tabelle `guide_claim` mit `season_id`, die alte Saison bleibt
   erhalten). In der neuen Saison sind alle Aufträge und die Abschlussbelohnung wieder offen.
 

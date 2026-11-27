@@ -29,3 +29,4 @@ export * from "./expansion.ts"; // Mehrere Häfen: Gründung, Verlegung
 export * from "./intel.ts"; // Lagebild: Sensoren, Kenntnisstufen, Alter
 export * from "./intel-ops.ts"; // Lagebild Stufe 2: Patrouille, Kampagne, Radarposten, Sonar
 export * from "./intel-sat.ts"; // Lagebild Stufe 3: Satelliten, Tarnnetze, Störsender
+export * from "./raid-plan.ts"; // Einstieg: kleinster siegreicher Verband gegen ein Nest
