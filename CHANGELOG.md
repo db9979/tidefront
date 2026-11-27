@@ -2,6 +2,13 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.34.0 – 27.11.2026
+- **„Was fehlt zum Sieg?“** im Probekampf, im Kampfsimulator und an verlorenen Kampfberichten („Was hätte gefehlt?“): sucht die günstigste Verbandsmischung für 70, 90 oder 99 % Siegchance – mit Kommandopunkten, Truppenplätzen und Ausbildungszeit. „Ausbilden“ springt mit vorgewählten Mengen zur Kaserne bzw. Werft, „Mit diesem Verband planen“ direkt in die Missionsplanung.
+- **Kampfsimulator korrigiert:** See-, Feld-, Konvoi-, Weltereignis- und Finale-Kämpfe zählen „Gegner vernichtet“ als Sieg (wie auf dem Server). Siegchance, Verluste und Restkampfkraft erscheinen aus deiner Sicht – auch bei einer Abwehr. Beute aus Berichten wird nicht mehr doppelt verstärkt; bei einem verlorenen Kampf heißt sie „unbekannt“ statt 0. Neue Phasentabelle.
+- **Probekampf mit Wetter:** Probekampf, „Lohnende Ziele“ und Einschätzung rechnen mit dem vorhergesagten Wetter am Ziel zur Ankunft – Wolken schwächen den Luftschlag, die Siegchance wird ehrlicher. Vorschläge werden gegen zusätzliche Würfe geprüft; die Rechnung läuft im Hintergrund, ohne die Oberfläche zu bremsen.
+- Kartell- und Hafen-Vorlagen im Simulator mit Hafenkommandant, Verbündeten, Hafen-Boni und Kartellstärke-Regler.
+- **Boni bleiben geheim:** Kampfberichte zwischen Spielern verraten keiner Seite mehr Forschung, Admiral oder Veteranen des Gegners.
+
 ## 0.33.0 – 27.11.2026
 - **Konvois auf ihrem Seeweg:** Konvois fahren auf der Karte jetzt entlang ihrer echten Route statt auf einer Geraden über Land.
 - **Börsenkäufe und Lieferverträge kommen per Konvoi (Balance v1.33):** Ware vom Handelshafen bzw. von Reederei Albers und Bastion Falkenberg fährt sichtbar über See. Das Kartell kann ungeschützte Konvois überfallen – das Risiko ist klein (typisch 4 % Chance, im Schnitt etwa 1 % Warenverlust); in der Order kannst du Geleitschutz mitschicken, der Hinweis nennt Chance und erwarteten Verlust. Laufende Lieferungen kommen wie bisher an.
