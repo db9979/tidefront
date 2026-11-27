@@ -19,6 +19,8 @@ import { expansionTurn, marketTurn, offersTurn } from "./bots-econ.ts";
 import { fieldTurn, wantsField } from "./bots-fields.ts";
 import { raidFinale } from "./bots-finale.ts";
 import { admiralTurn } from "./bots-admiral.ts"; // Admirale
+import { dailyTurn } from "./bots-daily.ts";
+import { raidWorldEvent } from "./bots-world-events.ts";
 
 /** Zusatzanteile der Doktrin, solange ein Feldverband fehlt (bots-fields.ts). */
 const FIELD_DOCTRINE = { korvette: 0.15, zerstoerer: 0.05 };
@@ -123,8 +125,10 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
   ({ bases, mods } = await loadOwn(engine, bot.id, nowMs));
   const homeBase = bases.find((b) => b.isHome) ?? bases[0];
   await admiralTurn(c, homeBase); // Admirale: Freibeuter Landungstrupp, Festung Verteidigung daheim
-  await marketTurn(c, homeBase, mods.get(homeBase.id)!);
+  // Börse (Welle 2): jeder Hafen mit Börse verkauft Überschuss und kauft Knappes (Tageslimit gilt spielerweit).
+  for (const b of bases) await marketTurn(c, b, mods.get(b.id)!);
   await offersTurn(c, homeBase, mods.get(homeBase.id)!);
+  await dailyTurn(c); // Welle 2: Tagesbefehle und Wochenziele an etwa 60 % der Tage abholen
 
   // Felder und Angriffe: je Hafen höchstens ein Auslaufen dieser Art.
   ({ bases, mods } = await loadOwn(engine, bot.id, nowMs));
@@ -133,6 +137,7 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
     await botSatellite(c, b); // Lagebild Stufe 3: Satellit, wenn viele Nester ohne Lagebild sind
     if (await fieldTurn(c, b, m)) continue;
     if (await raidFinale(c, b, m)) continue; // Saisonfinale: Abschnitt der Armada, wenn sicher gewonnen
+    if (await raidWorldEvent(c, b, m)) continue; // Welle 2: Schatzschiff, Großflotte, Belagerung nach Probekampf
     if (await layMines(c, b)) continue;
     // Admirale: der Probekampf rechnet den bereiten Admiral dieses Hafens ein; tryLaunch nimmt ihn mit.
     const raid = c.admiral?.baseId === b.id ? combineModifiers(m, c.admiral.mods) : m;
