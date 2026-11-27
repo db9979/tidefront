@@ -42,7 +42,7 @@ test("Fremdes Nest: ohne Sicht keine Stufe, in Radarreichweite schon", async ({ 
     await expect(page.getByRole("heading", { name: "Mission planen" })).toBeVisible();
     await expect(page.getByText(/Lage unbekannt/).first()).toBeVisible();
     await page.getByRole("listitem").filter({ hasText: /^Korvette\d/ }).getByRole("button", { name: "alle" }).click();
-    await expect(page.getByText(/^Fahrt .* Treibstoff$/)).toBeVisible();
+    await expect(page.getByText(/^(Fahrt|Flug) .* Treibstoff$/)).toBeVisible(); // Flug bei reinem Luftverband
     await expect(page.getByRole("button", { name: "Probekampf" })).toHaveCount(0);
 
     await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
