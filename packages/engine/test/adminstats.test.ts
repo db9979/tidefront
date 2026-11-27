@@ -10,7 +10,7 @@ import Fastify from "fastify";
 import cookie from "@fastify/cookie";
 import { TRPCError } from "@trpc/server";
 import { createDb, migrateDb, tables } from "@tidefront/db";
-import { nestSites, isCoast, COLS, ROWS, isTradePortHex } from "@tidefront/world";
+import { nestSites, isCoast, COLS, ROWS } from "@tidefront/world";
 import { productionRates, settle, type BaseState } from "@tidefront/game-core";
 import {
   adminStats,
@@ -50,7 +50,7 @@ function freeCoast(skip: number): { col: number; row: number } {
   const nests = new Set(nestSites().map((n) => `${n.col},${n.row}`));
   let k = 0;
   for (let row = 10; row < ROWS; row++) for (let col = 0; col < COLS; col++) {
-    if (isCoast(col, row) && !isTradePortHex(col, row) && !nests.has(`${col},${row}`) && k++ === skip) return { col, row };
+    if (isCoast(col, row) && !nests.has(`${col},${row}`) && k++ === skip) return { col, row };
   }
   throw new Error("no coast");
 }

@@ -3,7 +3,7 @@
 // Küstenfeldern der Testdateien kollidiert, die von oben suchen. Optional nahe einem Feld (maxKm).
 import { and, eq } from "drizzle-orm";
 import { tables, type Db } from "@tidefront/db";
-import { COLS, ROWS, hexCenter, hexDistanceKm, isCoast, nestSites, isTradePortHex } from "@tidefront/world";
+import { COLS, ROWS, hexCenter, hexDistanceKm, isCoast, nestSites } from "@tidefront/world";
 import { createBase, type BaseState } from "@tidefront/game-core";
 import { balance } from "../src/index.ts";
 
@@ -24,7 +24,7 @@ export async function freeCoastField(db: Db, opts: SecondHarborOpts = {}): Promi
   for (const n of nestSites()) taken.add(`${n.col},${n.row}`);
   for (let row = ROWS - 1; row >= 0; row--) {
     for (let col = COLS - 1; col >= 0; col--) {
-      if (!isCoast(col, row) || isTradePortHex(col, row) || taken.has(`${col},${row}`)) continue;
+      if (!isCoast(col, row) || taken.has(`${col},${row}`)) continue;
       if (opts.near) {
         const d = hexDistanceKm(opts.near, { col, row });
         if (d > (opts.maxKm ?? 300) || d < (opts.minKm ?? 0)) continue;

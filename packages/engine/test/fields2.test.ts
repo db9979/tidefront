@@ -5,7 +5,7 @@ import { after, before, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { and, eq, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
-import { nestSites, isCoast, hexDistanceKm, COLS, ROWS, isTradePortHex } from "@tidefront/world";
+import { nestSites, isCoast, hexDistanceKm, COLS, ROWS } from "@tidefront/world";
 import type { BaseState } from "@tidefront/game-core";
 import {
   chooseBase, ensureFieldPlanner, fieldRecall, fieldsView, launchMission, missionPreview, processDue, register, seed, setFieldEscort,
@@ -26,7 +26,7 @@ function coastNear(near: { col: number; row: number } | null, minKm = 300, maxKm
   const nests = new Set(nestSites().map((n) => `${n.col},${n.row}`));
   for (let row = 20; row < ROWS; row++) for (let col = 10; col < COLS; col++) {
     const k = `${col},${row}`;
-    if (!isCoast(col, row) || isTradePortHex(col, row) || nests.has(k) || used.has(k)) continue;
+    if (!isCoast(col, row) || nests.has(k) || used.has(k)) continue;
     if (near) {
       const d = hexDistanceKm(near, { col, row });
       if (d < minKm || d > maxKm) continue;

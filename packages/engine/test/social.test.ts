@@ -3,7 +3,7 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { eq, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
-import { nestSites, isCoast, COLS, ROWS, isTradePortHex } from "@tidefront/world";
+import { nestSites, isCoast, COLS, ROWS } from "@tidefront/world";
 import type { BaseState } from "@tidefront/game-core";
 import {
   auditLedger,
@@ -15,7 +15,6 @@ import {
   clearRankingCache,
   computeStandings,
   ensureSeason,
-  seasonDays,
   GameError,
   hallOfFame,
   inbox,
@@ -47,7 +46,7 @@ function freeCoast(skip: number): { col: number; row: number } {
   const nests = new Set(nestSites().map((n) => `${n.col},${n.row}`));
   let k = 0;
   for (let row = 10; row < ROWS; row++) for (let col = 0; col < COLS; col++) {
-    if (isCoast(col, row) && !isTradePortHex(col, row) && !nests.has(`${col},${row}`) && k++ === skip) return { col, row };
+    if (isCoast(col, row) && !nests.has(`${col},${row}`) && k++ === skip) return { col, row };
   }
   throw new Error("no coast");
 }
@@ -99,7 +98,7 @@ test("migrate legt genau eine laufende Saison an und plant ihr Ende", async () =
   const s = await runningSeason(db);
   assert.ok(s);
   assert.equal(s.number, 1);
-  assert.equal(s.endsAt.getTime() - s.startsAt.getTime(), seasonDays() * 86400000); // Vorgabe 42 (SEASON_DAYS)
+  assert.equal(s.endsAt.getTime() - s.startsAt.getTime(), 42 * 86400000);
   const again = await ensureSeason(db, Date.now());
   assert.equal(again.id, s.id);
   const ev = await db.select().from(tables.gameEvent).where(eq(tables.gameEvent.type, "season_end"));

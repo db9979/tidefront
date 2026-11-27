@@ -5,7 +5,7 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { and, eq, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
-import { COLS, ROWS, hexDistanceKm, isCoast, nestSites, isTradePortHex } from "@tidefront/world";
+import { COLS, ROWS, hexDistanceKm, isCoast, nestSites } from "@tidefront/world";
 import { protectionStatus, type BaseState } from "@tidefront/game-core";
 import {
   addBot, balance, botTurn, chooseBase, createResetCode, ensureStartBots, homeBaseOf, isActiveTime, launchMission, loadBot, loadBots, login,
@@ -33,7 +33,7 @@ async function coastNear(near: { col: number; row: number }, minKm: number, maxK
   const taken = new Set((await db.select({ col: tables.base.col, row: tables.base.row }).from(tables.base)).map((b) => `${b.col},${b.row}`));
   for (const n of nestSites()) taken.add(`${n.col},${n.row}`);
   for (let row = 0; row < ROWS; row++) for (let col = 0; col < COLS; col++) {
-    if (!isCoast(col, row) || isTradePortHex(col, row) || taken.has(`${col},${row}`)) continue;
+    if (!isCoast(col, row) || taken.has(`${col},${row}`)) continue;
     const d = hexDistanceKm(near, { col, row });
     if (d >= minKm && d <= maxKm) return { col, row };
   }
