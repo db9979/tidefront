@@ -443,7 +443,7 @@
       "freibeuter": { "title": "Freibeuter", "description": "Überfälle auf Mitspieler gewonnen", "counter": "ueberfaelle", "thresholds": [3, 15, 50] },
       "bollwerk": { "title": "Bollwerk", "description": "Angriffe abgewehrt, ohne Einheiten oder Anlagen zu verlieren", "counter": "abwehr_ohne_verluste", "thresholds": [1, 5, 20] },
       "prisenmeister": { "title": "Prisenmeister", "description": "Beute aus Überfällen insgesamt (Ressourcen)", "counter": "beute", "thresholds": [25000, 250000, 2000000] },
-      "kaufmann": { "title": "Kaufmann", "description": "Geschäfte an der Börse ab 500 Taler abgeschlossen", "counter": "handel", "thresholds": [10, 50, 200] },
+      "kaufmann": { "title": "Kaufmann", "description": "Geschäfte an der Börse ab 500 Talern abgeschlossen", "counter": "handel", "thresholds": [10, 50, 200] },
       "baumeister": { "title": "Baumeister", "description": "Gebäude als Prachtbau (Stufe 18 oder höher)", "counter": "prachtbau", "thresholds": [1, 4, 10] },
       "gelehrter": { "title": "Gelehrter", "description": "Techniken vollständig erforscht", "counter": "forschung_voll", "thresholds": [1, 5, 12] },
       "meisterspion": { "title": "Meisterspion", "description": "Aufträge des Nachrichtendienstes gelungen", "counter": "spionage", "thresholds": [5, 25, 100] },

@@ -518,7 +518,7 @@ und bezahlt wird bei Fälligkeit. Gegenpartei ist ein KI-Spieler oder ein andere
   Tagesbefehle. Jede Lieferung eines Spielervertrags verbindet das Paar (`pvp_ties`, 7 Tage: kein Kopfgeld). Angebote an
   einen bestimmten Spieler gehen nicht an KI-Spieler; öffentliche Angebote nimmt ein KI-Händler in seinem Zug an, wenn sie
   ihm mindestens 3 % gegenüber dem Kurs bringen und sein Lager es trägt.
-- **Erfolge und Tagesbefehle „Handel“:** zählen bei Lieferung, je Vertrag bzw. Tranche einmal, ab 500 Taler.
+- **Erfolge und Tagesbefehle „Handel“:** zählen bei Lieferung, je Vertrag bzw. Tranche einmal, ab 500 Talern.
 - **Saisonende:** Fälligkeit (jeder Tranche) spätestens `seasonEndBufferHours` (24 h) vor Saisonende (`bad_term`). Was beim
   Saisonwechsel noch offen ist, wird rückabgewickelt (Treuhand gegen `season:<n>` ausgebucht, Status `rueckabgewickelt`).
 - **Garantie, die Tests prüfen:** Kauf auf Termin und Verkauf bei Lieferung an der Börse (bzw. Leerverkauf) verliert ohne

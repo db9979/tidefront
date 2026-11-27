@@ -212,7 +212,7 @@ async function settleNow(tx: Tx, c: ContractRow, due: number, final: boolean, no
     }
   }
 
-  // Erfolge und Tagesbefehle „Handel“ (ab 500 Taler), PvP-Verbindung bei Spielerverträgen, Nachrichten.
+  // Erfolge und Tagesbefehle „Handel“ (ab 500 Talern), PvP-Verbindung bei Spielerverträgen, Nachrichten.
   if (r.qty > 0 && c.counts) {
     if (buyerHuman && r.buyerPaysCents >= 50_000) await trackProgress(tx, c.buyerId!, "handel", r.buyerPaysCents / 100, { atMs: due });
     if (sellerHuman && r.sellerGetsCents >= 50_000) await trackProgress(tx, c.sellerId!, "handel", r.sellerGetsCents / 100, { atMs: due });
