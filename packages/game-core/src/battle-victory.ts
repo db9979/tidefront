@@ -10,16 +10,24 @@ import { fleetTotals } from "./mission.ts";
 import { convoyPlunder } from "./naval.ts";
 import { finaleLoot } from "./finale.ts";
 
-/** landung: Sieg mit gelandeten Truppen (Nest, Hafen); vernichtung: alle Einheiten des Verteidigers vernichtet. */
-export type VictoryRule = "landung" | "vernichtung";
+/**
+ * landung: Sieg mit gelandeten Truppen (Nest, Hafen); vernichtung: alle Einheiten des Verteidigers vernichtet;
+ * halten (Konvoi, Feld; Hotfix 0.38.1, TST-01): wie vernichtung, aber getauchte Einheiten (U-Boote) halten nicht –
+ * bleiben nur sie übrig, ist der Konvoi bzw. das Feld verloren (die U-Boote selbst überleben).
+ */
+export type VictoryRule = "landung" | "vernichtung" | "halten";
 
 /** Kampfarten, bei denen „Gegner vernichtet“ gilt (Berichtsart). */
-const DESTROY_KINDS = new Set(["weltereignis", "feld", "konvoi", "blockadekampf"]);
+const DESTROY_KINDS = new Set(["weltereignis", "blockadekampf"]);
+/** Kampfarten, bei denen der Verteidiger etwas halten muss (getauchte Einheiten zählen nicht). */
+const HOLD_KINDS = new Set(["feld", "konvoi"]);
 
 /** Siegregel eines Berichts (Art und Daten wie report.get sie liefert). */
 export function victoryRuleOf(kind: string, data?: Record<string, unknown> | null): VictoryRule {
+  if (HOLD_KINDS.has(kind)) return "halten";
   if (DESTROY_KINDS.has(kind)) return "vernichtung";
-  if (data && (data.worldEvent || data.field || data.convoy || data.blockade)) return "vernichtung";
+  if (data && (data.field || data.convoy)) return "halten";
+  if (data && (data.worldEvent || data.blockade)) return "vernichtung";
   return "landung";
 }
 
@@ -29,7 +37,7 @@ export function victoryRuleOf(kind: string, data?: Record<string, unknown> | nul
  */
 export function settleBattle(report: BattleReport, balance: Balance, rule: VictoryRule): { report: BattleReport; destroyed: boolean } {
   if (rule === "landung") return { report, destroyed: report.winner === "attacker" };
-  return strandTroops(report, balance);
+  return strandTroops(report, balance, rule !== "halten");
 }
 
 /** Beute je Kampfart im Simulator. */

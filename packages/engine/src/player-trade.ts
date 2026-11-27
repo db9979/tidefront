@@ -65,7 +65,7 @@ async function lockPlayers(tx: Tx, ids: number[]): Promise<Map<number, Trader>> 
     .from(tables.player)
     .where(inArray(tables.player.id, [...new Set(ids)]))
     .orderBy(asc(tables.player.id))
-    .for("update");
+    .for("no key update");
   return new Map(rows.map((r) => [r.id, r.trader as Trader]));
 }
 

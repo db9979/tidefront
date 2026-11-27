@@ -64,7 +64,9 @@ Zehn Spielereinheiten in drei Gattungen, dazu der Spion (kämpft nicht, siehe Na
 - **U-Boote** (`uboot`, seit v1.2): Gattung See, gebaut in der Werft ab Stufe 3 (`requiresLevel`), ohne Truppenraum
   und Ladung. Sie sind getaucht (`submerged`): Sie können nur von Einheiten mit **U-Jagd** (Angriffswert `uboot` > 0)
   getroffen werden – nicht von Bombern, Küstenbatterien, Flak, Landungsschiffen oder dem Kartell. Reisezeit,
-  Treibstoff, Kommandopunkte und Unterhalt gelten wie für jedes Schiff.
+  Treibstoff, Kommandopunkte und Unterhalt gelten wie für jedes Schiff. Halten können sie nichts (Hotfix 0.38.1,
+  Siegregel `halten` für Konvoi und Feld): Bleiben dort nach dem Kampf nur getauchte Einheiten übrig, ist der Konvoi
+  bzw. das Feld verloren; die U-Boote selbst überleben (REGELN-SEE.md, Konvois).
 - Angriffswert `uboot` (U-Jagd, Vorgabe 0): Schaden gegen getauchte U-Boote. In v1.2 haben ihn Korvette und Zerstörer.
 
 ## Missionen
@@ -651,8 +653,8 @@ Vorlage „Aufholhilfe“ (docs/VORLAGE-AUFHOLHILFE.md) mit Nutzerentscheiden vo
   gelesen: beim Abruf und Abholen, nach jedem abgeschlossenen Ausbau des Spielers und alle 10 Minuten im Worker-Takt
   (nur Spieler mit offenen Befehlen dieser Art). Es zählt der beste Stand des Tages – wer erst abends nachsieht, behält
   den Höchststand von Ökostrom, Stromspeicher oder Vorrat vom Mittag (auf 10 Minuten genau).
-- Belohnung je Befehl: Ressourcenpaket im Wert 400 / 1.000 / 2.500 × (1 + 0,3·s) (Stahl 40 %, Treibstoff 25 %,
-  Elektronik 15 %, Proviant 20 %, auf 10 gerundet; s bei der Vergabe) und 3 / 6 / 12 Punkte der Kategorie Befehle.
+- Belohnung je Befehl: Ressourcenpaket im Wert 400 / 1.000 / 2.500 × (1 + 0,3·s) (Stahl 50 %, Treibstoff 25 %,
+  Elektronik 15 %, Proviant 10 %, auf 10 gerundet, Schlüssel `SHARE` in engine/src/challenge-pool.ts; s bei der Vergabe) und 3 / 6 / 12 Punkte der Kategorie Befehle.
   Abholen ist ein Befehl mit Idempotenz-Schlüssel und gelingt genau einmal; die Ressourcen werden auch über die
   Lagerkapazität gutgeschrieben. Erfüllte Befehle früherer Tage bleiben bis zum Saisonende abholbar.
 - Neu würfeln: einmal je Spieltag ein noch nicht erfüllter Befehl des Tages, kostenlos. Neue Art derselben Stufe,

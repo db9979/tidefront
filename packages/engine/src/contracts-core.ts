@@ -88,7 +88,7 @@ export async function lockTraders(tx: Tx, ids: number[]): Promise<Map<number, Tr
   const uniq = [...new Set(ids)].sort((a, b) => a - b);
   if (uniq.length === 0) return new Map();
   const rows = await tx.select({ id: tables.player.id, trader: tables.player.trader }).from(tables.player)
-    .where(inArray(tables.player.id, uniq)).orderBy(tables.player.id).for("update");
+    .where(inArray(tables.player.id, uniq)).orderBy(tables.player.id).for("no key update");
   return new Map(rows.map((r) => [r.id, r.trader as Trader]));
 }
 

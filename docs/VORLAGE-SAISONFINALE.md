@@ -81,7 +81,7 @@ Verband = Kriegsschiffe und Flugzeuge des Spätspiel-Bots (45 % Rüstung) an Tag
 
 - **Weltereignisse:** ab der Ankündigung keine neuen; laufende enden normal. Kein Konflikt mit `minSeasonHoursLeft` (36 h).
 - **Wertung:** Seit dem Entscheid vom 27.11.2026 zählen Angriffe auf Großflotte und Belagerung voll
-  (`npcWorldEventKinds` ist leer; REGELN.md nennt noch × 0,25 – bitte angleichen). Das Finale bekommt den eigenen
+  (`npcWorldEventKinds` ist leer; REGELN.md und Handbuch sind angeglichen, das Handbuch liest die Werte aus der Balance). Das Finale bekommt den eigenen
   Faktor 0,5, Kartell-Abwehr bleibt × 0,25.
 - **Sammelangriff:** vorhanden; Abschnitt aus dem gemeinsamen K, Beute und Schaden nach Beitrag wie bei der Großflotte.
 - **Admirale und Veteranen:** Erfahrung wie bei jedem Kampf; Schicksalswurf nur bei über 70 % Verlust (bei 0,5 × K

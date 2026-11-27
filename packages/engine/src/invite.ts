@@ -140,7 +140,7 @@ async function insertInvite(db: Db, inviter: Inviter, values: {
 }, nowMs: number) {
   return db.transaction(async (tx) => {
     // Grenzen je Spieler unter Sperre der Spielerzeile, damit parallele Anfragen sie nicht überschreiten.
-    await tx.execute(sql`select id from player where id = ${inviter.id} for update`);
+    await tx.execute(sql`select id from player where id = ${inviter.id} for no key update`);
     await checkLimits(tx, inviter, nowMs);
     if (values.email) await checkAddress(tx, values.email, nowMs);
     const code = newCode();
