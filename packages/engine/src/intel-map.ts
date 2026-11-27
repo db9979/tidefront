@@ -27,6 +27,7 @@ import { fleetPosition } from "./intel-route.ts";
 import { postsInSight } from "./intel-post-view.ts"; // Lagebild Stufe 2: Radarposten auf der Karte
 import { fleetMods, revealedJammers } from "./intel-counter.ts"; // Stufe 3: Gegenmittel
 import { satelliteView, stripCells } from "./intel-sat.ts"; // Stufe 3: Satelliten
+import { cachedWorld } from "./map-cache.ts"; // geteilte Weltdaten für world.map zwischenspeichern
 
 type XY = { x: number; y: number };
 export type FleetRelation = Relation | "kartell";
@@ -59,7 +60,7 @@ async function allBases(db: DbOrTx) {
 
 /** Kartenansicht für einen Spieler (world.map). */
 export async function mapViewFor(db: DbOrTx, playerId: number, nowMs: number) {
-  return (await mapViewFrom(db, playerId, nowMs, await allBases(db))).view;
+  return (await mapViewFrom(db, playerId, nowMs, await cachedWorld(() => allBases(db)))).view; // map-cache.ts
 }
 
 /**

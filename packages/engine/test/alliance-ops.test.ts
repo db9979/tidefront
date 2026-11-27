@@ -33,7 +33,6 @@ const { db, client } = createDb(url ?? "postgres://invalid", 10);
 const engine: Engine = { db, notify: () => {}, log: () => {}, push: () => {} };
 let keyN = 0;
 const key = () => `ops${++keyN}-${Date.now()}`;
-const MIN = 60000;
 
 function freeCoast(skip: number): { col: number; row: number } {
   const nests = new Set(nestSites().map((n) => `${n.col},${n.row}`));

@@ -3,6 +3,7 @@
 // Partei für alles im Streifen, intel-sat-pass.ts), Ende nach lifetimeHours (satellite_end, Abschlussbericht).
 // Live ist der Streifen liveMinutes ab Beginn des Überflugs: als Sensor mit Streifen in der Sicht (intel-sight.ts).
 // Optisch: Felder mit Bewölkung über cloudMax (echtes Wetter zum Überflug) bleiben verdeckt; Radar: durch Wolken.
+import { lockPlayerWide } from "./world-lock.ts";
 import {
   activeSatellites, currentPass, hasResources, newSatellite, nextPass, satelliteCost, satelliteLaunchCheck, satelliteLimit, satelliteOf, satPassCount,
   settle, subtractResources, techLevel, weatherAt,
@@ -132,6 +133,12 @@ async function techsOf(tx: DbOrTx, playerId: number): Promise<Record<string, num
   return home ? { ...(home.state.research?.levels ?? {}) } : {};
 }
 
+/** Eindeutige Satelliten-ID je Spieler: Startzeit, bei Gleichstand eins über der höchsten vergebenen (unter Spielersperre). */
+async function freeSatelliteId(tx: DbOrTx, playerId: number, nowMs: number): Promise<number> {
+  const ids = (await basesOfPlayer(tx, playerId)).flatMap((b) => (b.state.satellites ?? []).map((s) => s.id));
+  return Math.max(nowMs, ...ids.map((id) => id + 1));
+}
+
 /** Satelliten aller Häfen des Spielers, die noch fliegen. */
 async function activeCount(tx: DbOrTx, playerId: number, nowMs: number): Promise<number> {
   return (await basesOfPlayer(tx, playerId)).reduce((n, b) => n + activeSatellites(b.state, nowMs).length, 0);
@@ -171,13 +178,15 @@ export async function satelliteOptions(db: DbOrTx, playerId: number, nowMs: numb
 export async function launchSatellite(engine: Engine, playerId: number, key: string, input: { type: string; baseId?: number }) {
   const jobs: NoticeJob[] = [];
   const r = await runCommand<{ ok: true; satelliteId: number; firstPassAtMs: number; expiresAtMs: number; reportId: number }>(engine, playerId, key, "satellite", async (ctx) => {
+    // Höchstzahl gilt spielerweit über alle Häfen: Starts desselben Spielers nacheinander (world-lock.ts).
+    await lockPlayerWide(ctx.tx, playerId);
     const own = await lockOwnBase(ctx.tx, playerId, input.baseId);
     const state = settle(own.state, ctx.nowMs, balance, await modsOf(ctx.tx, own, ctx.nowMs));
     const c = satelliteLaunchCheck(state, input.type, await techsOf(ctx.tx, playerId), await activeCount(ctx.tx, playerId, ctx.nowMs), balance);
     if (!c.ok) throw new GameError(c.code);
     if (!hasResources(state.resources, c.cost)) throw new GameError("insufficient_resources");
     const type = input.type as SatelliteType;
-    const sat = newSatellite(ctx.nowMs, type, hexCenterXY(own.col, own.row).x, ctx.nowMs, c.sb);
+    const sat = newSatellite(await freeSatelliteId(ctx.tx, playerId, ctx.nowMs), type, hexCenterXY(own.col, own.row).x, ctx.nowMs, c.sb);
     state.resources = subtractResources(state.resources, c.cost);
     state.satellites = [...activeSatellites(state, ctx.nowMs), sat];
     await saveBase(ctx.tx, own.id, state);

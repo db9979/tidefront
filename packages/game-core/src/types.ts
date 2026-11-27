@@ -1,13 +1,17 @@
 // Gemeinsame Typen des Regelkerns. Nur löschbare Typ-Syntax (kein enum, kein namespace).
 import type { AdmiralBalance } from "./admirals.ts"; // Admirale
-import type { Modifiers } from "./modifiers.ts";
 import type { MarketNewsBalance } from "./market/types.ts";
 import type { EspionageBalance, IntelState } from "./espionage.ts";
-import type { CombatWeather, RouteWeather, WeatherBalance } from "./weather.ts";
+import type { RouteWeather, WeatherBalance } from "./weather.ts";
 import type { PowerBalance, PowerSnapshot } from "./power.ts";
 import type { CableLink, PowerLog } from "./power-green.ts";
 import type { BlockadeBalance, ConvoysBalance, MinesBalance } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 import type { ExpansionDef } from "./expansion.ts"; // Mehrere Häfen
+
+// Ausgelagert (Dateien unter 500 Zeilen), hier re-exportiert: Fortschritt und Kampf.
+import type { AchievementsBalance, LuckBalance, VeteranBalance, ResearchBalance, ResearchState } from "./types-progress.ts";
+export type { AchievementReward, AchievementDef, AchievementsBalance, LuckBalance, VeteranRank, VeteranBalance, TechEffect, TechDef, ResearchBalance, ResearchOrder, BreakthroughChoice, ResearchRoll, ResearchState } from "./types-progress.ts";
+export type { Side, PhaseName, AttackerInput, DefenderInput, PhaseReport, SideOutcome, BattleReport, NestGarrison, RaidForce } from "./types-combat.ts";
 
 export type ResourceMap = Record<string, number>;
 export type Counts = Record<string, number>;
@@ -36,6 +40,9 @@ export interface BuildingDef {
   slotsPerLevel?: number;
   commandPointsBase?: number;
   commandPointsPerLevel?: number;
+  /** Spätspiel (v1.24): ab dieser Stufe der Kommandozentrale gibt jede Stufe commandPointsLatePerLevel statt commandPointsPerLevel. */
+  commandPointsLateFromLevel?: number;
+  commandPointsLatePerLevel?: number;
   missionSlotsBase?: number;
   missionSlotsPerTwoLevels?: number;
   marketFromLevel?: number;
@@ -194,6 +201,8 @@ export interface Balance {
     raidHpWeights?: Record<string, number>;
   };
   market: MarketBalance;
+  /** Wertung (seit v1.24, engine/scoring.ts); fehlt es, zählt jeder Kampf voll. */
+  scoring?: ScoringBalance;
   /** Forschung (seit v1.3); fehlt sie, gibt es keine Forschung. */
   research?: ResearchBalance;
   /** Veteranen (seit v1.4); fehlt es, sammeln Einheiten keine Erfahrung. */
@@ -217,148 +226,16 @@ export interface Balance {
   intel?: import("./intel.ts").IntelBalance;
 }
 
-// ---------------------------------------------------------------- Erfolge (Abzeichen) und Wochenziele
-
-/** Belohnung einer Erfolgsstufe: Kredite und Ressourcen, einmalig. */
-export type AchievementReward = Record<string, number>;
-
-export interface AchievementDef {
-  title: string;
-  description: string;
-  /** Zähler (achievement_counter), z. B. nester, beute, spionage. */
-  counter: string;
-  /** Schwellen für Bronze, Silber, Gold (aufsteigend). */
-  thresholds: [number, number, number];
-  /** Anzeigetexte der Stufen statt „Zahl/Schwelle“ (z. B. Saisonplatzierung). */
-  tierTexts?: [string, string, string];
-  /** Eigene Belohnungen je Stufe; sonst die gemeinsamen. */
-  rewards?: [AchievementReward, AchievementReward, AchievementReward];
+/** Wertung (v1.24). Punkte bewerten Ressourcen zum Börsen-Richtpreis (market.refPrice). */
+export interface ScoringBalance {
+  /**
+   * Faktor auf Kampfpunkte gegen das Kartell bzw. NPC: Abwehr von Überfällen ohne angreifenden Spieler (Kartell, Großflotte,
+   * Konvoi, Feld) und Angriffe auf die Weltereignisse in npcWorldEventKinds.
+   */
+  npcDefenseFactor: number;
+  /** Weltereignisse, deren Bekämpfung als Abwehr zählt (Großflotte, Belagerungsring). */
+  npcWorldEventKinds?: string[];
 }
-
-export interface AchievementsBalance {
-  /** Gemeinsame Belohnung je Stufe (Bronze, Silber, Gold). */
-  rewards: [AchievementReward, AchievementReward, AchievementReward];
-  list: Record<string, AchievementDef>;
-  weekly: {
-    /** Ressourcenwert je Ziel bei Kommandozentrale 0; wächst um stageGrowth je Stufe. */
-    goalValue: number;
-    goalCredits: number;
-    /** Wochenbonus bei allen drei Zielen. */
-    bonusValue: number;
-    bonusCredits: number;
-    stageGrowth: number;
-  };
-}
-
-/** Würfel des Kriegsglücks: 1 = min, die = max, dazwischen linear innerMin … innerMax (luck.ts). */
-export interface LuckBalance {
-  die: number;
-  min: number;
-  max: number;
-  innerMin: number;
-  innerMax: number;
-}
-
-export interface VeteranRank {
-  id: string;
-  name: string;
-  /** Mindesterfahrung (Durchschnitt je Einheit des Typs). */
-  minXp: number;
-  /** Angriffsbonus (0,05 = +5 %). */
-  attackBonus: number;
-}
-
-export interface VeteranBalance {
-  /** Ränge aufsteigend nach minXp; der erste hat minXp 0 (Rekrut). */
-  ranks: VeteranRank[];
-  /** Erfahrung je überlebender Einheit nach einem Sieg bzw. einer Niederlage (vor dem Stärkefaktor). */
-  xpWin: number;
-  xpLoss: number;
-  /** Stärkefaktor = gegnerische / eigene Lebenspunkte vor dem Kampf, begrenzt auf [ratioMin, ratioMax]. */
-  ratioMin: number;
-  ratioMax: number;
-  /** Verluste: Erfahrung × (1 − lossPenalty × Anteil der verlorenen Einheiten am Bestand des Typs). */
-  lossPenalty: number;
-  /** Obergrenze der Erfahrung je Typ. */
-  maxXp: number;
-}
-
-// ---------------------------------------------------------------- Forschung
-
-/** Wirkung einer Technik: Faktor 1 + perLevel * Stufe auf einen Modifikator-Pfad (z. B. "production.stahl"). */
-export interface TechEffect {
-  path: string;
-  perLevel: number;
-}
-
-export interface TechDef {
-  /** Zweig (seefahrt, heer, luftfahrt, wirtschaft). */
-  branch: string;
-  maxLevel: number;
-  /** Kosten der ersten Stufe; jede weitere mal research.costFactor. */
-  cost: ResourceMap;
-  /** Dauer der ersten Stufe in Sekunden (Forschungsamt Stufe 1); jede weitere mal research.timeFactor. */
-  seconds: number;
-  /** Mindeststufe des Forschungsamts (Vorgabe 1). */
-  requiresBuildingLevel?: number;
-  /** Voraussetzungen: andere Techniken mit Mindeststufe. */
-  requires?: Record<string, number>;
-  effects: TechEffect[];
-}
-
-export interface ResearchBalance {
-  /** Gebäude, in dem geforscht wird. */
-  building: string;
-  costFactor: number;
-  timeFactor: number;
-  branches: string[];
-  /** Durchbruch-Würfel beim Abschluss: Chance = baseChance + perBuildingLevel * Stufe Forschungsamt, höchstens maxChance. */
-  breakthrough?: { baseChance: number; perBuildingLevel: number; maxChance: number; speedFactor: number };
-  techs: Record<string, TechDef>;
-}
-
-export interface ResearchOrder {
-  techId: string;
-  targetLevel: number;
-  startedAt: number;
-  finishesAt: number;
-  /** Bezahlte Kosten (Grundlage der Erstattung beim Abbruch). */
-  cost: ResourceMap;
-  /** Durchbruch-Chance (0..1), beim Start festgelegt und angezeigt. */
-  chance?: number;
-  /** Seed des Durchbruch-Wurfs (vom Server beim Start gesetzt). */
-  seed?: number;
-  /** Diese Forschung lief mit halber Dauer (Durchbruch-Belohnung eingelöst). */
-  halved?: boolean;
-}
-
-export type BreakthroughChoice = "level" | "speed";
-
-/** Ergebnis des Durchbruch-Wurfs einer abgeschlossenen Forschung. */
-export interface ResearchRoll {
-  techId: string;
-  /** Stufe, die erforscht wurde. */
-  level: number;
-  /** Wurf 1..100; Durchbruch, wenn roll <= chance * 100. */
-  roll: number;
-  chance: number;
-  breakthrough: boolean;
-  /** Gewählte Belohnung; null = Wahl steht noch aus. Ohne Durchbruch immer null. */
-  choice: BreakthroughChoice | null;
-  atMs: number;
-}
-
-export interface ResearchState {
-  /** Erreichte Stufe je Technik. */
-  levels: Counts;
-  /** Laufender Forschungsauftrag (höchstens einer). */
-  order: ResearchOrder | null;
-  /** Letzter Durchbruch-Wurf (nachvollziehbar gespeichert). */
-  lastRoll?: ResearchRoll | null;
-  /** Belohnung „nächste Forschung halb so lang“ liegt bereit. */
-  halfNext?: boolean;
-}
-
 // ---------------------------------------------------------------- Ergebnis
 
 export type Fail = { ok: false; code: string };
@@ -373,14 +250,16 @@ export interface ProtectionState {
   foundingShieldUntilMs?: number;
   /** Startstunde des Nachtschilds 0..23 in Ortszeit des Spielers; null = nicht gewählt. */
   nightShieldStartHour: number | null;
-  /** Versatz der Ortszeit zu UTC in Minuten (z. B. 60 für MEZ). */
+  /** Versatz der Ortszeit zu UTC in Minuten (z. B. 60 für MEZ); Rückfall, wenn timeZone fehlt (ältere Stände). */
   tzOffsetMinutes: number;
+  /** IANA-Zeitzone des Spielers (z. B. "Europe/Berlin"): Startstunde folgt der Sommerzeit. */
+  timeZone?: string;
   /** Nachtschild ist bis zu diesem Zeitpunkt aufgehoben (eigener Angriff). */
   nightShieldSuspendedUntilMs: number;
   /** Schutz nach verlorener Verteidigung bis zu diesem Zeitpunkt. */
   defeatShieldUntilMs: number;
   /** Vorgemerkte Nachtschild-Einstellung, gültig ab fromMs (fehlt in älteren Ständen). */
-  nightShieldNext?: { startHour: number | null; tzOffsetMinutes: number; fromMs: number } | null;
+  nightShieldNext?: { startHour: number | null; tzOffsetMinutes: number; timeZone?: string; fromMs: number } | null;
   /** Zeitpunkt der letzten Änderung durch den Spieler (fehlt in älteren Ständen). */
   nightShieldChangedAtMs?: number;
 }
@@ -509,97 +388,4 @@ export interface FleetCheck {
   troopSize: number;
   troopSpace: number;
   cargoCapacity: number;
-}
-
-// ---------------------------------------------------------------- Kampf
-
-export type Side = "attacker" | "defender";
-export type PhaseName = "luftkampf" | "luftschlag" | "ubootangriff" | "seegefecht" | "landung";
-
-export interface AttackerInput {
-  units: Counts;
-  versorgungsmangel?: boolean;
-  /** Anzahl früherer Angriffe desselben Angreifers auf dieses Ziel binnen repeatWindowHours. */
-  priorAttacksInWindow?: number;
-  /** Zusätzlicher Truppenraum je Einheit eines Typs (Kartell: Miliz fährt auf den Schnellbooten mit). */
-  troopSpaceBonus?: Record<string, number>;
-  /** Beute nicht durch Ladekapazität begrenzt (Kartell-Überfall). */
-  unlimitedCargo?: boolean;
-  /** Ziel ist ein Schwachziel (Anteilsbeute mal loot.weakTargetLootFactor). */
-  weakTarget?: boolean;
-  /** Modifikatoren des Angreifers (Angriff, Lebenspunkte, Minenschaden, Ladung, Beute). */
-  modifiers?: Modifiers;
-}
-
-export interface DefenderInput {
-  units: Counts;
-  defenses: Counts;
-  versorgungsmangel?: boolean;
-  /** Ressourcenbestand des Ziels (für anteilige Beute). */
-  resources?: ResourceMap;
-  /** Bunkerschutz je Ressource. */
-  protectedPerResource?: number;
-  /** Feste Beute (Piratennest) statt eines Anteils. */
-  fixedLoot?: ResourceMap;
-  /** Modifikatoren des Verteidigers (Angriff, Lebenspunkte). Bunkerschutz steckt schon in protectedPerResource. */
-  modifiers?: Modifiers;
-}
-
-export interface PhaseReport {
-  phase: PhaseName;
-  /** true, wenn in der Phase nichts geschah (kein Schuss, keine Landung). */
-  skipped: boolean;
-  skipReason: string | null;
-  rounds: number;
-  /** Gesamtbestände (Einheiten und Anlagen) vor und nach der Phase. */
-  before: { attacker: Counts; defender: Counts };
-  after: { attacker: Counts; defender: Counts };
-  /** Ausgeteilter Schaden je Einheitentyp. */
-  damage: { attacker: Record<string, number>; defender: Record<string, number> };
-  /** Einheitentyp mit dem meisten ausgeteilten Schaden, null ohne Schaden. */
-  entscheidend: string | null;
-  entscheidendSide: Side | null;
-  /** Kriegsglück: W20-Wurf je Seite in dieser Phase (seit v1.4; fehlt in älteren Berichten). */
-  luck?: { attacker: number; defender: number };
-}
-
-export interface SideOutcome {
-  before: Counts;
-  /** Bestand unmittelbar nach dem Kampf, vor Rückkehrern. */
-  survivors: Counts;
-  losses: Counts;
-  /** Rückkehrer: Lazarett, reparierte Anlagen, beschädigte Flugzeuge. */
-  returned: Counts;
-  /** survivors + returned. */
-  final: Counts;
-}
-
-export interface BattleReport {
-  seed: number;
-  winner: Side;
-  airSuperiority: Side | null;
-  landed: boolean;
-  phases: PhaseReport[];
-  attacker: SideOutcome;
-  /** Einheiten und Anlagen des Verteidigers in einer gemeinsamen Zählung (IDs sind eindeutig). */
-  defender: SideOutcome;
-  loot: ResourceMap;
-  wreck: ResourceMap;
-  weather?: CombatWeather; // Wetter am Kampfort (v1.6)
-}
-
-// ---------------------------------------------------------------- Piraten
-
-export interface NestGarrison {
-  level: number;
-  units: Counts;
-  defenses: Counts;
-  loot: ResourceMap;
-}
-
-export interface RaidForce {
-  units: Counts;
-  defenseHp: number;
-  strengthFactor: number; // gezogener Schwankungsfaktor der Stärke (1 ohne Seed)
-  attacker: AttackerInput;
 }

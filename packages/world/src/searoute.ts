@@ -1,5 +1,5 @@
 // Seewege: Verbände mit Schiffen fahren über Wasserfelder statt Luftlinie (docs/REGELN.md, Missionen; Entscheidung
-// „T. Seewege und Bordsicht“ in packages/game-core/ENTSCHEIDUNGEN-3.md). Rein und deterministisch: Server und Oberfläche
+// „U. Seewege und Bordsicht“ in packages/game-core/ENTSCHEIDUNGEN-4.md). Rein und deterministisch: Server und Oberfläche
 // rechnen dieselbe Route; der Server speichert sie im Missionsplan (Hex-Liste + Länge), die Karte zeichnet sie nach.
 //
 // Befahrbar: See, Küste und die Passagen (PASSAGES, nur für die Wegsuche – das Gelände ändert sich NIE). Küstenfelder

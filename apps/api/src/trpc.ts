@@ -1,6 +1,7 @@
 // tRPC-Grundlagen (Kontext, Prozeduren), getrennt vom Router, damit Teil-Router sie ohne Kreisimport nutzen.
 import { initTRPC, TRPCError } from "@trpc/server";
 import { z } from "zod";
+import type { Failures } from "./rate-limit.ts";
 import { GameError, inputErrorText, type Engine, type InputIssue } from "@tidefront/engine";
 
 export interface Ctx {
@@ -9,6 +10,8 @@ export interface Ctx {
   token: string | undefined;
   setSession: (token: string | null) => void;
   rateLimit: (bucket: string, limit: number, windowSec: number) => Promise<boolean>;
+  /** Fehlversuche zählen (Login je Kontoname, rate-limit.ts); fehlt nur in Tests ohne Valkey. */
+  failures?: Failures;
   ip: string;
 }
 

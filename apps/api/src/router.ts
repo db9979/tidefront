@@ -30,6 +30,8 @@ import {
 } from "@tidefront/engine";
 import { seasonRouter, socialRouter } from "./routers/social.ts";
 import { authed, baseInput, baseRef, t, wrap, type Ctx } from "./trpc.ts";
+import { GameError } from "@tidefront/engine";
+import { LOGIN_ACCOUNT_FAILS, LOGIN_ACCOUNT_WINDOW_SEC, loginAccountBucket } from "./rate-limit.ts";
 import { accountRouter, adminRouter, authExtras, pushRouter } from "./routers/ops.ts";
 import { afterRegister, inviteRouter } from "./routers/invite.ts";
 import { dailyRouter } from "./routers/daily.ts";
@@ -60,6 +62,9 @@ const field = { col: z.number().int().min(0).max(500), row: z.number().int().min
 // See: Minen/Blockade/Konvoi – Ziele und Haltezeit von Seemissionen.
 const navalTarget = { blockadeId: z.number().int().min(1).optional(), convoyId: z.number().int().min(1).optional(), holdHours: z.number().int().min(0).max(48).optional(), fieldId: z.number().int().min(1).optional(), stayAll: z.boolean().optional() }; // Felder: fieldId, stayAll
 
+/** IANA-Zeitzone des Browsers (z. B. "Europe/Berlin"), optional für ältere Clients; unbekannte Namen: fester Versatz. */
+const tzName = z.string().max(64).optional();
+
 export const appRouter = t.router({
   meta: t.procedure.query(() => ({ balance, serverNow: Date.now(), version: APP_VERSION, builtAt: BUILD_TIME })),
 
@@ -84,10 +89,19 @@ export const appRouter = t.router({
       .input(z.object({ name: z.string().trim().min(1).max(24), password: z.string().min(1).max(200) }))
       .mutation(async ({ ctx, input }) => {
         if (!(await ctx.rateLimit(`login:${ctx.ip}`, 20, 300))) return { ok: false as const, code: "rate" };
+        // Zusätzlich je Kontoname: höchstens 10 Fehlversuche in 15 Minuten (unabhängig von der IP).
+        const acct = loginAccountBucket(input.name);
+        if (await ctx.failures?.blocked(acct, LOGIN_ACCOUNT_FAILS)) return { ok: false as const, code: "rate" };
         return wrap(async () => {
-          const r = await login(ctx.engine.db, input);
-          ctx.setSession(r.token);
-          return { ok: true as const };
+          try {
+            const r = await login(ctx.engine.db, input);
+            await ctx.failures?.reset(acct);
+            ctx.setSession(r.token);
+            return { ok: true as const };
+          } catch (err) {
+            if (err instanceof GameError && err.code === "bad_login") await ctx.failures?.hit(acct, LOGIN_ACCOUNT_WINDOW_SEC);
+            throw err;
+          }
         });
       }),
     logout: t.procedure.mutation(async ({ ctx }) => {
@@ -117,6 +131,7 @@ export const appRouter = t.router({
         name: z.string().trim().min(2).max(32),
         nightShieldStartHour: z.number().int().min(0).max(23).nullable(),
         tzOffsetMinutes: z.number().int().min(-840).max(840),
+        timeZone: tzName, // IANA-Zeitzone (Nachtschild mit Sommerzeit)
       }))
       .mutation(({ ctx, input }) => chooseBase(ctx.engine, ctx.player.id, input.key, input)),
     upgrade: authed
@@ -141,8 +156,8 @@ export const appRouter = t.router({
       .input(z.object({ key, builtIn: z.string().max(40), ...baseRef }))
       .mutation(({ ctx, input }) => cancelTrain(ctx.engine, ctx.player.id, input.key, input.builtIn, input.baseId)),
     nightShield: authed
-      .input(z.object({ key, startHour: z.number().int().min(0).max(23).nullable(), tzOffsetMinutes: z.number().int().min(-840).max(840), ...baseRef }))
-      .mutation(({ ctx, input }) => setNightShield(ctx.engine, ctx.player.id, input.key, input.startHour, input.tzOffsetMinutes, input.baseId)),
+      .input(z.object({ key, startHour: z.number().int().min(0).max(23).nullable(), tzOffsetMinutes: z.number().int().min(-840).max(840), timeZone: tzName, ...baseRef }))
+      .mutation(({ ctx, input }) => setNightShield(ctx.engine, ctx.player.id, input.key, input.startHour, input.tzOffsetMinutes, input.baseId, input.timeZone ?? null)),
     // Mehrere Häfen: umbenennen (eigene Häfen) und Kolonie aufgeben (nie der Heimathafen; baseId Pflicht).
     rename: authed
       .input(z.object({ key, name: z.string().trim().min(2).max(32), ...baseRef }))

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
-import { errorText, failText } from "../lib/names.ts";
+import { failText } from "../lib/names.ts";
 import { Badge, Button, Card, ErrorLine, Stepper } from "../ui.tsx";
 import { Switch } from "../components/Switch.tsx";
 

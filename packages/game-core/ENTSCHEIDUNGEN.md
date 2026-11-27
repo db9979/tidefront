@@ -20,6 +20,7 @@ Die Börse hat ihre eigene Liste in `src/market/ENTSCHEIDUNGEN.md`.
 - M. KI-Spieler (Bots, Balance-Block `bots`) → `ENTSCHEIDUNGEN-3.md`
 - N. Nest Stufe 6 als Spätspiel-Ziel (Balance v1.15) → `ENTSCHEIDUNGEN-3.md`
 - O. Ökostrom, Elektrolyse, Seekabel (Balance v1.21) → `ENTSCHEIDUNGEN-3.md`
+- R. Wertung und Balance v1.24, S. Einstieg, T. Stabilität und Sicherheit (Prüfbericht 0.22) → `ENTSCHEIDUNGEN-4.md`
 
 ## A. Auslegungen, die das Spielgefühl berühren (bitte gegenlesen)
 

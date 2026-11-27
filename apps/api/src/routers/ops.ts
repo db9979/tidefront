@@ -1,6 +1,8 @@
 // Teil-Router: Push, eigenes Konto (Passwort, E-Mail), Verwaltung (nur Admins), Passwort zurücksetzen.
 import { z } from "zod";
 import {
+  listFailedEvents, // Verwaltung → Ereignisse
+  requeueEvent,
   cartelStrength,
   intelFogOn,
   setIntelFog,
@@ -156,6 +158,11 @@ export const adminRouter = t.router({
         const r = await createResetCode(ctx.engine.db, ctx.player.id, input.playerId);
         return { ok: true as const, code: r.code, name: r.name, expiresAt: r.expiresAt.getTime() };
       })),
+  /** Ereignis-Queue: endgültig fehlgeschlagene Ereignisse ansehen und neu einreihen. */
+  failedEvents: adminProc.query(({ ctx }) => listFailedEvents(ctx.engine.db, 50)),
+  requeueEvent: adminProc
+    .input(z.object({ id: z.number().int().min(1) }))
+    .mutation(({ ctx, input }) => requeueEvent(ctx.engine.db, input.id)),
   mail: adminProc.query(({ ctx }) => smtpView(ctx.engine.db)),
   saveMail: adminProc
     .input(smtpInput)

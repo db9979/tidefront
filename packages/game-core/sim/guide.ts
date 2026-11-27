@@ -21,7 +21,7 @@ const STEPS: [string, (s: BaseState) => boolean][] = [
   ["basis", (s) => lvl(s, "raffinerie") >= 1 && lvl(s, "versorgungshof") >= 1],
   ["kz", (s) => lvl(s, "kommandozentrale") >= 1],
   ["kaserne", (s) => lvl(s, "kaserne") >= 1],
-  ["wache", (s) => units(s, "schuetzen") >= 20],
+  ["wache", (s) => units(s, "schuetzen") >= 30], // wie GUIDE_GOALS (Einstieg 0.22)
   ["werft", (s) => lvl(s, "werft") >= 1],
   ["flotte", (s) => units(s, "korvette") >= 2 && units(s, "landungsschiff") >= 1],
   ["nest", (s) => units(s, "korvette") >= 2 && units(s, "landungsschiff") >= 1 && units(s, "schuetzen") >= 30],

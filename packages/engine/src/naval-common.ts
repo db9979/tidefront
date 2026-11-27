@@ -8,6 +8,7 @@ import { balance, type ChangeKind, type NoticeJob } from "./context.ts";
 import { diplomacyBlock, membershipOf, memberIds } from "./alliance-core.ts";
 import { scheduleEvent, type BaseRow } from "./store.ts";
 import { missionWeather } from "./weather.ts";
+import { gameTimeZone } from "./challenge-pool.ts"; // einheitliche Zeitzone des Spiels
 
 export const HOUR_MS = 3600000;
 export type Notes = [number[] | null, ChangeKind][];
@@ -136,5 +137,5 @@ export function pushNotice(playerId: number, kind: NoticeJob["notice"]["kind"], 
 }
 
 export function fmtClock(ms: number): string {
-  return new Date(ms).toLocaleString("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return new Date(ms).toLocaleString("de-DE", { timeZone: gameTimeZone(), day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }

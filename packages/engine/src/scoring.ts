@@ -1,13 +1,15 @@
 // Wertung einer Saison: Punkte je Spieler in fünf Kategorien. Kampf und Beute kommen ausschließlich aus den
 // Kampfberichten der Saison (battle_report), Ausbau und Militär aus dem aktuellen Stand, Befehle aus den
-// abgeholten Tagesbefehlen (daily_challenge).
+// abgeholten Tagesbefehlen (daily_challenge). Nichts davon wird gespeichert: Die Rangliste rechnet bei jedem Abruf
+// (30 s Zwischenspeicher) neu, ein Balance-Wechsel (v1.24: Richtpreis, Kartell-Abwehr × npcDefenseFactor) gilt also
+// sofort rückwirkend für die ganze laufende Saison. Nur das Saisonende schreibt season_result.
 import { sql } from "drizzle-orm";
 import { protectionStatus, upgradeCost, type BaseState, type Counts, type ResourceMap } from "@tidefront/game-core";
 import type { DbOrTx } from "@tidefront/db";
 import { balance } from "./context.ts";
 import { challengePoints } from "./challenges.ts";
 
-/** Punkte = Kostenwert / POINT_DIVISOR, je Kategorie abgerundet. */
+/** Punkte = Kostenwert (zum Börsen-Richtpreis, Stahl = 1) / POINT_DIVISOR, je Kategorie abgerundet. */
 export const POINT_DIVISOR = 100;
 
 /**
@@ -34,16 +36,21 @@ export interface Score {
 /** Mindestmenge Ökostrom (Strom-Stunden) für die Auszeichnung „Grünster Hafen“. */
 export const GREENEST_MIN = 1000;
 
-function sumRes(m: ResourceMap | null | undefined): number {
+/**
+ * Wert von Ressourcen zum Börsen-Richtpreis (v1.24, market.refPrice; Stahl 1, Treibstoff 1,8, Elektronik 3, Proviant 0,6).
+ * Vorher zählte jede Ressource 1 – Punkte ließen sich über die Börse tauschen (Elektronik → Stahl).
+ */
+export function resValue(m: ResourceMap | null | undefined): number {
+  const price = balance.market.refPrice;
   let s = 0;
-  for (const v of Object.values(m ?? {})) s += Number(v) || 0;
+  for (const [r, v] of Object.entries(m ?? {})) s += (Number(v) || 0) * (price[r] ?? 1);
   return s;
 }
 
-/** Kostenwert einer Einheit, Anlage oder NPC-Einheit (Summe aller Ressourcen). */
+/** Kostenwert einer Einheit, Anlage (zum Richtpreis) oder NPC-Einheit (fester Wert). */
 export function unitValue(id: string): number {
   const u = balance.units[id] ?? balance.defenses[id];
-  if (u) return sumRes(u.cost);
+  if (u) return resValue(u.cost);
   return NPC_UNIT_VALUE[id] ?? 0;
 }
 
@@ -58,12 +65,42 @@ export function buildingValue(buildings: Counts): number {
   let s = 0;
   for (const [id, level] of Object.entries(buildings)) {
     if (!balance.buildings[id]) continue;
-    for (let l = 0; l < level; l++) s += sumRes(upgradeCost(id, l, balance));
+    for (let l = 0; l < level; l++) s += resValue(upgradeCost(id, l, balance));
   }
   return s;
 }
 
 const pts = (v: number) => Math.max(0, Math.floor(v / POINT_DIVISOR));
+
+/** Ein Kampfbericht, wie computeStandings ihn liest. */
+export interface ScoredReport {
+  kind?: string | null;
+  /** report.worldEvent.kind (Weltereignisse). */
+  weKind?: string | null;
+  attackerPlayerId: number | null;
+  defenderPlayerId: number | null;
+  /** Verluste des Angreifers bzw. Verteidigers. */
+  al: Counts | null;
+  dl: Counts | null;
+  loot: ResourceMap | null;
+}
+
+/**
+ * Kostenwerte eines Kampfberichts für Kampf und Beute. Der Angreifer bekommt die Verluste des Verteidigers als Kampf
+ * und die Beute, der Verteidiger die Verluste des Angreifers. v1.24: Kämpfe gegen das Kartell zählen nur
+ * × scoring.npcDefenseFactor – Abwehr ohne angreifenden Spieler (Kartell-Überfall, Großflotte, Konvoi, Feld) und
+ * Angriffe auf die Weltereignisse in scoring.npcWorldEventKinds (Großflotte, Belagerungsring). Nester, Schatzschiff
+ * und Kämpfe zwischen Spielern zählen voll; Beute zählt immer voll.
+ */
+export function reportScore(b: ScoredReport): { attacker: { kampf: number; beute: number } | null; defender: { kampf: number } | null } {
+  const sc = balance.scoring;
+  const f = sc?.npcDefenseFactor ?? 1;
+  const npcEvent = b.kind === "weltereignis" && !!b.weKind && (sc?.npcWorldEventKinds ?? []).includes(b.weKind);
+  return {
+    attacker: b.attackerPlayerId === null ? null : { kampf: countsValue(b.dl) * (npcEvent ? f : 1), beute: resValue(b.loot) },
+    defender: b.defenderPlayerId === null ? null : { kampf: countsValue(b.al) * (b.attackerPlayerId === null ? f : 1) },
+  };
+}
 
 /** Kostenwerte der vier Kategorien in Punkte umrechnen; befehle sind bereits Punkte. */
 export function makeScore(values: { ausbau: number; militaer: number; kampf: number; beute: number }, befehle = 0): Score {
@@ -126,9 +163,9 @@ export async function computeStandings(db: DbOrTx, seasonStartMs: number, nowMs:
     where player_id is not null and status in ('outbound', 'returning', 'staged', 'stationed')`);
   const since = new Date(seasonStartMs).toISOString();
   const reports = await db.execute<{
-    attacker_player_id: number | null; defender_player_id: number | null; al: Counts | null; dl: Counts | null; loot: ResourceMap | null;
+    kind: string; we_kind: string | null; attacker_player_id: number | null; defender_player_id: number | null; al: Counts | null; dl: Counts | null; loot: ResourceMap | null;
   }>(sql`
-    select attacker_player_id, defender_player_id,
+    select kind, report->'worldEvent'->>'kind' as we_kind, attacker_player_id, defender_player_id,
       report->'battle'->'attacker'->'losses' as al, report->'battle'->'defender'->'losses' as dl, report->'battle'->'loot' as loot
     from battle_report where report ? 'battle' and created_at >= ${since}::timestamptz`);
   const orders = await challengePoints(db, seasonStartMs);
@@ -157,12 +194,13 @@ export async function computeStandings(db: DbOrTx, seasonStartMs: number, nowMs:
   }
   for (const m of missions) get(m.player_id).militaer += countsValue(m.status === "returning" || m.status === "stationed" ? m.returning : m.units); // Allianz-Ops: stationed
   for (const b of reports) {
-    if (b.attacker_player_id !== null) {
-      const r = get(b.attacker_player_id);
-      r.kampf += countsValue(b.dl);
-      r.beute += sumRes(b.loot);
+    const sc = reportScore({ kind: b.kind, weKind: b.we_kind, attackerPlayerId: b.attacker_player_id, defenderPlayerId: b.defender_player_id, al: b.al, dl: b.dl, loot: b.loot });
+    if (sc.attacker) {
+      const r = get(b.attacker_player_id!);
+      r.kampf += sc.attacker.kampf;
+      r.beute += sc.attacker.beute;
     }
-    if (b.defender_player_id !== null) get(b.defender_player_id).kampf += countsValue(b.al);
+    if (sc.defender) get(b.defender_player_id!).kampf += sc.defender.kampf;
   }
   const rows = [...people.values()].map((p) => ({ ...p, ...makeScore(get(p.playerId), orders.get(p.playerId) ?? 0), oekostrom: green.get(p.playerId) ?? 0 }));
   return rankStandings(rows);

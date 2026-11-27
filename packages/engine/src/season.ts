@@ -6,6 +6,7 @@ import { marketBalance } from "./context.ts";
 import type { Handler, HandlerResult } from "./events.ts";
 import { awardsFor, computeStandings } from "./scoring.ts";
 import { scheduleEvent } from "./store.ts";
+import { worldLockExclusive } from "./world-lock.ts";
 import { resetChallenges } from "./challenges.ts";
 import { expireOffers } from "./player-trade.ts";
 import { clearWorldEvents } from "./world-events.ts";
@@ -100,6 +101,8 @@ async function closeLedger(tx: Tx, number: number, atMs: number): Promise<void> 
  * auch Tagesbefehle und Serien.
  */
 export const seasonEnd: Handler = async (tx, ev, due) => {
+  // Exklusiv: laufende Befehle und Ereignisse (geteilte Sperre) erst abschließen lassen, neue warten.
+  await worldLockExclusive(tx);
   const seasonId = Number(ev.payload.seasonId);
   const [s] = await tx.select().from(tables.season).where(eq(tables.season.id, seasonId)).for("update");
   if (!s || s.status !== "running") return { notify: [] };
@@ -170,7 +173,7 @@ export const seasonEnd: Handler = async (tx, ev, due) => {
   // Marktnachrichten verfallen; die Börse steht wieder auf dem Grundrichtwert.
   await clearMarketNews(tx);
   await tx.update(tables.nest).set({ defeatedAt: null });
-  await ensureNests(tx); // Plätze, die ein Hafen belegt hatte (z. B. Stufe 6 nachgetragen), jetzt anlegen
+  await ensureNests(tx, { dropStartNests: true }); // Plätze, die ein Hafen belegt hatte (z. B. Stufe 6 nachgetragen), jetzt anlegen; Start-Nester weg
   const market = marketCore.createMarketState(marketBalance, due);
   for (const [resource, state] of Object.entries(market)) {
     await tx

@@ -56,7 +56,8 @@ export * from "./modifiers.ts";
 export * from "./battle-stats.ts";
 export { veteranView, withAttackExperience, type VeteranInfo } from "./veterans.ts";
 export { researchStart, researchCancel, researchChoose, researchView, TECH_NAMES } from "./research.ts";
-export { guideView, claimGuideStep, claimGuideFinal, hafenmeisterIds, shortenQueue, GUIDE_STEPS, GUIDE_FINAL } from "./guide.ts";
+export { guideView, claimGuideStep, claimGuideFinal, hafenmeisterIds, shortenQueue, deliverToStorage, GUIDE_STEPS, GUIDE_FINAL, GUIDE_GOALS } from "./guide.ts";
+export { ensureStartNest, nearestOpenLevel1, reachableShoreSea, START_NEST_KM } from "./start-nest.ts"; // Einstieg
 export { spyPreview, spyLaunch, intelView, intelOwnView, type SpyInput } from "./espionage.ts";
 export { gridView, weatherModifiers, missionWeather, battleWeather } from "./weather.ts";
 export * from "./bug-report.ts";
@@ -102,3 +103,7 @@ export { dismantlePost } from "./intel-post.ts";
 export { intelOverview } from "./intel-overview.ts";
 export { launchSatellite, MAP_WIDTH_KM, stripPlace } from "./intel-sat.ts"; // Lagebild Stufe 3: Satelliten
 export { counterWorld, clearCounterCache } from "./intel-counter.ts"; // Lagebild Stufe 3: Gegenmittel
+export { runEventWatchdog, REPAIR_GIVE_UP, type WatchdogResult } from "./event-watchdog.ts"; // Wächter der Ereignis-Queue
+export { listFailedEvents, requeueEvent, type FailedEvent } from "./event-admin.ts"; // Verwaltung → Ereignisse
+export { lockPlayerWide, worldLockExclusive, worldLockShared } from "./world-lock.ts";
+export { bumpMapGeneration, enableMapCache } from "./map-cache.ts"; // world.map: geteilte Weltdaten zwischenspeichern

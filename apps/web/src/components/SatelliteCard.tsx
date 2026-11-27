@@ -67,7 +67,7 @@ export function SatelliteCard({ sats, launch, onShowOnMap }: { sats: SatView[]; 
         </ul>
       )}
       {launch.pads.length === 0 ? (
-        <p className="text-xs text-ink2 mt-2">Satelliten starten von einer Startrampe (Hafengebäude, braucht Kommandozentrale 8, Forschungsamt 5, Radarstation 6) mit Technik aus dem Zweig Raumfahrt.</p>
+        <p className="text-xs text-ink2 mt-2">Satelliten starten von einer Startrampe (Hafengebäude, braucht Kommandozentrale 7, Forschungsamt 5, Radarstation 6) mit Technik aus dem Zweig Raumfahrt.</p>
       ) : (
         launch.pads.map((pad) => (
           <div key={pad.baseId} className="mt-3 border-t border-rule pt-2" data-testid="sat-launch">

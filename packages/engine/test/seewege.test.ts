@@ -1,4 +1,4 @@
-// Integrationstest Seewege (Entscheidung „T. Seewege und Bordsicht“): Start speichert die Route im Plan, Vorschau und
+// Integrationstest Seewege (Entscheidung „U. Seewege und Bordsicht“): Start speichert die Route im Plan, Vorschau und
 // Missionsliste zeigen sie, Fahrzeit nach Routenlänge, Rückruf mitten auf der Route, Bordsicht wandert entlang der
 // Route (Sensor mit Mission), alte Missionen ohne Route gerade (TEST_DATABASE_URL; die Datenbank wird geleert).
 import { after, before, test } from "node:test";

@@ -55,8 +55,9 @@ test("Einsatz: Flotte, Ziele, laufende Mission, Kacheln", async ({ page, player,
   await expect(page.getByText(/Piratennest Stufe \d/)).toBeVisible();
   await expect(page.getByText("Überfall", { exact: true })).toBeVisible();
   const unitRow = (name: string) => page.getByRole("listitem").filter({ hasText: new RegExp(`^${name}\\d`) });
-  await expect(unitRow("Korvette").getByLabel("Anzahl")).toHaveValue("6");
+  // Vorschlag aus dem Probekampf: kleinster siegreicher Verband (nicht alles); Truppen mit Landungsschiff.
   await expect(unitRow("Schützen").getByLabel("Anzahl")).not.toHaveValue("0");
+  await expect(unitRow("Landungsschiff").getByLabel("Anzahl")).not.toHaveValue("0");
   await page.getByRole("button", { name: "Auslaufen" }).click();
   await expect(page.getByRole("heading", { name: "Mission gestartet" })).toBeVisible();
   await page.getByRole("button", { name: "Fertig" }).click();

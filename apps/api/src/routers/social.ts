@@ -1,5 +1,4 @@
 // Router für Rangliste, Spielerübersicht, Nachrichten und Saison. Eingehängt in router.ts.
-import { initTRPC, TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
   GameError,
@@ -14,15 +13,8 @@ import {
   SUBJECT_MAX,
   unreadCount,
 } from "@tidefront/engine";
-import type { Ctx } from "../router.ts";
-
-const t = initTRPC.context<Ctx>().create();
-
-const authed = t.procedure.use(async ({ ctx, next }) => {
-  if (!ctx.player) throw new TRPCError({ code: "UNAUTHORIZED" });
-  if (!(await ctx.rateLimit(`cmd:${ctx.player.id}`, 120, 60))) throw new TRPCError({ code: "TOO_MANY_REQUESTS" });
-  return next({ ctx: { ...ctx, player: ctx.player } });
-});
+// Gemeinsames tRPC (errorFormatter mit deutschem Eingabefehler, Prozeduren mit Befehls-Drosselung).
+import { authed, t } from "../trpc.ts";
 
 /** Nachrichten je Spieler: höchstens so viele in diesem Fenster. */
 const MSG_LIMIT = 10;

@@ -1,5 +1,5 @@
 // Abhilfe: Missionen planen (Verband, Plätze, Treibstoff, Reichweite, Ziel, Wetter) und Spionageaufträge.
-import { blockadeOf, commandPoints, fuelCost, minesOf, missionSlots, sabotageCooldownUntil } from "@tidefront/game-core";
+import { blockadeOf, commandPoints, commandPointsAt, fuelCost, minesOf, missionSlots, sabotageCooldownUntil } from "@tidefront/game-core";
 import { countLabel, fmtNum, label } from "../names.ts";
 import { fmtTime } from "../time.ts";
 import { build, go, joinDe, lvl, mapAction, market, missions, nextStep, producer, stateOf, training } from "./helpers.ts";
@@ -36,11 +36,12 @@ export const MISSIONS: RemedyTable = {
     const { base, balance } = ctx;
     const { cp } = totals(ctx);
     const have = base?.commandPoints ?? 0;
-    const per = balance?.buildings.kommandozentrale.commandPointsPerLevel ?? 0;
+    const kzNow = base ? lvl(base, "kommandozentrale") : 0; // v1.24: ab KZ 9 mehr je Stufe
+    const per = balance ? commandPointsAt(kzNow + 1, balance) - commandPointsAt(kzNow, balance) : 0;
     const step = base && balance ? nextStep(lvl(base, "kommandozentrale"), balance.building.maxLevel, (l) => commandPoints(stateOf(base, { kommandozentrale: l }), balance)) : null;
     const target = base && balance && cp > have ? nextStep(lvl(base, "kommandozentrale"), balance.building.maxLevel, (l) => commandPoints(stateOf(base, { kommandozentrale: l }), balance) >= cp ? 1 : 0) : null;
     return {
-      hint: `${cp > 0 ? `Der Verband braucht ${fmtNum(cp, 1)} Kommandopunkte, du hast ${fmtNum(have)}. ` : ""}Weniger oder kleinere Einheiten mitschicken – oder die Kommandozentrale ausbauen (+${fmtNum(per)} je Stufe${target ? `; ab Stufe ${target.level} reicht es` : step ? `; Stufe ${step.level}: ${fmtNum(step.value)}` : ""}).`,
+      hint: `${cp > 0 ? `Der Verband braucht ${fmtNum(cp, 1)} Kommandopunkte, du hast ${fmtNum(have)}. ` : ""}Weniger oder kleinere Einheiten mitschicken – oder die Kommandozentrale ausbauen (+${fmtNum(per)} mit der nächsten Stufe${target ? `; ab Stufe ${target.level} reicht es` : step ? `; Stufe ${step.level}: ${fmtNum(step.value)}` : ""}).`,
       summary: cp > 0 ? `Verband ${fmtNum(cp, 1)} von ${fmtNum(have)} Kommandopunkten` : undefined,
       actions: [build("kommandozentrale")],
     };

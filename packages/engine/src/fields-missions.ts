@@ -20,7 +20,7 @@ import {
   activeCounts, hasShips, insertMission, planNaval, playerName, pushNotice, sendHome, storeNavalReport,
   type MissionRowLike, type Notes,
 } from "./naval-common.ts";
-import { FIELD_TYPE, HOUR_MS, fieldById, fieldName, garrisonMods, guarded, maxFieldsOfPlayer, ownedBy, rules, type FieldRow } from "./fields-core.ts";
+import { FIELD_TYPE, HOUR_MS, fieldById, fieldName, garrisonMods, maxFieldsOfPlayer, ownedBy, rules, type FieldRow } from "./fields-core.ts";
 import { settleField } from "./fields-run.ts";
 import { checkReinforce, reinforceArrive } from "./fields-reinforce.ts";
 import { scheduleFieldWarning } from "./fields-radar.ts";

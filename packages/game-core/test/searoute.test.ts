@@ -1,6 +1,6 @@
 // Seewege: Wegsuche über Wasserfelder (packages/world/src/searoute.ts), Fahrzeit und Treibstoff nach der Route
 // (planMission), Position unterwegs und beim Rückruf (fleetPosition), Bordsicht 105 km. Entscheidung
-// „T. Seewege und Bordsicht“ (ENTSCHEIDUNGEN-3.md).
+// „U. Seewege und Bordsicht“ (ENTSCHEIDUNGEN-4.md).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {

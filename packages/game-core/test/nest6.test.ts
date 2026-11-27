@@ -19,14 +19,15 @@ test("Nest 6: Besatzung ≈ Nest 5 × 1,35, respawnHours ist kein Besatzungsschl
   for (const [id, n] of Object.entries(n5.nest.units)) assert.equal(u6[id], Math.round(n * 1.35));
 });
 
-test("Nest 6: Beute lohnt (mehr Wert als Nest 5) und passt ungefähr in 7 Landungsschiffe", () => {
+test("Nest 6: Beute lohnt (mehr Wert als Nest 5) und passt ungefähr in 10 Landungsschiffe", () => {
   const value = (m: Record<string, number>) => Object.entries(m).reduce((s, [r, n]) => s + n * (balance.market.refPrice[r] ?? 0), 0);
   const l6 = balance.pirates.nestLevels["6"].loot;
   const l5 = balance.pirates.nestLevels["5"].loot;
   assert.ok(value(l6) > 1.5 * value(l5));
   const units = Object.values(l6).reduce((a, b) => a + b, 0);
   const cargo = balance.units.landungsschiff.cargo ?? 0;
-  assert.ok(units <= 8 * cargo, `Beute ${units} > 8 Landungsschiffe`);
+  // v1.24: Beute × 1,3 (37 700) – voll nur mit zusätzlichen Landungsschiffen abzutransportieren (vorher ≤ 8).
+  assert.ok(units <= 10 * cargo, `Beute ${units} > 10 Landungsschiffe`);
 });
 
 test("Nest 6: eigene Wiederkehr 24 h, andere Stufen weiter nestRespawnHours", () => {
