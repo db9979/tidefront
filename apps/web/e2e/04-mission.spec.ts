@@ -42,7 +42,8 @@ test("Überfall auf ein Nest planen, starten und auswerten", async ({ page, play
   // Truppen zeigen die laufende Mission.
   await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
   await page.getByRole("tab", { name: "Einsatz" }).click();
-  await expect(page.getByRole("heading", { name: "Missionen 1/1" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Unterwegs 1/1" })).toBeVisible();
+  await expect(page.locator("li[data-mission]").getByText("Hinfahrt")).toBeVisible();
   await expectNoHorizontalOverflow(page, "Truppen mit Mission");
 
   // Ankunft und Rückkehr vorspulen.

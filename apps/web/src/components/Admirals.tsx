@@ -56,8 +56,8 @@ function StatusChip({ a, now }: { a: Admiral; now: number }) {
 
 const invalidate = () => [trpc.admiral.pathFilter().queryKey, trpc.base.pathFilter().queryKey];
 
-/** Karte „Admirale“ im Truppen-Bildschirm. */
-export function AdmiralsCard() {
+/** Admirale (Truppen → Einsatz, Kachel „Admirale“ öffnet diese Ansicht im Blatt). */
+export function AdmiralsPanel() {
   const q = useQuery(trpc.admiral.get.queryOptions());
   const now = useNow(30000);
   const appoint = useCommand((i: { key: string; name: string | null; spec: string }) => trpcClient.admiral.appoint.mutate(i), invalidate);
@@ -68,10 +68,7 @@ export function AdmiralsCard() {
   const free = v.slots - v.list.length;
   const s = v.slotsRule;
   return (
-    // Truppen → Einsatz: standardmäßig eingeklappt, Zusammenfassung „Rang Name, …“.
-    <Card title={<span className="flex items-center gap-2"><Icon id="admiral" size={22} />Admirale <span className="mono normal-case tracking-normal">{v.list.length}/{v.slots}</span></span>}
-      collapsible storageKey="truppen-admirale" defaultOpen={false}
-      summary={v.list.length === 0 ? (free > 0 ? "Noch kein Admiral – ernennen möglich." : "Kein Admiral.") : v.list.map((a) => `${a.rankName} ${a.name}`).join(" · ")}>
+    <div>
       <p className="text-xs text-ink2 mb-2">
         Ein Admiral führt einen Verband auf Mission oder als Hafenkommandant daheim die Verteidigung. Plätze: {s.base} + 1 je {s.perHarborLevels} Stufen Hafenkommandantur, höchstens {s.max}.
       </p>
@@ -108,7 +105,7 @@ export function AdmiralsCard() {
       <p className="text-[11.5px] text-ink2 mt-2">
         Erfahrung nur aus gewonnenen Kämpfen, je nach besiegtem Wert. Verliert sein Verband deutlich (über {Math.round(v.risk.lossShare * 100)} % Verluste), entscheidet ein W{v.risk.die}: 1 gefallen, bis {v.risk.capturedMax} gefangen ({v.risk.captiveHours} h oder Lösegeld), bis {v.risk.woundedMax} verwundet ({v.risk.woundedHours} h).
       </p>
-    </Card>
+    </div>
   );
 }
 

@@ -63,7 +63,7 @@ test("Rundgang durch alle Bildschirme", async ({ page, player, seed }) => {
     await check(page, `Truppen · ${t}`);
   }
   await page.getByRole("tab", { name: /^Einsatz/ }).click();
-  await page.getByRole("button", { name: "Kampfsimulator öffnen" }).click();
+  await page.getByRole("button", { name: /^Kampfsimulator/ }).click();
   await page.waitForTimeout(300);
   await check(page, "Kampfsimulator");
   if ((await page.getByRole("dialog").count()) > 0) await closeDialog(page);
