@@ -26,7 +26,7 @@ import {
 import { hexCenter, hexDistanceKm, neighbors, terrainAt } from "@tidefront/world";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, type NoticeJob } from "./context.ts";
-import { politikEventData, politikEventKind } from "./politik-core.ts"; // Weltpolitik: Kartellfehde, Gemeinsame Aktion
+import { gezeitRunning, politikEventData, politikEventKind } from "./politik-core.ts"; // Weltpolitik: Kartellfehde, Gemeinsame Aktion
 import { nOf } from "./names.ts";
 import type { Handler, HandlerResult } from "./events.ts";
 import { randomSeed, scheduleEvent } from "./store.ts";
@@ -275,7 +275,8 @@ export const worldEventSpawn: Handler = async (tx, ev, due) => {
   const progress = seasonProgress(season.startsAt.getTime(), season.endsAt.getTime(), due);
   if (due >= until) return none();
   // Deckel: höchstens maxConcurrent gewöhnliche Ereignisse gleichzeitig, sonst wie „kein Ziel“ (neuer Versuch).
-  const full = (await openOrdinaryCount(tx)) >= (w.maxConcurrent ?? Infinity);
+  // Weltpolitik: während einer Gezeit ein Ereignis weniger (docs/REGELN-WELTPOLITIK.md, Abschnitt 2).
+  const full = (await openOrdinaryCount(tx)) >= (w.maxConcurrent ?? Infinity) - (await gezeitRunning(tx, due) ? 1 : 0);
   const made = full ? null : await spawnWorldEvent(tx, due, wanted, season.id, progress);
   const next = nextSpawn(due, randomSeed(), balance);
   const at = made ? next.atMs : due + w.retryHours * HOUR_MS;

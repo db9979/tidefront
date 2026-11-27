@@ -263,3 +263,32 @@ aktiv; Bauhof-Countdown läuft ohne Neuladen.
   `nestMaxLevel`, alle drei nehmen Felder und bieten Verträge, „KI-Spieler“ statt „Bot“); Begrüßung „Menü → Handbuch“;
   REGELN.md Paketschlüssel 50/25/15/10; REGELN-SEE „seit 0.36“. Nest-6-Zahlen (REGELN.md, M-02) bleiben bis zur
   Balance-Entscheidung.
+
+## Weltpolitik: Gezeit, Ansehen je KI, Gesuche, Seerat (Spiellogik, Server, API; Oberfläche folgt)
+
+Grundlage `docs/VORLAGE-WELTPOLITIK.md` mit den Nutzerentscheidungen; Regelwerk `docs/REGELN-WELTPOLITIK.md`.
+- **Fundament:** `balanceAt(base, plan, ms)` rein in game-core, Kopie nur bei wirkendem Fenster (sonst gleiche Referenz,
+  damit nichts ohne Gezeit anders rechnet), Zwischenspeicher je Menge wirkender Fenster. Plan als Zeilen
+  (`politik_fenster`), nicht als Balance-Wert: der Seerat ändert ihn zur Laufzeit. `meta` liefert wirksame Balance,
+  Grundbalance, Plan und `validUntilMs`; der Client lädt `meta` zum Wechsel neu (trpc.ts). Faktoren, die nicht als
+  Balance-Wert existieren (Produktion, Spielerhandelsgebühr, Weltereignis-Beute), stehen in `politikNow`.
+- **Ein Wirkungs-Platz trotz Wochensitzungen (Entscheid 10):** Wochenbeschlüsse überlappen nie eine Gezeit
+  (`weeklyEffect`: hinter eine laufende schieben, vor einer beginnenden kürzen, < 12 h entfällt). Ohne diese Regel
+  hätte die Woche 4 (Tag 29–31) fast immer mit der dritten Gezeit zusammengelegen.
+- **Seerat tagt immer (Entscheid 11)**, das Quorum ⌈N/2⌉ bleibt (sonst Vorgabe). Allianzdeckel exakt gelöst
+  (T = R / (1 − |C|·0,4)) statt schrittweise; reichen die Gewichte außerhalb nicht, werden gedeckelte Allianzen
+  angeglichen. Gleichstand → Ruhige See.
+- **Ansehen statt kiRefuses:** `kiAccess` ersetzt das Ja/Nein über eine Funktion (`kiRefuses` ruft sie, `kiFor` liefert
+  Bonus/Kontingent/Ablehnung). Gerechnet beim Lesen aus Verträgen, Gesuchen, Berichten und Merkern (`ansehen_merker`
+  nur für gekündigte KI-Pakte) – kein Zähler, der auseinanderlaufen kann. Sperre nach Überfall
+  `max(raidBlockHours 72, attackBlockHours 24)`; `attackBlockHours` bleibt für den Fall ohne `politik`-Block.
+  „Berüchtigt“ = Mittel über alle aktiven KI-Spieler ≤ − 30 (bis der globale Ruf kommt). Bot-Code unverändert.
+- **Gesuche:** nur „Liefern“ an (Geleit/Feld per `gesuche.kinds` vorbereitet). Treuhand beim Anbieten aus dem KI-Lager,
+  Kontingent wird für das Gesuch nicht geprüft (die KI hat die Menge selbst erbeten), Tagesbefehl-Platz Art `gesuch`
+  (nicht neu würfelbar). Abrechnung im Wartungslauf und beim Lesen der KI-Ansicht.
+- **Während einer Gezeit** ein Weltereignis weniger zugleich (`maxConcurrent − 1`); „keines mit derselben Ressource“
+  (VORLAGE 3.1) noch nicht.
+- **Nicht umgesetzt:** Sturmzeit (Entscheid 2), globaler Ruf/Ächtung (vorbereitet, aus), Gesuche Geleit/Feld/Nest,
+  „Gezeit lenkt Angebote“, Morgenbericht-Zeile, Simulator (`sim/`) mit Plan, Vorankündigung „Gemeinsame Aktion“ 12 h
+  früher (nur die Beute + 20 %). Keine Migration (Tabellen `politik_fenster`, `seerat_sitzung`, `seerat_stimme`,
+  `ki_gesuch`, `ansehen_merker` nur im Schema).

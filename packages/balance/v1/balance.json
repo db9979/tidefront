@@ -566,7 +566,7 @@
     "seerat": {
       "openBeforeHours": 36, "closeBeforeHours": 12,
       "windowCatalog": ["handelsfrieden", "geleitschutz", "gemeinsame_aktion"],
-      "weeklyDays": [7, 14, 21, 28], "weeklyVoteHours": 24, "weeklyEffectHours": 48,
+      "weeklyDays": [7, 14, 21, 28], "weeklyVoteHours": 24, "weeklyEffectHours": 48, "weeklyMinEffectHours": 12,
       "weeklyCatalog": ["geleitschutz", "gebuehrensenkung", "gemeinsame_aktion"],
       "kiTotalWeight": 1, "allianceMaxShare": 0.4, "quorumShare": 0.5, "activeHours": 72,
       "kiPreference": {

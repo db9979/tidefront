@@ -3,7 +3,7 @@
 Verbindlich für `packages/game-core`. Alle Zahlen stehen in `packages/balance/v1/balance.json`
 und werden dort geändert, nie im Code. Zahlen sind Startwerte; Kartell und Piratennester sind seit Balance v1.1
 per Simulation abgestimmt, U-Boote seit v1.2, Forschung seit v1.3, Marktnachrichten seit v1.5, Wetter, Strom und Nachrichtendienst seit v1.6, Spionage-Abstimmung und Kartell gegen Forschung seit v1.7 (`npm run sim`, Ergebnisse in `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitte C–G).
-**Wetter und Strom** (Wetterfeld, Stromquellen, Rangfolge bei Mangel, Wetter im Einsatz) stehen in `docs/REGELN-WETTER.md`, **Nachrichtendienst und Spionage** in `docs/REGELN-SPIONAGE.md`, **Allianzen, Diplomatie und Handel zwischen Spielern** in `docs/REGELN-SOZIAL.md`, **Erfolge (Abzeichen) und Wochenziele** in `docs/REGELN-ERFOLGE.md`, **Minen, Seeblockade und Konvois** in `docs/REGELN-SEE.md`, **Rohstofffelder** in `docs/REGELN-FELDER.md`, **KI-Spieler** in `docs/REGELN-KI.md`; alle gelten als Teil dieser Regeln.
+**Wetter und Strom** (Wetterfeld, Stromquellen, Rangfolge bei Mangel, Wetter im Einsatz) stehen in `docs/REGELN-WETTER.md`, **Nachrichtendienst und Spionage** in `docs/REGELN-SPIONAGE.md`, **Allianzen, Diplomatie und Handel zwischen Spielern** in `docs/REGELN-SOZIAL.md`, **Erfolge (Abzeichen) und Wochenziele** in `docs/REGELN-ERFOLGE.md`, **Minen, Seeblockade und Konvois** in `docs/REGELN-SEE.md`, **Rohstofffelder** in `docs/REGELN-FELDER.md`, **KI-Spieler** in `docs/REGELN-KI.md`, **Weltpolitik (Gezeit, Ansehen, Gesuche, Seerat)** in `docs/REGELN-WELTPOLITIK.md`; alle gelten als Teil dieser Regeln.
 
 ## Grundsätze
 
@@ -496,8 +496,9 @@ und bezahlt wird bei Fälligkeit. Gegenpartei ist ein KI-Spieler oder ein andere
   kein Abo. **Kontingente aus dem echten Lager** (Heimathafen, bei jedem Abruf gerechnet): verkaufen ab `sellFromFill` (40 %)
   Füllung, `quotaShare` (25 %) des Bestands einschließlich Treuhand abzüglich zugesagter Mengen; kaufen bis `buyToFill` (60 %)
   Füllung einschließlich zugesagter Käufe, 25 % des freien Platzes abzüglich zugesagter Käufe; je Mensch höchstens
-  1/`perHumanDivisor` (⅓); Anzeige in Stufen von `quotaStep` (500). Händler und Festung schließen `attackBlockHours` (24 h)
-  nichts mit einem Spieler ab, der sie überfallen hat. Keine Verträge zwischen KI-Spielern.
+  1/`perHumanDivisor` (⅓); Anzeige in Stufen von `quotaStep` (500). Händler und Festung schließen nach einem Überfall
+  72 h (`politik.ansehen.raidBlockHours`) nichts mit dem Angreifer ab; Bonus und Kontingent richten sich nach dem Ansehen
+  (`docs/REGELN-WELTPOLITIK.md`). Keine Verträge zwischen KI-Spielern.
 - **Lieferung:** Alle KI-Profile (`convoy`: Händler, Festung, Freibeuter) und Spielerverträge **als Konvoi über die
   Seewege** (Art `vertrag`, Kartellchance gedämpft wie bei der Börse; ältere Verträge mit `delivery = abstrakt` liefern
   weiter zur Fälligkeit direkt ins Lager) (Abwicklung und Abfahrt zur Fälligkeit minus Fahrzeit; ist der Seeweg

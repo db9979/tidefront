@@ -114,11 +114,29 @@ export function seeratPlan(seasonStartMs: number, seasonEndMs: number, gezeit: G
   s.weeklyDays.forEach((day, i) => {
     const opensMs = Math.round(seasonStartMs + day * DAY_MS * scale);
     const closesMs = opensMs + Math.round(s.weeklyVoteHours * HOUR_MS * scale);
-    const effectEndMs = closesMs + Math.round(s.weeklyEffectHours * HOUR_MS * scale);
-    if (effectEndMs > limit + 1 || opensMs >= seasonEndMs) return;
-    out.push({ kind: "woche", idx: i + 1, opensMs, closesMs, effectStartMs: closesMs, effectEndMs, options: [...s.weeklyCatalog, "ruhig"] });
+    const eff = weeklyEffect(closesMs, Math.round(s.weeklyEffectHours * HOUR_MS * scale), gezeit, Math.round(s.weeklyMinEffectHours * HOUR_MS * scale));
+    if (!eff || eff.endMs > limit + 1 || opensMs >= seasonEndMs) return;
+    out.push({ kind: "woche", idx: i + 1, opensMs, closesMs, effectStartMs: eff.startMs, effectEndMs: eff.endMs, options: [...s.weeklyCatalog, "ruhig"] });
   });
   return out;
+}
+
+/**
+ * Wirkzeit eines Wochenbeschlusses, ohne je mit einem Gezeit-Fenster zu überlappen (ein Wirkungs-Platz): läuft schon
+ * eine Gezeit, beginnt der Beschluss erst an ihrem Ende (volle Dauer); beginnt eine Gezeit mittendrin, endet er an ihrem
+ * Beginn. Bleibt weniger als minMs, entfällt die Wirkzeit (null).
+ */
+export function weeklyEffect(startMs: number, durMs: number, gezeit: { startMs: number; endMs: number }[], minMs: number): { startMs: number; endMs: number } | null {
+  let a = startMs;
+  let b = startMs + durMs;
+  for (const g of [...gezeit].sort((x, y) => x.startMs - y.startMs)) {
+    if (g.endMs <= a || g.startMs >= b) continue;
+    if (g.startMs <= a) {
+      a = g.endMs;
+      b = a + durMs;
+    } else b = g.startMs;
+  }
+  return b - a >= minMs ? { startMs: a, endMs: b } : null;
 }
 
 /** Seed des Saisonplans aus Saison-ID und Start (fest, damit ein zweiter Planer-Lauf dasselbe ergibt). */

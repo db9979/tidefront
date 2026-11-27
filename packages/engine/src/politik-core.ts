@@ -10,6 +10,7 @@ import { tables, type DbOrTx } from "@tidefront/db";
 import { balance } from "./context.ts";
 import { getSettings } from "./settings.ts";
 import { registerModifierSource } from "./modifiers.ts";
+import { randomSeed } from "./store.ts";
 
 const HOUR_MS = 3_600_000;
 
@@ -129,7 +130,12 @@ export const PROFILE_TEXT: Record<string, string> = { haendler: "Händler", fest
 export async function politikEventKind<K extends string>(db: DbOrTx, ms: number, wanted: K): Promise<K> {
   const eff = await balanceNow(db, ms);
   if (!eff.politikNow || Object.keys(eff.politikNow.kindWeights).length === 0) return wanted;
-  return pickKind(crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296, eff) as K;
+  return pickKind(randomSeed() / 4294967296, eff) as K;
+}
+
+/** Läuft gerade ein Gezeit-Fenster (Plan, nicht abgesagt, nicht „Ruhige See“)? */
+export async function gezeitRunning(db: DbOrTx, ms: number): Promise<boolean> {
+  return (await planAt(db, ms)).windows.some((w) => w.slot === "gezeit" && w.effect !== "ruhig");
 }
 
 /** Beute eines neu entstehenden Weltereignisses: Gemeinsame Aktion × worldEventLoot (loot und lootPool). */

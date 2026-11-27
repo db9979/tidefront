@@ -57,6 +57,8 @@ export interface PolitikBalance {
     weeklyDays: number[];
     weeklyVoteHours: number;
     weeklyEffectHours: number;
+    /** Kürzer darf eine (an einer Gezeit gekürzte) Wirkzeit nicht sein, sonst entfällt sie. */
+    weeklyMinEffectHours: number;
     weeklyCatalog: BeschlussKind[];
     kiTotalWeight: number;
     allianceMaxShare: number;

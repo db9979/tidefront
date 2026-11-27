@@ -47,23 +47,30 @@ export function kiChoice(profile: string, options: string[], pref: Record<string
 }
 
 /**
- * Deckel je Allianz: Gewicht w_a ≤ share · T (T = Summe aller Gewichte). Gekürzt wird nur, wenn es Gewichte außerhalb
- * der Allianz gibt; mehrere Allianzen werden wiederholt gekürzt, bis alle unter dem Deckel liegen.
+ * Deckel je Allianz: Gewicht w_a ≤ share · T (T = Summe aller Gewichte nach dem Kürzen). Gekürzte Allianzen C erhalten
+ * genau share · T mit T = R / (1 − |C| · share), R = Gewichte außerhalb von C (Einzelne, KI, ungekürzte Allianzen).
+ * Ohne Gewichte außerhalb wird nicht gekürzt; reichen sie nicht (|C| · share ≥ 1), werden die gekürzten Allianzen auf
+ * das kleinste ihrer Gewichte angeglichen.
  */
 export function capAlliances(groups: Map<number, number>, others: number, share: number): Map<number, number> {
   const out = new Map(groups);
-  for (let round = 0; round < 20; round++) {
-    let changed = false;
-    const total = others + [...out.values()].reduce((s, v) => s + v, 0);
-    for (const [a, w] of out) {
-      const rest = total - w;
-      if (rest <= 1e-12 || w <= share * total + 1e-9) continue;
-      out.set(a, (share * rest) / (1 - share));
-      changed = true;
-      break;
+  if (!(share > 0 && share < 1)) return out;
+  const capped = new Set<number>();
+  let total = others + [...groups.values()].reduce((s, v) => s + v, 0);
+  for (let round = 0; round <= groups.size; round++) {
+    let added = false;
+    for (const [a, w] of groups) if (!capped.has(a) && w > share * total + 1e-9) { capped.add(a); added = true; }
+    if (!added) break;
+    const rest = others + [...groups].filter(([a]) => !capped.has(a)).reduce((s, [, v]) => s + v, 0);
+    if (rest <= 1e-12 || capped.size * share >= 1) {
+      if (rest <= 1e-12 && capped.size === 1) return out;
+      const low = Math.min(...[...capped].map((a) => groups.get(a)!));
+      for (const a of capped) out.set(a, low);
+      return out;
     }
-    if (!changed) break;
+    total = rest / (1 - capped.size * share);
   }
+  for (const a of capped) out.set(a, Math.min(groups.get(a)!, share * total));
   return out;
 }
 
