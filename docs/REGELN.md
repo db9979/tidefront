@@ -360,11 +360,17 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
   | Beute machen | m/s | Werft und Kaserne | 1.500 / 4.000 × (1 + s/4) |
   | Überfall ohne eigene Verluste gewinnen | s | Werft und Kaserne | 1 |
   | Forschung abschließen | m | Forschungsamt | 1 |
+  | Speicherwerk ausbauen | m | Speicherwerk ≥ 1, nächste Stufe ≤ 12 h | nächste Stufe (mindestens 2) |
+  | Stromüberschuss halten | l | Speicherwerk, Ziel über dem Ladestand | Speicher auf 60 % der Kapazität (auf 10 gerundet) |
+  | Windpark oder Solarfeld ausbauen | l | Kraftwerk, nächste Stufe ≤ 12 h | Summe beider Stufen + 1 |
+  | Strom aus Wind und Sonne | m | Windpark oder Solarfeld, Ziel über der Erzeugung jetzt | 40 % der Höchstleistung, auf 10 gerundet (bester Abruf des Tages) |
+  | Mission trotz Sturm | m/s | Werft oder Flugfeld | 1 (Aufklärung, Transport oder gewonnener Überfall mit Sturmanteil der Route ≥ 0,2) |
+  | Ziel erkunden (Nachrichtendienst) | l/m | Nachrichtendienst, Ziel erreichbar | 1 / 2 gelungene Erkundungen |
 
 - Fortschritt zählt nur für Geschehen am selben Spieltag (Zeitpunkt des Ereignisses) und nur nach der Vergabe:
   Ausbau, Ausbildung, Anlagen, Kampf, Aufklärung, Transport, Wrack und Beute aus den verarbeiteten Ereignissen,
   Börsenhandel (Kreditbetrag des Handels) und Bauschlange (höchste Länge) aus den Befehlen. Vorrat, Produktion,
-  Forschung zählt beim Abschluss (Ereignis). Kommandozentrale und Nachrichten werden beim Abruf und beim Abholen aus dem Zustand gelesen.
+  Forschung zählt beim Abschluss (Ereignis). Kommandozentrale, Nachrichten und die Strom-Befehle werden beim Abruf und Abholen aus dem Zustand gelesen.
 - Belohnung je Befehl: Ressourcenpaket im Wert 400 / 1.000 / 2.500 × (1 + 0,3·s) (Stahl 40 %, Treibstoff 25 %,
   Elektronik 15 %, Proviant 20 %, auf 10 gerundet; s bei der Vergabe) und 3 / 6 / 12 Punkte der Kategorie Befehle.
   Abholen ist ein Befehl mit Idempotenz-Schlüssel und gelingt genau einmal; die Ressourcen werden auch über die

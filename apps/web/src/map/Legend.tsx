@@ -1,4 +1,4 @@
-// Einklappbare Legende der Kartenzeichen: Häfen nach Verhältnis, Kartell und See, Übersichtspunkte, Wetter.
+// Einklappbare Legende der Kartenzeichen: Häfen nach Verhältnis, Kartell und See, Übersichtspunkte, Wetter mit Fronten.
 import { useState, type ReactNode } from "react";
 import { TacticalIcon } from "./TacticalIcon.tsx";
 import { Icon } from "../icons.tsx"; // Felder
@@ -49,6 +49,9 @@ const GROUPS: { title: string; items: Item[] }[] = [
     title: "Wetter (Knopf „Wetter an/aus“)",
     items: [
       { icon: <PressureIcon />, text: "Isobaren um Tief (T: Wind, Wolken, Sturm) und Hoch (H: ruhig, klar)" },
+      { icon: <FrontIcon kind="kalt" />, text: "Kaltfront (blau, Dreiecke): Schauerband, dahinter kühler und klarer; Zeichen zeigen die Zugrichtung" },
+      { icon: <FrontIcon kind="warm" />, text: "Warmfront (rot, Halbkreise): breiter Wolkenschirm mit Regen voraus" },
+      { icon: <FrontIcon kind="okklusion" />, text: "Okklusion (violett): Kaltfront hat die Warmfront eingeholt, dichte Wolken am alternden Tief" },
       { icon: <VaneIcon pennant={false} />, text: "Windfahne: Pfeil zeigt, wohin der Wind weht; je Strich stärker, zwei Striche ab 6 Bft (Schiffe langsamer)" },
       { icon: <VaneIcon pennant />, text: "Wimpel an der Windfahne: Sturm ab 9 Bft" },
       { icon: <StormFlag />, text: "Sturmwimpel: Schiffe langsamer, Flugzeuge schwächer, am eigenen Hafen bleiben sie am Boden; rötlicher Ton: Schiffe gebremst" },
@@ -64,6 +67,22 @@ function PressureIcon() {
       <ellipse cx="17" cy="9" rx="15" ry="7.5" fill="none" stroke="#18273a" strokeOpacity={0.5} strokeWidth={1} />
       <ellipse cx="17" cy="9" rx="9" ry="4.5" fill="none" stroke="#18273a" strokeOpacity={0.5} strokeWidth={1} />
       <text x="17" y="12.5" textAnchor="middle" fontSize="10" fontWeight="700" fill="#a8331f" fontFamily="Fraunces, Georgia, serif">T</text>
+    </svg>
+  );
+}
+
+const FRONT_HEX = { kalt: "#2f5fa3", warm: "#a8331f", okklusion: "#6b4a7a" } as const;
+
+/** Frontzeichen wie auf der Karte: Linie mit Dreiecken, Halbkreisen oder beidem im Wechsel. */
+function FrontIcon({ kind }: { kind: keyof typeof FRONT_HEX }) {
+  const c = FRONT_HEX[kind];
+  const tri = (x: number) => <path key={`t${x}`} d={`M${x - 4} 12 L${x + 4} 12 L${x} 5.5 Z`} fill={c} />;
+  const half = (x: number) => <path key={`h${x}`} d={`M${x - 4} 12 A4 4 0 0 1 ${x + 4} 12 Z`} fill={c} />;
+  const marks = [8, 18, 28].map((x, i) => (kind === "kalt" || (kind === "okklusion" && i % 2 === 0) ? tri(x) : half(x)));
+  return (
+    <svg width="34" height="18" viewBox="0 0 34 18" aria-hidden="true">
+      <path d="M1 12 H33" stroke={c} strokeWidth={2} strokeLinecap="round" />
+      {marks}
     </svg>
   );
 }

@@ -311,6 +311,17 @@ test("Statistik: Aktivität, Registrierungen, Fluss, Kampf, Nester, Wirtschaft, 
     });
   }
 
+  // Veteranen: Ada 4 Korvetten als Veteran (45 EP, 1 davon unterwegs), Bert 2 Korvetten Rekrut (10 EP), 30 Schützen Erprobt.
+  await patchBase(admin.baseId, (s) => {
+    s.units = { ...s.units, korvette: 3 };
+    s.unitsAway = { ...s.unitsAway, korvette: 1 };
+    s.veterancy = { korvette: 45 };
+  });
+  await patchBase(p2.baseId, (s) => {
+    s.units = { ...s.units, korvette: 2, schuetzen: 30 };
+    s.veterancy = { korvette: 10, schuetzen: 20 };
+  });
+
   // Kampf: 5 Überfälle Ada -> Bert am selben Zeitpunkt (3 Siege), 2 Nester Cleo (Stufe 2 gewonnen, Stufe 4 verloren),
   // 1 Nest Dora vor 20 Tagen (Stufe 1 gewonnen), 4 Kartell-Überfälle (3 Kartell-Siege), dazu leer und Aufklärung.
   const nests = await db.select().from(tables.nest);
@@ -386,6 +397,16 @@ test("Statistik: Aktivität, Registrierungen, Fluss, Kampf, Nester, Wirtschaft, 
   assert.equal(s7.economy.bases, 4);
   assert.equal(s7.economy.avgKommandozentrale, 3);
   assert.deepEqual(s7.economy.buildings.find((b) => b.id === "kommandozentrale")!.levels, [0, 1, 1, 1, 0, 0, 1]);
+
+  // Veteranen-Ränge (alle Häfen, daheim und unterwegs; übrige Häfen ohne Einheiten).
+  const rank = (id: string) => s7.veterans.ranks.find((r) => r.id === id)!;
+  assert.deepEqual([rank("veteran").units, rank("veteran").bases], [4, 1]);
+  assert.deepEqual([rank("erprobt").units, rank("erprobt").bases], [30, 1]);
+  assert.ok(rank("rekrut").units >= 2);
+  const korvette = s7.veterans.byUnit.find((u) => u.id === "korvette")!;
+  assert.equal(korvette.ranks.veteran, 4);
+  assert.equal(korvette.ranks.rekrut, 2);
+  assert.ok(korvette.units >= 6);
 
   assert.deepEqual(s7.anomalies.richPlayers.map((r) => r.name), ["Dora"]);
   assert.ok(s7.anomalies.richPlayers[0].ratio > 3);

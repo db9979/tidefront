@@ -11,7 +11,7 @@ import {
   type BaseState, type Mission, type SpyMission, type WorldEventKind,
 } from "@tidefront/game-core";
 import {
-  adminStats, balance, baseView, CHALLENGE_KINDS, chooseBase, dailyView, dayKey, drawDay, hallOfFame, launchMission,
+  adminStats, balance, baseView, battleWeather, CHALLENGE_KINDS, chooseBase, dailyView, dayKey, drawDay, hallOfFame, launchMission,
   missionPreview, modifiersFor, poolContext, processDue, register, registerModifierSource, runningSeason, seasonEnd, seed,
   spawnWorldEvent, spyLaunch, type Engine, type NoticeJob,
 } from "../src/index.ts";
@@ -265,6 +265,39 @@ test("Tagesbefehle: Strom, Wetter und Nachrichtendienst nur mit Gebäude; Sturmf
   assert.ok(v.challenges.find((c) => c.kind === "speicherwerk")!.progress >= 2, "Speicherwerk aus dem Zustand");
 });
 
+test("Tagesbefehle: Wind und Sonne – Ausbau nur mit Kraftwerk, Ökostrom nur mit Windpark oder Solarfeld, Stand aus dem Zustand", async () => {
+  for (const k of ["windsolar", "oekostrom"]) assert.ok(CHALLENGE_KINDS[k], k);
+  const base = (buildings: Record<string, number>): BaseState => ({
+    resources: { stahl: 1000, treibstoff: 1000, elektronik: 500, proviant: 1000 }, resUpdatedAt: 0, buildings, units: {},
+    unitsAway: {}, defenses: {}, buildQueue: [], trainingQueue: [], versorgungsmangel: false, powerStored: 0,
+    protection: { createdAtMs: 0, nightShieldStartHour: null, tzOffsetMinutes: 0, nightShieldSuspendedUntilMs: 0, defeatShieldUntilMs: 0 },
+  } as BaseState);
+  const kindsOf = (b: BaseState) => {
+    const c = poolContext(b, { others: true, raidsPossible: true });
+    const seen = new Set<string>();
+    for (let i = 0; i < 500; i++) for (const d of drawDay(c, `w|${i}`)) seen.add(d.kind);
+    return seen;
+  };
+  const none = kindsOf(base({ kommandozentrale: 3 }));
+  assert.ok(!none.has("windsolar") && !none.has("oekostrom"), "ohne Strom-Gebäude");
+  assert.ok(kindsOf(base({ kommandozentrale: 3, kraftwerk: 2 })).has("windsolar"), "Ausbau mit Kraftwerk");
+  const green = base({ kommandozentrale: 3, windpark: 3, solarfeld: 2 });
+  const c = poolContext(green, { others: true, raidsPossible: true });
+  assert.equal(c.renewable!.peak, 3 * balance.buildings.windpark.windPowerPerLevel! + 2 * balance.buildings.solarfeld.solarPowerPerLevel!);
+  assert.ok(kindsOf(green).has("oekostrom"), "Ökostrom mit Windpark und Solarfeld");
+  const spec = CHALLENGE_KINDS.oekostrom.spec(1, c, () => 0)!;
+  assert.ok(spec.target > c.renewable!.now && spec.target <= c.renewable!.peak);
+
+  // Datenbank: Fortschritt beim Abruf aus dem Zustand (Stufen bzw. Erzeugung jetzt).
+  const p = await newPlayer("Windmueller", 75);
+  await patchBase(p.baseId, (s) => { s.buildings.kraftwerk = 1; s.buildings.windpark = 2; s.buildings.solarfeld = 1; });
+  await quiet();
+  await setDaily(p.playerId, [{ kind: "windsolar", target: 3 }, { kind: "oekostrom", target: 1 }]);
+  const v = await dailyView(engine, p.playerId);
+  assert.ok(v.challenges.find((x) => x.kind === "windsolar")!.done, "Windpark 2 + Solarfeld 1 = Stufe 3");
+  assert.ok(v.challenges.find((x) => x.kind === "oekostrom")!.progress >= 1, "Wind weht immer etwas");
+});
+
 test("Belagerung und Admin-Statistik rechnen die Produktion mit Modifikatoren", async () => {
   const a = await newPlayer("Belagert", 120);
   await patchBase(a.baseId, (s) => {
@@ -328,4 +361,30 @@ test("Saisonende: Allianzwertung gespeichert, in der Ruhmeshalle und in der Nach
   assert.equal(h.alliances[1].own, false);
   const [msg] = await db.select().from(tables.message).where(and(eq(tables.message.toPlayerId, p2.playerId), sql`${tables.message.subject} like ${`Saison ${season.number}:%`}`));
   assert.match(msg.body, /Deine Allianz \[NB\] Nordbund: Platz 1 von 2/);
+});
+
+test("Kartell-Überfall: Wetter am Hafen wirkt im Kampf (nur auf die Flugzeuge des Verteidigers)", async () => {
+  const d = await newPlayer("Wetterhafen", 140);
+  await quiet();
+  await patchBase(d.baseId, (s) => {
+    s.buildings.flugfeld = 1;
+    s.units = { ...s.units, abfangjaeger: 3, schuetzen: 40 };
+  });
+  const t0 = Date.now() - 5 * 60000;
+  // Auslaufen des Kartells jetzt; der Überfall kommt nach der Vorlaufzeit und wird vorgezogen.
+  await db.insert(tables.gameEvent).values({ dueAt: new Date(t0), type: "raid_launch", payload: {}, baseId: d.baseId, status: "pending" });
+  await processDue(engine, t0 + 1000);
+  const [m] = await db.select().from(tables.mission).where(and(eq(tables.mission.targetId, d.baseId), eq(tables.mission.type, "kartell")));
+  assert.ok(m, "Kartell läuft aus");
+  await arriveNow(m.id);
+  const done = await missionRow(m.id);
+  assert.equal(done.status, "done");
+  const [rep] = await db.select().from(tables.battleReport).where(eq(tables.battleReport.id, done.reportId!));
+  assert.equal(rep.kind, "kartell");
+  const battle = (rep.report as { battle: { weather?: { air: number; strike: number }; attacker: { before: Record<string, number> } } }).battle;
+  // Wetter am Hafen zum Kampfzeitpunkt steht im Bericht; das Kartell bringt keine Flugzeuge mit.
+  const expected = battleWeather(d.col, d.row, Number(rep.createdAt.getTime()));
+  assert.ok(battle.weather, "Wetter im Kampfbericht");
+  assert.ok(Math.abs(battle.weather!.air - expected!.air) < 0.05);
+  assert.ok(Object.keys(battle.attacker.before ?? {}).every((id) => balance.units[id]?.branch !== "luft"));
 });

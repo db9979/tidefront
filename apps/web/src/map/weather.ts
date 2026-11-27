@@ -1,15 +1,16 @@
 // Wetterschicht der Karte im Stil einer alten Wetterkarte (v1.9): Isobaren aus dem Druckfeld der Tiefs (T) und
-// Hochs (H), Windfahnen mit Fiedern nach den Regelschwellen, weiche Wolkenfelder mit Regen, Sturmwimpel und
-// Nebelschleier. Dasselbe deterministische Wetterfeld wie auf dem Server (game-core/weather.ts).
+// Hochs (H), Fronten (Kaltfront, Warmfront, Okklusion), Windfahnen mit Fiedern nach den Regelschwellen, weiche
+// Wolkenfelder mit Regen, Sturmwimpel und Nebelschleier. Dasselbe deterministische Wetterfeld wie auf dem Server (game-core/weather.ts).
 // Leistung: Alle Wetterwerte und die Geometrie entstehen einmal je 15-Minuten-Fenster. Die Übersicht zeichnet mit
 // Haarlinien (pixelLine, zoomunabhängig) und wird beim Zoomen nicht neu gezeichnet; die Feldzeichen werden nur bei
 // einem Zoomsprung um etwa die Hälfte neu gestrichen. Die T/H-Schilder kommen aus einem Vorrat.
 import { Container, Graphics, Text } from "pixi.js";
-import { stormShare, weatherAt, weatherSystemsAt, type Weather, type WeatherBalance } from "@tidefront/game-core";
+import { stormShare, weatherAt, weatherFrontsAt, weatherSystemsAt, type Weather, type WeatherBalance, type WeatherFront } from "@tidefront/game-core";
 import { COLS, HEX_SIZE_KM, ROWS, hexCenter, hexCenterXY, terrainAt } from "@tidefront/world";
 import { weatherAlpha } from "./lod.ts";
 import { INK, PAPER, SEE, SIEGEL } from "./symbols.ts";
 import { barbsOf, drawStormFlag, drawVane, isobars, toXY, windDir, type MapSystem } from "./weather-geo.ts";
+import { FRONT_COLOR, drawFront } from "./weather-fronts.ts"; // Kalt-, Warmfront, Okklusion
 
 /** Abtastung der Übersicht: jedes STEP-te Feld in beide Richtungen. */
 const STEP = 3;
@@ -75,11 +76,13 @@ export function buildWeatherLayer(wb: WeatherBalance): WeatherLayer {
   const lines = new Graphics();
   const flags = new Graphics();
   const labels = new Container();
+  const frontLine = new Graphics();
+  const frontFill = new Graphics();
   const fields = new Graphics();
   const fieldLines = new Graphics();
   const fieldFill = new Graphics();
   atmos.addChild(wash, lines, flags);
-  root.addChild(fields, fieldLines, fieldFill, atmos, labels);
+  root.addChild(fields, fieldLines, fieldFill, atmos, frontLine, frontFill, labels);
   const cells: Cell[] = [];
   for (let row = 1; row < ROWS; row += STEP) {
     for (let col = 1; col < COLS; col += STEP) {
@@ -96,6 +99,8 @@ export function buildWeatherLayer(wb: WeatherBalance): WeatherLayer {
   let fieldSamples: FieldSample[] | null = null;
   let fieldBucket = NaN;
   let systems: MapSystem[] = [];
+  let fronts: WeatherFront[] = [];
+  let frontBucket = NaN;
 
   /** Übersicht: einmal je Zeitfenster, Haarlinien – beim Zoomen bleibt alles stehen. */
   function drawOverview(ms: number): void {
@@ -210,6 +215,20 @@ export function buildWeatherLayer(wb: WeatherBalance): WeatherLayer {
     fieldFill.fill({ color: SIEGEL, alpha: 0.95 });
   }
 
+  /** Fronten mit Zeichen in Bildschirm-Pixeln (bei Zoomsprung neu), je Art in ihrer Farbe. */
+  function drawFronts(bucketScale: number): void {
+    frontLine.clear();
+    frontFill.clear();
+    const px = 1 / bucketScale;
+    for (const kind of ["kalt", "warm", "okklusion"] as const) {
+      const list = fronts.filter((f) => f.kind === kind);
+      if (!list.length) continue;
+      for (const f of list) drawFront(frontLine, frontFill, f, px);
+      frontLine.stroke({ color: FRONT_COLOR[kind], width: 2.4 * px, alpha: 0.85, cap: "round", join: "round" });
+      frontFill.fill({ color: FRONT_COLOR[kind], alpha: 0.9 });
+    }
+  }
+
   /** Schilder T/H aus dem Vorrat setzen. */
   function placeLabels(): void {
     const used = { low: 0, high: 0 };
@@ -240,10 +259,19 @@ export function buildWeatherLayer(wb: WeatherBalance): WeatherLayer {
       if (slot !== slotAt) {
         slotAt = slot;
         systems = weatherSystemsAt(slot, wb).map((s) => ({ ...s, ...toXY(s.lat, s.lon) }));
+        fronts = weatherFrontsAt(slot, wb, LABEL_FROM);
+        frontBucket = NaN;
         drawOverview(slot);
         placeLabels();
         fieldSamples = null;
         fieldBucket = NaN;
+      }
+      // Fronten: in der Übersicht kräftig, nah etwas zurückgenommen (Feldzeichen haben Vorrang).
+      frontLine.alpha = frontFill.alpha = weatherAlpha(scale) * (1 - 0.45 * near);
+      const fb = Math.round(Math.log(scale) / Math.log(BUCKET));
+      if (fb !== frontBucket) {
+        frontBucket = fb;
+        drawFronts(BUCKET ** fb);
       }
       if (scale >= HEX_FROM * 0.9) {
         const bucket = Math.round(Math.log(scale) / Math.log(BUCKET));

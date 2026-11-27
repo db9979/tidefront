@@ -141,6 +141,8 @@ export async function refreshDerived(tx: DbOrTx, playerId: number, rows: Challen
     else if (c && r.kind === "kommando") value = c.stage;
     else if (c && r.kind === "speicherwerk") value = c.levels.speicherwerk ?? 0;
     else if (c && r.kind === "stromspeicher") value = Math.floor(c.power?.stored ?? 0);
+    else if (c && r.kind === "windsolar") value = (c.levels.windpark ?? 0) + (c.levels.solarfeld ?? 0);
+    else if (c && r.kind === "oekostrom") value = Math.floor(c.renewable?.now ?? 0);
     const progress = Math.min(r.target, Math.max(r.progress, value));
     if (progress === r.progress) continue;
     const completedAt = progress >= r.target ? new Date(nowMs) : null;

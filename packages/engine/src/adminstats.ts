@@ -2,7 +2,7 @@
 // Zählungen und Summen rechnet PostgreSQL (eine Abfrage je Bereich); nur Stützpunkt-Zustände (JSON) werden in JS
 // fortgeschrieben (wenige Dutzend Spieler). Ergebnis wird im API-Prozess 60 s zwischengespeichert.
 import { sql } from "drizzle-orm";
-import { productionRates, settle, type BaseState } from "@tidefront/game-core";
+import { productionRates, settle, veteranRank, type BaseState } from "@tidefront/game-core";
 import type { Db } from "@tidefront/db";
 import { marketNewsAdmin } from "./market-news.ts";
 import { balance } from "./context.ts";
@@ -53,8 +53,52 @@ export interface AdminStats {
     repeatedAttacks: { attacker: string; defender: string; maxPerDay: number; total: number }[];
     failedEvents: { count: number; recent: { id: number; type: string; error: string | null; at: string }[] };
   };
+  /** Veteranen: Einheiten je Rang (alle Häfen, daheim und unterwegs) und je Einheitentyp. */
+  veterans: VeteranStats;
   /** Marktnachrichten: effektiver Versatz, Ziel und wirkende Einflüsse je Ressource (jetzt). */
   marketNews: Awaited<ReturnType<typeof marketNewsAdmin>>;
+}
+
+export interface VeteranStats {
+  /** Ränge aufsteigend: Einheiten mit diesem Rang und Zahl der Häfen, die ihn bei mindestens einem Typ haben. */
+  ranks: { id: string; name: string; attackBonus: number; units: number; bases: number }[];
+  /** Je Einheitentyp mit Bestand: Stückzahl, Ø Erfahrung (gewichtet), Stückzahl je Rang. */
+  byUnit: { id: string; units: number; avgXp: number; ranks: Record<string, number> }[];
+}
+
+/**
+ * Veteranen-Ränge über alle Häfen: Erfahrung ist ein Durchschnitt je Typ und Hafen (BaseState.veterancy), alle
+ * Einheiten eines Typs im Hafen haben also denselben Rang. Rein (ohne Datenbank), damit testbar.
+ */
+export function veteranStats(states: BaseState[]): VeteranStats {
+  const ranks = balance.veterans?.ranks ?? [];
+  const perRank = new Map(ranks.map((r) => [r.id, { units: 0, bases: new Set<number>() }]));
+  const perUnit = new Map<string, { units: number; xp: number; ranks: Record<string, number> }>();
+  states.forEach((s, i) => {
+    const counts: Record<string, number> = {};
+    for (const src of [s.units, s.unitsAway]) for (const [id, n] of Object.entries(src ?? {})) counts[id] = (counts[id] ?? 0) + n;
+    for (const [id, n] of Object.entries(counts)) {
+      if (!(n > 0) || !balance.units[id]) continue;
+      const xp = s.veterancy?.[id] ?? 0;
+      const rank = veteranRank(xp, balance);
+      const u = perUnit.get(id) ?? { units: 0, xp: 0, ranks: {} };
+      u.units += n;
+      u.xp += xp * n;
+      if (rank) {
+        u.ranks[rank.id] = (u.ranks[rank.id] ?? 0) + n;
+        const r = perRank.get(rank.id)!;
+        r.units += n;
+        r.bases.add(i);
+      }
+      perUnit.set(id, u);
+    }
+  });
+  return {
+    ranks: ranks.map((r) => ({ id: r.id, name: r.name, attackBonus: r.attackBonus, units: perRank.get(r.id)!.units, bases: perRank.get(r.id)!.bases.size })),
+    byUnit: [...perUnit]
+      .map(([id, u]) => ({ id, units: u.units, avgXp: r1(u.xp / u.units), ranks: u.ranks }))
+      .sort((a, b) => b.avgXp - a.avgXp || b.units - a.units || a.id.localeCompare(b.id)),
+  };
 }
 
 function validTz(tz: string | undefined): string {
@@ -196,10 +240,12 @@ export async function adminStats(db: Db, days: StatsDays, nowMs = Date.now(), tz
   const levels = new Map(buildingIds.map((id) => [id, [] as number[]]));
   // Mehrere Häfen: Bestände je Spieler über alle Häfen summiert (Gebäudestufen bleiben je Hafen).
   const byPlayer = new Map<number, { playerId: number; name: string; total: number }>();
+  const settled: BaseState[] = [];
   for (const b of bases) {
     // Produktion über die Modifikatoren wie im Stützpunkt (Forschung, Sabotage, Strom, Wetter, Ereignisse).
     const mods = await modsOf(db, { playerId: b.player_id, state: b.state, id: b.id, isHome: b.is_home }, nowMs);
     const s = settle(b.state, nowMs, balance, mods);
+    settled.push(s);
     for (const [r, v] of Object.entries(productionRates(s, balance, mods).perHour)) add(production, r, v);
     let total = 0;
     for (const r of balance.resources) total += s.resources[r] ?? 0;
@@ -265,6 +311,7 @@ export async function adminStats(db: Db, days: StatsDays, nowMs = Date.now(), tz
         recent: failed.map((f) => ({ id: Number(f.id), type: f.type, error: f.last_error ? f.last_error.split("\n")[0].slice(0, 200) : null, at: iso(f.t) })),
       },
     },
+    veterans: veteranStats(settled),
     marketNews: await marketNewsAdmin(db, nowMs),
   };
 }

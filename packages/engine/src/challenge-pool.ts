@@ -93,6 +93,8 @@ export interface PoolContext {
   others: boolean;
   /** Stromspeicher (Speicherwerk): Bestand und Kapazität; fehlt = kein Speicher. */
   power?: { stored: number; capacity: number };
+  /** Wind und Sonne (Windpark, Solarfeld): Erzeugung jetzt und Höchstwert bei vollem Wind und voller Sonne. */
+  renewable?: { now: number; peak: number };
 }
 
 export interface Spec {
@@ -265,6 +267,27 @@ export const KINDS: Record<string, KindDef> = {
     },
     text: (n) => `Halte einen Stromüberschuss: fülle den Speicher auf ${fmt(n)} Strom`,
   },
+  windsolar: {
+    icon: "windpark",
+    spec: (t, c) => {
+      // Ausbau der Wetter-Kraftwerke: nur mit Kraftwerk (Strom ist Thema) und wenn der nächste Ausbau kurz ist.
+      if (t !== 0 || lvl(c, "kraftwerk") < 1) return null;
+      const id = lvl(c, "windpark") <= lvl(c, "solarfeld") ? "windpark" : "solarfeld";
+      const next = lvl(c, id) + 1;
+      if (next > balance.building.maxLevel || upgradeDurationMs(id, next, balance) > 12 * 3600000) return null;
+      return { param: null, target: lvl(c, "windpark") + lvl(c, "solarfeld") + 1 };
+    },
+    text: (n) => `Baue Windpark oder Solarfeld aus (zusammen Stufe ${n})`,
+  },
+  oekostrom: {
+    icon: "solarfeld",
+    spec: (t, c) => {
+      if (t !== 1 || !c.renewable || c.renewable.peak <= 0) return null;
+      const target = round(c.renewable.peak * 0.4, 10);
+      return target > Math.floor(c.renewable.now) ? { param: null, target } : null;
+    },
+    text: (n) => `Nutze das Wetter: erzeuge gleichzeitig ${fmt(n)} Strom aus Wind und Sonne`,
+  },
   sturmfahrt: {
     icon: "sturm",
     spec: (t, c) => (t > 0 && balance.weather && canSail(c) ? { param: null, target: 1 } : null),
@@ -283,7 +306,7 @@ export const KINDS: Record<string, KindDef> = {
 };
 
 /** Arten, deren Fortschritt aus dem Zustand gelesen wird (beim Abruf), nicht aus Ereignissen. */
-export const DERIVED_KINDS = new Set(["lager", "produktion", "nachricht", "kommando", "speicherwerk", "stromspeicher"]);
+export const DERIVED_KINDS = new Set(["lager", "produktion", "nachricht", "kommando", "speicherwerk", "stromspeicher", "windsolar", "oekostrom"]);
 
 export function challengeText(kind: string, target: number, param: string | null): string {
   return KINDS[kind]?.text(target, param) ?? kind;
@@ -314,7 +337,16 @@ export function poolContext(state: BaseState, extra: { others: boolean; raidsPos
     raidsPossible: extra.raidsPossible,
     others: extra.others,
     ...((state.buildings.speicherwerk ?? 0) >= 1 ? { power: powerOf(state, mods) } : {}),
+    ...((state.buildings.windpark ?? 0) + (state.buildings.solarfeld ?? 0) >= 1 ? { renewable: renewableOf(state, mods) } : {}),
   };
+}
+
+/** Wind und Sonne jetzt (Wetter am Hafen) und Höchstwert (voller Wind, volle Sonne ohne Wolken). */
+function renewableOf(state: BaseState, mods?: Modifiers): { now: number; peak: number } {
+  const p = powerAt(state, state.resUpdatedAt, balance, mods);
+  const b = balance.buildings;
+  const peak = (b.windpark?.windPowerPerLevel ?? 0) * (state.buildings.windpark ?? 0) + (b.solarfeld?.solarPowerPerLevel ?? 0) * (state.buildings.solarfeld ?? 0);
+  return { now: p.supply.wind + p.supply.solar, peak };
 }
 
 function powerOf(state: BaseState, mods?: Modifiers): { stored: number; capacity: number } {

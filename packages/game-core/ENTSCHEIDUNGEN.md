@@ -314,7 +314,8 @@ ergibt rund ×1,46 gegen Überwasserschiffe (Gegenmittel Sonar +20 % U-Jagd). Be
 
 - Wetter, Admirale und Weltereignisse melden sich mit `registerModifierSource` im Server an (`packages/engine/src/modifiers.ts`).
 - Ob die Kartell-Stärke Forschung des Verteidigers berücksichtigen soll (D1), nach Spielerfahrung entscheiden.
-- Die Admin-Statistik rechnet Produktion ohne Modifikatoren.
+- Erledigt: Die Admin-Statistik rechnet die Produktion mit allen Modifikatoren wie im Hafen (`modsOf`: Forschung,
+  Sabotage, Strom, Wetter, Ereignisse).
 
 ## E. Kriegsglück und Veteranen (v1.4)
 
@@ -372,7 +373,9 @@ der Angreifer 50 % gewinnt; links ohne Würfel wie v1.3, rechts mit):
 
 - Ob ±15 % (innen) für „knapp überlegen = 60–75 %“ zu zahm ist, nach Spielerfahrung entscheiden (Stellschraube
   `innerMin`/`innerMax`, Mittel bleibt 1, solange beide um 1 symmetrisch sind).
-- Veteranen-Werte (Schwellen, Gewinn) sind geschätzt; die Kampfbilanz zeigt die Ränge, Admin-Statistik noch nicht.
+- Veteranen-Werte (Schwellen, Gewinn) sind geschätzt; die Kampfbilanz zeigt die Ränge. Erledigt: Die Admin-Statistik
+  zeigt sie ebenfalls (Einheiten je Rang über alle Häfen, daheim und unterwegs, und je Typ mit Ø Erfahrung;
+  `veteranStats` in `engine/adminstats.ts`).
 - Probekampf und freier Simulator rechnen mit den eigenen Modifikatoren (Forschung, Veteranen), das Ziel ohne
   (Forschung und Erfahrung des Gegners zeigt die Aufklärung nicht).
 
@@ -428,13 +431,19 @@ der Angreifer 50 % gewinnt; links ohne Würfel wie v1.3, rechts mit):
 - Sturmzuschlag der Schiffe: Nordsee → Norwegen Ø +9 % (39 % der Abfahrten über +10 %), Mittelmeer Ø 0 %; Startverbot
   reiner Luftmissionen Irland 11 %, Nordsee 7 %, Mittelmeer 0 %.
 
-### F2. Offene Punkte
+### F2. Offene Punkte (erledigt)
 
-- Kartell-Überfälle mit Wetter am Hafen (Kartell hat keine Flugzeuge, wirkt nur auf die des Verteidigers).
-- Fronten (Kalt-/Warmfront) sind auf der Wetterkarte nicht gezeichnet; der Wolkenschirm ist nur nach Osten versetzt.
-- Erkannte Angriffe werden mit der aktuellen Vorwarnzeit geprüft: Fällt der Strom des Radars nach der Erkennung aus,
-  verschwindet die Anzeige wieder, bis der Angriff in die verkürzte Vorwarnzeit kommt.
-- Tagesbefehle zu Wetter und Strom sind nicht ergänzt.
+- Erledigt: Kartell-Überfälle rechnen mit dem Wetter am Hafen (`raid_arrive` übergibt `battleWeather`). Das Kartell hat
+  keine Flugzeuge; Sturm schwächt die Flugzeuge des Verteidigers, Wolken seinen Luftschlag. Der Kampfbericht trägt das
+  Wetter (Test in `engine/test/luecken.test.ts`).
+- Erledigt: Fronten (Kalt-, Warmfront, Okklusion) sind auf der Wetterkarte gezeichnet, der Wolkenschirm folgt den Fronten
+  statt pauschal nach Osten versetzt (Abschnitt F4).
+- Erledigt: Erkannte Angriffe bleiben erkannt: Der Erkennungszeitpunkt steht im Missionsplan (`plan.detectedAtMs`,
+  `engine/radar.ts`); fällt danach der Strom des Radars aus oder zieht Nebel auf, bleibt die Anzeige.
+- Erledigt: Tagesbefehle zu Wetter und Strom: Speicherwerk ausbauen (`speicherwerk`), Stromüberschuss im Speicher halten
+  (`stromspeicher`), Mission trotz Sturm (`sturmfahrt`, Sturmanteil der Route ≥ 0,2), Windpark oder Solarfeld ausbauen
+  (`windsolar`, nur mit Kraftwerk) und gleichzeitig 40 % der Höchstleistung aus Wind und Sonne erzeugen (`oekostrom`;
+  zählt beim Abruf der Befehle wie Vorrat und Produktion).
 
 ### F3. Wettermodell v1.9 (Gutachten Entwickler und Meteorologe)
 
@@ -462,6 +471,24 @@ der Angreifer 50 % gewinnt; links ohne Würfel wie v1.3, rechts mit):
   in km gerechnet und in die Projektion umgesetzt; Übersicht mit Haarlinien einmal je 15 min, Feldzeichen nur bei
   Zoomsprung × 1,5 neu gestrichen, T/H aus einem Vorrat.
 - **Serverzeit:** Der Versatz wird nur bei erfolgreichem Abruf und nur mit neueren Daten übernommen (`trpc.ts`).
+
+### F4. Fronten und Wolkenschirm
+
+- **Geometrie** (`src/weather-fronts.ts`, rein): Jedes Tief trägt eine Warmfront (1,4 Radien, Peilung Zugrichtung
+  +15° … +45°, bei Zug nach Ost also Ost bis Südost) und eine Kaltfront (1,8 Radien, +105° … +140°, Süd bis Südwest),
+  je fünf Abschnitte. Ab der Lebensmitte wächst eine Okklusion (bis 0,9 Radien, +40°); Warm- und Kaltfront beginnen
+  dann am Okklusionspunkt. Die Zugrichtung kommt aus `vLat`/`vLon` des Systems; keine neuen Balance-Werte, kein Zustand.
+- **Wolken:** statt der nach Osten versetzten Glocke das Maximum aus Kern (0,75), Schirm vor der Warmfront (0,85, Mitte
+  0,35 Radien voraus, zum Warmsektor schmal), Kaltfrontband (0,6, 0,2 Radien breit) und Okklusion (0,65), jeweils mal
+  Stärke; über das Frontende hinaus weich auslaufend. Wind und Sturm bleiben unverändert.
+- **Wirkung aufs Jahresmittel** (Start 1. Januar, alle 3 h): Bewölkung Nordsee 0,88 → 0,85, Irland 0,86 → 0,84,
+  Biskaya 0,59 → 0,57, Mittelmeer 0,35 → 0,35, Atlantik 0,74 → 0,76; Sonnenertrag Nordsee +5 %, Irland +3 %,
+  Biskaya +2 %, Mittelmeer +0,4 %, Atlantik −2 %. Das Mittelmeer (Eichpunkt der Solarfelder) bleibt praktisch gleich;
+  `solarPowerPerLevel` daher unverändert. Bei Spielerfahrung beobachten.
+- **Karte** (`apps/web/src/map/weather-fronts.ts`): `weatherFrontsAt` liefert die Linienzüge für Tiefs ab Stärke 0,35
+  (wie die T-Schilder). Kaltfront blau mit Dreiecken, Warmfront rot mit Halbkreisen, Okklusion violett im Wechsel; die
+  Zeichen stehen auf der Zugseite (links in Laufrichtung des Linienzugs). Zeichen in Bildschirm-Pixeln, neu gestrichen
+  bei Zoomsprung × 1,5; nah herangezoomt etwas zurückgenommen.
 
 ## G. Spionage, Kriegsglück und Kartell gegen Forschung (v1.7)
 
