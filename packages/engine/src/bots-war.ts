@@ -1,13 +1,11 @@
 // KI-Spieler: Angriffe (Nester, andere Bots, Menschen nur mit Erlaubnis), Aufklärung, Probekampf und Minen.
 // Alles läuft über missionPreview/launchMission; Schutzregeln (Anfängerschutz, Nachtschild, Gründungsschutz,
 // Diplomatie) prüfen die Befehle selbst. Zusätzlich: Mindestabstand zwischen zwei Angriffen desselben Bots auf
-// denselben Menschen (bots.humanAttackCooldownHours). Informationen nur aus öffentlicher Karte und eigenen Berichten.
+// denselben Menschen (bots.humanAttackCooldownHours). Informationen nur aus der Kartenansicht (Lagebild) und eigenen Berichten.
 import { and, desc, eq, gt, inArray, ne } from "drizzle-orm";
 import {
   fleetTotals,
-  isNestRespawned,
   nestDefender,
-  protectionStatus,
   resolveBattle,
   trainingCost,
   type AttackerInput,
@@ -27,6 +25,7 @@ import { botsConfig, type BotRow, type BotState, type ProfileConfig } from "./bo
 import { value } from "./bots-plan.ts";
 import type { BaseRow } from "./store.ts";
 import { reservedForField } from "./bots-fields.ts";
+import { botMap, scoutNearest, scoutsUnknown } from "./bots-intel.ts"; // Lagebild
 
 export interface TurnCtx {
   engine: Engine;
@@ -128,8 +127,10 @@ export async function raidNest(c: TurnCtx, base: BaseRow & { state: BaseState },
   const force = withoutReserve(strikeForce(base.state, c.cfg.homeGuardShare), reservedForField(c, base.id));
   const fv = forceValue(force);
   if (fv < 2000) return false;
-  const nests = (await c.engine.db.select().from(tables.nest))
-    .filter((n) => !n.defeatedAt || isNestRespawned(n.defeatedAt.getTime(), c.nowMs, balance))
+  // Lagebild: nur Nester mit bekannter Stufe und Zustand (Sicht oder Wissen), wie bei Menschen.
+  const map = await botMap(c);
+  const nests = map.nests
+    .filter((n): n is typeof n & { level: number } => n.level !== null && n.empty === false)
     .map((n) => ({ ...n, d: hexDistanceKm(base, n) }))
     .filter((n) => n.d <= MAX_RANGE_KM)
     .sort((a, b) => b.level - a.level || a.d - b.d);
@@ -140,7 +141,10 @@ export async function raidNest(c: TurnCtx, base: BaseRow & { state: BaseState },
     if (p.winRate < c.cfg.probeWinRate || p.lootValue < 0.8 * p.lossValue) continue;
     if (await tryLaunch(c, { type: "ueberfall", units: force, col: n.col, row: n.row, baseId: base.id }, `Überfall auf Piratennest Stufe ${n.level} (${Math.round(n.d)} km).`)) return true;
   }
-  return false;
+  // Freibeuter: unbekannte Nester in Reichweite aufklären (Mission „aufklaerung“), danach entscheidet der Probekampf.
+  if (!scoutsUnknown(c)) return false;
+  const unknown = map.nests.filter((n) => !n.known).map((n) => ({ key: `n${n.id}`, col: n.col, row: n.row, label: `Piratennest ${n.col}/${n.row}` }));
+  return scoutNearest(c, base, unknown, MAX_RANGE_KM);
 }
 
 /** Hat der Bot denselben Menschen in der Sperrfrist schon angegriffen (Bericht oder Verband unterwegs)? */
@@ -163,14 +167,16 @@ export async function humanCooldownActive(c: TurnCtx, humanId: number): Promise<
 /** Mögliche Spielerziele: fremde Häfen in Reichweite ohne Schutz; Menschen nur mit Erlaubnis und außerhalb der Sperrfrist. */
 export async function playerTargets(c: TurnCtx, base: BaseRow) {
   const rows = await c.engine.db
-    .select({ id: tables.base.id, playerId: tables.base.playerId, col: tables.base.col, row: tables.base.row, state: tables.base.state, bot: tables.player.botProfile })
+    .select({ id: tables.base.id, playerId: tables.base.playerId, col: tables.base.col, row: tables.base.row, bot: tables.player.botProfile })
     .from(tables.base).innerJoin(tables.player, eq(tables.player.id, tables.base.playerId))
     .where(ne(tables.base.playerId, c.bot.id));
+  // Lagebild: Schutzstatus nur, soweit der Bot ihn sieht oder kennt (unbekannt: Planung entscheidet).
+  const shown = new Map((await botMap(c)).bases.map((b) => [b.id, b]));
   const out: { id: number; playerId: number; col: number; row: number; human: boolean; d: number }[] = [];
   for (const r of rows) {
     const human = r.bot === null;
     if (human && !c.bot.settings.attackHumans) continue;
-    if (protectionStatus((r.state as BaseState).protection, c.nowMs, balance).protected) continue;
+    if (shown.get(r.id)?.protection) continue;
     const d = hexDistanceKm(base, r);
     if (d > MAX_RANGE_KM) continue;
     if (human && (await humanCooldownActive(c, r.playerId))) continue;

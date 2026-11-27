@@ -15,6 +15,7 @@ import { launchMission } from "./commands.ts";
 import { missionPreview } from "./views.ts";
 import { FIELD_TYPE, fieldsView, rules } from "./fields-core.ts";
 import type { TurnCtx } from "./bots-war.ts";
+import { scoutNearest, scoutsUnknown } from "./bots-intel.ts"; // Lagebild
 import { activeMissionCount, type BaseRow } from "./store.ts";
 
 type Base = BaseRow & { state: BaseState };
@@ -168,12 +169,20 @@ export async function fieldTurn(c: TurnCtx, base: Base, mods: Modifiers): Promis
       return true;
     }
   }
+  // Lagebild: Freibeuter klärt Felder ohne Erkennung auf, solange er weniger als drei bekannte Ziele in Reichweite hat
+  // (erst nach dem Versuch, ein bekanntes Feld zu nehmen).
+  let scouted = false;
+  if (candidates.length < 3 && scoutsUnknown(c)) {
+    const unknown = view.fields.filter((f) => f.relation === "unbekannt" && !busy.has(f.id))
+      .map((f) => ({ key: `f${f.id}`, col: f.col, row: f.row, fieldId: f.id, label: `Rohstofffeld ${f.col}/${f.row}` }));
+    scouted = await scoutNearest(c, base, unknown, FIELD_RANGE_KM);
+  }
   if (wanted) {
     const prev = c.state.fieldTarget;
     const keep = prev && prev.fieldId === wanted.fieldId && prev.untilMs > c.nowMs;
     c.state.fieldTarget = { ...wanted, baseId: base.id, untilMs: keep ? prev!.untilMs : c.nowMs + TARGET_HOURS * 3600000 };
   } else delete c.state.fieldTarget;
-  return false;
+  return scouted;
 }
 
 const countsText = (u: Counts) => Object.entries(u).map(([id, n]) => `${n} × ${id}`).join(", ");

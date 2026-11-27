@@ -175,7 +175,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           {target?.eventId && <>Weltereignis <strong>{event ? KIND_TITLE[event.kind] : "…"}</strong>{event?.siege ? ` vor ${event.siege.name}` : ""} – nur Überfall; {event?.kind === "schatzschiff" ? "Abfangpunkt wird berechnet." : "Kampf auf See."}<br /></>}
           {target && (type === "gruendung" || ownTarget || type === "verlegung") && <ExpansionTargetLine type={type} base={base} map={map.data} target={target} fields={fieldsQ.data?.fields} units={chosen} />}
           {target && type !== "gruendung" && type !== "verlegung" && !ownTarget && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.base && <>Stützpunkt <strong>{tInfo.base.name}</strong> ({tInfo.base.owner}){tInfo.base.protection && <span className="text-messing"> · geschützt: {label(tInfo.base.protection)}</span>}</>}
-          {target && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.nest && <>Piratennest Stufe <strong>{tInfo.nest.level}</strong>{tInfo.nest.empty ? " (verlassen)" : ""}</>}
+          {target && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.nest && (tInfo.nest.level === null ? <>Piratennest – <strong>Lage unbekannt</strong> (Stufe und Zustand erst mit Sicht oder Aufklärung)</> : <>Piratennest Stufe <strong>{tInfo.nest.level}</strong>{tInfo.nest.empty ? " (verlassen)" : ""}</>)}
           {target && type !== "gruendung" && type !== "verlegung" && !target.eventId && !target.blockadeId && !target.convoyId && !tInfo?.base && !tInfo?.nest && !target.fieldId && <span className="text-slate-400">Feld {target.col}/{target.row}: kein Ziel</span>}
         </p>
       </Card>
@@ -217,16 +217,17 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
 
       <AdmiralPick value={admiralId} onChange={setAdmiralId} />{/* Admirale führen auch Feld- und Weltereignis-Verbände */}
 
-      {type === "ueberfall" && tInfo?.nest && !tInfo.nest.empty && Object.keys(chosen).length > 0 && (
+      {/* Lagebild: ohne Erkennung keine Stärke und kein Probekampf */}
+      {type === "ueberfall" && tInfo?.nest && tInfo.nest.level !== null && !tInfo.nest.empty && Object.keys(chosen).length > 0 && (
         <Strength balance={balance} units={chosen} level={tInfo.nest.level} />
       )}
-      {type === "ueberfall" && target && Object.keys(chosen).length > 0 && (tInfo?.nest || (tInfo?.base && tInfo.base.id !== base.id)) && (
+      {type === "ueberfall" && target && Object.keys(chosen).length > 0 && ((tInfo?.nest && tInfo.nest.level !== null) || (tInfo?.base && tInfo.base.id !== base.id)) && (
         <ProbeCard
           key={`${target.col}/${target.row}`}
           balance={balance}
           base={base}
           units={chosen}
-          target={tInfo.nest ? { kind: "nest", level: tInfo.nest.level, empty: tInfo.nest.empty } : { kind: "base", col: target.col, row: target.row, name: tInfo.base!.name }}
+          target={tInfo.nest && tInfo.nest.level !== null ? { kind: "nest", level: tInfo.nest.level, empty: !!tInfo.nest.empty } : { kind: "base", col: target.col, row: target.row, name: tInfo.base!.name }}
           onScout={() => setType("aufklaerung")}
         />
       )}

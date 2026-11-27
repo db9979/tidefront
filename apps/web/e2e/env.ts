@@ -10,8 +10,9 @@ const valkeyPort = n(process.env.E2E_VALKEY_PORT, 56392);
 const webPort = n(process.env.E2E_WEB_PORT, 5380);
 
 export const E2E = {
-  pgContainer: slot ? `tf-e2e-pg-${slot}` : "tf-e2e-pg",
-  valkeyContainer: slot ? `tf-e2e-valkey-${slot}` : "tf-e2e-valkey",
+  // E2E_PG_CONTAINER / E2E_VALKEY_CONTAINER überschreiben die Namen; sonst je Slot eigene.
+  pgContainer: process.env.E2E_PG_CONTAINER ?? (slot ? `tf-e2e-pg-${slot}` : "tf-e2e-pg"),
+  valkeyContainer: process.env.E2E_VALKEY_CONTAINER ?? (slot ? `tf-e2e-valkey-${slot}` : "tf-e2e-valkey"),
   pgPort,
   pgPassword,
   valkeyPort,

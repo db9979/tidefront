@@ -5,7 +5,7 @@ import { eq, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
 import { nestSites, isCoast, hexDistanceKm, COLS, ROWS } from "@tidefront/world";
 import type { BaseState } from "@tidefront/game-core";
-import { balance, chooseBase, ensureFieldPlanner, fieldRecall, fieldsView, launchMission, missionPreview, processDue, register, seed, type Engine } from "../src/index.ts";
+import { balance, chooseBase, ensureFieldPlanner, fieldRecall, fieldsView, launchMission, missionPreview, processDue, register, seed, setIntelFog, type Engine } from "../src/index.ts";
 import { addSecondHarbor } from "./multi-base.ts";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -75,6 +75,7 @@ before(async () => {
   await db.execute(sql`drop schema if exists public cascade; drop schema if exists drizzle cascade; create schema public;`);
   await migrateDb(db);
   await seed(db, "TEST:100");
+  await setIntelFog(db, false); // Feldregeln ohne Kartennebel (Lagebild: lagebild.test.ts)
 });
 
 beforeEach(async () => {

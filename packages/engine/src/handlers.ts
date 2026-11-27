@@ -28,6 +28,7 @@ import {
   type ResourceMap,
 } from "@tidefront/game-core";
 import { tables, type Tx } from "@tidefront/db";
+import { recordReportIntel } from "./intel-store.ts"; // Lagebild
 import { balance, RAID_LEAD_MS } from "./context.ts";
 import type { EventRow, Handler, HandlerResult } from "./events.ts";
 import { lockBase, lockBases, randomSeed, readBase, saveBase, scheduleEvent } from "./store.ts";
@@ -163,6 +164,7 @@ export async function storeReport( // auch für Allianz-Ops
     .insert(tables.battleReport)
     .values({ ...values, balanceVersion: balance.version, createdAt: new Date(values.atMs) })
     .returning({ id: tables.battleReport.id });
+  await recordReportIntel(tx, values); // Lagebild: der Bericht zeigt dem Absender das Ziel genau
   return r.id;
 }
 

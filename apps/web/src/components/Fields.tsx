@@ -9,6 +9,7 @@ import { Button, Card, ErrorLine, UnitChips } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 import type { Target } from "../App.tsx";
 import { FieldEscortEditor, FieldIncomingLines } from "./FieldEscort.tsx"; // Felder 2: Geleit, Vorwarnung, Verstärkung
+import { IntelStand } from "./IntelStand.tsx"; // Lagebild
 
 export type FieldsData = NonNullable<Outputs["fields"]["view"]>;
 type Field = FieldsData["fields"][number];
@@ -25,6 +26,7 @@ const KIND_HINT: Record<string, string> = {
 const RELATION_TEXT: Record<string, string> = {
   own: "Dein Feld", allianz: "Feld eines Allianzmitglieds", pakt: "Feld eines Paktpartners", krieg: "Feld eines Kriegsgegners",
   neutral: "Feld eines neutralen Spielers", kartell: "Neutral – vom Kartell bewacht", frei: "Neutral – unbewacht",
+  unbekannt: "Lage unbekannt – Besitzer und Besatzung nur mit Sicht (Ausguck, Radar) oder nach einer Aufklärung",
 };
 const RELATION_CLASS: Record<string, string> = { own: "text-ink", allianz: "text-moos", pakt: "text-messing", krieg: "text-siegel", neutral: "text-sea-300", kartell: "text-siegel", frei: "text-ink2" };
 
@@ -49,7 +51,7 @@ export function FieldSheet({ data, sel, onPlan }: { data: FieldsData | null | un
   const now = useNow();
   if (!f || !data) return null;
   const mine = data.mine.find((m) => m.id === f.id);
-  const canTake = f.relation === "kartell" || f.relation === "frei" || f.relation === "krieg" || f.relation === "neutral";
+  const canTake = f.relation === "kartell" || f.relation === "frei" || f.relation === "krieg" || f.relation === "neutral" || f.relation === "unbekannt";
   return (
     <div className="mt-1">
       <div className="font-serif text-[19px] leading-tight flex items-center gap-2 mt-0.5">
@@ -63,6 +65,7 @@ export function FieldSheet({ data, sel, onPlan }: { data: FieldsData | null | un
       {f.guardAtMs && <div className="text-xs text-ink2">Unbewacht – das Kartell kehrt in {fmtDuration(f.guardAtMs - now)} zurück</div>}
       {f.intel && <div className="text-xs">Lagebild vom {fmtTime(f.intel.atMs)}: <UnitChips counts={f.intel.units} /></div>}
       {!f.garrison && !f.guard && !f.intel && f.relation !== "frei" && <div className="text-xs text-ink2">Besatzung unbekannt – erst aufklären.</div>}
+      <IntelStand tag={f.seen} now={now} />
       {f.zone && f.zone.size >= 2 && <div className="text-xs text-moos">Einflusszone: {f.zone.size} Felder{f.zone.bonus ? " – Ertragsbonus aktiv" : ""}</div>}
       <div className="flex gap-2 mt-2">
         {f.relation !== "own" && <Button kind="secondary" className="flex-1" onClick={() => onPlan({ col: f.col, row: f.row, fieldId: f.id, fieldMission: "aufklaerung" })}>Aufklären</Button>}

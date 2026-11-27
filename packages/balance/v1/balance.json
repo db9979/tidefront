@@ -1,5 +1,5 @@
 {
-  "version": "v1.18",
+  "version": "v1.19",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -197,6 +197,11 @@
     "typeFactor": { "uboot": 0.4, "minenraeumer": 0.25, "minenleger": 0.6 },
     "shieldPerSweeperShare": 2, "maxShield": 0.75, "strengthPerHit": 4, "radarKmPerLevel": 40, "scoutRevealKm": 150,
     "cargoLossFactor": 0.5
+  },
+  "intel": {
+    "lookoutKm": 120, "radarBaseKm": 150, "radarKmPerLevel": 40, "radarPowerShortageFactor": 0.5,
+    "staleHours": 24, "forgetHours": 72, "fleetMemoryHours": 2, "cacheSeconds": 60,
+    "sizeSmallMax": 10, "sizeMediumMax": 40, "roundUnits": 5, "roundDefenses": 2
   },
   "blockade": { "minHours": 2, "maxHours": 12, "minCommandPoints": 12, "productionFactor": 0.75, "deliveryHoldMinutes": 60 },
   "convoys": {

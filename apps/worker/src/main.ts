@@ -9,6 +9,7 @@ import {
   balance,
   checkOps,
   cleanup,
+  purgeIntel,
   ensureWorldEventPlanner,
   ensureFieldPlanner,
   flushAchievementNotices,
@@ -61,6 +62,8 @@ async function loop() {
         const audit = await auditLedger(engine);
         if (!audit.ok) log("AUDIT FAILED", audit);
         await cleanup(engine, Date.now(), balance.combat.wreckHours);
+        // Lagebild: Wissen älter als forgetHours (72 h) löschen.
+        await purgeIntel(db, Date.now()).catch((err) => log("intel purge", String(err)));
         // Weltereignisse: nächstes Ereignis planen, falls keines ansteht (auch nach Saisonwechsel).
         await ensureWorldEventPlanner(db, Date.now()).catch((err) => log("world events planner", String(err)));
         // Felder: aktive Rohstofffelder und Lieferzyklus (auch nach Saisonwechsel).

@@ -1,0 +1,134 @@
+// Lagebild (docs/REGELN-LAGEBILD.md, Stufe 1): Sensoren, Kenntnisstufen, Alter des Wissens. Rein und deterministisch;
+// Server (Sicht je Spieler/Allianz) und Oberfläche (Kartennebel, Sensorgrenzen) rechnen mit denselben Funktionen.
+// Abstände in Projektions-Kilometern (hexCenterXY), damit der Server dieselben Kreise prüft, die die Karte zeichnet.
+
+/** Balance-Block `intel` (seit v1.17); fehlt er, gibt es keinen Kartennebel (alle sehen alles). */
+export interface IntelBalance {
+  /** Ausguck jedes Hafens: Sichtweite in km, Stufe Erkennung, ohne Strom. */
+  lookoutKm: number;
+  /** Radarstation: Grundreichweite plus je Stufe (Stufe 10: 150 + 400 = 550 km). */
+  radarBaseKm: number;
+  radarKmPerLevel: number;
+  /** Reichweitenfaktor bei Strommangel (Radar nicht voll versorgt). */
+  radarPowerShortageFactor: number;
+  /** Bis hier gilt Wissen als „bekannt“, danach „veraltet“ (Stunden). */
+  staleHours: number;
+  /** Danach ist es vergessen; das Objekt fällt auf „immer sichtbar“ zurück (Stunden). */
+  forgetHours: number;
+  /** Verbände auf See: letzte Sichtung bleibt so lange auf der Karte (Stunden). */
+  fleetMemoryHours: number;
+  /** Sicht je Spieler bzw. Allianz wird so lange zwischengespeichert (Sekunden). */
+  cacheSeconds: number;
+  /** Größenklassen der Verbände: klein bis smallMax Einheiten, mittel bis mediumMax, groß darüber. */
+  sizeSmallMax: number;
+  sizeMediumMax: number;
+  /** Erkennung rundet Einheiten auf diese Schritte (Einheiten, Anlagen). */
+  roundUnits: number;
+  roundDefenses: number;
+}
+
+export type IntelLevel = "sichtung" | "erkennung" | "lagebild";
+export type SensorKind = "ausguck" | "radar";
+export type FleetSize = "klein" | "mittel" | "gross";
+/** Alter einer Angabe: live (jetzt im Sensorbereich), bekannt (< staleHours), veraltet (< forgetHours). */
+export type IntelAge = "live" | "bekannt" | "veraltet";
+
+const RANK: Record<IntelLevel, number> = { sichtung: 1, erkennung: 2, lagebild: 3 };
+
+/** Höhere von zwei Kenntnisstufen (null = nichts). */
+export function maxLevel(a: IntelLevel | null, b: IntelLevel | null): IntelLevel | null {
+  if (!a) return b;
+  if (!b) return a;
+  return RANK[a] >= RANK[b] ? a : b;
+}
+
+/** Reicht die Stufe `have` mindestens bis `need`? */
+export function atLeast(have: IntelLevel | null | undefined, need: IntelLevel): boolean {
+  return !!have && RANK[have] >= RANK[need];
+}
+
+/** Zustand der Radarstation, der die Reichweite bestimmt. */
+export interface RadarCondition {
+  /** Versorgter Stromanteil des Radars (1 = voll). */
+  powerServed: number;
+  /** Nebelfaktor am Hafen (1 = klar, bis 1 − fogRadarMax), wie bei der Vorwarnzeit. */
+  fogFactor: number;
+  /** Laufende Sabotage der Radarstation: keine Reichweite. */
+  sabotaged: boolean;
+}
+
+/** Radarreichweite in km: (Grund + je Stufe) × Strom (Mangel: halbe Reichweite) × Nebel; Sabotage oder Stufe 0: 0. */
+export function radarRangeKm(level: number, ib: IntelBalance, c: RadarCondition): number {
+  if (level < 1 || c.sabotaged) return 0;
+  const power = c.powerServed >= 0.999 ? 1 : ib.radarPowerShortageFactor;
+  return (ib.radarBaseKm + ib.radarKmPerLevel * level) * power * Math.max(0, Math.min(1, c.fogFactor));
+}
+
+/** Ein Sensorkreis (Mittelpunkt in Projektions-km). */
+export interface SensorCircle {
+  kind: SensorKind;
+  x: number;
+  y: number;
+  km: number;
+}
+
+/**
+ * Kenntnisstufe, mit der die Sensoren einen Punkt jetzt erfassen (null = außerhalb jeder Sicht).
+ * Ausguck: Erkennung für alles. Radar: Erkennung für Objekte (Häfen, Nester, Felder, Wracks), Sichtung für Verbände.
+ */
+export function liveLevelAt(sensors: readonly SensorCircle[], x: number, y: number, target: "object" | "fleet"): IntelLevel | null {
+  let best: IntelLevel | null = null;
+  for (const s of sensors) {
+    const dx = s.x - x;
+    const dy = s.y - y;
+    if (dx * dx + dy * dy > s.km * s.km) continue;
+    const lvl: IntelLevel = s.kind === "radar" && target === "fleet" ? "sichtung" : "erkennung";
+    best = maxLevel(best, lvl);
+    if (best === "erkennung") return best;
+  }
+  return best;
+}
+
+/** Größenklasse eines Verbands nach der Zahl sichtbarer Einheiten. */
+export function fleetSize(units: number, ib: IntelBalance): FleetSize {
+  if (units <= ib.sizeSmallMax) return "klein";
+  if (units <= ib.sizeMediumMax) return "mittel";
+  return "gross";
+}
+
+/** Einheiten, die Radar und Ausguck sehen: ohne getauchte (U-Boote) und verdeckte (Spione). */
+export function visibleUnitCount(units: Record<string, number>, defs: Record<string, { submerged?: boolean; covert?: boolean } | undefined>): number {
+  let n = 0;
+  for (const [id, c] of Object.entries(units)) {
+    const d = defs[id];
+    if (c > 0 && !d?.submerged && !d?.covert) n += c;
+  }
+  return n;
+}
+
+/** Alter einer gespeicherten Angabe; null = vergessen (älter als forgetHours). */
+export function intelAge(seenAtMs: number, nowMs: number, ib: IntelBalance): Exclude<IntelAge, "live"> | null {
+  const h = (nowMs - seenAtMs) / 3600000;
+  if (h < ib.staleHours) return "bekannt";
+  if (h < ib.forgetHours) return "veraltet";
+  return null;
+}
+
+/** Angabe gerundet wie bei der Erkennung (auf `step`, mindestens step, 0 bleibt 0). */
+export function roundForRecognition(n: number, step: number): number {
+  if (n <= 0 || step <= 1) return Math.max(0, Math.round(n));
+  return Math.max(step, Math.round(n / step) * step);
+}
+
+/** Einheitenliste gerundet für die Erkennung. */
+export function roundCounts(units: Record<string, number>, step: number): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [id, n] of Object.entries(units)) if (n > 0) out[id] = roundForRecognition(n, step);
+  return out;
+}
+
+/** Kurs in Grad (0 = Nord, 90 = Ost) von a nach b in Projektions-km (y nach Süden). */
+export function headingDeg(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  const deg = (Math.atan2(b.x - a.x, -(b.y - a.y)) * 180) / Math.PI;
+  return Math.round((deg + 360) % 360);
+}

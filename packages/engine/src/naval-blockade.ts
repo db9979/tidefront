@@ -15,6 +15,7 @@ import {
   type Modifiers,
 } from "@tidefront/game-core";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
+import { intelFogOn, liveAt, sightOf } from "./intel-sight.ts"; // Lagebild
 import { balance, GameError, type Engine, type NoticeJob } from "./context.ts";
 import { activeMissionCount, homeBaseOf, randomSeed, readBase, saveBase, scheduleEvent, withSite, type BaseRow } from "./store.ts";
 import { modifiersFor, modsOf, registerModifierSource } from "./modifiers.ts";
@@ -273,8 +274,11 @@ export async function blockadesView(db: DbOrTx, playerId: number, nowMs: number)
   const rows = (await db.select().from(tables.blockade).where(and(eq(tables.blockade.status, "active"), gt(tables.blockade.endsAt, new Date(nowMs))))) as BlockadeRow[];
   if (rows.length === 0) return [];
   const mates = new Set(await partyMates(db, playerId));
+  // Lagebild: fremde Blockaden (weder eigene noch gegen die eigene Allianz) nur in Sicht.
+  const sight = (await intelFogOn(db, nowMs)) ? await sightOf(db, playerId, nowMs) : null;
   const out = [];
   for (const b of rows) {
+    if (sight && b.attackerId !== playerId && !mates.has(b.targetPlayerId) && !liveAt(sight, b.col, b.row, "fleet")) continue;
     const [t] = await db.select({ name: tables.base.name }).from(tables.base).where(eq(tables.base.id, b.targetBaseId));
     out.push({
       id: b.id, col: b.col, row: b.row, endsAtMs: b.endsAt.getTime(), targetName: t?.name ?? "?", attackerName: await playerName(db, b.attackerId),

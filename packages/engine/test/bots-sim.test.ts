@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
 import {
-  computeStandings, ensureFieldPlanner, ensureStartBots, loadBots, processDue, runOneBot, seed, basesOfPlayer, type Engine,
+  computeStandings, ensureFieldPlanner, ensureStartBots, loadBots, processDue, runOneBot, seed, basesOfPlayer, setIntelFog, type Engine,
 } from "../src/index.ts";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -23,6 +23,8 @@ before(async () => {
   await migrateDb(db);
   await seed(db, "TEST:100");
   await db.delete(tables.gameEvent).where(sql`${tables.gameEvent.type} like 'world_event%'`);
+  // Lagebild: Vorgabe an; BOT_SIM_FOG=0 rechnet zum Vergleich ohne Kartennebel (wie bis 0.17).
+  await setIntelFog(db, process.env.BOT_SIM_FOG !== "0");
 });
 
 after(async () => {
@@ -79,9 +81,12 @@ test(`Testlauf über ${DAYS} Spieltage: alle Bots wachsen, Freibeuter stärker a
     const [taken] = await db.execute<{ n: number }>(sql`select count(*)::int as n from battle_report where attacker_player_id = ${b.id} and kind = 'feld' and winner = 'attacker'`);
     fieldsHeld.set(b.profile, fields.n);
     const [trades] = await db.execute<{ n: number }>(sql`select count(*)::int as n from command_log where player_id = ${b.id} and command in ('trade', 'offerCreate', 'offerAccept')`);
+    const [scouts] = await db.execute<{ n: number; nest: number; field: number }>(sql`select count(*)::int as n, count(*) filter (where nest_id is not null)::int as nest,
+      count(*) filter (where report ? 'field')::int as field from battle_report where attacker_player_id = ${b.id} and kind = 'aufklaerung'`);
     lines.push(`${b.name} (${b.profile}): Züge ${turns.get(b.id)}, Häfen ${bases.length}, Gebäudestufen ${levels}, ` +
       `Punkte ${s.total} (Ausbau ${s.ausbau}, Militär ${s.militaer}, Kampf ${s.kampf}, Beute ${s.beute}), ` +
-      `Überfälle ${raids.n} (gewonnen ${raids.won}), Felder ${fields.n} (Feldkämpfe gewonnen ${taken.n}), Handel ${trades.n}`);
+      `Überfälle ${raids.n} (gewonnen ${raids.won}), Felder ${fields.n} (Feldkämpfe gewonnen ${taken.n}), Handel ${trades.n}, ` +
+      `Aufklärungen ${scouts.n} (Nester ${scouts.nest}, Felder ${scouts.field})`);
     checks.push(() => {
       assert.ok(levels >= 40, `${b.name} baut aus (${levels} Stufen)`);
       assert.ok(s.ausbau > 100, `${b.name} wächst`);

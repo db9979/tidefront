@@ -25,6 +25,7 @@ import {
 } from "@tidefront/game-core";
 import { hexCenter, isCoast, isTradePortHex, nearestTradePort } from "@tidefront/world";
 import { tables, type Tx } from "@tidefront/db";
+import { nestKnown } from "./intel-query.ts"; // Lagebild
 import { balance, marketBalance, GameError, type ChangeKind, type Engine } from "./context.ts";
 import { processDueForBase } from "./events.ts";
 import { activeMissionCount, basesOfPlayer, homeBaseOf, lockBases, lockOwnBase, ownBase, saveBase, scheduleEvent, withSite } from "./store.ts";
@@ -287,7 +288,8 @@ export function launchMission(
     // Allianzen/Diplomatie: kein Überfall auf Verbündete (ally) oder Paktpartner (pact).
     if (input.type === "ueberfall" && target.kind === "base" && target.playerId !== null) { const d = await diplomacyBlock(ctx.tx, playerId, target.playerId, ctx.nowMs); if (d) fail(d); }
     if (input.type === "transport" && target.kind !== "base") fail("transport_needs_base");
-    if (input.type === "ueberfall" && target.kind === "nest" && target.defeatedAt && !isNestRespawned(target.defeatedAt.getTime(), ctx.nowMs, balance, target.level)) {
+    // Lagebild: ein unerkanntes Nest darf angegriffen werden (ist es leer, gibt es einen Bericht „verlassen“).
+    if (input.type === "ueberfall" && target.kind === "nest" && target.defeatedAt && !isNestRespawned(target.defeatedAt.getTime(), ctx.nowMs, balance, target.level) && (await nestKnown(ctx.tx, playerId, target.id, ctx.nowMs))) {
       fail("nest_empty");
     }
     // Admirale: Führer des Verbands (Tempo, Treibstoff, Tarnung …); prüft Besitz und Verfügbarkeit.

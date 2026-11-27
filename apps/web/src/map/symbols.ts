@@ -88,11 +88,23 @@ export function diamondDot(color: number, r: number, alpha = 1): Container {
   return c;
 }
 
-/** Piratennest: siegelrote Raute mit römischer Stufe; verlassen als gestrichelte Tintenraute. */
-export function nestSymbol(level: number, empty: boolean): Container {
+/**
+ * Piratennest: siegelrote Raute mit römischer Stufe; verlassen als gestrichelte Tintenraute.
+ * Lagebild: ohne Sicht (Stufe unbekannt) eine hohle Tintenraute mit „?“.
+ */
+export function nestSymbol(level: number | null, empty: boolean | null): Container {
   const c = new Container();
   const g = new Graphics();
   const r = 12;
+  if (level === null) {
+    g.poly([0, -r, r, 0, 0, r, -r, 0]).fill({ color: PAPER, alpha: 0.85 }).stroke({ color: INK, width: 1.2, alpha: 0.7 });
+    c.addChild(g);
+    const q = txt("?", 10, INK, SERIF, "600");
+    q.anchor.set(0.5, 0.5);
+    q.position.set(0, 0.5);
+    c.addChild(q);
+    return c;
+  }
   const roman = ROMAN[Math.max(1, Math.min(ROMAN.length - 1, level))];
   if (empty) {
     const pts = [[0, -r], [r, 0], [0, r], [-r, 0], [0, -r]];

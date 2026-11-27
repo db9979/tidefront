@@ -15,6 +15,8 @@ import { modifiersFor, modsOf } from "./modifiers.ts";
 import { maxHarborLevelOf } from "./player-wide.ts";
 import { relationsOf } from "./alliance-core.ts";
 import { fieldIncoming } from "./fields-radar.ts";
+import { fieldSight } from "./intel-query.ts"; // Lagebild
+import type { IntelTag, SightingInput } from "./intel-store.ts";
 
 export const FIELD_TYPE = "besetzen";
 export const HOUR_MS = 3600000;
@@ -186,8 +188,7 @@ export async function fieldsView(engine: Engine, playerId: number, _baseId?: num
   const db = engine.db;
   const rows = ((await db.select().from(tables.resourceField)) as FieldRow[]).sort((a, b) => a.id - b.id);
   const relations = await relationsOf(db, playerId, nowMs);
-  const names = new Map((await db.select({ id: tables.player.id, name: tables.player.name }).from(tables.player)
-    .where(inArray(tables.player.id, [0, ...rows.map((r) => r.ownerId ?? 0)]))).map((p) => [p.id, p.name]));
+  const names = new Map((await db.select({ id: tables.player.id, name: tables.player.name }).from(tables.player)).map((p) => [p.id, p.name]));
   const zones = await zonesOf(db, rows);
   const intel = await intelOf(db, playerId);
   const garrison = await garrisons(db, rows.filter((r) => r.missionId !== null).map((r) => r.missionId!));
@@ -197,24 +198,49 @@ export async function fieldsView(engine: Engine, playerId: number, _baseId?: num
   const rank = new Map(mine.map((m, i) => [m.id, i]));
   const next = await nextTickMs(db);
   const incoming = await fieldIncoming(db, playerId, mine, nowMs);
-  const relationOf = (r: FieldRow) => r.ownerId === null ? (guarded(r) ? "kartell" : "frei")
-    : r.ownerId === playerId ? "own" : relations.get(r.ownerId) ?? "neutral";
+  const relationFor = (ownerId: number | null, isGuarded: boolean) => ownerId === null ? (isGuarded ? "kartell" : "frei")
+    : ownerId === playerId ? "own" : relations.get(ownerId) ?? "neutral";
+  // Lagebild: fremde Felder nur mit Sicht (live) oder aus gespeichertem Wissen; sonst nur Position, Art und Stufe.
+  const fs = await fieldSight(db, playerId, nowMs);
+  const liveRows: SightingInput[] = [];
   const fields = rows.map((r) => {
-    const relation = relationOf(r);
-    const open = relation === "own" || relation === "allianz";
+    const current = relationFor(r.ownerId, guarded(r));
+    const open = current === "own" || current === "allianz";
     const known = intel.get(r.id);
     const z = zones.get(r.id);
+    const base = { id: r.id, col: r.col, row: r.row, kind: r.kind, tier: r.tier, yieldPerHour: fieldBaseYield(r.kind, r.tier, balance) };
+    const guardAtMs = r.ownerId === null && !guarded(r) && r.guardAt ? r.guardAt.getTime() : null;
+    let seen: IntelTag | null = null;
+    let relation: ReturnType<typeof relationFor> | "unbekannt" = current;
+    let ownerId = r.ownerId;
+    if (fs.fog && !open) {
+      const lv = fs.live(r.col, r.row);
+      const k = lv ? undefined : fs.known(r.id);
+      if (lv) {
+        seen = lv;
+        liveRows.push({ kind: "field", objectId: r.id, level: lv.level, source: lv.source, data: { ownerId: r.ownerId, guarded: guarded(r), guardAtMs } });
+      } else if (k) {
+        const d = k.data as { ownerId: number | null; guarded: boolean };
+        seen = { age: k.age, atMs: k.seenAtMs, source: k.source, level: k.level };
+        ownerId = d.ownerId;
+        relation = relationFor(d.ownerId, d.guarded);
+      } else {
+        return { ...base, relation: "unbekannt" as const, owner: null, garrison: null, guard: null, guardAtMs: null, intel: null, zone: null, seen: null };
+      }
+    }
     return {
-      id: r.id, col: r.col, row: r.row, kind: r.kind, tier: r.tier, relation,
-      owner: r.ownerId !== null ? names.get(r.ownerId) ?? "?" : null,
-      yieldPerHour: fieldBaseYield(r.kind, r.tier, balance),
+      ...base, relation,
+      owner: ownerId !== null ? names.get(ownerId) ?? "?" : null,
       garrison: open && r.missionId !== null ? garrison.get(r.missionId) ?? {} : null,
-      guard: r.ownerId === null ? (open || known ? (r.guard as Counts) : null) : null,
-      guardAtMs: r.ownerId === null && !guarded(r) && r.guardAt ? r.guardAt.getTime() : null,
+      guard: r.ownerId === null && ownerId === null ? (open || known ? (r.guard as Counts) : null) : null,
+      guardAtMs: seen?.age === "live" || !fs.fog ? guardAtMs : null,
       intel: known && !open ? { atMs: known.atMs, units: known.units, owner: known.owner } : null,
-      zone: z ? { id: z.zone, size: z.size, bonus: z.bonus } : null,
+      zone: z && (!seen || seen.age === "live") ? { id: z.zone, size: z.size, bonus: z.bonus } : null,
+      /** Lagebild: Stand der Angabe (live, bekannt, veraltet) mit Quelle; null bei eigenen/verbündeten Feldern. */
+      seen,
     };
   });
+  await fs.persist(liveRows);
   // Admiral, der eine eigene Besatzung führt (fields-admiral.ts; abziehbar ohne Rückruf).
   const mineMissions = mine.map((m) => m.missionId).filter((x): x is number => x !== null);
   const leaders = new Map((mineMissions.length > 0 ? await db.select({ id: tables.admiral.id, name: tables.admiral.name, missionId: tables.admiral.missionId })

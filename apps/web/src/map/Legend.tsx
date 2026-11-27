@@ -39,6 +39,17 @@ const GROUPS: { title: string; items: Item[] }[] = [
     ],
   },
   {
+    // Lagebild: Kartennebel, Sensoren, fremde Verbände
+    title: "Lagebild",
+    items: [
+      { icon: <FogSwatch />, text: "Graublauer Schleier: außerhalb jeder Sicht – Stufen, Schutz, Wracks und Verbände dort unbekannt" },
+      { icon: <SensorRing />, text: "Gestrichelter Kreis: Reichweite von Ausguck (Tinte) und Radar (blau), auch der Allianz" },
+      { icon: <UnknownNest />, text: "Nest mit „?“: nur die Position ist bekannt – Stufe erst mit Sicht oder Aufklärung" },
+      { icon: <span className="opacity-50 flex"><TacticalIcon kind="nest" level={2} /></span>, text: "Blass: bekannt, aber nicht live (Stand im Feld-Blatt); sehr blass: veraltet (über 24 h)" },
+      { icon: <FleetArrow />, text: "Pfeil: fremder Verband mit Kurs; K/M/G = klein, mittel, groß; Farbe nur mit Erkennung" },
+    ],
+  },
+  {
     title: "Übersicht (weit herausgezoomt)",
     items: [
       { icon: <><TacticalIcon kind="dotAlly" size={18} /><TacticalIcon kind="dotPact" size={18} /></>, text: "Punkt: Hafen von Allianz (grün) oder Paktpartner (ocker)" },
@@ -109,6 +120,33 @@ function StormFlag() {
 
 function FieldRing({ color, dashed }: { color: string; dashed?: boolean }) {
   return <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="#fbf8f0" stroke={color} strokeWidth={1.8} strokeDasharray={dashed ? "3 2" : undefined} /></svg>;
+}
+
+function FogSwatch() {
+  return <svg width="22" height="18" viewBox="0 0 22 18" aria-hidden="true"><rect x="1" y="2" width="20" height="14" fill="#5d6f82" fillOpacity={0.3} stroke="#5d6f82" strokeOpacity={0.5} /></svg>;
+}
+
+function SensorRing() {
+  return <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9" fill="none" stroke="#2d5b7a" strokeWidth={1.3} strokeDasharray="3 3" /></svg>;
+}
+
+function UnknownNest() {
+  return (
+    <svg width="22" height="22" viewBox="-12 -12 24 24" aria-hidden="true">
+      <polygon points="0,-10 10,0 0,10 -10,0" fill="#fbf8f0" stroke="#18273a" strokeOpacity={0.7} strokeWidth={1.2} />
+      <text x="0" y="3.5" textAnchor="middle" fontSize="10" fontWeight="600" fill="#18273a" fontFamily="Fraunces, Georgia, serif">?</text>
+    </svg>
+  );
+}
+
+function FleetArrow() {
+  return (
+    <svg width="24" height="26" viewBox="-12 -12 24 26" aria-hidden="true">
+      <circle r="10" fill="#fbf8f0" stroke="#18273a" strokeWidth={1.2} />
+      <polygon points="0,-8 5,5 0,2 -5,5" fill="#18273a" transform="rotate(45)" />
+      <text x="0" y="13" textAnchor="middle" fontSize="7" fontWeight="600" fill="#18273a" fontFamily="'IBM Plex Mono', monospace">M</text>
+    </svg>
+  );
 }
 
 function Hatch({ d, color }: { d: string; color: string }) {

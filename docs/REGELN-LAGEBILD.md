@@ -168,11 +168,43 @@ Größenklassen für Verbände: **klein** bis 10 Einheiten, **mittel** bis 40, *
 
 | Stufe | Inhalt | Ergebnis für Spieler |
 |---|---|---|
-| **1 Grundgerüst** | Abschnitte 2–4, Ausguck, Radarstation (5.1, 5.2), Allianz-Sicht, Kartennebel, Feld-Blatt mit Stand, Planung „Lage unbekannt“ | Nest-Stufen und fremde Verbände nur noch mit Sicht; Radar wird wichtiger |
+| **1 Grundgerüst** ✔ umgesetzt (Balance v1.17) | Abschnitte 2–4, Ausguck, Radarstation (5.1, 5.2), Allianz-Sicht, Kartennebel, Feld-Blatt mit Stand, Planung „Lage unbekannt“ | Nest-Stufen und fremde Verbände nur noch mit Sicht; Radar wird wichtiger |
 | **2 Aufklärung** | Patrouille (5.4), Kampagne (5.5), mobile Radarstation (5.3), U-Boote/Sonar (5.7), Reiter „Lagebild“ | Aktiv aufklären, Posten bauen, Patrouillen abfangen |
 | **3 Satelliten** | Startrampe, Raumfahrt, Bahnen mit Wolken (5.6), Tarnnetze und Störsender (6) | Spätspiel-Ziel, Gegenmittel |
 
 Jede Stufe wird ein eigenes Release mit Migration, Tests (auch E2E) und Simulation.
+
+### Stufe 1: Umsetzung und Abweichungen
+
+Umgesetzt in `packages/game-core/src/intel.ts` (Reichweiten, Kenntnisstufen, Alter, Größenklassen),
+`packages/engine/src/intel-*.ts` (Sicht je Partei mit 60-s-Zwischenspeicher, Wissen in `intel_sighting`, gefilterte
+Kartenansicht, Abfragen für Planung, Felder und KI-Spieler), `apps/web/src/map/intel.ts` (Nebel, Sensorgrenzen,
+Verbandspfeile) und Verwaltung → Lagebild (`intel_fog`). Balance-Block `intel` mit den Startwerten aus Abschnitt 4 und 5.
+
+Abweichungen (begründet):
+- **Entfernungen in Projektions-Kilometern** (gerader Abstand der Feldmitten wie auf der Karte gezeichnet) statt
+  Großkreis: Server und Karte prüfen dieselben Kreise; Nebelgrenze und gestrichelter Kreis stimmen überein. Im hohen
+  Norden und Süden weicht das um einige Prozent vom Großkreis ab.
+- **Strommangel** ist schwarz-weiß: Ist das Radar nicht voll versorgt, gilt die halbe Reichweite (kein gleitender Wert).
+- **Rohstofffelder:** Die Stufe bleibt wie die Art immer sichtbar (feste Weltdaten, nötig für Ertrag und Planung);
+  verborgen sind Besitzer, Wache/Besatzung, Einflusszone und Wiederkehr der Wache. Ohne Sicht heißt ein Feld „unbekannt“.
+- **Rundung der Erkennung** (auf 5 bzw. 2) ist als Regel vorhanden, wird in Stufe 1 aber nicht gebraucht: Erkennung zeigt
+  hier nur Stufe, Zustand, Schutz und Besitzer; Einheiten zeigt weiter nur das Lagebild (Aufklärung, Kampfbericht).
+- **Lagebild aus Berichten:** Aufklärung und Kampfberichte (auch Feld- und Seeberichte) schreiben das Ziel als Lagebild
+  für die Partei des Absenders. Spionage-Dossiers und das Wissen des Verteidigers über den Angreifer folgen mit Stufe 2.
+- **Wissen** liegt je Partei (`p:<Spieler>`, `a:<Allianz>`); gelesen wird die Allianz und alle Mitglieder, so bleibt
+  Wissen von vor dem Beitritt erhalten. Gespeichert wird beim Kartenabruf höchstens alle 60 s je Partei und bei
+  Missionsankünften; der Worker löscht nach 72 h, das Saisonende leert die Tabelle.
+- **Kartell-Verbände** haben keinen Ausgangshafen; ihr Kurs wird vom nächsten Nest zum Ziel gerechnet.
+- **Planung:** Ein unbekanntes, verlassenes Nest wird nicht mehr als „verlassen“ abgelehnt (Ankunft: Bericht „verlassen“).
+  Der Schutzstatus wird beim Auslaufen weiter geprüft (Regel des Schutzes), die Ablehnung verrät ihn also wie bisher.
+  Sammelangriffe der Allianz prüfen Nester noch ohne Sicht.
+- **Fremde Blockaden** (weder eigene noch gegen die eigene Allianz) erscheinen nur in Sicht.
+- **Nebel aus:** Alles wie bis 0.17, also auch keine fremden Verbände auf der Karte (die gab es vorher nicht).
+- **Schicht „Sensoren“** ist ein Knopf an der Karte (gestrichelte Reichweiten an/aus); der Nebel bleibt immer an.
+- **KI-Spieler** nutzen dieselbe Kartenansicht. Nur der Freibeuter klärt unbekannte Nester und Felder mit der Mission
+  „Aufklärung“ auf; Händler und Festung greifen nur an, was sie sehen oder kennen. Im 8-Tage-Testlauf nimmt die Festung
+  deshalb kaum noch Nester und Felder (siehe Bericht zur Version).
 
 ## 11. Entscheidungen (27.11.2026)
 

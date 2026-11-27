@@ -205,6 +205,8 @@ export interface Balance {
   convoys?: ConvoysBalance;
   /** Mehrere Häfen: Gründung und Verlegung (expansion.ts); fehlt es, gibt es keine Außenposten. */
   expansion?: ExpansionDef;
+  /** Lagebild (seit v1.17, intel.ts); fehlt es, sieht jeder alles (kein Kartennebel). */
+  intel?: import("./intel.ts").IntelBalance;
 }
 
 // ---------------------------------------------------------------- Erfolge (Abzeichen) und Wochenziele
