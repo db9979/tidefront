@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { queryClient, trpc, trpcClient } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
-import { fmtTime } from "../lib/time.ts";
+import { fmtAgo, fmtTime, useNow } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
 import { Icon } from "../icons.tsx";
 import { Badge, Card, ErrorLine, Loading, SmallButton, UnitChips } from "../ui.tsx";
@@ -18,19 +18,16 @@ const SENSOR_TEXT: Record<string, string> = {
 };
 const LEVEL_TEXT: Record<string, string> = { sichtung: "Sichtung", erkennung: "Erkennung", lagebild: "Lagebild" };
 
-function ago(ms: number, now: number): string {
-  const min = Math.max(0, Math.round((now - ms) / 60000));
-  return min < 60 ? `vor ${min} min` : `vor ${Math.round(min / 60)} h`;
-}
+const ago = fmtAgo; // „vor 12 min“, „vor 2 h“ – live mit der gemeinsamen Uhr
 
 export function LagebildTab({ onShowOnMap }: { onShowOnMap: (t: Target) => void }) {
   const q = useQuery({ ...trpc.intel.overview.queryOptions(), refetchInterval: 60000 });
+  const now = useNow(60000);
   const [confirm, setConfirm] = useState<number | null>(null);
   const dismantle = useCommand((i: { key: string; postId: number }) => trpcClient.intel.dismantlePost.mutate(i), () => [trpc.intel.pathFilter().queryKey, trpc.base.pathFilter().queryKey, trpc.world.map.pathFilter().queryKey]);
   if (!q.data) return <Loading cards={3} />;
   const d = q.data;
   if (!d.enabled) return <Card title="Lagebild"><p className="text-sm">In dieser Saison gibt es keinen Kartennebel: Du siehst die ganze Welt.</p></Card>;
-  const now = d.serverNow;
   const here = (col: number | null, row: number | null) => col !== null && row !== null
     ? <SmallButton onClick={() => onShowOnMap({ col, row })}>Karte</SmallButton> : null;
   const sensors = Object.entries(d.sensors.reduce<Record<string, { n: number; km: number }>>((acc, s) => {
@@ -114,7 +111,7 @@ export function LagebildTab({ onShowOnMap }: { onShowOnMap: (t: Target) => void 
           </ul>
         )}
         <ErrorLine text={dismantle.error} code={dismantle.code} />
-        <p className="text-xs text-ink2 mt-2">Stand {fmtTime(now)}.</p>
+        <p className="text-xs text-ink2 mt-2">Stand {fmtTime(d.serverNow, now)}.</p>
       </Card>
       <SatelliteCard sats={d.satellites} launch={d.launch} onShowOnMap={onShowOnMap} />
     </div>

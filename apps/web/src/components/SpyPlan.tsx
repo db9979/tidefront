@@ -55,7 +55,7 @@ export function SpyPlan({ base, map, target, setTarget, center, onClose }: { bas
   const input = kind === "kartell"
     ? { kind }
     : target && !target.eventId ? { kind, col: target.col, row: target.row, ...(kind === "sabotage" ? { building } : {}) } : null;
-  const preview = useQuery({ ...trpc.espionage.preview.queryOptions(input ?? { kind }), enabled: !!input, placeholderData: keepPreviousData });
+  const preview = useQuery({ ...trpc.espionage.preview.queryOptions(input ?? { kind }), enabled: !!input, placeholderData: keepPreviousData, refetchInterval: 60_000 }); // Ankunftszeit aktuell
   const launch = useCommand(
     (i: { key: string; kind: Kind; col?: number; row?: number; building?: string }) => trpcClient.espionage.launch.mutate(i),
     () => [trpc.base.pathFilter().queryKey],

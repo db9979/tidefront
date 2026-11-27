@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { trpc, type BaseData } from "../lib/trpc.ts";
 import { fmtNum, label } from "../lib/names.ts";
-import { fmtDuration, fmtTime } from "../lib/time.ts";
+import { fmtDuration, fmtTime, serverNow } from "../lib/time.ts";
 import { Bar, Sheet } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 
@@ -57,7 +57,7 @@ export function ResourceSheet({ base, res, amount, onClose }: { base: BaseData; 
   const fill = Math.min(1, amount / Math.max(1, cap));
   const price = market.data?.resources.find((r) => r.id === res)?.price;
   const powerCut = base.power && base.power.factor < 0.999 && building > 0;
-  const now = Date.now();
+  const now = serverNow();
   const untilFull = net > 0 && amount < cap ? ((cap - amount) / net) * 3600000 : null;
   const untilEmpty = net < 0 && amount > 0 ? (amount / -net) * 3600000 : null;
   const prodMods = base.modifierSources
@@ -79,9 +79,9 @@ export function ResourceSheet({ base, res, amount, onClose }: { base: BaseData; 
             {fill >= 0.999
               ? <span className="text-messing">Lager voll – Produktion geht verloren. Lagerkomplex ausbauen oder verkaufen.</span>
               : untilFull !== null
-                ? <>Voll in {fmtDuration(untilFull)} <span className="text-ink2">· {fmtTime(now + untilFull)} Uhr</span></>
+                ? <>Voll in {fmtDuration(untilFull)} <span className="text-ink2">· {fmtTime(now + untilFull)}</span></>
                 : untilEmpty !== null
-                  ? <span className="text-siegel">Leer in {fmtDuration(untilEmpty)} · {fmtTime(now + untilEmpty)} Uhr</span>
+                  ? <span className="text-siegel">Leer in {fmtDuration(untilEmpty)} · {fmtTime(now + untilEmpty)}</span>
                   : <span className="text-ink2">Bestand bleibt gleich.</span>}
           </div>
         </div>

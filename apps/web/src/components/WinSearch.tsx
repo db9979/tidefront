@@ -6,6 +6,7 @@ import type { WinSearchResult } from "@tidefront/game-core";
 import type { Balance, BaseData } from "../lib/trpc.ts";
 import { countLabel, fmtNum } from "../lib/names.ts";
 import { fmtSeconds } from "../lib/time.ts";
+import { useLiveBase } from "../lib/live-base.ts";
 import { runWinSearch } from "../lib/sim-client.ts";
 import { winInput, type WinTarget } from "../lib/win-input.ts";
 import { setTrainPreset } from "../lib/train-request.ts";
@@ -89,6 +90,7 @@ export function WinSearch({ target, base, balance, planAt, title = "Was fehlt zu
 
 function WinResult({ r, goal, ms, base, planAt, onTrain, onPlan }: { r: WinSearchResult; goal: number; ms: number; base: BaseData; planAt?: Target | null; onTrain: () => void; onPlan?: () => void }) {
   const need = Object.keys(r.extra).length > 0;
+  const res = useLiveBase(base).resources; // Rotfärbung der Kosten live
   return (
     <div className="space-y-2 text-sm" data-testid="win-search-result">
       {!r.reachable ? (
@@ -100,7 +102,7 @@ function WinResult({ r, goal, ms, base, planAt, onTrain, onPlan }: { r: WinSearc
         <div>
           <p><span className="text-ink2">Es fehlen:</span> <strong data-testid="win-search-extra">{extraText(r.extra)}</strong></p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
-            <Cost cost={r.extraCost} have={base.resources} />
+            <Cost cost={r.extraCost} have={res} />
             <span className="text-xs text-ink2 inline-flex items-center gap-1"><Icon id="uhr" size={14} /> {fmtSeconds(r.trainSeconds)} Ausbildung</span>
           </div>
         </div>

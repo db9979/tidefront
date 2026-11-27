@@ -2,6 +2,9 @@
 // Lagergrenze des Heimathafens). Vor dem Abholen: was je Ressource verfiele, mit Bestand/Kapazität des
 // Heimathafens, Knopf „Lagerkomplex ausbauen“ und „Trotzdem abholen“. Nach dem Abholen: lostNote() für die Bestätigung.
 import { useNav } from "../lib/nav.ts";
+import { useNow } from "../lib/time.ts";
+import { liveBaseAt } from "../lib/live-base.ts";
+import type { BaseData } from "../lib/trpc.ts";
 import { setActiveBase } from "../lib/active-base.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { Icon } from "../icons.tsx";
@@ -35,6 +38,18 @@ export function overflowOf(storage: RewardStorage, rewards: Reward[]): Overflow[
   return [...out.values()].filter((o) => Math.round(o.lost) > 0).map((o) => ({ ...o, lost: Math.round(o.lost) }));
 }
 
+/**
+ * Lager des Heimathafens live: Ist der Heimathafen gerade aktiv, gelten seine hochgerechneten Bestände (die Ansicht
+ * der Belohnungen kennt nur den Stand ihrer Abfrage); sonst bleibt der gelieferte Stand.
+ */
+export function liveStorage(storage: RewardStorage, active: BaseData | null, now: number): RewardStorage {
+  if (!storage || !active?.isHome) return storage;
+  const live = liveBaseAt(active, now);
+  const resources = { ...storage.resources };
+  for (const id of Object.keys(resources)) if (typeof live.resources[id] === "number") resources[id] = live.resources[id];
+  return { ...storage, capacity: live.capacity, resources };
+}
+
 /** Satz für die Bestätigung nach dem Abholen, oder "" wenn nichts verfallen ist. */
 export function lostNote(lost: Record<string, number> | null | undefined): string {
   const parts = Object.entries(lost ?? {}).filter(([, n]) => Math.round(n) > 0).map(([id, n]) => `${fmtNum(Math.round(n))} ${label(id)}`);
@@ -47,7 +62,8 @@ export function lostNote(lost: Record<string, number> | null | undefined): strin
  */
 export function RewardClaim(props: { storage: RewardStorage; rewards: Reward[]; busy: boolean; onClaim: () => void; onExpand?: () => void; className?: string }) {
   const nav = useNav();
-  const over = overflowOf(props.storage, props.rewards);
+  const now = useNow();
+  const over = overflowOf(liveStorage(props.storage, nav.base, now), props.rewards);
   const expand = () => {
     // Belohnungen gehen in den Heimathafen: dort ausbauen.
     if (nav.base && !nav.base.isHome) setActiveBase(null);

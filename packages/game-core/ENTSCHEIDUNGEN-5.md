@@ -456,3 +456,74 @@ Nutzerentscheid (6 Punkte). Regeln: `docs/REGELN-SEE.md` (Abschnitt Konvois), `d
    Spieler-Gegners nur `{ name, rankName, hidden: true }` – keine Spezialisierung, kein Einfluss, keine Erfahrung, kein
    Wurf (`hideOpponentAdmiral` in report-sim-view.ts, passend zu „Boni geheim“). Eigener Admiral vollständig;
    Kartell/Nester (kein Spieler-Gegner) unverändert. Web zeigt „Rang Name (Einfluss geheim)“.
+
+## Zeiten und Bestände live (liv)
+
+Nutzerwunsch: Alle angezeigten Zeiten und Bestände passen sich laufend an, nicht erst nach erneutem Öffnen (Beispiel
+Gebäudeblatt Stahlwerk: „Fehlt: 194 Stahl · ca. 55:59 min“ und „Stahl 341 / 535“ blieben stehen).
+
+1. **Eine gemeinsame Uhr (`lib/time.ts`):** `useNow(stepMs)` liest einen einzigen Zeitgeber (`useSyncExternalStore`)
+   statt `setInterval` je Komponente/Zeile. Er tickt auf volle Sekunden, nur solange jemand zuhört, ruht in
+   versteckten Tabs (`visibilitychange`, beim Zurückkehren sofort ein Tick) und meldet eine neue Serverzeit
+   (`noteServerTime`) sofort. `stepMs` rundet ab – die Komponente zeichnet nur neu, wenn sich der gerundete Wert ändert
+   (Listen mit langen Fristen 30–60 s). `useCountdownNow(...ziele)`: sekündlich, solange ein Ziel ≤ 1 h entfernt ist,
+   sonst minütlich. App.tsx tickt nicht mehr selbst (früher zeichnete die ganze App jede Sekunde neu); die Kopfleiste
+   holt sich die Uhr selbst.
+2. **Hochrechnung (`lib/live-base.ts`):** `liveBaseAt(base, now)`/`useLiveBase(base)` liefern die Hafenansicht mit
+   Beständen aus Stand der Abfrage (`serverNow` der base.get-Antwort, per Objektidentität aus dem Query-Cache) plus
+   Förderung je Stunde bis zur Lagergrenze, Verbrauch nie unter 0 (`live.res.ts`, unverändert). Taler werden nicht
+   hochgerechnet (keine Rate). `liveStoredAt`: Stromspeicher mit `grid.now.charge` je Stunde, zwischen 0 und Kapazität,
+   nur bis zur nächsten vollen Stunde (danach gilt die Kurve; der 30-s-Abruf liefert sie).
+3. **„Was hilft?“ live:** `useRemedy` rechnet jede Sekunde mit dem hochgerechneten Hafen und `now` der Uhr –
+   Fehlmenge, „Bestand / Bedarf“, „in ca. …“ und Kurzfassung sinken laufend. Das Gebäudeblatt prüft den Ausbau schon
+   mit hochgerechneten Beständen: reicht es, verschwindet der Blocker und „Ausbau auf N“ wird aktiv, ohne Neuladen.
+   Hinweise mit Fristen nennen die Restzeit („fertig in 12 min, 18:40 Uhr“, „nächste Rückkehr in 5 min“) und nutzen
+   `now` statt `Date.now()`.
+4. **Nachladen bei fälligen Zeitpunkten (`lib/due.ts`, `due-times.ts`):** Bau/Ausbildung/Forschung fertig, Mission
+   angekommen/zurück, Angriff trifft ein, Lieferung da, Nachtschild an/aus → 1,5 s und 8 s danach base.get und
+   Berichte neu holen (ein Zeitgeber für den nächsten Zeitpunkt; vergangene Zeitpunkte lösen nie erneut aus). Kommt
+   vorher eine Live-Meldung, ist der Abruf ohnehin schon frisch.
+5. **Einheitliche Formate:** `fmtDuration` (Restzeit, aufgerundet): „45 s“ (unter 1 min), „56 min“, „1 h 05 min“,
+   „2 h“, „2 T 3 h“ – nie mehr „55:59 min“. `fmtAgo` (abgerundet): „gerade eben“, „vor 12 min“, „vor 2 h“, „vor 3 T“.
+   `fmtAt`: „18:00“, „morgen 06:00“, „gestern 21:15“, sonst „27.11. 18:00“; `fmtTime` = dasselbe mit „Uhr“ (alle
+   Aufrufer, doppelte „Uhr“ entfernt; „Lagebild vom …“ → „Lagebild mit Stand …“); `fmtRange` „23:00–morgen 06:00 Uhr“.
+   Serverzeit → Geräteuhr nur bei Versatz > 2 s (sonst würde 18:00:00 durch Millisekunden Laufzeit zu 17:59).
+   Eigene Formatierer ersetzt: Kartenschilder (Weltereignisse, Blockade: `hours()`), Satelliten-Überflug auf der
+   Karte, Börse `when()`, Saisonleiste („noch 5 T 3 h“ statt „noch 5 Tage“), Lagebild-Reiter `ago`, Lagebild-Alter
+   `agoText`, Sammelangriff-Fristen, Strom-Warnung („ab morgen 06:00 Uhr (in 9 h 12 min)“). Bewusst nicht:
+   Verwaltungsseiten (Admin), Regeltexte mit festen Dauern („alle 4 h“, „24 Stunden gesperrt“).
+
+**Bestandsaufnahme (vorher → nachher):**
+
+| Anzeige | vorher | nachher |
+|---|---|---|
+| Kopfleiste Bestände, Füllbalken, Ressourcenblatt „Voll/Leer in …“ | live (App-Uhr) | live (eigene Uhr der Leiste); Ressourcenblatt-Uhrzeit mit Serverzeit |
+| Kopfleiste Strom: Speicher-% | Stand der Abfrage (30 s) | live hochgerechnet (`liveStoredAt`) |
+| Versorgung: Speicher x/y, Balken | Stand der Abfrage | live |
+| Versorgung: „Vorrat reicht noch N h“ (Proviant) | Stand der Abfrage, ganze h | live, „3 h 20 min“ |
+| Gebäudeblatt: Kosten-Rotfärbung, Sperrgrund, Ausbau-Knopf, „ausbaubar“-Raute | live | live |
+| Gebäudeblatt/Forschung/Ausbildung „Was hilft?“: Fehlt, Bestand/Bedarf, „in ca.“ | **eingefroren** beim Öffnen | **live** (sekündlich) |
+| Ausbildung: Höchstmenge, Kosten-Rotfärbung | Stand der Abfrage | live |
+| Missionsplanung: Ladung (Bestand, Höchstmenge) | Stand der Abfrage | live |
+| Missions-/Spionage-/Aufklärungsplanung: „Ankunft … · zurück …“ | **eingefroren** (Vorschau einmal) | Vorschau minütlich neu |
+| Sammelangriff: „Ankunft frühestens“ | nur bei Eingabe neu | minütlich |
+| Börse: Verkaufsbestand der Order, Spielerhandel „hast“, „Was fehlt zum Sieg?“-Kosten | Stand der Abfrage | live |
+| Abholen mit Lagerwarnung (Tagesbefehle, Wochenziele, Erfolge, Auftragsbuch) | Stand der Abfrage | live (aktiver Heimathafen) |
+| Bauhof „noch …“, „beginnt in …“, Fortschrittsbalken, Forschungszeile | live | live, neues Format |
+| Ausbildung „noch …“, Missionen „Ankunft/Zurück in …“, Angriffsbanner, Eingehend, Gäste | live | live, neues Format |
+| Abschluss (Bau fertig, Mission angekommen) | Live-Meldung oder 30-s-Abruf | zusätzlich Nachladen 1,5 s/8 s nach dem Zeitpunkt |
+| Nachtschild | Zeitraum ohne Restzeit; nach Ende alter Zeitraum bis Abruf | „bis 06:00 Uhr (noch 2 h 10 min)“, „beginnt in …“; Nachladen an Start/Ende |
+| Blockadebanner „blockiert bis …“ | ohne Restzeit, blieb nach Ende stehen | „· noch …“, verschwindet bei Ablauf |
+| Blockade halten (eigene Mission) | nur bei Neuzeichnen | live |
+| Sabotage, Weltereignisse, Satellit „noch …“, Saison, Tagesbefehle/Wochenziele, Verträge (Fälligkeit/Nachfrist), Admirale, Marktnachrichten, Kurszeile, Felder/Geleit, Finale, Diplomatie | live (eigene Uhren, 1–60 s) | live (gemeinsame Uhr), neues Format |
+| Kartenschilder mit Restzeit (Schatzschiff, Großflotte, Armada, Belagerung, Blockade) | **eingefroren** bis neue Kartendaten | minütlich neu gebaut |
+| Lagebild-Reiter „vor X min“ | Stand der Abfrage (60 s) | minütlich live, `fmtAgo` |
+| Lagebild-Alter in Zielen/Feldblatt („Stand: vor 2 h“) | live über Elternuhr | `fmtAgo`, Serverzeit statt Gerätezeit |
+| Börse „frei ab“, Handelspause, Kursänderung 24 h, Lieferung „Ankunft …“ | live (Börsenuhr) | live, Uhrzeit über `fmtAt` |
+| Aufholhilfe-Gutschrift | Stand der Abfrage (30 s) | unverändert: die Ansicht liefert keinen Zufluss je Stunde |
+| Wetter „bei Ankunft (…)“, Stromkurve | Vorhersage je Abruf | unverändert (stündliche Kurve), Uhrzeiten einheitlich |
+
+Tests: `test/zeit-anzeige.test.ts` (Formate, Hochrechnung mit Lagergrenze/0-Grenze, fällige Zeitpunkte),
+E2E `24-live-zeit.spec.ts` mit Playwright-Uhr (Abrufe und WebSocket währenddessen angehalten, damit der Server die
+vorgespulte Zeit nicht zurückstellt): Gebäudeblatt offen → Bestand steigt, Wartezeit sinkt, Blocker weg, Ausbau
+aktiv; Bauhof-Countdown läuft ohne Neuladen.

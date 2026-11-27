@@ -20,8 +20,7 @@ export function awardTone(a: string): string {
 function remaining(endsAtMs: number, now: number): string {
   const ms = endsAtMs - now;
   if (ms <= 0) return "endet gleich";
-  const days = Math.floor(ms / DAY);
-  return days >= 2 ? `noch ${days} Tage` : `noch ${fmtDuration(ms)}`;
+  return `noch ${fmtDuration(ms)}`; // einheitlich: „noch 5 T 3 h“
 }
 
 /** Saisonleiste für die Rangliste. */

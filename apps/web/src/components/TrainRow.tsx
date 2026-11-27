@@ -8,6 +8,7 @@ import { trpc, trpcClient, type BaseData, type Balance } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { fmtDuration, fmtSeconds } from "../lib/time.ts";
+import { useLiveBase } from "../lib/live-base.ts";
 import { Button, Card, Cost, ErrorLine, Sheet, StatTable, Stepper, UnitChips } from "../ui.tsx";
 import { ActionRemedy, ReasonLine, useWhatHelps } from "./Remedy.tsx"; // „Was hilft?“
 import { Icon, IconTile } from "../icons.tsx";
@@ -98,9 +99,10 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
   const cmd = useCommand((i: { key: string; id: string; count: number }) => trpcClient.base.train.mutate(i), invalidateBase);
   const [info, setInfo] = useState(false);
   const vet = props.base.veterans?.find((v) => v.id === props.id);
+  const res = useLiveBase(props.base).resources; // hochgerechnet: Höchstmenge und Rotfärbung live
   // Bezahlbare Höchstmenge: begrenzt die Eingabe, damit Kosten und Bauzeit sinnvoll bleiben.
   const afford = Object.entries(props.cost ?? {}).reduce(
-    (m, [r, v]) => (v > 0 ? Math.min(m, Math.floor((props.base.resources[r] ?? 0) / v)) : m),
+    (m, [r, v]) => (v > 0 ? Math.min(m, Math.floor((res[r] ?? 0) / v)) : m),
     MAX_TRAIN,
   );
   const why = props.busy
@@ -144,7 +146,7 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
       </div>
       {n >= 1 && !props.needLevel && (
         <div className="flex justify-between gap-2 mt-1 pl-12">
-          <Cost cost={scale(props.cost, n)} have={props.base.resources} />
+          <Cost cost={scale(props.cost, n)} have={res} />
           {props.secondsEach !== null && <span className="text-xs text-slate-400 flex items-center gap-1 shrink-0"><Icon id="uhr" size={14} /> {fmtSeconds(props.secondsEach * n)}</span>}
         </div>
       )}
@@ -160,7 +162,7 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
         <div className="mt-2">
           <StatTable rows={unitStats(props.balance, props.id).filter(([k]) => !BROKEN_DOWN.test(k)).map(([k, v]) => [k.replace(/^Bonus gegen (.*)$/, (_m, t: string) => `Bonus gegen ${label(t)}`), v])} />
         </div>
-        <div className="mt-3 text-sm flex flex-wrap items-center gap-x-2"><span className="text-slate-400">Kosten je Stück: </span><Cost cost={props.cost} have={props.base.resources} /></div>
+        <div className="mt-3 text-sm flex flex-wrap items-center gap-x-2"><span className="text-slate-400">Kosten je Stück: </span><Cost cost={props.cost} have={res} /></div>
         {props.secondsEach !== null && <div className="mt-1 text-sm flex items-center gap-1"><Icon id="uhr" size={16} /> {fmtSeconds(props.secondsEach)} je Stück</div>}
         {!props.needLevel && <p className="text-xs text-ink2 mt-1">Bezahlbar: bis {fmtNum(Math.max(0, afford))} Stück.</p>}
       </Sheet>

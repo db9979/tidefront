@@ -2,6 +2,7 @@
 // Die Regeln selbst prüft der Server; hier wird nur vorab erklärt, was er ablehnen würde.
 import { market } from "@tidefront/game-core";
 import type { Outputs } from "../../lib/trpc.ts";
+import { fmtAt } from "../../lib/time.ts";
 
 export type MarketRes = Outputs["market"]["get"]["resources"][number];
 export type MarketCfg = {
@@ -145,13 +146,9 @@ export function clock(ms: number): string {
   return new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 }
 
-/** Uhrzeit mit „morgen“ bzw. Datum, wenn nicht heute. */
+/** Uhrzeit mit „morgen“ bzw. Datum, wenn nicht heute – das einheitliche Format aus lib/time.ts (fmtAt). */
 export function when(ms: number, nowMs: number): string {
-  const d = new Date(ms);
-  const n = new Date(nowMs);
-  const days = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() - new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime()) / DAY);
-  const prefix = days === 0 ? "" : days === 1 ? "morgen " : `${d.toLocaleDateString("de-DE", { day: "numeric", month: "numeric" })} `;
-  return `${prefix}${clock(ms)}`;
+  return fmtAt(ms, nowMs);
 }
 
 /** Pfeil und Wort für eine Veränderung (nicht nur Farbe). */

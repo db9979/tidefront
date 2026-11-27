@@ -9,19 +9,25 @@ import { Bar, SmallButton } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 import { errorText, fmtNum } from "../lib/names.ts";
 import type { NavTarget } from "../lib/remedies/types.ts";
+import { useNow } from "../lib/time.ts";
+import { liveBaseAt } from "../lib/live-base.ts";
 
 /** Gibt es zu diesem Code überhaupt einen Hinweis? */
 export function hasRemedy(code: string | null | undefined): boolean {
   return !!code && Object.hasOwn(REMEDIES, code);
 }
 
-/** Abhilfe zum Code mit aktivem Hafen und Balance (null: nichts zu tun). */
+/**
+ * Abhilfe zum Code mit aktivem Hafen und Balance (null: nichts zu tun). Live: Bestände werden sekündlich
+ * hochgerechnet, Fehlmengen und Wartezeiten passen sich ohne Neuöffnen an.
+ */
 export function useRemedy(code: string | null | undefined, detail?: RemedyDetail): Remedy | null {
   const { base } = useNav();
   const known = hasRemedy(code);
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity, enabled: known });
+  const now = useNow();
   if (!known) return null;
-  return remedy(code, { base, balance: (meta.data?.balance ?? null) as CoreBalance | null, detail: detail ?? {}, now: Date.now() });
+  return remedy(code, { base: liveBaseAt(base, now), balance: (meta.data?.balance ?? null) as CoreBalance | null, detail: detail ?? {}, now });
 }
 
 /** Klappzustand eines Hinweises, damit auch ein grauer Knopf ihn öffnen kann. */

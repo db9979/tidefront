@@ -113,7 +113,7 @@ export function MissionPanel({ mission, now, home, onClose, onShowTarget }: {
         <Bar value={ph.progress} tone={ph.outbound ? "red" : "sea"} />
         <div className="mt-1 font-semibold">
           {ph.outbound ? `Ankunft in ${fmtDuration(ph.end - now)}` : `Daheim in ${fmtDuration(ph.end - now)}`}
-          <span className="text-ink2 font-normal"> · {fmtTime(ph.end)} Uhr</span>
+          <span className="text-ink2 font-normal"> · {fmtTime(ph.end)}</span>
         </div>
       </div>
       <div className="mt-1"><UnitChips counts={units} /></div>
@@ -123,9 +123,9 @@ export function MissionPanel({ mission, now, home, onClose, onShowTarget }: {
         <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 items-center mt-2 text-xs">
           <span className="text-slate-400">Ziel</span><span className="text-right">{name}{m.target.kind !== "kartell" ? ` (Feld ${m.target.col}/${m.target.row})` : ""}</span>
           <span className="text-slate-400">Heimathafen</span><span className="text-right">Feld {home.col}/{home.row}</span>
-          <span className="text-slate-400">Abfahrt</span><span className="text-right">{fmtTime(m.departAtMs)} Uhr</span>
-          <span className="text-slate-400">Ankunft am Ziel</span><span className="text-right">{fmtTime(m.arriveAtMs)} Uhr{!ph.outbound ? " (erreicht)" : ""}</span>
-          <span className="text-slate-400">Zurück daheim</span><span className="text-right">{m.recalled && ph.outbound ? "–" : `${fmtTime(m.returnAtMs)} Uhr`}</span>
+          <span className="text-slate-400">Abfahrt</span><span className="text-right">{fmtTime(m.departAtMs)}</span>
+          <span className="text-slate-400">Ankunft am Ziel</span><span className="text-right">{fmtTime(m.arriveAtMs)}{!ph.outbound ? " (erreicht)" : ""}</span>
+          <span className="text-slate-400">Zurück daheim</span><span className="text-right">{m.recalled && ph.outbound ? "–" : `${fmtTime(m.returnAtMs)}`}</span>
           {m.reportId && <span className="col-span-2 text-slate-400">Der Bericht liegt unter Meldungen.</span>}
         </div>
       )}

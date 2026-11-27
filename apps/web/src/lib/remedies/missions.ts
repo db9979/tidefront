@@ -1,7 +1,7 @@
 // Abhilfe: Missionen planen (Verband, Plätze, Treibstoff, Reichweite, Ziel, Wetter) und Spionageaufträge.
 import { blockadeOf, commandPoints, commandPointsAt, fuelCost, minesOf, missionSlots, sabotageCooldownUntil } from "@tidefront/game-core";
 import { countLabel, fmtNum, label } from "../names.ts";
-import { fmtTime } from "../time.ts";
+import { fmtDuration, fmtTime } from "../time.ts";
 import { build, go, joinDe, lvl, mapAction, market, missions, nextStep, producer, stateOf, training } from "./helpers.ts";
 import type { RemedyCtx, RemedyTable } from "./types.ts";
 
@@ -27,8 +27,8 @@ export const MISSIONS: RemedyTable = {
     const back = base.missions.map((m) => m.returnAtMs).filter((t): t is number => typeof t === "number" && t > now).sort((a, b) => a - b)[0];
     const parts: string[] = [];
     if (step) parts.push(`Mehr Plätze bringt die Hafenkommandantur: Stufe ${step.level} gibt ${step.value} Plätze (jetzt Stufe ${hk}).`);
-    parts.push(`Oder eine laufende Mission zurückrufen${back ? ` – die nächste ist um ${fmtTime(back)} zurück` : ""}.`);
-    const summary = `${base.activeMissions} von ${base.missionSlots} belegt${back ? ` · nächste Rückkehr ${fmtTime(back)}` : ""}`;
+    parts.push(`Oder eine laufende Mission zurückrufen${back ? ` – die nächste ist in ${fmtDuration(back - now)} zurück (${fmtTime(back)})` : ""}.`);
+    const summary = `${base.activeMissions} von ${base.missionSlots} belegt${back ? ` · nächste Rückkehr in ${fmtDuration(back - now)}` : ""}`;
     return { hint: parts.join(" "), summary, actions: [build("hafenkommandantur"), missions] };
   },
 
@@ -122,9 +122,9 @@ export const MISSIONS: RemedyTable = {
   // Spionage
   target_beginner: () => ({ hint: "Gegen Häfen im Anfängerschutz gibt es keine Spionage. Wähle ein anderes Ziel oder warte das Schutzende ab (Karte).", actions: [mapAction] }),
   spy_target: () => ({ hint: "Spione arbeiten nur gegen Spielerhäfen – tippe auf der Karte einen fremden Hafen an.", actions: [mapAction] }),
-  sabotage_cooldown: ({ base, balance }) => {
+  sabotage_cooldown: ({ base, balance, now }) => {
     const until = base && balance ? sabotageCooldownUntil(stateOf(base), balance) : 0;
-    return { hint: `Ein Hafen lässt sich höchstens einmal je 24 Stunden sabotieren.${until > Date.now() ? ` Wieder möglich ab ${fmtTime(until)}.` : ""} Bis dahin ein anderes Ziel wählen oder erkunden.` };
+    return { hint: `Ein Hafen lässt sich höchstens einmal je 24 Stunden sabotieren.${until > now ? ` Wieder möglich ab ${fmtTime(until)}.` : ""} Bis dahin ein anderes Ziel wählen oder erkunden.` };
   },
   bad_sabotage_target: () => ({ hint: "Wähle ein Gebäude, das der Zielhafen auch besitzt (Stufe 1 oder höher)." }),
 
