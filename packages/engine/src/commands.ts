@@ -23,7 +23,7 @@ import {
   type Mission,
   type ResourceMap,
 } from "@tidefront/game-core";
-import { hexCenter, isCoast, nearestTradePort } from "@tidefront/world";
+import { hexCenter, isCoast, isTradePortHex, nearestTradePort } from "@tidefront/world";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, marketBalance, GameError, type ChangeKind, type Engine } from "./context.ts";
 import { processDueForBase } from "./events.ts";
@@ -122,6 +122,13 @@ export function chooseBase(engine: Engine, playerId: number, key: string, input:
   return runCommand(engine, playerId, key, "chooseBase", async (ctx) => {
     if (await homeBaseOf(ctx.tx, playerId)) fail("has_base");
     if (!isCoast(input.col, input.row)) fail("not_coast");
+    // Wie bei der Gründung (foundingBlocker): nicht auf einem Handelshafen oder Rohstofffeld.
+    if (isTradePortHex(input.col, input.row)) fail("trade_port");
+    const [onField] = await ctx.tx
+      .select({ id: tables.resourceField.id })
+      .from(tables.resourceField)
+      .where(and(eq(tables.resourceField.col, input.col), eq(tables.resourceField.row, input.row)));
+    if (onField) fail("resource_field");
     const [occupiedNest] = await ctx.tx
       .select({ id: tables.nest.id })
       .from(tables.nest)

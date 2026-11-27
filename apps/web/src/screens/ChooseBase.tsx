@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { COLS, QUICK_PICKS, ROWS, hexAtLonLat, hexDistanceKm, hexIndex, nearestTradePort, terrainMap } from "@tidefront/world";
+import { COLS, QUICK_PICKS, ROWS, hexAtLonLat, hexDistanceKm, hexIndex, isTradePortHex, nearestTradePort, terrainMap } from "@tidefront/world";
 import { queryClient, trpc, trpcClient } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum } from "../lib/names.ts";
@@ -30,7 +30,7 @@ export function ChooseBase() {
     const t = terrainMap();
     const out = new Set<string>();
     for (let row = 0; row < ROWS; row++) for (let col = 0; col < COLS; col++) {
-      if (t[hexIndex(col, row)] === "coast" && !taken.has(`${col},${row}`)) out.add(`${col},${row}`);
+      if (t[hexIndex(col, row)] === "coast" && !taken.has(`${col},${row}`) && !isTradePortHex(col, row)) out.add(`${col},${row}`);
     }
     return out;
   }, [map.data]);

@@ -3,7 +3,7 @@
 // (bots-run.ts) und können sich nicht anmelden. Regeln: docs/REGELN-KI.md.
 import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { market as marketCore, mulberry32 } from "@tidefront/game-core";
-import { COLS, ROWS, hexDistanceKm, isCoast } from "@tidefront/world";
+import { COLS, ROWS, hexDistanceKm, isCoast, isTradePortHex } from "@tidefront/world";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance, marketBalance, type Engine } from "./context.ts";
 import { chooseBase, recallOwnMission } from "./commands.ts";
@@ -215,7 +215,7 @@ export async function freeHomeField(db: DbOrTx, seed: number): Promise<{ col: nu
   const blocked = new Set([...bases, ...nests, ...fields].map((x) => `${x.col},${x.row}`));
   const scored: { col: number; row: number; d: number }[] = [];
   for (const c of coastFields()) {
-    if (blocked.has(`${c.col},${c.row}`)) continue;
+    if (blocked.has(`${c.col},${c.row}`) || isTradePortHex(c.col, c.row)) continue;
     let d = 5000;
     for (const b of bases) d = Math.min(d, hexDistanceKm(c, b));
     for (const n of nests) if (hexDistanceKm(c, n) < 120) d = 0;
@@ -245,7 +245,7 @@ export async function ensureHome(engine: Engine, bot: BotRow, nowMs: number): Pr
       ...f, name: harborNameOf(bot.name), nightShieldStartHour: cfg.nightShieldStartHour, tzOffsetMinutes: zoneOffsetMinutes(nowMs),
     });
     if (r.ok) return `Hafen gegründet auf Feld ${f.col}/${f.row}.`;
-    if (r.code !== "field_taken") return `Hafengründung abgelehnt (${r.code}).`;
+    if (r.code !== "field_taken" && r.code !== "resource_field") return `Hafengründung abgelehnt (${r.code}).`;
   }
   return "Hafengründung: Feld jeweils schon belegt.";
 }

@@ -87,6 +87,6 @@ for (const end = Date.now() + 60000; ;) {
   await new Promise((r) => setTimeout(r, 250));
 }
 run("worker", process.execPath, ["apps/worker/src/main.ts"], { WORKER_HEALTH_PORT: String(E2E.workerPort), WORKER_POLL_MS: "250" });
-run("web", process.execPath, [resolve(root, "node_modules/vite/bin/vite.js"), "--port", String(E2E.webPort), "--strictPort", "--host", "127.0.0.1"], {
+run("web", process.execPath, [resolve(root, "node_modules/vite/bin/vite.js"), "--port", String(E2E.webPort), "--strictPort", "--host", "127.0.0.1", "--bypass-lock"], {
   TF_API: `http://127.0.0.1:${E2E.apiPort}`,
 }, resolve(root, "apps/web"));

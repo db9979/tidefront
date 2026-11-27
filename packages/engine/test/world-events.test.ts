@@ -3,7 +3,7 @@ import { after, before, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { and, eq, like, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
-import { nestSites, isCoast, hexCenter, hexDistanceKm, COLS, ROWS } from "@tidefront/world";
+import { nestSites, isCoast, hexCenter, hexDistanceKm, COLS, ROWS, isTradePortHex } from "@tidefront/world";
 import {
   buildRoute, productionRates, settle, storageCapacity, worldEventsBalance,
   type BaseState, type WorldEventKind,
@@ -27,7 +27,7 @@ function freeCoast(skip: number): { col: number; row: number } {
   const nests = new Set(nestSites().map((n) => `${n.col},${n.row}`));
   let k = 0;
   for (let row = 10; row < ROWS; row++) for (let col = 0; col < COLS; col++) {
-    if (isCoast(col, row) && !nests.has(`${col},${row}`) && k++ === skip) return { col, row };
+    if (isCoast(col, row) && !isTradePortHex(col, row) && !nests.has(`${col},${row}`) && k++ === skip) return { col, row };
   }
   throw new Error("no coast");
 }
@@ -39,7 +39,7 @@ function coastNear(near: { col: number; row: number }, skip: number): { col: num
   for (let row = Math.max(0, near.row - 5); row <= Math.min(ROWS - 1, near.row + 5); row++) {
     for (let col = Math.max(0, near.col - 5); col <= Math.min(COLS - 1, near.col + 5); col++) {
       const d = hexDistanceKm(near, { col, row });
-      if (isCoast(col, row) && !nests.has(`${col},${row}`) && d >= 100 && d <= 400 && k++ === skip) return { col, row };
+      if (isCoast(col, row) && !isTradePortHex(col, row) && !nests.has(`${col},${row}`) && d >= 100 && d <= 400 && k++ === skip) return { col, row };
     }
   }
   throw new Error("no coast near");

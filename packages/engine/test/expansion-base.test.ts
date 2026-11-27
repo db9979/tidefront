@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { and, eq, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
-import { COLS, ROWS, hexCenter, isCoast, nestSites } from "@tidefront/world";
+import { COLS, ROWS, hexCenter, isCoast, nestSites, isTradePortHex } from "@tidefront/world";
 import { createBase, researchModifiers, type BaseState } from "@tidefront/game-core";
 import {
   balance,
@@ -47,7 +47,7 @@ function coast(skip: number): { col: number; row: number } {
   const nests = new Set(nestSites().map((n) => `${n.col},${n.row}`));
   let k = 0;
   for (let row = 10; row < ROWS; row++) for (let col = 0; col < COLS; col++) {
-    if (isCoast(col, row) && !nests.has(`${col},${row}`) && k++ === skip) return { col, row };
+    if (isCoast(col, row) && !isTradePortHex(col, row) && !nests.has(`${col},${row}`) && k++ === skip) return { col, row };
   }
   throw new Error("no coast");
 }

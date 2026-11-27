@@ -5,7 +5,7 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { and, eq, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
-import { COLS, ROWS, hexCenter, isCoast, nestSites, placeNameAt } from "@tidefront/world";
+import { COLS, ROWS, hexCenter, isCoast, nestSites, placeNameAt, isTradePortHex } from "@tidefront/world";
 import type { BaseState } from "@tidefront/game-core";
 import {
   abandonColony, abandonInfo, admiralSpecIds, baseView, basesOfPlayer, chooseBase, colonyNameAt, createOffer, homeBaseOf,
@@ -25,7 +25,7 @@ function coast(skip: number): { col: number; row: number } {
   const nests = new Set(nestSites().map((n) => `${n.col},${n.row}`));
   let k = 0;
   for (let row = 20; row < ROWS; row++) for (let col = 10; col < COLS; col++) {
-    if (isCoast(col, row) && !nests.has(`${col},${row}`) && k++ === skip) return { col, row };
+    if (isCoast(col, row) && !isTradePortHex(col, row) && !nests.has(`${col},${row}`) && k++ === skip) return { col, row };
   }
   throw new Error("kein Küstenfeld");
 }

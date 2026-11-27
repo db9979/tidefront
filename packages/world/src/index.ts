@@ -153,6 +153,13 @@ export function nearestTradePort(h: Hex): { name: string; distanceKm: number } {
   return best;
 }
 
+let tradeHexKeys: Set<string> | null = null;
+/** Liegt auf diesem Feld ein Handelshafen? Dort darf kein Spielerhafen entstehen (Hafenwahl und Gründung). */
+export function isTradePortHex(col: number, row: number): boolean {
+  tradeHexKeys ??= new Set(TRADE_PORTS.map(([lon, lat]) => { const h = hexAtLonLat(lon, lat); return `${h.col},${h.row}`; }));
+  return tradeHexKeys.has(`${col},${row}`);
+}
+
 /** Deterministischer Zufall (mulberry32), unabhängig vom Regelkern. */
 function rng(seed: number): () => number {
   let a = seed >>> 0;

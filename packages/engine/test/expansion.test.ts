@@ -5,7 +5,7 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { and, eq, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
-import { COLS, ROWS, TRADE_PORTS, hexAtLonLat, hexCenter, hexDistanceKm, isCoast, nestSites, placeNameAt } from "@tidefront/world";
+import { COLS, ROWS, TRADE_PORTS, hexAtLonLat, hexCenter, hexDistanceKm, isCoast, nestSites, placeNameAt, isTradePortHex } from "@tidefront/world";
 import { hexSteps, type BaseState } from "@tidefront/game-core";
 import {
   admiralSpecIds, balance, basesOfPlayer, chooseBase, homeBaseOf, launchMission, missionPreview, processDue, register,
@@ -30,7 +30,7 @@ async function freeCoast(near: Hex | null, minKm: number, maxKm: number, minStep
   const bases = await db.select({ col: tables.base.col, row: tables.base.row }).from(tables.base);
   for (let row = 20; row < ROWS; row++) for (let col = 10; col < COLS; col++) {
     const k = `${col},${row}`;
-    if (!isCoast(col, row) || nests.has(k) || ports.has(k)) continue;
+    if (!isCoast(col, row) || isTradePortHex(col, row) || nests.has(k) || ports.has(k)) continue;
     const h = { col, row };
     if ([...bases, ...avoid].some((b) => hexSteps(b, h) < minSteps)) continue;
     if (near) { const d = hexDistanceKm(near, h); if (d < minKm || d > maxKm) continue; }

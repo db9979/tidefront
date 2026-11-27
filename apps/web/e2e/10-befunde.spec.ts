@@ -1,5 +1,5 @@
 // Gefundene Fehler: Tests, die das erwartete Verhalten beschreiben und derzeit scheitern (test.fixme).
-// Zum Prüfen eines Fixes `test.fixme` durch `test` ersetzen.
+// Behobene Befunde laufen als normale Tests weiter (Regression).
 import { chooseBase, register } from "@tidefront/engine";
 import { TRADE_PORTS, hexAtLonLat, hexIndex, terrainMap } from "@tidefront/world";
 import { E2E } from "./env.ts";
@@ -10,7 +10,7 @@ import { expect, test, uniqueName } from "./fixtures.ts";
 // Oberfläche: apps/web/src/screens/ChooseBase.tsx markiert das Feld als freie Küste. Die Gründung eines Außenpostens
 // lehnt dasselbe Feld ab (game-core expansion.ts, foundingBlocker: „trade_port“). Folge: Börsenlieferungen kommen
 // sofort an („Lieferzeit Konvoi: gleich“), ein Vorteil gegenüber allen anderen Spielern.
-test.fixme("Befund 1: Heimathafen auf einem Handelshafen wird abgelehnt", async ({ seed }) => {
+test("Befund 1: Heimathafen auf einem Handelshafen wird abgelehnt", async ({ seed }) => {
   const t = terrainMap();
   const taken = new Set((await seed.sql`select col, row from base union all select col, row from nest`).map((r) => `${r.col},${r.row}`));
   const port = TRADE_PORTS.map(([lon, lat, name]) => ({ ...hexAtLonLat(lon, lat), name }))
