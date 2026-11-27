@@ -58,7 +58,7 @@ async function foundingArrive(tx: Tx, m: MissionRowLike, plan: Mission, due: num
       report: { founding: { col: at.col, row: at.row, ok: false, code: blocker, units: plan.units, cargo: plan.cargo } },
     });
     await sendHome(tx, m, plan, activeCounts(plan.units), plan.cargo ?? {}, reportId, due);
-    push.push(pushNotice(pid, "report", title, "Das Kolonieschiff kehrt mit seiner Ladung heim.", "berichte"));
+    push.push(pushNotice(pid, "report", title, "Das Kolonieschiff kehrt mit seiner Ladung heim.", "berichte", reportId));
     return { notify, push };
   }
   await scheduleEvent(tx, "raid_launch", due + (e!.firstRaidAfterHours * HOUR_MS), {}, baseId);
@@ -79,7 +79,7 @@ async function foundingArrive(tx: Tx, m: MissionRowLike, plan: Mission, due: num
     await tx.update(tables.mission).set({ status: "done", returning: {}, cargoHome: {}, reportId, returnAt: new Date(due) }).where(eq(tables.mission.id, m.id));
   }
   await recordAchievement(tx, pid, "kolonien", 1, { atMs: due }); // Erfolg „Kolonist“
-  push.push(pushNotice(pid, "report", title, "Dein neuer Hafen steht unter Gründungsschutz.", "berichte"));
+  push.push(pushNotice(pid, "report", title, "Dein neuer Hafen steht unter Gründungsschutz.", "berichte", reportId));
   notify.push([null, "map"]);
   return { notify, push };
 }

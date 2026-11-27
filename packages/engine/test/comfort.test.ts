@@ -235,14 +235,14 @@ test("Morgenbericht: genau einmal je Tag, Inhalt korrekt, Abmelden schaltet ab",
   assert.ok(m.text.includes("Guten Morgen, Emil"));
   assert.ok(m.text.includes("Kämpfe: 1 (1 gewonnen, 0 verloren)"), m.text);
   assert.ok(m.text.includes(`Beute: ${loot.stahl.toLocaleString("de-DE")} Stahl`), m.text);
-  assert.ok(m.text.includes("Überfall auf Piratennest Stufe 1 – Sieg"));
+  assert.match(m.text, /Überfall auf Piratennest Stufe 1 +Sieg, Beute/, "Kampf als Tabellenzeile");
   assert.ok(m.text.includes("Fertige Aufträge: 1"));
   assert.ok(m.text.includes("Lieferungen: 1"));
   assert.ok(m.text.includes("Ausbau fertig: Werft ist jetzt auf Stufe 2."));
   assert.ok(m.text.includes("Neue Nachrichten: 1"));
   assert.match(m.text, /Rang in der Saison: \d+ von 2/);
   assert.ok(m.text.includes("Aufklärungsbericht liegt vor"));
-  assert.ok(m.text.includes("Tagesbefehl: Drei Korvetten bauen"));
+  assert.ok(m.text.includes("Tagesbefehl\n----------") && m.text.includes("- Drei Korvetten bauen"), "Zusatzabschnitt mit Titel");
   assert.ok(!m.text.includes("zählt nicht"));
   assert.ok(m.html.includes("Morgenbericht") && m.html.includes("Guten Morgen, Emil"));
   assert.ok(m.headers?.["List-Unsubscribe"]);

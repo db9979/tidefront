@@ -107,18 +107,18 @@ const worldEventAttack: Handler = async (tx, ev, due) => {
         await tx.insert(tables.wreck).values({ col: b.col, row: b.row, stahl: report.wreck.stahl ?? 0, elektronik: report.wreck.elektronik ?? 0, createdAt: new Date(due) });
       }
       const [p] = await tx.select({ name: tables.player.name }).from(tables.player).where(eq(tables.player.id, b.playerId));
-      await tx.insert(tables.battleReport).values({
+      const [rep] = await tx.insert(tables.battleReport).values({
         kind: "weltereignis", title: `Großflotte greift ${b.name} an`, attackerPlayerId: null, defenderPlayerId: b.playerId,
         attackerBaseId: null, defenderBaseId: b.id, nestId: null, winner: report.winner, seed, balanceVersion: balance.version,
         createdAt: new Date(due),
         report: { battle: report, attackerName: "Großflotte des Kartells", defenderName: p?.name ?? "?", targetName: b.name, attacker, worldEvent: { id: e.id, kind: e.kind } },
-      });
+      }).returning({ id: tables.battleReport.id });
       units = activeUnits(report.attacker.final);
       pool = addRes(pool, report.loot);
       pos = { col: b.col, row: b.row };
       targets[index] = { ...target, status: "attacked", winner: report.winner };
       const won = report.winner === "defender";
-      push.push(notice(b.playerId, "attack", `Großflotte greift ${b.name} an`, won ? "Dein Hafen hat die Großflotte abgewehrt." : `Die Großflotte hat ${resText(report.loot)} erbeutet.`));
+      push.push(notice(b.playerId, "attack", `Großflotte greift ${b.name} an`, won ? "Dein Hafen hat die Großflotte abgewehrt." : `Die Großflotte hat ${resText(report.loot)} erbeutet.`, rep.id));
       notify.push([[b.playerId], "base"], [[b.playerId], "reports"]);
     }
   }

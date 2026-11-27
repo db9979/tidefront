@@ -1,5 +1,6 @@
 import type { Balance, market } from "@tidefront/game-core";
 import type { Db } from "@tidefront/db";
+import type { MailBlock } from "./mail-blocks.ts";
 import balanceJson from "../../balance/v1/balance.json" with { type: "json" };
 
 export const balance = balanceJson as unknown as Balance;
@@ -26,6 +27,10 @@ export interface Notice {
   url?: string;
   tag?: string;
   facts?: [string, string][];
+  /** Zugehöriger Bericht: die E-Mail zeigt ihn ausführlich (mail-reports.ts) und verlinkt direkt darauf. */
+  reportId?: number;
+  /** Nur für die E-Mail: aussagekräftiger Betreff und ausführlicher Inhalt (Bausteine aus mail-blocks.ts). */
+  mail?: { subject?: string; lead?: string; blocks?: MailBlock[] };
 }
 
 export interface NoticeJob {

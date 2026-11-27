@@ -1,5 +1,7 @@
 // E-Mail-Vorlagen: tabellenbasiert mit Inline-CSS, hell und dunkel, mit Textversion.
 // Das Erscheinungsbild hängt nur an MAIL_THEME; ein neues Design ändert hier Farben und Schrift.
+import { blockDarkCss, blockHtml, blockText, type MailBlock } from "./mail-blocks.ts";
+export type { Cell, MailBlock, Tone } from "./mail-blocks.ts";
 
 export const MAIL_THEME = {
   brand: "TIDEFRONT",
@@ -33,6 +35,24 @@ export const MAIL_THEME = {
   darkAccent: "#ede6d6",
   darkAccentText: "#11161d",
   darkSeal: "#e58a73",
+  /** Ergebnisfarben (Banner, Kacheln, Zellen): Schrift kräftig, Grund hell getönt; dunkel umgekehrt. */
+  win: "#2d6a3a",
+  winBg: "#e5efe1",
+  loss: "#a8331f",
+  lossBg: "#f7e3dd",
+  warn: "#8a5800",
+  warnBg: "#f8ecd0",
+  infoBg: "#ebeee9",
+  /** Abgesetzte Tabellenzeilen. */
+  stripe: "#faf6ed",
+  darkWin: "#9fd3a8",
+  darkWinBg: "#142619",
+  darkLoss: "#f0a08c",
+  darkLossBg: "#2d1612",
+  darkWarn: "#e8c27a",
+  darkWarnBg: "#2a2110",
+  darkInfoBg: "#1a2430",
+  darkStripe: "#1d2733",
 };
 
 export type MailTheme = typeof MAIL_THEME;
@@ -47,6 +67,10 @@ export interface MailContent {
   facts?: [string, string][];
   /** Aufzählung (z. B. gebündelte Meldungen). */
   items?: string[];
+  /** Ausführlicher Inhalt (Banner, Kacheln, Tabellen …), steht nach den Absätzen und vor facts/items. */
+  blocks?: MailBlock[];
+  /** Vorschauzeile im Posteingang; Vorgabe: erster Absatz bzw. Überschrift. */
+  preheader?: string;
   button?: { label: string; url: string };
   /** Abmeldelink in der Fußzeile; fehlt er, steht dort nur der Hinweis. */
   unsubscribeUrl?: string;
@@ -80,6 +104,7 @@ ${(c.facts ?? []).map(([k, v], i) => `<tr><td class="tf-muted" style="padding:10
 ${(c.items ?? []).map((s) => `<tr><td width="18" valign="top" class="tf-seal" style="padding:4px 0;color:${t.seal};font-size:13px;line-height:22px;">&#9670;</td><td class="tf-text" style="padding:4px 0;font-size:15px;line-height:22px;color:${t.text};">${esc(s)}</td></tr>`).join("\n")}
 </table>`
     : "";
+  const blocks = (c.blocks ?? []).map((b) => blockHtml(b, t)).filter(Boolean).join("\n");
   const button = c.button
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 6px 0;"><tr><td class="tf-btn" style="border-radius:${t.radius};background:${t.accent};">
 <a href="${esc(c.button.url)}" class="tf-btn-a" style="display:inline-block;padding:14px 26px;font-size:14px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${t.accentText};text-decoration:none;border-radius:${t.radius};font-family:${t.font};">${esc(c.button.label)}</a>
@@ -102,22 +127,25 @@ ${(c.items ?? []).map((s) => `<tr><td width="18" valign="top" class="tf-seal" st
  .tf-facts{background:${t.darkFactBg}!important;border-color:${t.darkLine}!important;} .tf-facts td{border-color:${t.darkLine}!important;}
  .tf-btn{background:${t.darkAccent}!important;} .tf-btn-a{color:${t.darkAccentText}!important;} .tf-seal{color:${t.darkSeal}!important;}
  .tf-panel{border-color:${t.darkLine}!important;}
+ ${blockDarkCss(t)}
 }
-@media only screen and (max-width:620px){ .tf-wrap{width:100%!important;} .tf-pad{padding:20px 18px!important;} }
+@media only screen and (max-width:620px){ .tf-wrap{width:100%!important;} .tf-pad{padding:20px 16px!important;} .tf-h1{font-size:22px!important;line-height:28px!important;} }
+@media only screen and (max-width:480px){ .tf-tag{display:none!important;} }
 </style></head>
 <body class="tf-page" style="margin:0;padding:0;background:${t.page};font-family:${t.font};">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(c.paragraphs[0] ?? c.heading)}</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(c.preheader ?? c.paragraphs[0] ?? c.heading)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="tf-page" style="background:${t.page};">
 <tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="tf-wrap" style="width:600px;max-width:600px;">
 <tr><td style="background:${t.header};border-radius:${t.radius} ${t.radius} 0 0;padding:18px 28px;font-family:${t.font};">
 <span style="font-family:${t.headingFont};font-size:19px;font-weight:600;letter-spacing:5px;color:${t.headerText};">${esc(t.brand)}</span>
-<span style="font-size:12px;color:${t.headerMuted};padding-left:10px;">${esc(t.tagline)}</span>
+<span class="tf-tag" style="font-size:12px;color:${t.headerMuted};padding-left:10px;">${esc(t.tagline)}</span>
 </td></tr>
 <tr><td style="background:${t.header};padding:0 28px 12px 28px;font-size:0;line-height:0;"><div style="border-top:3px double ${t.headerText};opacity:0.55;">&nbsp;</div></td></tr>
 <tr><td class="tf-panel tf-pad" style="background:${t.panel};padding:28px;border:1px solid ${t.line};border-top:0;border-left:4px solid ${t.seal};border-radius:0 0 ${t.radius} ${t.radius};font-family:${t.font};">
-<h1 class="tf-text" style="margin:0 0 14px 0;font-family:${t.headingFont};font-size:25px;line-height:31px;font-weight:600;color:${t.text};">${esc(c.heading)}</h1>
+<h1 class="tf-text tf-h1" style="margin:0 0 14px 0;font-family:${t.headingFont};font-size:25px;line-height:31px;font-weight:600;color:${t.text};">${esc(c.heading)}</h1>
 ${c.paragraphs.map(p).join("\n")}
+${blocks}
 ${facts}
 ${items}
 ${button}
@@ -133,6 +161,7 @@ ${button}
     c.heading,
     "",
     ...c.paragraphs.flatMap((s) => [s, ""]),
+    ...(c.blocks ?? []).flatMap((b) => blockText(b)),
     ...(c.facts ?? []).map(([k, v]) => `${k}: ${v}`),
     ...((c.facts ?? []).length ? [""] : []),
     ...(c.items ?? []).map((s) => `- ${s}`),

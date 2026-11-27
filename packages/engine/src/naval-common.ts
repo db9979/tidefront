@@ -131,8 +131,8 @@ export function hasShips(units: Counts): boolean {
   return Object.entries(units).some(([id, n]) => n > 0 && balance.units[id]?.branch === "see");
 }
 
-export function pushNotice(playerId: number, kind: NoticeJob["notice"]["kind"], title: string, body: string, tab = "karte"): NoticeJob {
-  return { playerId, notice: { kind, title, body, url: `/?tab=${tab}`, tag: `see-${kind}` } };
+export function pushNotice(playerId: number, kind: NoticeJob["notice"]["kind"], title: string, body: string, tab = "karte", reportId?: number): NoticeJob {
+  return { playerId, notice: { kind, title, body, url: `/?tab=${tab}`, tag: `see-${kind}`, ...(reportId !== undefined ? { reportId } : {}) } }; // reportId: ausführliche E-Mail
 }
 
 export function fmtClock(ms: number): string {

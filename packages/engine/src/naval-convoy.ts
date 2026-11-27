@@ -230,12 +230,12 @@ export async function convoyRaidHandler(tx: Tx, payload: Record<string, unknown>
   await addEvent(tx, c, { atMs: due, by: "kartell", name: "Freibeuter-Kartell", lost, escortHeld: held });
   const victim = victimOf(c);
   const title = held === true ? "Konvoi: Geleitschutz schlägt das Kartell zurück" : `Konvoi vom Kartell abgefangen – ${resText(lost)} verloren`;
-  await storeNavalReport(tx, {
+  const reportId = await storeNavalReport(tx, {
     kind: "konvoi", title, attackerPlayerId: null, defenderPlayerId: victim, defenderBaseId: c.recipientBaseId, winner: held === null ? null : held ? "defender" : "attacker", seed,
     report: { convoy: { id: c.id, kind: c.kind, by: "kartell", force, escort, held, lost, cargoLeft: c.cargo }, ...(battle ? { battle, attackerName: "Freibeuter-Kartell", defenderName: "Geleitschutz", targetName: "Konvoi" } : {}) },
     atMs: due,
   });
-  push.push(pushNotice(victim, "delivery", title, held === true ? "Die Ladung ist sicher." : `Verlust: ${resText(lost)}.`, "berichte"));
+  push.push(pushNotice(victim, "delivery", title, held === true ? "Die Ladung ist sicher." : `Verlust: ${resText(lost)}.`, "berichte", reportId));
   notify.push([[victim], "reports"], [[victim], "base"], [[victim], "market"]);
   return { notify, push };
 }
@@ -319,7 +319,7 @@ export async function interceptArrive(tx: Tx, m: MissionRowLike, plan: Mission, 
     report: { convoy: { id: c.id, kind: c.kind, by: "spieler", escort, held, lost, loot, cargoLeft: c.cargo }, ...(battle ? { battle, attackerName: name, defenderName: "Geleitschutz", targetName: "Konvoi" } : {}) },
     atMs: due,
   });
-  push.push(pushNotice(victim, "attack", `Konvoi von ${name} abgefangen`, held === true ? "Der Geleitschutz hat gehalten." : `Verlust: ${resText(lost)}.`, "berichte"));
+  push.push(pushNotice(victim, "attack", `Konvoi von ${name} abgefangen`, held === true ? "Der Geleitschutz hat gehalten." : `Verlust: ${resText(lost)}.`, "berichte", reportId));
   notify.push([[victim], "reports"], [[victim], "base"], [[victim], "market"], [null, "map"]);
   await sendHome(tx, m, plan, activeCounts(returning), loot, reportId, due);
 }

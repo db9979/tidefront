@@ -19,6 +19,9 @@ export * from "./ops.ts";
 export * from "./push.ts";
 export * from "./mail.ts";
 export * from "./mail-templates.ts";
+// Ausführliche E-Mails: je Berichtsart ein Abschnitt (registerReportSection), Standard für unbekannte Arten
+export { genericBlocks, registerReportSection, reportMailFor, reportMailParts, type ReportMailParts, type ReportSection, type ReportView } from "./mail-reports.ts";
+export { attackWarningMail, defaultNoticeBlocks, digestBlocks } from "./mail-notices.ts";
 export * from "./notices.ts";
 export * from "./settings.ts";
 export * from "./invite.ts";

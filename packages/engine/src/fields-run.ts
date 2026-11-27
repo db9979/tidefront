@@ -165,12 +165,12 @@ async function fieldRaid(tx: Tx, payload: Record<string, unknown>, due: number):
     await tx.insert(tables.wreck).values({ col: f.col, row: f.row, stahl: report.wreck.stahl ?? 0, elektronik: report.wreck.elektronik ?? 0, createdAt: new Date(due) });
   }
   const title = destroyed ? `${name} an das Kartell verloren` : `Kartell vor ${name} abgewehrt`;
-  await storeNavalReport(tx, {
+  const reportId = await storeNavalReport(tx, {
     kind: "feld", title, attackerPlayerId: null, defenderPlayerId: owner, defenderBaseId: f.baseId, winner: destroyed ? "attacker" : "defender", seed, atMs: due,
     report: { field: { id: f.id, kind: f.kind, tier: f.tier, outcome: destroyed ? "cartel" : "held" }, battle: { ...report, loot: {} }, attackerName: "Freibeuter-Kartell", defenderName: "Besatzung", targetName: name, attacker: { units }, ...(admirals ? { admirals } : {}) },
   });
   await systemMessage(tx, notify, [owner], title, destroyed ? `Das Kartell hat deine Besatzung auf ${name} geschlagen. Das Feld ist wieder neutral.` : `Deine Besatzung auf ${name} hat den Kartellverband zurückgeschlagen.`);
-  return { notify, push: [pushNotice(owner, "attack", title, destroyed ? "Das Feld ist wieder neutral." : "Das Feld bleibt deins.", "berichte")] };
+  return { notify, push: [pushNotice(owner, "attack", title, destroyed ? "Das Feld ist wieder neutral." : "Das Feld bleibt deins.", "berichte", reportId)] };
 }
 
 export const FIELD_HANDLERS: Record<string, (tx: Tx, ev: { payload: Record<string, unknown> }, due: number) => Promise<HandlerResult>> = {

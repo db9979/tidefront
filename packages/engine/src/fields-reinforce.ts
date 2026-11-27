@@ -49,7 +49,7 @@ export async function reinforceArrive(tx: Tx, m: MissionRowLike, plan: Mission, 
       report: { field: { id: field.id, kind: field.kind, tier: field.tier, refused: refused ?? "field_lost" } },
     });
     await sendHome(tx, m, plan, units, {}, reportId, due);
-    push.push(pushNotice(pid, "report", `Verstärkung für ${name} kehrt um`, refused === "field_has_admiral" ? "Die Besatzung hat schon einen Admiral." : "Das Feld wird nicht mehr von dir gehalten.", "berichte"));
+    push.push(pushNotice(pid, "report", `Verstärkung für ${name} kehrt um`, refused === "field_has_admiral" ? "Die Besatzung hat schon einen Admiral." : "Das Feld wird nicht mehr von dir gehalten.", "berichte", reportId));
     notify.push([[pid], "reports"], [[pid], "missions"]);
     return;
   }
@@ -83,6 +83,6 @@ export async function reinforceArrive(tx: Tx, m: MissionRowLike, plan: Mission, 
     report: { field: { id: field.id, kind: field.kind, tier: field.tier, outcome: "reinforced", units, garrison } },
   });
   await tx.update(tables.mission).set({ status: "done", returning: {}, cargoHome: {}, reportId, returnAt: new Date(due) }).where(eq(tables.mission.id, m.id));
-  push.push(pushNotice(pid, "report", `Verstärkung auf ${name} eingetroffen`, "Die Schiffe gehören jetzt zur Besatzung.", "berichte"));
+  push.push(pushNotice(pid, "report", `Verstärkung auf ${name} eingetroffen`, "Die Schiffe gehören jetzt zur Besatzung.", "berichte", reportId));
   notify.push([[pid], "reports"], [[pid], "missions"], [[pid], "base"]);
 }

@@ -6,7 +6,7 @@ import type { Counts, ResourceMap } from "@tidefront/game-core";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { tables, type Db, type DbOrTx } from "@tidefront/db";
 import type { Engine } from "./context.ts";
-import type { MailContent } from "./mail-templates.ts";
+import type { MailBlock, MailContent } from "./mail-templates.ts";
 import { mailReady, sendMail } from "./mail.ts";
 import { pushToPlayer } from "./push.ts";
 import { publicUrl } from "./settings.ts";
@@ -186,17 +186,33 @@ export function summaryMail(d: SummaryData, name: string, timeZone: string, unsu
   facts.push(["Neue Nachrichten", d.messages.unread > d.messages.received ? `${d.messages.received} (${d.messages.unread} ungelesen)` : String(d.messages.received)]);
   if (d.rank) facts.push(["Rang in der Saison", `${d.rank.rank} von ${d.rank.of} · ${fmtInt(d.rank.total)} Punkte`]);
 
-  const timed: [number, string][] = [];
-  for (const b of d.battles) {
-    const res = b.role === "attacker" ? (b.won ? `Sieg, Beute ${amounts(b.loot)}` : "Niederlage") : b.won ? "abgewehrt" : `verloren, geplündert ${amounts(b.loot)}`;
-    timed.push([b.atMs, `${clockIn(b.atMs, timeZone)} ${b.role === "attacker" ? b.title : `Angriff auf dich: ${b.title}`} – ${res}`]);
+  // Ausführlich: Kacheln, Lage, Kämpfe als Tabelle, Aufträge/Lieferungen und Zusatzabschnitte als Listen.
+  const lootSum = Object.values(d.lootGained).reduce((n, v) => n + Math.max(0, v), 0);
+  const done = d.entries.filter((e) => e.kind !== "delivery").length + d.entries.filter((e) => e.kind === "delivery").length;
+  const blocks: MailBlock[] = [
+    { type: "tiles", tiles: [
+      { label: "Siege", value: d.battles.length ? `${won}/${d.battles.length}` : "–", tone: !d.battles.length ? undefined : won === d.battles.length ? "win" : won === 0 ? "loss" : undefined },
+      { label: "Beute", value: lootSum > 0 ? `+${fmtInt(lootSum)}` : "0", tone: lootSum > 0 ? "win" : undefined },
+      { label: "Erledigt", value: String(done) },
+    ] },
+    { type: "section", title: "Lage" },
+    { type: "facts", facts },
+  ];
+  if (d.battles.length) {
+    blocks.push({ type: "section", title: "Kämpfe" }, {
+      type: "table", head: ["Zeit", "Ereignis", "Ergebnis"], align: ["left", "left", "left"], maxRows: MAX_ITEMS,
+      rows: [...d.battles].sort((a, b) => a.atMs - b.atMs).map((b) => [
+        { v: clockIn(b.atMs, timeZone), muted: true },
+        b.role === "attacker" ? b.title : `Angriff auf dich: ${b.title}`,
+        { v: b.role === "attacker" ? (b.won ? `Sieg${Object.values(b.loot).some((v) => v >= 1) ? `, Beute ${amounts(b.loot)}` : ""}` : "Niederlage") : b.won ? "abgewehrt" : `verloren, geplündert ${amounts(b.loot)}`, tone: b.won ? "win" : "loss" },
+      ]),
+    });
   }
-  for (const e of d.entries) timed.push([e.atMs, `${clockIn(e.atMs, timeZone)} ${e.title}: ${e.body}`]);
-  timed.sort((a, b) => a[0] - b[0]);
-  const items = timed.map(([, s]) => s);
+  const items = d.entries.map((e) => `${clockIn(e.atMs, timeZone)} ${e.title}: ${e.body}`);
   if (d.scouts > 0) items.push(`${d.scouts} ${d.scouts === 1 ? "Aufklärungsbericht liegt" : "Aufklärungsberichte liegen"} vor.`);
   const shown = items.length > MAX_ITEMS ? [...items.slice(0, MAX_ITEMS), `… und ${items.length - MAX_ITEMS} weitere Meldungen`] : items;
-  for (const s of d.extra) for (const l of s.lines.slice(0, 10)) shown.push(`${s.title}: ${l}`);
+  if (shown.length) blocks.push({ type: "section", title: "Aufträge und Meldungen" }, { type: "list", items: shown });
+  for (const s of d.extra) blocks.push({ type: "section", title: s.title }, { type: "list", items: s.lines.slice(0, 10) });
 
   return {
     subject: `Morgenbericht ${new Date(d.nowMs).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", timeZone })}`,
@@ -205,8 +221,7 @@ export function summaryMail(d: SummaryData, name: string, timeZone: string, unsu
       `Lage seit ${new Date(d.sinceMs).toLocaleString("de-DE", { weekday: "short", hour: "2-digit", minute: "2-digit", timeZone })} Uhr: ${summaryLine(d)}`,
       `Dein Bericht für ${day}.`,
     ],
-    facts,
-    items: shown,
+    blocks,
     button: { label: "Hafen öffnen", url: `${publicUrl()}/?tab=basis` },
     unsubscribeUrl,
     footerNote: "Du erhältst den Morgenbericht, weil du ihn in den Einstellungen eingeschaltet hast. Abschalten: Einstellungen → Morgenbericht.",
