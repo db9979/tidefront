@@ -19,6 +19,8 @@ import { fieldTurn, wantsField } from "./bots-fields.ts";
 
 /** Zusatzanteile der Doktrin, solange ein Feldverband fehlt (bots-fields.ts). */
 const FIELD_DOCTRINE = { korvette: 0.15, zerstoerer: 0.05 };
+/** Rüstungsphase endet am Zielanteil; die Ausbauphase endet, wenn der Anteil unter diesen Teil des Ziels fällt. */
+const MIL_RESUME = 0.75;
 
 async function loadOwn(engine: Engine, botId: number, nowMs: number) {
   const rows = await basesOfPlayer(engine.db, botId);
@@ -47,9 +49,12 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
   for (const b of await basesOfPlayer(engine.db, bot.id)) await processDueForBase(engine, b.id, nowMs);
   let { bases, mods } = await loadOwn(engine, bot.id, nowMs);
   if (bases.length === 0) return c.log;
+  // Gründung zuerst: sie legt Rohstoffe zurück, gibt Werft und Hafenkommandantur Vorrang und hält die Werft frei.
+  const expansion = await expansionTurn(c, bases, mods);
+  if (c.log.length > 0) ({ bases, mods } = await loadOwn(engine, bot.id, nowMs));
 
   for (const b of bases) {
-    const plan: PlanCtx = { state: b.state, profile: bot.profile, cfg, mods: mods.get(b.id)!, nowMs, rand };
+    const plan: PlanCtx = { state: b.state, profile: bot.profile, cfg, mods: mods.get(b.id)!, nowMs, rand, ...(b.isHome ? expansion : {}) };
     // Bauen: bis zu buildQueue Aufträge in der Schlange (leicht 1, stark 3).
     const build = async () => {
       for (let i = 0; i < cfg.buildQueue; i++) {
@@ -78,12 +83,23 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
       }
       return t.saving;
     };
-    // Wie im Simulations-Bot: liegt die Rüstung unter ihrem Anteil, kommt sie zuerst an die Reihe.
+    // Phasen je Hafen (Hysterese): Rüstung zuerst, bis sie ihren Zielanteil erreicht; dann Ausbau zuerst, bis der Anteil
+    // unter MIL_RESUME des Ziels fällt. In der Ausbauphase legt chooseBuild die Kosten des nächsten Ausbaus zurück, und
+    // die Ausbildung nimmt nur den Rest. Früher wechselte der Bot jeden Zug: der Anteil lag knapp unter dem Ziel, jede
+    // Runde kaufte ein paar Einheiten mit dem knappen Stahl, und für Kommandozentrale oder Lager reichte es nie.
     const mil = militaryValue(plan.state);
-    if (mil < militaryTarget(cfg, plan.state) * (mil + buildingsValue(plan.state))) {
+    const share = mil / Math.max(1, mil + buildingsValue(plan.state));
+    const target = militaryTarget(cfg, plan.state);
+    const phases = { ...(c.state.phase ?? {}) };
+    let phase = phases[b.id] ?? "mil";
+    if (phase === "mil" && share >= target) phase = "build";
+    else if (phase === "build" && share < MIL_RESUME * target) phase = "mil";
+    c.state.phase = { ...phases, [b.id]: phase };
+    if (phase === "mil") {
       // Fehlt Geld für die dringendste Einheit, wird dafür gespart (kein Ausbau in diesem Zug).
       if (!(await drill())) await build();
     } else {
+      plan.reserveWhenBusy = true;
       await build();
       await drill();
     }
@@ -105,18 +121,19 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
   const homeBase = bases.find((b) => b.isHome) ?? bases[0];
   await marketTurn(c, homeBase, mods.get(homeBase.id)!);
   await offersTurn(c, homeBase, mods.get(homeBase.id)!);
-  await expansionTurn(c, bases, mods);
 
   // Felder und Angriffe: je Hafen höchstens ein Auslaufen dieser Art.
   ({ bases, mods } = await loadOwn(engine, bot.id, nowMs));
   for (const b of bases) {
     const m = mods.get(b.id)!;
-    await botPatrol(c, b); // Lagebild Stufe 2: Freibeuter patrouilliert vor seinen Angriffen (eigene Art, zählt nicht als Auslaufen)
     await botSatellite(c, b); // Lagebild Stufe 3: Satellit, wenn viele Nester ohne Lagebild sind
     if (await fieldTurn(c, b, m)) continue;
     if (await layMines(c, b)) continue;
     if (await raidPlayer(c, b, m)) continue;
-    await raidNest(c, b, m);
+    if (await raidNest(c, b, m)) continue;
+    // Lagebild Stufe 2: Patrouille erst, wenn kein Angriff möglich war (früher davor: sie nahm Korvetten und einen
+    // Auftragsplatz, und der Freibeuter patrouillierte statt zu überfallen).
+    await botPatrol(c, b);
   }
   bot.state = c.state;
   return c.log;

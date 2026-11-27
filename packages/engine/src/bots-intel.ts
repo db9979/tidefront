@@ -2,9 +2,9 @@
 // gespeichertes Wissen). Stufe 2: Aufklärung mit Kampagnen (bis zu 4 Ziele je Fahrt) und Patrouillen.
 // - Freibeuter: klärt unbekannte Nester und Felder laufend auf (Kampagne), dazu Patrouillen vor den eigenen Zielen.
 // - Festung: klärt Nester in Reichweite auf, sobald sie keine bekannten mehr hat (Kampagne, höchstens alle 6 h).
-// - Händler: sparsam, höchstens einmal am Tag, nur Felder (er überfällt keine Nester).
+// - Händler: sparsam, höchstens einmal am Tag, Felder und Nester (er überfällt nur leichte Nester, bots.profiles.nestMaxLevel).
 import { hexCenterXY, hexDistanceKm, hexAtXY, inGrid, terrainAt } from "@tidefront/world";
-import { activeSatellites, campaignOf, patrolOf, satelliteLaunchCheck, satelliteOf, type BaseState } from "@tidefront/game-core";
+import { activeSatellites, campaignOf, missionSlots, patrolOf, satelliteLaunchCheck, satelliteOf, type BaseState } from "@tidefront/game-core";
 import { balance } from "./context.ts";
 import { launchMission, type LaunchInput } from "./commands.ts";
 import { missionPreview } from "./views.ts";
@@ -12,7 +12,7 @@ import { mapViewFor } from "./intel-map.ts";
 import { botsConfig } from "./bots-core.ts";
 import { launchIntelOp, previewIntelOp } from "./intel-ops.ts";
 import type { TurnCtx } from "./bots-war.ts";
-import { basesOfPlayer, homeBaseOf, type BaseRow } from "./store.ts";
+import { activeMissionCount, basesOfPlayer, homeBaseOf, type BaseRow } from "./store.ts";
 import { launchSatellite } from "./intel-sat.ts";
 
 export type BotMap = Awaited<ReturnType<typeof mapViewFor>>;
@@ -33,7 +33,7 @@ export async function botMap(c: TurnCtx): Promise<BotMap> {
 function reconPause(c: TurnCtx, what: "nest" | "field"): number | null {
   if (c.bot.profile === "freibeuter") return 0;
   if (c.bot.profile === "festung") return what === "nest" ? 6 : 12;
-  if (c.bot.profile === "haendler") return what === "field" ? 24 : null;
+  if (c.bot.profile === "haendler") return 24; // Felder und (für leichte Überfälle) Nester, höchstens einmal am Tag
   return null;
 }
 
@@ -119,13 +119,15 @@ function seaNear(col: number, row: number): { col: number; row: number } | null 
 }
 
 /**
- * Freibeuter: Patrouille (Korvetten, höchstens alle 12 h) über unbekannte oder veraltete Nester in 150–600 km, damit Ziele und
- * fremde Verbände in Sicht kommen. Wegpunkte auf See nahe den Nestern; 4 h auf Station.
+ * Freibeuter: Patrouille (Korvetten, höchstens alle 24 h) über unbekannte oder veraltete Nester in 150–600 km, damit Ziele und
+ * fremde Verbände in Sicht kommen. Wegpunkte auf See nahe den Nestern; 4 h auf Station. Nur mit mindestens zwei freien
+ * Auftragsplätzen (einer bleibt für Überfälle); bots-run.ts ruft sie erst, wenn in diesem Zug kein Angriff möglich war.
  */
 export async function botPatrol(c: TurnCtx, base: BaseRow & { state: BaseState }): Promise<boolean> {
   const pb = patrolOf(balance.intel);
   if (!pb || c.bot.profile !== "freibeuter" || (base.state.units.korvette ?? 0) < 4) return false;
-  if (c.nowMs - (c.state.recon?.["trip-patrol"] ?? 0) < 12 * HOUR_MS) return false;
+  if (c.nowMs - (c.state.recon?.["trip-patrol"] ?? 0) < 24 * HOUR_MS) return false;
+  if (missionSlots(base.state, balance) - (await activeMissionCount(c.engine.db, base.id)) < 2) return false;
   const map = await botMap(c);
   const unknown = map.nests.filter((n) => !n.known || n.intel?.age === "veraltet").map((n) => ({ ...n, d: hexDistanceKm(base, n) })).filter((n) => n.d >= 150 && n.d <= 600).sort((a, b) => a.d - b.d);
   if (unknown.length === 0) return false;

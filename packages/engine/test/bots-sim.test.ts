@@ -4,6 +4,9 @@
 // mit Kartennebel klären Festung und Freibeuter Nester auf und die Bots befassen sich mit Feldern (Aufklärung, Kampf
 // oder Besitz). Die Bedingungen prüfen das Verhalten, nicht zufällige Ergebnisse einzelner Kämpfe (früher: „hält ein
 // Feld“ – schlug sporadisch fehl). Zahlen im Testprotokoll (Felder je Tag; BOT_SIM_SHIPS=1: Schiffe und gemerktes Feldziel).
+// Feste Startzeit (BOT_SIM_T0, Vorgabe unten): Tageszeit und Zufall der Bots hängen an der Uhr, so ist der Lauf
+// wiederholbar. Die Schwellen sind mit Abstand gewählt und wurden mit acht Startzeiten geprüft (Messlauf über 42 Tage:
+// test/bots-progress.ts). Früher fiel die Festung bei manchen Startzeiten auf 20 Gebäudestufen an Tag 8 (Strom-Sperre).
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { sql } from "drizzle-orm";
@@ -35,7 +38,7 @@ after(async () => {
 });
 
 test(`Testlauf über ${DAYS} Spieltage: alle Bots wachsen, Freibeuter stärker als Händler`, { timeout: 30 * 60000 }, async () => {
-  let fake = realNow();
+  let fake = Number(process.env.BOT_SIM_T0 ?? 1795000000000);
   Date.now = () => fake;
   const t0 = fake;
   await ensureStartBots(engine, fake);
@@ -125,6 +128,7 @@ test(`Testlauf über ${DAYS} Spieltage: alle Bots wachsen, Freibeuter stärker a
   for (const c of checks) c();
   assert.ok(byProfile.get("freibeuter")!.total > byProfile.get("haendler")!.total, "Freibeuter stärker als Händler");
   assert.ok((raidsWon.get("freibeuter") ?? 0) >= 1, "Freibeuter gewinnt Überfälle");
+  assert.ok((raidsWon.get("freibeuter") ?? 0) > (raidsWon.get("haendler") ?? 0), "Freibeuter gewinnt mehr Überfälle als der Händler");
   // Felder (M.10): Bots befassen sich mit Feldern – aufklären, angreifen oder halten (unabhängig vom Kampfglück).
   // Lagebild Stufe 3 (BOT_SIM_SPACE=1): Satelliten liefern das Lagebild – Aufklärungsfahrten werden dann seltener.
   if (process.env.BOT_SIM_SPACE) assert.ok((satsLaunched.get("freibeuter") ?? 0) >= 1, "Freibeuter startet einen Satelliten");

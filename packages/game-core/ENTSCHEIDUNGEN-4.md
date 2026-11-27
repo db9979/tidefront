@@ -291,3 +291,50 @@ Nicht geändert.
    („KW 64 %“); Produktionsgebäude nennen die Grundproduktion; Forschungsstatus als Zeile im Bauhof; Ladeanzeigen
    erkennen Drosselung (429) und Fehler und bieten „Erneut versuchen“; Inhalte laden mit Kartenskelett. Desktop ab
    1024 px: Inhalt bis max-w-3xl, Karte volle Breite.
+
+## X. Bots nach Prüfbericht
+
+Ursachen des Bau-Stillstands (zufallsabhängig, traf je nach Startzeit jede Spielweise):
+- **Strom-Sperre:** Seit das Kraftwerk nachregelt (0.21.3), liegt der Stromfaktor oft bei 0,99999…. `chooseBuild` sah
+  darin Strommangel und bot nur das Kraftwerk an – stand es am Deckel der Kommandozentrale, baute der Bot gar nichts
+  mehr (Festung 11–20 Stufen an Tag 8, alle Rohstoffe flossen in die Rüstung). Jetzt: Mangel erst unter 99,5 %, dann
+  Kraftwerk, Wind/Sonne, Raffinerie bzw. Kommandozentrale; findet sich nichts, geht der normale Ausbau weiter.
+- **Rüstungs-Tropf:** Der Rüstungsanteil lag knapp unter dem Ziel, also kaufte jeder Zug (Freibeuter alle 12–25 Min.)
+  ein paar Einheiten mit dem knappen Stahl; Kommandozentrale und Lager wurden nie bezahlbar (Freibeuter KZ 2–4 über
+  Wochen, Hunderte Schützen ohne Landungsschiff). Jetzt: Phasen je Hafen mit Hysterese (Rüstung zuerst bis zum
+  Zielanteil, dann Ausbau zuerst bis 75 % des Ziels), Rücklage für den nächsten Ausbau (auch bei voller Bauschlange),
+  Losgröße höchstens 45 % des Vorrats je Rohstoff, keine Truppen ohne Transportraum (statt dessen für das
+  Landungsschiff sparen).
+- **Patrouillen:** nur noch, wenn im Zug kein Angriff möglich war, höchstens alle 24 h und mit zwei freien Auftragsplätzen.
+- **Gründung:** Schwelle Festung 9 → 5, Händler 7 → 5 (Freibeuter bleibt 5). Die Gründung läuft vor der Wirtschaft:
+  eine KZ-Stufe vorher Vorrang für Werft/Hafenkommandantur/Lager (Stufen aus der Balance), dann Rücklage der
+  Schiffskosten und freie Werft (früher belegten Korvetten die Werft – kein Bot gründete).
+- **Händler** überfällt Nester bis Stufe 2 (`nestMaxLevel`, Probekampf 8 Durchläufe alle gewonnen, Heimwache der Schiffe 50 %).
+- **Hafenwahl:** Bots, die Nester überfallen, wählen unter den guten Küstenfeldern eines mit ≥ 2 Nestern der Stufe 1–2
+  in 150–600 km (sonst fand der Freibeuter je nach Lage tagelang kein schaffbares Ziel).
+- **Raumfahrt:** Voraussetzungen der Startrampe (aus der Balance, jetzt KZ 7) werden zwei KZ-Stufen vorher nachgezogen;
+  steht die Rampe, kommen die Satelliten-Techniken zuerst (doppelter Forschungsanteil). Probekampf je Stufe und bis zu
+  6 Startversuche (Lagebild 3) bleiben.
+
+Messung (`packages/engine/test/bots-progress.ts`, 4 Startzeiten, Bereich min–max; vorher: Stand 0.22.1 mit v1.23,
+nachher: mit v1.24). Spalten: KZ, Häfen, Gebäudestufen, Startrampe, gewonnene Nest-Überfälle, höchste besiegte Neststufe, Satelliten.
+
+| Tag | Bot | vorher KZ / Häfen / Stufen / Rampe / Siege / Nest / Sat | nachher KZ / Häfen / Stufen / Rampe / Siege / Nest / Sat |
+|---|---|---|---|
+| 14 | Händler | 4–5 / 1 / 86–91 / 0 / 0 / 0 / 0 | 4–5 / 1 / 85–96 / 0 / 0–9 / 0–2 / 0 |
+| 14 | Festung | 3–4 / 1 / 57–71 / 0 / 2–11 / 1–2 / 0 | 4–6 / 1 / 73–93 / 0 / 9–14 / 2 / 0 |
+| 14 | Freibeuter | 5–6 / 1 / 63–83 / 0 / 4–10 / 1–3 / 0 | 5–6 / 1–2 / 81–123 / 0 / 4–21 / 2–4 / 0 |
+| 28 | Händler | 6 / 1 / 111–123 / 0 / 0 / 0 / 0 | 6–7 / 2 / 204–224 / 0 / 11–34 / 1–2 / 0 |
+| 28 | Festung | 5–7 / 1 / 78–96 / 0 / 12–28 / 2–3 / 0 | 6 / 2 / 147–185 / 0 / 27–40 / 2–3 / 0 |
+| 28 | Freibeuter | 6–8 / 1–3 / 95–168 / 0 / 22–35 / 3–5 / 0 | 8–9 / 3 / 241–257 / 1 / 52–61 / 3–6 / 0 |
+| 41 | Händler | 6–7 / 1–2 / 128–191 / 0 / 0 / 0 / 0 | 8–9 / 3 / 309–370 / 0 / 32–69 / 2 / 0 |
+| 41 | Festung | 5–7 / 1 / 85–112 / 0 / 25–43 / 2–6 / 0 | 6–8 / 2–3 / 201–224 / 0 / 42–71 / 2–6 / 0 |
+| 41 | Freibeuter | 7–9 / 1–3 / 102–294 / 0–1 / 38–72 / 3–5 / 0 | 9–10 / 3 / 346–361 / 1 / 80–123 / 3–6 / 1–3 |
+
+Zweiter Hafen ab Tag: vorher Händler 35/41/–/–, Festung nie, Freibeuter 25/33/38/–; nachher Händler 16–19,
+Festung 15–24, Freibeuter 11–15. Die Analysten-Läufe mit Stillstand (Freibeuter KZ 2 bis Tag 31, Festung 20 Stufen an
+Tag 8) traten mit den Ursachen oben auf; in 16 Testläufen (8 Tage, verschiedene Startzeiten) danach hatte jeder Bot
+55–71 Stufen. Offen gegenüber der Modellkurve: die Nest-Stufe steigt langsamer (Stufe 3 meist erst Tag 14–28, Stufe 5–6
+beim Freibeuter ab Tag 14–28, Festung meist 2–3); die Festung erreicht die Startrampe in 41 Tagen noch nicht (KZ 6–8).
+`bots-sim.test.ts` läuft jetzt mit fester Startzeit (`BOT_SIM_T0`) und prüft zusätzlich: Freibeuter gewinnt mehr
+Überfälle als der Händler.

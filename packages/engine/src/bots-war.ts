@@ -130,7 +130,7 @@ export async function raidNest(c: TurnCtx, base: BaseRow & { state: BaseState },
   // Lagebild: nur Nester mit bekannter Stufe und Zustand (Sicht oder Wissen), wie bei Menschen.
   const map = await botMap(c);
   const nests = map.nests
-    .filter((n): n is typeof n & { level: number } => n.level !== null && n.empty === false)
+    .filter((n): n is typeof n & { level: number } => n.level !== null && n.empty === false && n.level <= (c.cfg.nestMaxLevel ?? Infinity))
     .map((n) => ({ ...n, d: hexDistanceKm(base, n) }))
     .filter((n) => n.d <= MAX_RANGE_KM)
     .sort((a, b) => b.level - a.level || a.d - b.d);

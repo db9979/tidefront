@@ -35,6 +35,8 @@ export interface ProfileConfig {
   /** Anteil der Kampfeinheiten, der bei Angriffen daheim bleibt. */
   homeGuardShare: number;
   attackNests: boolean;
+  /** Höchste Neststufe, die der Bot überfällt (fehlt: jede, die der Probekampf erlaubt). */
+  nestMaxLevel?: number;
   /** Neigung zu Angriffen auf Spieler (0 = nie, 1 = sobald lohnend). */
   attackPlayers: number;
   /** Bauaufträge, die der Bot höchstens in der Schlange hält (leicht 1, stark 3). */
@@ -85,6 +87,8 @@ export interface BotState {
   errors?: number;
   /** Rohstofffeld, für das Schiffe fehlen: Überfälle lassen diesen Verband daheim, die Rüstung legt Schiffe nach. */
   fieldTarget?: { fieldId: number; baseId: number; units: Record<string, number>; untilMs: number };
+  /** Wirtschaftsphase je Hafen-ID (bots-run.ts): erst Rüstung bis zum Zielanteil, dann Ausbau. */
+  phase?: Record<string, "mil" | "build">;
 }
 
 export interface BotRow { id: number; name: string; profile: BotProfile; settings: BotSettings; state: BotState }
@@ -209,10 +213,14 @@ export function coastFields(): { col: number; row: number }[] {
   return coastCache;
 }
 
-/** Freies Küstenfeld mit möglichst großem Abstand zu allen Häfen, Nestern und Rohstofffeldern (zufällig unter den besten). */
-export async function freeHomeField(db: DbOrTx, seed: number): Promise<{ col: number; row: number } | null> {
+/**
+ * Freies Küstenfeld mit möglichst großem Abstand zu allen Häfen, Nestern und Rohstofffeldern (zufällig unter den besten).
+ * nearLightNests (Bots, die Nester überfallen): unter den guten Feldern bevorzugt eines mit mindestens zwei Nestern der
+ * Stufe 1–2 in 150–600 km – sonst fand der Freibeuter je nach Lage tagelang kein schaffbares Nest.
+ */
+export async function freeHomeField(db: DbOrTx, seed: number, nearLightNests = false): Promise<{ col: number; row: number } | null> {
   const bases = await db.select({ col: tables.base.col, row: tables.base.row }).from(tables.base);
-  const nests = await db.select({ col: tables.nest.col, row: tables.nest.row }).from(tables.nest);
+  const nests = await db.select({ col: tables.nest.col, row: tables.nest.row, level: tables.nest.level }).from(tables.nest);
   const fields = await db.select({ col: tables.resourceField.col, row: tables.resourceField.row }).from(tables.resourceField);
   const blocked = new Set([...bases, ...nests, ...fields].map((x) => `${x.col},${x.row}`));
   const scored: { col: number; row: number; d: number }[] = [];
@@ -226,7 +234,12 @@ export async function freeHomeField(db: DbOrTx, seed: number): Promise<{ col: nu
   if (scored.length === 0) return null;
   // Nicht immer der entfernteste Winkel: zufällig unter den Feldern mit mindestens 70 % des besten Abstands.
   scored.sort((x, y) => y.d - x.d);
-  const good = scored.filter((x) => x.d >= Math.min(600, scored[0].d * 0.7));
+  let good = scored.filter((x) => x.d >= Math.min(600, scored[0].d * 0.7));
+  if (nearLightNests) {
+    const light = nests.filter((n) => n.level <= 2);
+    const near = good.filter((c) => light.filter((n) => { const d = hexDistanceKm(c, n); return d >= 150 && d <= 600; }).length >= 2);
+    if (near.length > 0) good = near;
+  }
   const pick = good[Math.floor(mulberry32(seed >>> 0)() * good.length)] ?? scored[0];
   return { col: pick.col, row: pick.row };
 }
@@ -241,7 +254,7 @@ export async function ensureHome(engine: Engine, bot: BotRow, nowMs: number): Pr
   if (await homeBaseOf(engine.db, bot.id)) return null;
   const cfg = botsConfig().profiles[bot.profile];
   for (let attempt = 0; attempt < 3; attempt++) {
-    const f = await freeHomeField(engine.db, bot.id * 31 + Math.floor(nowMs / 60000) + attempt);
+    const f = await freeHomeField(engine.db, bot.id * 31 + Math.floor(nowMs / 60000) + attempt, cfg.attackNests);
     if (!f) return "Kein freies Küstenfeld für einen Hafen gefunden.";
     const r = await chooseBase(engine, bot.id, `bot-home-${nowMs}-${attempt}`, {
       ...f, name: harborNameOf(bot.name), nightShieldStartHour: cfg.nightShieldStartHour, tzOffsetMinutes: zoneOffsetMinutes(nowMs),
