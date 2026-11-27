@@ -314,7 +314,7 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
 
 ## Saison und Wertung
 
-- Eine Saison dauert `SEASON_DAYS` Tage (Betriebseinstellung, Vorgabe 28). Es läuft immer genau eine Saison.
+- Eine Saison dauert `SEASON_DAYS` Tage (Betriebseinstellung, Vorgabe 42). Es läuft immer genau eine Saison.
 - Kostenwert = Summe aller Ressourcen der Baukosten. Punkte je Kategorie = `floor(Kostenwert / 100)`, Gesamt = Summe der Kategorien.
   - **Ausbau:** Kosten aller gebauten Gebäudestufen.
   - **Militär:** Einheiten und Anlagen des Stützpunkts einschließlich der Verbände unterwegs.

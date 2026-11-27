@@ -24,7 +24,7 @@ x-app: &app
     # Sitzungs-Cookie mit Secure: auto (nach X-Forwarded-Proto), true oder false.
     COOKIE_SECURE: ${COOKIE_SECURE:-auto}
     LOG_LEVEL: ${LOG_LEVEL:-info}
-    SEASON_DAYS: ${SEASON_DAYS:-28}
+    SEASON_DAYS: ${SEASON_DAYS:-42}
     TZ: ${TZ:-Europe/Berlin}
 
 services:

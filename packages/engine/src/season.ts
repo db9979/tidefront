@@ -14,10 +14,10 @@ import { allianceResultsFor, allianceStandings, saveAllianceStandings } from "./
 
 const DAY_MS = 86400000;
 
-/** Saisonlänge in Tagen aus SEASON_DAYS (Vorgabe 28). */
+/** Saisonlänge in Tagen aus SEASON_DAYS (Vorgabe 42). */
 export function seasonDays(raw = process.env.SEASON_DAYS): number {
   const n = Number(raw);
-  return Number.isFinite(n) && n > 0 ? n : 28;
+  return Number.isFinite(n) && n > 0 ? n : 42;
 }
 
 export interface SeasonRow {
