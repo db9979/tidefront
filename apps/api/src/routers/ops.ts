@@ -1,6 +1,7 @@
 // Teil-Router: Push, eigenes Konto (Passwort, E-Mail), Verwaltung (nur Admins), Passwort zurücksetzen.
 import { z } from "zod";
 import {
+  cartelStrength,
   changePassword,
   cleanPrefs,
   createInvite,
@@ -20,6 +21,7 @@ import {
   resetPassword,
   saveSmtp,
   sendTestMail,
+  setCartelStrength,
   setEmail,
   setEmailPrefs,
   smtpView,
@@ -126,6 +128,11 @@ export const adminRouter = t.router({
     invites: await listInvites(ctx.engine.db),
     status: await opsStatus(ctx.engine.db),
   })),
+  /** Regler Kartell-Stärke in Prozent (server_setting cartel_strength, 25–300, Vorgabe 100). */
+  cartelStrength: adminProc.query(async ({ ctx }) => ({ pct: await cartelStrength(ctx.engine.db) })),
+  setCartelStrength: adminProc
+    .input(z.object({ pct: z.number().int().min(25).max(300) }))
+    .mutation(({ ctx, input }) => setCartelStrength(ctx.engine.db, input.pct)),
   createInvite: adminProc
     .input(z.object({ code: z.string().trim().max(64).optional(), maxUses: z.number().int().min(1).max(1000) }))
     .mutation(({ ctx, input }) => wrap(async () => ({ ok: true as const, ...(await createInvite(ctx.engine.db, input)) }))),

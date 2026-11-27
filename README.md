@@ -65,7 +65,7 @@ Der Proxy terminiert TLS und leitet alles an den Port des `api`-Dienstes weiter.
 Admins stehen in `ADMIN_NAMES` (Spielernamen, Komma-getrennt; `migrate` gleicht bei jedem Start ab). Ist die Liste leer,
 wird der zuerst registrierte Spieler Admin. Admins erreichen über „?“ → „Einstellungen“ → „Verwaltung“:
 Einladungscodes anlegen und deaktivieren, Spielerliste mit letzter Aktivität, Passwort-Rücksetzcodes (einmalig,
-24 Stunden), E-Mail-Versand, Systemzustand, Sicherungen (siehe „Sicherung und Wiederherstellung“) und Statistik. Spieler ändern ihr Passwort in den Einstellungen; „Passwort vergessen?“
+24 Stunden), E-Mail-Versand, Systemzustand, Sicherungen (siehe „Sicherung und Wiederherstellung“), Kartell-Stärke (Regler 25–300 % der Balance-Grundstärke, `server_setting` `cartel_strength`; gilt für Überfälle, die danach auslaufen) und Statistik. Spieler ändern ihr Passwort in den Einstellungen; „Passwort vergessen?“
 auf dem Anmeldebildschirm nimmt den Rücksetzcode oder schickt mit bestätigter Adresse einen Link per E-Mail.
 
 ### Einladungen (Freunde einladen)

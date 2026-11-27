@@ -38,6 +38,7 @@ import { eventMissionArrive } from "./world-events-missions.ts";
 import { WORLD_EVENT_HANDLERS } from "./world-events-run.ts";
 import { modifiersFor, modsOf } from "./modifiers.ts";
 import { withAttackExperience } from "./veterans.ts";
+import { cartelStrength, scaledRaidBalance } from "./cartel-strength.ts"; // Verwaltung: Kartell-Stärke
 import { scoutWithDisinfo } from "./espionage.ts"; // Nachrichtendienst (Desinformation)
 import { battleWeather, fogAt } from "./weather.ts"; // Wetter am Kampfort und Nebel (v1.6)
 import { admiralsAfterBattle, defenseAdmiral, missionAdmiral } from "./admirals-battle.ts"; // Admirale
@@ -360,7 +361,8 @@ const raidLaunch: Handler = async (tx, ev, due) => {
   const mods = await modsOf(tx, b, due);
   const state = settle(b.state, due, balance, mods);
   // Eigener Seed für die Stärke-Schwankung des Kartells (unabhängig vom Kampf-Seed).
-  const raid = composeRaid(state.units, state.defenses, balance, randomSeed(), mods);
+  // Verwaltung: Regler „Kartell-Stärke“ skaliert die Überfallstärke (100 % = Balance).
+  const raid = composeRaid(state.units, state.defenses, scaledRaidBalance(balance, await cartelStrength(tx)), randomSeed(), mods);
   const [m] = await tx
     .insert(tables.mission)
     .values({

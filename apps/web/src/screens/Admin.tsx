@@ -1,5 +1,5 @@
 // Verwaltung (nur Admins; der Server prüft jede Anfrage): Systemzustand, Fehlermeldungen, Einladungscodes, Spieler, E-Mail-Versand,
-// Sicherungen und Statistik.
+// Sicherungen, Kartell-Stärke und Statistik.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
@@ -10,6 +10,7 @@ import { AdminInvites } from "./AdminInvites.tsx";
 import { AdminBackups } from "./AdminBackups.tsx";
 import { AdminStats } from "./AdminStats.tsx";
 import { AdminBugReports } from "./AdminBugReports.tsx";
+import { AdminCartel } from "./AdminCartel.tsx";
 
 function when(v: string | Date | null | undefined): string {
   if (!v) return "–";
@@ -171,6 +172,7 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
 
       <AdminMail />
       <AdminBackups />
+      <AdminCartel />
       <AdminStats />
     </div>
   );
