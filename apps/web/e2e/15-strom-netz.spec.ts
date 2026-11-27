@@ -6,7 +6,7 @@ import { finishBuilds, foundingSpot, readState, setBuildings, setResources, upda
 test("Elektrolyse ausbauen: Gebäudeblatt, Stufe 1, Versorgung mit Ökostrom-Anteil", async ({ page, player, seed }) => {
   await setBuildings(seed.sql, player.baseId, { kommandozentrale: 3, windpark: 3, stahlwerk: 1 });
   await setResources(seed.sql, player.baseId, { stahl: 9000, treibstoff: 4000, elektronik: 4000 });
-  await page.goto("/");
+  await page.goto("/?sub=hafen");
   await page.getByRole("button", { name: /^Elektrolyse 0/ }).click();
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByText(/Strom-Stunden ergeben 1 Treibstoff/)).toBeVisible();
@@ -42,7 +42,7 @@ test("Seekabel zwischen eigenen Häfen legen, ansehen und trennen", async ({ pag
     values (${player.id}, ${"Kabelende"}, ${spot.col}, ${spot.row}, ${JSON.stringify(colonyState)}::jsonb, false) returning id`;
   await setBuildings(seed.sql, player.baseId, { seekabel: 1 });
 
-  await page.goto("/");
+  await page.goto("/?sub=hafen");
   await page.getByRole("button", { name: /^Versorgung \d/ }).click();
   const cable = page.getByTestId("seekabel");
   await expect(cable).toBeVisible();

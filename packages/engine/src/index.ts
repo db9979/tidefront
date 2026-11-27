@@ -129,7 +129,7 @@ export { acceptPlayerContract, proposePlayerContract, withdrawPlayerContract } f
 export { cancelContract } from "./contracts-cancel.ts";
 export { contractBandView, contractsView } from "./contracts-view.ts";
 export { voidContracts } from "./contracts-run.ts";
-// Lagezentrum (Meldungen → Lage): alles Anstehende aller eigenen Häfen gebündelt; brief nur die Zahl fürs Navigationszeichen.
+// Lagezentrum (Basis → Lage): alles Anstehende aller eigenen Häfen gebündelt; brief nur die Zahl fürs Navigationszeichen.
 export { lageView, noLage, type LageJump, type LageRow, type LageUrgent, type LageView } from "./lage.ts";
 // Weltpolitik: wirksame Balance, Plan, Seerat, Ansehen, Gesuche (docs/REGELN-WELTPOLITIK.md)
 export { balanceNow, marketBalanceNow, seasonPlan, planAt, politikOff, invalidatePolitikCache, POLITIK_OFF, type PolitikPart } from "./politik-core.ts";

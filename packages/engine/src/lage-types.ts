@@ -1,4 +1,4 @@
-// Lagezentrum (Meldungen → Lage): gemeinsame Typen und kleine Helfer für lage.ts und lage-wait.ts.
+// Lagezentrum (Basis → Lage): gemeinsame Typen und kleine Helfer für lage.ts und lage-wait.ts.
 // Entscheidung „Lagezentrum“ (packages/game-core/ENTSCHEIDUNGEN-5.md).
 import type { BaseRow } from "./store.ts";
 

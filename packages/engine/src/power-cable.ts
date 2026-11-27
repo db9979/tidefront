@@ -169,7 +169,7 @@ export function cableOffer(engine: Engine, playerId: number, key: string, input:
     else {
       await systemMessage(ctx.tx, ctx.notify, [to.playerId], "Seekabel angeboten",
         `${from.name} bietet ${to.name} ein Seekabel an (${Math.round(km)} km, ${price > 0 ? `${price.toLocaleString("de-DE")} Taler je Strom-Stunde` : "kostenlos als Allianzhilfe"}). ` +
-        "Annehmen oder ablehnen unter Basis → Versorgung → Seekabel.");
+        "Annehmen oder ablehnen unter Basis → Hafen → Versorgung → Seekabel.");
     }
     ctx.notify.push([[playerId, to.playerId], "base"]);
     return { ok: true as const, cableId: row.id, status: own ? "aktiv" : "angefragt" };

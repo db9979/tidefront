@@ -235,7 +235,7 @@ Desinformation, Bordsicht), `packages/engine/src/intel-patrol.ts`, `intel-campai
 `intel-mobile.ts` (bewegte Sensoren), `intel-route.ts` (Positionen), `intel-ops.ts` (Befehle, Ereignisse, Eingriff in die
 Ankunft), `intel-overview.ts` (Reiter „Lagebild“), neue Tabelle `radar_post` (Migration erzeugt der Integrator).
 Oberfläche: Missionsplanung „Patrouille“, „Kampagne“, „Radarposten“, „Posten angreifen“ (Karte antippen), Feld-Blatt
-(„Patrouille ab hier“, „Radarposten errichten“, „Posten angreifen“), Meldungen → Lagebild, Truppen → Einsatz
+(„Patrouille ab hier“, „Radarposten errichten“, „Posten angreifen“), Karte → Sichtungen, Truppen → Einsatz
 („Heimholen“), Karte (Posten, Wegpunkte, wandernde Sichtkreise, Sonar grün). Balance-Block `intel` v1.20 mit `patrol`,
 `campaign`, `post`, `sonar`, `fleetSight`.
 
@@ -281,7 +281,7 @@ Gegenmittel), `packages/game-core/src/intel.ts` (Streifen-Sensoren und Gegenmitt
 `packages/engine/src/intel-sat.ts` (Start, Sensoren und Anzeige), `intel-sat-pass.ts` (Ereignisse `satellite_pass`,
 `satellite_end`), `intel-counter.ts` (Tarnnetze, Störsender, Tarnanstrich, Funkdisziplin weltweit je cacheSeconds),
 `mail-report-sat.ts` (E-Mails). Oberfläche: Startrampe und Störsender als Gebäude (Gruppe „Aufklärung“, bewegte
-Zeichnungen), Forschungszweig Raumfahrt, Meldungen → Lagebild „Satelliten“ (Start, nächster Überflug), Karte
+Zeichnungen), Forschungszweig Raumfahrt, Karte → Sichtungen „Satelliten“ (Start, nächster Überflug), Karte
 (Streifen gestrichelt, nächster Überflug mit Uhrzeit, Blitz am erkannten fremden Störsender), Berichte, Handbuch,
 Legende, „Was hilft?“. Balance v1.23: Gebäude `startrampe`, `stoersender`, Techniken `optischer_satellit`,
 `radarsatellit` (Zweig `raumfahrt`), `tarnnetze` (Heer), Blöcke `intel.satellite` und `intel.counter`. Keine neue

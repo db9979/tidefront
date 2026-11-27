@@ -35,7 +35,8 @@ function PowerField({ base, now, onOpen }: { base: BaseData; now: number; onOpen
   const covered = bal === 0 && demand > 0;
   const plant = g.now.supply.kraftwerk > 0 || g.now.throttle < 1;
   const load = Math.round(g.now.throttle * 100);
-  const second = g.now.capacity > 0 ? `${Math.round(fill * 100)} %` : plant ? `KW ${load} %` : demand > 0 ? `Last ${short(demand)}` : "–";
+  // UI-09: kurz genug für die Spalte (vorher „KW 41…“ abgeschnitten) – Kraftwerk als Symbol statt „KW“.
+  const second = g.now.capacity > 0 ? `${Math.round(fill * 100)} %` : plant ? <><Icon id="kraftwerk" size={11} className="shrink-0 inline -mt-px mr-px" />{load} %</> : demand > 0 ? `Last ${short(demand)}` : "–";
   const desc = covered ? `gedeckt (Bedarf ${fmtNum(demand)})` : `Bilanz ${sign}${fmtNum(Math.abs(bal))}`;
   const store = g.now.capacity > 0 ? `Speicher ${Math.round(fill * 100)} %` : plant ? `Kraftwerk ausgelastet zu ${load} %` : "kein Speicher";
   return (
@@ -43,14 +44,14 @@ function PowerField({ base, now, onOpen }: { base: BaseData; now: number; onOpen
       type="button"
       onClick={onOpen}
       data-testid="strom-feld"
-      className="relative shrink-0 w-[50px] flex flex-col justify-center text-left pl-1 border-l border-rule"
+      className="relative shrink-0 min-w-[58px] flex flex-col justify-center text-left pl-1 border-l border-rule"
       aria-label={`Strom: ${desc}, ${store}${warn ? ", Mangel droht" : ""} – Versorgung öffnen`}
       title={`${desc} · ${store}`}
     >
       <div className={`text-[13.5px] leading-tight font-semibold truncate flex items-center ${covered ? "font-sans text-[12px]" : "mono"} ${bal < 0 ? "text-siegel" : "text-moos"}`}>
         <Icon id="strom" size={12} className="shrink-0 -ml-0.5" />{covered ? <span aria-hidden="true">✓</span> : `${sign}${short(Math.abs(bal))}`}
       </div>
-      <div className="text-[11px] leading-tight mono text-ink2 truncate">{second}</div>
+      <div className="text-[11px] leading-tight mono text-ink2 whitespace-nowrap flex items-center">{second}</div>
       <div className="h-[2px] mt-0.5 bg-rule/80 overflow-hidden" aria-hidden="true">
         <div className="h-full bg-moos" style={{ width: `${fill * 100}%` }} />
       </div>

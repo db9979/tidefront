@@ -85,7 +85,7 @@ export function FinaleBanner({ e, onMap }: { e: WorldEventInfo; onMap: () => voi
         {announced ? <>erscheint in <span className="mono">{fmtDuration(e.activeAtMs - now)}</span></> : <>zieht ab in <span className="mono">{fmtDuration(e.endsAtMs - now)}</span></>}
       </div>
       <div className="text-xs text-ink2">
-        {announced ? `Sammelpunkt Feld ${e.col}/${e.row}. Rüste Kriegsschiffe und Flugzeuge – ` : `Noch ${f.initialHp > 0 ? Math.round((f.remainingHp / f.initialHp) * 100) : 100} % Lebenspunkte. `}
+        {announced ? `Sammelpunkt Feld ${e.col}/${e.row}. Rüste Kriegsschiffe und Flugzeuge – ` : `Noch ${f.initialHp > 0 ? Math.round((f.remainingHp / f.initialHp) * 100) : 100} % Lebenspunkte – `}
         jeder Abschnitt bringt Beute, die Besten kommen in die Ruhmeshalle · auf der Karte zeigen
       </div>
     </button>

@@ -54,7 +54,7 @@ import { fieldsRouter } from "./routers/fields.ts"; // Felder
 import { botsRouter } from "./routers/bots.ts"; // KI-Spieler (Verwaltung)
 import { powerRouter } from "./routers/power.ts"; // Seekabel (v1.21)
 import { intelRouter } from "./routers/intel.ts"; // Lagebild Stufe 2
-import { lageRouter } from "./routers/lage.ts"; // Lagezentrum (Meldungen → Lage)
+import { lageRouter } from "./routers/lage.ts"; // Lagezentrum (Basis → Lage)
 import { politikRouter } from "./routers/politik.ts"; // Weltpolitik (Gezeit, Seerat, Ansehen, Gesuche)
 import { balanceAt, type Balance } from "@tidefront/game-core";
 import { politikMeta } from "@tidefront/engine";

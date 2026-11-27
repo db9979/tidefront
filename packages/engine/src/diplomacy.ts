@@ -100,7 +100,7 @@ export function proposePact(engine: Engine, playerId: number, target: string) {
     }
     await tx.insert(tables.diplomacy).values({ partyA: a, partyB: b, kind: "pakt", status: "angeboten", proposedBy: own });
     await tell(tx, notes, [target], "Diplomatie: Paktangebot",
-      `${ownName} bietet einen Nichtangriffspakt an. Annehmen unter Truppen → Allianz → Diplomatie.`);
+      `${ownName} bietet einen Nichtangriffspakt an. Annehmen unter Meldungen → Allianz → Diplomatie.`);
     notes.push([await partyMembers(tx, own), "alliance"]);
     return { ok: true as const, active: false };
   });
@@ -202,7 +202,7 @@ export function makePeace(engine: Engine, playerId: number, id: number) {
     }
     if (w.peaceBy === own) fail("already_offered");
     await tx.update(tables.diplomacy).set({ peaceBy: own }).where(eq(tables.diplomacy.id, w.id));
-    await tell(tx, notes, [other], "Diplomatie: Friedensangebot", `${ownName} bietet Frieden an. Annehmen unter Truppen → Allianz → Diplomatie.`);
+    await tell(tx, notes, [other], "Diplomatie: Friedensangebot", `${ownName} bietet Frieden an. Annehmen unter Meldungen → Allianz → Diplomatie.`);
     notes.push([await partyMembers(tx, own), "alliance"]);
     return { ok: true as const, ended: false };
   });

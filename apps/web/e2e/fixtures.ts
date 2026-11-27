@@ -236,6 +236,12 @@ export async function tapHex(page: Page, center: { col: number; row: number }, t
   throw new Error(`Feld ${target.col}/${target.row} nicht getroffen`);
 }
 
+/** Navigationsumbau: Gebäude, Bauhof und Hafen-Kopf liegen unter Basis → Hafen (Startseite ist Basis → Lage). */
+export async function openHafen(page: Page): Promise<void> {
+  await page.getByRole("tablist", { name: "Basis" }).getByRole("tab", { name: /^Hafen/ }).click();
+  await expect(page.getByRole("tablist", { name: "Basis" }).getByRole("tab", { name: /^Hafen/ })).toHaveAttribute("aria-selected", "true");
+}
+
 /** Ratenbegrenzung (Anmeldung, Registrierung) der Test-Instanz zurücksetzen, damit wiederholte Läufe nicht anstoßen. */
 export async function resetRateLimits(): Promise<void> {
   const v = new Valkey(E2E.valkeyUrl, { lazyConnect: true, maxRetriesPerRequest: 1 });

@@ -1,4 +1,4 @@
-// Truppen → Einsatz, „Lohnende Ziele“: die nächsten Piratennester mit Entfernung, Fahrzeit und Siegchance. Der Verband
+// Truppen → Einsatz, „Nester in der Nähe“ (bis 0.38 „Nester in der Nähe“): die nächsten Piratennester mit Entfernung, Fahrzeit und Siegchance. Der Verband
 // je Nest kommt aus dem Probekampf (game-core raid-plan, im Browser nachgeladen): der kleinste aus dem, was daheim
 // liegt, mit ≥ 90 % Sieg – nicht einfach alles. Reicht der Bestand nicht, steht dabei, was fehlt.
 // Kartennebel (Lagebild): Die Stufe eines Nests kann fehlen – dann „Stufe unbekannt – erst aufklären“. Ausnahme: das
@@ -7,6 +7,8 @@
 // Lebendige Nester: Erkannte Nester zeigen Besatzung, Anlagen und Beute (Spanne bzw. mit Lagebild genau und
 // hochgerechnet, Alter des Lagebilds) und eine Bewertung „lohnend?“ (Netto zum Richtpreis: Beute bei Sieg gegen
 // Treibstoff hin und zurück und erwartete Verluste). Sortierung: lohnend und erreichbar zuerst.
+// Knöpfe (TST-05/UI-13): Stufe unbekannt → „Aufklären“ als Hauptknopf; Siegchance unter 50 % → „Angreifen“ nur als
+// Zweitknopf mit Hinweis „zu stark“; unter 10 % fragt „Angreifen“ vorher nach.
 import { useEffect, useMemo, useState } from "react";
 import { hexCenter, seaRoute } from "@tidefront/world";
 import type { Balance, BaseData, MapData } from "../../lib/trpc.ts";
@@ -95,7 +97,7 @@ export function TargetsCard({ base, balance, map, onShowOnMap }: { base: BaseDat
   if (!map) return null;
   const noFleet = rows.every((r) => Object.keys(r.full).length === 0);
   return (
-    <Card title="Lohnende Ziele" right={<span className="text-[11px] text-ink2">Piratennester in der Nähe</span>}>
+    <Card title="Nester in der Nähe" right={<span className="text-[11px] text-ink2">kleinster Verband je Nest</span>}>
       {rows.length === 0 ? (
         <div className="flex items-center gap-3">
           <NestMark level={null} />
@@ -127,6 +129,13 @@ function TargetRow({ row, plan, base, balance, onShowOnMap }: { row: Row; plan: 
   const color = tone ? { green: "text-moos", brass: "text-messing", red: "text-siegel" }[tone] : "text-ink2";
   const [why, setWhy] = useState(false);
   const scout = () => requestPlan({ target, type: "aufklaerung", units: suggestScout(base, balance, nest.distanceKm) });
+  // Unter 50 % (oder noch ohne Probekampf) kein Hauptknopf; unter 10 % mit Rückfrage.
+  const strong = known && rate !== undefined && (rate === null || rate < 0.5);
+  const attack = () => {
+    if (known && typeof rate === "number" && rate < 0.1
+      && !window.confirm(`Probekampf: ${pct(rate)} Sieg – aussichtslos. Trotzdem planen?`)) return;
+    requestPlan({ target, type: "ueberfall", units });
+  };
   return (
     <li className="py-2" data-target={`${nest.col}/${nest.row}`}>
       <div className="flex items-start gap-2.5">
@@ -146,6 +155,7 @@ function TargetRow({ row, plan, base, balance, onShowOnMap }: { row: Row; plan: 
             <span>{fmtNum(Math.round(nest.distanceKm))} km</span>
             {t !== null && <span className="inline-flex items-center gap-0.5"><Icon id="uhr" size={13} /> {fmtDuration(t)}</span>}
             {row.mission && <Badge tone="brass">Auftragsziel</Badge>}
+            {strong && !empty && <Badge tone="red">{typeof rate === "number" && rate < 0.1 ? "aussichtslos" : "zu stark"}</Badge>}
           </div>
           {!known && <p className="text-xs text-messing mt-0.5">Stufe unbekannt – erst aufklären.</p>}
           {known && !empty && tone && <div className="mt-1"><Bar value={rate ?? 0} tone={tone as "green" | "brass" | "red"} /></div>}
@@ -165,8 +175,12 @@ function TargetRow({ row, plan, base, balance, onShowOnMap }: { row: Row; plan: 
         {empty ? <>
           <Button className="flex-1" onClick={scout}>Aufklären</Button>
           <Button kind="secondary" disabled onBlocked={() => setWhy(!why)}>Angreifen</Button>
+        </> : !known || strong ? <>
+          {/* Stufe unbekannt bzw. zu stark: erst aufklären, Angreifen nur als Zweitknopf. */}
+          <Button className="flex-1" onClick={scout}>Aufklären</Button>
+          <SmallButton onClick={attack}>Angreifen</SmallButton>
         </> : <>
-          <Button className="flex-1" kind={known && (rate ?? 0) >= 0.5 ? "primary" : "secondary"} onClick={() => requestPlan({ target, type: "ueberfall", units })}>Angreifen</Button>
+          <Button className="flex-1" onClick={attack}>Angreifen</Button>
           <SmallButton onClick={scout}>Aufklären</SmallButton>
         </>}
       </div>
@@ -183,7 +197,9 @@ function WorthLine({ nest, plan }: { nest: NestInfo; plan: NestPlan | null | und
   if (plan?.range) parts.push(`Sieg ${pct(plan.range.min)}–${pct(plan.range.max)}, Ø ${pct(plan.range.mean)}`);
   const w = plan?.worth;
   const signed = (v: number) => `${v >= 0 ? "+" : "−"}${fmtNum(Math.abs(Math.round(v / 100) * 100))}`;
-  const net = w ? (Math.abs(w.net[1] - w.net[0]) < 100 ? `Netto etwa ${signed(w.net[0])}` : `Netto etwa ${signed(w.net[0])} bis ${signed(w.net[1])}`) : null;
+  // M-16: Netto steht ausdrücklich „nach Treibstoff“ (hin und zurück, zum Richtpreis) und erwarteten Verlusten.
+  const fuel = w && w.fuel >= 1 ? `, Treibstoff ≈ ${fmtNum(Math.round(w.fuel))} T abgezogen` : "";
+  const net = w ? (Math.abs(w.net[1] - w.net[0]) < 100 ? `Netto etwa ${signed(w.net[0])}${fuel}` : `Netto etwa ${signed(w.net[0])} bis ${signed(w.net[1])}${fuel}`) : null;
   return (
     <div className="text-[11px] mt-0.5 flex flex-wrap gap-x-2" data-testid="ziel-wert">
       <span className="text-ink2">{parts.join(" · ")}</span>

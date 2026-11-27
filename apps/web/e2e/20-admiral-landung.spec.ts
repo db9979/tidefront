@@ -46,7 +46,7 @@ test("Admiral: fehlende Kosten, Umschulung auf Landungstrupp, Wirkung im Probeka
   await page.keyboard.press("Escape");
 
   // Planung gegen ein Nest: Führung zeigt die Wirkung, der Probekampf rechnet sie ein.
-  const targets = page.locator("section").filter({ has: page.getByRole("heading", { name: "Lohnende Ziele" }) });
+  const targets = page.locator("section").filter({ has: page.getByRole("heading", { name: "Nester in der Nähe" }) });
   const first = targets.locator("li[data-target]").first();
   await expect(first.getByText(/^\d+ %$/)).toBeVisible({ timeout: 15000 });
   await first.getByRole("button", { name: "Angreifen" }).click();

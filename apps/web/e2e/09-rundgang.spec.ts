@@ -2,7 +2,7 @@
 // Truppen, Forschung, Kampfsimulator, Missionsarten, Karte, Börse. Geprüft: Layout bei 390 px (gesammelt, damit
 // ein Lauf alle Fundstellen zeigt) und Konsolenfehler.
 import type { Page } from "@playwright/test";
-import { expect, expectNoHorizontalOverflow, test } from "./fixtures.ts";
+import { expect, expectNoHorizontalOverflow, openHafen, test } from "./fixtures.ts";
 import { setBuildings, setResources, setUnits } from "./game.ts";
 
 const LEVELS = {
@@ -25,8 +25,11 @@ test("Rundgang durch alle Bildschirme", async ({ page, player, seed }) => {
   await setUnits(seed.sql, player.baseId, { korvette: 12, zerstoerer: 4, landungsschiff: 3, uboot: 2, schuetzen: 80, kampfpanzer: 3, abfangjaeger: 2, aufklaerungsdrohne: 2 });
 
   await page.goto("/");
+  await expect(page.getByTestId("lage-tab")).toBeVisible();
+  await check(page, "Basis · Lage");
+  await openHafen(page);
   await expect(page.getByRole("heading", { name: "Bauhof" })).toBeVisible();
-  await check(page, "Basis (ausgebaut)");
+  await check(page, "Basis · Hafen (ausgebaut)");
 
   // Ressourcenleiste
   for (const r of ["Stahl", "Treibstoff", "Elektronik", "Proviant"]) {
@@ -46,10 +49,11 @@ test("Rundgang durch alle Bildschirme", async ({ page, player, seed }) => {
     await closeDialog(page);
   }
 
-  // Aufträge, Versorgung, Schutz
-  for (const name of [/^Auftragsbuch:/, /^Tagesbefehle:/, /^Wochenziele:/, /^Versorgung /, /^Schutz /]) {
+  // Versorgung, Schutz (Hafen); Aufträge (Lage)
+  for (const name of [/^Versorgung /, /^Schutz /, /^Auftragsbuch:/, /^Tagesbefehle:/, /^Wochenziele:/]) {
+    if (name.source === "^Auftragsbuch:") await page.getByRole("tablist", { name: "Basis" }).getByRole("tab", { name: /^Lage/ }).click();
     const b = page.locator("main").getByRole("button", { name }).first();
-    if ((await b.count()) === 0) continue;
+    await expect(b).toBeVisible();
     await b.click();
     await page.waitForTimeout(200);
     await check(page, `Basis · ${name.source}`);
@@ -58,7 +62,7 @@ test("Rundgang durch alle Bildschirme", async ({ page, player, seed }) => {
 
   // Truppen: alle Unterreiter, Forschung, Kampfsimulator
   await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
-  for (const t of ["Einsatz", "Ausbilden", "Abwehr", "Allianz"]) {
+  for (const t of ["Einsatz", "Ausbilden", "Abwehr"]) {
     await page.getByRole("tab", { name: new RegExp(`^${t}`) }).click();
     await check(page, `Truppen · ${t}`);
   }
@@ -103,6 +107,7 @@ test("Rundgang durch alle Bildschirme", async ({ page, player, seed }) => {
   await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
   await page.getByRole("button", { name: "Mein Hafen" }).click();
   await check(page, "Karte · Mein Hafen");
+  await page.getByRole("button", { name: "Wetter einblenden" }).click(); // standardmäßig aus (UI-05)
   await page.getByRole("button", { name: /^Wetter am Hafen/ }).click(); // Wetterkärtchen aufklappen
   await expect(page.getByText(/^Am Hafen:/)).toBeVisible();
   await check(page, "Karte · Wetter aufgeklappt");
@@ -113,6 +118,20 @@ test("Rundgang durch alle Bildschirme", async ({ page, player, seed }) => {
   await page.getByRole("button", { name: "Legende öffnen" }).click();
   await check(page, "Karte · Legende");
   await page.getByRole("button", { name: /Legende schließen/ }).click();
+  await page.getByTestId("map-sichtungen").click();
+  await check(page, "Karte · Sichtungen");
+  await closeDialog(page);
+
+  // Meldungen: alle Unterreiter, Rangliste mit Bilanz und Erfolgen
+  await page.getByRole("navigation").getByRole("button", { name: /^Meldungen/ }).click();
+  for (const t of ["Berichte", "Nachrichten", "Allianz", "Rangliste"]) {
+    await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${t}`) }).click();
+    await check(page, `Meldungen · ${t}`);
+  }
+  for (const t of ["Bilanz", "Erfolge"]) {
+    await page.getByRole("tablist", { name: "Rangliste" }).getByRole("tab", { name: new RegExp(`^${t}`) }).click();
+    await check(page, `Meldungen · Rangliste · ${t}`);
+  }
 
   // Börse: jede Ressource
   await page.getByRole("navigation").getByRole("button", { name: "Börse" }).click();

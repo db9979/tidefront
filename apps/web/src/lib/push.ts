@@ -101,15 +101,43 @@ export async function disablePush(): Promise<void> {
   await sub.unsubscribe().catch(() => {});
 }
 
-export type OpenTarget = { tab?: "basis" | "karte" | "truppen" | "berichte" | "boerse"; view?: "settings" | "admin"; /** Mehrere Häfen: diesen Hafen aktiv machen. */ base?: number; /** E-Mail-Link: diesen Bericht öffnen. */ report?: number; /** E-Mail-Link „Im Kampfsimulator öffnen“ (&sim=1, nur mit bericht). */ sim?: boolean };
+export type OpenTarget = {
+  tab?: "basis" | "karte" | "truppen" | "berichte" | "boerse";
+  /** Unterreiter: Basis lage|hafen, Meldungen berichte|nachrichten|allianz|rangliste|bilanz|erfolge, Karte sichtungen. */
+  sub?: string;
+  view?: "settings" | "admin";
+  /** Mehrere Häfen: diesen Hafen aktiv machen. */ base?: number;
+  /** E-Mail-Link: diesen Bericht öffnen. */ report?: number;
+  /** E-Mail-Link „Im Kampfsimulator öffnen“ (&sim=1, nur mit bericht). */ sim?: boolean;
+};
 
-/** Ziel aus einer App-Adresse (Benachrichtigung): ?tab=berichte, ?view=admin, ?base=12 (Hafen). */
+const TABS = ["basis", "karte", "truppen", "berichte", "boerse"] as const;
+/** Ältere und sprechende Adressen (Server-Benachrichtigungen): ?tab=meldungen, ?tab=allianz, ?tab=lage, ?tab=sichtungen. */
+const ALIAS: Record<string, { tab: NonNullable<OpenTarget["tab"]>; sub?: string }> = {
+  meldungen: { tab: "berichte" },
+  allianz: { tab: "berichte", sub: "allianz" },
+  nachrichten: { tab: "berichte", sub: "nachrichten" },
+  rangliste: { tab: "berichte", sub: "rangliste" },
+  erfolge: { tab: "berichte", sub: "erfolge" },
+  lage: { tab: "basis", sub: "lage" },
+  hafen: { tab: "basis", sub: "hafen" },
+  sichtungen: { tab: "karte", sub: "sichtungen" },
+  lagebild: { tab: "karte", sub: "sichtungen" },
+};
+const SUBS = new Set(["lage", "hafen", "berichte", "nachrichten", "allianz", "rangliste", "bilanz", "erfolge", "sichtungen", "lagebild"]);
+
+/** Ziel aus einer App-Adresse (Benachrichtigung): ?tab=berichte&sub=nachrichten, ?view=admin, ?base=12 (Hafen). */
 export function parseOpenUrl(url: string): OpenTarget {
   const q = new URL(url, location.origin).searchParams;
-  const tab = q.get("tab");
+  const raw = q.get("tab") ?? "";
+  const alias = ALIAS[raw];
+  const tab = alias?.tab ?? ((TABS as readonly string[]).includes(raw) ? (raw as OpenTarget["tab"]) : undefined);
+  const subRaw = q.get("sub");
+  const sub = subRaw && SUBS.has(subRaw) ? (subRaw === "lagebild" ? "sichtungen" : subRaw) : alias?.sub;
   const view = q.get("view");
   return {
-    tab: tab && ["basis", "karte", "truppen", "berichte", "boerse"].includes(tab) ? (tab as OpenTarget["tab"]) : undefined,
+    tab,
+    sub, // ohne tab gilt der Unterreiter der Basis (Startreiter), z. B. ?sub=hafen
     view: view === "admin" || view === "settings" ? view : undefined,
     base: /^\d{1,9}$/.test(q.get("base") ?? "") ? Number(q.get("base")) : undefined,
     report: /^\d{1,9}$/.test(q.get("bericht") ?? "") ? Number(q.get("bericht")) : undefined,

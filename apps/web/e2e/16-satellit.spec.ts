@@ -1,4 +1,4 @@
-// Lagebild Stufe 3: Startrampe bauen (Voraussetzung sichtbar), Satellit starten (Meldungen → Lagebild), nächster
+// Lagebild Stufe 3: Startrampe bauen (Voraussetzung sichtbar), Satellit starten (Karte → Sichtungen), nächster
 // Überflug angekündigt, Überflug vorziehen → Streifen live, Bericht „Satellit gestartet“. Unabhängig von der
 // Hafenlage: Der erste Streifen liegt immer über dem eigenen Hafen.
 import { expect, expectNoHorizontalOverflow, test, until } from "./fixtures.ts";
@@ -10,16 +10,24 @@ test("Startrampe bauen, Satellit starten, Überflug angekündigt und live", asyn
   await setBuildings(seed.sql, player.baseId, { kommandozentrale: 8, forschungsamt: 5, radarstation: 5, kraftwerk: 8, lagerkomplex: 10 });
   await setResources(seed.sql, player.baseId, { stahl: 40000, treibstoff: 20000, elektronik: 30000 });
 
-  // Voraussetzung: Radarstation 6 fehlt noch.
-  await page.goto("/");
+  // Voraussetzung: Radarstation 6 fehlt noch (Gebäude liegen unter Basis → Hafen).
+  await page.goto("/?sub=hafen");
   await page.getByRole("button", { name: /^Start\u00AD?rampe 0/ }).click();
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByText("Voraussetzung: Radarstation Stufe 6.")).toBeVisible();
   await expectNoHorizontalOverflow(page, "Startrampe mit Voraussetzung");
 
-  // Mit Radarstation 6 bauen und fertigstellen.
+  // Sichtungen nennen nur, was fehlt (TST-11) – und mit Radarstation 6 „Voraussetzungen erfüllt“.
+  await page.keyboard.press("Escape");
+  await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
+  await page.getByTestId("map-sichtungen").click();
+  await expect(page.getByRole("dialog").getByText("Startrampe braucht noch Radarstation 6")).toBeVisible();
   await setBuildings(seed.sql, player.baseId, { radarstation: 6 });
-  await page.reload();
+  await page.goto("/?tab=sichtungen");
+  await expect(page.getByRole("dialog").getByText("Startrampe bauen (Voraussetzungen erfüllt)")).toBeVisible();
+
+  // Mit Radarstation 6 bauen und fertigstellen.
+  await page.goto("/?sub=hafen");
   await page.getByRole("button", { name: /^Start\u00AD?rampe 0/ }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Ausbau auf 1" }).click();
   await expect(page.getByText("Startrampe · Ausbau auf Stufe 1")).toBeVisible();
@@ -29,8 +37,8 @@ test("Startrampe bauen, Satellit starten, Überflug angekündigt und live", asyn
 
   // Raumfahrt: optischer Satellit erforscht (Forschung selbst prüft der Forschungs-Test).
   await updateState(seed.sql, player.baseId, (s) => { s.research = { ...(s.research ?? {}), levels: { ...(s.research?.levels ?? {}), optischer_satellit: 1 }, order: null }; });
-  await page.getByRole("navigation").getByRole("button", { name: "Meldungen" }).click();
-  await page.getByRole("tab", { name: "Lagebild" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
+  await page.getByTestId("map-sichtungen").click(); // Sichtungen (früher Meldungen → Lagebild)
   const launch = page.getByTestId("sat-launch");
   await expect(launch).toContainText("Optischer Satellit");
   await expect(launch).toContainText("Radarsatellit");
@@ -54,13 +62,14 @@ test("Startrampe bauen, Satellit starten, Überflug angekündigt und live", asyn
                  where base_id = ${player.baseId} and type in ('satellite_pass', 'satellite_end') and status = 'pending'`;
   await until(async () => ((await readState(seed.sql, player.baseId)).satellites?.[0]?.passes ?? 0) >= 1, "Überflug verarbeitet");
   await page.reload();
-  await page.getByRole("tab", { name: "Lagebild" }).click();
+  await page.getByTestId("map-sichtungen").click();
   await expect(page.getByTestId("sat-live")).toContainText("live über");
   await expect(page.getByTestId("satellites")).toContainText("Überflug läuft");
   await expect(page.getByTestId("lagebild-tab").getByText("Optischer Satellit (Streifen)")).toBeVisible();
   await expectNoHorizontalOverflow(page, "Lagebild mit Überflug");
 
   // Karte: Streifen als Sensor, Seite lädt ohne Fehler.
+  await page.keyboard.press("Escape");
   await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
   await expect(page.locator("canvas").first()).toBeVisible();
 

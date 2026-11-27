@@ -46,7 +46,7 @@ test("Lohnende Ziele: Auftragsziel Nest Stufe I mit siegreichem Vorschlag", asyn
   await page.goto("/");
   await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
   await page.getByRole("tab", { name: /^Einsatz/ }).click();
-  const targets = page.locator("section").filter({ has: page.getByRole("heading", { name: "Lohnende Ziele" }) });
+  const targets = page.locator("section").filter({ has: page.getByRole("heading", { name: "Nester in der Nähe" }) });
   const mission = targets.locator("li[data-target]").filter({ hasText: "Auftragsziel" });
   await expect(mission).toHaveCount(1);
   await expect(mission.getByText(/^Nest Stufe I$/)).toBeVisible();

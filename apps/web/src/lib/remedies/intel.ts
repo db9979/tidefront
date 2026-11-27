@@ -4,7 +4,7 @@ import { label } from "../names.ts";
 import { build, lvl, mapAction, missions, research, stateOf, training } from "./helpers.ts";
 import type { RemedyTable } from "./types.ts";
 
-const meldungenLagebild = { label: "Lagebild", go: { to: "meldungen" as const, sub: "lagebild" as const } };
+const meldungenLagebild = { label: "Sichtungen", go: { to: "sichtungen" as const } };
 
 export const INTEL: RemedyTable = {
   patrol_units: () => ({ hint: "Nimm nur Korvetten, Zerstörer, U-Boote oder Aufklärungsdrohnen mit. Landungsschiffe, Truppen und Bomber bleiben daheim.", actions: [training] }),

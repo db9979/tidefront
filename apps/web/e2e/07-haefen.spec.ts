@@ -1,10 +1,10 @@
 // Mehrere Häfen: Kolonieschiff in der Werft bauen, Küstenfeld auf der Karte wählen, Außenposten gründen,
 // per Hafenwahl wechseln, Hafen verwalten (umbenennen) – Heimathafen und Außenposten.
-import { expect, expectNoHorizontalOverflow, tapHex, test, until } from "./fixtures.ts";
+import { expect, expectNoHorizontalOverflow, openHafen, tapHex, test, until } from "./fixtures.ts";
 import { fastForwardMission, finishTraining, foundingSpot, setBuildings, setResources } from "./game.ts";
 
 test("Hafen verwalten: Heimathafen umbenennen", async ({ page, player, seed }) => {
-  await page.goto("/");
+  await page.goto("/?sub=hafen");
   await page.getByRole("button", { name: /^Hafen .* verwalten$/ }).click();
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByText("Der Heimathafen lässt sich nicht aufgeben.")).toBeVisible();
@@ -70,6 +70,7 @@ test("Kolonieschiff bauen, Außenposten gründen, Hafen wechseln und umbenennen"
   // Hafenwahl: zum Außenposten wechseln
   await page.reload();
   await page.getByRole("navigation").getByRole("button", { name: "Basis" }).click();
+  await openHafen(page);
   await page.getByRole("button", { name: /– Hafen wechseln$/ }).click();
   const list = page.getByRole("dialog");
   await expect(list.getByRole("button", { name: "Hierhin wechseln" })).toHaveCount(1); // zwei Häfen, einer aktiv

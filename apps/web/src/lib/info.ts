@@ -27,7 +27,7 @@ export const BUILDING_TEXT: Record<string, { kurz: string; lang: string }> = {
   // Lagebild Stufe 3 (v1.23)
   startrampe: {
     kurz: "Startet Satelliten",
-    lang: "Von hier starten Satelliten (Meldungen → Lagebild). Braucht Kommandozentrale {padKz}, Forschungsamt {padFa} und Radarstation {padRadar}; die Technik kommt aus dem Zweig Raumfahrt. Ein Satellit fliegt {satDays} Tage und überfliegt alle {satPeriod} h einen {satStrip} km breiten Nord-Süd-Streifen, der jedes Mal {satShift} km nach Westen wandert; {satLive} min lang ist der Streifen live, danach bleibt das Gesehene bekannt. Optisch: Erkennung, aber nicht unter Wolken; Radar: durch Wolken, nur Sichtung. Jede Stufe über 1 senkt die Startkosten um {padDiscount} % (höchstens {padDiscountMax} %).",
+    lang: "Von hier starten Satelliten (Karte → Sichtungen). Braucht Kommandozentrale {padKz}, Forschungsamt {padFa} und Radarstation {padRadar}; die Technik kommt aus dem Zweig Raumfahrt. Ein Satellit fliegt {satDays} Tage und überfliegt alle {satPeriod} h einen {satStrip} km breiten Nord-Süd-Streifen, der jedes Mal {satShift} km nach Westen wandert; {satLive} min lang ist der Streifen live, danach bleibt das Gesehene bekannt. Optisch: Erkennung, aber nicht unter Wolken; Radar: durch Wolken, nur Sichtung. Jede Stufe über 1 senkt die Startkosten um {padDiscount} % (höchstens {padDiscountMax} %).",
   },
   stoersender: {
     kurz: "Stört fremdes Radar",

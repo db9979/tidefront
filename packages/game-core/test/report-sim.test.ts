@@ -99,3 +99,17 @@ test("splitForces trennt Einheiten und Anlagen", () => {
   const def = Object.keys(balance.defenses)[0];
   assert.deepEqual(splitForces({ korvette: 2, [def]: 3, x: 0 }, balance), { units: { korvette: 2 }, defenses: { [def]: 3 } });
 });
+
+test("Glück im echten Kampf: entfallene Phasen zählen nicht mit (TST-04)", async () => {
+  const { avgLuck } = await import("../src/report-sim.ts");
+  const phases = [
+    { phase: "luftkampf", skipped: true, luckFactor: { attacker: 0.85, defender: 1.2 } },
+    { phase: "luftschlag", skipped: true, luckFactor: { attacker: 0.9, defender: 1.1 } },
+    { phase: "seegefecht", skipped: false, luckFactor: { attacker: 1.04, defender: 1.1 } },
+    { phase: "landung", skipped: false, luckFactor: { attacker: 1.02, defender: 1.18 } },
+  ];
+  const l = avgLuck(phases)!;
+  assert.ok(Math.abs(l.attacker - 1.03) < 1e-9);
+  assert.ok(Math.abs(l.defender - 1.14) < 1e-9);
+  assert.equal(avgLuck([{ skipped: true, luckFactor: { attacker: 1, defender: 1 } }]), null);
+});

@@ -7,29 +7,40 @@ test("Meldungen: alle Unterreiter", async ({ page, player }) => {
   await page.goto("/");
   await page.getByRole("navigation").getByRole("button", { name: /^Meldungen/ }).click();
   const tabs = page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab");
-  await expect(tabs).toHaveCount(7);
-  // Lagezentrum ist die Startseite; „Lage“ nicht mit „Lagebild“ verwechseln (Zahl am Reiter erlaubt).
-  await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Lage\s*\d*$/ })).toHaveAttribute("aria-selected", "true");
-  for (const name of ["Lage", "Berichte", "Lagebild", "Bilanz", "Erfolge", "Nachrichten", "Rangliste"]) {
+  // Navigationsumbau: vier Reiter (Lage → Basis, Lagebild → Karte „Sichtungen“, Allianz aus Truppen).
+  await expect(tabs).toHaveCount(4);
+  await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Berichte\s*\d*$/ })).toHaveAttribute("aria-selected", "true");
+  for (const name of ["Berichte", "Nachrichten", "Allianz", "Rangliste"]) {
     await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}\\s*\\d*$`) }).click();
     await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}\\s*\\d*$`) })).toHaveAttribute("aria-selected", "true");
     await expectNoHorizontalOverflow(page, `Meldungen · ${name}`);
   }
-  // Rangliste zeigt den eigenen Spieler; Inhalt liegt im zugehörigen Reiterfeld.
+  // Kein Scrollpfeil mehr: alle vier Reiter passen bei 390 px.
+  for (const name of ["Berichte", "Rangliste"]) await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}`) })).toBeInViewport();
+  // Rangliste zeigt den eigenen Spieler; Bilanz und Erfolge sind Abschnitte der Rangliste.
   await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Rangliste/ }).click();
   await expect(page.getByRole("tabpanel").getByText(player.name).first()).toBeVisible();
+  const inner = page.getByRole("tablist", { name: "Rangliste" });
+  for (const name of ["Bilanz", "Erfolge", "Wertung"]) {
+    await inner.getByRole("tab", { name: new RegExp(`^${name}`) }).click();
+    await expect(inner.getByRole("tab", { name: new RegExp(`^${name}`) })).toHaveAttribute("aria-selected", "true");
+    await expectNoHorizontalOverflow(page, `Meldungen · Rangliste · ${name}`);
+  }
   // Pfeiltasten wechseln den Reiter (Tabs-Muster).
-  await page.getByRole("tab", { name: /^Rangliste/ }).focus();
+  await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Rangliste/ }).focus();
   await page.keyboard.press("ArrowLeft");
-  await expect(page.getByRole("tab", { name: /^Nachrichten/ })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("tab", { name: /^Nachrichten/ })).toBeFocused();
-  await page.keyboard.press("Home");
-  await expect(page.getByRole("tab", { name: /^Lage\s*\d*$/ })).toHaveAttribute("aria-selected", "true"); // erster Reiter: Lage
-  // Allianz liegt unter Truppen.
-  await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
-  await page.getByRole("tablist", { name: "Truppen" }).getByRole("tab", { name: "Allianz" }).click();
+  await expect(page.getByRole("tab", { name: /^Allianz/ })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: /^Allianz/ })).toBeFocused();
   await expect(page.getByRole("tabpanel")).toContainText(/Allianz/);
-  await expectNoHorizontalOverflow(page, "Truppen · Allianz");
+  await page.keyboard.press("Home");
+  await expect(page.getByRole("tab", { name: /^Berichte\s*\d*$/ })).toHaveAttribute("aria-selected", "true"); // erster Reiter: Berichte
+  // Truppen hat keine Allianz mehr.
+  await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
+  await expect(page.getByRole("tablist", { name: "Truppen" }).getByRole("tab")).toHaveCount(3);
+  // Deep-Link der Server-Benachrichtigungen: ?tab=allianz öffnet Meldungen → Allianz.
+  await page.goto("/?tab=allianz");
+  await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Allianz/ })).toHaveAttribute("aria-selected", "true");
+  await expectNoHorizontalOverflow(page, "Meldungen · Allianz");
 });
 
 test("Handbuch: Kapitel, Neuigkeiten, Einstellungen, Verwaltung", async ({ page, player, seed }) => {
