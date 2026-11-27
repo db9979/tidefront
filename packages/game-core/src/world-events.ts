@@ -8,7 +8,8 @@ import { mulberry32, randomInt } from "./rng.ts";
 
 const HOUR_MS = 3600000;
 
-export type WorldEventKind = "schatzschiff" | "grossflotte" | "belagerung";
+/** finale: Saisonfinale „Leviathan“ (finale.ts) – wird nicht zufällig geplant, darum nicht in WORLD_EVENT_KINDS. */
+export type WorldEventKind = "schatzschiff" | "grossflotte" | "belagerung" | "finale";
 export const WORLD_EVENT_KINDS: readonly WorldEventKind[] = ["schatzschiff", "grossflotte", "belagerung"];
 
 export interface WorldEventsBalance {
@@ -20,7 +21,7 @@ export interface WorldEventsBalance {
   retryHours: number;
   /** Kein neues Ereignis, wenn die Saison in weniger Stunden endet. */
   minSeasonHoursLeft: number;
-  kindWeights: Record<WorldEventKind, number>;
+  kindWeights: Partial<Record<WorldEventKind, number>>;
   /** Stärke mal (1 + seasonGrowth * Saisonfortschritt). */
   seasonGrowth: number;
   /** Untergrenze der Bezugs-Lebenspunkte (Spielerstärke). */

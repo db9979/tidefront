@@ -1,7 +1,7 @@
 // Marktnachrichten: Anlässe. Weltereignisse (Hooks bei Beginn und Ende, dazu Abgleich im Worker), Kriegslage,
 // Knappheit (einmal täglich) und Saisonende. runMarketNews ist der Worker-Job (alle 10 Minuten).
 import { and, count, eq, gt, inArray, lte, or, sql } from "drizzle-orm";
-import { market as marketCore, productionRates, settle, storageCapacity, type BaseState } from "@tidefront/game-core";
+import { finaleBalance, market as marketCore, productionRates, settle, storageCapacity, type BaseState } from "@tidefront/game-core";
 import { tables, type Db, type Tx } from "@tidefront/db";
 import { balance, type Engine, type NoticeJob } from "./context.ts";
 import { getSetting, setSetting } from "./settings.ts";
@@ -42,6 +42,10 @@ export function worldEventSpecs(ev: EventRow, nowMs: number): NewsSpec[] {
   }
   if (ev.kind === "belagerung") {
     return specs(cfg.belagerung.pct, `Belagerung von ${data.baseName ?? "einem Hafen"}`, ev.startsAt.getTime(), endMs, cfg.belagerung.fadeHours);
+  }
+  if (ev.kind === "finale" && (ev.status === "active" || ev.outcome === "defeated" || ev.outcome === "escaped")) { // Saisonfinale: Treibstoff zieht an (wie Kriegslage)
+    const c = finaleBalance(balance)?.market;
+    if (c) return specs(c.pct, "Kartell-Armada vor der Küste", ev.activeAt.getTime(), endMs, c.fadeHours);
   }
   if (ev.kind === "schatzschiff" && !open) {
     if (ev.outcome === "defeated") {

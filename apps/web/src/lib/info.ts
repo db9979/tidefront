@@ -65,6 +65,7 @@ export const UNIT_TEXT: Record<string, string> = {
   minensperre: "Trifft einmal jede Landung mit {mine} Schaden. Wird dabei nicht verbraucht.",
   schnellboot: "Boot des Freibeuter-Kartells.",
   piratenmiliz: "Fußvolk des Freibeuter-Kartells.",
+  flaggschiff: "Sektion des Flaggschiffs „Leviathan“ im Saisonfinale. Jede Sektion sinkt für sich; das Flaggschiff ist versenkt, wenn keine mehr schwimmt.",
 };
 
 /** Zahlen für die Texte oben aus der Balance (ohne Balance die Startwerte). */

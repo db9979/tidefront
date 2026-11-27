@@ -18,6 +18,7 @@ import { TemplateBar, shortText } from "../components/Templates.tsx";
 import { ProbeCard } from "../components/SimLauncher.tsx";
 // Weltereignisse als Ziel
 import { KIND_TITLE, useWorldEvents } from "../components/WorldEvents.tsx";
+import { FinalePreview } from "../components/Finale.tsx"; // Saisonfinale
 // Nachrichtendienst: Spionageaufträge
 import { SpyPlan } from "../components/SpyPlan.tsx";
 // Admirale: Führung des Verbands
@@ -200,7 +201,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           {target?.blockadeId && <>Blockadeverband vor dem Hafen – nur Überfall; Seekampf auf dem Feld.<br /></>}
           {target?.convoyId && <>Feindlicher Konvoi – Abfangpunkt wird berechnet.<br /></>}
           {target?.fieldId && <FieldTargetLine fieldId={target.fieldId} />}
-          {target?.eventId && <>Weltereignis <strong>{event ? KIND_TITLE[event.kind] : "…"}</strong>{event?.siege ? ` vor ${event.siege.name}` : ""} – nur Überfall; {event?.kind === "schatzschiff" ? "Abfangpunkt wird berechnet." : "Kampf auf See."}<br /></>}
+          {target?.eventId && <>Weltereignis <strong>{event ? KIND_TITLE[event.kind] : "…"}</strong>{event?.siege ? ` vor ${event.siege.name}` : ""} – nur Überfall; {event?.kind === "schatzschiff" ? "Abfangpunkt wird berechnet." : event?.kind === "finale" ? "Kampf auf See gegen einen Abschnitt passend zu deinem Verband." : "Kampf auf See."}<br /></>}
           {target && (type === "gruendung" || ownTarget || type === "verlegung") && <ExpansionTargetLine type={type} base={base} map={map.data} target={target} fields={fieldsQ.data?.fields} units={chosen} />}
           {target && type !== "gruendung" && type !== "verlegung" && !ownTarget && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.base && <>Hafen <strong>{tInfo.base.name}</strong> ({tInfo.base.owner}){tInfo.base.protection && <span className="text-messing"> · geschützt: {label(tInfo.base.protection)}</span>}</>}
           {target && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.nest && (tInfo.nest.level === null ? <>Piratennest – <strong>Lage unbekannt</strong> (Stufe und Zustand erst mit Sicht oder Aufklärung)</> : <>Piratennest Stufe <strong>{tInfo.nest.level}</strong>{tInfo.nest.empty ? " (verlassen)" : ""}</>)}
@@ -275,7 +276,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
                 <div>Reisezeit {fmtSeconds(p.travelSeconds)} je Richtung</div>
                 <div>Treibstoff {fmtNum(p.fuelCost)} (hin und zurück)</div>
                 <div>Ankunft {fmtTime(p.arriveAtMs)} · zurück {fmtTime(p.returnAtMs)}</div>
-                {"intercept" in p && p.intercept && <div>Abfangpunkt Feld {p.intercept.col}/{p.intercept.row}</div>}
+                {"intercept" in p && p.intercept && <div>{"finale" in p && p.finale ? "Kampfort" : "Abfangpunkt"} Feld {p.intercept.col}/{p.intercept.row}</div>}
+                {"finale" in p && p.finale && <FinalePreview p={p.finale} />}
                 {"weather" in p && p.weather && balance.weather && <RouteWeather w={p.weather} wb={balance.weather} factor={"weatherFactor" in p ? p.weatherFactor : 1} />}
               </>
             ) : (

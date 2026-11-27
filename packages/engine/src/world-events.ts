@@ -3,7 +3,7 @@
 // Ablauf: world-events-spawn.ts (Entstehen), world-events-run.ts (Fahrt, Angriffe, Ende, Handler-Tabelle),
 // world-events-missions.ts (Missionen gegen Ereignisse), world-events-view.ts (Lesemodell).
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { pickKind, worldEventsBalance, type Counts, type ResourceMap, type RoutePoint, type WorldEventKind } from "@tidefront/game-core";
+import { finaleBalance, finaleSchedule, pickKind, worldEventsBalance, type Counts, type ResourceMap, type RoutePoint, type WorldEventKind } from "@tidefront/game-core";
 import { tables, type Db, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, type Notice, type NoticeJob } from "./context.ts";
 import { scheduleEvent } from "./store.ts";
@@ -48,6 +48,18 @@ export interface WorldEventData {
   ownerId?: number;
   lastTickMs?: number;
   deducted?: ResourceMap;
+  /** Saisonfinale (finale-*.ts). */
+  finale?: FinaleData;
+}
+
+/** Saisonfinale: Stärke H (beim Erscheinen), Vorhuten, Teilnehmer, Schaden je Allianz (nur Menschen, zum Kampfzeitpunkt). */
+export interface FinaleData {
+  totalHp: number;
+  participants: number;
+  vanguards: (Hex & { name: string })[];
+  allianceHp: Record<string, { name: string; tag: string; hp: number }>;
+  /** Flaggschiff versenkt: Zeitpunkt. */
+  sunkAtMs?: number;
 }
 
 export interface WorldEventRow {
@@ -73,6 +85,7 @@ export const KIND_TEXT: Record<WorldEventKind, string> = {
   schatzschiff: "Schatzschiff",
   grossflotte: "Großflotte",
   belagerung: "Belagerung",
+  finale: "Kartell-Armada",
 };
 
 export async function lockWorldEvent(tx: Tx, id: number): Promise<WorldEventRow | null> {
@@ -175,6 +188,11 @@ export async function siegeEffects(db: DbOrTx, baseId: number, nowMs: number): P
 
 // ---------------------------------------------------------------- Planer und Saisonende
 
+/** Saisonfinale: Ankündigung; ab dann entstehen keine gewöhnlichen Weltereignisse mehr (ohne Finale-Block: nie). */
+export function ordinaryEventsUntil(season: { startsAt: Date; endsAt: Date }): number {
+  return finaleBalance(balance) ? finaleSchedule(season.startsAt.getTime(), season.endsAt.getTime(), balance).announceMs : Infinity;
+}
+
 async function runningSeasonRow(db: DbOrTx) {
   const [s] = await db.select().from(tables.season).where(eq(tables.season.status, "running")).limit(1);
   return s ?? null;
@@ -191,6 +209,7 @@ export async function ensureWorldEventPlanner(db: Db, nowMs: number): Promise<nu
     await tx.execute(sql`select pg_advisory_xact_lock(7340002)`);
     const season = await runningSeasonRow(tx);
     if (!season) return null;
+    await (await import("./finale-run.ts")).ensureFinalePlanner(tx, season, nowMs); // Saisonfinale: Ankündigung planen
     const [pending] = await tx
       .select({ id: tables.gameEvent.id })
       .from(tables.gameEvent)
@@ -200,6 +219,7 @@ export async function ensureWorldEventPlanner(db: Db, nowMs: number): Promise<nu
     const w = worldEventsBalance(balance);
     const at = Math.max(nowMs, season.startsAt.getTime() + w.firstSpawnAfterHours * HOUR_MS);
     if (at > season.endsAt.getTime() - w.minSeasonHoursLeft * HOUR_MS) return null;
+    if (at >= ordinaryEventsUntil(season)) return null; // Saisonfinale: ab der Ankündigung keine gewöhnlichen Ereignisse
     const kind = pickKind(crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296, balance);
     await scheduleEvent(tx, "world_event_spawn", at, { seasonId: season.id, kind }, null);
     return at;

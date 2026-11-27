@@ -31,7 +31,7 @@ import type { Handler, HandlerResult } from "./events.ts";
 import { randomSeed, scheduleEvent } from "./store.ts";
 import { worldEventNews } from "./market-news-sources.ts";
 import {
-  KIND_TEXT, notice, openWorldEvents, playersWithBase, resText, runningSeasonRow, systemMessage,
+  KIND_TEXT, notice, openWorldEvents, ordinaryEventsUntil, playersWithBase, resText, runningSeasonRow, systemMessage,
   type ArmadaTarget, type Hex, type WorldEventData,
 } from "./world-events.ts";
 
@@ -264,12 +264,14 @@ export const worldEventSpawn: Handler = async (tx, ev, due) => {
   if (!season || (ev.payload.seasonId !== undefined && Number(ev.payload.seasonId) !== season.id)) return none();
   const left = season.endsAt.getTime() - due;
   if (left < w.minSeasonHoursLeft * HOUR_MS) return none();
+  const until = ordinaryEventsUntil(season); // Saisonfinale: ab der Ankündigung keine gewöhnlichen Ereignisse
   const wanted = (WORLD_EVENT_KINDS as readonly string[]).includes(String(ev.payload.kind)) ? (ev.payload.kind as WorldEventKind) : "schatzschiff";
   const progress = seasonProgress(season.startsAt.getTime(), season.endsAt.getTime(), due);
+  if (due >= until) return none();
   const made = await spawnWorldEvent(tx, due, wanted, season.id, progress);
   const next = nextSpawn(due, randomSeed(), balance);
   const at = made ? next.atMs : due + w.retryHours * HOUR_MS;
-  if (at <= season.endsAt.getTime() - w.minSeasonHoursLeft * HOUR_MS) {
+  if (at <= season.endsAt.getTime() - w.minSeasonHoursLeft * HOUR_MS && at < until) {
     await scheduleEvent(tx, "world_event_spawn", at, { seasonId: season.id, kind: made ? next.kind : wanted }, null);
   }
   if (!made) return none();

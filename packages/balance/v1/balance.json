@@ -54,7 +54,8 @@
   },
   "npcUnits": {
     "schnellboot": { "branch": "see", "hp": 80, "attack": { "see": 18, "luft": 2, "land": 0, "anlage": 4 }, "bonus": {} },
-    "piratenmiliz": { "branch": "land", "hp": 20, "attack": { "see": 0, "luft": 0, "land": 5, "anlage": 5 }, "size": 1, "bonus": {} }
+    "piratenmiliz": { "branch": "land", "hp": 20, "attack": { "see": 0, "luft": 0, "land": 5, "anlage": 5 }, "size": 1, "bonus": {} },
+    "flaggschiff": { "branch": "see", "hp": 1000, "attack": { "see": 20, "luft": 7, "land": 0, "anlage": 0 }, "bonus": {} }
   },
   "defenses": {
     "kuestenbatterie": { "cost": { "stahl": 500, "treibstoff": 0, "elektronik": 100, "proviant": 0 }, "seconds": 300, "hp": 400, "attack": { "see": 90, "luft": 0, "land": 10 } },
@@ -121,7 +122,7 @@
     "raidResearchWeight": 0.5,
     "raidHpWeights": { "see": 0.5, "minenraeumer": 0.1, "minenleger": 0, "landungsschiff": 0, "kolonieschiff": 0 }
   },
-  "scoring": { "npcDefenseFactor": 0.25, "npcWorldEventKinds": [] },
+  "scoring": { "npcDefenseFactor": 0.25, "npcWorldEventKinds": [], "armadaFactor": 0.5 },
   "pvp": {
     "bountyByRank": [0.5, 0.35, 0.2], "bountyDefenseFactor": 0.5, "mutMin": 0.5, "mutMax": 1.5, "maxFactor": 2,
     "pairWindowHours": 72, "pairFactors": [1, 0.5, 0.25, 0], "collusionDays": 7, "suspiciousFights": 3, "suspiciousDays": 7,
@@ -197,6 +198,28 @@
       "shareOfDefense": 0.5,
       "minSchnellboote": 6,
       "lootPool": { "stahl": 2500, "treibstoff": 1200, "elektronik": 600, "proviant": 900 }
+    },
+    "finale": {
+      "referenceSeasonDays": 42,
+      "announceAfterDays": 35.5,
+      "appearAfterDays": 37.5,
+      "durationHours": 72,
+      "activeHours": 72,
+      "referenceFactor": 4,
+      "minHp": 40000,
+      "squadronShare": 0.9,
+      "milizPerBoat": 8,
+      "sectorFactor": 0.5,
+      "minSectorBoats": 4,
+      "lootPerHp": 0.6,
+      "lootMix": { "stahl": 5000, "treibstoff": 2500, "elektronik": 1200, "proviant": 1800 },
+      "treasureShare": 0.05,
+      "excludeUnits": ["landungsschiff", "kolonieschiff", "minenleger", "minenraeumer"],
+      "vanguardSpreadKm": 1500,
+      "vanguardKm": 400,
+      "probeRuns": 12,
+      "botIntervalHours": 12,
+      "market": { "pct": { "treibstoff": 0.06 }, "fadeHours": 12 }
     }
   },
   "power": {
@@ -405,7 +428,8 @@
       "wochenwerk": { "title": "Wochenwerk", "description": "Wochenziele erfüllt", "counter": "wochenziele", "thresholds": [3, 15, 50] },
       "landnahme": { "title": "Landnahme", "description": "Rohstofffelder eingenommen", "counter": "felder", "thresholds": [1, 5, 20] },
       "kolonist": { "title": "Kolonist", "description": "Außenposten gegründet", "counter": "kolonien", "thresholds": [1, 3, 6] },
-      "gruenerhafen": { "title": "Grüner Hafen", "description": "Strom-Stunden Ökostrom genutzt (Bedarf, Elektrolyse, Seekabel)", "counter": "oekostrom", "thresholds": [10000, 75000, 300000] }
+      "gruenerhafen": { "title": "Grüner Hafen", "description": "Strom-Stunden Ökostrom genutzt (Bedarf, Elektrolyse, Seekabel)", "counter": "oekostrom", "thresholds": [10000, 75000, 300000] },
+      "armadajaeger": { "title": "Armada-Jäger", "description": "Anteil am Gesamtschaden der Kartell-Armada im Saisonfinale (Prozent)", "counter": "armada", "thresholds": [5, 15, 30], "tierTexts": ["5 % des Gesamtschadens", "15 % des Gesamtschadens", "30 % des Gesamtschadens"] }
     },
     "weekly": { "goalValue": 2500, "goalCredits": 150, "bonusValue": 4500, "bonusCredits": 400, "stageGrowth": 0.15 },
     "minCountedTradeCredits": 500

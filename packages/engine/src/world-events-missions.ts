@@ -34,6 +34,7 @@ import { modifiersFor, modsOf } from "./modifiers.ts";
 import { battleWeather, missionWeather, withArrival } from "./weather.ts"; // Wetter wie bei normalen Missionen (v1.6)
 import { admiralForLaunch, admiralPreviewMods, assignAdmiral } from "./admirals-core.ts"; // Admirale
 import { admiralsAfterBattle, type BattleAdmiral } from "./admirals-battle.ts";
+import { finaleAim, finaleMissionArrive, finalePreview, finaleTiming } from "./finale-battle.ts"; // Saisonfinale
 
 export interface EventMissionInput {
   type: string;
@@ -53,6 +54,7 @@ function aim(ev: WorldEventRow | null, playerId: number, own: BaseRow, input: Ev
   if (input.type !== "ueberfall") throw new GameError("event_needs_raid");
   // Mehrere Häfen: den Ring um einen eigenen Hafen bricht man nur aus einem anderen eigenen Hafen.
   if (ev.kind === "belagerung" && ev.data.ownerId === playerId && (ev.targetBaseId === null || ev.targetBaseId === own.id)) throw new GameError("own_siege");
+  if (ev.kind === "finale") return finaleAim(ev, own); // Saisonfinale: Sammelpunkt oder nächste Vorhut
   if (ev.kind !== "schatzschiff" || !ev.data.route) return { col: ev.col, row: ev.row };
   const speed = slowestSpeedKmh(input.units, balance);
   if (speed === null) throw new GameError("no_carrier");
@@ -101,6 +103,8 @@ export async function launchAgainstEvent(
   const r = plan(own, input, target, await activeMissionCount(tx, own.id), nowMs, combineModifiers(await modsOf(tx, own, nowMs), adm?.mods));
   if (!r.ok) return r;
   if (ev!.kind !== "grossflotte" && r.mission.arriveAtMs >= ev!.endsAt.getTime()) return { ok: false, code: "too_late" };
+  const early = finaleTiming(ev!, r.mission.arriveAtMs); // Saisonfinale: nicht vor dem Erscheinen
+  if (early) return { ok: false, code: early };
   await saveBase(tx, own.id, r.base);
   const [m] = await tx
     .insert(tables.mission)
@@ -131,7 +135,10 @@ export async function previewAgainstEvent(db: DbOrTx, playerId: number, own: Bas
   const r = plan({ ...own, state: settle(own.state, nowMs, balance, mods) }, input, target, await activeMissionCount(db, own.id), nowMs, mods);
   if (!r.ok) return { ok: false as const, code: r.code, distanceKm, weather };
   if (ev!.kind !== "grossflotte" && r.mission.arriveAtMs >= ev!.endsAt.getTime()) return { ok: false as const, code: "too_late", distanceKm, weather };
+  const early = finaleTiming(ev!, r.mission.arriveAtMs); // Saisonfinale: nicht vor dem Erscheinen
+  if (early) return { ok: false as const, code: early, distanceKm, weather };
   return {
+    finale: ev!.kind === "finale" ? finalePreview(ev!, input.units, mods, target) : null, // Saisonfinale: Abschnitt, Siegchance, Beute
     ok: true as const,
     distanceKm,
     travelSeconds: r.mission.travelSeconds,
@@ -198,6 +205,7 @@ export async function eventMissionArrive(
     }).returning({ id: tables.battleReport.id });
     return { returning: { ...plan.units }, cargoHome: {}, reportId: r.id, notify, push };
   }
+  if (ev.kind === "finale") return finaleMissionArrive(tx, ev, m, plan, origin, due, attackerName, admA); // Saisonfinale
 
   // Modifikatoren des Spielers (Forschung, Veteranen) wirken wie bei jedem Überfall.
   const modifiers = combineModifiers(await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due, baseId: origin?.id, isHome: origin?.isHome }), admA?.mods);

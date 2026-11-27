@@ -10,6 +10,7 @@ export * from "./pirates.ts";
 export * from "./protection.ts";
 export * from "./resolution.ts";
 export * from "./world-events.ts";
+export * from "./finale.ts"; // Saisonfinale „Leviathan“
 export * from "./modifiers.ts";
 export * from "./research.ts";
 export * from "./luck.ts";

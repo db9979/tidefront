@@ -84,7 +84,7 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { 
     nest: map.data.nests.find((n) => n.col === t.col && n.row === t.row),
     wreck: map.data.wrecks.find((w) => w.col === t.col && w.row === t.row),
     fleets: map.data.fleets.filter((f) => f.col === t.col && f.row === t.row), // Lagebild: fremde Verbände
-    event: worldEvents.data?.events.find((e) => e.col === t.col && e.row === t.row),
+    event: worldEvents.data?.events.find((e) => (e.col === t.col && e.row === t.row) || e.finale?.vanguards.some((v) => v.col === t.col && v.row === t.row)), // Saisonfinale: Vorhuten
     field: fieldAt(fields.data, t), // Felder
     naval: (() => { const n = navalAt(naval.data, t); return n.mines.length > 0 || !!n.blockade || n.convoys.length > 0; })(),
   });

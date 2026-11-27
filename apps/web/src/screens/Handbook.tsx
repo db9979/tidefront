@@ -19,6 +19,7 @@ import { FieldsChapter } from "../components/FieldsChapter.tsx"; // Felder
 import { HarborsChapter } from "../components/HarborsChapter.tsx"; // Mehrere Häfen
 import { BotsChapter } from "../components/BotsChapter.tsx"; // KI-Spieler
 import { LagebildChapter } from "../components/LagebildChapter.tsx"; // Lagebild
+import { FinaleChapter } from "../components/FinaleChapter.tsx"; // Saisonfinale
 import { CatchUpChapter } from "../components/CatchUpChapter.tsx"; // Aufholhilfe
 import { requestBugReport } from "../lib/bug-log.ts";
 import { HScroll } from "../components/HScroll.tsx";
@@ -195,6 +196,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
         </>
       ),
     },
+    { id: "saisonfinale", icon: "kartell", title: "Saisonfinale: Leviathan", body: <FinaleChapter b={b} /> }, // Saisonfinale
     {
       id: "boerse", icon: "credits", title: "Börse",
       body: (

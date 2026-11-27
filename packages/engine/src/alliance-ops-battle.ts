@@ -40,10 +40,11 @@ import { settleGuests, stationedGuests, withGuests } from "./alliance-ops-statio
 import { lockRaid } from "./alliance-ops-raid.ts";
 import { KIND_TEXT, addRes, contributors, endWorldEvent, isOpen, lockWorldEvent, resText, systemMessage } from "./world-events.ts";
 import { siegeTick } from "./world-events-run.ts";
+import { finaleRaidFight } from "./finale-battle.ts"; // Saisonfinale
 
 const HOUR_MS = 3600000;
 
-interface Part {
+export interface Part {
   playerId: number;
   name: string;
   mission: typeof tables.mission.$inferSelect;
@@ -53,7 +54,7 @@ interface Part {
   value: number;
 }
 
-interface Fight {
+export interface Fight {
   kind: string;
   title: string;
   defenderPlayerId: number | null;
@@ -64,6 +65,8 @@ interface Fight {
   /** Beute vor der Teilung (ohne Laderaumgrenze). */
   loot: ResourceMap;
   extra: Record<string, unknown>;
+  /** Saisonfinale: Beute ohne Laderaumgrenze teilen. */
+  uncapped?: boolean;
   /** Nach der Teilung: Beute insgesamt verbuchen (Verteidiger, Ereignis). */
   commit?: (total: ResourceMap, shares: ResourceMap[]) => Promise<void>;
 }
@@ -140,6 +143,7 @@ async function fightEvent(tx: Tx, parts: Part[], joint: ReturnType<typeof combin
     return { ...base, kind: "weltereignis_leer", title: `${ev ? KIND_TEXT[ev.kind] : "Weltereignis"}: niemand mehr da`, report: null, loot: {},
       extra: { worldEvent: { id: ev?.id ?? null, kind: ev?.kind ?? null, outcome: ev?.outcome ?? null }, text: "Das Ereignis war bei Ankunft schon vorbei." } };
   }
+  if (ev.kind === "finale") return finaleRaidFight(tx, parts, joint, ev, col, row, due, notify, push); // Saisonfinale: Abschnitt, Schatz
   const seed = randomSeed();
   const res = resolveBattle(joint, { units: activeUnits(ev.units), defenses: {} }, balance, seed, battleWeather(col, row, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
@@ -221,7 +225,7 @@ export const raidArrive: Handler = async (tx, ev, due) => {
   const finals = parts.map((p, i) => (split ? activeUnits(split[i].final) : { ...p.plan.units }));
   const caps = parts.map((p, i) => fleetTotals(finals[i], balance, p.mods).cargoCapacity);
   const weights = parts.map((p) => p.value);
-  const shares = fight?.report ? shareLoot(fight.loot, weights, caps, balance.resources) : parts.map(() => ({}) as ResourceMap);
+  const shares = fight?.report ? shareLoot(fight.loot, weights, fight.uncapped ? caps.map(() => Number.MAX_SAFE_INTEGER) : caps, balance.resources) : parts.map(() => ({}) as ResourceMap);
   const total: ResourceMap = {};
   for (const r of balance.resources) total[r] = shares.reduce((s, x) => s + (x[r] ?? 0), 0);
   if (fight?.commit) await fight.commit(total, shares);
