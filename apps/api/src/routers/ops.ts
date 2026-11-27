@@ -29,6 +29,8 @@ import {
   setEmail,
   setEmailPrefs,
   smtpView,
+  suspiciousPairs, // PvP: Auffällige Paare
+  setReportExcluded,
 } from "@tidefront/engine";
 import { adminProc, authed, t, wrap } from "../trpc.ts";
 
@@ -139,6 +141,11 @@ export const adminRouter = t.router({
   setIntelFog: adminProc
     .input(z.object({ on: z.boolean() }))
     .mutation(({ ctx, input }) => setIntelFog(ctx.engine.db, input.on)),
+  /** PvP: Auffällige Paare (viele Kämpfe oder Siege ohne Verteidigungsverluste) und Bericht aus der Wertung nehmen. */
+  pvpPairs: adminProc.query(({ ctx }) => suspiciousPairs(ctx.engine.db, Date.now())),
+  pvpExclude: adminProc
+    .input(z.object({ reportId: z.number().int().min(1), excluded: z.boolean() }))
+    .mutation(({ ctx, input }) => wrap(() => setReportExcluded(ctx.engine.db, input.reportId, input.excluded))),
   setCartelStrength: adminProc
     .input(z.object({ pct: z.number().int().min(25).max(300) }))
     .mutation(({ ctx, input }) => setCartelStrength(ctx.engine.db, input.pct)),

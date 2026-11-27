@@ -20,6 +20,7 @@ import { FieldReport } from "../components/Fields.tsx"; // Felder
 import { HScroll } from "../components/HScroll.tsx";
 const NAVAL_KINDS = ["minen", "blockade", "blockadekampf", "konvoi", "posten", "patrouille", "sichtung", "satellit"]; // See und Lagebild Stufe 2/3: kein „Wiederholen“
 import { IntelOpsReport } from "../components/IntelOpsReport.tsx"; // Lagebild Stufe 2
+import { PvpReportNote } from "../components/Pvp.tsx"; // Spieler gegen Spieler
 
 type Counts = Record<string, number>;
 
@@ -125,6 +126,7 @@ function ReportDetail({ id, onBack }: { id: number; onBack: () => void }) {
       {r.kind.startsWith("weltereignis") && <WorldEventReportNote kind={r.kind} data={d} />}
       {r.kind === "spionage" && d.spy ? <SpyReport d={d} role={r.role} /> : null}
       {r.kind === "sabotage" && d.sabotage ? <SabotageReport d={d} /> : null}
+      {d.battle && r.kind !== "spionage" ? <PvpReportNote d={d} /> : null}{/* PvP: Kopfgeld, Mutfaktor */}
       {d.battle && r.kind !== "spionage" ? (
         <BattleLog
           b={d.battle as Battle}

@@ -158,7 +158,17 @@ export function suspendNightShield(
 }
 
 export function isBeginnerProtected(p: ProtectionState, nowMs: number, balance: Balance): boolean {
+  if (p.beginnerEndedAtMs !== undefined && nowMs >= p.beginnerEndedAtMs) return false; // PvP: eigener Spielerüberfall
   return nowMs < p.createdAtMs + balance.protection.beginnerDays * DAY_MS;
+}
+
+/**
+ * PvP-Vorlage: Ein eigener Überfall auf einen Spielerhafen beendet den Anfängerschutz sofort (Nester, Felder und
+ * Weltereignisse nicht). Ohne laufenden Anfängerschutz bleibt der Stand unverändert.
+ */
+export function endBeginnerProtection(p: ProtectionState, nowMs: number, balance: Balance): ProtectionState {
+  if (!isBeginnerProtected(p, nowMs, balance)) return { ...p };
+  return { ...p, beginnerEndedAtMs: nowMs };
 }
 
 export function isDefeatShieldActive(p: ProtectionState, nowMs: number): boolean {

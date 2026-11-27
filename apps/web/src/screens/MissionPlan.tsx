@@ -29,6 +29,7 @@ import { FieldTargetLine, StayAllToggle, fieldsRules, useFields } from "../compo
 import { ExpansionTargetLine, OriginLine, OwnHarborPick } from "../components/ExpansionPlan.tsx"; // Mehrere Häfen
 import { buildingLevel, expansionRules } from "../lib/expansion.ts";
 import { IntelOpsPlan, type IntelOpKind } from "../components/IntelOpsPlan.tsx"; // Lagebild Stufe 2
+import { PvpTargetHint } from "../components/Pvp.tsx"; // Spieler gegen Spieler
 
 const TYPES = [
   { id: "ueberfall", text: "Überfall", hint: "Kampf am Ziel, Beute bei Sieg" },
@@ -204,6 +205,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           {target && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.nest && (tInfo.nest.level === null ? <>Piratennest – <strong>Lage unbekannt</strong> (Stufe und Zustand erst mit Sicht oder Aufklärung)</> : <>Piratennest Stufe <strong>{tInfo.nest.level}</strong>{tInfo.nest.empty ? " (verlassen)" : ""}</>)}
           {target && type !== "gruendung" && type !== "verlegung" && !target.eventId && !target.blockadeId && !target.convoyId && !tInfo?.base && !tInfo?.nest && !target.fieldId && <span className="text-slate-400">Feld {target.col}/{target.row}: kein Ziel</span>}
         </p>
+        {type === "ueberfall" && target && !ownTarget && tInfo?.base && !tInfo.base.own && <PvpTargetHint col={target.col} row={target.row} />}{/* Kopfgeld, Mutfaktor, Paarbremse */}
       </Card>
 
       {type === "blockade" && <HoldHours value={holdHours} onChange={setHoldHours} />}

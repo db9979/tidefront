@@ -293,6 +293,9 @@ Zeitlich begrenzte Ereignisse auf der Karte, die alle Spieler betreffen und Zusa
   erst nach `nightShieldChangeHours` erlaubt (`shield_cooldown`). So lässt sich der Schild nicht nach einer Radarwarnung gegen einen
   schon anrückenden Angriff einschalten. Die Wahl bei der Gründung gilt sofort. Zeitzone: −840 bis +840 Minuten.
 - Anfängerschutz `beginnerDays` Tage. Nach verlorener Verteidigung `afterDefeatShieldHours` Stunden Schutz.
+- Der Anfängerschutz endet vorzeitig mit dem ersten eigenen Überfall auf einen Spielerhafen (`pvp.beginnerEndsOnPlayerRaid`,
+  beim Auslaufen bzw. Beitritt zu einem Sammelangriff auf einen Hafen; Nester, Felder, Weltereignisse, Blockaden,
+  Aufklärung nicht) – in allen Häfen des Spielers (`protection.beginnerEndedAtMs`). Ein Rückruf stellt ihn nicht wieder her.
 
 ## Börse Stufe 1
 
@@ -364,6 +367,31 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
   - **Beute:** Wert der Beute aus eigenen Überfällen der Saison (zum Richtpreis).
   - **Befehle:** Punkte aus abgeholten Tagesbefehlen der Saison samt Serienbonus (bereits Punkte, kein Kostenwert;
     siehe Abschnitt Tagesbefehle).
+- **Spieler gegen Spieler** (Vorlage „Mehr Spieler gegen Spieler“, freigegeben 27.11.2026, alle Empfehlungen; Block `pvp`): gilt für
+  jeden Kampfbericht mit Spieler auf beiden Seiten (Überfall, Sammelangriff, Blockadekampf, Konvoi, Feld). Nur die
+  Wertung ändert sich; Beute und Verluste bleiben. Ein geplünderter Spieler verliert weiterhin keine Punkte – die
+  Paarbremse verhindert, dass zwei Freunde so Punkte erzeugen.
+  - **Rang zum Tagesbeginn:** Beim ersten Abruf des Spieltags (Worker alle 10 min, sonst erster Kampf oder Rangliste)
+    hält der Server Rang und Gesamtpunkte aller Spieler fest (`server_setting pvp_rank_snapshot`). Jeder Spielerkampf
+    speichert daraus `report.pvp` = { Rang und Punkte beider, Kopfgeld, Mutfaktor, Absprache }.
+  - **Kopfgeld:** Ziel auf Rang 1/2/3 (mit Punkten), Angreifer schlechter platziert (oder ohne Rang): Kampfpunkte des
+    Angreifers × (1 + `bountyByRank`) = ×1,5/1,35/1,2, nicht die Beute. Kampfpunkte des Kopfgeld-Ziels aus diesem Kampf
+    × `bountyDefenseFactor` (0,5) – auch bei Absprache.
+  - **Mutfaktor:** m = √(Punkte Ziel / Punkte Angreifer), begrenzt `mutMin`–`mutMax` (0,5–1,5; Angreifer ohne Punkte 1,5)
+    auf Kampf- und Beutepunkte des Angreifers. Kopfgeld × Mut höchstens `maxFactor` (2).
+  - **Paarbremse:** Spielerkämpfe desselben Paares (beide Richtungen; Sammelangriff: jeder Teilnehmer mit dem Ziel)
+    innerhalb von `pairWindowHours` (72 h) zählen × `pairFactors` 1/0,5/0,25/0 nach Zahl der früheren Kämpfe im
+    Fenster. Der Angreifer nimmt die Stufe seines Paares, der Verteidiger die niedrigste der beteiligten Paare. Aus den
+    Berichten der Saison abgeleitet (auch für ältere Berichte ohne Stempel), nichts gespeichert.
+  - **Absprache-Sperre:** Kein Kopfgeld und Mutfaktor höchstens 1, wenn ein Beteiligter mit dem Ziel in den letzten
+    `collusionDays` (7) Tagen ein Handelsangebot angenommen hat, ein Transport zwischen ihnen ankam, einer beim anderen
+    stationiert war, sie in derselben Allianz oder im Pakt sind oder waren (Austritt, Ausschluss, Auflösung, Paktende
+    werden in `server_setting pvp_ties` gemerkt). Beim Kampf geprüft und im Bericht festgehalten.
+  - **Verwaltung „Auffällige Paare“:** Paare mit ≥ `suspiciousFights` (3) Spielerkämpfen in `suspiciousDays` (7) Tagen
+    oder mit Siegen ohne Verluste des Verteidigers; „Bericht aus der Wertung nehmen“ setzt `report.pvpExcluded` (Kampf
+    und Beute beider Seiten zählen 0; für die Paarbremse zählt der Kampf weiter).
+  - **KI-Spieler:** Der Freibeuter wählt unter seinen erlaubten Zielen Kopfgeld-Ziele zuerst.
+  - Nachtschild und Schutz nach Niederlage bleiben unverändert.
 - Rang nach Gesamtpunkten; Punktgleiche teilen den Rang.
 - Am Saisonende: Gold, Silber und Bronze für Rang 1 bis 3 (mit Punkten), je Kategorie eine Auszeichnung für den Besten
   (für Befehle: „Pflichtbewusstester Kapitän“), dazu „Grünster Hafen“ für den meisten genutzten Ökostrom in einem Hafen

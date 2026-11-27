@@ -14,7 +14,7 @@ import type {
 import { hasResources, settle, subtractResources } from "./economy.ts";
 import { commandPoints, missionSlots } from "./buildings.ts";
 import { distanceKm } from "./geo.ts";
-import { protectionStatus, suspendNightShield } from "./protection.ts";
+import { endBeginnerProtection, protectionStatus, suspendNightShield } from "./protection.ts";
 import type { Modifiers } from "./modifiers.ts";
 import { modEntry, modValue } from "./modifiers.ts";
 import { hexAtLonLat, inGrid, seaRoute, seaRouteCopy } from "@tidefront/world";
@@ -214,6 +214,8 @@ export function planMission(
   }
   if (type === "ueberfall") {
     next.protection = suspendNightShield(next.protection, nowMs, balance);
+    // PvP: Überfall auf einen Spielerhafen beendet den eigenen Anfängerschutz (nicht Nester, Felder, Weltereignisse).
+    if (input.playerHarbor && balance.pvp?.beginnerEndsOnPlayerRaid) next.protection = endBeginnerProtection(next.protection, nowMs, balance);
   }
 
   const shipFactor = hasShips && input.weather ? input.weather.shipFactor : 1;
