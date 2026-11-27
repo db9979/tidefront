@@ -40,6 +40,7 @@ test("Rohstofffeld besetzen", async ({ page, player, seed }) => {
   await page.reload();
   await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
   await page.getByRole("tab", { name: "Einsatz" }).click();
-  await expect(page.getByRole("heading", { name: /^Meine Felder 1\// })).toBeVisible();
+  await page.getByRole("button", { name: /^Rohstofffelder 1\// }).click();
+  await expect(page.getByRole("dialog").getByRole("heading", { name: /^Meine Felder 1\// })).toBeVisible();
   await expectNoHorizontalOverflow(page, "Truppen mit eigenem Feld");
 });

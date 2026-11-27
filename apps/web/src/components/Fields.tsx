@@ -5,7 +5,7 @@ import { trpc, trpcClient, type Balance, type BaseData, type Outputs } from "../
 import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
-import { Button, Card, ErrorLine, UnitChips } from "../ui.tsx";
+import { Button, Card, ErrorLine, SmallButton, UnitChips } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 import type { Target } from "../App.tsx";
 import { FieldEscortEditor, FieldIncomingLines } from "./FieldEscort.tsx"; // Felder 2: Geleit, Vorwarnung, Verstärkung
@@ -113,37 +113,39 @@ export function FieldMissionLine({ missionId }: { missionId: number }) {
   );
 }
 
-/** Truppen: „Meine Felder“ mit Ertrag, Besatzung, nächster Lieferung und Rückruf. */
-export function MyFieldsCard({ base, onShowOnMap }: { base: BaseData; onShowOnMap: (t: Target) => void }) {
+/** Truppen: „Meine Felder“ (Blatt der Kachel „Rohstofffelder“) mit Ertrag, Besatzung, nächster Lieferung und Rückruf. */
+export function MyFieldsPanel({ base, onShowOnMap }: { base: BaseData; onShowOnMap: (t: Target) => void }) {
   const q = useFields();
   const now = useNow();
   const d = q.data;
   if (!d) return null;
   return (
-    <Card title={<><Icon id="besetzen" size={18} /> Meine Felder {d.mine.length}/{d.maxFields}</>}>
-      {d.mine.length === 0 && <p className="text-sm text-ink2">Noch kein Rohstofffeld. Felder liegen auf See zwischen den Häfen (Karte: Bohrinsel, Erzbucht, Fischgrund, Wrack) – aufklären, dann mit Schiffen besetzen. {d.maxFields === 0 ? "Dafür brauchst du eine Hafenkommandantur." : ""}</p>}
+    <div>
+      {d.mine.length === 0 && (
+        <div className="text-sm text-ink2">
+          <p>Noch kein Rohstofffeld. Felder liegen auf See zwischen den Häfen (Karte: Bohrinsel, Erzbucht, Fischgrund, Wrack) – aufklären, dann mit Schiffen besetzen. {d.maxFields === 0 ? "Dafür brauchst du eine Hafenkommandantur." : ""}</p>
+          <SmallButton className="mt-1 -ml-3" onClick={() => onShowOnMap({ col: base.col, row: base.row })}>Felder auf der Karte suchen</SmallButton>
+        </div>
+      )}
       <ul className="divide-y divide-navy-700">
         {d.mine.map((m) => (
           <li key={m.id} className="py-2 text-sm flex gap-3">
             <Icon id={m.kind} size={36} />
             <div className="flex-1 min-w-0">
-              <div className="flex justify-between gap-2">
-                <strong>{KIND_TEXT[m.kind]} · Stufe {m.tier}</strong>
-                <button type="button" className="tap text-sea-300 underline text-xs" onClick={() => onShowOnMap({ col: m.col, row: m.row })}>Feld {m.col}/{m.row}</button>
-              </div>
+              <strong>{KIND_TEXT[m.kind]} · Stufe {m.tier}</strong> <span className="text-xs text-ink2 mono">Feld {m.col}/{m.row}</span>
               <div className="text-xs text-emerald-300">Ertrag {resLine(m.yieldPerHour)}/h ({Math.round(m.factor * 100)} %{m.zoneBonus ? ", Zonenbonus" : ""}) · Unterhalt {fmtNum(m.upkeepPerHour)} Proviant/h</div>
               <FieldIncomingLines incoming={m.incoming} reinforcements={m.reinforcements} />
               <div className="text-xs">Besatzung: <UnitChips counts={m.garrison} />{Object.keys(m.escort).length > 0 && <span className="text-ink2"> – gegen Spieler verteidigt: <UnitChips counts={m.defenders} /> (gegen das Kartell alle)</span>}</div>
               <FieldEscortEditor key={JSON.stringify(m.escort)} fieldId={m.id} garrison={m.garrison} escort={m.escort} />
               <div className="text-xs text-ink2">Nächste Lieferung {d.nextDeliveryAtMs ? `in ${fmtDuration(d.nextDeliveryAtMs - now)}` : "bald"} per Konvoi nach {m.home ?? base.name}</div>
-              <button type="button" className="tap text-sea-300 underline text-xs mt-1" onClick={() => onShowOnMap({ col: m.col, row: m.row })}>Verstärken: auf der Karte das Feld antippen</button>
+              <SmallButton className="mt-1 -ml-3" onClick={() => onShowOnMap({ col: m.col, row: m.row })}>Verstärken über die Karte</SmallButton>
               <RecallButton fieldId={m.id} />
             </div>
           </li>
         ))}
       </ul>
       {d.alliancePoints !== null && d.alliancePoints > 0 && <p className="text-xs text-moos mt-1">Feldpunkte deiner Allianz in dieser Saison: {fmtNum(d.alliancePoints)}</p>}
-    </Card>
+    </div>
   );
 }
 
