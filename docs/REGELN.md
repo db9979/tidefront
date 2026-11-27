@@ -177,7 +177,8 @@ Nach dem Kampf:
 - Ränge nach Erfahrung: Kapitän zur See (0), Konteradmiral (100), Vizeadmiral (300), Admiral (700); Wirkung 50 / 70 /
   85 / 100 % der vollen Boni. Eine Spezialisierung beim Ernennen, eine zweite ab Vizeadmiral: Angriff, Verteidigung,
   Logistik, Aufklärung, Beutemeister, U-Boot-Taktik (Werte in `admirals.specs`, je Rolle `mission`, `defense`, `harbor`).
-- Ein Admiral führt einen Verband (Auswahl in der Missionsplanung; wirkt nur auf diesen Verband) oder ist
+- Ein Admiral führt einen Verband (Auswahl in der Missionsplanung; wirkt nur auf diesen Verband, auch gegen
+  Weltereignisse und Rohstofffelder – nach einer Feldeinnahme bleibt er bei der Besatzung, siehe REGELN-FELDER.md) oder ist
   **Hafenkommandant** (höchstens einer): Er führt daheim die Verteidigung, auch gegen das Kartell, und wirkt passiv auf den
   Hafen (Quelle „Hafenkommandant“). Unterwegs, verwundet oder gefangen fehlt er daheim.
 - Erfahrung nur bei Sieg: zerstörte gegnerische Lebenspunkte / 60, 5 bis 120 je Kampf.

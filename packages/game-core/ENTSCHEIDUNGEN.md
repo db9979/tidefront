@@ -577,8 +577,10 @@ der Angreifer 50 % gewinnt; links ohne Würfel wie v1.3, rechts mit):
 6. **Kosten** 2 000 Kredite + 400 Elektronik; Kredite mit Journal (`player:<id>` → `admiralitaet`), damit der Prüflauf
    ausgeglichen bleibt. Plätze 1 + 1 je 5 Stufen Hafenkommandantur, höchstens 3. Kredite gibt es erst über die Börse
    (Hafenkommandantur 3) – Admirale sind bewusst ein Mittelspiel-Ziel.
-7. **Status ohne Buchführung bei der Rückkehr:** „unterwegs“ = die Mission in `admiral.mission_id` ist outbound oder
-   returning. Weltereignis-Missionen nehmen (noch) keinen Admiral mit (offen).
+7. **Status ohne Buchführung bei der Rückkehr:** „unterwegs“ = die Mission in `admiral.mission_id` ist outbound,
+   returning oder (Feldbesatzung) stationed. Weltereignis-Missionen nehmen einen Admiral mit wie jeder Überfall
+   (Missionsrolle, Erfahrung und Schicksalswurf gegen den Kartellverband, Bericht unter `admirals`). Feldmissionen
+   siehe J 11.
 
 ## I. Minen, Seeblockade und Konvois (Welle 2, Balance-Blöcke `mines`, `blockade`, `convoys`)
 
@@ -604,8 +606,24 @@ Regeln in `docs/REGELN-SEE.md`, Simulation `sim/naval.ts` (`npm run sim`, Abschn
    liegt unter der Börsengebühr (4 %) – Handel bleibt attraktiv, große Ladungen auf langen Wegen wollen Geleit.
    Erster Entwurf: Verlust bei unterlegenem Geleit 50 % (> 30 % ohne Geleit) machte schwaches Geleit schädlich; jetzt
    25 %. Kartellboote 0,8 je 1000 Warenwert (statt 1,2), höchstens 12.
-4. **Offen:** Rückfahrt und Handelskonvois laufen nicht durch Minen; Börsenlieferungen sind keine Konvois; Geleitschutz
-   beim Handel nur durch den Annehmenden (für die eingehende Ware), nicht durch den Anbieter beim Einstellen.
+4. **Rückfahrt und Handelskonvois (Lücken geschlossen).** Die Rückfahrt kreuzt Felder wie die Hinfahrt (Strecke
+   Ziel → Hafen, nach Rückruf ab dem Wendepunkt, eigener Würfelstrom). Simulation (`sim/naval.ts`, Überfall-Verband
+   hin und zurück durch dasselbe Feld, Stärke nach der Hinfahrt): 4,2 / 8,9 / 18,6 / 28,6 % Verlust bei Stärke
+   25 / 50 / 100 / 150 – etwa das Doppelte der Hinfahrt, weil das Feld nur wenige Treffer an Stärke verliert. Gewollt:
+   Wer an einem verminten Hafen vorbei angreift, zahlt zweimal; ein volles Feld bleibt eine starke, aber teure Abwehr
+   nahe dem eigenen Hafen. Ladung über dem Laderaum der Überlebenden sinkt (wie beim Kapern). Handelskonvois haben keine
+   Schiffe – daher ein deterministischer Ladungsverlust: min(25 %, Stärke × 0,0015) × `cargoLossFactor` 0,5 ×
+   (1 − Räumschutz des Geleits) = 1,9 / 3,8 / 7,5 / 11,3 % je Feld (Räumer + Korvette im Geleit: 0,5–2,8 %). Mit 0,5
+   liegt ein volles Feld unter dem Kartellverlust ohne Geleit (30 %), aber über der Börsengebühr (4 %): Handel durch
+   fremde Minen lohnt Geleit mit Räumern. Feindlich = gegen Absender **und** Empfänger (sonst träfe der Verkäufer den
+   eigenen Handel mit Felder vor dem eigenen Hafen). Börsenlieferungen bleiben bewusst ausgenommen (keine Konvois),
+   ebenso Ertragskonvois der Felder (J 6) und das Geleit des Annehmenden auf seiner Rückfahrt (sie ist der Konvoiweg).
+5. **Geleit des Anbieters.** Beim Einstellen eingetragen (`player_offer.escort`), aber ohne Schiffe zu binden: Offene
+   Angebote dürfen Tage stehen, gebundene Schiffe dafür wären teurer als der Nutzen. Bei Annahme läuft das Geleit aus
+   dem Angebotshafen aus, begleitet die Ware zum Käufer und fährt heim (Treibstoff hin und zurück, Missionsplatz).
+   Best effort: Fehlen Schiffe, Treibstoff oder Platz, fährt die Ware ohne Geleit (Hinweis an den Anbieter) – der
+   Handel scheitert nie am Geleit. Nur ein Geleit je Ware (Konvoi hat eine Geleitmission): stellt der Anbieter eines,
+   kann der Annehmende keines stellen (`offer_escorted`); die Oberfläche blendet die Auswahl dann aus.
 
 ## J. Rohstofffelder (Welle 3 „Expansion“, Teil 1, Balance-Block `fields`)
 
@@ -637,7 +655,8 @@ Ziel: Felder sind Entscheidungen und Konflikte, kein passiver Mehrertrag.
    zurück; Minen wirken auf Konvois nicht. Der angefangene Zyklus geht beim Rückruf noch als Konvoi heim, bei Verlust
    durch Angriff verfällt er.
 7. **Geleitabteilung (Felder 2).** Ein Teil der Besatzung (`resource_field.escort`) begleitet jeden Ertragskonvoi und
-   kämpft bei Abfangversuchen mit; er verteidigt das Feld nicht, der Rest muss eine gültige Besatzung bleiben
+   kämpft bei Abfangversuchen mit; er verteidigt das Feld nicht (seit 12/13: gegen das Kartell doch, und die
+   Abteilung teilt sich auf gleichzeitige Konvois auf), der Rest muss eine gültige Besatzung bleiben
    (`escortMinRemainCommandPoints` 6). Bewusst ohne Treibstoff und ohne eigene Mission: Die Kosten sind gebundene
    Schiffe (Unterhalt, Missionsplatz der Besatzung) und eine schwächere Feldverteidigung. Simulation (`sim/fields.ts`,
    Konvoi Stufe 2 = 500 Stahl-Äq., 450 km, 400 Seeds): Kartell fängt 6,7 % der Konvois ab (2 Schnellboote), ohne
@@ -662,11 +681,25 @@ Ziel: Felder sind Entscheidungen und Konflikte, kein passiver Mehrertrag.
    weiterer Hafen erlaubt und die Hafenkommandantur für das Kolonieschiff erreicht ist. Kein Auftragsbuch-Schritt:
    das Auftragsbuch ist die Einführung (elf Grundaufträge, Abschluss „Hafenmeister“); ein Gründungsauftrag (KZ 5)
    hätte den Abschluss für Anfänger um Wochen verschoben.
-11. **Admiral.** Feldmissionen nehmen keinen Admiral (launchField übergeht admiralId, die Planung bietet keinen an);
-   der frühere Punkt „Admiral bleibt bei der Besatzung“ tritt daher nicht auf. Die Planung sagt es jetzt ausdrücklich.
-12. **Offen:** Geleitabteilung kämpft nicht bei Kartellangriffen auf das Feld mit (auch wenn gerade kein Konvoi
-   fährt); jeder Konvoi kämpft mit derselben Abteilung (keine Aufteilung auf gleichzeitig fahrende Konvois);
-   Admirale für Besetzungsverbände.
+11. **Admiral.** Feldmissionen (Aufklärung, Besetzen, Verstärkung) nehmen einen Admiral mit (Missionsrolle). Nach der
+   Einnahme bleibt er bei der Besatzung: Status „unterwegs“ (stationierte Mission zählt als aktiv), Posten in der
+   Admiralsansicht, kein Hafenkommandant. Er führt die Besatzung bei Spieler- und Kartellangriffen auf das Feld
+   (Missionsrolle, nicht `defense`: er führt einen Verband, keinen Hafen), Erfahrung und Schicksalswurf wie üblich;
+   die Geleitabteilung führt er nicht. Er kehrt mit der Besatzung heim (Rückruf, Niederlage). Verstärkung mit Admiral:
+   er übernimmt eine Besatzung ohne Admiral (Hafenwechsel wie die Schiffe); höchstens ein Admiral je Besatzung.
+   Bewusst einfach: kein eigener Status „bei Besatzung“ (Anzeige als Posten), kein Abziehen des Admirals ohne Rückruf.
+12. **Geleitabteilung gegen das Kartell.** Kartellangriffe auf das Feld sind eine Stunde vorher gemeldet; die
+   Abteilung kehrt dafür zurück und kämpft mit der ganzen Besatzung – auch wenn gerade kein Konvoi fährt. Gegen
+   Spielerangriffe (nur Radar-Vorwarnung mit halber Zeit) verteidigt sie weiter nicht. Folge (`sim/fields.ts`): die
+   Besatzung 2 Zerstörer + 2 Korvetten fällt auf keiner Stufe, gleich wie groß ihr Geleit ist (vorher mit 2 Korvetten
+   Geleit auf Stufe 3 zu 47 %). Das Geleit kostet gegen das Kartell nichts mehr, nur gegen Spieler.
+13. **Aufteilung auf gleichzeitige Konvois.** Bei 450 km und 40 km/h fahren alle 4 h ein Konvoi, also etwa drei
+   zugleich. Statt dass jeder mit der vollen Abteilung kämpft, teilt sie sich im Moment des Kampfs anteilig nach
+   Warenwert (je Schiffstyp, größte Reste, Gleichstand: älterer Konvoi; `splitEscort`). Verluste der Anteile werden
+   der Besatzung und der Abteilung abgezogen. Simulation: Kartell gegen drei gleich große Konvois, 1 Korvette Geleit
+   hält im Mittel je Konvoi 33 %, 2 Korvetten 67 % (Anteile 1/1/0); volle Deckung erst ab drei Schiffen. Gewollt:
+   Geleit für viele Konvois kostet mehr Schiffe; die Rechnung bleibt fair (jedes Schiff schützt genau einen Konvoi).
+14. **Offen:** Wochenziel-Art für Felder (siehe 10) und Admiral ohne Rückruf von der Besatzung abziehen.
 
 ## K. Mehrere Häfen: Gründung und Verlegung (Welle 3 „Expansion“, Teil 2, Block `expansion`, v1.11)
 

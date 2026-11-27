@@ -147,6 +147,7 @@ function AdmiralItem({ a, v, now }: { a: Admiral; v: View; now: number }) {
           {a.mission.length > 0 && <div className="text-[11.5px] text-ink2">Auf Mission: {modLineText(a.mission)}</div>}
           {a.defense.length > 0 && <div className="text-[11.5px] text-ink2">Verteidigung: {modLineText(a.defense)}</div>}
           {a.harbor.length > 0 && <div className="text-[11.5px] text-ink2">Hafen: {modLineText(a.harbor)}</div>}
+          {a.post && <div className="text-[11.5px] text-see mt-0.5">{a.post[0].toUpperCase() + a.post.slice(1)} – kehrt mit ihr heim (Rückruf unter Meine Felder)</div>}
           {a.stationed && <div className="text-[11.5px] text-moos mt-0.5">Hafenkommandant{a.status !== "bereit" ? " – führt die Verteidigung, sobald er bereit ist" : ""}</div>}
         </div>
       </div>

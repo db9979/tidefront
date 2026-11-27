@@ -35,7 +35,8 @@ import {
   activeCounts, hasShips, insertMission, planNaval, playerName, pushNotice, sendHome, storeNavalReport,
   type MissionRowLike, type NavalInput, type Notes,
 } from "./naval-common.ts";
-import { fieldEscortLosses, fieldEscortOf } from "./fields-escort.ts"; // Felder: Geleitabteilung
+import { fieldEscortLosses, fieldEscortShare } from "./fields-escort.ts"; // Felder: Geleitabteilung
+import { convoyMineTransit } from "./naval-mines.ts"; // Minen: Handelskonvois
 
 export interface ConvoyRow {
   id: number;
@@ -59,7 +60,7 @@ export interface ConvoyRow {
   arriveAt: Date;
 }
 
-type ConvoyEvent = { atMs: number; by: "kartell" | "spieler"; name: string; lost: ResourceMap; escortHeld: boolean | null };
+type ConvoyEvent = { atMs: number; by: "kartell" | "spieler" | "minen"; name: string; lost: ResourceMap; escortHeld: boolean | null };
 
 const route = (c: ConvoyRow) => buildRoute([hexCenter(c.fromCol, c.fromRow), hexCenter(c.toCol, c.toRow)], c.departAt.getTime(), c.arriveAt.getTime());
 
@@ -105,6 +106,28 @@ export async function attachTradeEscort(tx: Tx, playerId: number, own: BaseRow, 
   return missionId;
 }
 
+/**
+ * Geleit des Anbieters (Spielerhandel, beim Einstellen eingetragen): läuft bei Annahme mit der ausgehenden Ware aus
+ * seinem Hafen aus, begleitet sie bis zum Hafen des Annehmenden und fährt dann heim (Treibstoff hin und zurück,
+ * Missionsplatz). Best effort: fehlen Schiffe, Platz oder Treibstoff, läuft der Konvoi ohne Geleit (Rückgabe: Code).
+ */
+export async function attachSellerEscort(tx: Tx, playerId: number, own: BaseRow, units: Counts, convoyId: number, to: { col: number; row: number }, arriveMs: number, nowMs: number): Promise<{ ok: true; missionId: number } | { ok: false; code: string }> {
+  const escort = activeCounts(units);
+  if (Object.keys(escort).length === 0) return { ok: false, code: "empty_fleet" };
+  if (Object.keys(escort).some((id) => balance.units[id]?.branch !== "see")) return { ok: false, code: "escort_ships_only" };
+  const r = planNaval(own, {
+    type: "geleit", baseType: "aufklaerung", units: escort, col: to.col, row: to.row,
+    activeMissions: await activeMissionCount(tx, own.id), mods: await modsOf(tx, own, nowMs),
+  }, nowMs);
+  if (!r.ok) return r;
+  await saveBase(tx, own.id, r.base);
+  const back = Math.max(0, r.mission.returnAtMs - r.mission.arriveAtMs);
+  const plan = { ...r.mission, arriveAtMs: arriveMs, returnAtMs: arriveMs + back, convoyId, sellerEscort: true };
+  const missionId = await insertMission(tx, { playerId, baseId: own.id, targetKind: "convoy", targetId: convoyId, col: to.col, row: to.row, plan });
+  await tx.update(tables.convoy).set({ escort, escortMissionId: missionId }).where(eq(tables.convoy.id, convoyId));
+  return { ok: true, missionId };
+}
+
 async function lockConvoy(tx: Tx, where: { id?: number; missionId?: number; deliveryId?: string }): Promise<ConvoyRow | null> {
   const t = tables.convoy;
   const cond = where.id !== undefined ? eq(t.id, where.id) : where.missionId !== undefined ? eq(t.missionId, where.missionId) : eq(t.deliveryId, where.deliveryId!);
@@ -114,11 +137,12 @@ async function lockConvoy(tx: Tx, where: { id?: number; missionId?: number; deli
 
 /**
  * Geleit, das wirklich mitfährt: beim Transport der Verband selbst, beim Handel nur, solange die Geleitmission läuft,
- * beim Feldertrag die aktuelle Geleitabteilung der Besatzung (missionId = Besatzungsmission), sofern bei der Abfahrt eingeteilt.
+ * beim Feldertrag der Anteil der aktuellen Geleitabteilung der Besatzung (missionId = Besatzungsmission), sofern bei der
+ * Abfahrt eingeteilt: fahren mehrere Ertragskonvois zugleich, teilt sich die Abteilung nach Warenwert auf (fields-escort.ts).
  */
-async function liveEscort(tx: Tx, c: ConvoyRow): Promise<Counts> {
+async function liveEscort(tx: Tx, c: ConvoyRow, atMs: number): Promise<Counts> {
   if (c.kind === "transport") return activeCounts(c.escort as Counts);
-  if (c.kind === "feld") return hasShips(c.escort as Counts) ? fieldEscortOf(tx, c.missionId) : {};
+  if (c.kind === "feld") return hasShips(c.escort as Counts) ? fieldEscortShare(tx, c, atMs) : {};
   if (c.escortMissionId === null) return {};
   const [m] = await tx.select({ status: tables.mission.status }).from(tables.mission).where(eq(tables.mission.id, c.escortMissionId));
   return m?.status === "outbound" ? activeCounts(c.escort as Counts) : {};
@@ -190,7 +214,7 @@ export async function convoyRaidHandler(tx: Tx, payload: Record<string, unknown>
   if (!c || !cb || c.status !== "underway" || due >= c.arriveAt.getTime()) return { notify };
   const value = cargoValue(c.cargo as ResourceMap, balance);
   const force = cartelConvoyForce(value, balance);
-  const escort = await liveEscort(tx, c);
+  const escort = await liveEscort(tx, c, due);
   let held: boolean | null = null;
   let battle: unknown = null;
   let seed: number | null = null;
@@ -266,7 +290,7 @@ export async function interceptArrive(tx: Tx, m: MissionRowLike, plan: Mission, 
     return;
   }
   const mods = await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due, baseId: origin?.id, isHome: origin?.isHome });
-  const escort = await liveEscort(tx, c);
+  const escort = await liveEscort(tx, c, due);
   let held: boolean | null = null;
   let returning: Counts = { ...units };
   let battle: unknown = null;
@@ -300,12 +324,16 @@ export async function interceptArrive(tx: Tx, m: MissionRowLike, plan: Mission, 
   await sendHome(tx, m, plan, activeCounts(returning), loot, reportId, due);
 }
 
-/** Geleitmission am Ziel (Lieferung eingelaufen bzw. Zeit um): heim mit den Überlebenden. */
-export async function escortArrive(tx: Tx, m: MissionRowLike, plan: Mission, due: number): Promise<void> {
+/**
+ * Geleitmission am Ziel (Lieferung eingelaufen bzw. Zeit um): heim mit den Überlebenden. Das Geleit des Annehmenden
+ * ist damit schon daheim; das des Anbieters (sellerEscort) fährt vom Hafen des Annehmenden zurück.
+ */
+export async function escortArrive(tx: Tx, m: MissionRowLike, plan: Mission & { sellerEscort?: boolean }, due: number): Promise<void> {
   const [c] = (await tx.select().from(tables.convoy).where(eq(tables.convoy.id, m.targetId!))) as ConvoyRow[];
   const survivors = c && c.escortMissionId === m.id ? activeCounts(c.escort as Counts) : { ...plan.units };
-  await tx.update(tables.mission).set({ status: "returning", returning: survivors, cargoHome: {}, returnAt: new Date(due) }).where(eq(tables.mission.id, m.id));
-  await scheduleEvent(tx, "mission_return", due, { missionId: m.id }, m.baseId);
+  const back = plan.sellerEscort ? due + Math.max(0, plan.returnAtMs - plan.arriveAtMs) : due;
+  await tx.update(tables.mission).set({ status: "returning", returning: survivors, cargoHome: {}, returnAt: new Date(back) }).where(eq(tables.mission.id, m.id));
+  await scheduleEvent(tx, "mission_return", back, { missionId: m.id }, m.baseId);
 }
 
 /** Transport am Ziel: Verband und Ladung nach Abfangversuchen. null ohne Konvoi. */
@@ -324,8 +352,30 @@ export async function transportConvoyRecall(tx: Tx, missionId: number): Promise<
   return c.cargo as ResourceMap;
 }
 
-/** Lieferung eingelaufen: Konvoi abschließen. */
-export async function deliveryConvoyArrived(tx: Tx, deliveryId: string): Promise<void> {
+/**
+ * Lieferung eingelaufen: Konvoi abschließen. Ein Handelskonvoi ist dabei durch feindliche Minenfelder auf seiner
+ * Route gefahren (naval-mines.ts): Ladungsverlust (Lieferung und Journal → versenkt), Verluste des Geleits.
+ */
+export async function deliveryConvoyArrived(tx: Tx, deliveryId: string, due: number): Promise<void> {
+  const c = await lockConvoy(tx, { deliveryId });
+  if (c && c.kind === "handel" && c.status === "underway") {
+    const escort = await liveEscort(tx, c, due);
+    const r = await convoyMineTransit(tx, c, escort, due);
+    if (r.hits.length > 0) {
+      if (Object.keys(r.lost).length > 0) await takeCargo(tx, c, r.lost, "versenkt", due);
+      if (hasShips(escort)) {
+        c.escort = r.escort;
+        await tx.update(tables.convoy).set({ escort: r.escort }).where(eq(tables.convoy.id, c.id));
+      }
+      await addEvent(tx, c, { atMs: due, by: "minen", name: r.hits.map((h) => h.owner).join(", "), lost: r.lost, escortHeld: null });
+      const victim = victimOf(c);
+      await storeNavalReport(tx, {
+        kind: "minen", title: Object.keys(r.lost).length > 0 ? `Konvoi im Minenfeld – ${resText(r.lost)} versenkt` : "Konvoi durch ein Minenfeld – ohne Verluste",
+        attackerPlayerId: null, defenderPlayerId: victim, defenderBaseId: c.recipientBaseId, atMs: due,
+        report: { mines: { action: "konvoi", hits: r.hits, lost: r.lost, cargoLeft: c.cargo, before: escort, after: r.escort } },
+      });
+    }
+  }
   await tx.update(tables.convoy).set({ status: "arrived" }).where(eq(tables.convoy.deliveryId, deliveryId));
 }
 

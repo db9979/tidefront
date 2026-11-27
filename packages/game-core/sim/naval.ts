@@ -2,7 +2,7 @@
 // Verlustquote von Konvois (Kartell) mit und ohne Geleitschutz. Seeds fest (1 … N), Ergebnis reproduzierbar.
 import type { Balance, Counts } from "../src/index.ts";
 import {
-  blockadeOf, cargoValue, cartelChance, cartelConvoyForce, convoysOf, mineLayCost, minesOf, mineTransit, productionRates,
+  blockadeOf, cargoValue, cartelChance, cartelConvoyForce, convoyMineLoss, convoysOf, mineLayCost, minesOf, mineTransit, productionRates,
   resolveBattle, strandTroops, trainingCost,
 } from "../src/index.ts";
 import type { BotSnapshot } from "./bot.ts";
@@ -47,6 +47,20 @@ export function runNavalSim(balance: Balance, snaps: BotSnapshot[]): void {
   let dmg = 0;
   for (let seed = 1; seed <= SEEDS; seed++) dmg += fleetValue(mineTransit(fleets[0][1], m.maxStrength, balance, seed).losses, balance);
   console.log(`  Volles Feld (Stärke ${m.maxStrength}, ${layers} Minenleger): Minen ${Math.round(fieldCost)} Stahl-Äq., Schiffe ${Math.round(fleetValue({ minenleger: layers }, balance))}; ein Überfall-Verband verliert Ø ${Math.round(dmg / SEEDS)}.`);
+  // Rückfahrt: derselbe Verband kreuzt das Feld ein zweites Mal (Stärke nach der Hinfahrt, eigener Würfelstrom).
+  const roundTrip = strengths.map((s0) => {
+    let lost = 0;
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const out = mineTransit(fleets[0][1], s0, balance, seed);
+      const back = mineTransit(out.survivors, s0 - out.consumed, balance, seed ^ 0x52e7a11d);
+      lost += fleetValue(out.losses, balance) + fleetValue(back.losses, balance);
+    }
+    return pct(lost / SEEDS / fleetValue(fleets[0][1], balance)).padStart(12);
+  });
+  console.log(`  ${"Überfall hin und zurück".padEnd(38)}${roundTrip.join("")}`);
+  // Handelskonvois: Ladungsverlust je Feld (ohne Geleit / mit 1 Minenräumer + 1 Korvette im Geleit).
+  console.log(`  ${"Handelskonvoi, Ladung".padEnd(38)}${strengths.map((s0) => pct(convoyMineLoss(s0, {}, balance).share).padStart(12)).join("")}`);
+  console.log(`  ${"  mit Räumer + Korvette im Geleit".padEnd(38)}${strengths.map((s0) => pct(convoyMineLoss(s0, { minenraeumer: 1, korvette: 1 }, balance).share).padStart(12)).join("")}`);
 
   // 2. Blockade: entgangene Gebäudeproduktion des Bot-Hafens je Haltezeit gegen Kosten des kleinsten Blockadeverbands.
   console.log(`\nSee: Blockade – Produktion × ${k.productionFactor}, Lieferungen zurückgehalten, Verkauf gesperrt`);

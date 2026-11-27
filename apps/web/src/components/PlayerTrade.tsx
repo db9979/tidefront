@@ -5,7 +5,7 @@ import { trpc, trpcClient, type BaseData, type Outputs } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { fmtDuration } from "../lib/time.ts";
-import { ActionBar, Badge, Button, Card, ErrorLine, Loading } from "../ui.tsx";
+import { ActionBar, Badge, Button, Card, ErrorLine, Loading, UnitChips } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 import { DevTag, readerValue, usePrices, ValueLine, type Prices } from "./TradeValue.tsx";
 import { EscortPicker } from "./Naval.tsx"; // See: Konvoi – Geleitschutz
@@ -29,7 +29,8 @@ export function PlayerTrade({ base }: { base: BaseData }) {
   const [wantQty, setWantQty] = useState("300");
   const [visibility, setVisibility] = useState<"public" | "alliance">("public");
   const [done, setDone] = useState<string | null>(null);
-  const create = useCommand((i: { key: string; give: string; giveQty: number; want: string; wantQty: number; visibility: "public" | "alliance" }) => trpcClient.playerTrade.create.mutate(i), invalidate);
+  const [sellEscort, setSellEscort] = useState<Record<string, number>>({}); // See: Geleit des Anbieters
+  const create = useCommand((i: { key: string; give: string; giveQty: number; want: string; wantQty: number; visibility: "public" | "alliance"; escort?: Record<string, number> }) => trpcClient.playerTrade.create.mutate(i), invalidate);
   const accept = useCommand((i: { key: string; offerId: number; escort?: Record<string, number> }) => trpcClient.playerTrade.accept.mutate(i) as Promise<Res>, invalidate);
   const withdraw = useCommand((i: { key: string; offerId: number }) => trpcClient.playerTrade.withdraw.mutate(i) as Promise<Res>, invalidate);
   if (!list.data) return <Loading />;
@@ -64,6 +65,10 @@ export function PlayerTrade({ base }: { base: BaseData }) {
           </button>
         ))}
       </div>
+      {give !== "credits" && (
+        <EscortPicker base={base} value={sellEscort} onChange={setSellEscort}
+          hint="Die Schiffe bleiben bis zur Annahme im Hafen; dann begleiten sie deine Ware zum Käufer und fahren heim (Treibstoff, ein Missionsplatz). Fehlen sie dann, fährt die Ware ohne Geleit." />
+      )}
       {g > 0 && w > 0 && (
         <div className="mb-2 flex items-start gap-2">
           <DevTag v={readerValue(prices, give, g, want, w)} />
@@ -87,8 +92,9 @@ export function PlayerTrade({ base }: { base: BaseData }) {
           <Button className="shrink-0 px-3" disabled={!unlocked || create.busy || g < 1 || w < 1 || g > have || ownOpen >= maxOpen}
             onClick={async () => {
               setDone(null);
-              const r = await create.run({ give, giveQty: g, want, wantQty: w, visibility });
-              if (r?.ok) setDone("Angebot eingestellt.");
+              const e = give === "credits" ? {} : Object.fromEntries(Object.entries(sellEscort).filter(([, n]) => n > 0));
+              const r = await create.run({ give, giveQty: g, want, wantQty: w, visibility, ...(Object.keys(e).length > 0 ? { escort: e } : {}) });
+              if (r?.ok) { setDone("Angebot eingestellt."); setSellEscort({}); }
             }}>
             Angebot einstellen
           </Button>
@@ -132,6 +138,9 @@ function OfferRow({ o, fee, base, prices, busy, onAccept, onWithdraw }: { o: Off
         <span className="min-w-0 text-right"><span className="block text-ink2 text-[10.5px] font-display uppercase">{o.own ? "du willst" : "du zahlst"}</span><Asset id={o.want} qty={o.wantQty} /></span>
       </div>
       {!confirm && <ValueLine v={v} />}
+      {Object.keys(o.escort).length > 0 && (
+        <div className="text-xs text-ink2 mt-1 flex items-center gap-1 flex-wrap">{o.own ? "Dein Geleit bei Annahme:" : "Der Anbieter stellt Geleit:"} <UnitChips counts={o.escort} /></div>
+      )}
       <div className="flex items-center justify-between gap-2 mt-1">
         <span className="text-xs text-ink2">
           {o.own ? "Wartet auf Annahme." : `Du erhältst ${fmtNum(net, o.give === "credits" ? 2 : 0)}${o.give === "credits" ? " sofort" : o.travelMs ? ` in ${fmtDuration(o.travelMs)}` : ""}.`}
@@ -146,7 +155,7 @@ function OfferRow({ o, fee, base, prices, busy, onAccept, onWithdraw }: { o: Off
         <div className={`mt-2 rounded-lg border p-2 ${v?.strong ? "border-siegel" : "border-rule"}`} role="group" aria-label="Annahme bestätigen">
           <div className="text-sm">Du zahlst sofort <strong className="mono">{fmtNum(o.wantQty, o.want === "credits" ? 2 : 0)}</strong> {label(o.want)} und erhältst <strong className="mono">{fmtNum(net, o.give === "credits" ? 2 : 0)}</strong> {label(o.give)} (nach Gebühr).</div>
           <ValueLine v={v} />
-          {o.give !== "credits" && <EscortPicker base={base} value={escort} onChange={setEscort} />}
+          {o.give !== "credits" && Object.keys(o.escort).length === 0 && <EscortPicker base={base} value={escort} onChange={setEscort} />}
           {v?.strong && <p className="text-sm text-siegel font-semibold mt-1">Dieses Angebot weicht um mehr als 20 % vom Börsenwert ab. Wirklich annehmen?</p>}
           <div className="flex gap-2 mt-2">
             <Button kind="secondary" className="flex-1" onClick={() => setConfirm(false)}>Abbrechen</Button>

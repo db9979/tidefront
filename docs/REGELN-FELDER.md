@@ -27,7 +27,14 @@ Begründung und Simulation: `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt J,
    („Ganzer Verband bleibt“) alle Schiffe als Besatzung; der Rest fährt heim. Reichen die Überlebenden nicht oder ist
    die Höchstzahl erreicht, ist das Feld danach neutral und unbewacht.
 4. Die Besatzung ist eine Mission im Status „stationiert“: sie **belegt einen Missionsplatz**, ihr Unterhalt läuft
-   weiter, sie verteidigt das Feld (ohne die Geleitabteilung, siehe Ertrag). Admirale führen keine Feld-Verbände.
+   weiter, sie verteidigt das Feld (gegen Spieler ohne die Geleitabteilung, siehe Ertrag).
+   **Admiral:** Aufklärung, Besetzen und Verstärkung können einen Admiral mitnehmen (Missionsrolle wie bei jedem
+   Verband: Kampf, Tempo, Treibstoff …). Nach der Einnahme bleibt er bei der Besatzung (Status „unterwegs“, kein
+   Hafenkommandant, keine andere Mission) und führt sie bei jedem Angriff auf das Feld (Spieler und Kartell; Erfahrung
+   und Schicksalswurf wie gewohnt), nicht die Geleitabteilung. Er kehrt mit der Besatzung heim (Rückruf, Niederlage).
+   Eine Verstärkung mit Admiral übergibt ihn der Besatzung, wenn sie keinen hat (aus einem anderen Hafen wechselt er
+   dabei in den Hafen des Felds); hat sie schon einen, ist das Auslaufen gesperrt (`field_has_admiral`) bzw. die
+   Verstärkung kehrt bei Ankunft um.
    **Verstärkung:** „Besetzen“ gegen ein eigenes Feld mit Besatzung schickt Schiffe ohne Kampf hin (nur Schiffe, keine
    Mindeststärke, keine Höchstzahl-Prüfung, Treibstoff für Hin- und Rückweg wie beim Besetzen). Bei Ankunft gehören
    sie zur Besatzung und kehren mit ihr heim. Kommen sie aus einem anderen eigenen Hafen, wechseln sie in den Hafen
@@ -42,12 +49,19 @@ Begründung und Simulation: `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt J,
 - Alle `deliveryHours` (4 h) wird abgerechnet: Ertrag × Rangfaktor × Zonenbonus läuft als **Konvoi** (Art „Feld“,
   `convoySpeedKmh` 40 km/h) zum Heimathafen. Das Kartell fängt wie bei anderen Konvois gelegentlich ab,
   Kriegsgegner können ihn abfangen. Eine **Blockade** des Heimathafens hält ihn zurück. Minen wirken nicht.
-- **Geleitabteilung** (Truppen → Meine Felder → Geleit einteilen): Schiffe der Besatzung, die jeden Ertragskonvoi
+- **Geleitabteilung** (Truppen → Meine Felder → Geleit einteilen): Schiffe der Besatzung, die die Ertragskonvois
   begleiten und bei Abfangversuchen (Kartell, Kriegsgegner) wie ein Geleitschutz kämpfen (mit den Modifikatoren des
-  Hafens des Felds). Sie verteidigen das Feld **nicht**; was bleibt, muss eine gültige Besatzung sein (bewaffnet,
-  ≥ `escortMinRemainCommandPoints` = 6 Kommandopunkte). Kein Treibstoff, keine eigene Mission. Gilt ab dem nächsten
-  Konvoi; jeder Konvoi kämpft mit dem aktuellen Bestand der Abteilung, Verluste fehlen der Besatzung. Fällt das Feld
-  (Spieler oder Kartell), kehrt die Abteilung heim – sie war unterwegs.
+  Hafens des Felds). Was bleibt, muss eine gültige Besatzung sein (bewaffnet, ≥ `escortMinRemainCommandPoints` = 6
+  Kommandopunkte). Kein Treibstoff, keine eigene Mission. Gilt ab dem nächsten Konvoi.
+  - **Aufteilung:** Fahren mehrere Ertragskonvois desselben Felds gleichzeitig (bei 450 km etwa drei), teilt sich die
+    Abteilung im Moment des Kampfs auf alle fahrenden Konvois, die mit Geleit ausgelaufen sind und es noch haben: je
+    Schiffstyp anteilig nach Warenwert, Reste nach der Größe des Bruchteils (bei Gleichstand der ältere Konvoi). Jedes
+    Schiff fährt mit genau einem Konvoi; ein Konvoi allein hat die ganze Abteilung. Verluste fehlen der Besatzung und
+    der Abteilung. Eine Abteilung mit weniger Schiffen als gleichzeitig fahrenden Konvois lässt also manche Konvois
+    ohne Schutz.
+  - **Verteidigung des Felds:** Gegen **Kartellangriffe** (eine Stunde vorher gemeldet) kämpft die ganze Besatzung
+    einschließlich Abteilung – auch wenn gerade kein Konvoi fährt. Gegen **Spielerangriffe** verteidigt nur die
+    Besatzung ohne Abteilung. Fällt das Feld an einen Spieler, kehrt die Abteilung heim – sie war unterwegs.
 - Unterhalt je Feld: 10/15/20 Proviant je Stunde (Stufe 1/2/3), vom Heimathafen (höchstens der Bestand).
 - Bei Verlust des Felds durch Angriff verfällt der angefangene Zyklus.
 
@@ -65,7 +79,7 @@ Begründung und Simulation: `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt J,
   Häfen; einmal erkannt bleibt erkannt). Push und Systemnachricht; unter Meine Felder und im Infoblatt steht die
   Ankunft. Ohne Radar keine Vorwarnung.
 - **Kartell**: je Lieferzyklus und besetztem Feld Chance `cartelRaidChance` (5 %); Ankunft nach
-  `cartelRaidLeadMinutes` (60 min, Push und Nachricht vorab), Verband 9/12/18 Schnellboote ± 30 %. Es kämpft die Besatzung ohne Geleitabteilung. Unterliegt sie, wird das Feld neutral und das Kartell bewacht es wieder.
+  `cartelRaidLeadMinutes` (60 min, Push und Nachricht vorab), Verband 9/12/18 Schnellboote ± 30 %. Es kämpft die ganze Besatzung einschließlich Geleitabteilung (und ihr Admiral). Unterliegt sie, wird das Feld neutral und das Kartell bewacht es wieder.
 - Berichte für beide Seiten, Push und Systemnachricht an den Besitzer.
 
 ## Allianz-Einflusszone

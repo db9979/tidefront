@@ -22,7 +22,7 @@ import {
 
 export { NAVAL_TYPES, type NavalInput };
 export { liftBlockade, activeBlockade } from "./naval-blockade.ts";
-export { createConvoy, attachTradeEscort, transportConvoyRecall, convoysForDeliveries } from "./naval-convoy.ts";
+export { createConvoy, attachSellerEscort, attachTradeEscort, transportConvoyRecall, convoysForDeliveries } from "./naval-convoy.ts";
 export { routeMines } from "./naval-mines.ts";
 
 /** Gehört die Missionseingabe zu den Seemissionen dieses Moduls? */
@@ -140,7 +140,7 @@ export async function holdDelivery(tx: Tx, d: { id: string; baseId: number }, du
     await scheduleEvent(tx, "delivery_arrive", Math.max(next, due + 1000), { deliveryId: d.id }, d.baseId);
     return true;
   }
-  await deliveryConvoyArrived(tx, d.id);
+  await deliveryConvoyArrived(tx, d.id, due); // Minen: Handelskonvoi durch feindliche Felder
   return false;
 }
 

@@ -10,6 +10,13 @@ import { lockBases, saveBase } from "./store.ts";
 import { modsOf } from "./modifiers.ts";
 import { activeCounts, hasShips, pushNotice, sendHome, storeNavalReport, type MissionRowLike, type Notes } from "./naval-common.ts";
 import { fieldName, type FieldRow } from "./fields-core.ts";
+import { reinforceAdmiral } from "./fields-admiral.ts";
+
+/** Hat der Admiral der Verstärkung die Besatzung übernommen? Dann steht er im Plan der Besatzung. */
+async function joinedAdmiral(tx: Tx, admiralId: number, garrisonId: number): Promise<{ admiralId?: number }> {
+  const [a] = await tx.select({ missionId: tables.admiral.missionId }).from(tables.admiral).where(eq(tables.admiral.id, admiralId));
+  return a?.missionId === garrisonId ? { admiralId } : {};
+}
 
 /** Stehende Besatzungsmission eines Felds oder null. */
 export async function stationedGarrison(db: DbOrTx, f: FieldRow, lock = false) {
@@ -33,17 +40,20 @@ export async function reinforceArrive(tx: Tx, m: MissionRowLike, plan: Mission, 
   const units = activeCounts(plan.units);
   const name = fieldName(field);
   const g = field.ownerId === pid ? await stationedGarrison(tx, field, true) : null;
-  if (!g || g.baseId === null || m.baseId === null || !hasShips(units)) {
+  // Admiral der Verstärkung übernimmt die Besatzung, wenn sie keinen hat; sonst kehrt die Verstärkung um.
+  const refused = !g || g.baseId === null || m.baseId === null || !hasShips(units) ? "field_lost"
+    : !(await reinforceAdmiral(tx, m, plan, g)).ok ? "field_has_admiral" : null;
+  if (refused || !g || g.baseId === null || m.baseId === null) {
     const reportId = await storeNavalReport(tx, {
       kind: "feld", title: `Verstärkung für ${name} kehrt um`, attackerPlayerId: pid, defenderPlayerId: null, attackerBaseId: m.baseId, atMs: due,
-      report: { field: { id: field.id, kind: field.kind, tier: field.tier, refused: "field_lost" } },
+      report: { field: { id: field.id, kind: field.kind, tier: field.tier, refused: refused ?? "field_lost" } },
     });
     await sendHome(tx, m, plan, units, {}, reportId, due);
-    push.push(pushNotice(pid, "report", `Verstärkung für ${name} kehrt um`, "Das Feld wird nicht mehr von dir gehalten.", "berichte"));
+    push.push(pushNotice(pid, "report", `Verstärkung für ${name} kehrt um`, refused === "field_has_admiral" ? "Die Besatzung hat schon einen Admiral." : "Das Feld wird nicht mehr von dir gehalten.", "berichte"));
     notify.push([[pid], "reports"], [[pid], "missions"]);
     return;
   }
-  const gPlan = g.plan as Mission;
+  const gPlan = { ...(g.plan as Mission), ...(plan.admiralId ? await joinedAdmiral(tx, plan.admiralId, g.id) : {}) };
   // Ausgesandt laut gespeichertem Plan (Minenverluste unterwegs stecken nur in plan.units des Ablaufs).
   const [orig] = await tx.select({ plan: tables.mission.plan }).from(tables.mission).where(eq(tables.mission.id, m.id));
   const sent = activeCounts(((orig?.plan as Mission | undefined) ?? plan).units);

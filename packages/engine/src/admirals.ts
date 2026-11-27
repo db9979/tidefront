@@ -19,6 +19,7 @@ import { basesOfPlayer, lockOwnBase, ownBase, randomSeed, saveBase, type BaseRow
 import type { DbOrTx } from "@tidefront/db";
 import { modsOf } from "./modifiers.ts";
 import { activeMissions, admiralStatus, type AdmiralRow, type AdmiralStatus } from "./admirals-core.ts";
+import { admiralPosts } from "./fields-admiral.ts"; // Felder: Admiral bei einer Besatzung
 
 function fail(code: string): never {
   throw new GameError(code);
@@ -161,6 +162,8 @@ export interface AdmiralInfo {
   here: boolean;
   status: AdmiralStatus;
   until: number | null;
+  /** Felder: Posten, wenn er eine Feldbesatzung führt (sonst null). */
+  post: string | null;
   battles: number;
   wins: number;
   mission: AdmiralModLine[];
@@ -180,6 +183,7 @@ export async function admiralView(engine: Engine, playerId: number, baseId?: num
   const nowMs = Date.now();
   const rows = await engine.db.select().from(tables.admiral).where(eq(tables.admiral.playerId, playerId)).orderBy(tables.admiral.id);
   const active = await activeMissions(engine.db, rows);
+  const posts = await admiralPosts(engine.db, rows); // Felder: Admiral bei einer Besatzung
   const list: AdmiralInfo[] = rows.map((a) => {
     const r = admiralRank(a.xp, balance);
     const next = nextAdmiralRank(a.xp, balance);
@@ -192,6 +196,7 @@ export async function admiralView(engine: Engine, playerId: number, baseId?: num
       stationed: a.stationed,
       baseId: a.baseId, baseName: names.get(a.baseId) ?? "", here: a.baseId === own.id,
       ...admiralStatus(a, active, nowMs),
+      post: posts.get(a.id) ?? null,
       battles: a.battles, wins: a.wins,
       mission: admiralModLines(specs, a.xp, "mission", balance),
       defense: admiralModLines(specs, a.xp, "defense", balance),

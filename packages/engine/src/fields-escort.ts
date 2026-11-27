@@ -1,9 +1,13 @@
 // Felder: Geleitabteilung (docs/REGELN-FELDER.md, Abschnitt Geleitschutz). Ein Teil der Besatzung begleitet die
-// Ertragskonvois des Felds und kämpft bei Abfangversuchen (Kartell, Kriegsgegner) mit; er verteidigt das Feld nicht.
-// Gespeichert in resource_field.escort; die Schiffe bleiben Teil der Besatzungsmission (returning), Verluste im
-// Konvoikampf werden dort abgezogen. Eingehängt in naval-convoy.ts (liveEscort, fightEscort) und fields-run.ts.
-import { and, eq } from "drizzle-orm";
-import { activeUnits, clampEscort, escortCheck, subtractCounts, type Counts } from "@tidefront/game-core";
+// Ertragskonvois des Felds und kämpft bei Abfangversuchen (Kartell, Kriegsgegner) mit; fahren mehrere Konvois
+// zugleich, teilt sie sich anteilig nach Warenwert auf. Gegen Spielerangriffe auf das Feld verteidigt sie nicht,
+// gegen Kartellangriffe schon (fields-run.ts). Gespeichert in resource_field.escort; die Schiffe bleiben Teil der
+// Besatzungsmission (returning), Verluste im Konvoikampf werden dort abgezogen. Eingehängt in naval-convoy.ts
+// (liveEscort, fightEscort) und fields-run.ts.
+import { and, eq, gt, lte } from "drizzle-orm";
+import {
+  activeUnits, cargoValue, clampEscort, escortCheck, splitEscort, subtractCounts, type Counts, type ResourceMap,
+} from "@tidefront/game-core";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError, type Engine } from "./context.ts";
 import { runCommand } from "./commands.ts";
@@ -18,6 +22,22 @@ export async function fieldEscortOf(db: DbOrTx, missionId: number | null): Promi
   const [m] = await db.select({ status: tables.mission.status, returning: tables.mission.returning }).from(tables.mission).where(eq(tables.mission.id, missionId));
   if (!m || m.status !== "stationed") return {};
   return clampEscort(activeUnits((m.returning as Counts | null) ?? {}), (f.escort as Counts) ?? {});
+}
+
+/**
+ * Anteil der Geleitabteilung, der einen Ertragskonvoi im Moment `atMs` begleitet: Die Abteilung verteilt sich auf
+ * alle zu diesem Zeitpunkt fahrenden Konvois derselben Besatzung, die mit Geleit ausgelaufen sind und es noch haben
+ * (anteilig nach Warenwert, splitEscort). Ein Konvoi allein erhält die ganze Abteilung.
+ */
+export async function fieldEscortShare(db: DbOrTx, c: { id: number; missionId: number | null }, atMs: number): Promise<Counts> {
+  const all = await fieldEscortOf(db, c.missionId);
+  if (c.missionId === null || Object.keys(all).length === 0) return {};
+  const t = tables.convoy;
+  const rows = await db.select({ id: t.id, cargo: t.cargo, escort: t.escort }).from(t)
+    .where(and(eq(t.kind, "feld"), eq(t.missionId, c.missionId), eq(t.status, "underway"), lte(t.departAt, new Date(atMs)), gt(t.arriveAt, new Date(atMs))));
+  const sailing = rows.filter((r) => r.id === c.id || Object.values((r.escort as Counts) ?? {}).some((n) => n > 0));
+  if (!sailing.some((r) => r.id === c.id)) sailing.push({ id: c.id, cargo: {}, escort: {} });
+  return splitEscort(all, sailing.map((r) => ({ id: r.id, value: cargoValue((r.cargo as ResourceMap) ?? {}, balance) }))).get(c.id) ?? {};
 }
 
 /** Verluste der Geleitabteilung im Konvoikampf: aus Besatzung und Geleit streichen. */

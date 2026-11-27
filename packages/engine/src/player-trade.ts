@@ -1,10 +1,12 @@
 // Handel zwischen Spielern: Angebot "gebe X, will Y" mit Treuhand. Beim Einstellen wird die Ware aus dem Hafen
 // (bzw. die Kredite vom Konto) abgezogen und auf escrow:po-<id> gebucht. Bei Annahme zahlt der Annehmende sofort;
 // Ressourcen reisen beiderseits als Lieferung (delivery_arrive) mit Reisezeit nach Entfernung der Häfen, Kredite
-// werden sofort gutgeschrieben. Gebühr je empfangener Seite. Rückzug erstattet sofort.
+// werden sofort gutgeschrieben. Gebühr je empfangener Seite. Rückzug erstattet sofort. Geleitschutz: der Annehmende
+// für die eingehende Ware (bei Annahme) oder der Anbieter für seine ausgehende Ware (beim Einstellen eingetragen,
+// läuft bei Annahme aus, ohne vorher Schiffe zu binden) – nicht beide für dieselbe Ware.
 // Sperrreihenfolge: Angebot, Stützpunkte aufsteigend, Spieler aufsteigend.
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
-import { settle, deliverCargo, market as marketCore } from "@tidefront/game-core";
+import { settle, deliverCargo, market as marketCore, type Counts } from "@tidefront/game-core";
 import { hexDistanceKm } from "@tidefront/world";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, type Engine } from "./context.ts";
@@ -13,7 +15,7 @@ import { marketUnlockedFor } from "./player-wide.ts"; // Mehrere Häfen: Freisch
 import { homeBaseOf, lockBases, lockOwnBase, ownBase, readBase, saveBase, scheduleEvent, type BaseRow } from "./store.ts";
 import { fail, membershipOf, systemMessage } from "./alliance-core.ts";
 import { getSetting } from "./settings.ts";
-import { attachTradeEscort, createConvoy } from "./naval.ts"; // See: Konvoi (Lieferungen reisen als Konvoi, Geleitschutz)
+import { attachSellerEscort, attachTradeEscort, createConvoy } from "./naval.ts"; // See: Konvoi (Lieferungen reisen als Konvoi, Geleitschutz)
 
 /** Gebühr je empfangener Seite ohne Einstellung (server_setting player_trade_fee, 0 bis 0,2). */
 export const PLAYER_TRADE_FEE_DEFAULT = 0.02;
@@ -43,6 +45,13 @@ export function travelMs(a: { col: number; row: number }, b: { col: number; row:
   return Math.max(MIN_TRAVEL_MS, Math.round((hexDistanceKm(a, b) / balance.market.convoySpeedKmh) * 3600000));
 }
 
+/** Gründe, aus denen das Geleit des Anbieters bei Annahme nicht ausläuft (Systemnachricht). */
+const ESCORT_FAIL: Record<string, string> = {
+  units_unavailable: "Schiffe fehlen im Hafen", fuel: "zu wenig Treibstoff", no_mission_slot: "alle Missionsplätze belegt",
+  command_points: "zu wenig Kommandopunkte",
+  escort_ships_only: "nur Schiffe", empty_fleet: "keine Schiffe",
+};
+
 const ASSET_TEXT: Record<string, string> = { stahl: "Stahl", treibstoff: "Treibstoff", elektronik: "Elektronik", proviant: "Proviant", credits: "Kredite" };
 const resLabel = (id: string) => ASSET_TEXT[id] ?? id;
 const cents = (n: number) => Math.round(n * 100) / 100;
@@ -70,6 +79,22 @@ export interface OfferInput {
   visibility: "public" | "alliance";
   /** Mehrere Häfen: Hafen, aus dem die Ware kommt und an den die Gegenleistung geht (fehlt → Heimathafen). */
   baseId?: number;
+  /** Geleit des Anbieters für die ausgehende Ware (nur Schiffe, nur bei Ressourcen); läuft erst bei Annahme aus. */
+  escort?: Counts;
+}
+
+/** Geleit beim Einstellen prüfen: nur Schiffe, ganze Zahlen, nur für Ressourcen, derzeit im Hafen vorhanden. */
+function offerEscort(input: OfferInput, units: Counts): Counts {
+  const out: Counts = {};
+  for (const [id, n] of Object.entries(input.escort ?? {})) {
+    if (!Number.isInteger(n) || n < 0) fail("bad_offer");
+    if (n === 0) continue;
+    if (balance.units[id]?.branch !== "see") fail("escort_ships_only");
+    if ((units[id] ?? 0) < n) fail("escort_units");
+    out[id] = n;
+  }
+  if (Object.keys(out).length > 0 && input.give === "credits") fail("escort_no_cargo");
+  return out;
 }
 
 /** Hafen eines Angebots: seller_base_id, solange er dem Verkäufer gehört, sonst (ältere Angebote) dessen Heimathafen. */
@@ -78,7 +103,7 @@ async function offerBase(tx: Tx, o: { sellerId: number; sellerBaseId: number | n
   return b && b.playerId === o.sellerId ? b : homeBaseOf(tx, o.sellerId);
 }
 
-/** Angebot einstellen. Codes: bad_offer, bad_qty, no_alliance, locked, too_many_offers, funds. */
+/** Angebot einstellen. Codes: bad_offer, bad_qty, no_alliance, locked, too_many_offers, funds, escort_ships_only, escort_units, escort_no_cargo. */
 export function createOffer(engine: Engine, playerId: number, key: string, input: OfferInput) {
   return runCommand<{ ok: true; offerId: number }>(engine, playerId, key, "offerCreate", async (ctx: Ctx) => {
     const assets = tradeAssets();
@@ -90,6 +115,7 @@ export function createOffer(engine: Engine, playerId: number, key: string, input
     const b = await lockOwnBase(ctx.tx, playerId, input.baseId); // Treuhand aus dem aktiven Hafen
     const state = settle(b.state, ctx.nowMs, balance);
     if (!(await marketUnlockedFor(ctx.tx, playerId, { id: b.id, state }))) fail("locked"); // spielerweit (höchste Hafenkommandantur)
+    const escort = offerEscort(input, state.units); // See: Geleit des Anbieters
     const [n] = await ctx.tx
       .select({ n: sql<number>`count(*)::int` })
       .from(tables.playerOffer)
@@ -108,7 +134,7 @@ export function createOffer(engine: Engine, playerId: number, key: string, input
       .insert(tables.playerOffer)
       .values({
         sellerId: playerId, sellerBaseId: b.id, give: input.give, giveQty: input.giveQty, want: input.want, wantQty: input.wantQty,
-        visibility: input.visibility, allianceId: m?.allianceId ?? null, createdAt: new Date(ctx.nowMs),
+        visibility: input.visibility, allianceId: m?.allianceId ?? null, escort, createdAt: new Date(ctx.nowMs),
       })
       .returning({ id: tables.playerOffer.id });
     const tradeId = `po-${o.id}:escrow`;
@@ -123,13 +149,16 @@ export function createOffer(engine: Engine, playerId: number, key: string, input
 
 /**
  * Angebot annehmen. Das Angebot wird zuerst gesperrt: von zwei gleichzeitigen Annahmen gelingt genau eine.
- * Codes: offer_gone, own_offer, not_ally, no_base, seller_gone, locked, funds.
+ * Codes: offer_gone, own_offer, not_ally, no_base, seller_gone, locked, funds, offer_escorted (Anbieter stellt Geleit).
  */
 export function acceptOffer(engine: Engine, playerId: number, key: string, offerId: number, escort?: Record<string, number>, baseId?: number) {
   return runCommand<{ ok: true; arriveAtMs: number }>(engine, playerId, key, "offerAccept", async (ctx: Ctx) => {
     const [o] = await ctx.tx.select().from(tables.playerOffer).where(eq(tables.playerOffer.id, offerId)).for("update");
     if (!o || o.status !== "open") fail("offer_gone");
     if (o.sellerId === playerId) fail("own_offer");
+    const sellerEscort = (o.escort as Counts | null) ?? {};
+    const hasSellerEscort = Object.values(sellerEscort).some((n) => n > 0);
+    if (hasSellerEscort && escort && Object.values(escort).some((n) => n > 0)) fail("offer_escorted");
     if (o.visibility === "alliance") {
       const mine = await membershipOf(ctx.tx, playerId);
       const theirs = await membershipOf(ctx.tx, o.sellerId);
@@ -166,6 +195,7 @@ export function acceptOffer(engine: Engine, playerId: number, key: string, offer
     const tradeId = `po-${o.id}:accept`;
     const ledger: (typeof tables.tradeLedger.$inferInsert)[] = [];
     const line = (account: string, asset: string, amount: number) => ledger.push({ tradeId, tMs: ctx.nowMs, account, asset, amount: amt(amount) });
+    let sellerEscortCode: string | null = null; // Geleit des Anbieters: null = ausgelaufen bzw. keines
     const send = async (to: number, toBaseId: number, asset: string, qty: number, suffix: string) => {
       const f = feeOf(asset, qty, fee);
       const net = asset === "credits" ? cents(qty - f) : qty - f;
@@ -187,6 +217,10 @@ export function acceptOffer(engine: Engine, playerId: number, key: string, offer
           to: toBaseId === buyerBase.id ? buyerBase : sellerBase, cargo: { [asset]: net }, departMs: ctx.nowMs, arriveMs: arriveAtMs,
         });
         if (suffix === "k" && escort) await attachTradeEscort(ctx.tx, playerId, { ...buyerBase, state: buyerState }, escort, convoyId, sellerBase, arriveAtMs, ctx.nowMs);
+        if (suffix === "k" && hasSellerEscort) {
+          const r = await attachSellerEscort(ctx.tx, o.sellerId, sellerBase, sellerEscort, convoyId, buyerBase, arriveAtMs, ctx.nowMs);
+          if (!r.ok) sellerEscortCode = r.code;
+        }
       }
     };
     line(`escrow:po-${o.id}`, o.give, -o.giveQty);
@@ -203,7 +237,8 @@ export function acceptOffer(engine: Engine, playerId: number, key: string, offer
     const [buyer] = await ctx.tx.select({ name: tables.player.name }).from(tables.player).where(eq(tables.player.id, playerId));
     await systemMessage(ctx.tx, ctx.notify, [o.sellerId], "Handel: Angebot angenommen",
       `${buyer?.name ?? "?"} hat dein Angebot angenommen: ${o.giveQty} ${resLabel(o.give)} gegen ${o.wantQty} ${resLabel(o.want)}. ` +
-      (o.want === "credits" ? "Die Kredite sind gutgeschrieben." : "Die Ware ist per Konvoi unterwegs."));
+      (o.want === "credits" ? "Die Kredite sind gutgeschrieben." : "Die Ware ist per Konvoi unterwegs.") +
+      (!hasSellerEscort || o.give === "credits" ? "" : sellerEscortCode === null ? " Dein Geleit begleitet deine Ware." : ` Dein Geleit konnte nicht auslaufen (${ESCORT_FAIL[sellerEscortCode] ?? sellerEscortCode}); die Ware fährt ohne Geleit.`));
     ctx.notify.push([[playerId, o.sellerId], "base"], [null, "market"]);
     return { ok: true as const, arriveAtMs };
   });
@@ -285,6 +320,8 @@ export async function offersView(engine: Engine, playerId: number, baseId?: numb
   const shape = (o: typeof tables.playerOffer.$inferSelect) => ({
     id: o.id, give: o.give, giveQty: o.giveQty, want: o.want, wantQty: o.wantQty, visibility: o.visibility as "public" | "alliance",
     status: o.status, atMs: o.createdAt.getTime(), closedAtMs: o.closedAt?.getTime() ?? null,
+    /** Geleit des Anbieters für die angebotene Ware (läuft bei Annahme aus). */
+    escort: (o.escort as Counts | null) ?? {},
   });
   return {
     serverNow: nowMs,
