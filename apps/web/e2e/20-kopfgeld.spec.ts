@@ -33,15 +33,16 @@ test("Kopfgeld auf die Spitze: Rangliste, Kartenblatt und Missionsplanung", asyn
   await setUnits(seed.sql, player.baseId, { korvette: 3 });
   // Radar, damit der Zielhafen unabhängig von Kartennebel und Hafenlage voll sichtbar ist.
   await updateState(seed.sql, player.baseId, (s) => { s.buildings = { ...s.buildings, radarstation: 8, kraftwerk: 6 }; });
-  // Rang-Momentaufnahme des Tages neu rechnen lassen (sonst gilt der Stand von heute früh).
-  await seed.sql`delete from server_setting where key = 'pvp_rank_snapshot'`;
-
-  // Rangliste: Kopfgeld-Kennzeichen neben dem Namen.
-  await page.goto("/");
-  await page.getByRole("navigation").getByRole("button", { name: /^Meldungen/ }).click();
-  await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Rangliste/ }).click();
+  // Rang-Momentaufnahme des Tages neu rechnen lassen (sonst gilt der Stand von heute früh). Unter Parallel-Last kann
+  // eine gleichzeitig begonnene Aufnahme (Worker, andere Tests) den alten Stand zurückschreiben: dann erneut verwerfen.
   const row = page.getByRole("listitem").filter({ hasText: name });
-  await expect(row.getByTestId("bounty-mark")).toHaveText("+50 %");
+  await expect(async () => {
+    await seed.sql`delete from server_setting where key = 'pvp_rank_snapshot'`;
+    await page.goto("/");
+    await page.getByRole("navigation").getByRole("button", { name: /^Meldungen/ }).click();
+    await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Rangliste/ }).click();
+    await expect(row.getByTestId("bounty-mark")).toHaveText("+50 %", { timeout: 5000 });
+  }).toPass({ timeout: 40_000 });
   await expectNoHorizontalOverflow(page, "Rangliste mit Kopfgeld");
   await row.getByRole("button").click();
   await expect(page.getByText("Kopfgeld +50 %").first()).toBeVisible();
