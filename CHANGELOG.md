@@ -2,6 +2,10 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.28.0 – 27.11.2026
+- **Ausgewogenere Baukosten (Balance v1.29):** Gebäude kosten mit jeder Stufe etwas weniger Stahl und dafür mehr Elektronik und Proviant – ab Stufe 12 ist gut ein Drittel des bisherigen Stahlanteils verlagert, bei gleichem Gesamtwert. Kaserne und Versorgungshof verlagern je zur Hälfte auf Proviant und Elektronik. So werden alle Rohstoffe gebraucht, statt dass Elektronik und Proviant ungenutzt im Lager liegen; der Ausbau kommt dadurch insgesamt etwas schneller voran.
+- Bereits laufende Bauaufträge behalten ihre Kosten.
+
 ## 0.27.0 – 27.11.2026
 - **Saisonfinale „Leviathan“:** Am 36. Saisontag wird eine Kartell-Armada angekündigt; am 38. Tag um 12:00 Uhr erscheint sie für 72 Stunden an einem zentralen Seefeld (bei weit verstreuten Häfen mit Vorhuten). Ihre Stärke richtet sich nach den Flotten aller Teilnehmer.
 - Jeder Angriff trifft einen Abschnitt passend zur eigenen Kampfkraft – so gewinnt auch ein kleiner Verband und bringt Beute heim, ohne Laderaumgrenze. Das Flaggschiff fällt erst nach den Geschwadern, am besten im Sammelangriff; wer es versenkt, bekommt einen Schatz.
