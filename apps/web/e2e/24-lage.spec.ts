@@ -36,7 +36,10 @@ test("Lage: Konvoi und Bau, Antippen springt, Zahl am Navigationszeichen bei abh
   await page.keyboard.press("Escape");
 
   // Zahl am Navigationszeichen: abholbare Erfolgsstufe kommt dazu.
+  const loaded = page.waitForResponse((r) => r.url().includes("lage.badge"));
   await page.goto("/");
+  await loaded;
+  await page.waitForLoadState("networkidle"); // Tagesbefehle/Auftragsbuch zählen mit
   const badge = page.getByTestId("lage-badge");
   const before = (await badge.count()) > 0 ? Number(await badge.textContent()) : 0;
   await seed.sql`insert into achievement_tier (player_id, achievement_id, tier, reward) values (${player.id}, 'handel', 1, ${JSON.stringify({ stahl: 100 })}::jsonb)`;

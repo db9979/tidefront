@@ -24,7 +24,7 @@ test("Meldungen: alle Unterreiter", async ({ page, player }) => {
   await expect(page.getByRole("tab", { name: /^Nachrichten/ })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("tab", { name: /^Nachrichten/ })).toBeFocused();
   await page.keyboard.press("Home");
-  await expect(page.getByRole("tab", { name: /^Berichte/ })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: /^Lage\s*\d*$/ })).toHaveAttribute("aria-selected", "true"); // erster Reiter: Lage
   // Allianz liegt unter Truppen.
   await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
   await page.getByRole("tablist", { name: "Truppen" }).getByRole("tab", { name: "Allianz" }).click();
