@@ -384,3 +384,21 @@ beim Freibeuter ab Tag 14–28, Festung meist 2–3); die Festung erreicht die S
 5. **Zahlen:** Faktoren mit Dezimalkomma („×0,85“), Mengen mit Tausenderpunkt auch in Engine-Texten.
 6. **Handbuch:** Zahl und Namen der Forschungszweige und die Spanne der Forschungsamt-Stufen kommen aus der Balance.
 7. **Remedy-Kurzfassungen** im Stichwortstil „Fehlt: …“.
+
+## Z. Lagerwarnung für Tagesbefehle, Wochenziele und Erfolge
+
+Seit 0.24.0 liefern diese Belohnungen nur bis zur Lagergrenze des Heimathafens (`deliverToStorage`). Jetzt warnt
+die Oberfläche wie im Auftragsbuch – aber genauer und einheitlich:
+
+1. **Server:** `dailyView`, `weeklyView` und `achievementsView` liefern `storage` = Lager des **Heimathafens**
+   (Name, Kapazität, abgerechneter Bestand; `engine/src/reward-storage.ts`). Bewusst nicht der aktive Hafen: die
+   Belohnung geht immer in den Heimathafen. `claimChallenge`, `claimWeekly` und `claimAchievement` geben `lost`
+   zurück (Belohnung und Serien-/Wochenbonus zusammengezählt; Kredite verfallen nie).
+2. **Web:** eine Komponente `RewardClaim` (`components/RewardClaim.tsx`) ersetzt den Knopf „Abholen“: verfiele etwas,
+   zeigt sie je Ressource „verfiele X von Y“, dazu Lager Bestand/Kapazität und den Heimathafen, die Knöpfe
+   „Lagerkomplex ausbauen“ (wechselt bei Bedarf in den Heimathafen) und „Trotzdem abholen“. Nach dem Abholen hängt
+   `lostNote()` „Lager voll: … verfallen.“ an die Bestätigung.
+3. **Wochenbonus** wird in die Vorhersage einbezogen, wenn das Ziel das letzte offene der laufenden Woche ist (wie auf
+   dem Server). Der **Serienbonus** der Tagesbefehle nicht: seine Ressourcen stehen nicht in der Ansicht; was davon
+   verfällt, nennt aber die Bestätigung (`lost`).
+4. Das Auftragsbuch behält seine eigene, kürzere Warnung (nicht angefasst).

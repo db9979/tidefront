@@ -293,11 +293,19 @@ test("Abholen genau einmal, Belohnung nur bis zur Lagerkapazität", async () => 
   const rows = await rowsOf(A.playerId);
   const done = rows.find((r) => r.completedAt && !r.claimedAt)!;
   const open = rows.find((r) => !r.completedAt);
-  await patchBase(A.baseId, (s) => { s.resources.stahl = 1_000_000; });
+  await patchBase(A.baseId, (s) => { for (const r of Object.keys(s.resources)) s.resources[r] = 1_000_000; });
+  // Ansicht: Lager des Heimathafens für die Warnung vor dem Abholen.
+  const view = await dailyView(engine, A.playerId);
+  assert.ok(view.storage && view.storage.capacity > 0 && view.storage.capacity < 1_000_000, JSON.stringify(view.storage));
+  assert.equal(view.storage.resources.stahl, 1_000_000);
   const before = (await stateOf(A.baseId)).resources.stahl;
   const k = key();
   const r1 = await claimChallenge(engine, A.playerId, k, done.id);
   assert.equal(r1.ok, true, JSON.stringify(r1));
+  // Lager voll: die ganze Belohnung verfällt und steht in `lost`.
+  const ok1 = r1 as { reward: Record<string, number>; lost: Record<string, number> };
+  assert.ok(Object.keys(ok1.reward).length > 0);
+  assert.deepEqual(ok1.lost, Object.fromEntries(Object.entries(ok1.reward).filter(([, n]) => n > 0)));
   const after = (await stateOf(A.baseId)).resources.stahl;
   // Seit 27.11.2026 wie das Auftragsbuch: Lager voll → nichts kommt dazu, Bestand darüber bleibt.
   assert.ok(Math.abs(after - before) < 1, `${after} - ${before}`);

@@ -7,7 +7,8 @@ import { useCommand } from "../lib/command.ts";
 import { fmtNum } from "../lib/names.ts";
 import { fmtDuration, useNow } from "../lib/time.ts";
 import { Icon, IconTile } from "../icons.tsx";
-import { Badge, Bar, Button, ErrorLine, ResChips } from "../ui.tsx";
+import { Badge, Bar, ErrorLine, ResChips } from "../ui.tsx";
+import { RewardClaim, lostNote, type RewardStorage } from "./RewardClaim.tsx";
 
 type Weekly = Outputs["achievements"]["weekly"];
 type Goal = Weekly["goals"][number];
@@ -19,7 +20,8 @@ export function useWeekly(enabled = true) {
   return useQuery({ ...trpc.achievements.weekly.queryOptions(), enabled, refetchInterval: 120000 });
 }
 
-export function WeeklyGoals() {
+/** onExpandStorage: Weg zum Lagerkomplex (im Blatt: erst schließen); sonst App-Navigation. */
+export function WeeklyGoals({ onExpandStorage }: { onExpandStorage?: () => void } = {}) {
   const q = useWeekly();
   const now = useNow();
   const [note, setNote] = useState<string | null>(null);
@@ -35,9 +37,11 @@ export function WeeklyGoals() {
   const onClaim = async (g: Goal) => {
     setNote(null);
     const r = await claim.run({ id: g.id });
-    if (r?.ok) setNote(r.bonus ? "Belohnung abgeholt – und der Wochenbonus für alle drei Ziele!" : "Belohnung abgeholt.");
+    if (r?.ok) setNote((r.bonus ? "Belohnung abgeholt – und der Wochenbonus für alle drei Ziele!" : "Belohnung abgeholt.") + lostNote(r.lost));
   };
   const doneCount = w.goals.filter((g) => g.claimed).length;
+  // Wochenbonus kommt mit dem letzten noch offenen Ziel dieser Woche (wie claimWeekly auf dem Server).
+  const bonusWith = (g: Goal) => !w.bonus.paid && g.week === w.week && w.goals.length >= 3 && w.goals.every((x) => x.claimed || x.id === g.id);
 
   return (
     <section className="panel rounded-xl p-3.5 mb-3" aria-label="Wochenziele">
@@ -49,7 +53,8 @@ export function WeeklyGoals() {
       </div>
 
       <ol className="divide-y divide-navy-700">
-        {[...w.goals, ...w.older].map((g) => <GoalItem key={g.id} g={g} busy={claim.busy} older={g.week !== w.week} onClaim={() => void onClaim(g)} />)}
+        {[...w.goals, ...w.older].map((g) => <GoalItem key={g.id} g={g} busy={claim.busy} older={g.week !== w.week}
+          storage={w.storage} bonus={bonusWith(g) ? w.bonus.reward : null} onExpand={onExpandStorage} onClaim={() => void onClaim(g)} />)}
       </ol>
 
       <div className="mt-2 pt-2 border-t border-dotted border-rule text-xs flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -63,7 +68,9 @@ export function WeeklyGoals() {
   );
 }
 
-function GoalItem({ g, busy, older, onClaim }: { g: Goal; busy: boolean; older: boolean; onClaim: () => void }) {
+function GoalItem({ g, busy, older, storage, bonus, onExpand, onClaim }: {
+  g: Goal; busy: boolean; older: boolean; storage: RewardStorage; bonus: Record<string, number> | null; onExpand?: () => void; onClaim: () => void;
+}) {
   return (
     <li className="py-2 flex gap-3">
       <IconTile id={g.icon} size={40} tone={g.done ? "land" : "gebaeude"} />
@@ -77,7 +84,7 @@ function GoalItem({ g, busy, older, onClaim }: { g: Goal; busy: boolean; older: 
         <div className="text-xs mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
           <ResChips values={g.reward} />
         </div>
-        {g.done && !g.claimed && <Button className="w-full mt-1.5" disabled={busy} onClick={onClaim}>Abholen</Button>}
+        {g.done && !g.claimed && <RewardClaim storage={storage} rewards={[g.reward, bonus]} busy={busy} onClaim={onClaim} onExpand={onExpand} />}
         {g.claimed && <div className="mt-1"><Badge tone="green">abgeholt</Badge></div>}
       </div>
     </li>

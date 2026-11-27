@@ -8,6 +8,7 @@ import { fmtNum } from "../lib/names.ts";
 import { fmtDuration, useNow } from "../lib/time.ts";
 import { IconTile, Icon } from "../icons.tsx";
 import { Badge, Bar, Button, ErrorLine, ResChips } from "../ui.tsx";
+import { RewardClaim, lostNote, type RewardStorage } from "./RewardClaim.tsx";
 
 type Daily = Outputs["daily"]["get"];
 type Challenge = Daily["challenges"][number];
@@ -20,7 +21,8 @@ export function useDaily(enabled = true) {
   return useQuery({ ...trpc.daily.get.queryOptions(), enabled, refetchInterval: 60000 });
 }
 
-export function DailyOrders() {
+/** onExpandStorage: Weg zum Lagerkomplex (im Blatt: erst schließen); sonst App-Navigation. */
+export function DailyOrders({ onExpandStorage }: { onExpandStorage?: () => void } = {}) {
   const q = useDaily();
   const now = useNow();
   const [note, setNote] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export function DailyOrders() {
       const parts = [`Belohnung abgeholt: +${r.points} Punkte.`];
       if (r.streak) parts.push(`Tag ${r.streak} der Serie.`);
       if (r.bonus) parts.push(`Serienbonus: +${r.bonus.points} Punkte und Nachschub.`);
-      setNote(parts.join(" "));
+      setNote(parts.join(" ") + lostNote(r.lost));
     }
   };
 
@@ -71,6 +73,8 @@ export function DailyOrders() {
             key={c.id}
             c={c}
             busy={busy}
+            storage={d.storage}
+            onExpand={onExpandStorage}
             canReroll={d.rerollAvailable && !c.done}
             onClaim={() => void onClaim(c)}
             onReroll={() => { setNote(null); void reroll.run({ slot: c.slot }); }}
@@ -83,7 +87,7 @@ export function DailyOrders() {
           <div className="text-[11px] uppercase tracking-wider text-ink2 mb-1">Noch abzuholen</div>
           <ol className="divide-y divide-navy-700">
             {d.older.map((c) => (
-              <ChallengeItem key={c.id} c={c} busy={busy} canReroll={false} onClaim={() => void onClaim(c)} onReroll={() => {}} older />
+              <ChallengeItem key={c.id} c={c} busy={busy} storage={d.storage} onExpand={onExpandStorage} canReroll={false} onClaim={() => void onClaim(c)} onReroll={() => {}} older />
             ))}
           </ol>
         </div>
@@ -99,7 +103,7 @@ export function DailyOrders() {
   );
 }
 
-function ChallengeItem(props: { c: Challenge; busy: boolean; canReroll: boolean; onClaim: () => void; onReroll: () => void; older?: boolean }) {
+function ChallengeItem(props: { c: Challenge; busy: boolean; storage: RewardStorage; onExpand?: () => void; canReroll: boolean; onClaim: () => void; onReroll: () => void; older?: boolean }) {
   const { c } = props;
   return (
     <li className="py-2 flex gap-3">
@@ -119,13 +123,15 @@ function ChallengeItem(props: { c: Challenge; busy: boolean; canReroll: boolean;
           <ResChips values={c.reward} />
           <span className="mono text-messing">+{c.points + c.bonusPoints} Pkt.</span>
         </div>
-        <div className="mt-1.5 flex gap-2">
-          {c.done && !c.claimed && <Button className="flex-1" disabled={props.busy} onClick={props.onClaim}>Abholen</Button>}
-          {c.claimed && <Badge tone="green">abgeholt</Badge>}
-          {props.canReroll && (
-            <Button kind="ghost" className="px-3" disabled={props.busy} onClick={props.onReroll}>Neu würfeln</Button>
-          )}
-        </div>
+        {c.done && !c.claimed && <RewardClaim storage={props.storage} rewards={[c.reward]} busy={props.busy} onClaim={props.onClaim} onExpand={props.onExpand} />}
+        {(c.claimed || props.canReroll) && (
+          <div className="mt-1.5 flex gap-2">
+            {c.claimed && <Badge tone="green">abgeholt</Badge>}
+            {props.canReroll && (
+              <Button kind="ghost" className="px-3" disabled={props.busy} onClick={props.onReroll}>Neu würfeln</Button>
+            )}
+          </div>
+        )}
       </div>
     </li>
   );

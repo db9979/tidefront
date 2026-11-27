@@ -78,10 +78,10 @@ export function QuestBar({ base, onAction }: { base: BaseData; onAction: (a: Gui
         <Guide base={base} onAction={act} />
       </Sheet>
       <Sheet open={open === "daily"} onClose={() => setOpen(null)} title="Tagesbefehle" icon={<Icon id="uhr" size={36} />}>
-        <DailyOrders />
+        <DailyOrders onExpandStorage={() => act({ kind: "building", id: "lagerkomplex" })} />
       </Sheet>
       <Sheet open={open === "weekly"} onClose={() => setOpen(null)} title="Wochenziele" icon={<Icon id="admiral" size={36} />}>
-        <WeeklyGoals />
+        <WeeklyGoals onExpandStorage={() => act({ kind: "building", id: "lagerkomplex" })} />
       </Sheet>
     </section>
   );
