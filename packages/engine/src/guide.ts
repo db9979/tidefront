@@ -3,13 +3,14 @@
 // jeder Auftrag genau einmal abgeholt (Tabelle guide_claim mit season_id). Abholen über runCommand.
 // Werte: balance.json, Schlüssel guide (REGELN.md, Abschnitt Auftragsbuch).
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { deliverCargo, type BaseState, type ResourceMap } from "@tidefront/game-core";
+import { settle, storageCapacity, type BaseState, type Modifiers, type ResourceMap } from "@tidefront/game-core";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError, type Engine } from "./context.ts";
 import { runCommand } from "./commands.ts";
 import { baseOfPlayer, lockBase, saveBase, scheduleEvent } from "./store.ts";
 import { modsOf } from "./modifiers.ts";
 import { runningSeason } from "./season.ts";
+import { nearestOpenLevel1, START_NEST_KM } from "./start-nest.ts";
 
 const gc = tables.guideClaim;
 export const GUIDE_FINAL = "final";
@@ -27,6 +28,12 @@ export function guideBalance(): GuideBalance {
 const lvl = (s: BaseState, id: string) => s.buildings[id] ?? 0;
 const units = (s: BaseState, id: string) => (s.units[id] ?? 0) + (s.unitsAway[id] ?? 0);
 
+/**
+ * Ausbildungsziele der Aufträge „wache“ und „flotte“. 30 Schützen: Mit 20 siegt ein Überfall auf Nest Stufe 1
+ * (4 Schnellboote, 18 Miliz) im Probekampf nur zu ~1 %, mit 30 sicher (test/einstieg.test.ts). Texte in Guide.tsx.
+ */
+export const GUIDE_GOALS = { schuetzen: 30, korvette: 2, landungsschiff: 1 } as const;
+
 /** Die elf Aufträge in Reihenfolge; Texte stehen in der Oberfläche (Guide.tsx). */
 export const GUIDE_STEPS: { id: string; done: (s: BaseState, wonNest: boolean) => boolean }[] = [
   { id: "strom", done: (s) => lvl(s, "kraftwerk") >= 1 },
@@ -34,9 +41,9 @@ export const GUIDE_STEPS: { id: string; done: (s: BaseState, wonNest: boolean) =
   { id: "basis", done: (s) => lvl(s, "raffinerie") >= 1 && lvl(s, "versorgungshof") >= 1 },
   { id: "kz", done: (s) => lvl(s, "kommandozentrale") >= 1 },
   { id: "kaserne", done: (s) => lvl(s, "kaserne") >= 1 },
-  { id: "wache", done: (s) => units(s, "schuetzen") >= 20 },
+  { id: "wache", done: (s) => units(s, "schuetzen") >= GUIDE_GOALS.schuetzen },
   { id: "werft", done: (s) => lvl(s, "werft") >= 1 },
-  { id: "flotte", done: (s) => units(s, "korvette") >= 2 && units(s, "landungsschiff") >= 1 },
+  { id: "flotte", done: (s) => units(s, "korvette") >= GUIDE_GOALS.korvette && units(s, "landungsschiff") >= GUIDE_GOALS.landungsschiff },
   { id: "nest", done: (_s, won) => won },
   { id: "hafen", done: (s) => lvl(s, "hafenkommandantur") >= 3 },
   { id: "schutz", done: (s) => lvl(s, "radarstation") >= 1 && lvl(s, "tiefbunker") >= 1 },
@@ -83,13 +90,40 @@ export async function guideView(engine: Engine, playerId: number) {
     claimed: !!fin,
     boostPending: !!fin && fin.boostUsedAt === null,
   };
+  // Ziel des Nest-Auftrags: das nächste offene Nest der Stufe 1 (bevorzugt das zugesicherte in START_NEST_KM). Die
+  // Stufe ist hier offen – auch unter Kartennebel –, damit „Lohnende Ziele“ den Überfall vorrechnen kann.
+  const nestOpen = !!own && !steps.find((x) => x.id === "nest")?.done;
+  const nestTarget = nestOpen && own
+    ? (await nearestOpenLevel1(engine.db, own, Date.now())) ?? (await nearestOpenLevel1(engine.db, own, Date.now(), Infinity))
+    : null;
   return {
     hasBase: !!own,
     steps,
     final,
+    nestTarget: nestTarget ? { ...nestTarget, guaranteed: nestTarget.distanceKm <= START_NEST_KM } : null,
     doneCount: steps.filter((x) => x.done).length,
     claimable: steps.filter((x) => x.claimable).length + (final.claimable ? 1 : 0),
   };
+}
+
+/**
+ * Belohnung ins Lager: füllt höchstens bis zur Lagerkapazität (Bestände darüber bleiben, sinken aber nicht). Der Rest
+ * verfällt und wird als `lost` gemeldet – die Oberfläche warnt vorher und rät zum Lagerkomplex; abholen kann man
+ * jeden Auftrag die ganze Saison, also auch erst nach dem Ausbau. Rein, ohne Datenbank.
+ */
+export function deliverToStorage(state: BaseState, reward: ResourceMap, nowMs: number, mods?: Modifiers): { state: BaseState; lost: ResourceMap } {
+  const next = settle(state, nowMs, balance, mods);
+  const cap = storageCapacity(next, balance, mods);
+  const resources = { ...next.resources };
+  const lost: ResourceMap = {};
+  for (const [r, amount] of Object.entries(reward)) {
+    if (!(amount > 0)) continue;
+    const cur = resources[r] ?? 0;
+    const add = Math.min(amount, Math.max(0, cap - cur));
+    resources[r] = cur + add;
+    if (amount - add > 0) lost[r] = amount - add;
+  }
+  return { state: { ...next, resources }, lost };
 }
 
 /** Spieler mit Abzeichen „Hafenmeister“ in der laufenden Saison. */
@@ -101,7 +135,7 @@ export async function hafenmeisterIds(db: DbOrTx, seasonId: number | null): Prom
 
 /** Belohnung eines erfüllten Auftrags abholen (genau einmal je Saison). Codes: no_base, no_season, unknown_step, not_done, already_claimed. */
 export function claimGuideStep(engine: Engine, playerId: number, key: string, stepId: string) {
-  return runCommand<{ ok: true; reward: ResourceMap }>(engine, playerId, key, "guideClaim", async (ctx) => {
+  return runCommand<{ ok: true; reward: ResourceMap; lost: ResourceMap }>(engine, playerId, key, "guideClaim", async (ctx) => {
     const step = GUIDE_STEPS.find((s) => s.id === stepId);
     if (!step) fail("unknown_step");
     const { b, seasonId } = await lockedOwn(ctx.tx, playerId);
@@ -110,9 +144,10 @@ export function claimGuideStep(engine: Engine, playerId: number, key: string, st
     if (!step.done(b.state, step.id === "nest" ? await wonNestRaid(ctx.tx, playerId) : false)) fail("not_done");
     await insertClaim(ctx.tx, playerId, seasonId, stepId, ctx.nowMs, null);
     const reward = guideBalance().steps[stepId] ?? {};
-    await saveBase(ctx.tx, b.id, deliverCargo(b.state, reward, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs)));
+    const d = deliverToStorage(b.state, reward, ctx.nowMs, await modsOf(ctx.tx, b, ctx.nowMs));
+    await saveBase(ctx.tx, b.id, d.state);
     ctx.notify.push([[playerId], "base"]);
-    return { ok: true as const, reward };
+    return { ok: true as const, reward, lost: d.lost };
   });
 }
 
@@ -121,20 +156,21 @@ export function claimGuideStep(engine: Engine, playerId: number, key: string, st
  * (läuft keiner, für den nächsten). Codes: no_base, no_season, not_done, already_claimed.
  */
 export function claimGuideFinal(engine: Engine, playerId: number, key: string) {
-  return runCommand<{ ok: true; reward: ResourceMap; boostApplied: boolean }>(engine, playerId, key, "guideClaimFinal", async (ctx) => {
+  return runCommand<{ ok: true; reward: ResourceMap; boostApplied: boolean; lost: ResourceMap }>(engine, playerId, key, "guideClaimFinal", async (ctx) => {
     const { b, seasonId } = await lockedOwn(ctx.tx, playerId);
     const claims = await claimsOf(ctx.tx, playerId, seasonId);
     if (claims.some((c) => c.step === GUIDE_FINAL)) fail("already_claimed");
     const have = new Set(claims.map((c) => c.step));
     if (!GUIDE_STEPS.every((s) => have.has(s.id))) fail("not_done");
     const g = guideBalance();
-    let state = deliverCargo(b.state, g.final.reward, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs));
+    const d = deliverToStorage(b.state, g.final.reward, ctx.nowMs, await modsOf(ctx.tx, b, ctx.nowMs));
+    let state = d.state;
     const boostApplied = state.buildQueue.length > 0;
     if (boostApplied) state = await boostQueue(ctx.tx, b.id, state, g.final.buildBoostSeconds * 1000, ctx.nowMs);
     await insertClaim(ctx.tx, playerId, seasonId, GUIDE_FINAL, ctx.nowMs, boostApplied ? ctx.nowMs : null);
     await saveBase(ctx.tx, b.id, state);
     ctx.notify.push([[playerId], "base"], [null, "season"]);
-    return { ok: true as const, reward: g.final.reward, boostApplied };
+    return { ok: true as const, reward: g.final.reward, boostApplied, lost: d.lost };
   });
 }
 

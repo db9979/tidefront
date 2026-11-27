@@ -21,7 +21,7 @@ import { MAP_BOUNDS, attachGestures, clampScale, clampView, minScale, zoomAround
 import {
   INK, RELATION_COLOR, SEE, SIEGEL, compassRose, diamondDot, dotSymbol, mapLabel, nameTag, nestSymbol, otherBaseSymbol, jammerMark, ownBaseSymbol, portSymbol, wreckSymbol,
 } from "../map/symbols.ts";
-import { LOD_NEAR, LOD_OVERVIEW, fade, layout, pinScale, snap, weatherAlpha, type Pinned } from "../map/lod.ts";
+import { LOD_NEAR, LOD_OVERVIEW, fade, layout, pinScale, snap, type Pinned } from "../map/lod.ts";
 import { buildWeatherLayer, type WeatherLayer } from "../map/weather.ts"; // Wetterschicht (v1.6)
 import type { WeatherBalance } from "@tidefront/game-core";
 import { buildSoundings } from "../map/soundings.ts";

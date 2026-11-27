@@ -2,6 +2,13 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.23.0 – 27.11.2026
+- **Besserer Start:** Jeder neue Hafen hat ein Piratennest der Stufe 1 in höchstens 300 km – du kennst seine Stufe, und es steht in „Lohnende Ziele“ als Auftragsziel.
+- **Gewinnbarer erster Überfall:** Der Vorschlag in „Lohnende Ziele“ kommt jetzt aus einem Probekampf (mindestens 90 % Sieg) und nennt, wie viele Schützen noch fehlen. Der Auftrag verlangt 30 statt 20 Schützen.
+- **Auftragsbuch sofort aktuell:** Nach Bau-, Ausbildungs- und Missionsende springt der nächste Auftrag ohne Neuladen weiter. „Los“ führt bei Schützen und Schiffen direkt zu „Ausbilden“.
+- Belohnungen des Auftragsbuchs füllen das Lager bis zur Grenze; vorher warnt das Buch und bietet „Lagerkomplex ausbauen“ an.
+- **Behoben:** Hafenwahl zeigte „nächstes St. ,“ ohne Stufe; der Zähler „abholbereit“ zählte die Abschlussbelohnung doppelt.
+
 ## 0.22.2 – 27.11.2026
 - **Behoben:** Ein offenes Blatt auf der Karte (Feld, Nest, Hafen oder Missionsleiste) blieb stehen, wenn man die App aus dem Hintergrund wieder öffnete. Nach mehr als 30 Sekunden im Hintergrund schließt es sich jetzt; außerdem schließt erneutes Antippen von „Karte“ das Blatt und zeigt die Karte frisch.
 

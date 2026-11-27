@@ -46,11 +46,19 @@ export function maxAllowedLevel(base: BaseState, buildingId: string, balance: Ba
 }
 
 export function commandPoints(base: BaseState, balance: Balance): number {
+  return commandPointsAt(buildingLevel(base, "kommandozentrale"), balance);
+}
+
+/**
+ * Kommandopunkte bei Kommandozentrale der Stufe `level`: commandPointsBase + commandPointsPerLevel je Stufe; ab Stufe
+ * commandPointsLateFromLevel (v1.24) zählt jede Stufe commandPointsLatePerLevel.
+ */
+export function commandPointsAt(level: number, balance: Balance): number {
   const def = balance.buildings.kommandozentrale;
-  return (
-    (def.commandPointsBase ?? 0) +
-    (def.commandPointsPerLevel ?? 0) * buildingLevel(base, "kommandozentrale")
-  );
+  const per = def.commandPointsPerLevel ?? 0;
+  const from = def.commandPointsLateFromLevel;
+  const late = from !== undefined && level >= from ? level - from + 1 : 0;
+  return (def.commandPointsBase ?? 0) + per * (level - late) + (def.commandPointsLatePerLevel ?? per) * late;
 }
 
 export function missionSlots(base: BaseState, balance: Balance): number {

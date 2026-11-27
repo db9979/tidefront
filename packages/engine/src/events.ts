@@ -3,6 +3,7 @@ import { and, asc, eq, lte, sql } from "drizzle-orm";
 import { tables, type Tx } from "@tidefront/db";
 import { MAX_EVENT_ATTEMPTS, type ChangeKind, type Engine, type NoticeJob } from "./context.ts";
 import { HANDLERS } from "./handlers.ts";
+import { worldLockShared } from "./world-lock.ts";
 import { noticesAfter, noticeSnapshot } from "./event-notices.ts";
 import { challengesAfter, challengeSnapshot } from "./challenges.ts";
 import { achievementsAfter, achievementSnapshot } from "./achievements.ts"; // Erfolge
@@ -53,18 +54,23 @@ async function processOne(engine: Engine, pick: Pick): Promise<boolean> {
         .for("update", { skipLocked: true });
       if (!ev) return;
       processed = true;
+      // Saisonwechsel: alle anderen Ereignisse halten die geteilte Sperre, season_end die exklusive (season.ts).
+      if (ev.type !== "season_end") await worldLockShared(tx);
+      // Spielzeit: nach Fehlversuchen ist due_at nur der Wiederholungszeitpunkt, die Fälligkeit steht in orig_due_at.
+      const dueMs = (ev.origDueAt ?? ev.dueAt).getTime();
+      const row: EventRow = { id: ev.id, type: ev.type, dueAt: new Date(dueMs), payload: ev.payload as Record<string, unknown>, baseId: ev.baseId };
       const handler = HANDLERS[ev.type];
       try {
         if (!handler) throw new Error(`unknown event type ${ev.type}`);
         await tx.transaction(async (inner) => {
-          const snap = await noticeSnapshot(inner, ev as EventRow);
-          const daily = await challengeSnapshot(inner, ev as EventRow);
-          const erfolge = await achievementSnapshot(inner, ev as EventRow); // Erfolge: neue Berichte, Bau/Forschung
-          const res = await handler(inner, ev as EventRow, ev.dueAt.getTime());
+          const snap = await noticeSnapshot(inner, row);
+          const daily = await challengeSnapshot(inner, row);
+          const erfolge = await achievementSnapshot(inner, row); // Erfolge: neue Berichte, Bau/Forschung
+          const res = await handler(inner, row, dueMs);
           notes.push(...res.notify);
-          jobs.push(...(res.push ?? []), ...(await noticesAfter(inner, ev as EventRow, ev.dueAt.getTime(), snap)));
-          await challengesAfter(inner, ev as EventRow, ev.dueAt.getTime(), daily);
-          await achievementsAfter(inner, ev.dueAt.getTime(), erfolge); // Erfolge und Wochenziele
+          jobs.push(...(res.push ?? []), ...(await noticesAfter(inner, row, dueMs, snap)));
+          await challengesAfter(inner, row, dueMs, daily);
+          await achievementsAfter(inner, dueMs, erfolge); // Erfolge und Wochenziele
         });
         await tx
           .update(tables.gameEvent)
@@ -80,6 +86,7 @@ async function processOne(engine: Engine, pick: Pick): Promise<boolean> {
             attempts: failed.attempts,
             lastError: failed.error.slice(0, 2000),
             status: giveUp ? "failed" : "pending",
+            origDueAt: ev.origDueAt ?? ev.dueAt,
             dueAt: giveUp ? ev.dueAt : sql`now() + make_interval(secs => ${2 ** failed.attempts})`,
           })
           .where(eq(tables.gameEvent.id, ev.id));

@@ -109,7 +109,7 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
             {all ? "Kurzansicht (Top 10 und du)" : `Alle ${rows.length} zeigen`}
           </Button>
         )}
-        <p className="text-[11px] text-slate-500 mt-2">1 Punkt je 100 Ressourcen Kostenwert, Befehle zählen ihre Punkte direkt. Antippen für Details.</p>
+        <p className="text-[11px] text-slate-500 mt-2">1 Punkt je 100 Kostenwert (Ressourcen zum Börsen-Richtpreis), Befehle zählen ihre Punkte direkt. Antippen für Details.</p>
         <Button kind="secondary" className="w-full mt-3" onClick={() => setInvite(true)}>Freunde einladen</Button>
       </Card>
       {dir.data && dir.data.alliances.length > 0 && <AllianceRanking alliances={dir.data.alliances} />}

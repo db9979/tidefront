@@ -147,8 +147,8 @@ Werte unter `weather.forecast`:
   Wirkung auf Flugzeuge und Luftschlag von–bis. „Sturm möglich“, wenn der obere Rand `stormFrom` erreicht.
   Sturmwarnung „ab etwa hh:mm (±Verschiebung)“.
 - **Genauigkeit** (`forecastSkill`, je Hafen): Unsicherheit mal `1 − skillPerLevel · Stufe(skillTech) − radarBonus`
-  (Funkmesstechnik −15 % je Stufe, Radarstation ab Stufe 1 −10 %), nicht unter `minFactor` (0,5). Bestwert heute
-  0,6 (Funkmesstechnik 2 und Radar). Der Faktor wirkt auf Abweichung und Verschiebung.
+  (Funkmesstechnik −20 % je Stufe, bis v1.23 −15 %; Radarstation ab Stufe 1 −10 %), nicht unter `minFactor` (0,5).
+  Bestwert 0,5 (Funkmesstechnik 2 und Radar) = `minFactor`. Der Faktor wirkt auf Abweichung und Verschiebung.
 - **Simulation** (6 Orte × 300 Ausgaben, `test/weather-forecast.test.ts`; Faktor 1 / 0,6):
 
   | Vorlauf | Wind, mittl. Abweichung | relativ | Bewölkung, mittl. Abw. | Verzerrung Wind | Spannbreite trifft |
