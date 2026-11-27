@@ -33,10 +33,10 @@ test("Verträge: Angebot über der Vertragsgrenze gekennzeichnet, Annehmen gespe
   expect(bot.ok, JSON.stringify(bot)).toBe(true);
   const botId = (bot as { playerId: number }).playerId;
   try {
-    await seed.sql`update player set bot_state = jsonb_set(bot_state, '{nextActAt}', '99999999999999'::jsonb), trader = jsonb_set(trader, '{credits}', '50000'::jsonb) where id = ${botId}`;
+    await seed.sql`update player set bot_state = jsonb_set(bot_state, '{nextActAt}', '99999999999999'::jsonb), trader = jsonb_set(trader, '{credits}', '10000'::jsonb) where id = ${botId}`;
     const [kb] = await seed.sql`select id from base where player_id = ${botId}`;
     await updateState(seed.sql, kb.id as number, (s) => {
-      s.buildings.hafenkommandantur = 5; s.buildings.lagerkomplex = 10;
+      s.buildings.hafenkommandantur = 10; s.buildings.lagerkomplex = 10; // Kassengrenze 50.000: Guthaben + Erlös passen
       s.resources = { ...s.resources, stahl: 50_000 };
       s.resUpdatedAt = Date.now();
     });
