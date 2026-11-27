@@ -100,10 +100,16 @@ test("Radarposten: auf freier Küste errichten, im Lagebild verwalten", async ({
   await setBuildings(seed.sql, player.baseId, { radarstation: 3, werft: 3, kaserne: 3, kommandozentrale: 4, hafenkommandantur: 4 });
   await setUnits(seed.sql, player.baseId, { pioniere: 6, landungsschiff: 1 });
   await setResources(seed.sql, player.baseId, { stahl: 5000, elektronik: 5000, treibstoff: 5000 });
-  const site = await foundingSpot(seed.sql, player);
-  await page.goto("/");
-  await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
-  await tapHex(page, player, site);
+  // Unter Parallel-Last kann ein neues Nest gerade auf dem gewählten Küstenfeld entstehen (lebende Nester): dann ein
+  // anderes freies Feld wählen.
+  let site = await foundingSpot(seed.sql, player);
+  await expect(async () => {
+    site = await foundingSpot(seed.sql, player);
+    await page.goto("/");
+    await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
+    await tapHex(page, player, site);
+    await expect(page.getByRole("button", { name: "Radarposten errichten" })).toBeVisible({ timeout: 5000 });
+  }).toPass({ timeout: 45_000 });
   await page.getByRole("button", { name: "Radarposten errichten" }).click();
   await expect(page.getByRole("heading", { name: "Mission planen" })).toBeVisible();
   await expect(page.getByTestId("intel-preview")).toContainText("Baukosten");
