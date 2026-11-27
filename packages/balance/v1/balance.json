@@ -1,5 +1,5 @@
 {
-  "version": "v1.25",
+  "version": "v1.27",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -123,6 +123,11 @@
     "raidHpWeights": { "see": 0.5, "minenraeumer": 0.1, "minenleger": 0, "landungsschiff": 0, "kolonieschiff": 0 }
   },
   "scoring": { "npcDefenseFactor": 0.25, "npcWorldEventKinds": [], "armadaFactor": 0.5 },
+  "pvp": {
+    "bountyByRank": [0.5, 0.35, 0.2], "bountyDefenseFactor": 0.5, "mutMin": 0.5, "mutMax": 1.5, "maxFactor": 2,
+    "pairWindowHours": 72, "pairFactors": [1, 0.5, 0.25, 0], "collusionDays": 7, "suspiciousFights": 3, "suspiciousDays": 7,
+    "beginnerEndsOnPlayerRaid": true
+  },
   "market": {
     "refPrice": { "stahl": 1.0, "treibstoff": 1.8, "elektronik": 3.0, "proviant": 0.6 },
     "depth": { "stahl": 200000, "treibstoff": 120000, "elektronik": 60000, "proviant": 150000 },
@@ -393,9 +398,10 @@
     "specs": {
       "angriff": { "name": "Angriff", "text": "Geschütze und Zielführung: mehr Angriff zur See.", "mission": { "attack.see": 0.08 }, "defense": { "attack.see": 0.07, "attack.anlage": 0.07 } },
       "verteidigung": { "name": "Verteidigung", "text": "Schadenskontrolle: mehr Lebenspunkte für den ganzen Verband.", "mission": { "hp.see": 0.06, "hp.land": 0.06, "hp.luft": 0.06 }, "defense": { "hp.see": 0.06, "hp.land": 0.06, "hp.luft": 0.06, "hp.anlage": 0.06 } },
+      "landung": { "name": "Landungstrupp", "text": "Sturmlandung: stärkere und zähere Landtruppen, weniger Minenschaden; daheim zähere Truppen.", "mission": { "attack.land": 0.1, "hp.land": 0.08, "mineDamage": -0.3 }, "defense": { "hp.land": 0.06 } },
       "logistik": { "name": "Logistik", "text": "Marschordnung und Bunkerplan: schneller und sparsamer unterwegs.", "mission": { "speed.see": 0.1, "speed.luft": 0.1, "fuel": -0.15 } },
       "aufklaerung": { "name": "Aufklärung", "text": "Funkdisziplin auf Mission (später erkannt), daheim längere Radar-Vorwarnzeit.", "mission": { "stealth": -0.25 }, "harbor": { "radarWarning": 0.25 } },
-      "beutemeister": { "name": "Beutemeister", "text": "Mehr Laderaum und Beute; daheim besser versteckte Bestände.", "mission": { "cargo": 0.15, "loot": 0.1 }, "harbor": { "bunker": 0.1 } },
+      "beutemeister": { "name": "Beutemeister", "text": "Mehr Laderaum und Beute, auch aus Piratennestern; daheim besser versteckte Bestände.", "mission": { "cargo": 0.15, "loot": 0.1, "nestLoot": 0.1 }, "harbor": { "bunker": 0.1 } },
       "uboot": { "name": "U-Boot-Taktik", "text": "Wolfsrudel und U-Jagd: mehr Angriff der U-Boote und gegen getauchte U-Boote.", "mission": { "attackUnit.uboot": 0.12, "attackVs.uboot": 0.12 }, "defense": { "attackUnit.uboot": 0.12, "attackVs.uboot": 0.12 } }
     },
     "xp": { "hpPerXp": 60, "minWin": 5, "maxPerBattle": 120 },
@@ -506,5 +512,10 @@
         "expandFromCommandLevel": 5, "fields": "all", "trade": false
       }
     }
+  },
+  "catchUp": {
+    "from": 0.7, "full": 0.3, "cap": 0.5, "resumeBelow": 0.6, "minBaseAgeDays": 3,
+    "storeHours": 24, "stopDay": 40, "latePackFromDay": 8, "latePackShare": 0.15,
+    "refreshMinutes": 60, "maxCatchUpHours": 2
   }
 }

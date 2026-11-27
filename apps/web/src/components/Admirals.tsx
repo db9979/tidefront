@@ -1,10 +1,10 @@
 // Admirale: Karte im Truppen-Bildschirm (Ernennen, Spezialisierung, Hafenkommandant, Status, Lösegeld),
 // Auswahl in der Missionsplanung und Abschnitt im Kampfbericht (Einfluss, Erfahrung, Wurf).
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
-import { fmtNum, nOf } from "../lib/names.ts";
+import { fmtNum, label, nOf } from "../lib/names.ts";
 import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
 import { Button, Card, Cost, ErrorLine } from "../ui.tsx";
 import { ReasonLine } from "./Remedy.tsx"; // „Was hilft?“
@@ -21,7 +21,30 @@ const MOD_TEXT: Record<string, string> = {
   "attackVs.uboot": "U-Jagd", "hp.see": "LP Schiffe", "hp.land": "LP Truppen", "hp.luft": "LP Flugzeuge", "hp.anlage": "LP Anlagen",
   "speed.see": "Tempo Schiffe", "speed.luft": "Tempo Flugzeuge", fuel: "Treibstoff", stealth: "Vorwarnzeit des Ziels",
   radarWarning: "Radar-Vorwarnzeit", cargo: "Laderaum", loot: "Beute", bunker: "Bunkerschutz",
+  "attack.land": "Angriff der Truppen", mineDamage: "Minenschaden", nestLoot: "Nestbeute",
 };
+
+/** Modifikatoren (wie game-core, ohne den Kern ins Hauptpaket zu laden) um die Missionswirkung eines Admirals ergänzen. */
+export function withAdmiralMods<M extends object>(base: M | undefined, lines: Line[]): M | undefined {
+  if (lines.length === 0) return base;
+  const out = structuredClone(base ?? {}) as Record<string, number | Record<string, number>>;
+  for (const l of lines) {
+    const [k, e] = l.path.split(".");
+    if (e === undefined) out[k] = ((out[k] as number | undefined) ?? 1) * l.factor;
+    else {
+      const m = { ...((out[k] as Record<string, number> | undefined) ?? {}) };
+      m[e] = (m[e] ?? 1) * l.factor;
+      out[k] = m;
+    }
+  }
+  return out as M;
+}
+
+/** „1.200 Kredite und 150 Elektronik“ (was für die Ernennung fehlt). */
+export function missingText(m: Record<string, number>): string {
+  const parts = Object.entries(m).map(([r, n]) => (r === "credits" ? nOf(n, "Kredit", "Kredite") : `${fmtNum(n)} ${label(r)}`));
+  return parts.join(" und ");
+}
 
 function pct(f: number): string {
   const v = Math.round((f - 1) * 1000) / 10;
@@ -66,6 +89,7 @@ export function AdmiralsPanel() {
   const v = q.data;
   if (!v) return null;
   const free = v.slots - v.list.length;
+  const lacking = Object.keys(v.missing).length > 0;
   const s = v.slotsRule;
   return (
     <div>
@@ -94,9 +118,13 @@ export function AdmiralsPanel() {
             </select>
           </label>
           <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
-            <Cost cost={{ credits: v.cost.credits, elektronik: v.cost.elektronik }} />
-            <Button disabled={appoint.busy} onClick={() => void appoint.run({ name: name || null, spec })}>Ernennen</Button>
+            <Cost cost={{ credits: v.cost.credits, elektronik: v.cost.elektronik }} have={v.have} />
+            <Button disabled={appoint.busy || lacking} onClick={() => void appoint.run({ name: name || null, spec })}>Ernennen</Button>
           </div>
+          {lacking && (
+            <ReasonLine code={v.missing.credits ? "admiral_funds" : "insufficient_resources"} text={`Fehlt: ${missingText(v.missing)}.`}
+              detail={{ cost: v.missing.credits ? { credits: v.cost.credits } : { elektronik: v.cost.elektronik } }} className="text-sm text-brass-300 mt-2" />
+          )}
           <ErrorLine text={appoint.error} code={appoint.code} detail={{ cost: v.cost }} />
         </div>
       ) : (
@@ -171,9 +199,59 @@ function AdmiralItem({ a, v, now }: { a: Admiral; v: View; now: number }) {
           <Button disabled={!spec2 || second.busy} onClick={() => void second.run({ admiralId: a.id, spec: spec2 })}>Wählen</Button>
         </div>
       )}
+      {a.canRetrain && <Retrain a={a} v={v} />}
       <ErrorLine text={failed?.error} code={failed?.code} />
     </li>
   );
+}
+
+/** Umschulung: erste Spezialisierung einmal kostenlos wechseln (mit Bestätigung). */
+function Retrain({ a, v }: { a: Admiral; v: View }) {
+  const retrain = useCommand((i: { key: string; admiralId: number; spec: string }) => trpcClient.admiral.retrain.mutate(i), invalidate);
+  const [open, setOpen] = useState(false);
+  const [spec, setSpec] = useState("");
+  const [sure, setSure] = useState(false);
+  const specName = (id: string) => v.specs.find((x) => x.id === id)?.name ?? id;
+  const choices = v.specs.filter((x) => !a.specs.includes(x.id));
+  if (!open) {
+    return (
+      <div className="mt-2 flex items-center gap-2 flex-wrap">
+        <span className="text-[11.5px] text-ink2 flex-1 min-w-0">Neu: Spezialisierung „{specName("landung")}“. Einmal kostenlos umschulen.</span>
+        <Button kind="secondary" onClick={() => setOpen(true)}>Umschulen …</Button>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2 border border-rule rounded-lg p-2">
+      <div className="font-display text-[11px] uppercase tracking-[0.12em] text-ink2 mb-1">Umschulung – {specName(a.specs[0])} ersetzen</div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+        {choices.map((x) => (
+          <button key={x.id} type="button" onClick={() => { setSpec(x.id); setSure(false); }} className={`tap rounded-lg px-2 py-1.5 text-left text-sm border ${spec === x.id ? "border-sea-400 bg-sea-400/10 font-semibold" : "border-rule"}`}>
+            {x.name}
+          </button>
+        ))}
+      </div>
+      <SpecInfo spec={v.specs.find((x) => x.id === spec)} />
+      {spec && sure && (
+        <p className="text-sm font-semibold text-messing mt-2">
+          {specName(a.specs[0])} wird durch {specName(spec)} ersetzt. Kostenlos, aber nur dieses eine Mal – danach ist die erste Spezialisierung fest. Rang und Erfahrung bleiben.
+        </p>
+      )}
+      <div className="flex gap-2 mt-2 flex-wrap">
+        {spec && !sure && <Button onClick={() => setSure(true)}>Umschulen auf {specName(spec)}</Button>}
+        {spec && sure && <Button disabled={retrain.busy} onClick={() => void retrain.run({ admiralId: a.id, spec })}>Ja, endgültig umschulen</Button>}
+        <Button kind="ghost" onClick={() => { setOpen(false); setSpec(""); setSure(false); }}>Abbrechen</Button>
+      </div>
+      <ErrorLine text={retrain.error} code={retrain.code} />
+    </div>
+  );
+}
+
+/** Gewählter Admiral der Missionsplanung (für den Probekampf): Name und Missionswirkung, sonst undefined. */
+export function useAdmiralChoice(id: number | null): { name: string; lines: Line[] } | undefined {
+  const q = useQuery(trpc.admiral.get.queryOptions());
+  const a = id === null ? undefined : q.data?.list.find((x) => x.id === id && x.status === "bereit");
+  return useMemo(() => (a ? { name: `${a.rankName} ${a.name}`, lines: a.mission } : undefined), [a]);
 }
 
 /** Auswahl in der Missionsplanung: bereite Admirale, mit Wirkung auf diesen Verband. */

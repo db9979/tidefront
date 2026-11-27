@@ -9,6 +9,7 @@ import { diplomacyBlock, membershipOf, memberIds } from "./alliance-core.ts";
 import { scheduleEvent, type BaseRow } from "./store.ts";
 import { missionWeather } from "./weather.ts";
 import { gameTimeZone } from "./challenge-pool.ts"; // einheitliche Zeitzone des Spiels
+import { withPvpStamp } from "./pvp.ts"; // PvP: Rang, Kopfgeld und Mutfaktor beim Kampf festhalten
 
 export const HOUR_MS = 3600000;
 export type Notes = [number[] | null, ChangeKind][];
@@ -63,6 +64,7 @@ export async function storeNavalReport(
     attackerBaseId?: number | null; defenderBaseId?: number | null; winner?: string | null; seed?: number | null; report: unknown; atMs: number;
   },
 ): Promise<number> {
+  v = await withPvpStamp(tx, v); // PvP: report.pvp bei Kämpfen zwischen Spielern (Blockade, Konvoi, Feld)
   const [r] = await tx
     .insert(tables.battleReport)
     .values({

@@ -3,6 +3,7 @@ import { buildingLevel, hasResources, settle, subtractResources } from "./econom
 import type { Modifiers } from "./modifiers.ts";
 import { modValue } from "./modifiers.ts";
 import { homeOnlyBlocked } from "./expansion.ts";
+import { buildCredit, splitBuildCost } from "./catch-up.ts";
 
 /** Erstes fehlendes Voraussetzungsgebäude (id, nötige Stufe) für den Bau von `buildingId`, sonst null. */
 export function missingRequirement(base: BaseState, buildingId: string, balance: Balance): { id: string; level: number } | null {
@@ -86,7 +87,9 @@ export function upgradeDurationMs(buildingId: string, targetLevel: number, balan
 /**
  * Reiht einen Ausbau in die Bauschlange ein (höchstens building.queueSlots Aufträge). Die Zielstufe
  * berücksichtigt bereits eingereihte Aufträge desselben Gebäudes; die Kosten werden sofort bezahlt.
- * Der Auftrag beginnt, wenn der vorige fertig ist (frühestens jetzt).
+ * Der Auftrag beginnt, wenn der vorige fertig ist (frühestens jetzt). Aufholhilfe: Eine Baugutschrift (catchUp.credit)
+ * wird zuerst verbraucht (deckt denselben Anteil jeder Ressource), den Rest zahlt das Lager; der Auftrag merkt sich den
+ * Gutschrift-Anteil (order.credit), damit ein Abbruch ihn in die Gutschrift statt ins Lager erstattet.
  * Codes: unknown_building, home_only (nur im Heimathafen, z. B. Forschungsamt in einer Kolonie), queue_full, max_level,
  * command_cap, building_requires (Voraussetzung fehlt, z. B. Startrampe), insufficient_resources.
  */
@@ -106,8 +109,12 @@ export function startUpgrade(
   if (level + 1 > maxAllowedLevel(base, buildingId, balance)) return { ok: false, code: "command_cap" };
   const next = settle(base, nowMs, balance, mods);
   const cost = upgradeCost(buildingId, level, balance);
-  if (!hasResources(next.resources, cost)) return { ok: false, code: "insufficient_resources" };
-  next.resources = subtractResources(next.resources, cost);
+  const credit = buildCredit(next);
+  const pay = credit > 0 ? splitBuildCost(cost, credit, balance) : null;
+  const fromStock = pay ? pay.fromStock : cost;
+  if (!hasResources(next.resources, fromStock)) return { ok: false, code: "insufficient_resources" };
+  next.resources = subtractResources(next.resources, fromStock);
+  if (pay && pay.used > 0) next.catchUp = { ...next.catchUp!, credit: Math.max(0, credit - pay.used) };
   const last = next.buildQueue[next.buildQueue.length - 1];
   const startedAt = last === undefined ? nowMs : Math.max(nowMs, last.finishesAt);
   const order: BuildOrder = {
@@ -115,6 +122,7 @@ export function startUpgrade(
     targetLevel: level + 1,
     startedAt,
     finishesAt: startedAt + upgradeDurationMs(buildingId, level + 1, balance, mods),
+    ...(pay && pay.used > 0 ? { credit: pay.fromCredit } : {}),
   };
   next.buildQueue = [...next.buildQueue, order];
   return { ok: true, base: next, order: { ...order } };

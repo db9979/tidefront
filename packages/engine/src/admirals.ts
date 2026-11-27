@@ -77,7 +77,7 @@ export function appointAdmiral(engine: Engine, playerId: number, key: string, in
     await saveBase(ctx.tx, b.id, state);
     const [a] = await ctx.tx
       .insert(tables.admiral)
-      .values({ playerId, baseId: b.id, name, spec1: input.spec, stationed: rows.every((r) => r.baseId !== b.id || !r.stationed) })
+      .values({ playerId, baseId: b.id, name, spec1: input.spec, retrainFree: false, stationed: rows.every((r) => r.baseId !== b.id || !r.stationed) })
       .returning({ id: tables.admiral.id });
     await payCredits(ctx, cfg.cost.credits, `admiral-${a.id}:appoint`);
     ctx.notify.push([[playerId], "base"]);
@@ -94,6 +94,24 @@ export function chooseAdmiralSpec(engine: Engine, playerId: number, key: string,
     if (admiralRank(a.xp, balance).index < cfg.secondSpecFromRank) fail("admiral_rank");
     if (!Object.hasOwn(cfg.specs, input.spec) || input.spec === a.spec1) fail("admiral_spec");
     await ctx.tx.update(tables.admiral).set({ spec2: input.spec }).where(eq(tables.admiral.id, a.id));
+    ctx.notify.push([[playerId], "base"]);
+    return { ok: true as const };
+  });
+}
+
+/**
+ * Umschulung: erste Spezialisierung einmal kostenlos wechseln (nur Admirale, die vor dem Landungstrupp ernannt wurden;
+ * nicht unterwegs). Rang, Erfahrung und zweite Spezialisierung bleiben.
+ * Codes: admiral_unknown, admiral_retrain_used, admiral_spec, admiral_busy.
+ */
+export function retrainAdmiral(engine: Engine, playerId: number, key: string, input: { admiralId: number; spec: string; baseId?: number }) {
+  return runCommand<{ ok: true }>(engine, playerId, key, "admiralRetrain", async (ctx) => {
+    const cfg = balance.admirals ?? fail("admiral_off");
+    const a = await lockOwnAdmiral(ctx, input.admiralId);
+    if (!a.retrainFree) fail("admiral_retrain_used");
+    if (!Object.hasOwn(cfg.specs, input.spec) || input.spec === a.spec1 || input.spec === a.spec2) fail("admiral_spec");
+    if (admiralStatus(a, await activeMissions(ctx.tx, [a]), ctx.nowMs).status === "unterwegs") fail("admiral_busy");
+    await ctx.tx.update(tables.admiral).set({ spec1: input.spec, retrainFree: false }).where(eq(tables.admiral.id, a.id));
     ctx.notify.push([[playerId], "base"]);
     return { ok: true as const };
   });
@@ -154,6 +172,8 @@ export interface AdmiralInfo {
   specs: string[];
   /** Zweite Spezialisierung jetzt wählbar. */
   canChooseSecond: boolean;
+  /** Einmalige kostenlose Umschulung der ersten Spezialisierung noch offen. */
+  canRetrain: boolean;
   /** Hafenkommandant seines Hafens. */
   stationed: boolean;
   /** Dienstort (Hafen-ID) und ob es der aktive Hafen ist (mehrere Häfen). */
@@ -195,6 +215,7 @@ export async function admiralView(engine: Engine, playerId: number, baseId?: num
       next: next ? { name: next.name, minXp: next.minXp } : null,
       specs: [a.spec1, ...(a.spec2 ? [a.spec2] : [])],
       canChooseSecond: !a.spec2 && r.index >= cfg.secondSpecFromRank,
+      canRetrain: a.retrainFree,
       stationed: a.stationed,
       baseId: a.baseId, baseName: names.get(a.baseId) ?? "", here: a.baseId === own.id,
       ...admiralStatus(a, active, nowMs),
@@ -207,10 +228,21 @@ export async function admiralView(engine: Engine, playerId: number, baseId?: num
     };
   });
   const used = rows.map((r) => r.name);
+  // Bezahlbarkeit der Ernennung: Kredite des Spielers, Elektronik des aktiven Hafens (abgerechnet).
+  const [p] = await engine.db.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, playerId));
+  const have = {
+    credits: cents((p?.trader as { credits?: number } | undefined)?.credits ?? 0),
+    elektronik: Math.floor(settle(own.state, nowMs, balance, await modsOf(engine.db, own, nowMs)).resources.elektronik ?? 0),
+  };
+  const missing: Record<string, number> = {};
+  for (const r of ["credits", "elektronik"] as const) if (have[r] + 1e-9 < cfg.cost[r]) missing[r] = Math.ceil(cfg.cost[r] - have[r]);
   return {
     slots: await slotsOf(engine.db, playerId),
     slotsRule: cfg.slots,
     cost: cfg.cost,
+    /** Bestand für die Ernennung und was fehlt (leer: bezahlbar). */
+    have,
+    missing,
     ranks: cfg.ranks,
     secondSpecFromRank: cfg.secondSpecFromRank,
     specs: Object.entries(cfg.specs).map(([id, s]) => ({ id, name: s.name, text: s.text, mission: s.mission ?? {}, defense: s.defense ?? {}, harbor: s.harbor ?? {} })),

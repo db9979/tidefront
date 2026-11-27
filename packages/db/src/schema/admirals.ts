@@ -16,6 +16,11 @@ export const admiral = pgTable("admiral", {
   spec1: text("spec1").notNull(),
   /** Zweite Spezialisierung (ab balance.admirals.secondSpecFromRank wählbar). */
   spec2: text("spec2"),
+  /**
+   * Landungstrupp: einmalige kostenlose Umschulung der ersten Spezialisierung noch offen. Bestehende
+   * Admirale erhalten sie über den Vorgabewert; neu ernannte wählen frei und bekommen false.
+   */
+  retrainFree: boolean("retrain_free").notNull().default(true),
   /** Hafenkommandant: führt daheim die Verteidigung (höchstens einer je Spieler). */
   stationed: boolean("stationed").notNull().default(false),
   /** Zuletzt geführte Mission; unterwegs, solange sie outbound oder returning ist. */

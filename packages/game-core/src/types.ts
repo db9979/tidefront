@@ -224,6 +224,10 @@ export interface Balance {
   expansion?: ExpansionDef;
   /** Lagebild (seit v1.17, intel.ts); fehlt es, sieht jeder alles (kein Kartennebel). */
   intel?: import("./intel.ts").IntelBalance;
+  /** Spieler gegen Spieler (Kopfgeld, Mutfaktor, Paarbremse; pvp.ts); fehlt es, zählt jeder Kampf ohne diese Faktoren. */
+  pvp?: import("./pvp.ts").PvpBalance;
+  /** Aufholhilfe (catch-up.ts): Baugutschrift für Häfen weit unter dem Median; fehlt es, gibt es keine. */
+  catchUp?: import("./catch-up.ts").CatchUpBalance;
 }
 
 /** Wertung (v1.24). Punkte bewerten Ressourcen zum Börsen-Richtpreis (market.refPrice). */
@@ -260,6 +264,8 @@ export interface ProtectionState {
   nightShieldSuspendedUntilMs: number;
   /** Schutz nach verlorener Verteidigung bis zu diesem Zeitpunkt. */
   defeatShieldUntilMs: number;
+  /** PvP-Vorlage: Anfängerschutz vorzeitig beendet (eigener Überfall auf einen Spielerhafen) zu diesem Zeitpunkt. */
+  beginnerEndedAtMs?: number;
   /** Vorgemerkte Nachtschild-Einstellung, gültig ab fromMs (fehlt in älteren Ständen). */
   nightShieldNext?: { startHour: number | null; tzOffsetMinutes: number; timeZone?: string; fromMs: number } | null;
   /** Zeitpunkt der letzten Änderung durch den Spieler (fehlt in älteren Ständen). */
@@ -271,6 +277,8 @@ export interface BuildOrder {
   targetLevel: number;
   startedAt: number;
   finishesAt: number;
+  /** Aufholhilfe: aus der Baugutschrift bezahlter Teil der Kosten (Abbruch erstattet ihn in die Gutschrift zurück). */
+  credit?: ResourceMap;
 }
 
 export interface TrainingOrder {
@@ -315,6 +323,8 @@ export interface BaseState {
   colony?: { foundedAtMs: number };
   /** Lagebild Stufe 3 (v1.23, intel-sat.ts): von hier gestartete Satelliten (abgelaufene räumt der Server). */
   satellites?: import("./intel-sat.ts").SatelliteState[];
+  /** Aufholhilfe (catch-up.ts): Konto der Baugutschrift; zählt nicht zum Lager, nicht plünder- oder handelbar. */
+  catchUp?: import("./catch-up.ts").CatchUpState;
 }
 
 export interface ProductionInfo {
@@ -355,6 +365,8 @@ export interface MissionInput {
   weather?: RouteWeather; // Wetter entlang der Route bei Abfahrt (v1.6); fehlt es, kein Wettereinfluss
   /** Seewege: vorgegebene Route (null = Luftlinie erzwingen); fehlt sie, rechnet planMission sie bei Schiffen selbst. */
   route?: MissionRoute | null;
+  /** PvP: Überfall auf einen Spielerhafen – beendet den eigenen Anfängerschutz (balance.pvp.beginnerEndsOnPlayerRaid). */
+  playerHarbor?: boolean;
 }
 
 /** Seewege: Route eines Verbands mit Schiffen (Wegpunkte als [Spalte, Zeile], Länge in km); siehe @tidefront/world seaRoute. */

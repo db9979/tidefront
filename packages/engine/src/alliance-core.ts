@@ -4,6 +4,7 @@ import { and, eq, gt, inArray, isNull, lte, or } from "drizzle-orm";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { GameError, type ChangeKind, type Engine } from "./context.ts";
 import { getSetting } from "./settings.ts";
+import { recordTies } from "./pvp-ties.ts"; // PvP: Absprache-Sperre nach Paktende
 
 export const ROLES = ["fuehrung", "offizier", "mitglied"] as const;
 export type Role = (typeof ROLES)[number];
@@ -114,6 +115,7 @@ export async function purgeExpired(db: DbOrTx, nowMs: number, notes: Notes = [])
     for (const d of gone) {
       if (d.status !== "aktiv") continue;
       const ids = [...(await partyMembers(tx, d.partyA)), ...(await partyMembers(tx, d.partyB))];
+      await recordTies(tx, await partyMembers(tx, d.partyA), await partyMembers(tx, d.partyB), nowMs); // PvP: kein Kopfgeld kurz nach dem Pakt
       await systemMessage(tx, notes, ids, "Diplomatie: Pakt erloschen",
         `Der Nichtangriffspakt zwischen ${await partyName(tx, d.partyA)} und ${await partyName(tx, d.partyB)} ist erloschen. Überfälle sind wieder möglich.`);
       notes.push([[...new Set(ids)], "alliance"]);

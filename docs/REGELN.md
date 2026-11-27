@@ -193,7 +193,17 @@ Nach dem Kampf:
   höchstens 3; Kosten 2 000 Kredite und 400 Elektronik. Name aus einer festen Liste (oder ausgelost).
 - Ränge nach Erfahrung: Kapitän zur See (0), Konteradmiral (100), Vizeadmiral (300), Admiral (700); Wirkung 50 / 70 /
   85 / 100 % der vollen Boni. Eine Spezialisierung beim Ernennen, eine zweite ab Vizeadmiral: Angriff, Verteidigung,
-  Logistik, Aufklärung, Beutemeister, U-Boot-Taktik (Werte in `admirals.specs`, je Rolle `mission`, `defense`, `harbor`).
+  Landungstrupp, Logistik, Aufklärung, Beutemeister, U-Boot-Taktik (Werte in `admirals.specs`, je Rolle `mission`,
+  `defense`, `harbor`).
+- **Landungstrupp** (docs/VORLAGE-ADMIRALE.md): auf Mission Angriff der Landtruppen +10 % (`attack.land`), deren
+  Lebenspunkte +8 % (`hp.land`), Minenschaden an den eigenen Landungstruppen −30 % (`mineDamage`); als Hafenkommandant
+  (Verteidigung, auch gegen das Kartell) Lebenspunkte der Landtruppen +6 %. Kampfwert voll ausgebildet etwa +10 % bei
+  Landungen und Nestern, im Seegefecht keiner – das Gegenstück zu „Angriff“ zur See.
+- **Beutemeister:** zusätzlich feste Nestbeute +10 % (`nestLoot`), weiter durch den Laderaum begrenzt.
+- **Umschulung:** Admirale, die vor dem Landungstrupp ernannt wurden, dürfen ihre erste Spezialisierung einmal kostenlos
+  wechseln (nicht unterwegs; Rang, Erfahrung und zweite Spezialisierung bleiben). Neu ernannte haben keine Umschulung.
+- **KI-Spieler** ernennen ab Hafenkommandantur 1 einen Admiral zu denselben Kosten: Freibeuter „Landungstrupp“ (führt
+  ihre Überfälle, im Probekampf eingerechnet), Festung „Verteidigung“ als Hafenkommandant; Händler keinen.
 - Ein Admiral führt einen Verband (Auswahl in der Missionsplanung; wirkt nur auf diesen Verband, auch gegen
   Weltereignisse und Rohstofffelder – nach einer Feldeinnahme bleibt er bei der Besatzung, siehe REGELN-FELDER.md) oder ist
   **Hafenkommandant** (höchstens einer): Er führt daheim die Verteidigung, auch gegen das Kartell, und wirkt passiv auf den
@@ -342,6 +352,9 @@ Werte unter `worldEvents.finale`, Kern in `packages/game-core/src/finale.ts`, En
   erst nach `nightShieldChangeHours` erlaubt (`shield_cooldown`). So lässt sich der Schild nicht nach einer Radarwarnung gegen einen
   schon anrückenden Angriff einschalten. Die Wahl bei der Gründung gilt sofort. Zeitzone: −840 bis +840 Minuten.
 - Anfängerschutz `beginnerDays` Tage. Nach verlorener Verteidigung `afterDefeatShieldHours` Stunden Schutz.
+- Der Anfängerschutz endet vorzeitig mit dem ersten eigenen Überfall auf einen Spielerhafen (`pvp.beginnerEndsOnPlayerRaid`,
+  beim Auslaufen bzw. Beitritt zu einem Sammelangriff auf einen Hafen; Nester, Felder, Weltereignisse, Blockaden,
+  Aufklärung nicht) – in allen Häfen des Spielers (`protection.beginnerEndedAtMs`). Ein Rückruf stellt ihn nicht wieder her.
 
 ## Börse Stufe 1
 
@@ -414,6 +427,31 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
   - **Beute:** Wert der Beute aus eigenen Überfällen der Saison (zum Richtpreis).
   - **Befehle:** Punkte aus abgeholten Tagesbefehlen der Saison samt Serienbonus (bereits Punkte, kein Kostenwert;
     siehe Abschnitt Tagesbefehle).
+- **Spieler gegen Spieler** (Vorlage „Mehr Spieler gegen Spieler“, freigegeben 27.11.2026, alle Empfehlungen; Block `pvp`): gilt für
+  jeden Kampfbericht mit Spieler auf beiden Seiten (Überfall, Sammelangriff, Blockadekampf, Konvoi, Feld). Nur die
+  Wertung ändert sich; Beute und Verluste bleiben. Ein geplünderter Spieler verliert weiterhin keine Punkte – die
+  Paarbremse verhindert, dass zwei Freunde so Punkte erzeugen.
+  - **Rang zum Tagesbeginn:** Beim ersten Abruf des Spieltags (Worker alle 10 min, sonst erster Kampf oder Rangliste)
+    hält der Server Rang und Gesamtpunkte aller Spieler fest (`server_setting pvp_rank_snapshot`). Jeder Spielerkampf
+    speichert daraus `report.pvp` = { Rang und Punkte beider, Kopfgeld, Mutfaktor, Absprache }.
+  - **Kopfgeld:** Ziel auf Rang 1/2/3 (mit Punkten), Angreifer schlechter platziert (oder ohne Rang): Kampfpunkte des
+    Angreifers × (1 + `bountyByRank`) = ×1,5/1,35/1,2, nicht die Beute. Kampfpunkte des Kopfgeld-Ziels aus diesem Kampf
+    × `bountyDefenseFactor` (0,5) – auch bei Absprache.
+  - **Mutfaktor:** m = √(Punkte Ziel / Punkte Angreifer), begrenzt `mutMin`–`mutMax` (0,5–1,5; Angreifer ohne Punkte 1,5)
+    auf Kampf- und Beutepunkte des Angreifers. Kopfgeld × Mut höchstens `maxFactor` (2).
+  - **Paarbremse:** Spielerkämpfe desselben Paares (beide Richtungen; Sammelangriff: jeder Teilnehmer mit dem Ziel)
+    innerhalb von `pairWindowHours` (72 h) zählen × `pairFactors` 1/0,5/0,25/0 nach Zahl der früheren Kämpfe im
+    Fenster. Der Angreifer nimmt die Stufe seines Paares, der Verteidiger die niedrigste der beteiligten Paare. Aus den
+    Berichten der Saison abgeleitet (auch für ältere Berichte ohne Stempel), nichts gespeichert.
+  - **Absprache-Sperre:** Kein Kopfgeld und Mutfaktor höchstens 1, wenn ein Beteiligter mit dem Ziel in den letzten
+    `collusionDays` (7) Tagen ein Handelsangebot angenommen hat, ein Transport zwischen ihnen ankam, einer beim anderen
+    stationiert war, sie in derselben Allianz oder im Pakt sind oder waren (Austritt, Ausschluss, Auflösung, Paktende
+    werden in `server_setting pvp_ties` gemerkt). Beim Kampf geprüft und im Bericht festgehalten.
+  - **Verwaltung „Auffällige Paare“:** Paare mit ≥ `suspiciousFights` (3) Spielerkämpfen in `suspiciousDays` (7) Tagen
+    oder mit Siegen ohne Verluste des Verteidigers; „Bericht aus der Wertung nehmen“ setzt `report.pvpExcluded` (Kampf
+    und Beute beider Seiten zählen 0; für die Paarbremse zählt der Kampf weiter).
+  - **KI-Spieler:** Der Freibeuter wählt unter seinen erlaubten Zielen Kopfgeld-Ziele zuerst.
+  - Nachtschild und Schutz nach Niederlage bleiben unverändert.
 - Rang nach Gesamtpunkten; Punktgleiche teilen den Rang.
 - Am Saisonende: Gold, Silber und Bronze für Rang 1 bis 3 (mit Punkten), je Kategorie eine Auszeichnung für den Besten
   (für Befehle: „Pflichtbewusstester Kapitän“), dazu „Grünster Hafen“ für den meisten genutzten Ökostrom in einem Hafen
@@ -423,6 +461,35 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
 - Danach wird die Welt zurückgesetzt: Stützpunkte, Missionen, Lieferungen, Wracks, Kampfberichte und Kredite verfallen,
   Nester sind wieder besetzt, die Börse steht auf Richtwert, Tagesbefehle und Serien verfallen. Konten, Nachrichten und die Ruhmeshalle bleiben.
   Jeder Spieler wählt einen neuen Hafen und erhält erneut Anfängerschutz.
+
+## Aufholhilfe
+
+Baugutschrift für Häfen weit unter dem Median und für Spät-Einsteiger (Balance-Block `catchUp`;
+Vorlage „Aufholhilfe“ (docs/VORLAGE-AUFHOLHILFE.md) mit Nutzerentscheiden vom 27.11.2026; Rechnung
+`node packages/game-core/sim/aufholhilfe.ts`). Gilt für Menschen und KI-Spieler gleich.
+
+- **Rückstand r** = eigene Ausbaupunkte (Kostenwert aller gebauten Gebäudestufen, alle Häfen) / Median der
+  Ausbaupunkte aller Spieler (KI eingeschlossen), deren erster Hafen mindestens `minBaseAgeDays` (3) Tage alt ist.
+  Der Worker rechnet einmal je `refreshMinutes` (60) und speichert den Median zwischen (`server_setting catch_up`).
+- **Bonus b** = `cap` × clamp((`from` − r) / (`from` − `full`); 0; 1) mit `from` 0,70, `full` 0,30, `cap` 0,50:
+
+  | r | ≥ 70 % | 60 % | 50 % | 40 % | ≤ 30 % |
+  |---|---|---|---|---|---|
+  | b | 0 | +12,5 % | +25 % | +37,5 % | +50 % |
+
+- **Hysterese:** Die Hilfe endet bei r ≥ 70 % und beginnt erst wieder unter `resumeBelow` (60 %).
+- **Zufluss:** je Stunde b × Gebäudeproduktion des Hafens (ohne Grundrate, nach Strom, ohne Forschungszuschläge) zum
+  Richtwert in das Konto `catchUp` des Hafens; höchstens `maxCatchUpHours` (2) Stunden je Lauf, Bestand höchstens
+  `storeHours` (24) Stunden Zufluss (darüber ruht er). Ab Saisontag `stopDay` (40) kein Zufluss mehr.
+- **Startpaket:** Wer seinen ersten Hafen der Saison ab Saisontag `latePackFromDay` (8; Tag 1 = Saisonbeginn) wählt,
+  erhält einmalig `latePackShare` (15 %) des Median-Ausbauwerts als Gutschrift (bei der Hafenwahl, Median aus dem
+  Zwischenspeicher). Kolonien erhalten kein Paket.
+- **Verwendung:** Die Gutschrift bezahlt nur Gebäudestufen und wird beim Ausbau **zuerst** verbraucht: Sie deckt
+  denselben Anteil jeder Ressource der Kosten (abgerundet), den Rest zahlt das Lager. Der Auftrag merkt sich den
+  Gutschrift-Teil; ein Abbruch erstattet ihn (anteilig wie üblich) in die Gutschrift, nicht ins Lager.
+- Die Gutschrift zählt nicht zum Lager, ist nicht plünderbar, handelbar oder transportierbar und verfällt mit den
+  Häfen zum Saisonende. Bauzeiten ändern sich nicht. Einheiten, Anlagen, Forschung kann sie nicht bezahlen.
+- Die Verwaltung (Statistik → Wirtschaft) zeigt je Spieler „aktiv“, Bonus, Bestand und Summe aus Zufluss und Paket.
 
 ## Tagesbefehle
 
@@ -545,7 +612,7 @@ Spielern (Treuhand, Gebühr, Börsenwert, Handelsstatistik) stehen in `docs/REGE
   Vorwarnzeit, die das Ziel gegen eigene Überfälle hat); Forschungsdauer (`researchTime`); Spionage (`spyAttack`,
   `spyDefense`: Faktor, der in Würfelpunkte umgerechnet wird, `round((Faktor − 1) × 10)`).
 - Quelle **Sabotage** (Nachrichtendienst): Eine laufende Sabotage im eigenen Hafen wirkt als Modifikator (siehe dort).
-- **Kombination:** Quellen (Forschung, Veteranen, Wetter, künftig Admirale, Ereignisse) werden je Wert **multipliziert**.
+- **Kombination:** Quellen (Forschung, Veteranen, Wetter, Admirale, künftig Ereignisse) werden je Wert **multipliziert**.
   Innerhalb einer Technik wirken Stufen additiv: Faktor = 1 + Wirkung je Stufe × Stufe.
 - Im Kampf gelten die Modifikatoren jeder Seite nur für ihre eigenen Einheiten und Anlagen (Lebenspunkte, Angriff);
   der Angreifer bringt Minenschaden, Ladung und Beute-Anteil mit, der Verteidiger seinen Bunkerschutz.

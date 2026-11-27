@@ -1,9 +1,10 @@
 // Einstieg in den Kampfsimulator; der Simulator selbst (mit Regelkern) wird erst beim Öffnen nachgeladen.
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import type { Balance, BaseData } from "../lib/trpc.ts";
 import type { ProbeTarget } from "./BattleSim.tsx";
 import { Icon } from "../icons.tsx";
 import { Button, Card, Sheet } from "../ui.tsx";
+import { modLineText, withAdmiralMods } from "./Admirals.tsx"; // Admirale: Wirkung im Probekampf
 
 const ProbeKampf = lazy(() => import("./BattleSim.tsx").then((m) => ({ default: m.ProbeKampf })));
 const FreeSim = lazy(() => import("./BattleSim.tsx").then((m) => ({ default: m.FreeSim })));
@@ -11,8 +12,9 @@ const FreeSim = lazy(() => import("./BattleSim.tsx").then((m) => ({ default: m.F
 const Wait = () => <p className="text-sm text-ink2 font-serif italic">Simulator lädt …</p>;
 
 /** Missionsplanung: Knopf „Probekampf“ und Ergebnis darunter. */
-export function ProbeCard({ balance, base, units, target, onScout }: { balance: Balance; base: BaseData; units: Record<string, number>; target: ProbeTarget; onScout: () => void }) {
+export function ProbeCard({ balance, base, units, target, onScout, admiral }: { balance: Balance; base: BaseData; units: Record<string, number>; target: ProbeTarget; onScout: () => void; admiral?: { name: string; lines: { spec: string; path: string; factor: number }[] } }) {
   const [open, setOpen] = useState(false);
+  const modifiers = useMemo(() => withAdmiralMods(base.modifiers, admiral?.lines ?? []), [base.modifiers, admiral]);
   return (
     <Card title="Probekampf" right={open ? <Button kind="ghost" onClick={() => setOpen(false)}>Ausblenden</Button> : undefined}>
       {!open ? (
@@ -23,7 +25,8 @@ export function ProbeCard({ balance, base, units, target, onScout }: { balance: 
         </div>
       ) : (
         <Suspense fallback={<Wait />}>
-          <ProbeKampf balance={balance} units={units} versorgungsmangel={base.versorgungsmangel} modifiers={base.modifiers} target={target} onScout={onScout} />
+          {admiral && <p className="text-xs text-ink2 mb-2" data-testid="probe-admiral">Mit {admiral.name}: {modLineText(admiral.lines) || "keine Wirkung auf diesen Verband"}.</p>}
+          <ProbeKampf balance={balance} units={units} versorgungsmangel={base.versorgungsmangel} modifiers={modifiers} target={target} onScout={onScout} />
         </Suspense>
       )}
     </Card>

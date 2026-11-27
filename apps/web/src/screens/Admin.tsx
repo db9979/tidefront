@@ -15,6 +15,7 @@ import { AdminCartel } from "./AdminCartel.tsx";
 import { AdminFinale } from "./AdminFinale.tsx"; // Saisonfinale vorziehen
 import { AdminIntel } from "./AdminIntel.tsx"; // Lagebild: Kartennebel an/aus
 import { AdminBots } from "./AdminBots.tsx"; // KI-Spieler
+import { AdminPvp } from "./AdminPvp.tsx"; // Spieler gegen Spieler: Auffällige Paare
 
 function when(v: string | Date | null | undefined): string {
   if (!v) return "–";
@@ -183,6 +184,7 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
       <AdminCartel />
       <AdminFinale />
       <AdminIntel />
+      <AdminPvp />
       <AdminStats />
     </div>
   );

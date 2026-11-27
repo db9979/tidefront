@@ -52,6 +52,7 @@ import { fieldArrive } from "./fields-missions.ts"; // Felder: Aufklärung/Beset
 import { FIELD_HANDLERS } from "./fields-run.ts"; // Felder: field_tick, field_delivery, field_raid
 import { expansionArrive, isExpansionType } from "./expansion.ts"; // Mehrere Häfen: Gründung/Verlegung
 import { INTEL_HANDLERS, withIntelArrive } from "./intel-ops.ts"; // Lagebild Stufe 2: Patrouille, Kampagne, Radarposten
+import { withPvpStamp } from "./pvp.ts"; // PvP: Rang, Kopfgeld und Mutfaktor beim Kampf festhalten
 
 const HOUR_MS = 3600000;
 const none = (): HandlerResult => ({ notify: [] });
@@ -162,6 +163,7 @@ export async function storeReport( // auch für Allianz-Ops
     atMs: number;
   },
 ): Promise<number> {
+  values = await withPvpStamp(tx, values); // PvP: report.pvp bei Kämpfen zwischen Spielern
   const [r] = await tx
     .insert(tables.battleReport)
     .values({ ...values, balanceVersion: balance.version, createdAt: new Date(values.atMs) })

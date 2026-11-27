@@ -2,6 +2,19 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.25.0 – 27.11.2026
+- **Admirale aufgewertet – neue Spezialisierung „Landungstrupp“:** Landtruppen greifen 10 % stärker an und haben 8 % mehr Lebenspunkte, Minensperren richten 30 % weniger Schaden an. Als Hafenkommandant stärkt er die eigenen Landtruppen um 6 %. In knappen Nest-Kämpfen hebt das die Siegchance deutlich.
+- **Beutemeister** bringt jetzt auch 10 % mehr feste Nestbeute (im Rahmen des Laderaums).
+- **Umschulung:** Jeder bestehende Admiral darf seine Spezialisierung einmal kostenlos wechseln.
+- Der Probekampf in der Missionsplanung rechnet den gewählten Admiral jetzt mit ein.
+- **Behoben:** Die Kachel „Admirale“ meldete „ernennen möglich“, obwohl Kredite oder Elektronik fehlten. Jetzt steht dort, was fehlt, und der Ernennen-Knopf erklärt die Sperre mit „Was hilft?“.
+- KI-Spieler Freibeuter und Festung ernennen nun ebenfalls Admirale.
+
+## 0.24.5 – 27.11.2026
+- **Behoben:** Die Kachel „Rohstofffelder“ meldete „besetzen möglich“ auch ohne Kriegsschiffe im Hafen; jetzt steht dort „erst Kriegsschiffe bauen“.
+- Stromanzeige oben: bei gedecktem Bedarf ein ✓ statt des abgeschnittenen „gedec…“.
+- „Kampfsimulator“ wird in der Kachel sauber getrennt.
+
 ## 0.24.4 – 27.11.2026
 - **Warnung vor vollem Lager:** Tagesbefehle, Wochenziele und Erfolge zeigen vor dem Abholen, wie viel bei vollem Lager verfallen würde – mit „Lagerkomplex ausbauen“ oder „Trotzdem abholen“. Die Bestätigung nennt, was verfallen ist.
 - **Balance v1.25 (Wirtschaft):** Belohnungen der Wochenziele halbiert – sie waren fast so groß wie die halbe Wochenproduktion. Belohnungspakete enthalten mehr vom knappen Stahl und weniger Proviant.

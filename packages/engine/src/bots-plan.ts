@@ -2,6 +2,7 @@
 // geprüft wird mit denselben Kernfunktionen wie in den Befehlen (startUpgrade, startTraining, startResearch),
 // ausgeführt wird danach über die Befehle (bots-run.ts). Ideen aus game-core/sim/bot.ts (Bauordnung, Doktrin).
 import {
+  buildCredit,
   commandPoints,
   fleetTotals,
   maxAllowedLevel,
@@ -10,6 +11,7 @@ import {
   productionRates,
   researchCost,
   satelliteOf,
+  splitBuildCost,
   startResearch,
   startTraining,
   startUpgrade,
@@ -215,7 +217,8 @@ function tryBuild(c: PlanCtx, candidates: string[], n: number, save: boolean): {
     const r = startUpgrade(c.state, id, c.nowMs, balance, c.mods);
     if (r.ok) return { id };
     if (r.code === "insufficient_resources" && save) {
-      const cost = upgradeCost(id, plannedLevel(c.state, id), balance);
+      // Aufholhilfe: zurückgelegt wird nur, was die Baugutschrift nicht deckt (startUpgrade verbraucht sie zuerst).
+      const cost = splitBuildCost(upgradeCost(id, plannedLevel(c.state, id), balance), buildCredit(c.state), balance).fromStock;
       // Passt der Ausbau gar nicht ins Lager, hilft Sparen nicht: nächster Kandidat (meist das Lager selbst).
       if (Object.values(cost).some((n) => n > storageCapacity(c.state, balance, c.mods))) continue;
       c.reserve = addRes(c.reserve ?? {}, cost);

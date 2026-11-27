@@ -134,6 +134,7 @@ export function colonyProtection(home: ProtectionState, nowMs: number, balance: 
     nightShieldSuspendedUntilMs: 0,
     defeatShieldUntilMs: 0,
     foundingShieldUntilMs: nowMs + hours * HOUR_MS,
+    ...(s.beginnerEndedAtMs !== undefined ? { beginnerEndedAtMs: s.beginnerEndedAtMs } : {}), // PvP: Anfängerschutz beendet
     ...(s.nightShieldNext ? { nightShieldNext: { ...s.nightShieldNext } } : {}),
     ...(s.nightShieldChangedAtMs !== undefined ? { nightShieldChangedAtMs: s.nightShieldChangedAtMs } : {}),
   };

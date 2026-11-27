@@ -30,6 +30,7 @@ import { KIND_TEXT, isOpen, readWorldEvent } from "./world-events.ts";
 import { nestKnown } from "./intel-query.ts"; // Lagebild Stufe 2
 import type { Handler, HandlerResult } from "./events.ts";
 import { gameTimeZone } from "./challenge-pool.ts"; // einheitliche Zeitzone des Spiels
+import { endBeginnerElsewhere } from "./pvp.ts"; // PvP: Anfängerschutz endet beim ersten Spielerüberfall
 
 const MIN = 60000;
 export type RaidRow = typeof tables.allianceRaid.$inferSelect;
@@ -127,6 +128,7 @@ async function joinWith(ctx: Ctx, raid: RaidRow, units: Counts, baseId?: number)
       type: "ueberfall", units, origin: hexCenter(own.col, own.row), target: hexCenter(raid.targetCol, raid.targetRow),
       activeMissions: await activeMissionCount(tx, own.id), targetProtection: p.state?.protection,
       weather: missionWeather(own.col, own.row, raid.targetCol, raid.targetRow, nowMs),
+      playerHarbor: raid.targetKind === "base", // PvP: beendet den eigenen Anfängerschutz
     },
     nowMs,
     balance,
@@ -134,6 +136,7 @@ async function joinWith(ctx: Ctx, raid: RaidRow, units: Counts, baseId?: number)
   );
   if (!r.ok) fail(r.code);
   await saveBase(tx, own.id, r.base);
+  if (r.base.protection.beginnerEndedAtMs === nowMs) { await endBeginnerElsewhere(tx, playerId, own.id, nowMs); ctx.notify.push([null, "map"]); } // PvP
   const travel = r.mission.arriveAtMs - r.mission.departAtMs;
   const at = Math.max(raid.desiredArriveAt.getTime(), raid.joinDeadline.getTime() + travel);
   const [m] = await tx

@@ -49,6 +49,7 @@ export async function marketTurn(c: TurnCtx, base: Base, mods: Modifiers): Promi
     if (qty >= 100) credits += await doTrade(c, base, "sell", over, qty);
   }
   if (!short || (c.cfg.trade && c.rand() < c.cfg.noise)) return;
+  credits -= c.creditReserve ?? 0; // Admirale: Rücklage für die Ernennung
   if (credits > 500) {
     const price = view.resources.find((y) => y.id === short)?.price ?? ref(short);
     const qty = Math.floor(Math.min((credits * (c.cfg.trade ? 0.6 : 0.4)) / price, 0.25 * cap, room(short)));

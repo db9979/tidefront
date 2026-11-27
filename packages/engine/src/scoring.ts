@@ -4,7 +4,7 @@
 // (30 s Zwischenspeicher) neu, ein Balance-Wechsel (v1.24: Richtpreis, Kartell-Abwehr × npcDefenseFactor) gilt also
 // sofort rückwirkend für die ganze laufende Saison. Nur das Saisonende schreibt season_result.
 import { sql } from "drizzle-orm";
-import { protectionStatus, upgradeCost, type BaseState, type Counts, type ResourceMap } from "@tidefront/game-core";
+import { pairFactor, pairIndexes, pairKey, protectionStatus, pvpOf, stampFactors, upgradeCost, type BaseState, type Counts, type PairFight, type PvpStamp, type ResourceMap } from "@tidefront/game-core";
 import type { DbOrTx } from "@tidefront/db";
 import { balance } from "./context.ts";
 import { challengePoints } from "./challenges.ts";
@@ -83,6 +83,55 @@ export interface ScoredReport {
   al: Counts | null;
   dl: Counts | null;
   loot: ResourceMap | null;
+  // PvP (docs/VORLAGE-PVP.md): nur für Kämpfe zwischen zwei Spielern gelesen.
+  /** Bericht-ID und Zeitpunkt (Reihenfolge der Paarbremse). */
+  id?: number;
+  atMs?: number;
+  /** Sammelangriff: alle Teilnehmer (sonst nur der Angreifer). */
+  participants?: number[] | null;
+  /** Beim Kampf festgehalten (Kopfgeld, Mutfaktor, Absprache). */
+  pvp?: PvpStamp | null;
+  /** Verwaltung: Bericht aus der Wertung genommen. */
+  pvpExcluded?: boolean | null;
+}
+
+/** Faktoren eines Spielerkampfs auf Kampf und Beute des Angreifers und Kampf des Verteidigers. */
+export interface PvpFactors { kampf: number; beute: number; defense: number }
+
+const HOUR_MS = 3600000;
+
+/** Kampf zwischen zwei verschiedenen Spielern? */
+export function isPvpReport(b: ScoredReport): boolean {
+  return b.attackerPlayerId !== null && b.defenderPlayerId !== null && b.attackerPlayerId !== b.defenderPlayerId;
+}
+
+/**
+ * PvP-Faktoren je Bericht (nach id): Kopfgeld und Mutfaktor aus dem Stempel, Paarbremse aus der Reihenfolge der
+ * Spielerkämpfe (beide Richtungen, Sammelangriffe mit jedem Teilnehmer), ausgenommene Berichte 0. Der Angreifer
+ * nimmt die Stufe seines Paares, der Verteidiger die niedrigste aller beteiligten Paare. Ohne Balance-Block pvp: leer.
+ */
+export function pvpFactors(reports: ScoredReport[]): Map<number, PvpFactors> {
+  const cfg = pvpOf(balance);
+  const out = new Map<number, PvpFactors>();
+  if (!cfg) return out;
+  const fights: PairFight[] = [];
+  for (const r of reports) {
+    if (!isPvpReport(r) || r.id === undefined) continue;
+    const d = r.defenderPlayerId!;
+    const ids = [r.attackerPlayerId!, ...(r.participants ?? [])].filter((x) => x !== d);
+    fights.push({ id: r.id, atMs: r.atMs ?? 0, pairs: ids.map((x) => pairKey(x, d)) });
+  }
+  const idx = pairIndexes(fights, cfg.pairWindowHours * HOUR_MS);
+  for (const r of reports) {
+    const m = r.id === undefined ? undefined : idx.get(r.id);
+    if (!m) continue;
+    if (r.pvpExcluded) { out.set(r.id!, { kampf: 0, beute: 0, defense: 0 }); continue; }
+    const st = stampFactors(r.pvp, cfg);
+    const own = pairFactor(m.get(pairKey(r.attackerPlayerId!, r.defenderPlayerId!)) ?? 0, cfg);
+    const def = Math.min(...[...m.values()].map((n) => pairFactor(n, cfg)));
+    out.set(r.id!, { kampf: st.kampf * own, beute: st.beute * own, defense: st.defense * def });
+  }
+  return out;
 }
 
 /**
@@ -92,15 +141,16 @@ export interface ScoredReport {
  * Angriffe auf die Weltereignisse in scoring.npcWorldEventKinds (Großflotte, Belagerungsring). Nester, Schatzschiff
  * und Kämpfe zwischen Spielern zählen voll; Beute zählt immer voll.
  */
-export function reportScore(b: ScoredReport): { attacker: { kampf: number; beute: number } | null; defender: { kampf: number } | null } {
+export function reportScore(b: ScoredReport, pvp?: PvpFactors): { attacker: { kampf: number; beute: number } | null; defender: { kampf: number } | null } {
   const sc = balance.scoring;
   const f = sc?.npcDefenseFactor ?? 1;
   const npcEvent = b.kind === "weltereignis" && !!b.weKind && (sc?.npcWorldEventKinds ?? []).includes(b.weKind);
-  // Saisonfinale: Kampfpunkte aus Armada-Kämpfen × scoring.armadaFactor (Beute voll).
+  const p = pvp ?? { kampf: 1, beute: 1, defense: 1 }; // PvP: Kopfgeld, Mutfaktor, Paarbremse (pvpFactors)
+  // Saisonfinale: Kampfpunkte aus Armada-Kämpfen × scoring.armadaFactor (Beute voll; kein Spielerkampf, PvP-Faktoren 1).
   const armada = b.kind === "weltereignis" && b.weKind === "finale" ? (sc?.armadaFactor ?? 1) : null;
   return {
-    attacker: b.attackerPlayerId === null ? null : { kampf: countsValue(b.dl) * (armada ?? (npcEvent ? f : 1)), beute: resValue(b.loot) },
-    defender: b.defenderPlayerId === null ? null : { kampf: countsValue(b.al) * (b.attackerPlayerId === null ? f : 1) },
+    attacker: b.attackerPlayerId === null ? null : { kampf: countsValue(b.dl) * (armada ?? (npcEvent ? f : 1)) * p.kampf, beute: resValue(b.loot) * p.beute },
+    defender: b.defenderPlayerId === null ? null : { kampf: countsValue(b.al) * (b.attackerPlayerId === null ? f : 1) * p.defense },
   };
 }
 
@@ -164,12 +214,20 @@ export async function computeStandings(db: DbOrTx, seasonStartMs: number, nowMs:
     select player_id, status, plan->'units' as units, "returning" as returning from mission
     where player_id is not null and status in ('outbound', 'returning', 'staged', 'stationed')`);
   const since = new Date(seasonStartMs).toISOString();
-  const reports = await db.execute<{
-    kind: string; we_kind: string | null; attacker_player_id: number | null; defender_player_id: number | null; al: Counts | null; dl: Counts | null; loot: ResourceMap | null;
+  const reportRows = await db.execute<{
+    id: number; at: string | Date; kind: string; we_kind: string | null; attacker_player_id: number | null; defender_player_id: number | null; al: Counts | null; dl: Counts | null; loot: ResourceMap | null;
+    pvp: PvpStamp | null; pvp_excluded: boolean | null; participants: number[] | null;
   }>(sql`
-    select kind, report->'worldEvent'->>'kind' as we_kind, attacker_player_id, defender_player_id,
-      report->'battle'->'attacker'->'losses' as al, report->'battle'->'defender'->'losses' as dl, report->'battle'->'loot' as loot
+    select id, created_at as at, kind, report->'worldEvent'->>'kind' as we_kind, attacker_player_id, defender_player_id,
+      report->'battle'->'attacker'->'losses' as al, report->'battle'->'defender'->'losses' as dl, report->'battle'->'loot' as loot,
+      report->'pvp' as pvp, (report->>'pvpExcluded')::boolean as pvp_excluded,
+      case when report ? 'allianceRaid' then jsonb_path_query_array(report, '$.allianceRaid.participants[*].playerId') end as participants
     from battle_report where report ? 'battle' and created_at >= ${since}::timestamptz`);
+  const reports: ScoredReport[] = reportRows.map((b) => ({
+    id: b.id, atMs: new Date(b.at).getTime(), kind: b.kind, weKind: b.we_kind, attackerPlayerId: b.attacker_player_id, defenderPlayerId: b.defender_player_id,
+    al: b.al, dl: b.dl, loot: b.loot, pvp: b.pvp, pvpExcluded: b.pvp_excluded, participants: b.participants,
+  }));
+  const pvp = pvpFactors(reports); // PvP: Kopfgeld, Mutfaktor, Paarbremse
   const orders = await challengePoints(db, seasonStartMs);
 
   const raw = new Map<number, { ausbau: number; militaer: number; kampf: number; beute: number }>();
@@ -196,13 +254,13 @@ export async function computeStandings(db: DbOrTx, seasonStartMs: number, nowMs:
   }
   for (const m of missions) get(m.player_id).militaer += countsValue(m.status === "returning" || m.status === "stationed" ? m.returning : m.units); // Allianz-Ops: stationed
   for (const b of reports) {
-    const sc = reportScore({ kind: b.kind, weKind: b.we_kind, attackerPlayerId: b.attacker_player_id, defenderPlayerId: b.defender_player_id, al: b.al, dl: b.dl, loot: b.loot });
+    const sc = reportScore(b, pvp.get(b.id!));
     if (sc.attacker) {
-      const r = get(b.attacker_player_id!);
+      const r = get(b.attackerPlayerId!);
       r.kampf += sc.attacker.kampf;
       r.beute += sc.attacker.beute;
     }
-    if (sc.defender) get(b.defender_player_id!).kampf += sc.defender.kampf;
+    if (sc.defender) get(b.defenderPlayerId!).kampf += sc.defender.kampf;
   }
   const rows = [...people.values()].map((p) => ({ ...p, ...makeScore(get(p.playerId), orders.get(p.playerId) ?? 0), oekostrom: green.get(p.playerId) ?? 0 }));
   return rankStandings(rows);

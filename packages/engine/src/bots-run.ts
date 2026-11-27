@@ -1,7 +1,7 @@
 // KI-Spieler: ein Zug eines Bots und der Takt im Worker (Bots reihum, Last begrenzt).
 // Ein Zug liest nur den eigenen Zustand und öffentliche Daten und handelt ausschließlich über Befehle.
 import { performance } from "node:perf_hooks";
-import { breakthroughPending, mulberry32, settle, startTraining, startUpgrade, type BaseState, type Modifiers } from "@tidefront/game-core";
+import { breakthroughPending, combineModifiers, mulberry32, settle, startTraining, startUpgrade, type BaseState, type Modifiers } from "@tidefront/game-core";
 import { balance, type Engine } from "./context.ts";
 import { train, upgrade } from "./commands.ts";
 import { processDueForBase } from "./events.ts";
@@ -18,6 +18,7 @@ import { botPatrol, botSatellite } from "./bots-intel.ts";
 import { expansionTurn, marketTurn, offersTurn } from "./bots-econ.ts";
 import { fieldTurn, wantsField } from "./bots-fields.ts";
 import { raidFinale } from "./bots-finale.ts";
+import { admiralTurn } from "./bots-admiral.ts"; // Admirale
 
 /** Zusatzanteile der Doktrin, solange ein Feldverband fehlt (bots-fields.ts). */
 const FIELD_DOCTRINE = { korvette: 0.15, zerstoerer: 0.05 };
@@ -121,6 +122,7 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
 
   ({ bases, mods } = await loadOwn(engine, bot.id, nowMs));
   const homeBase = bases.find((b) => b.isHome) ?? bases[0];
+  await admiralTurn(c, homeBase); // Admirale: Freibeuter Landungstrupp, Festung Verteidigung daheim
   await marketTurn(c, homeBase, mods.get(homeBase.id)!);
   await offersTurn(c, homeBase, mods.get(homeBase.id)!);
 
@@ -132,8 +134,10 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
     if (await fieldTurn(c, b, m)) continue;
     if (await raidFinale(c, b, m)) continue; // Saisonfinale: Abschnitt der Armada, wenn sicher gewonnen
     if (await layMines(c, b)) continue;
-    if (await raidPlayer(c, b, m)) continue;
-    if (await raidNest(c, b, m)) continue;
+    // Admirale: der Probekampf rechnet den bereiten Admiral dieses Hafens ein; tryLaunch nimmt ihn mit.
+    const raid = c.admiral?.baseId === b.id ? combineModifiers(m, c.admiral.mods) : m;
+    if (await raidPlayer(c, b, raid)) continue;
+    if (await raidNest(c, b, raid)) continue;
     // Lagebild Stufe 2: Patrouille erst, wenn kein Angriff möglich war (früher davor: sie nahm Korvetten und einen
     // Auftragsplatz, und der Freibeuter patrouillierte statt zu überfallen).
     await botPatrol(c, b);

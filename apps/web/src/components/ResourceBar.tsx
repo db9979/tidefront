@@ -6,6 +6,7 @@ import { Icon } from "../icons.tsx";
 import { ResourceSheet } from "./ResourceSheet.tsx";
 import { HarborSwitcher } from "./HarborSwitcher.tsx";
 import { MenuSheet, type MenuItem } from "./MenuSheet.tsx";
+import { CatchUpStrip } from "./CatchUp.tsx";
 export type { MenuItem } from "./MenuSheet.tsx";
 
 function short(n: number): string {
@@ -45,7 +46,7 @@ function PowerField({ base, onOpen }: { base: BaseData; onOpen: () => void }) {
       title={`${desc} · ${store}`}
     >
       <div className={`text-[13.5px] leading-tight font-semibold truncate flex items-center ${covered ? "font-sans text-[12px]" : "mono"} ${bal < 0 ? "text-siegel" : "text-moos"}`}>
-        <Icon id="strom" size={12} className="shrink-0 -ml-0.5" />{covered ? "gedeckt" : `${sign}${short(Math.abs(bal))}`}
+        <Icon id="strom" size={12} className="shrink-0 -ml-0.5" />{covered ? <span aria-hidden="true">✓</span> : `${sign}${short(Math.abs(bal))}`}
       </div>
       <div className="text-[11px] leading-tight mono text-ink2 truncate">{second}</div>
       <div className="h-[2px] mt-0.5 bg-rule/80 overflow-hidden" aria-hidden="true">
@@ -91,6 +92,7 @@ export function ResourceBar({ base, asOf, now, onMenu, onSwitchBase, onPlanFound
           <span className="text-[11px] leading-none font-display tracking-[0.04em]">Menü</span>
         </button>
       </div>
+      <CatchUpStrip base={base} />{/* Aufholhilfe: Baugutschrift */}
       {open && <ResourceSheet base={base} res={open} amount={liveAmount(base, asOf, now, open)} onClose={() => setOpen(null)} />}
       <MenuSheet open={menu} onClose={() => setMenu(false)} onPick={(i) => { setMenu(false); onMenu(i); }} />
     </header>

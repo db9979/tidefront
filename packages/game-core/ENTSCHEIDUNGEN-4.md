@@ -402,3 +402,79 @@ die Oberfläche wie im Auftragsbuch – aber genauer und einheitlich:
    dem Server). Der **Serienbonus** der Tagesbefehle nicht: seine Ressourcen stehen nicht in der Ansicht; was davon
    verfällt, nennt aber die Bestätigung (`lost`).
 4. Das Auftragsbuch behält seine eigene, kürzere Warnung (nicht angefasst).
+
+## AD. Admirale: Landungstrupp, Beutemeister bei Nestern, Umschulung, KI-Admirale (VORLAGE-ADMIRALE.md)
+
+Umgesetzt wie freigegeben, alle Empfehlungen (1a, 2a, 3a, 4a, 5a, 6a):
+
+1. **Landungstrupp** (`admirals.specs.landung`): Mission `attack.land` +10 %, `hp.land` +8 %, `mineDamage` −30 %;
+   Hafenrolle als `defense` (nicht `harbor`): `hp.land` +6 % – `harbor` ist im Code die passive Wirkung (Radar,
+   Bunker), Kampfwerte des Hafenkommandanten laufen über `defense` (auch gegen Kartell und für Feldbesatzungen wie
+   bisher). Rangfaktor, Kosten, Plätze, Risiko unverändert. Nachgerechnet mit der Vorlagenrechnung gegen Balance v1.25:
+   Kampfwert-Tabelle identisch (Admiral Landungstrupp Nest 5 +10,6 %). Der knappe T28-Bot-Verband liegt heute bei
+   Nest 5 (k = 0,49) mit 59 % statt 51 % Sieg; mit Admiral Landungstrupp 79 % (Vorlage 74 %), Kapitän 69 %.
+   Unit-Test (`game-core/test/admirals-landung.test.ts`) mit festem Verband und 200 Seeds: ohne 45–70 %, Admiral
+   ≥ +12 Punkte, Kapitän dazwischen, „Angriff“ darunter; Kampfwert-Bonus Nest 5 zwischen +7 und +14 %.
+2. **Beutemeister:** neuer Modifikator-Schlüssel `nestLoot` (skalar), wirkt in `computeLoot` nur auf `fixedLoot`
+   (Piratennester), danach Laderaum-Kappung wie bisher. Sammelangriff mittelt ihn wie `loot`.
+3. **Umschulung:** Spalte `admiral.retrain_free boolean not null default true` (**Migration durch den Integrator**,
+   lokal nur zum Testen erzeugt: `ALTER TABLE "admiral" ADD COLUMN "retrain_free" boolean DEFAULT true NOT NULL;`).
+   Der Vorgabewert gibt allen bestehenden Admiralen die Umschulung; `appointAdmiral` setzt false. Befehl
+   `retrainAdmiral` (Router `admiral.retrain`): nur erste Spezialisierung, nicht auf spec1/spec2, nicht unterwegs
+   (die Missionswirkung soll während der Fahrt nicht wechseln), kostenlos; Code `admiral_retrain_used`.
+4. **KI-Admirale** (`engine/src/bots-admiral.ts`): Freibeuter/Festung ab Hafenkommandantur 1 im Heimathafen über
+   `appointAdmiral` (gleiche Kosten). Damit die Börse die Kredite nicht laufend ausgibt, hält `marketTurn` bis zur
+   Ernennung `creditReserve` (2 000) zurück. Freibeuter: bereiter Admiral steht in `TurnCtx.admiral`; Probekampf von
+   `raidNest`/`raidPlayer` rechnet seine Missionswirkung ein, `tryLaunch` gibt `admiralId` beim ersten Überfall aus
+   dem Hafen mit. Festung: Ernennung macht ihn zum Hafenkommandanten; abberufen → nächster Zug setzt ihn wieder ein.
+   Bewusst nicht: Lösegeld, zweite Spezialisierung, Admiral für Feldmissionen.
+5. **Oberfläche:** Spezialisierung beim Ernennen wählbar (generisch aus der Balance); Umschulung im Admiralblatt mit
+   zweistufiger Bestätigung; neue Pfadtexte („Angriff der Truppen“, „Minenschaden“, „Nestbeute“). Der Probekampf der
+   Missionsplanung rechnete den gewählten Admiral bisher **nicht** ein – jetzt schon (`withAdmiralMods`, nennt ihn
+   über dem Ergebnis). Zusatz (Nutzermeldung): `admiralView` liefert `have`/`missing`; die Kachel „Admirale“ zeigt
+   die Raute nur bei freiem Platz **und** bezahlbar, sonst „Platz frei – fehlt: …“; beim Ernennen Kosten rot und
+   Sperrgrund mit „Was hilft?“ statt Fehler nach dem Klick.
+6. `sim/admirals.ts` nicht erweitert (Vorlage Abschnitt 7 nennt es optional); die Belegrechnung steckt in den Tests.
+
+## AA. Spieler gegen Spieler: Kopfgeld, Mutfaktor, Paarbremse (Vorlage PvP, alle Empfehlungen)
+
+Umgesetzt mit den empfohlenen Antworten 1a–7a; Zahlen im eigenen Balance-Block `pvp` (die Vorlage nannte
+`scoring.pvp` – eigener Block, damit `scoring` unberührt bleibt). Regeln: REGELN.md „Saison und Wertung“ und „Schutz“.
+
+1. **Kern rein** (`game-core/src/pvp.ts`): `pvpStamp` (Kopfgeld, Mutfaktor, Absprache), `stampFactors` (Kampf
+   = Kopfgeld × Mut ≤ maxFactor, Beute = Mut, Abwehr = 0,5 für Kopfgeld-Ziele), `pairIndexes`/`pairFactor`
+   (Paarbremse, gleitendes 72-h-Fenster, Reihenfolge Zeit, dann Bericht-ID).
+2. **Rekonstruierbar aus den Berichten:** Jeder Kampfbericht mit Spieler auf beiden Seiten bekommt beim Speichern
+   (`storeReport`, `storeNavalReport` → `withPvpStamp`) `report.pvp` mit Rang und Punkten beider zum Tagesbeginn,
+   Kopfgeld, Mutfaktor und Absprache. Die Paarbremse leitet `scoring.ts` (`pvpFactors`) bei jedem Abruf aus der
+   Reihenfolge der Saisonberichte ab – sie gilt damit auch für ältere Berichte ohne Stempel (dort ohne Kopfgeld/Mut).
+3. **Rang zum Tagesbeginn:** `server_setting pvp_rank_snapshot`, gerechnet beim ersten Abruf des Spieltags (Worker-
+   Wartung alle 10 min, sonst erster Kampf oder Rangliste) – keine echte 0:00-Aufnahme, aber höchstens ~10 min danach;
+   Ausbau/Militär sind dann schon „heute“. Kein Rangwechsel während der Anfahrt ausnutzbar. Ein Nachzügler-Ereignis mit
+   älterem Zeitpunkt nimmt die neuere Aufnahme (kein Zurückrechnen). Spieler ohne Eintrag: ohne Rang, 0 Punkte.
+4. **Kopfgeld nur mit Punkten:** Zu Saisonbeginn stehen alle punktgleich auf Rang 1 – ohne Punkte kein Kopfgeld.
+   „Schlechter platziert“ = höhere Rangzahl oder ohne Rang; Gleichplatzierte bekommen keins.
+5. **Halbe Abwehr auch bei Absprache:** Die Absprache-Sperre nimmt dem Angreifer Kopfgeld und Mut > 1, die halbe
+   Verteidigung der Spitze bleibt (strenger als der Wortlaut, verhindert Punkteschieben zur Spitze durch Freunde, die
+   sich absichtlich aufreiben).
+6. **Sammelangriff:** Wertung bleibt wie bisher beim eingetragenen Angreifer (erster Teilnehmer); Rang/Mut von ihm.
+   Absprache, wenn irgendein Teilnehmer mit dem Ziel verbunden war; Paarbremse zählt jeden Teilnehmer mit dem Ziel,
+   der Angreifer nimmt die Stufe seines Paares, der Verteidiger die niedrigste der beteiligten Paare.
+7. **Absprache-Quellen:** angenommenes Handelsangebot (`player_offer`), angekommener Transport (Bericht `transport`),
+   Stationierung (Mission `stationierung`, laufend oder ≤ 7 Tage), dieselbe Allianz jetzt, aktiver Pakt jetzt, und
+   beendete Allianz/Pakt: Austritt, Ausschluss, Auflösung und Paktende schreiben `server_setting pvp_ties`
+   (Paar → Zeitpunkt, Einträge > 7 Tage fallen beim Schreiben weg; `engine/src/pvp-ties.ts`). Ohne Schemaänderung.
+8. **Ausgenommene Berichte** (`report.pvpExcluded`, Verwaltung) zählen für beide 0, für die Paarbremse aber weiter.
+9. **Anfängerschutz-Ende:** neues Feld `protection.beginnerEndedAtMs` (Kolonien erben es); gesetzt in `planMission`
+   bei Überfall mit `playerHarbor` (nur `launchMission` auf einen Spielerhafen und Beitritt zu einem Sammelangriff auf
+   einen Hafen – nicht Felder, Radarposten, Blockade, die intern ebenfalls „ueberfall“ planen). Die übrigen Häfen des
+   Spielers per `jsonb_set` (`endBeginnerElsewhere`). Ein Rückruf stellt den Schutz nicht wieder her.
+10. **Geplünderter verliert keine Punkte** – bleibt laut Vorlage; die Paarbremse schließt die Lücke.
+11. **KI:** Der Freibeuter sortiert erlaubte Spielerziele nach Kopfgeld (nur wenn er schlechter platziert ist), dann
+    Entfernung. Die KI-Erlaubnis für Angriffe auf Menschen und die 12-h-Sperrfrist bestanden schon.
+12. **Oberfläche:** Rangliste „+50 %“ neben dem Namen und Satz in der Spielerübersicht; Missionsplanung (Überfall auf
+    einen Spielerhafen) und Kartenblatt zeigen Kopfgeld, Mutfaktor, Paarbremse und Absprache (`social.pvpTarget`);
+    Missionsplanung warnt „Dein Anfängerschutz endet damit“; Kampfbericht nennt Kopfgeld/Mut/Absprache; Verwaltung
+    „Auffällige Paare“ mit „Bericht aus der Wertung nehmen“.
+
+Fortsetzung in `ENTSCHEIDUNGEN-5.md`.

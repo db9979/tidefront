@@ -169,6 +169,13 @@
       "when": 1795787203914,
       "tag": "0023_bindung",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795791992039,
+      "tag": "0024_admiral_umschulung",
+      "breakpoints": true
     }
   ]
 }

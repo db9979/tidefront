@@ -123,6 +123,7 @@ export function combineForces(parts: ForcePart[], balance: Balance): AttackerInp
     hp,
     attackVs,
     loot: weighted((m) => modValue(m, "loot"), w),
+    nestLoot: weighted((m) => modValue(m, "nestLoot"), w),
     mineDamage: weighted((m) => modValue(m, "mineDamage"), troops),
   };
   const warningFactor = parts.reduce((mx, p) => Math.max(mx, modValue(p.modifiers, "stealth")), parts.length ? 0 : 1);

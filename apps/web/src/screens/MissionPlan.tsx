@@ -22,7 +22,7 @@ import { FinalePreview } from "../components/Finale.tsx"; // Saisonfinale
 // Nachrichtendienst: Spionageaufträge
 import { SpyPlan } from "../components/SpyPlan.tsx";
 // Admirale: Führung des Verbands
-import { AdmiralPick } from "../components/Admirals.tsx";
+import { AdmiralPick, useAdmiralChoice } from "../components/Admirals.tsx";
 // Allianz-Ops: Stationieren, als Sammelangriff eröffnen
 import { RaidOpenCard } from "../components/AllianceOps.tsx";
 import { HoldHours, MineWarning } from "../components/Naval.tsx"; // See: Minen/Blockade/Konvoi
@@ -30,6 +30,7 @@ import { FieldTargetLine, StayAllToggle, fieldsRules, useFields } from "../compo
 import { ExpansionTargetLine, OriginLine, OwnHarborPick } from "../components/ExpansionPlan.tsx"; // Mehrere Häfen
 import { buildingLevel, expansionRules } from "../lib/expansion.ts";
 import { IntelOpsPlan, type IntelOpKind } from "../components/IntelOpsPlan.tsx"; // Lagebild Stufe 2
+import { PvpTargetHint } from "../components/Pvp.tsx"; // Spieler gegen Spieler
 
 const TYPES = [
   { id: "ueberfall", text: "Überfall", hint: "Kampf am Ziel, Beute bei Sieg" },
@@ -96,6 +97,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   const [cargo, setCargo] = useState<Record<string, number>>({});
   const [sent, setSent] = useState<{ arriveAtMs: number; type: string } | null>(null);
   const [admiralId, setAdmiralId] = useState<number | null>(null); // Admirale
+  const admiral = useAdmiralChoice(admiralId); // Admirale: Wirkung im Probekampf
   // Art: nach der Auswahl auf eine Zeile mit „ändern“ eingeklappt (vorbelegt = schon gewählt).
   const [whyOpen, setWhyOpen] = useState(false); // „Was hilft?“ in der Vorschau
   const [barOpen, setBarOpen] = useState(false); // … und über der Aktionsleiste (grauer Knopf)
@@ -205,6 +207,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           {target && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.nest && (tInfo.nest.level === null ? <>Piratennest – <strong>Lage unbekannt</strong> (Stufe und Zustand erst mit Sicht oder Aufklärung)</> : <>Piratennest Stufe <strong>{tInfo.nest.level}</strong>{tInfo.nest.empty ? " (verlassen)" : ""}</>)}
           {target && type !== "gruendung" && type !== "verlegung" && !target.eventId && !target.blockadeId && !target.convoyId && !tInfo?.base && !tInfo?.nest && !target.fieldId && <span className="text-slate-400">Feld {target.col}/{target.row}: kein Ziel</span>}
         </p>
+        {type === "ueberfall" && target && !ownTarget && tInfo?.base && !tInfo.base.own && <PvpTargetHint col={target.col} row={target.row} />}{/* Kopfgeld, Mutfaktor, Paarbremse */}
       </Card>
 
       {type === "blockade" && <HoldHours value={holdHours} onChange={setHoldHours} />}
@@ -254,6 +257,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           balance={balance}
           base={base}
           units={chosen}
+          admiral={admiral}
           target={tInfo.nest && tInfo.nest.level !== null ? { kind: "nest", level: tInfo.nest.level, empty: !!tInfo.nest.empty } : { kind: "base", col: target.col, row: target.row, name: tInfo.base!.name }}
           onScout={() => setType("aufklaerung")}
         />

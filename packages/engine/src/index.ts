@@ -64,7 +64,7 @@ export { ensureStartNest, nearestOpenLevel1, reachableShoreSea, START_NEST_KM } 
 export { spyPreview, spyLaunch, intelView, intelOwnView, type SpyInput } from "./espionage.ts";
 export { gridView, weatherModifiers, missionWeather, battleWeather } from "./weather.ts";
 export * from "./bug-report.ts";
-export { appointAdmiral, chooseAdmiralSpec, stationAdmiral, ransomAdmiral, dismissAdmiral, admiralView, admiralSpecIds, type AdmiralInfo } from "./admirals.ts"; // Admirale
+export { appointAdmiral, chooseAdmiralSpec, retrainAdmiral, stationAdmiral, ransomAdmiral, dismissAdmiral, admiralView, admiralSpecIds, type AdmiralInfo } from "./admirals.ts"; // Admirale
 // Erfolge (Abzeichen) und Wochenziele; recordAchievement ist die Erweiterungsstelle für neue Ereignisse.
 export { recordAchievement, flushAchievementNotices, topBadges, type RecordOptions } from "./achievements.ts";
 export { achievementsView, claimAchievement, weeklyView, claimWeekly } from "./achievements-view.ts";
@@ -116,3 +116,7 @@ export { runEventWatchdog, REPAIR_GIVE_UP, type WatchdogResult } from "./event-w
 export { listFailedEvents, requeueEvent, type FailedEvent } from "./event-admin.ts"; // Verwaltung → Ereignisse
 export { lockPlayerWide, worldLockExclusive, worldLockShared } from "./world-lock.ts";
 export { bumpMapGeneration, enableMapCache } from "./map-cache.ts"; // world.map: geteilte Weltdaten zwischenspeichern
+export { rankSnapshot, clearRankSnapshot, colluded, bountyByPlayer, type RankSnapshot } from "./pvp.ts"; // Spieler gegen Spieler
+export { recordTies } from "./pvp-ties.ts";
+export { pvpTargetView, suspiciousPairs, setReportExcluded } from "./pvp-view.ts";
+export * from "./catch-up.ts"; // Aufholhilfe: Baugutschrift (stündlicher Lauf, Startpaket)
