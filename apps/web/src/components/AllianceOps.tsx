@@ -60,7 +60,7 @@ export function RaidOpenCard({ balance, target, units, travelSeconds, ok, onDone
           if (r?.ok) onDone(Math.max(earliest, Date.now() + arriveMinutes * 60000));
         }}
       >Sammelangriff eröffnen</Button>
-      <ErrorLine text={open.error} />
+      <ErrorLine text={open.error} code={open.code} />
     </Card>
   );
 }
@@ -78,7 +78,7 @@ export function OpsMissionLine({ m }: { m: MissionData }) {
     <div>
       <div className="text-sea-300">Stationiert – verteidigt mit</div>
       <div className="mt-1"><Button kind="secondary" disabled={release.busy} onClick={() => void release.run({ missionId: m.id })}>Zurückrufen</Button></div>
-      <ErrorLine text={release.error} />
+      <ErrorLine text={release.error} code={release.code} />
     </div>
   );
 }
@@ -102,7 +102,7 @@ export function StationedGuestsCard({ base, now }: { base: BaseData; now: number
         ))}
       </ul>
       <p className="text-xs text-ink2 mt-1">Stationierte Truppen verteidigen deinen Hafen mit; Verluste und Unterhalt trägt ihr Besitzer.</p>
-      <ErrorLine text={release.error} />
+      <ErrorLine text={release.error} code={release.code} />
     </Card>
   );
 }

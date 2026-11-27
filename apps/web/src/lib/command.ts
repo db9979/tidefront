@@ -9,7 +9,10 @@ type Res = { ok: boolean; code?: string };
 export function useCommand<P extends { key: string }, O extends Res>(call: (input: P) => Promise<O>, invalidate: () => unknown[]) {
   const pending = useRef<{ sig: string; key: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorText] = useState<string | null>(null);
+  // Ablehnungscode zur Meldung (für „Was hilft?“); null bei Netz- und Eingabefehlern.
+  const [code, setCode] = useState<string | null>(null);
+  const setError = (text: string | null, c: string | null = null) => { setErrorText(text); setCode(c); };
 
   async function run(input: Omit<P, "key">): Promise<O | null> {
     // Mehrere Häfen: der aktive Hafen gehört zur Absicht (der Link setzt baseId erst beim Senden).
@@ -20,7 +23,7 @@ export function useCommand<P extends { key: string }, O extends Res>(call: (inpu
     try {
       const out = await call({ ...input, key: pending.current.key } as P);
       pending.current = null;
-      if (!out.ok) setError(errorText(out.code ?? "?"));
+      if (!out.ok) setError(errorText(out.code ?? "?"), out.code ?? null);
       if (!out.ok && out.code === "no_base") resetActiveBase();
       for (const k of invalidate()) await queryClient.invalidateQueries({ queryKey: k as readonly unknown[] });
       return out;
@@ -34,5 +37,5 @@ export function useCommand<P extends { key: string }, O extends Res>(call: (inpu
       setBusy(false);
     }
   }
-  return { run, busy, error, setError };
+  return { run, busy, error, code, setError };
 }

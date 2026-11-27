@@ -123,7 +123,7 @@ export function Protection({ base, now }: { base: BaseData; now: number }) {
           ? `Nächste Änderung ab ${fmtTime(lockedUntil)} möglich.`
           : `Eine Änderung gilt erst nach ${changeH} Stunden und ist danach ${changeH} Stunden gesperrt – den Schild gegen einen schon gemeldeten Angriff einzuschalten geht nicht.`}
       </p>
-      <ErrorLine text={save.error} />
+      <ErrorLine text={save.error} code={save.code} />
     </Card>
   );
 }

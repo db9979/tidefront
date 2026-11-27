@@ -2,8 +2,11 @@
 import { fmtNum } from "../../lib/names.ts";
 import { fmtDuration } from "../../lib/time.ts";
 import { Icon } from "../../icons.tsx";
+import { ReasonLine } from "../Remedy.tsx";
 
-export type MarketStatus = { tone: "open" | "partial" | "closed"; title: string; reasons: string[] };
+/** Sperrgrund mit Ablehnungscode für „Was hilft?“. */
+export type MarketReason = { text: string; code?: string };
+export type MarketStatus = { tone: "open" | "partial" | "closed"; title: string; reasons: MarketReason[] };
 
 export function MarketHeader({ credits, creditLimit, status, port, travelMs }: {
   credits: number;
@@ -59,7 +62,7 @@ export function MarketHeader({ credits, creditLimit, status, port, travelMs }: {
       {status.reasons.length > 0 && (
         <ul className={`px-3.5 py-2 border-t border-rule text-xs space-y-0.5 ${status.tone === "closed" ? "bg-red-950" : "bg-inset"}`}>
           {status.reasons.map((r) => (
-            <li key={r} className="flex gap-2"><span className={`diamond mt-1 ${status.tone === "closed" ? "bg-siegel" : "bg-messing"}`} aria-hidden="true" />{r}</li>
+            <li key={r.text} className="flex gap-2"><span className={`diamond mt-1 shrink-0 ${status.tone === "closed" ? "bg-siegel" : "bg-messing"}`} aria-hidden="true" /><ReasonLine code={r.code} text={r.text} className="min-w-0 flex-1" /></li>
           ))}
         </ul>
       )}

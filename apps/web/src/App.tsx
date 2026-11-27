@@ -33,6 +33,8 @@ import { ResearchRollPopup } from "./components/ResearchDice.tsx";
 import { onBugReportRequest } from "./lib/bug-log.ts";
 import { captureScreen, waitForSettled } from "./lib/screenshot.ts";
 import { isThreat } from "./lib/expansion.ts"; // Mehrere Häfen: eigene Verlegung ist kein Angriff
+import { NavContext } from "./lib/nav.ts"; // „Was hilft?“: Sprünge aus Hinweisen
+import type { NavTarget } from "./lib/remedies/types.ts";
 import type { BugDraft } from "./components/BugReport.tsx";
 const BugReportSheet = lazy(() => import("./components/BugReport.tsx").then((m) => ({ default: m.BugReportSheet })));
 
@@ -123,6 +125,9 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const [sheet, setSheet] = useState<string | null>(null);
   const [seen, setSeen] = useState(() => initialSeen(playerId));
   const [sub, setSub] = useState<MeldungenTab>("berichte");
+  // „Was hilft?“: Zähler je Sprung (baut Truppen/Börse mit dem gewählten Unterreiter neu auf), Ressource für die Börse.
+  const [navSeq, setNavSeq] = useState(0);
+  const [marketRes, setMarketRes] = useState<string | undefined>(undefined);
   // Begrüßung hat Vorrang vor „Neu in Version“ (das erst danach erscheint).
   const [welcome, setWelcome] = useState(() => !welcomeSeen(playerId));
   // „Fehler melden“: Handbuch/Einstellungen schließen, Ansicht abwarten, Screenshot, dann Entwurf zeigen.
@@ -205,6 +210,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
     setHelp(false);
     setHelpView(null);
     setResearch(false);
+    setMarketRes(undefined);
     setTab(t);
   };
   const onGuide = (a: GuideAction) => {
@@ -226,6 +232,24 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
     setSheet(null);
     setActiveBase(b.bases.find((x) => x.id === id)?.isHome ? null : id);
   };
+  /** Sprung aus einem Hinweis („Was hilft?“): Reiter, Unterreiter, Gebäude-Blatt, Forschung, Börse mit Ressource. */
+  const navTo = (t: NavTarget) => {
+    setNavSeq((n) => n + 1);
+    switch (t.to) {
+      case "building": go("basis"); setSheet(t.id); break;
+      case "base": go("basis"); setSheet(null); break;
+      case "research": setSheet(null); openResearch(); break;
+      case "market":
+        if (t.seg) localStorage.setItem("tf-seg:boerse", t.seg); // useSegment liest den Unterreiter beim Aufbau
+        setSheet(null);
+        go("boerse");
+        setMarketRes(t.resource); // nach go(), das die Vorwahl zurücksetzt
+        break;
+      case "troops": localStorage.setItem("tf-seg:truppen", t.seg); setSheet(null); go("truppen"); break;
+      case "map": setSheet(null); go("karte"); break;
+      case "meldungen": setSheet(null); go("berichte"); setSub(t.sub); break;
+    }
+  };
   const fullBleed = tab === "karte" && !plan && !help && !research;
   screenRef.current = help ? "Handbuch" : research ? "Forschung" : plan ? "Missionsplanung"
     : `${TABS.find((x) => x.id === tab)?.label ?? tab}${tab === "berichte" ? ` · ${sub}` : ""}${tab === "basis" && sheet ? ` · Blatt ${sheet}` : ""}`;
@@ -243,14 +267,15 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   ) : tab === "karte" ? (
     <MapScreen key={`${b.id}:${mapFocus?.missionId ?? "karte"}`} base={b} focus={mapFocus} onPlan={openPlan} onSwitchBase={switchBase} />
   ) : tab === "truppen" ? (
-    <TroopsScreen key={b.id} base={b} onResearch={openResearch} onPlan={() => openPlan(null)} onShowOnMap={(t) => { setMapFocus(t); go("karte"); }} />
+    <TroopsScreen key={`${b.id}:${navSeq}`} base={b} onResearch={openResearch} onPlan={() => openPlan(null)} onShowOnMap={(t) => { setMapFocus(t); go("karte"); }} />
   ) : tab === "berichte" ? (
     <MeldungenScreen sub={sub} setSub={setSub} unread={{ berichte: unread, nachrichten: unreadMsgs }} onShowOnMap={(t) => { setMapFocus(t); go("karte"); }} />
   ) : (
-    <MarketScreen key={b.id} base={b} />
+    <MarketScreen key={`${b.id}:${navSeq}`} base={b} initialResource={marketRes} />
   );
 
   return (
+    <NavContext.Provider value={{ go: navTo, base: b }}>
     <div className="h-full flex flex-col max-w-xl mx-auto">
       <ResourceBar base={b} asOf={base.data.serverNow} now={now} onSwitchBase={switchBase} onPlanFounding={() => go("karte")} onHelp={() => { setHelpView(null); setHelp((h) => !h); }} />
       {/* Kurszeile: auf der Börse immer (oben, außer „unten“ gewählt), sonst nach Einstellung. */}
@@ -289,6 +314,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       <UpdateNotices playerId={playerId} paused={welcome} />
       {bug && <Suspense fallback={null}><BugReportSheet draft={bug} playerName={playerName} onClose={() => setBug(null)} /></Suspense>}
     </div>
+    </NavContext.Provider>
   );
 }
 

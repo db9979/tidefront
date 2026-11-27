@@ -9,6 +9,7 @@ import { fmtSeconds, fmtTime } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
 import { HexMap } from "./LazyHexMap.tsx";
 import { ActionBar, Button, Card, ErrorLine, Loading, Stepper, SmallButton } from "../ui.tsx";
+import { ActionRemedy, ReasonInline, ReasonLine, hasRemedy } from "../components/Remedy.tsx"; // „Was hilft?“
 import { RouteWeather } from "../components/RouteWeather.tsx"; // Wetter auf der Route (v1.6)
 // Komfort: Vorlagen, Wiederholen, Probekampf
 import { fitUnits, isPlanType, type PlanPreset } from "../lib/plan-request.ts";
@@ -78,6 +79,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   const [sent, setSent] = useState<{ arriveAtMs: number; type: string } | null>(null);
   const [admiralId, setAdmiralId] = useState<number | null>(null); // Admirale
   // Art: nach der Auswahl auf eine Zeile mit „ändern“ eingeklappt (vorbelegt = schon gewählt).
+  const [whyOpen, setWhyOpen] = useState(false); // „Was hilft?“ in der Vorschau
+  const [barOpen, setBarOpen] = useState(false); // … und über der Aktionsleiste (grauer Knopf)
   const [typeOpen, setTypeOpen] = useState(!preset?.type && !initialTarget?.naval && !initialTarget?.convoyId && !initialTarget?.expansion);
   // Frische Bestände beim Öffnen
   useEffect(() => {
@@ -117,6 +120,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
     nest: map.data.nests.find((n) => n.col === target.col && n.row === target.row),
   } : null;
   const p = preview.data;
+  // „Was hilft?“: Verband und Entfernung für konkrete Zahlen (Treibstoff, Kommandopunkte, Reichweite).
+  const why = { units: chosen, cargo: cargoSent, type, distanceKm: p && "distanceKm" in p ? p.distanceKm : undefined };
 
   if (sent) {
     return (
@@ -244,8 +249,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
               </>
             ) : (
               <div className="text-red-300">
-                {errorText(p.code)}
-                {p.code === "target_protected" && tInfo?.base?.protection ? ` Grund: ${label(tInfo.base.protection)}. Ein Überfall ist erst danach möglich.` : ""}
+                <ReasonLine code={p.code} detail={why} className="" text={`${errorText(p.code)}${p.code === "target_protected" && tInfo?.base?.protection ? ` Grund: ${label(tInfo.base.protection)}. Ein Überfall ist erst danach möglich.` : ""}`} open={whyOpen} onOpenChange={setWhyOpen} />
                 {"weather" in p && p.weather && balance.weather && <RouteWeather w={p.weather} wb={balance.weather} />}
               </div>
             )}
@@ -257,15 +261,19 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
       )}
       {/* Fixierte Leiste: Kurzfassung „n Einheiten · Dauer“ und Auslaufen (Details in „Vorschau“). */}
       <ActionBar>
-        <ErrorLine text={launch.error} />
+        <ErrorLine text={launch.error} code={launch.code} detail={why} />
+        {p && !p.ok && <ActionRemedy code={p.code} detail={why} open={barOpen} onClose={() => setBarOpen(false)} />}
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1 text-sm leading-tight">
             <div className="font-semibold truncate">{fmtNum(Object.values(chosen).reduce((a, b) => a + b, 0))} Einheiten{ownTarget ? ` → ${ownTarget.name}` : target ? ` · ${type === "gruendung" ? "Außenposten " : "Feld "}${target.col}/${target.row}` : ""}</div>
-            <div className="text-xs text-ink2 truncate">{!target ? "Ziel wählen" : Object.keys(chosen).length === 0 ? "Einheiten wählen" : !p ? "Berechne …" : p.ok ? `Fahrt ${fmtSeconds(p.travelSeconds)} · ${fmtNum(p.fuelCost)} Treibstoff` : errorText(p.code)}</div>
+            {p && !p.ok && target && Object.keys(chosen).length > 0
+              ? <ReasonInline code={p.code} open={barOpen} onToggle={() => setBarOpen(!barOpen)} />
+              : <div className="text-xs text-ink2 truncate">{!target ? "Ziel wählen" : Object.keys(chosen).length === 0 ? "Einheiten wählen" : !p ? "Berechne …" : p.ok ? `Fahrt ${fmtSeconds(p.travelSeconds)} · ${fmtNum(p.fuelCost)} Treibstoff` : errorText(p.code)}</div>}
           </div>
           <Button
             className="shrink-0"
             disabled={!p?.ok || launch.busy || !target}
+            onBlocked={p && !p.ok && hasRemedy(p.code) ? () => setBarOpen(!barOpen) : undefined}
             onClick={async () => {
               if (!input) return;
               const r = await launch.run(input);

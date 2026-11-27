@@ -191,7 +191,7 @@ export function LiftBlockade({ missionId }: { missionId: number }) {
     <div className="mt-1">
       <span className="text-xs text-ink2 block">Hält die Blockade vor {b.targetName} noch {fmtDuration(b.endsAtMs - Date.now())}.</span>
       <Button kind="secondary" disabled={lift.busy} onClick={() => void lift.run({ blockadeId: b.id })}>Blockade aufheben</Button>
-      <ErrorLine text={lift.error} />
+      <ErrorLine text={lift.error} code={lift.code} />
     </div>
   );
 }

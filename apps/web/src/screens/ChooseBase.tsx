@@ -123,7 +123,7 @@ export function ChooseBase() {
               </Button>
             </div>
           )}
-          <ErrorLine text={cmd.error} />
+          <ErrorLine text={cmd.error} code={cmd.code} />
         </div>
       </div>
     </div>

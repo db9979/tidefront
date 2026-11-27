@@ -8,6 +8,7 @@ import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { fmtDuration, fmtSeconds } from "../lib/time.ts";
 import { Button, Card, Cost, ErrorLine, Sheet, StatTable, Stepper, UnitChips } from "../ui.tsx";
+import { ActionRemedy, ReasonLine, useWhatHelps } from "./Remedy.tsx"; // „Was hilft?“
 import { Icon, IconTile } from "../icons.tsx";
 import { cancelLoss, cancelQuestion, unitStats, unitText, unitTone } from "../lib/info.ts";
 import { Progress } from "../screens/Base.tsx";
@@ -61,7 +62,7 @@ export function TrainGroup({ builtIn, title, base, balance, now }: { builtIn: st
           >Abbruch</Button>
         </div>
       )}
-      <ErrorLine text={cancel.error} />
+      <ErrorLine text={cancel.error} code={cancel.code} />
       {level < 1 ? (
         <>
           <div className="text-sm text-slate-400 flex items-center gap-2"><IconTile id={builtIn} size={36} /> Erst {label(builtIn)} bauen (Basis → {title}).</div>
@@ -103,6 +104,10 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
     : props.base.versorgungsmangel ? "Versorgungsmangel: keine Ausbildung möglich."
     : afford < 1 ? "Nicht genug Ressourcen für ein Stück."
     : n > afford ? `Nicht genug Ressourcen (höchstens ${fmtNum(afford)}).` : null;
+  // Ablehnungscode zum Grund und Zusatzangaben für „Was hilft?“.
+  const whyCode = props.busy ? "queue_busy" : props.base.versorgungsmangel ? "supply_shortage" : why ? "insufficient_resources" : null;
+  const detail = { unit: props.id, cost: scale(props.cost, Math.max(1, n)) };
+  const [help, setHelp] = useWhatHelps();
   return (
     <li className="py-2.5">
       <div className="flex items-center gap-2">
@@ -119,11 +124,15 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
           )}
         </button>
         {props.needLevel ? (
-          <span className="text-xs text-brass-300 text-right w-28 shrink-0">Bau ab {label(props.balance.units[props.id]?.builtIn ?? "")} Stufe {props.needLevel}</span>
+          <button type="button" aria-expanded={help} onClick={() => setHelp(!help)} className="tap text-xs text-brass-300 text-right w-28 shrink-0 leading-tight">
+            Bau ab {label(props.balance.units[props.id]?.builtIn ?? "")} Stufe {props.needLevel} <span className="text-ink2">▾</span>
+          </button>
         ) : (
           <>
             <Stepper compact value={n} onChange={setN} limit={Math.max(1, afford)} />
-            <button type="button" className="tap shrink-0 rounded-lg btn-secondary px-2 font-display uppercase text-[12px] tracking-[0.06em] disabled:opacity-45" disabled={!!why || cmd.busy || n < 1} onClick={async () => { const r = await cmd.run({ id: props.id, count: n }); if (r) setN(0); }}>
+            {/* Gesperrt mit Grund (ab Menge 1): Antippen klappt „Was hilft?“ auf. */}
+            <button type="button" className={`tap shrink-0 rounded-lg btn-secondary px-2 font-display uppercase text-[12px] tracking-[0.06em] disabled:opacity-45 ${why && n >= 1 ? "opacity-45" : ""}`} disabled={cmd.busy || n < 1} aria-disabled={!!why || undefined}
+              onClick={async () => { if (why) return setHelp(!help); const r = await cmd.run({ id: props.id, count: n }); if (r) setN(0); }}>
               Bauen
             </button>
           </>
@@ -135,8 +144,9 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
           {props.secondsEach !== null && <span className="text-xs text-slate-400 flex items-center gap-1 shrink-0"><Icon id="uhr" size={14} /> {fmtSeconds(props.secondsEach * n)}</span>}
         </div>
       )}
-      {why && n >= 1 && !props.needLevel && <p className="text-xs text-brass-300 mt-1 pl-12">{why}</p>}
-      <ErrorLine text={cmd.error} />
+      {why && n >= 1 && !props.needLevel && <ReasonLine code={whyCode} text={why} detail={detail} open={help} onOpenChange={setHelp} className="text-xs text-brass-300 mt-1 pl-12" />}
+      {props.needLevel && help && <div className="pl-12"><ActionRemedy code="building_level" detail={detail} open onClose={() => setHelp(false)} /></div>}
+      <ErrorLine text={cmd.error} code={cmd.code} detail={detail} />
       <Sheet open={info} onClose={() => setInfo(false)} title={label(props.id)} icon={<IconTile id={props.id} size={56} tone={unitTone(props.balance, props.id)} />}>
         <p className="text-sm text-slate-200 mb-3">{unitText(props.balance, props.id)}</p>
         <p className="text-sm mb-3">Bestand <strong className="mono">{fmtNum(props.have)}</strong>{props.away > 0 ? <span className="text-ink2"> · {fmtNum(props.away)} unterwegs</span> : ""}</p>

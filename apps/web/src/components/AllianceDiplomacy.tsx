@@ -64,7 +64,7 @@ export function AllianceDiplomacy() {
       ) : (
         <p className="text-sm text-ink2 px-1 mb-3">Verträge schließen Führung und Offiziere deiner Allianz.</p>
       )}
-      <ErrorLine text={act.error} />
+      <ErrorLine text={act.error} code={act.code} />
     </div>
   );
 }

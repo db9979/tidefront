@@ -47,7 +47,7 @@ export function AchievementsScreen() {
           </div>
         )}
         {v.claimable > 0 && <p className="text-sm text-moos" role="status">{v.claimable} {v.claimable === 1 ? "Belohnung wartet" : "Belohnungen warten"} auf dich.</p>}
-        <ErrorLine text={claim.error} />
+        <ErrorLine text={claim.error} code={claim.code} />
       </Card>
 
       <ul className="grid grid-cols-2 gap-2 mb-3" aria-label="Errungene Abzeichen">
@@ -119,7 +119,7 @@ export function AchievementsScreen() {
                 </li>
               ))}
             </ol>
-            <ErrorLine text={claim.error} />
+            <ErrorLine text={claim.error} code={claim.code} />
           </div>
         )}
       </Sheet>

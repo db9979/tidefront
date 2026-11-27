@@ -39,7 +39,7 @@ export function FieldEscortEditor({ fieldId, garrison, escort }: { fieldId: numb
         <Button className="flex-1" disabled={save.busy} onClick={() => void save.run({ fieldId, units: pick }).then((r) => { if (r?.ok) setOpen(false); })}>Geleit übernehmen</Button>
         <Button kind="secondary" disabled={save.busy} onClick={() => setOpen(false)}>Abbrechen</Button>
       </div>
-      <ErrorLine text={save.error} />
+      <ErrorLine text={save.error} code={save.code} />
     </div>
   );
 }

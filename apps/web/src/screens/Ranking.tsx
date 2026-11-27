@@ -194,7 +194,7 @@ function PlayerDetail({ r, dir, ownId, onCompose, onShowOnMap }: { r: Row; dir: 
           In die Allianz einladen
         </Button>
       )}
-      <ErrorLine text={act.error} />
+      <ErrorLine text={act.error} code={act.code} />
     </div>
   );
 }

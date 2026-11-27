@@ -4,9 +4,10 @@ import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, type BaseData, type Outputs } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
-import { errorText, fmtNum, label } from "../lib/names.ts";
+import { fmtNum, label } from "../lib/names.ts";
 import { fmtDuration, fmtSeconds, fmtTime, useNow } from "../lib/time.ts";
 import { Badge, Button, Card, ErrorLine, Loading, Stepper, UnitChips } from "../ui.tsx";
+import { ReasonLine } from "./Remedy.tsx"; // „Was hilft?“
 import { Icon, IconTile } from "../icons.tsx";
 
 type Raid = Outputs["allianceOps"]["raids"]["raids"][number];
@@ -81,7 +82,7 @@ function RaidCard({ r, base, now }: { r: Raid; base: BaseData | null; now: numbe
       {r.canCancel && (
         <Button kind="danger" className="w-full mt-2" disabled={cancel.busy} onClick={() => { if (confirm("Sammelangriff für alle abbrechen?")) void cancel.run({ raidId: r.id }); }}>Abbrechen</Button>
       )}
-      <ErrorLine text={withdraw.error ?? cancel.error} />
+      <ErrorLine text={withdraw.error ?? cancel.error} code={withdraw.error ? withdraw.code : cancel.code} />
     </Card>
   );
 }
@@ -107,14 +108,14 @@ function JoinForm({ r, base, onDone }: { r: Raid; base: BaseData; onDone: () => 
       </ul>
       {p && Object.keys(chosen).length > 0 && (
         <p className="text-sm mt-1">
-          {p.ok ? <>Reise {fmtSeconds(p.travelSeconds)} · Treibstoff {fmtNum(p.fuelCost)} (wird beim Beitritt gebunden)</> : <span className="text-siegel">{errorText(p.code)}</span>}
+          {p.ok ? <>Reise {fmtSeconds(p.travelSeconds)} · Treibstoff {fmtNum(p.fuelCost)} (wird beim Beitritt gebunden)</> : <ReasonLine code={p.code} detail={{ units: chosen, distanceKm: "distanceKm" in p ? p.distanceKm as number : undefined }} className="text-siegel" />}
         </p>
       )}
       <div className="flex gap-2 mt-2">
         <Button kind="secondary" className="flex-1" onClick={onDone}>Abbrechen</Button>
         <Button className="flex-1" disabled={!p?.ok || join.busy} onClick={async () => { const out = await join.run({ raidId: r.id, units: chosen }); if (out?.ok) onDone(); }}>Beitreten</Button>
       </div>
-      <ErrorLine text={join.error} />
+      <ErrorLine text={join.error} code={join.code} detail={{ units: chosen }} />
     </div>
   );
 }

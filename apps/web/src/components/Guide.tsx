@@ -101,7 +101,7 @@ export function Guide({ base, onAction }: { base: BaseData; onAction: (a: GuideA
           ))}
         </ul>
       )}
-      <ErrorLine text={claim.error ?? claimFinal.error} />
+      <ErrorLine text={claim.error ?? claimFinal.error} code={claim.error ? claim.code : claimFinal.code} />
       {current ? (
         <div className="flex gap-3 mt-3">
           <div className="shrink-0 self-start w-16 h-14 grid place-items-center bg-[#f6f1e5] border border-rule"><Icon id={current.icon} size={46} /></div>

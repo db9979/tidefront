@@ -4,6 +4,8 @@ import { countLabel, fmtNum, label } from "./lib/names.ts";
 import { Icon } from "./icons.tsx";
 import { useBackLayer } from "./lib/back.ts";
 import { HScroll } from "./components/HScroll.tsx";
+import { ReasonLine } from "./components/Remedy.tsx";
+import type { RemedyDetail } from "./lib/remedies/types.ts";
 
 /** Auf-/Zu-Zustand, auf Wunsch in localStorage gemerkt (Schlüssel „tf-open:…“). */
 export function useStoredOpen(storageKey: string | undefined, defaultOpen: boolean): [boolean, (v: boolean) => void] {
@@ -60,12 +62,13 @@ const KIND: Record<BtnKind, string> = {
 };
 
 /** Kleiner leiser Knopf für Kartenköpfe und Nebenaktionen in einer Zeile (44 px Tippfläche, schmal). */
-export function SmallButton(props: { children: ReactNode; onClick?: () => void; disabled?: boolean; className?: string }) {
+export function SmallButton(props: { children: ReactNode; onClick?: () => void; disabled?: boolean; className?: string; expanded?: boolean }) {
   return (
     <button
       type="button"
       onClick={props.onClick}
       disabled={props.disabled}
+      aria-expanded={props.expanded}
       className={`tap inline-flex items-center justify-center rounded-lg px-3 btn-quiet font-display uppercase text-[11px] tracking-[0.1em] disabled:opacity-45 ${props.className ?? ""}`}
     >
       {props.children}
@@ -73,27 +76,40 @@ export function SmallButton(props: { children: ReactNode; onClick?: () => void; 
   );
 }
 
-export function Button(props: { children: ReactNode; onClick?: () => void; disabled?: boolean; kind?: BtnKind; className?: string; type?: "button" | "submit" }) {
+/**
+ * Knopf. onBlocked: grauer Knopf mit bekanntem Grund bleibt antippbar und ruft onBlocked (z. B. „Was hilft?“
+ * aufklappen) statt nichts zu tun; er sieht weiter gesperrt aus (aria-disabled).
+ */
+export function Button(props: { children: ReactNode; onClick?: () => void; disabled?: boolean; kind?: BtnKind; className?: string; type?: "button" | "submit"; onBlocked?: () => void }) {
+  const soft = !!props.disabled && !!props.onBlocked;
   return (
     <button
       type={props.type ?? "button"}
-      onClick={props.onClick}
-      disabled={props.disabled}
-      className={`tap rounded-lg px-4 py-2 font-display uppercase text-[13px] tracking-[0.12em] disabled:opacity-45 ${KIND[props.kind ?? "primary"]} ${props.className ?? ""}`}
+      onClick={soft ? props.onBlocked : props.onClick}
+      disabled={props.disabled && !soft}
+      aria-disabled={soft || undefined}
+      className={`tap rounded-lg px-4 py-2 font-display uppercase text-[13px] tracking-[0.12em] disabled:opacity-45 ${soft ? "opacity-45" : ""} ${KIND[props.kind ?? "primary"]} ${props.className ?? ""}`}
     >
       {props.children}
     </button>
   );
 }
 
-/** Fehlermeldung am auslösenden Element; rollt bei neuer Meldung in den sichtbaren Bereich. */
-export function ErrorLine({ text }: { text: string | null | undefined }) {
-  const ref = useRef<HTMLParagraphElement>(null);
+/**
+ * Fehlermeldung am auslösenden Element; rollt bei neuer Meldung in den sichtbaren Bereich.
+ * Mit code (Ablehnungscode des Servers) bietet sie „Was hilft?“ an (components/Remedy.tsx); detail liefert Zahlen.
+ */
+export function ErrorLine({ text, code, detail }: { text: string | null | undefined; code?: string | null; detail?: RemedyDetail }) {
+  const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (text) ref.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
   }, [text]);
   if (!text) return null;
-  return <p ref={ref} className="text-red-300 text-sm mt-2 scroll-mb-24" role="alert">{text}</p>;
+  return (
+    <div ref={ref} className="mt-2 scroll-mb-24">
+      <ReasonLine code={code} text={text} detail={detail} className="text-red-300 text-sm" role="alert" />
+    </div>
+  );
 }
 
 export function Cost({ cost, have }: { cost: Record<string, number> | null | undefined; have?: Record<string, number> }) {

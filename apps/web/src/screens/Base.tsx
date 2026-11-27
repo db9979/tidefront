@@ -10,6 +10,7 @@ import { buildingEffect, buildingText, cancelLoss, cancelQuestion } from "../lib
 import { Icon, IconTile } from "../icons.tsx";
 import { BuildingArt, BuildingArtTile, nextStageLevel, stageOf } from "../building-art/index.tsx";
 import { Badge, Bar, Button, Card, Cost, CountsLine, ErrorLine, Sheet } from "../ui.tsx";
+import { ReasonLine, useWhatHelps } from "../components/Remedy.tsx"; // „Was hilft?“
 import type { GuideAction } from "../components/Guide.tsx";
 import { QuestBar, useQuestSummary } from "../components/QuestBar.tsx"; // Auftragsbuch, Tagesbefehle, Wochenziele
 import { Supply, Protection } from "../components/BaseInfo.tsx"; // Versorgung (inkl. PowerGrid), Schutz
@@ -185,7 +186,7 @@ function BuildYard({ base, now }: { base: BaseData; now: number }) {
         </ol>
       )}
       {queue.length > 1 && <p className="text-xs text-slate-400 mt-1">Abbruch: der laufende Auftrag nach Restzeit, wartende voll erstattet. Spätere Stufen desselben Gebäudes fallen mit weg.</p>}
-      <ErrorLine text={cancel.error} />
+      <ErrorLine text={cancel.error} code={cancel.code} />
       <p className="text-xs text-ink2 flex items-center gap-1.5 mt-2"><span className="diamond bg-moos shrink-0" aria-hidden="true" /> = jetzt ausbaubar (Rohstoffe reichen, Platz in der Schlange frei)</p>
     </Card>
   );
@@ -225,6 +226,9 @@ function BuildingSheet({ b, base, res, onClose, onTroops, onResearch }: { b: Bui
     : capped ? "Erst die Kommandozentrale ausbauen."
     : queueFull ? `Bauschlange voll (${used}/${base.buildQueueSlots}).`
     : !enough ? "Noch nicht genug Ressourcen." : null;
+  // Ablehnungscode zum Grund für „Was hilft?“ (grauer Knopf klappt ihn auf).
+  const reasonCode = maxed ? null : capped ? "command_cap" : queueFull ? "queue_full" : !enough ? "insufficient_resources" : null;
+  const [help, setHelp] = useWhatHelps();
   const now = balance ? buildingEffect(balance, b.id, b.level) : null;
   const next = balance && !maxed ? buildingEffect(balance, b.id, target) : null;
   const trains = ["werft", "kaserne", "flugfeld", "nachrichtendienst"].includes(b.id);
@@ -266,13 +270,13 @@ function BuildingSheet({ b, base, res, onClose, onTroops, onResearch }: { b: Bui
         </div>
       )}
       {b.planned > b.level && <p className="text-sm text-sea-300 mb-2">In der Bauschlange bis Stufe {b.planned}. Ein weiterer Ausbau wird dahinter eingereiht.</p>}
-      {reason && <p className="text-sm text-brass-300 mb-2">{reason}</p>}
-      <ErrorLine text={up.error} />
+      {reason && <ReasonLine code={reasonCode} text={reason} detail={{ cost: b.cost, building: b.id }} open={help} onOpenChange={setHelp} className="text-sm text-brass-300 mb-2" />}
+      <ErrorLine text={up.error} code={up.code} detail={{ cost: b.cost, building: b.id }} />
       <div className="flex gap-2">
         {trains && b.level > 0 && <Button kind="secondary" className="flex-1" onClick={() => { onClose(); onTroops(); }}>Ausbilden</Button>}
         {b.id === "forschungsamt" && <Button kind="secondary" className="flex-1" onClick={() => { onClose(); onResearch(); }}>Forschung</Button>}
         {!maxed && (
-          <Button className="flex-1" disabled={!!reason || up.busy} onClick={async () => { const r = await up.run({ buildingId: b.id }); if (r?.ok) onClose(); }}>
+          <Button className="flex-1" disabled={!!reason || up.busy} onBlocked={reasonCode ? () => setHelp(!help) : undefined} onClick={async () => { const r = await up.run({ buildingId: b.id }); if (r?.ok) onClose(); }}>
             {used > 0 ? `Einreihen: Stufe ${target}` : `Ausbau auf ${target}`}
           </Button>
         )}

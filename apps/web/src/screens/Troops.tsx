@@ -10,6 +10,7 @@ import { label } from "../lib/names.ts";
 import { fmtDuration, useNow } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
 import { Button, Card, Loading, Segments, UnitChips, useSegment } from "../ui.tsx";
+import { ReasonLine } from "../components/Remedy.tsx"; // „Was hilft?“
 import { Icon } from "../icons.tsx";
 import { RecentMissions } from "../components/Repeat.tsx";
 import { FreeSimCard } from "../components/SimLauncher.tsx";
@@ -57,6 +58,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
 
       {seg === "einsatz" && <>
       <Button className="w-full mb-3" onClick={onPlan}>Mission planen</Button>
+      {base.activeMissions >= base.missionSlots && <ReasonLine code="no_mission_slot" className="text-sm text-brass-300 -mt-1 mb-3" />}
       <Card title={`Missionen ${base.activeMissions}/${base.missionSlots}`}>
         {base.missions.length === 0 && <p className="text-sm text-slate-400">Keine laufenden Missionen. Plane einen Überfall auf ein Piratennest über die Karte oder „Mission planen“.</p>}
         <ul className="divide-y divide-navy-700">
