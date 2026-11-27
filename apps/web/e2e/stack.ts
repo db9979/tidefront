@@ -42,6 +42,7 @@ const env = {
   PUBLIC_URL: E2E.webUrl,
   // Tests legen Häfen direkt über die Engine an (ohne Live-Meldung) – der 5-s-Kartenzwischenspeicher würde sie verbergen.
   MAP_CACHE_MS: "0",
+  ADMIN_CACHE_MS: "0", // Verwaltung → Balance live: Tests tragen Schnappschüsse direkt ein
 };
 
 function run(name: string, cmd: string, args: string[], extra: Record<string, string> = {}, cwd = root) {

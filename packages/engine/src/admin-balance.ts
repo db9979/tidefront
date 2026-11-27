@@ -183,9 +183,12 @@ export async function adminBalance(db: DbOrTx, days: StatsDays, nowMs = Date.now
 const cache = new Map<number, { at: number; value: Promise<AdminBalance> }>();
 
 /** Wie adminBalance, je Zeitraum höchstens einmal je Minute berechnet. */
+/** Zwischenspeicher der Verwaltungsansicht (ADMIN_CACHE_MS, Standard 60 s; 0 = aus, z. B. in der E2E-Umgebung). */
+const ADMIN_BALANCE_CACHE_MS = Number((globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.ADMIN_CACHE_MS ?? 60_000);
+
 export function adminBalanceCached(db: DbOrTx, days: StatsDays, nowMs = Date.now()): Promise<AdminBalance> {
   const hit = cache.get(days);
-  if (hit && nowMs - hit.at < 60_000) return hit.value;
+  if (hit && nowMs - hit.at < ADMIN_BALANCE_CACHE_MS) return hit.value;
   const value = adminBalance(db, days, nowMs);
   cache.set(days, { at: nowMs, value });
   value.catch(() => cache.delete(days));
