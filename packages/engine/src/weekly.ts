@@ -26,7 +26,8 @@ export async function weeklyContextFor(tx: DbOrTx, playerId: number, atMs: numbe
     const [n] = await tx.select({ n: count() }).from(tables.allianceMember).where(eq(tables.allianceMember.allianceId, m.allianceId));
     allied = (n?.n ?? 0) >= 2;
   }
-  return { ...poolContext(state, { others: (o?.n ?? 0) > 0, raidsPossible }, mods), allied };
+  const [nb] = await tx.select({ n: count() }).from(tables.base).where(eq(tables.base.playerId, playerId));
+  return { ...poolContext(state, { others: (o?.n ?? 0) > 0, raidsPossible }, mods), allied, bases: nb?.n ?? 1 };
 }
 
 export async function weekRows(tx: DbOrTx, playerId: number, week: string): Promise<WeeklyRow[]> {
@@ -67,27 +68,48 @@ export async function advanceWeekly(tx: DbOrTx, playerId: number, kind: string, 
   return done.length;
 }
 
-/** Ziele, deren Stand aus dem Zustand gelesen wird (abgeholte Tagesbefehle der Woche): beim Abruf fortschreiben. */
+/** Ziele, deren Stand aus dem Zustand gelesen wird (abgeholte Tagesbefehle, gegründete Häfen der Woche): beim Abruf fortschreiben. */
 export async function refreshWeeklyDerived(tx: DbOrTx, playerId: number, rows: WeeklyRow[], nowMs: number): Promise<WeeklyRow[]> {
   const open = rows.filter((r) => !r.completedAt && WEEKLY_DERIVED.has(r.kind));
   if (open.length === 0) return rows;
   const out = new Map(rows.map((r) => [r.id, r]));
   for (const r of open) {
-    const dc = tables.dailyChallenge;
-    const [n] = await tx
-      .select({ n: count() })
-      .from(dc)
-      .where(and(
-        eq(dc.playerId, playerId),
-        isNotNull(dc.claimedAt),
-        gte(dc.claimedAt, new Date(weekStartMs(r.week))),
-        lt(dc.claimedAt, new Date(weekStartMs(addDays(r.week, 7)))),
-      ));
-    const progress = Math.min(r.target, Math.max(r.progress, n?.n ?? 0));
+    const n = r.kind === "gruendung" ? await foundedInWeek(tx, playerId, r.week) : await dailiesInWeek(tx, playerId, r.week);
+    const progress = Math.min(r.target, Math.max(r.progress, n));
     if (progress === r.progress) continue;
     const completedAt = progress >= r.target ? new Date(nowMs) : null;
     await tx.update(wg).set({ progress, completedAt }).where(and(eq(wg.id, r.id), isNull(wg.completedAt)));
     out.set(r.id, { ...r, progress, completedAt });
   }
   return rows.map((r) => out.get(r.id)!);
+}
+
+/** Abgeholte Tagesbefehle in der Woche. */
+async function dailiesInWeek(tx: DbOrTx, playerId: number, week: string): Promise<number> {
+  const dc = tables.dailyChallenge;
+  const [n] = await tx
+    .select({ n: count() })
+    .from(dc)
+    .where(and(
+      eq(dc.playerId, playerId),
+      isNotNull(dc.claimedAt),
+      gte(dc.claimedAt, new Date(weekStartMs(week))),
+      lt(dc.claimedAt, new Date(weekStartMs(addDays(week, 7)))),
+    ));
+  return n?.n ?? 0;
+}
+
+/** Mehrere Häfen: in der Woche gegründete Häfen (Kolonien, nicht der Heimathafen). */
+async function foundedInWeek(tx: DbOrTx, playerId: number, week: string): Promise<number> {
+  const b = tables.base;
+  const [n] = await tx
+    .select({ n: count() })
+    .from(b)
+    .where(and(
+      eq(b.playerId, playerId),
+      eq(b.isHome, false),
+      gte(b.createdAt, new Date(weekStartMs(week))),
+      lt(b.createdAt, new Date(weekStartMs(addDays(week, 7)))),
+    ));
+  return n?.n ?? 0;
 }

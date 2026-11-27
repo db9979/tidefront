@@ -27,7 +27,12 @@ Begründung und Simulation: `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt J,
    („Ganzer Verband bleibt“) alle Schiffe als Besatzung; der Rest fährt heim. Reichen die Überlebenden nicht oder ist
    die Höchstzahl erreicht, ist das Feld danach neutral und unbewacht.
 4. Die Besatzung ist eine Mission im Status „stationiert“: sie **belegt einen Missionsplatz**, ihr Unterhalt läuft
-   weiter, sie verteidigt das Feld. **Rückruf** (Truppen → Meine Felder oder Infoblatt): das Feld wird neutral, der
+   weiter, sie verteidigt das Feld (ohne die Geleitabteilung, siehe Ertrag). Admirale führen keine Feld-Verbände.
+   **Verstärkung:** „Besetzen“ gegen ein eigenes Feld mit Besatzung schickt Schiffe ohne Kampf hin (nur Schiffe, keine
+   Mindeststärke, keine Höchstzahl-Prüfung, Treibstoff für Hin- und Rückweg wie beim Besetzen). Bei Ankunft gehören
+   sie zur Besatzung und kehren mit ihr heim. Kommen sie aus einem anderen eigenen Hafen, wechseln sie in den Hafen
+   des Felds (Veteranen gewichtet gemischt wie bei der Verlegung). Ist das Feld bei Ankunft nicht mehr eigen, fährt
+   der Verband heim. Ein Besetzen-Verband, der ein inzwischen eigenes Feld erreicht, verstärkt ebenso. **Rückruf** (Truppen → Meine Felder oder Infoblatt): das Feld wird neutral, der
    angefangene Ertrag geht noch als Konvoi heim. Ohne Wache kehrt das Kartell nach `guardRespawnHours` (6 h) zurück.
 5. Felder gehören einem Spieler **und** einem Heimathafen (dem Hafen, der sie genommen hat); dorthin gehen Ertrag und
    Unterhalt.
@@ -35,8 +40,14 @@ Begründung und Simulation: `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt J,
 ## Ertrag und Unterhalt
 
 - Alle `deliveryHours` (4 h) wird abgerechnet: Ertrag × Rangfaktor × Zonenbonus läuft als **Konvoi** (Art „Feld“,
-  ohne Geleit, `convoySpeedKmh` 40 km/h) zum Heimathafen. Das Kartell fängt wie bei anderen Konvois gelegentlich ab,
+  `convoySpeedKmh` 40 km/h) zum Heimathafen. Das Kartell fängt wie bei anderen Konvois gelegentlich ab,
   Kriegsgegner können ihn abfangen. Eine **Blockade** des Heimathafens hält ihn zurück. Minen wirken nicht.
+- **Geleitabteilung** (Truppen → Meine Felder → Geleit einteilen): Schiffe der Besatzung, die jeden Ertragskonvoi
+  begleiten und bei Abfangversuchen (Kartell, Kriegsgegner) wie ein Geleitschutz kämpfen (mit den Modifikatoren des
+  Hafens des Felds). Sie verteidigen das Feld **nicht**; was bleibt, muss eine gültige Besatzung sein (bewaffnet,
+  ≥ `escortMinRemainCommandPoints` = 6 Kommandopunkte). Kein Treibstoff, keine eigene Mission. Gilt ab dem nächsten
+  Konvoi; jeder Konvoi kämpft mit dem aktuellen Bestand der Abteilung, Verluste fehlen der Besatzung. Fällt das Feld
+  (Spieler oder Kartell), kehrt die Abteilung heim – sie war unterwegs.
 - Unterhalt je Feld: 10/15/20 Proviant je Stunde (Stufe 1/2/3), vom Heimathafen (höchstens der Bestand).
 - Bei Verlust des Felds durch Angriff verfällt der angefangene Zyklus.
 
@@ -49,9 +60,12 @@ Begründung und Simulation: `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt J,
 
 - **Spieler**: „Angreifen“ auf der Karte (Missionsart Besetzen). Sieger übernimmt mit seiner Besatzung; die alte
   Besatzung ist vernichtet. Hält die Besatzung, bleiben ihre Verluste.
+- **Radar-Vorwarnung**: Angriffe anderer Spieler auf ein besetztes Feld meldet das Radar des Hafens, dem das Feld
+  gehört, `radarWarningFactor` (50 %) seiner Vorwarnzeit vor Ankunft (Strom, Sabotage, Nebel und Tarnung wie bei
+  Häfen; einmal erkannt bleibt erkannt). Push und Systemnachricht; unter Meine Felder und im Infoblatt steht die
+  Ankunft. Ohne Radar keine Vorwarnung.
 - **Kartell**: je Lieferzyklus und besetztem Feld Chance `cartelRaidChance` (5 %); Ankunft nach
-  `cartelRaidLeadMinutes` (60 min, Push und Nachricht vorab), Verband 9/12/18 Schnellboote ± 30 %. Unterliegt die
-  Besatzung, wird das Feld neutral und das Kartell bewacht es wieder.
+  `cartelRaidLeadMinutes` (60 min, Push und Nachricht vorab), Verband 9/12/18 Schnellboote ± 30 %. Es kämpft die Besatzung ohne Geleitabteilung. Unterliegt sie, wird das Feld neutral und das Kartell bewacht es wieder.
 - Berichte für beide Seiten, Push und Systemnachricht an den Besitzer.
 
 ## Allianz-Einflusszone
@@ -60,6 +74,8 @@ Begründung und Simulation: `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt J,
   (auf der Karte durch Linien und Hof sichtbar). Ab `zoneMinFields` (3) Feldern: +10 % Ertrag je Feld der Zone.
 - Allianzwertung: +20 Punkte je besetztem Feld und Tag (am Saisonende zur Summe der Mitglieder addiert).
 
-## Erfolge
+## Erfolge und Wochenziele
 
 - Zähler `felder` (je Einnahme), Erfolg **Landnahme**: 1 / 5 / 20 Felder (Bronze/Silber/Gold).
+- Zähler `feldertrag` (Wert eingelaufener Ertragskonvois zum Richtpreis): Wochenziel **Felderträge**
+  (`docs/REGELN-ERFOLGE.md`).

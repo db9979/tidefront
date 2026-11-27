@@ -1,8 +1,9 @@
-// Felder: Höchstzahl, abnehmender Ertrag, Besatzung, Zonen, Kartellwürfel, Kandidatenliste.
+// Felder: Höchstzahl, abnehmender Ertrag, Besatzung, Zonen, Kartellwürfel, Kandidatenliste, Geleitabteilung, Vorwarnung.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  cartelFieldRaid, fieldUpkeep, fieldYield, fieldZones, fieldsOf, garrisonCheck, guardOf, maxFieldsFor, splitGarrison, yieldFactor,
+  addCounts, cartelFieldRaid, clampEscort, escortCheck, fieldDefenders, fieldUpkeep, fieldWarningMinutes, fieldYield, fieldZones, fieldsOf,
+  garrisonCheck, guardOf, maxFieldsFor, splitGarrison, subtractCounts, yieldFactor,
 } from "../src/index.ts";
 import { fieldSites, hexDistanceKm, terrainAt } from "@tidefront/world";
 import { loadBalance } from "./helpers.ts";
@@ -69,4 +70,30 @@ test("Kandidaten: nur See, Abstand gewahrt, gleiche Liste bei gleichem Seed", ()
   for (let i = 0; i < 40; i++) for (let j = i + 1; j < 40; j++) assert.ok(hexDistanceKm(a[i], a[j]) >= 230);
   assert.deepEqual(fieldSites(f.siteSeed, { ...kinds }, [...f.tierShares]).slice(0, 5), a.slice(0, 5));
   assert.ok(new Set(a.map((s) => s.kind)).size === 4);
+});
+
+test("Geleitabteilung: nur Schiffe der Besatzung, Rest bleibt gültige Besatzung", () => {
+  const g = { zerstoerer: 2, korvette: 2 };
+  const ok = escortCheck(g, { korvette: 2 }, balance);
+  assert.ok(ok.ok);
+  if (ok.ok) assert.deepEqual(ok.remain, { zerstoerer: 2 });
+  assert.equal((escortCheck(g, { korvette: 3 }, balance) as { code: string }).code, "field_escort_invalid");
+  assert.equal((escortCheck(g, { korvette: 1.5 }, balance) as { code: string }).code, "field_escort_invalid");
+  assert.equal((escortCheck(g, { schuetzen: 1 }, balance) as { code: string }).code, "field_escort_invalid");
+  assert.ok(escortCheck(g, { zerstoerer: 2 }, balance).ok, "2 Korvetten (6 KP) bleiben als Besatzung");
+  assert.equal((escortCheck(g, { zerstoerer: 2, korvette: 1 }, balance) as { code: string }).code, "field_escort_too_large");
+  const none = escortCheck(g, {}, balance);
+  assert.ok(none.ok && Object.keys(none.escort).length === 0, "leer = aufheben");
+});
+
+test("Geleitabteilung: Verteidiger ohne Geleit, Kappung nach Verlusten, Zählerhilfen", () => {
+  assert.deepEqual(fieldDefenders({ zerstoerer: 2, korvette: 2 }, { korvette: 1 }), { zerstoerer: 2, korvette: 1 });
+  assert.deepEqual(clampEscort({ korvette: 1 }, { korvette: 2, zerstoerer: 1 }), { korvette: 1 });
+  assert.deepEqual(addCounts({ korvette: 1 }, { korvette: 2, zerstoerer: 1 }), { korvette: 3, zerstoerer: 1 });
+  assert.deepEqual(subtractCounts({ korvette: 3, zerstoerer: 1 }, { korvette: 5 }), { zerstoerer: 1 });
+});
+
+test("Vorwarnung für Felder: Anteil der Vorwarnzeit des Heimathafens", () => {
+  assert.equal(fieldWarningMinutes(40, balance), 40 * (f.radarWarningFactor ?? 0));
+  assert.equal(fieldWarningMinutes(0, balance), 0);
 });

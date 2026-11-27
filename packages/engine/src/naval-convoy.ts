@@ -35,6 +35,7 @@ import {
   activeCounts, hasShips, insertMission, planNaval, playerName, pushNotice, sendHome, storeNavalReport,
   type MissionRowLike, type NavalInput, type Notes,
 } from "./naval-common.ts";
+import { fieldEscortLosses, fieldEscortOf } from "./fields-escort.ts"; // Felder: Geleitabteilung
 
 export interface ConvoyRow {
   id: number;
@@ -111,9 +112,13 @@ async function lockConvoy(tx: Tx, where: { id?: number; missionId?: number; deli
   return (c as ConvoyRow) ?? null;
 }
 
-/** Geleit, das wirklich mitfährt: beim Transport der Verband selbst, beim Handel nur, solange die Geleitmission läuft. */
+/**
+ * Geleit, das wirklich mitfährt: beim Transport der Verband selbst, beim Handel nur, solange die Geleitmission läuft,
+ * beim Feldertrag die aktuelle Geleitabteilung der Besatzung (missionId = Besatzungsmission), sofern bei der Abfahrt eingeteilt.
+ */
 async function liveEscort(tx: Tx, c: ConvoyRow): Promise<Counts> {
   if (c.kind === "transport") return activeCounts(c.escort as Counts);
+  if (c.kind === "feld") return hasShips(c.escort as Counts) ? fieldEscortOf(tx, c.missionId) : {};
   if (c.escortMissionId === null) return {};
   const [m] = await tx.select({ status: tables.mission.status }).from(tables.mission).where(eq(tables.mission.id, c.escortMissionId));
   return m?.status === "outbound" ? activeCounts(c.escort as Counts) : {};
@@ -152,14 +157,15 @@ async function fightEscort(tx: Tx, c: ConvoyRow, attacker: AttackerInput, escort
   if (!res.ok) throw new Error(`battle: ${res.code}`);
   const { report, destroyed } = strandTroops(res.report, balance);
   const left = activeUnits(report.defender.final);
+  if (c.kind === "feld") await fieldEscortLosses(tx, c.missionId, escort, left); // Felder: Verluste der Besatzung
   c.escort = left;
   await tx.update(tables.convoy).set({ escort: left }).where(eq(tables.convoy.id, c.id));
   return { held: !destroyed, report: { ...report, loot: {} }, seed, attackerLeft: activeUnits(report.attacker.final), hex };
 }
 
-/** Besitzer und Ausgangshafen des Geleits (Transport: der Verband selbst, Handel: die Geleitmission), null ohne. */
+/** Besitzer und Ausgangshafen des Geleits (Transport: der Verband selbst, Feld: die Besatzung, Handel: die Geleitmission), null ohne. */
 async function escortSource(tx: Tx, c: ConvoyRow): Promise<{ playerId: number; baseId: number | null } | null> {
-  const missionId = c.kind === "transport" ? c.missionId : c.escortMissionId;
+  const missionId = c.kind === "transport" || c.kind === "feld" ? c.missionId : c.escortMissionId;
   if (missionId === null) return c.kind === "transport" && c.senderId !== null ? { playerId: c.senderId, baseId: null } : null;
   const [m] = await tx.select({ playerId: tables.mission.playerId, baseId: tables.mission.baseId }).from(tables.mission).where(eq(tables.mission.id, missionId));
   if (!m || m.playerId === null) return c.kind === "transport" && c.senderId !== null ? { playerId: c.senderId, baseId: null } : null;

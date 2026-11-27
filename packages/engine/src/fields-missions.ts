@@ -4,7 +4,7 @@
 // (launchMission), views.ts (missionPreview) und handlers.ts (missionArrive). Regeln: docs/REGELN-FELDER.md.
 import { eq } from "drizzle-orm";
 import {
-  activeUnits, garrisonCheck, guardDefender, resolveBattle, splitGarrison, strandTroops,
+  activeUnits, addCounts, clampEscort, fieldDefenders, garrisonCheck, guardDefender, resolveBattle, splitGarrison, strandTroops,
   type AttackerInput, type Counts, type DefenderInput, type Mission,
 } from "@tidefront/game-core";
 import { hexDistanceKm } from "@tidefront/world";
@@ -22,6 +22,8 @@ import {
 } from "./naval-common.ts";
 import { FIELD_TYPE, HOUR_MS, fieldById, fieldName, garrisonMods, guarded, maxFieldsOfPlayer, ownedBy, rules, type FieldRow } from "./fields-core.ts";
 import { settleField } from "./fields-run.ts";
+import { checkReinforce, reinforceArrive } from "./fields-reinforce.ts";
+import { scheduleFieldWarning } from "./fields-radar.ts";
 
 export interface FieldInput {
   type: string;
@@ -31,15 +33,20 @@ export interface FieldInput {
   stayAll?: boolean;
 }
 
-/** Prüfungen und Planung. Codes: no_field, bad_type, own_field, field_limit, field_ships_only, garrison_too_weak, ally, pact … */
+/**
+ * Prüfungen und Planung. Besetzen gegen ein eigenes Feld ist eine Verstärkung der Besatzung (fields-reinforce.ts).
+ * Codes: no_field, bad_type, field_limit, field_ships_only, field_no_garrison, garrison_too_weak, ally, pact …
+ */
 async function planField(db: DbOrTx, playerId: number, own: BaseRow, input: FieldInput, nowMs: number) {
   const f = rules();
   if (!f) throw new GameError("bad_type");
   const field = await fieldById(db, input.fieldId);
   if (!field) throw new GameError("no_field");
   let targetProtection;
-  if (input.type === FIELD_TYPE) {
-    if (field.ownerId === playerId) throw new GameError("own_field");
+  const reinforce = input.type === FIELD_TYPE && field.ownerId === playerId;
+  if (reinforce) {
+    await checkReinforce(db, field, input.units);
+  } else if (input.type === FIELD_TYPE) {
     const g = garrisonCheck(activeCounts(input.units), balance);
     if (!g.ok) throw new GameError(g.code);
     if ((await ownedBy(db, playerId)).length >= (await maxFieldsOfPlayer(db, playerId, own))) throw new GameError("field_limit");
@@ -55,16 +62,20 @@ async function planField(db: DbOrTx, playerId: number, own: BaseRow, input: Fiel
     type: input.type as Mission["type"], baseType: input.type === FIELD_TYPE ? "ueberfall" : "aufklaerung", units: input.units,
     col: field.col, row: field.row, activeMissions: await activeMissionCount(db, own.id), mods: await modsOf(db, own, nowMs), targetProtection,
   }, nowMs);
-  return { r, field };
+  return { r, field, reinforce };
 }
 
 /** launchMission mit fieldId (Hafen aus dem Kommando-Kontext, bereits gesperrt). */
 export async function launchField(tx: Tx, playerId: number, own: BaseRow, input: FieldInput, nowMs: number, notify: Notes) {
-  const { r, field } = await planField(tx, playerId, own, input, nowMs);
+  const { r, field, reinforce } = await planField(tx, playerId, own, input, nowMs);
   if (!r.ok) return r;
   await saveBase(tx, own.id, r.base);
-  const plan = input.type === FIELD_TYPE ? { ...r.mission, stayAll: !!input.stayAll } : r.mission;
+  const plan = reinforce ? { ...r.mission, reinforce: true } : input.type === FIELD_TYPE ? { ...r.mission, stayAll: !!input.stayAll } : r.mission;
   const missionId = await insertMission(tx, { playerId, baseId: own.id, targetKind: "field", targetId: field.id, col: field.col, row: field.row, plan });
+  // Radar-Vorwarnung für den Besitzer eines angegriffenen Felds (fields-radar.ts).
+  if (!reinforce && input.type === FIELD_TYPE && field.ownerId !== null) {
+    await scheduleFieldWarning(tx, missionId, field, r.mission.arriveAtMs, nowMs, r.mission.warningFactor ?? 1);
+  }
   notify.push([[playerId], "base"], [[playerId], "missions"]);
   return { ok: true as const, missionId, arriveAtMs: r.mission.arriveAtMs };
 }
@@ -74,12 +85,12 @@ export async function previewField(db: DbOrTx, playerId: number, own: BaseRow, i
   const field = await fieldById(db, input.fieldId);
   const distanceKm = field ? hexDistanceKm(own, field) : 0;
   try {
-    const { r } = await planField(db, playerId, own, input, nowMs);
+    const { r, reinforce } = await planField(db, playerId, own, input, nowMs);
     if (!r.ok) return { ok: false as const, code: r.code, distanceKm };
     const m = r.mission;
     return {
       ok: true as const, distanceKm: m.distanceKm, travelSeconds: m.travelSeconds, fuelCost: m.fuelCost, arriveAtMs: m.arriveAtMs,
-      returnAtMs: m.returnAtMs, target: { kind: "field", own: false }, intercept: null,
+      returnAtMs: m.returnAtMs, target: { kind: "field", own: reinforce }, intercept: null,
       weather: field ? missionWeather(own.col, own.row, field.col, field.row, nowMs) : null, weatherFactor: m.weather?.shipFactor ?? 1,
     };
   } catch (err) {
@@ -104,7 +115,7 @@ export async function endGarrison(tx: Tx, missionId: number | null, survivors: C
 export async function releaseField(tx: Tx, f: FieldRow, due: number, guard: Counts | null): Promise<void> {
   const r = rules()!;
   await tx.update(tables.resourceField).set({
-    ownerId: null, baseId: null, missionId: null, capturedAt: null, lastTickAt: null,
+    ownerId: null, baseId: null, missionId: null, capturedAt: null, lastTickAt: null, escort: {},
     guard: guard ?? {}, guardAt: guard ? null : new Date(due + r.guardRespawnHours * HOUR_MS),
   }).where(eq(tables.resourceField.id, f.id));
 }
@@ -144,7 +155,10 @@ export async function fieldArrive(tx: Tx, m: MissionRowLike, plan: Mission, orig
   }
   const name = fieldName(field);
   const garrison = field.missionId !== null ? (await tx.select({ returning: tables.mission.returning }).from(tables.mission).where(eq(tables.mission.id, field.missionId)))[0] : undefined;
-  const garrisonUnits = activeUnits((garrison?.returning as Counts | null) ?? {});
+  const garrisonAll = activeUnits((garrison?.returning as Counts | null) ?? {});
+  // Die Geleitabteilung fährt mit den Ertragskonvois und verteidigt das Feld nicht (fields-escort.ts).
+  const escort = field.ownerId !== null ? clampEscort(garrisonAll, (field.escort as Counts) ?? {}) : {};
+  const garrisonUnits = fieldDefenders(garrisonAll, escort);
   const ownerName = field.ownerId !== null ? await playerName(tx, field.ownerId) : null;
   if (m.type === "aufklaerung") {
     const reportId = await storeNavalReport(tx, {
@@ -152,6 +166,11 @@ export async function fieldArrive(tx: Tx, m: MissionRowLike, plan: Mission, orig
       report: { field: { id: field.id, kind: field.kind, tier: field.tier, owner: ownerName, units: field.ownerId !== null ? garrisonUnits : activeUnits(field.guard as Counts) } },
     });
     await sendHome(tx, m, plan, units, {}, reportId, due);
+    return;
+  }
+  // Verstärkung (oder Besetzen-Verband erreicht ein inzwischen eigenes Feld mit Besatzung).
+  if ((plan as { reinforce?: boolean }).reinforce || (field.ownerId === pid && garrison)) {
+    await reinforceArrive(tx, m, plan, field, due, notify, push);
     return;
   }
   // Besetzen: Ziel noch angreifbar?
@@ -186,12 +205,12 @@ export async function fieldArrive(tx: Tx, m: MissionRowLike, plan: Mission, orig
   const prevOwner = field.ownerId;
   let outcome: "captured" | "cleared" | "held" | "limit" = "held";
   if (destroyed) {
-    if (prevOwner !== null) await endGarrison(tx, field.missionId, {}, due);
+    if (prevOwner !== null) await endGarrison(tx, field.missionId, escort, due); // Geleitabteilung war unterwegs und kehrt heim
     const split = splitGarrison(survivors, !!(plan as { stayAll?: boolean }).stayAll, balance);
     const limit = origin ? await maxFieldsOfPlayer(tx, pid, origin) : 0;
     if (split && origin && (await ownedBy(tx, pid)).length < limit) {
       await tx.update(tables.resourceField).set({
-        ownerId: pid, baseId: origin.id, missionId: m.id, guard: {}, guardAt: null, capturedAt: new Date(due), lastTickAt: new Date(due),
+        ownerId: pid, baseId: origin.id, missionId: m.id, guard: {}, guardAt: null, capturedAt: new Date(due), lastTickAt: new Date(due), escort: {},
       }).where(eq(tables.resourceField.id, field.id));
       await stationGarrison(tx, m, plan, split.garrison, split.rest, due);
       await recordAchievement(tx, pid, "felder", 1, { atMs: due }); // Erfolg „Landnahme“
@@ -201,7 +220,7 @@ export async function fieldArrive(tx: Tx, m: MissionRowLike, plan: Mission, orig
       outcome = split ? "limit" : "cleared";
     }
   } else if (prevOwner !== null) {
-    await tx.update(tables.mission).set({ returning: defenderLeft }).where(eq(tables.mission.id, field.missionId!));
+    await tx.update(tables.mission).set({ returning: addCounts(defenderLeft, escort) }).where(eq(tables.mission.id, field.missionId!));
   } else {
     await tx.update(tables.resourceField).set({ guard: defenderLeft }).where(eq(tables.resourceField.id, field.id));
   }

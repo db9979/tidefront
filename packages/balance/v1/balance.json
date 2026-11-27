@@ -369,7 +369,9 @@
     "zoneLinkKm": 450,
     "zoneMinFields": 3,
     "zoneBonus": 0.1,
-    "alliancePointsPerFieldDay": 20
+    "alliancePointsPerFieldDay": 20,
+    "radarWarningFactor": 0.5,
+    "escortMinRemainCommandPoints": 6
   },
   "expansion": {
     "maxBases": 3,

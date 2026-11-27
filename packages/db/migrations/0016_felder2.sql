@@ -1,0 +1,1 @@
+ALTER TABLE "resource_field" ADD COLUMN "escort" jsonb DEFAULT '{}'::jsonb NOT NULL;

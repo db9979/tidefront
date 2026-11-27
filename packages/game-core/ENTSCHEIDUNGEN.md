@@ -609,9 +609,37 @@ Ziel: Felder sind Entscheidungen und Konflikte, kein passiver Mehrertrag.
    vorbereitet für mehrere Häfen. Ertragskonvois nutzen das Konvoi-System (Art „feld“, ohne Geleit), Blockade hält sie
    zurück; Minen wirken auf Konvois nicht. Der angefangene Zyklus geht beim Rückruf noch als Konvoi heim, bei Verlust
    durch Angriff verfällt er.
-7. **Offen:** kein Geleitschutz für Ertragskonvois; keine Verstärkung einer Besatzung (Rückruf und neu besetzen);
-   ein Admiral, der einen Besetzungsverband führt, bleibt bei der Besatzung; Wochenziel-Art für Felder nicht umgesetzt;
-   kein Radar-Vorwarnung für Angriffe auf Felder (nur Push nach dem Kampf, beim Kartell vorab).
+7. **Geleitabteilung (Felder 2).** Ein Teil der Besatzung (`resource_field.escort`) begleitet jeden Ertragskonvoi und
+   kämpft bei Abfangversuchen mit; er verteidigt das Feld nicht, der Rest muss eine gültige Besatzung bleiben
+   (`escortMinRemainCommandPoints` 6). Bewusst ohne Treibstoff und ohne eigene Mission: Die Kosten sind gebundene
+   Schiffe (Unterhalt, Missionsplatz der Besatzung) und eine schwächere Feldverteidigung. Simulation (`sim/fields.ts`,
+   Konvoi Stufe 2 = 500 Stahl-Äq., 450 km, 400 Seeds): Kartell fängt 6,7 % der Konvois ab (2 Schnellboote), ohne
+   Geleit Ø 60 Stahl-Äq. Verlust je Tag (≈ 2 % des Ertrags); schon 1 Korvette hält zu 100 %. Gegen Kriegsgegner
+   (60 % Plünderung ohne Geleit): 1 Zerstörer hält gegen 2 Zerstörer zu 71 %, 2 Zerstörer gegen 2/4 Zerstörer zu
+   100/71 %, gegen 3 U-Boote zu 28 %. Kosten: Besatzung 2 Zerstörer + 2 Korvetten fällt beim Kartellangriff auf
+   Stufe 1/2/3 nie; mit 1 Korvette Geleit ebenfalls nie, mit 2 Korvetten Geleit (verteidigen nur 2 Zerstörer) auf
+   Stufe 3 zu 47 %. Das Geleit lohnt also vor allem im Krieg; gegen das Kartell genügt eine Korvette, wenn die
+   Besatzung stark genug ist. Treibstoff je Konvoi (erster Gedanke: Hin- und Rückweg) hätte mit ≈ 65 Stahl-Äq. je Korvette
+   und Konvoi mehr gekostet als der Kartellverlust – verworfen.
+8. **Verstärkung.** „Besetzen“ gegen das eigene Feld fügt die Schiffe bei Ankunft der Besatzung hinzu (keine
+   Mindeststärke, keine Höchstzahl, Treibstoff hin und zurück wie beim Besetzen, Missionsplatz nur während der Fahrt).
+   Aus einem anderen Hafen wechseln die Schiffe in den Hafen des Felds (unitsAway wandert, Veteranen gewichtet wie bei
+   der Verlegung) – so bleibt die Besatzung eine Mission eines Hafens.
+9. **Radar-Vorwarnung.** Spielerangriffe auf Felder meldet das Radar des Hafens des Felds mit `radarWarningFactor`
+   = 50 % seiner Vorwarnzeit (Radar 5: 17,5 statt 35 Minuten), Ereignis `field_warning`, Push und Systemnachricht.
+   Halbiert, weil das Feld ≥ 220 km vor dem Hafen liegt; die Reaktion (Rückruf, sofort wirksam) braucht wenig Zeit.
+   Verstärkungen erreichen das Feld meist nicht mehr rechtzeitig (Fahrzeit mehrere Stunden) – gewollt.
+10. **Wochenziele.** „Felderträge“ (Zähler `feldertrag` = Wert eingelaufener Konvois zum Richtpreis, Ziel
+   5000 × (1 + KZ/5) auf 1000 gerundet: ein Feld Stufe 1 auf Rang 1 liefert ≈ 12 600 je Woche, KZ 5 braucht 10 000)
+   nur mit Werft und erlaubtem Feld; „Gründung“ (1 Hafen in der Woche, aus `base.created_at` gelesen) nur, wenn ein
+   weiterer Hafen erlaubt und die Hafenkommandantur für das Kolonieschiff erreicht ist. Kein Auftragsbuch-Schritt:
+   das Auftragsbuch ist die Einführung (elf Grundaufträge, Abschluss „Hafenmeister“); ein Gründungsauftrag (KZ 5)
+   hätte den Abschluss für Anfänger um Wochen verschoben.
+11. **Admiral.** Feldmissionen nehmen keinen Admiral (launchField übergeht admiralId, die Planung bietet keinen an);
+   der frühere Punkt „Admiral bleibt bei der Besatzung“ tritt daher nicht auf. Die Planung sagt es jetzt ausdrücklich.
+12. **Offen:** Geleitabteilung kämpft nicht bei Kartellangriffen auf das Feld mit (auch wenn gerade kein Konvoi
+   fährt); jeder Konvoi kämpft mit derselben Abteilung (keine Aufteilung auf gleichzeitig fahrende Konvois);
+   Admirale für Besetzungsverbände.
 
 ## K. Mehrere Häfen: Gründung und Verlegung (Welle 3 „Expansion“, Teil 2, Block `expansion`, v1.11)
 
@@ -637,5 +665,5 @@ Ziel: Felder sind Entscheidungen und Konflikte, kein passiver Mehrertrag.
    mit Ladung heim.
 6. **Verlegung.** Nur Hinfahrt (Treibstoff einfach), dauerhaft; Veteranen gewichtet gemischt, Admiral wechselt den
    Hafen. Transport in eigene Häfen ist erlaubt.
-7. **Offen:** „Kolonie aufgeben“ (P5); Umbenennen eines Hafens; Ortsname aus der Karte statt „<Name> II“; Auftragsbuch-
-   und Wochenziel-Schritt für Gründungen.
+7. **Offen:** „Kolonie aufgeben“ (P5); Umbenennen eines Hafens; Ortsname aus der Karte statt „<Name> II“.
+   Wochenziel „Gründung“ siehe J.10 (kein Auftragsbuch-Schritt).

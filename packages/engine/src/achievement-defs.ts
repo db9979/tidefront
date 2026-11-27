@@ -1,7 +1,7 @@
 // Erfolge und Wochenziele: reine Funktionen (keine Datenbank). Definitionen der Erfolge in balance.json
 // (Block achievements), Spielwoche (Montag 0:00 Uhr in der Spielzeitzone), Pool und Auswahl der Wochenziele,
 // Belohnungen. Die Datenbankseite steht in achievements.ts und weekly.ts.
-import { mulberry32, type AchievementDef, type AchievementReward, type ResourceMap } from "@tidefront/game-core";
+import { allowedBases, expansionOf, maxFieldsFor, mulberry32, type AchievementDef, type AchievementReward, type ResourceMap } from "@tidefront/game-core";
 import { balance } from "./context.ts";
 import { addDays, dayKey, dayStartMs, resourcePackage, type PoolContext } from "./challenge-pool.ts";
 
@@ -86,6 +86,8 @@ export function nextWeekStartMs(ms: number): number {
 export interface WeeklyContext extends PoolContext {
   /** Mitglied einer Allianz mit mindestens einem weiteren Mitglied. */
   allied: boolean;
+  /** Mehrere Häfen: Zahl der eigenen Häfen (fehlt: keine Gründungsziele). */
+  bases?: number;
 }
 
 interface WeeklyKind {
@@ -100,6 +102,16 @@ const fmt = (n: number) => n.toLocaleString("de-DE");
 const canLand = (c: PoolContext) => lvl(c, "werft") >= 1 && lvl(c, "kaserne") >= 1;
 const canSail = (c: PoolContext) => lvl(c, "werft") >= 1 || lvl(c, "flugfeld") >= 1;
 const nestCap = (c: PoolContext) => Math.max(1, Math.min(5, 1 + Math.floor(c.stage / 3)));
+/** Felder: Werft und mindestens ein erlaubtes Feld (Hafenkommandantur). */
+const canHoldField = (c: PoolContext) => lvl(c, "werft") >= 1 && maxFieldsFor(lvl(c, "hafenkommandantur"), balance) > 0;
+
+/** Mehrere Häfen: ein weiterer Hafen ist erlaubt und das Kolonieschiff baubar (Hafenkommandantur). */
+function canFound(c: WeeklyContext): boolean {
+  const x = expansionOf(balance);
+  if (!x || c.bases === undefined) return false;
+  const allowed = allowedBases({ buildings: c.levels } as Parameters<typeof allowedBases>[0], balance);
+  return c.bases < allowed && lvl(c, "hafenkommandantur") >= x.harborLevelForShip;
+}
 
 function canSpy(c: PoolContext): boolean {
   const e = balance.espionage;
@@ -173,10 +185,22 @@ export const WEEKLY_KINDS: Record<string, WeeklyKind> = {
     spec: () => ({ param: null, target: 12 }),
     text: (n) => `Hole ${n} Tagesbefehle ab`,
   },
+  // Felder: Zähler „feldertrag“ (Wert der eingelaufenen Ertragskonvois zum Richtpreis, fields-run.ts).
+  feldertrag: {
+    icon: "besetzen",
+    spec: (c) => (canHoldField(c) ? { param: null, target: round(5000 * (1 + c.stage / 5), 1000) } : null),
+    text: (n) => `Fahre Erträge von Rohstofffeldern im Wert von ${fmt(n)} ein (Richtpreis, Stahl = 1)`,
+  },
+  // Mehrere Häfen: neuer Hafen in der Woche gegründet (aus den Häfen gelesen, weekly.ts).
+  gruendung: {
+    icon: "kolonieschiff",
+    spec: (c) => (canFound(c) ? { param: null, target: 1 } : null),
+    text: () => "Gründe mit einem Kolonieschiff einen neuen Hafen",
+  },
 };
 
 /** Wochenziele, deren Stand aus dem Zustand gelesen wird (beim Abruf). */
-export const WEEKLY_DERIVED = new Set(["tagesbefehle"]);
+export const WEEKLY_DERIVED = new Set(["tagesbefehle", "gruendung"]);
 
 export function weeklyText(kind: string, target: number, param: string | null): string {
   return WEEKLY_KINDS[kind]?.text(target, param) ?? kind;

@@ -63,6 +63,8 @@ fortgeschrieben.
 | Wrackgut | 3.000 × (1 + KZ/5), auf 500 gerundet | Werft oder Flugfeld |
 | Anlagen | 5 + KZ/2 Verteidigungsanlagen | immer |
 | Tagesbefehle | 12 abgeholte Tagesbefehle der Woche | immer |
+| Felderträge | Erträge von Rohstofffeldern im Wert von 5.000 × (1 + KZ/5), auf 1.000 gerundet (Richtpreis, Stahl = 1; eingelaufene Konvois) | Werft und mindestens ein erlaubtes Feld (Hafenkommandantur) |
+| Gründung | 1 neuer Hafen in der Woche (aus den Häfen gelesen) | weiterer Hafen erlaubt (Kommandozentrale) und Hafenkommandantur für das Kolonieschiff |
 
   (KZ = Stufe der Kommandozentrale bei der Vergabe.)
 - Fortschritt zählt in der Woche, in der das Geschehen stattfand. Erfüllte Ziele der Vorwochen bleiben abholbar.

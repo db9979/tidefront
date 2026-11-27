@@ -57,6 +57,10 @@ export interface FieldsBalance {
   zoneBonus: number;
   /** Allianzwertung: Punkte je Feld und Tag (Saisonbeitrag). */
   alliancePointsPerFieldDay: number;
+  /** Radar-Vorwarnung bei Spielerangriffen auf ein besetztes Feld: Anteil der Vorwarnzeit des Heimathafens (fehlt: 0 = keine). */
+  radarWarningFactor?: number;
+  /** Geleitabteilung: Mindest-Kommandopunkte, die nach Abzug des Geleits als Besatzung bleiben (fehlt: minGarrisonCommandPoints). */
+  escortMinRemainCommandPoints?: number;
 }
 
 export function fieldsOf(b: Balance): FieldsBalance | null {
@@ -214,4 +218,72 @@ export function fieldZones(
     out.set(x.id, { zone: z, size: n, bonus: n >= f.zoneMinFields });
   }
   return out;
+}
+
+// ---------------------------------------------------------------- Geleitabteilung, Verstärkung, Vorwarnung
+
+/** Summe zweier Bestände (nur positive Zahlen). */
+export function addCounts(a: Counts, b: Counts): Counts {
+  const out: Counts = {};
+  for (const src of [a, b]) for (const [id, n] of Object.entries(src)) if (n > 0) out[id] = (out[id] ?? 0) + n;
+  return out;
+}
+
+/** a − b, nie negativ; leere Einträge fallen weg. */
+export function subtractCounts(a: Counts, b: Counts): Counts {
+  const out: Counts = {};
+  for (const [id, n] of Object.entries(a)) {
+    const left = n - Math.max(0, b[id] ?? 0);
+    if (left > 0) out[id] = left;
+  }
+  return out;
+}
+
+/** Geleitabteilung, gekappt auf den aktuellen Bestand der Besatzung (nach Verlusten). */
+export function clampEscort(garrison: Counts, escort: Counts): Counts {
+  const out: Counts = {};
+  for (const [id, n] of Object.entries(escort)) {
+    const k = Math.min(Math.floor(n), garrison[id] ?? 0);
+    if (k > 0) out[id] = k;
+  }
+  return out;
+}
+
+/** Wer das Feld verteidigt: Besatzung ohne die Geleitabteilung (die fährt mit den Ertragskonvois). */
+export function fieldDefenders(garrison: Counts, escort: Counts): Counts {
+  return subtractCounts(garrison, clampEscort(garrison, escort));
+}
+
+/**
+ * Geleitabteilung prüfen: nur Schiffe der Besatzung, ganze Zahlen; was bleibt, muss eine gültige Besatzung sein
+ * (bewaffnet, ≥ escortMinRemainCommandPoints bzw. minGarrisonCommandPoints). Leer = Geleit aufheben.
+ * Codes: no_fields, field_escort_invalid, field_escort_too_large.
+ */
+export function escortCheck(garrison: Counts, escort: Counts, balance: Balance): Result<{ escort: Counts; remain: Counts }> {
+  const f = fieldsOf(balance);
+  if (!f) return { ok: false, code: "no_fields" };
+  const clean: Counts = {};
+  for (const [id, n] of Object.entries(escort)) {
+    if (!Number.isInteger(n) || n < 0) return { ok: false, code: "field_escort_invalid" };
+    if (n === 0) continue;
+    if (n > (garrison[id] ?? 0) || balance.units[id]?.branch !== "see") return { ok: false, code: "field_escort_invalid" };
+    clean[id] = n;
+  }
+  const remain = subtractCounts(garrison, clean);
+  if (Object.keys(clean).length === 0) return { ok: true, escort: {}, remain };
+  let cp = 0;
+  let armed = false;
+  for (const [id, n] of Object.entries(remain)) {
+    cp += (balance.units[id]?.commandPoints ?? 0) * n;
+    if ((balance.units[id]?.attack.see ?? 0) > 0) armed = true;
+  }
+  const min = f.escortMinRemainCommandPoints ?? f.minGarrisonCommandPoints;
+  if (!armed || cp + 1e-9 < min) return { ok: false, code: "field_escort_too_large" };
+  return { ok: true, escort: clean, remain };
+}
+
+/** Vorwarnzeit (Minuten) für Spielerangriffe auf ein Feld aus der Vorwarnzeit seines Heimathafens. */
+export function fieldWarningMinutes(harborWarningMinutes: number, balance: Balance): number {
+  const k = fieldsOf(balance)?.radarWarningFactor ?? 0;
+  return Math.max(0, harborWarningMinutes * k);
 }

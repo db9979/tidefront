@@ -2,7 +2,7 @@
 // des Bot-Hafens; Fallquote der Besatzung bei Kartellangriffen. Seeds fest (1 … N), Ergebnis reproduzierbar.
 import type { Balance, Counts } from "../src/index.ts";
 import {
-  cargoValue, cartelChance, convoysOf, fieldBaseYield, fieldsOf, fieldUpkeep, guardOf, maxFieldsFor, productionRates, resolveBattle,
+  cargoValue, cartelChance, cartelConvoyForce, convoysOf, fieldBaseYield, fieldDefenders, fieldWarningMinutes, fieldsOf, fieldUpkeep, guardOf, maxFieldsFor, productionRates, resolveBattle,
   strandTroops, trainingCost, yieldFactor,
 } from "../src/index.ts";
 import type { BotSnapshot } from "./bot.ts";
@@ -82,4 +82,35 @@ export function runFieldsSim(balance: Balance, snaps: BotSnapshot[]): void {
     console.log(`  Tag ${String(day).padEnd(3)} Produktion ${Math.round(prod)}/h, Hafenkommandantur ${harbor} (≤ ${maxFieldsFor(harbor, balance)} Felder) | ${cells.join("  ")}`);
   }
   console.log(`  Zonenbonus +${pct(f.zoneBonus)} je Feld ab ${f.zoneMinFields} verbundenen Allianzfeldern; Allianzwertung ${f.alliancePointsPerFieldDay} Punkte je Feld und Tag.`);
+}
+
+/** Welle 3, Felder 2: Geleitabteilung für Ertragskonvois (Nutzen) gegen die schwächere Feldverteidigung (Kosten). */
+export function runFieldEscortSim(balance: Balance): void {
+  const f = fieldsOf(balance);
+  const c = convoysOf(balance);
+  if (!f || !c) return;
+  const cargo = cargoValue(fieldBaseYield("erzbucht", 2, balance), balance) * f.deliveryHours; // Stufe 2, ein Zyklus
+  const chance = cartelChance(DIST_KM, cargo, balance);
+  const force = cartelConvoyForce(cargo, balance);
+  console.log(`\nFelder: Geleitabteilung – Ertragskonvoi Stufe 2 (${Math.round(cargo)} Stahl-Äq.), ${DIST_KM} km, ${SEEDS} Seeds`);
+  console.log(`  Kartell: Chance ${pct(chance)} je Konvoi, Verband ${force.schnellboot ?? 0} Schnellboote; ohne Geleit Verlust ${pct(c.lossShareUnescorted)} der Ladung`);
+  const escorts: [string, Counts][] = [["1 Korvette", { korvette: 1 }], ["2 Korvetten", { korvette: 2 }], ["1 Zerstörer", { zerstoerer: 1 }], ["2 Zerstörer", { zerstoerer: 2 }]];
+  const raiders: [string, Counts][] = [["2 Zerstörer", { zerstoerer: 2 }], ["4 Zerstörer", { zerstoerer: 4 }], ["3 U-Boote", { uboot: 3 }]];
+  console.log(`  ${"Geleit".padEnd(14)}${"hält (Kartell)".padStart(16)}${"Ø Verlust/Tag".padStart(15)}${raiders.map(([n]) => `hält gg. ${n}`.padStart(22)).join("")}`);
+  const perDay = 24 / f.deliveryHours;
+  const noEscortLoss = chance * c.lossShareUnescorted * cargo * perDay;
+  console.log(`  ${"ohne".padEnd(14)}${"–".padStart(16)}${noEscortLoss.toFixed(1).padStart(15)}${raiders.map(() => `0 % (−${pct(c.plunderShare)})`.padStart(22)).join("")}`);
+  for (const [name, e] of escorts) {
+    const holds = 1 - winRate(force, e, balance);
+    const loss = chance * (1 - holds) * c.lossShareEscortBeaten * cargo * perDay;
+    console.log(`  ${name.padEnd(14)}${pct(holds).padStart(16)}${loss.toFixed(1).padStart(15)}${raiders.map(([, r]) => pct(1 - winRate(r, e, balance)).padStart(22)).join("")}`);
+  }
+  // Kosten: das Geleit verteidigt das Feld nicht.
+  const g: Counts = { zerstoerer: 2, korvette: 2 };
+  console.log(`  Kosten: Besatzung 2 Zerstörer + 2 Korvetten fällt beim Kartellangriff (Stufe 1/2/3):`);
+  for (const [name, e] of [["ohne Geleit", {}], ["Geleit 1 Korvette", { korvette: 1 }], ["Geleit 2 Korvetten", { korvette: 2 }]] as [string, Counts][]) {
+    const def = fieldDefenders(g, e);
+    console.log(`    ${name.padEnd(20)}${[1, 2, 3].map((t) => pct(winRate(f.cartelRaid[t - 1], def, balance)).padStart(9)).join("")}`);
+  }
+  console.log(`  Radar-Vorwarnung bei Spielerangriffen: ${pct(f.radarWarningFactor ?? 0)} der Hafen-Vorwarnzeit (z. B. Radar 5: ${fieldWarningMinutes(35, balance)} von 35 Minuten)`);
 }

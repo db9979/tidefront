@@ -70,4 +70,5 @@ export { navalView, navalRouteMines, liftBlockade, clearNaval, NAVAL_TYPES } fro
 // Felder: Rohstofffelder einnehmen
 export { fieldsView, spawnFields, FIELD_KIND_TEXT } from "./fields-core.ts";
 export { fieldRecall } from "./fields-missions.ts";
+export { setFieldEscort } from "./fields-escort.ts";
 export { ensureFieldPlanner, clearFields } from "./fields-run.ts";

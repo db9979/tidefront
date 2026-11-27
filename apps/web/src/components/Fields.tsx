@@ -8,11 +8,12 @@ import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
 import { Button, Card, ErrorLine, UnitChips } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 import type { Target } from "../App.tsx";
+import { FieldEscortEditor, FieldIncomingLines } from "./FieldEscort.tsx"; // Felder 2: Geleit, Vorwarnung, Verstärkung
 
 export type FieldsData = NonNullable<Outputs["fields"]["view"]>;
 type Field = FieldsData["fields"][number];
 type Counts = Record<string, number>;
-type FieldsRules = { maxFields: number; maxFieldsPerHarborLevels: number; minGarrisonCommandPoints: number; deliveryHours: number; yieldFactors: number[]; zoneLinkKm: number; zoneMinFields: number; zoneBonus: number; guardRespawnHours: number; cartelRaidChance: number; alliancePointsPerFieldDay: number; minKmFromBase: number; upkeepProviantPerHour: number[]; kinds: Record<string, { resource: string; yieldPerHour: number[] }> };
+type FieldsRules = { maxFields: number; maxFieldsPerHarborLevels: number; minGarrisonCommandPoints: number; deliveryHours: number; yieldFactors: number[]; zoneLinkKm: number; zoneMinFields: number; zoneBonus: number; guardRespawnHours: number; cartelRaidChance: number; alliancePointsPerFieldDay: number; minKmFromBase: number; upkeepProviantPerHour: number[]; radarWarningFactor?: number; escortMinRemainCommandPoints?: number; kinds: Record<string, { resource: string; yieldPerHour: number[] }> };
 
 export const KIND_TEXT: Record<string, string> = { oelfeld: "Ölfeld", erzbucht: "Erzbucht", fischgrund: "Fischgrund", elektronikwrack: "Elektronik-Wrack" };
 const KIND_HINT: Record<string, string> = {
@@ -67,6 +68,8 @@ export function FieldSheet({ data, sel, onPlan }: { data: FieldsData | null | un
         {f.relation !== "own" && <Button kind="secondary" className="flex-1" onClick={() => onPlan({ col: f.col, row: f.row, fieldId: f.id, fieldMission: "aufklaerung" })}>Aufklären</Button>}
         {canTake && <Button className="flex-1" onClick={() => onPlan({ col: f.col, row: f.row, fieldId: f.id, fieldMission: "besetzen" })}>{f.owner ? "Angreifen" : "Besetzen"}</Button>}
       </div>
+      {mine && <FieldIncomingLines incoming={mine.incoming} reinforcements={mine.reinforcements} />}
+      {mine && <Button kind="secondary" className="w-full mt-2" onClick={() => onPlan({ col: f.col, row: f.row, fieldId: f.id, fieldMission: "besetzen" })}>Verstärken (Schiffe zur Besatzung schicken)</Button>}
       {mine && <RecallButton fieldId={f.id} />}
     </div>
   );
@@ -113,8 +116,11 @@ export function MyFieldsCard({ base, onShowOnMap }: { base: BaseData; onShowOnMa
                 <button type="button" className="tap text-sea-300 underline text-xs" onClick={() => onShowOnMap({ col: m.col, row: m.row })}>Feld {m.col}/{m.row}</button>
               </div>
               <div className="text-xs text-emerald-300">Ertrag {resLine(m.yieldPerHour)}/h ({Math.round(m.factor * 100)} %{m.zoneBonus ? ", Zonenbonus" : ""}) · Unterhalt {fmtNum(m.upkeepPerHour)} Proviant/h</div>
-              <div className="text-xs">Besatzung: <UnitChips counts={m.garrison} /></div>
+              <FieldIncomingLines incoming={m.incoming} reinforcements={m.reinforcements} />
+              <div className="text-xs">Besatzung: <UnitChips counts={m.garrison} />{Object.keys(m.escort).length > 0 && <span className="text-ink2"> – verteidigt das Feld: <UnitChips counts={m.defenders} /></span>}</div>
+              <FieldEscortEditor key={JSON.stringify(m.escort)} fieldId={m.id} garrison={m.garrison} escort={m.escort} />
               <div className="text-xs text-ink2">Nächste Lieferung {d.nextDeliveryAtMs ? `in ${fmtDuration(d.nextDeliveryAtMs - now)}` : "bald"} per Konvoi nach {m.home ?? base.name}</div>
+              <button type="button" className="tap text-sea-300 underline text-xs mt-1" onClick={() => onShowOnMap({ col: m.col, row: m.row })}>Verstärken: auf der Karte das Feld antippen</button>
               <RecallButton fieldId={m.id} />
             </div>
           </li>
@@ -130,11 +136,16 @@ export function FieldTargetLine({ fieldId }: { fieldId: number }) {
   const q = useFields();
   const f = q.data?.fields.find((x) => x.id === fieldId);
   if (!f) return <>Rohstofffeld …<br /></>;
-  return <>Rohstofffeld <strong>{KIND_TEXT[f.kind]} Stufe {f.tier}</strong> – {RELATION_TEXT[f.relation]}{f.owner && f.relation !== "own" ? ` (${f.owner})` : ""}. Nur Schiffe; Seekampf gegen {f.owner ? "die Besatzung" : "die Kartell-Wache"}.<br /></>;
+  if (f.relation === "own") {
+    return <>Dein Rohstofffeld <strong>{KIND_TEXT[f.kind]} Stufe {f.tier}</strong> – <strong>Verstärkung</strong>: die Schiffe werden ohne Kampf der Besatzung hinzugefügt (aus einem anderen Hafen wechseln sie in den Hafen des Felds). Nur Schiffe; Admirale führen keine Feld-Verbände.<br /></>;
+  }
+  return <>Rohstofffeld <strong>{KIND_TEXT[f.kind]} Stufe {f.tier}</strong> – {RELATION_TEXT[f.relation]}{f.owner && f.relation !== "own" ? ` (${f.owner})` : ""}. Nur Schiffe; Seekampf gegen {f.owner ? "die Besatzung" : "die Kartell-Wache"}. Admirale führen keine Feld-Verbände.<br /></>;
 }
 
-export function StayAllToggle({ value, onChange, balance }: { value: boolean; onChange: (v: boolean) => void; balance: Balance }) {
+export function StayAllToggle({ value, onChange, balance, fieldId }: { value: boolean; onChange: (v: boolean) => void; balance: Balance; fieldId?: number }) {
   const r = fieldsRules(balance);
+  const q = useFields();
+  if (fieldId !== undefined && q.data?.fields.find((x) => x.id === fieldId)?.relation === "own") return null; // Verstärkung: alles bleibt
   return (
     <Card title="Besatzung">
       <label className="flex items-start gap-2 text-sm">
@@ -150,18 +161,20 @@ const OUTCOME_TEXT: Record<string, string> = {
   cleared: "Wache bzw. Besatzung geschlagen, aber die Überlebenden reichen nicht für eine Besatzung. Das Feld ist neutral.",
   limit: "Feld freigekämpft, aber die Höchstzahl deiner Felder ist erreicht. Das Feld ist neutral.",
   held: "Der Angriff wurde abgewiesen.",
+  reinforced: "Die Verstärkung ist eingetroffen und gehört jetzt zur Besatzung.",
   cartel: "Das Kartell hat die Besatzung geschlagen und hält das Feld.",
 };
 
 /** Bericht: Aufklärung oder Kampf um ein Feld. */
-export function FieldReport({ d }: { d: { kind?: string; tier?: number; owner?: string | null; units?: Counts; outcome?: string; refused?: string; gone?: boolean } }) {
+export function FieldReport({ d }: { d: { kind?: string; tier?: number; owner?: string | null; units?: Counts; garrison?: Counts; outcome?: string; refused?: string; gone?: boolean } }) {
   if (d.gone) return <Card><p>Das Feld gibt es nicht mehr (Saisonwechsel oder neu verteilt). Der Verband kehrt um.</p></Card>;
   return (
     <Card title={<><Icon id={d.kind ?? "besetzen"} size={18} /> {KIND_TEXT[d.kind ?? ""] ?? "Rohstofffeld"}{d.tier ? ` · Stufe ${d.tier}` : ""}</>}>
       <div className="text-sm space-y-1">
-        {d.refused && <p>Nicht besetzt: {d.refused === "own_field" ? "das Feld gehört dir schon" : d.refused === "fleet_lost" ? "keine Schiffe mehr im Verband" : "Verbündete und Paktpartner greift man nicht an"}.</p>}
+        {d.refused && <p>{d.refused === "field_lost" ? "Verstärkung kehrt um: das Feld wird nicht mehr von dir gehalten" : <>Nicht besetzt: {d.refused === "own_field" ? "das Feld gehört dir schon" : d.refused === "fleet_lost" ? "keine Schiffe mehr im Verband" : "Verbündete und Paktpartner greift man nicht an"}</>}.</p>}
         {d.outcome && <p>{OUTCOME_TEXT[d.outcome] ?? ""}</p>}
-        {d.units && <div><span className="text-ink2">{d.owner ? `Besatzung von ${d.owner}:` : "Kartell-Wache:"}</span> {Object.keys(d.units).length > 0 ? <UnitChips counts={d.units} /> : "keine"}</div>}
+        {d.outcome === "reinforced" && d.garrison && <div><span className="text-ink2">Besatzung jetzt:</span> <UnitChips counts={d.garrison} /></div>}
+        {d.units && <div><span className="text-ink2">{d.outcome === "reinforced" ? "Verstärkung:" : d.owner ? `Besatzung von ${d.owner}:` : "Kartell-Wache:"}</span> {Object.keys(d.units).length > 0 ? <UnitChips counts={d.units} /> : "keine"}</div>}
       </div>
     </Card>
   );
