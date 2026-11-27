@@ -287,3 +287,33 @@ export function fieldWarningMinutes(harborWarningMinutes: number, balance: Balan
   const k = fieldsOf(balance)?.radarWarningFactor ?? 0;
   return Math.max(0, harborWarningMinutes * k);
 }
+
+/**
+ * Geleitabteilung auf gleichzeitig fahrende Ertragskonvois aufteilen: je Schiffstyp anteilig nach Warenwert
+ * (größte Reste; bei Gleichstand der ältere Konvoi = kleinere ID). Ohne Warenwert gleich verteilt. Jedes Schiff
+ * fährt mit genau einem Konvoi; die Summe der Anteile ist die Abteilung.
+ */
+export function splitEscort(escort: Counts, convoys: { id: number; value: number }[]): Map<number, Counts> {
+  const out = new Map<number, Counts>(convoys.map((c) => [c.id, {}]));
+  if (convoys.length === 0) return out;
+  const order = [...convoys].sort((a, b) => a.id - b.id);
+  const total = order.reduce((s, c) => s + Math.max(0, c.value), 0);
+  const weight = (c: { value: number }) => (total > 0 ? Math.max(0, c.value) / total : 1 / order.length);
+  const rest = (x: number) => x - Math.floor(x + 1e-9);
+  for (const [id, n] of Object.entries(escort)) {
+    if (!(n > 0)) continue;
+    const parts = order.map((c) => ({ id: c.id, exact: n * weight(c) }));
+    let left = n;
+    for (const p of parts) {
+      const k = Math.floor(p.exact + 1e-9);
+      left -= k;
+      if (k > 0) out.get(p.id)![id] = k;
+    }
+    const byRest = [...parts].sort((a, b) => rest(b.exact) - rest(a.exact) || a.id - b.id);
+    for (let i = 0; i < left; i++) {
+      const c = out.get(byRest[i % byRest.length].id)!;
+      c[id] = (c[id] ?? 0) + 1;
+    }
+  }
+  return out;
+}

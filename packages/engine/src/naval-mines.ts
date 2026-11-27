@@ -1,9 +1,14 @@
-// See: Minen – Legen, Räumen, Durchfahrt mit Verlusten und Sichtbarkeit (docs/REGELN-SEE.md, Abschnitt Minen).
+// See: Minen – Legen, Räumen, Durchfahrt (Hin- und Rückfahrt, Handelskonvois) mit Verlusten und Sichtbarkeit
+// (docs/REGELN-SEE.md, Abschnitt Minen). Börsenlieferungen sind keine Konvois und bleiben ausgenommen.
 import { and, eq, gt, inArray, lte } from "drizzle-orm";
 import {
+  capLoot,
+  convoyMineLoss,
   distanceKm,
+  fleetTotals,
   layStrength,
   mineLayCost,
+  mineReturnSeed,
   mineSeed,
   minesOf,
   mineTransit,
@@ -11,10 +16,12 @@ import {
   routeDistanceKm,
   subtractResources,
   hasResources,
+  splitCargo,
   sweepPower,
   type Counts,
   type GeoPoint,
   type Mission,
+  type ResourceMap,
 } from "@tidefront/game-core";
 import { hexCenter, hexDistanceKm, terrainAt } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
@@ -162,6 +169,57 @@ export async function minesArrive(tx: Tx, m: MissionRowLike, plan: Mission & { m
   await sendHome(tx, m, plan, { ...plan.units }, {}, reportId, due);
 }
 
+/** Feindliche Felder, die die Strecke a→b kreuzt (nach Entfernung von a); feindlich gegen alle Beteiligten. */
+async function crossedFields(tx: Tx, parties: number[], a: GeoPoint, b: GeoPoint, due: number): Promise<(FieldRow & { at: GeoPoint })[]> {
+  const out: (FieldRow & { at: GeoPoint })[] = [];
+  for (const f of await activeFields(tx, due)) {
+    const at = hexCenter(f.col, f.row);
+    if (parties.includes(f.ownerId) || !routeCrossesField(a, b, at, balance)) continue;
+    let enemy = true;
+    for (const p of parties) if (!(await hostile(tx, p, f.ownerId, due))) enemy = false;
+    if (enemy) out.push({ ...f, at });
+  }
+  return out.sort((x, y) => distanceKm(a, x.at) - distanceKm(a, y.at));
+}
+
+/** Stärke eines Felds nach einer Durchfahrt setzen (verbraucht = gelöscht). */
+async function consume(tx: Tx, f: FieldRow, consumed: number): Promise<void> {
+  const after = f.strength - consumed;
+  if (after <= 0) await tx.delete(tables.minefield).where(eq(tables.minefield.id, f.id));
+  else if (consumed > 0) await tx.update(tables.minefield).set({ strength: after }).where(eq(tables.minefield.id, f.id));
+}
+
+/**
+ * Durchfahrt eines Verbands a→b: je gekreuztem feindlichem Feld Verluste per Seed, das Feld verliert Stärke und wird
+ * dem Spieler bekannt; ein Bericht für Verband und Feldbesitzer. leg „rueckfahrt“: eigener Würfelstrom.
+ */
+async function transit(tx: Tx, m: MissionRowLike, a: GeoPoint, b: GeoPoint, units: Counts, leg: "hinfahrt" | "rueckfahrt", due: number, notify: Notes): Promise<Counts> {
+  const pid = m.playerId!;
+  const crossed = await crossedFields(tx, [pid], a, b, due);
+  if (crossed.length === 0) return units;
+  let left: Counts = { ...units };
+  const hits: { fieldId: number; col: number; row: number; owner: string; strength: number; losses: Counts }[] = [];
+  const owners: number[] = [];
+  for (const f of crossed) {
+    const t = mineTransit(left, f.strength, balance, leg === "rueckfahrt" ? mineReturnSeed(m.id, f.id) : mineSeed(m.id, f.id));
+    left = t.survivors;
+    await consume(tx, f, t.consumed);
+    await markKnown(tx, [f.id], pid, due);
+    hits.push({ fieldId: f.id, col: f.col, row: f.row, owner: await playerName(tx, f.ownerId), strength: f.strength, losses: t.losses });
+    owners.push(f.ownerId);
+  }
+  const lost = hits.reduce((s, h) => s + Object.values(h.losses).reduce((x, y) => x + y, 0), 0);
+  const back = leg === "rueckfahrt" ? " auf der Rückfahrt" : "";
+  // Ein Bericht je Feldbesitzer-Gruppe: der Verband sieht alles, die Besitzer sehen „ihren“ Treffer.
+  await storeNavalReport(tx, {
+    kind: "minen", title: lost > 0 ? `Minentreffer${back}: ${lost} Einheiten verloren` : `Minenfeld${back} durchfahren – ohne Verluste`,
+    attackerPlayerId: pid, defenderPlayerId: owners[0], attackerBaseId: m.baseId,
+    report: { mines: { action: "durchfahrt", leg, hits, before: units, after: left, missionType: m.type } }, atMs: due,
+  });
+  notify.push([[pid], "reports"], [[owners[0]], "reports"], [null, "map"]);
+  return left;
+}
+
 /**
  * Hinfahrt durch fremde Minenfelder: je gekreuztem feindlichem Feld (nach Entfernung vom Start) Verluste per Seed,
  * das Feld verliert Stärke und wird dem Spieler bekannt. Aufklärung deckt zusätzlich Felder nahe Ziel und Route auf.
@@ -170,43 +228,63 @@ export async function mineTransitFor(tx: Tx, m: MissionRowLike, plan: Mission, d
   const mb = minesOf(balance);
   const pid = m.playerId;
   if (!mb || pid === null) return plan.units;
-  const fields = await activeFields(tx, due);
-  if (fields.length === 0) return plan.units;
   if (m.type === "aufklaerung") {
-    const seen = fields.filter((f) => f.ownerId !== pid && routeDistanceKm(plan.origin, plan.target, hexCenter(f.col, f.row)) <= mb.scoutRevealKm);
+    const seen = (await activeFields(tx, due)).filter((f) => f.ownerId !== pid && routeDistanceKm(plan.origin, plan.target, hexCenter(f.col, f.row)) <= mb.scoutRevealKm);
     await markKnown(tx, seen.map((f) => f.id), pid, due);
   }
   if (!hasShips(plan.units)) return plan.units;
-  const crossed: (FieldRow & { at: GeoPoint })[] = [];
-  for (const f of fields) {
-    const at = hexCenter(f.col, f.row);
-    if (f.ownerId === pid || !routeCrossesField(plan.origin, plan.target, at, balance)) continue;
-    if (await hostile(tx, pid, f.ownerId, due)) crossed.push({ ...f, at });
+  return transit(tx, m, plan.origin, plan.target, plan.units, "hinfahrt", due, notify);
+}
+
+/**
+ * Rückfahrt durch fremde Minenfelder (Hook in mission_return): Strecke Ziel → Hafen, nach Rückruf auf der Hinfahrt
+ * vom Wendepunkt. Ausgenommen: Geleit des Annehmenden im Spielerhandel (seine Rückfahrt ist der Konvoiweg, den
+ * convoyMineTransit schon rechnet). Ladung, die der verbliebene Laderaum nicht mehr fasst, geht mit unter.
+ */
+export async function mineReturnFor(
+  tx: Tx, m: MissionRowLike, plan: Mission & { sellerEscort?: boolean }, returning: Counts, cargo: ResourceMap, due: number, notify: Notes,
+): Promise<{ units: Counts; cargo: ResourceMap }> {
+  if (!minesOf(balance) || m.playerId === null || !hasShips(returning) || (m.type === "geleit" && !plan.sellerEscort)) return { units: returning, cargo };
+  let from = plan.target;
+  if (plan.recalledAtMs !== undefined) {
+    const span = plan.arriveAtMs - plan.departAtMs;
+    const t = span > 0 ? Math.max(0, Math.min(1, (plan.recalledAtMs - plan.departAtMs) / span)) : 0;
+    from = { lat: plan.origin.lat + (plan.target.lat - plan.origin.lat) * t, lon: plan.origin.lon + (plan.target.lon - plan.origin.lon) * t };
   }
-  if (crossed.length === 0) return plan.units;
-  crossed.sort((a, b) => distanceKm(plan.origin, a.at) - distanceKm(plan.origin, b.at));
-  let units: Counts = { ...plan.units };
-  const hits: { fieldId: number; col: number; row: number; owner: string; strength: number; losses: Counts }[] = [];
-  const owners: number[] = [];
+  const units = await transit(tx, m, from, plan.origin, returning, "rueckfahrt", due, notify);
+  const lostShips = Object.entries(returning).some(([id, n]) => (units[id] ?? 0) < n);
+  return { units, cargo: lostShips ? capLoot(cargo, fleetTotals(units, balance).cargoCapacity) : cargo };
+}
+
+/**
+ * Handelskonvoi durch fremde Minenfelder (beim Einlaufen): feindlich gegen Absender und Empfänger. Die Ladung verliert
+ * je Feld convoyMineLoss, Geleitschiffe sinken wie ein Verband (Räumer im Geleit schützen auch die Ladung).
+ */
+export async function convoyMineTransit(
+  tx: Tx, c: { id: number; senderId: number | null; recipientId: number; fromCol: number; fromRow: number; toCol: number; toRow: number; cargo: unknown },
+  escort: Counts, due: number,
+): Promise<{ lost: ResourceMap; escort: Counts; hits: { fieldId: number; owner: string; strength: number; share: number; losses: Counts }[]; owners: number[] }> {
+  const none = { lost: {}, escort, hits: [], owners: [] };
+  if (!minesOf(balance)) return none;
+  const parties = [c.recipientId, ...(c.senderId !== null && c.senderId !== c.recipientId ? [c.senderId] : [])];
+  const crossed = await crossedFields(tx, parties, hexCenter(c.fromCol, c.fromRow), hexCenter(c.toCol, c.toRow), due);
+  if (crossed.length === 0) return none;
+  let cargo = { ...(c.cargo as ResourceMap) };
+  let left: Counts = { ...escort };
+  const lost: ResourceMap = {};
+  const hits = [];
   for (const f of crossed) {
-    const t = mineTransit(units, f.strength, balance, mineSeed(m.id, f.id));
-    units = t.survivors;
-    const after = f.strength - t.consumed;
-    if (after <= 0) await tx.delete(tables.minefield).where(eq(tables.minefield.id, f.id));
-    else if (t.consumed > 0) await tx.update(tables.minefield).set({ strength: after }).where(eq(tables.minefield.id, f.id));
-    await markKnown(tx, [f.id], pid, due);
-    hits.push({ fieldId: f.id, col: f.col, row: f.row, owner: await playerName(tx, f.ownerId), strength: f.strength, losses: t.losses });
-    owners.push(f.ownerId);
+    const loss = convoyMineLoss(f.strength, left, balance);
+    const split = splitCargo(cargo, loss.share);
+    cargo = split.kept;
+    for (const [r, q] of Object.entries(split.lost)) lost[r] = (lost[r] ?? 0) + q;
+    const t = hasShips(left) ? mineTransit(left, f.strength, balance, mineSeed(c.id, f.id) ^ 0x434f4e56) : null;
+    if (t) left = t.survivors;
+    await consume(tx, f, Math.min(f.strength, (Object.keys(split.lost).length > 0 ? loss.consumed : 0) + (t?.consumed ?? 0)));
+    for (const p of parties) await markKnown(tx, [f.id], p, due);
+    hits.push({ fieldId: f.id, owner: await playerName(tx, f.ownerId), strength: f.strength, share: Math.round(loss.share * 1000) / 1000, losses: t?.losses ?? {} });
   }
-  const lost = hits.reduce((s, h) => s + Object.values(h.losses).reduce((a, b) => a + b, 0), 0);
-  // Ein Bericht je Feldbesitzer-Gruppe: der Verband sieht alles, die Besitzer sehen „ihren“ Treffer.
-  await storeNavalReport(tx, {
-    kind: "minen", title: lost > 0 ? `Minentreffer: ${lost} Einheiten verloren` : "Minenfeld durchfahren – ohne Verluste",
-    attackerPlayerId: pid, defenderPlayerId: owners[0], attackerBaseId: m.baseId,
-    report: { mines: { action: "durchfahrt", hits, before: plan.units, after: units, missionType: m.type } }, atMs: due,
-  });
-  notify.push([[pid], "reports"], [[owners[0]], "reports"], [null, "map"]);
-  return units;
+  return { lost, escort: left, hits, owners: crossed.map((f) => f.ownerId) };
 }
 
 /** Felder, die ein Spieler sieht: eigene, der Allianz, bekannte und im Radarbereich. */

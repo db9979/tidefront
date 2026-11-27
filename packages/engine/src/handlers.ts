@@ -44,6 +44,7 @@ import { admiralsAfterBattle, defenseAdmiral, missionAdmiral } from "./admirals-
 // Allianz-Ops: Stationierung (Ankunft, stationierte Verbündete verteidigen mit)
 import { STATION_TYPE, settleGuests, stationArrive, stationedGuests, withGuests } from "./alliance-ops-station.ts";
 import { holdDelivery, NAVAL_HANDLERS, navalArrive } from "./naval.ts"; // See: Minen/Blockade/Konvoi
+import { mineReturnFor } from "./naval-mines.ts"; // See: Minen auf der Rückfahrt
 import { fieldArrive } from "./fields-missions.ts"; // Felder: Aufklärung/Besetzen
 import { FIELD_HANDLERS } from "./fields-run.ts"; // Felder: field_tick, field_delivery, field_raid
 import { expansionArrive, isExpansionType } from "./expansion.ts"; // Mehrere Häfen: Gründung/Verlegung
@@ -294,7 +295,7 @@ const missionArrive: Handler = async (tx, ev, due) => {
     }
   } else if (m.targetKind === "event") {
     // Weltereignis: Kampf, Beute und Ende in world-events-missions.ts.
-    const r = await eventMissionArrive(tx, m, plan, origin, due, attackerName);
+    const r = await eventMissionArrive(tx, m, plan, origin, due, attackerName, admA); // Admirale: Führer des Verbands
     returning = r.returning;
     cargoHome = r.cargoHome;
     reportId = r.reportId;
@@ -330,13 +331,16 @@ const missionReturn: Handler = async (tx, ev, due) => {
   if (!m || m.status !== "returning") return none();
   const b = await lockBase(tx, m.baseId!);
   const plan = m.plan as Mission;
+  const notify: HandlerResult["notify"] = [[[m.playerId!], "base"], [[m.playerId!], "missions"]];
   if (b) {
     const [row] = await tx.select().from(tables.mission).where(eq(tables.mission.id, m.id));
+    // See: Minen auf der Rückfahrt (naval-mines.ts) – Verluste fehlen bei der Rückkehr, Ladung nach Laderaum.
+    const back = await mineReturnFor(tx, m, plan, (row.returning as Counts) ?? {}, (row.cargoHome as ResourceMap) ?? {}, due, notify);
     const next = returnMission(
       b.state,
       plan.units,
-      (row.returning as Counts) ?? {},
-      (row.cargoHome as ResourceMap) ?? {},
+      back.units,
+      back.cargo,
       due,
       balance,
       await modsOf(tx, b, due),
@@ -345,7 +349,7 @@ const missionReturn: Handler = async (tx, ev, due) => {
     await saveBase(tx, b.id, await withAttackExperience(tx, row.reportId, m.playerId, next));
   }
   await tx.update(tables.mission).set({ status: "done" }).where(eq(tables.mission.id, m.id));
-  return { notify: [[[m.playerId!], "base"], [[m.playerId!], "missions"]] };
+  return { notify };
 };
 
 /** Kartell läuft aus: Verband nach der aktuellen Verteidigung, Ankunft nach RAID_LEAD_MS. */
@@ -422,6 +426,9 @@ const deliveryArrive: Handler = async (tx, ev, due) => {
     .for("update");
   if (!d || d.status !== "underway") return none();
   if (await holdDelivery(tx, d, due)) return { notify: [[[d.playerId], "base"]] }; // See: Blockade hält Lieferungen zurück
+  // Minen können beim Einlaufen Ladung versenkt haben (deliveryConvoyArrived kürzt die Lieferung).
+  const [fresh] = await tx.select({ qty: tables.delivery.qty }).from(tables.delivery).where(eq(tables.delivery.id, d.id));
+  if (fresh) d.qty = fresh.qty;
   const b = await lockBase(tx, d.baseId);
   if (b) await saveBase(tx, b.id, deliverCargo(b.state, { [d.resource]: d.qty }, due, balance, await modsOf(tx, b, due)));
   // Journal: die Lieferung geht an den Spieler.

@@ -22,19 +22,30 @@ Beide sind gewöhnliche Schiffe (Kommandopunkte, Unterhalt, Treibstoff, Kampf) u
   `mines.costPerStrength`. Bei Ankunft entsteht ein Feld mit Stärke = Σ `mineLayer` (der Minenleger, die ankommen),
   höchstens `mines.maxStrength`. Liegt dort schon ein eigenes Feld, wird es verstärkt (bis zur Höchststärke) und seine
   Laufzeit beginnt neu. Ein Feld verfällt nach `mines.lifetimeHours`. Höchstens `mines.maxFieldsPerPlayer` eigene Felder.
-- **Wirkung:** Ein Feld wirkt im Umkreis `mines.fieldRadiusKm` um die Feldmitte. Kreuzt die **Hinfahrt** eines Verbands
-  (gerade Linie Start → Ziel wie auf der Karte) das Feld und ist der Besitzer **feindlich** (nicht derselbe Spieler,
-  nicht dieselbe Allianz, kein Pakt), sinken Schiffe – Felder in der Reihenfolge der Entfernung vom Start:
+- **Wirkung:** Ein Feld wirkt im Umkreis `mines.fieldRadiusKm` um die Feldmitte. Kreuzt die **Hinfahrt** oder die
+  **Rückfahrt** eines Verbands (gerade Linie Start → Ziel bzw. Ziel → Hafen wie auf der Karte) das Feld und ist der
+  Besitzer **feindlich** (nicht derselbe Spieler, nicht dieselbe Allianz, kein Pakt), sinken Schiffe – Felder in der
+  Reihenfolge der Entfernung vom Start der Fahrt:
   - Verlustanteil je Schiffstyp = min(`maxLossShare`, Stärke × `lossPerStrength`) × `typeFactor[Typ]` (fehlt: 1)
     × (1 − Räumschutz). Erwartete Verluste n × Anteil; der Bruchteil wird mit einem Seed aus Missions- und Feld-ID
-    gewürfelt (deterministisch).
+    gewürfelt (deterministisch; die Rückfahrt mit eigenem Strom, `mineReturnSeed`).
   - **Räumschutz** = min(`maxShield`, `shieldPerSweeperShare` × Anteil der Minenräumer an den Schiffen des Verbands).
   - Reicht der Truppenraum der überlebenden Schiffe nicht mehr, gehen die überzähligen Truppen anteilig je Typ unter.
     Flugzeuge sind nie betroffen.
   - Jedes versenkte Schiff verbraucht `strengthPerHit` Stärke; ein Feld mit Stärke 0 verschwindet.
   - Ein Minenbericht geht an den Verband (Verluste je Feld) und an den Feldbesitzer. Ist nichts mehr übrig, kehrt die
     Mission leer um (Ladung eines Transports ist verloren).
-  - Die Rückfahrt sowie Kartell, Weltereignisse und Handelskonvois werden von Minen nicht getroffen.
+  - **Rückfahrt** (beim Heimkehren, `mission_return`): Strecke Ziel → Hafen; nach einem Rückruf auf der Hinfahrt vom
+    Wendepunkt (die Hinfahrt bis dorthin zählt dann nicht extra). Verluste fehlen bei der Rückkehr; Ladung (Beute,
+    Bergegut), die der verbliebene Laderaum nicht mehr fasst, sinkt mit. Bericht „Minenfeld auf der Rückfahrt“.
+    Ausgenommen ist das Geleit des Annehmenden im Spielerhandel: seine Rückfahrt ist der Konvoiweg (siehe unten).
+  - **Handelskonvois** (Spielerhandel) fahren beim Einlaufen durch die Felder auf ihrer Route, deren Besitzer gegen
+    Absender **und** Empfänger feindlich ist. Die Ladung verliert je Feld deterministisch
+    min(`maxLossShare`, Stärke × `lossPerStrength`) × `cargoLossFactor` (0,5) × (1 − Räumschutz des Geleits), je Ressource
+    abgerundet (Journal `delivery:<id>` → `versenkt`); das Feld verliert dafür `strengthPerHit`. Geleitschiffe sinken wie
+    ein Verband. Bericht „Konvoi im Minenfeld“ an den Empfänger; die Felder werden beiden Handelspartnern bekannt.
+  - Kartell, Weltereignisse, Ertragskonvois der Rohstofffelder und **Börsenlieferungen** (keine Konvois) bleiben
+    bewusst ausgenommen.
 - **Räumen:** Mission `raeumen` mit mindestens einem Minenräumer auf ein Seefeld. Die Räumleistung Σ `mineSweeper`
   senkt die Stärke eigener und feindlicher Felder auf dem Feld (verbündete bleiben). Die Hinfahrt zum Feld ist eine
   gewöhnliche Durchfahrt (mit dem Räumschutz des Verbands).
@@ -88,6 +99,13 @@ Beide sind gewöhnliche Schiffe (Kommandopunkte, Unterhalt, Treibstoff, Kampf) u
   annimmt, optional eigene Schiffe für die eingehende Ware: Sie fahren ihr entgegen (Treibstoff Hin- und Rückweg, ein
   Missionsplatz, Mission `geleit`) und sind mit ihr wieder daheim. Wird die Geleitmission zurückgerufen, fährt der
   Konvoi ohne Geleit weiter.
+- **Geleit des Anbieters:** Wer ein Angebot über Ressourcen einstellt, kann Schiffe als Geleit für seine ausgehende Ware
+  eintragen (`player_offer.escort`; nur Schiffe, die er beim Einstellen im Hafen hat). Die Schiffe bleiben bis zur
+  Annahme im Hafen (nicht gebunden). Bei Annahme laufen sie aus dem Angebotshafen mit der Ware aus (Mission `geleit`,
+  Treibstoff hin und zurück, ein Missionsplatz), begleiten sie bis zum Hafen des Käufers und fahren von dort heim (die
+  Rückfahrt läuft durch Minen). Fehlen Schiffe, Treibstoff oder ein Missionsplatz, fährt die Ware ohne Geleit; der
+  Anbieter erhält einen Hinweis. Für dieselbe Ware gibt es nur ein Geleit: Hat der Anbieter eines eingetragen, kann der
+  Annehmende kein eigenes stellen (`offer_escorted`). Das Geleit kämpft mit den Modifikatoren seines Hafens.
 - Anzeige: Konvois unterwegs in der Börse und auf der Karte (Route, Position, Geleit, Angriffe).
 
 ## Saisonende

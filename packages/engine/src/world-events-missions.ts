@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import {
   activeUnits,
   capLoot,
+  combineModifiers,
   damageLoot,
   fleetTotals,
   forceHp,
@@ -31,11 +32,15 @@ import {
 import { siegeTick } from "./world-events-run.ts";
 import { modifiersFor, modsOf } from "./modifiers.ts";
 import { battleWeather, missionWeather, withArrival } from "./weather.ts"; // Wetter wie bei normalen Missionen (v1.6)
+import { admiralForLaunch, admiralPreviewMods, assignAdmiral } from "./admirals-core.ts"; // Admirale
+import { admiralsAfterBattle, type BattleAdmiral } from "./admirals-battle.ts";
 
 export interface EventMissionInput {
   type: string;
   units: Counts;
   eventId: number;
+  /** Admiral, der den Verband führt (Missionsrolle wie bei jedem Überfall). */
+  admiralId?: number;
 }
 
 /**
@@ -91,7 +96,9 @@ export async function launchAgainstEvent(
 ): Promise<{ ok: true; missionId: number; arriveAtMs: number } | { ok: false; code: string }> {
   const ev = await readWorldEvent(tx, input.eventId);
   const target = aim(ev, playerId, own, input, nowMs);
-  const r = plan(own, input, target, await activeMissionCount(tx, own.id), nowMs, await modsOf(tx, own, nowMs));
+  // Admirale: Führer des Verbands (Tempo, Treibstoff, Kampf); prüft Besitz, Hafen und Verfügbarkeit.
+  const adm = input.admiralId !== undefined ? await admiralForLaunch(tx, playerId, input.admiralId, nowMs, own.id) : null;
+  const r = plan(own, input, target, await activeMissionCount(tx, own.id), nowMs, combineModifiers(await modsOf(tx, own, nowMs), adm?.mods));
   if (!r.ok) return r;
   if (ev!.kind !== "grossflotte" && r.mission.arriveAtMs >= ev!.endsAt.getTime()) return { ok: false, code: "too_late" };
   await saveBase(tx, own.id, r.base);
@@ -99,9 +106,10 @@ export async function launchAgainstEvent(
     .insert(tables.mission)
     .values({
       playerId, baseId: own.id, type: r.mission.type, targetKind: "event", targetId: ev!.id, targetCol: target.col,
-      targetRow: target.row, plan: r.mission, status: "outbound", arriveAt: new Date(r.mission.arriveAtMs),
+      targetRow: target.row, plan: adm ? { ...r.mission, admiralId: adm.id } : r.mission, status: "outbound", arriveAt: new Date(r.mission.arriveAtMs),
     })
     .returning({ id: tables.mission.id });
+  if (adm) await assignAdmiral(tx, adm.id, m.id);
   await scheduleEvent(tx, "mission_arrive", r.mission.arriveAtMs, { missionId: m.id }, null);
   notify.push([[playerId], "base"], [[playerId], "missions"]);
   return { ok: true, missionId: m.id, arriveAtMs: r.mission.arriveAtMs };
@@ -118,7 +126,7 @@ export async function previewAgainstEvent(db: DbOrTx, playerId: number, own: Bas
     throw err;
   }
   const distanceKm = hexDistanceKm(own, target);
-  const mods = await modsOf(db, own, nowMs);
+  const mods = combineModifiers(await modsOf(db, own, nowMs), await admiralPreviewMods(db, playerId, input.admiralId));
   const weather = missionWeather(own.col, own.row, target.col, target.row, nowMs);
   const r = plan({ ...own, state: settle(own.state, nowMs, balance, mods) }, input, target, await activeMissionCount(db, own.id), nowMs, mods);
   if (!r.ok) return { ok: false as const, code: r.code, distanceKm, weather };
@@ -171,6 +179,7 @@ export async function eventMissionArrive(
   origin: BaseRow | null,
   due: number,
   attackerName: string,
+  admA: BattleAdmiral | null = null,
 ): Promise<{ returning: Counts; cargoHome: ResourceMap; reportId: number | null; notify: [number[] | null, ChangeKind][]; push: NoticeJob[] }> {
   const notify: [number[] | null, ChangeKind][] = [];
   const push: NoticeJob[] = [];
@@ -190,12 +199,13 @@ export async function eventMissionArrive(
   }
 
   // Modifikatoren des Spielers (Forschung, Veteranen) wirken wie bei jedem Überfall.
-  const modifiers = await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due, baseId: origin?.id, isHome: origin?.isHome });
+  const modifiers = combineModifiers(await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due, baseId: origin?.id, isHome: origin?.isHome }), admA?.mods);
   const attacker: AttackerInput = { units: plan.units, versorgungsmangel: origin?.state.versorgungsmangel ?? false, modifiers };
   const seed = randomSeed();
   const res = resolveBattle(attacker, { units: activeUnits(ev.units), defenses: {} }, balance, seed, battleWeather(m.targetCol, m.targetRow, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
   const { report: raw, destroyed } = strandTroops(res.report, balance);
+  const admirals = await admiralsAfterBattle(tx, raw, seed, admA, null, due); // Admirale: Erfahrung, Schicksal
   const before = forceHp(activeUnits(ev.units), balance);
   const left = activeUnits(raw.defender.final);
   const destroyedHp = before - forceHp(left, balance);
@@ -215,7 +225,7 @@ export async function eventMissionArrive(
   const [r] = await tx.insert(tables.battleReport).values({
     ...base, kind: "weltereignis", title, winner: report.winner, seed,
     report: {
-      battle: report, attackerName, defenderName: `Kartell (${KIND_TEXT[ev.kind]})`, targetName, attacker,
+      battle: report, attackerName, defenderName: `Kartell (${KIND_TEXT[ev.kind]})`, targetName, attacker, ...(admirals ? { admirals } : {}),
       worldEvent: { id: ev.id, kind: ev.kind, destroyed, destroyedHp, initialHp: ev.data.initialHp, remaining: left },
     },
   }).returning({ id: tables.battleReport.id });

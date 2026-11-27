@@ -117,7 +117,7 @@ export function MyFieldsCard({ base, onShowOnMap }: { base: BaseData; onShowOnMa
               </div>
               <div className="text-xs text-emerald-300">Ertrag {resLine(m.yieldPerHour)}/h ({Math.round(m.factor * 100)} %{m.zoneBonus ? ", Zonenbonus" : ""}) · Unterhalt {fmtNum(m.upkeepPerHour)} Proviant/h</div>
               <FieldIncomingLines incoming={m.incoming} reinforcements={m.reinforcements} />
-              <div className="text-xs">Besatzung: <UnitChips counts={m.garrison} />{Object.keys(m.escort).length > 0 && <span className="text-ink2"> – verteidigt das Feld: <UnitChips counts={m.defenders} /></span>}</div>
+              <div className="text-xs">Besatzung: <UnitChips counts={m.garrison} />{Object.keys(m.escort).length > 0 && <span className="text-ink2"> – gegen Spieler verteidigt: <UnitChips counts={m.defenders} /> (gegen das Kartell alle)</span>}</div>
               <FieldEscortEditor key={JSON.stringify(m.escort)} fieldId={m.id} garrison={m.garrison} escort={m.escort} />
               <div className="text-xs text-ink2">Nächste Lieferung {d.nextDeliveryAtMs ? `in ${fmtDuration(d.nextDeliveryAtMs - now)}` : "bald"} per Konvoi nach {m.home ?? base.name}</div>
               <button type="button" className="tap text-sea-300 underline text-xs mt-1" onClick={() => onShowOnMap({ col: m.col, row: m.row })}>Verstärken: auf der Karte das Feld antippen</button>
@@ -137,9 +137,9 @@ export function FieldTargetLine({ fieldId }: { fieldId: number }) {
   const f = q.data?.fields.find((x) => x.id === fieldId);
   if (!f) return <>Rohstofffeld …<br /></>;
   if (f.relation === "own") {
-    return <>Dein Rohstofffeld <strong>{KIND_TEXT[f.kind]} Stufe {f.tier}</strong> – <strong>Verstärkung</strong>: die Schiffe werden ohne Kampf der Besatzung hinzugefügt (aus einem anderen Hafen wechseln sie in den Hafen des Felds). Nur Schiffe; Admirale führen keine Feld-Verbände.<br /></>;
+    return <>Dein Rohstofffeld <strong>{KIND_TEXT[f.kind]} Stufe {f.tier}</strong> – <strong>Verstärkung</strong>: die Schiffe werden ohne Kampf der Besatzung hinzugefügt (aus einem anderen Hafen wechseln sie in den Hafen des Felds). Nur Schiffe; ein mitfahrender Admiral übernimmt die Besatzung, wenn sie noch keinen hat.<br /></>;
   }
-  return <>Rohstofffeld <strong>{KIND_TEXT[f.kind]} Stufe {f.tier}</strong> – {RELATION_TEXT[f.relation]}{f.owner && f.relation !== "own" ? ` (${f.owner})` : ""}. Nur Schiffe; Seekampf gegen {f.owner ? "die Besatzung" : "die Kartell-Wache"}. Admirale führen keine Feld-Verbände.<br /></>;
+  return <>Rohstofffeld <strong>{KIND_TEXT[f.kind]} Stufe {f.tier}</strong> – {RELATION_TEXT[f.relation]}{f.owner && f.relation !== "own" ? ` (${f.owner})` : ""}. Nur Schiffe; Seekampf gegen {f.owner ? "die Besatzung" : "die Kartell-Wache"}. Ein Admiral führt den Verband und bleibt nach der Einnahme bei der Besatzung.<br /></>;
 }
 
 export function StayAllToggle({ value, onChange, balance, fieldId }: { value: boolean; onChange: (v: boolean) => void; balance: Balance; fieldId?: number }) {

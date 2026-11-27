@@ -4,7 +4,7 @@
 // field_warning: Radar-Vorwarnung bei Spielerangriffen (fields-radar.ts).
 import { and, eq, isNull, lte, sql } from "drizzle-orm";
 import {
-  activeUnits, addCounts, blockadeOf, cargoValue, cartelFieldRaid, clampEscort, deliverCargo, fieldDefenders, fieldUpkeep, fieldYield,
+  activeUnits, blockadeOf, cargoValue, cartelFieldRaid, clampEscort, combineModifiers, deliverCargo, fieldUpkeep, fieldYield,
   resolveBattle, settle, strandTroops, type Counts,
 } from "@tidefront/game-core";
 import { hexDistanceKm } from "@tidefront/world";
@@ -21,6 +21,8 @@ import { pushNotice, storeNavalReport, type Notes } from "./naval-common.ts";
 import { HOUR_MS, allianceMap, garrisonMods, fieldById, fieldName, ownedBy, rules, spawnFields, zonesOf, type FieldRow } from "./fields-core.ts";
 import { endGarrison, releaseField } from "./fields-missions.ts";
 import { fieldEscortOf } from "./fields-escort.ts";
+import { garrisonAdmiral } from "./fields-admiral.ts";
+import { admiralsAfterBattle } from "./admirals-battle.ts";
 import { fieldWarning } from "./fields-radar.ts";
 import { recordAchievement } from "./achievements.ts";
 
@@ -99,7 +101,7 @@ async function fieldTick(tx: Tx, due: number): Promise<HandlerResult> {
       if (raid) {
         const at = due + r.cartelRaidLeadMinutes * 60000;
         await scheduleEvent(tx, "field_raid", at, { fieldId: f.id, ownerId: f.ownerId, units: raid }, null);
-        push.push(pushNotice(f.ownerId!, "attack", `Kartell hält auf ${fieldName(f)} zu`, `Ankunft in etwa ${r.cartelRaidLeadMinutes} Minuten. Deine Besatzung verteidigt.`));
+        push.push(pushNotice(f.ownerId!, "attack", `Kartell hält auf ${fieldName(f)} zu`, `Ankunft in etwa ${r.cartelRaidLeadMinutes} Minuten. Deine Besatzung verteidigt (mit Geleitabteilung).`));
         await systemMessage(tx, notify, [f.ownerId!], `Kartell hält auf ${fieldName(f)} zu`, `Ein Kartellverband (${raid.schnellboot ?? 0} Schnellboote) greift in etwa ${r.cartelRaidLeadMinutes} Minuten dein Feld an.`);
       }
     }
@@ -139,20 +141,25 @@ async function fieldRaid(tx: Tx, payload: Record<string, unknown>, due: number):
   if (!m || m.status !== "stationed") return none();
   const owner = f.ownerId;
   const units = activeUnits(payload.units as Counts);
-  const all = activeUnits((m.returning as Counts | null) ?? {});
-  const escort = clampEscort(all, (f.escort as Counts) ?? {}); // Geleitabteilung ist mit den Konvois unterwegs
-  const garrison = fieldDefenders(all, escort);
+  // Die ganze Besatzung verteidigt, auch die Geleitabteilung: der Kartellverband ist eine Stunde vorher gemeldet,
+  // die Abteilung kehrt rechtzeitig zum Feld zurück (gegen Spielerangriffe nicht, fields-missions.ts).
+  const garrison = activeUnits((m.returning as Counts | null) ?? {});
+  const admD = await garrisonAdmiral(tx, m, due); // Admiral der Besatzung (fields-admiral.ts)
   const seed = randomSeed();
-  const res = resolveBattle({ units }, { units: garrison, defenses: {}, modifiers: await garrisonMods(tx, f, due) }, balance, seed, battleWeather(f.col, f.row, due));
+  const res = resolveBattle({ units }, { units: garrison, defenses: {}, modifiers: combineModifiers(await garrisonMods(tx, f, due), admD?.mods) }, balance, seed, battleWeather(f.col, f.row, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
   const { report, destroyed } = strandTroops(res.report, balance);
+  const admirals = await admiralsAfterBattle(tx, report, seed, null, admD, due);
   const name = fieldName(f);
   const notify: Notes = [[null, "map"], [[owner], "reports"], [[owner], "missions"]];
+  const left = activeUnits(report.defender.final);
   if (destroyed) {
-    await endGarrison(tx, m.id, escort, due); // die Geleitabteilung war unterwegs und kehrt heim
+    await endGarrison(tx, m.id, left, due);
     await releaseField(tx, f, due, { ...(rules()!.guard[f.tier - 1] ?? {}) });
   } else {
-    await tx.update(tables.mission).set({ returning: addCounts(activeUnits(report.defender.final), escort) }).where(eq(tables.mission.id, m.id));
+    await tx.update(tables.mission).set({ returning: left }).where(eq(tables.mission.id, m.id));
+    // Verluste der Geleitabteilung: sie bleibt höchstens so groß wie das, was von der Besatzung übrig ist.
+    await tx.update(tables.resourceField).set({ escort: clampEscort(left, (f.escort as Counts) ?? {}) }).where(eq(tables.resourceField.id, f.id));
   }
   if ((report.wreck.stahl ?? 0) + (report.wreck.elektronik ?? 0) > 0) {
     await tx.insert(tables.wreck).values({ col: f.col, row: f.row, stahl: report.wreck.stahl ?? 0, elektronik: report.wreck.elektronik ?? 0, createdAt: new Date(due) });
@@ -160,7 +167,7 @@ async function fieldRaid(tx: Tx, payload: Record<string, unknown>, due: number):
   const title = destroyed ? `${name} an das Kartell verloren` : `Kartell vor ${name} abgewehrt`;
   await storeNavalReport(tx, {
     kind: "feld", title, attackerPlayerId: null, defenderPlayerId: owner, defenderBaseId: f.baseId, winner: destroyed ? "attacker" : "defender", seed, atMs: due,
-    report: { field: { id: f.id, kind: f.kind, tier: f.tier, outcome: destroyed ? "cartel" : "held" }, battle: { ...report, loot: {} }, attackerName: "Freibeuter-Kartell", defenderName: "Besatzung", targetName: name, attacker: { units } },
+    report: { field: { id: f.id, kind: f.kind, tier: f.tier, outcome: destroyed ? "cartel" : "held" }, battle: { ...report, loot: {} }, attackerName: "Freibeuter-Kartell", defenderName: "Besatzung", targetName: name, attacker: { units }, ...(admirals ? { admirals } : {}) },
   });
   await systemMessage(tx, notify, [owner], title, destroyed ? `Das Kartell hat deine Besatzung auf ${name} geschlagen. Das Feld ist wieder neutral.` : `Deine Besatzung auf ${name} hat den Kartellverband zurückgeschlagen.`);
   return { notify, push: [pushNotice(owner, "attack", title, destroyed ? "Das Feld ist wieder neutral." : "Das Feld bleibt deins.", "berichte")] };

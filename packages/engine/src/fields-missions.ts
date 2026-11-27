@@ -5,7 +5,7 @@
 import { eq } from "drizzle-orm";
 import {
   activeUnits, addCounts, clampEscort, fieldDefenders, garrisonCheck, guardDefender, resolveBattle, splitGarrison, strandTroops,
-  type AttackerInput, type Counts, type DefenderInput, type Mission,
+  combineModifiers, type AttackerInput, type Counts, type DefenderInput, type Mission, type Modifiers,
 } from "@tidefront/game-core";
 import { hexDistanceKm } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
@@ -24,6 +24,9 @@ import { FIELD_TYPE, HOUR_MS, fieldById, fieldName, garrisonMods, guarded, maxFi
 import { settleField } from "./fields-run.ts";
 import { checkReinforce, reinforceArrive } from "./fields-reinforce.ts";
 import { scheduleFieldWarning } from "./fields-radar.ts";
+import { fieldLaunchAdmiral, fieldPreviewAdmiralMods, garrisonAdmiral } from "./fields-admiral.ts";
+import { assignAdmiral } from "./admirals-core.ts";
+import { admiralsAfterBattle, missionAdmiral } from "./admirals-battle.ts";
 
 export interface FieldInput {
   type: string;
@@ -31,13 +34,15 @@ export interface FieldInput {
   fieldId: number;
   /** Ganzer siegreicher Verband bleibt als Besatzung (sonst nur die Mindestbesatzung). */
   stayAll?: boolean;
+  /** Admiral, der den Verband führt (fields-admiral.ts). */
+  admiralId?: number;
 }
 
 /**
  * Prüfungen und Planung. Besetzen gegen ein eigenes Feld ist eine Verstärkung der Besatzung (fields-reinforce.ts).
  * Codes: no_field, bad_type, field_limit, field_ships_only, field_no_garrison, garrison_too_weak, ally, pact …
  */
-async function planField(db: DbOrTx, playerId: number, own: BaseRow, input: FieldInput, nowMs: number) {
+async function planField(db: DbOrTx, playerId: number, own: BaseRow, input: FieldInput, nowMs: number, admiralMods?: Modifiers | null) {
   const f = rules();
   if (!f) throw new GameError("bad_type");
   const field = await fieldById(db, input.fieldId);
@@ -60,18 +65,22 @@ async function planField(db: DbOrTx, playerId: number, own: BaseRow, input: Fiel
   } else if (input.type !== "aufklaerung") throw new GameError("bad_type");
   const r = planNaval(own, {
     type: input.type as Mission["type"], baseType: input.type === FIELD_TYPE ? "ueberfall" : "aufklaerung", units: input.units,
-    col: field.col, row: field.row, activeMissions: await activeMissionCount(db, own.id), mods: await modsOf(db, own, nowMs), targetProtection,
+    col: field.col, row: field.row, activeMissions: await activeMissionCount(db, own.id), mods: combineModifiers(await modsOf(db, own, nowMs), admiralMods ?? undefined), targetProtection,
   }, nowMs);
   return { r, field, reinforce };
 }
 
 /** launchMission mit fieldId (Hafen aus dem Kommando-Kontext, bereits gesperrt). */
 export async function launchField(tx: Tx, playerId: number, own: BaseRow, input: FieldInput, nowMs: number, notify: Notes) {
-  const { r, field, reinforce } = await planField(tx, playerId, own, input, nowMs);
+  const target = await fieldById(tx, input.fieldId);
+  const adm = target ? await fieldLaunchAdmiral(tx, playerId, input.admiralId, own.id, target, input.type === FIELD_TYPE && target.ownerId === playerId, nowMs) : null;
+  const { r, field, reinforce } = await planField(tx, playerId, own, input, nowMs, adm?.mods);
   if (!r.ok) return r;
   await saveBase(tx, own.id, r.base);
-  const plan = reinforce ? { ...r.mission, reinforce: true } : input.type === FIELD_TYPE ? { ...r.mission, stayAll: !!input.stayAll } : r.mission;
+  const base = adm ? { ...r.mission, admiralId: adm.id } : r.mission;
+  const plan = reinforce ? { ...base, reinforce: true } : input.type === FIELD_TYPE ? { ...base, stayAll: !!input.stayAll } : base;
   const missionId = await insertMission(tx, { playerId, baseId: own.id, targetKind: "field", targetId: field.id, col: field.col, row: field.row, plan });
+  if (adm) await assignAdmiral(tx, adm.id, missionId); // Admiral führt den Verband (bei Einnahme bleibt er bei der Besatzung)
   // Radar-Vorwarnung für den Besitzer eines angegriffenen Felds (fields-radar.ts).
   if (!reinforce && input.type === FIELD_TYPE && field.ownerId !== null) {
     await scheduleFieldWarning(tx, missionId, field, r.mission.arriveAtMs, nowMs, r.mission.warningFactor ?? 1);
@@ -85,7 +94,7 @@ export async function previewField(db: DbOrTx, playerId: number, own: BaseRow, i
   const field = await fieldById(db, input.fieldId);
   const distanceKm = field ? hexDistanceKm(own, field) : 0;
   try {
-    const { r, reinforce } = await planField(db, playerId, own, input, nowMs);
+    const { r, reinforce } = await planField(db, playerId, own, input, nowMs, await fieldPreviewAdmiralMods(db, playerId, input.admiralId));
     if (!r.ok) return { ok: false as const, code: r.code, distanceKm };
     const m = r.mission;
     return {
@@ -154,7 +163,7 @@ export async function fieldArrive(tx: Tx, m: MissionRowLike, plan: Mission, orig
     return;
   }
   const name = fieldName(field);
-  const garrison = field.missionId !== null ? (await tx.select({ returning: tables.mission.returning }).from(tables.mission).where(eq(tables.mission.id, field.missionId)))[0] : undefined;
+  const garrison = field.missionId !== null ? (await tx.select().from(tables.mission).where(eq(tables.mission.id, field.missionId)))[0] : undefined;
   const garrisonAll = activeUnits((garrison?.returning as Counts | null) ?? {});
   // Die Geleitabteilung fährt mit den Ertragskonvois und verteidigt das Feld nicht (fields-escort.ts).
   const escort = field.ownerId !== null ? clampEscort(garrisonAll, (field.escort as Counts) ?? {}) : {};
@@ -181,17 +190,21 @@ export async function fieldArrive(tx: Tx, m: MissionRowLike, plan: Mission, orig
     return;
   }
   const defenderUnits = field.ownerId !== null ? garrisonUnits : activeUnits(field.guard as Counts);
-  const attackerMods = await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due, baseId: origin?.id, isHome: origin?.isHome });
+  // Admirale: Führer des Verbands und der Admiral der Besatzung (fields-admiral.ts).
+  const admA = await missionAdmiral(tx, plan, m.id, pid);
+  const admD = field.ownerId !== null && garrison?.status === "stationed" ? await garrisonAdmiral(tx, garrison, due) : null;
+  const attackerMods = combineModifiers(await modifiersFor(tx, pid, { state: origin?.state ?? null, nowMs: due, baseId: origin?.id, isHome: origin?.isHome }), admA?.mods);
   const attacker: AttackerInput = { units, modifiers: attackerMods, versorgungsmangel: origin?.state.versorgungsmangel ?? false };
   let survivors = units;
   let destroyed = true;
   let battle: unknown = null;
   let seed: number | null = null;
   let defenderLeft: Counts = {};
+  let admirals: unknown;
   if (Object.keys(defenderUnits).length > 0) {
     seed = randomSeed();
     const defender: DefenderInput = field.ownerId !== null
-      ? { units: defenderUnits, defenses: {}, modifiers: await garrisonMods(tx, field, due) }
+      ? { units: defenderUnits, defenses: {}, modifiers: combineModifiers(await garrisonMods(tx, field, due), admD?.mods) }
       : guardDefender(defenderUnits);
     const res = resolveBattle(attacker, defender, balance, seed, battleWeather(field.col, field.row, due));
     if (!res.ok) throw new Error(`battle: ${res.code}`);
@@ -200,6 +213,7 @@ export async function fieldArrive(tx: Tx, m: MissionRowLike, plan: Mission, orig
     survivors = activeUnits(s.report.attacker.final);
     defenderLeft = activeUnits(s.report.defender.final);
     battle = { ...s.report, loot: {} };
+    admirals = await admiralsAfterBattle(tx, s.report, seed, admA, admD, due);
     await wreckAt(tx, field, s.report.wreck, due);
   }
   const prevOwner = field.ownerId;
@@ -232,7 +246,7 @@ export async function fieldArrive(tx: Tx, m: MissionRowLike, plan: Mission, orig
     winner: destroyed ? "attacker" : "defender", seed, atMs: due,
     report: {
       field: { id: field.id, kind: field.kind, tier: field.tier, outcome, owner: ownerName },
-      ...(battle ? { battle, attackerName, defenderName: ownerName ?? "Kartell-Wache", targetName: name, attacker } : {}),
+      ...(battle ? { battle, attackerName, defenderName: ownerName ?? "Kartell-Wache", targetName: name, attacker, ...(admirals ? { admirals } : {}) } : {}),
     },
   });
   if (outcome === "captured") {

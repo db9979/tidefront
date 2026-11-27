@@ -113,7 +113,7 @@ after(async () => {
   await client.end();
 });
 
-test("Felder 2: Geleitabteilung begleitet Ertragskonvois, verteidigt das Feld nicht; Radar-Vorwarnung bei Angriff", async () => {
+test("Felder 2: Geleitabteilung begleitet Ertragskonvois, verteidigt nur gegen das Kartell; Radar-Vorwarnung bei Angriff", async () => {
   const a = await newPlayer("Geleitherr", coastNear(null));
   const b = await newPlayer("Angreifer", coastNear(a));
   assert.ok(await ensureFieldPlanner(db, Date.now()));
@@ -157,14 +157,14 @@ test("Felder 2: Geleitabteilung begleitet Ertragskonvois, verteidigt das Feld ni
   const [cnt] = await db.select().from(tables.achievementCounter).where(and(eq(tables.achievementCounter.playerId, a.playerId), eq(tables.achievementCounter.counter, "feldertrag")));
   assert.ok(cnt && Number(cnt.value) > 0, "Zähler feldertrag");
 
-  // Kartellangriff aufs Feld: nur die Besatzung ohne Geleit kämpft; das Geleit bleibt Teil der Besatzung.
+  // Kartellangriff aufs Feld: die ganze Besatzung kämpft, auch das Geleit (angekündigt, es kehrt zurück).
   const before = (await missionRow(gid)).returning as Record<string, number>;
   await db.insert(tables.gameEvent).values({ type: "field_raid", dueAt: new Date(), payload: { fieldId: target.id, ownerId: a.playerId, units: { schnellboot: 1 } }, baseId: null });
   await runUntil(Date.now() + 1000);
   const [raid] = await db.select().from(tables.battleReport).where(and(eq(tables.battleReport.kind, "feld"), eq(tables.battleReport.defenderPlayerId, a.playerId), sql`${tables.battleReport.attackerPlayerId} is null`));
   const defFleet = (raid.report as { battle: { defender: { before: Record<string, number> } } }).battle.defender;
   const fought = defFleet.before;
-  assert.equal(fought.korvette ?? 0, Math.max(0, (before.korvette ?? 0) - 2), `Geleit kämpft nicht mit: ${JSON.stringify(defFleet)}`);
+  assert.equal(fought.korvette ?? 0, before.korvette ?? 0, `Geleit kämpft mit: ${JSON.stringify(defFleet)}`);
   const after1 = (await missionRow(gid)).returning as Record<string, number>;
   assert.ok((after1.korvette ?? 0) >= 2, `Geleit noch da: ${JSON.stringify(after1)}`);
 

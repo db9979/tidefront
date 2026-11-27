@@ -192,7 +192,8 @@
     "costPerStrength": { "stahl": 8, "elektronik": 3 },
     "lossPerStrength": 0.0015, "maxLossShare": 0.25,
     "typeFactor": { "uboot": 0.4, "minenraeumer": 0.25, "minenleger": 0.6 },
-    "shieldPerSweeperShare": 2, "maxShield": 0.75, "strengthPerHit": 4, "radarKmPerLevel": 40, "scoutRevealKm": 150
+    "shieldPerSweeperShare": 2, "maxShield": 0.75, "strengthPerHit": 4, "radarKmPerLevel": 40, "scoutRevealKm": 150,
+    "cargoLossFactor": 0.5
   },
   "blockade": { "minHours": 2, "maxHours": 12, "minCommandPoints": 12, "productionFactor": 0.75, "deliveryHoldMinutes": 60 },
   "convoys": {

@@ -251,6 +251,10 @@ const ERRORS: Record<string, string> = {
   no_fields: "Rohstofffelder sind in dieser Saison abgeschaltet.",
   intercept_needs_ships: "Zum Abfangen gehören Schiffe in den Verband.",
   escort_ships_only: "Geleitschutz stellen nur Schiffe.",
+  escort_units: "So viele Schiffe hast du für das Geleit gerade nicht im Hafen.",
+  escort_no_cargo: "Kredite reisen nicht per Konvoi – Geleit gibt es nur für Ressourcen.",
+  offer_escorted: "Der Anbieter stellt für diese Ware schon Geleit – eigenes Geleit ist hier nicht möglich.",
+  field_has_admiral: "Die Besatzung dieses Felds hat schon einen Admiral.",
   // Mehrere Häfen: Gründung und Verlegung
   expansion_off: "Gründen und Verlegen sind auf diesem Server noch nicht freigeschaltet.",
   base_limit: "Kein weiterer Hafen möglich: Höchstzahl erreicht oder die Kommandozentrale des Heimathafens ist noch zu klein.",

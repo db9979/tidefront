@@ -28,6 +28,8 @@ export interface MinesBalance {
   radarKmPerLevel: number;
   /** Aufklärung deckt Felder bis zu dieser Entfernung vom Ziel und entlang der Route auf. */
   scoutRevealKm: number;
+  /** Handelskonvois: Faktor auf den Verlustanteil für die Ladung (fehlt: Konvois verlieren keine Ladung). */
+  cargoLossFactor?: number;
 }
 
 export interface BlockadeBalance {
@@ -195,6 +197,24 @@ export function routeCrossesField(a: GeoPoint, b: GeoPoint, field: GeoPoint, bal
 /** Seed je Mission und Feld (deterministisch, unabhängig von der Reihenfolge der Abfrage). */
 export function mineSeed(missionId: number, fieldId: number): number {
   return (Math.imul(missionId >>> 0, 0x9e3779b1) ^ Math.imul(fieldId >>> 0, 0x85ebca77)) >>> 0;
+}
+
+/** Seed der Rückfahrt (eigener Strom, damit Hin- und Rückfahrt durch dasselbe Feld unabhängig würfeln). */
+export function mineReturnSeed(missionId: number, fieldId: number): number {
+  return (mineSeed(missionId, fieldId) ^ 0x52e7a11d) >>> 0;
+}
+
+/**
+ * Handelskonvoi durch ein Minenfeld: die Ladung verliert deterministisch den Anteil
+ * min(maxLossShare, Stärke × lossPerStrength) × cargoLossFactor × (1 − Räumschutz des Geleits). Ein Verlust
+ * verbraucht wie ein Treffer strengthPerHit Stärke. Ohne `cargoLossFactor` laufen Konvois ohne Verlust durch.
+ */
+export function convoyMineLoss(strength: number, escort: Counts, balance: Balance): { share: number; consumed: number } {
+  const m = minesOf(balance);
+  const k = m?.cargoLossFactor ?? 0;
+  if (!m || strength <= 0 || k <= 0) return { share: 0, consumed: 0 };
+  const share = Math.min(m.maxLossShare, strength * m.lossPerStrength) * k * (1 - sweeperShield(escort, balance));
+  return { share, consumed: share > 0 ? Math.min(strength, m.strengthPerHit) : 0 };
 }
 
 // ---------------------------------------------------------------- Blockade

@@ -171,6 +171,8 @@ export const playerOffer = pgTable("player_offer", {
   /** Allianz des Anbieters beim Einstellen (für visibility alliance). */
   allianceId: integer("alliance_id"),
   status: text("status").notNull().default("open"),
+  /** Geleit des Anbieters für seine ausgehende Ware (Counts, {} = keines); läuft bei Annahme aus seinem Hafen aus. */
+  escort: jsonb("escort").notNull().default({}),
   buyerId: integer("buyer_id"),
   createdAt: ts("created_at").notNull().defaultNow(),
   closedAt: ts("closed_at"),

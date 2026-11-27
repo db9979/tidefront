@@ -11,7 +11,8 @@ import { homeBaseOf } from "./store.ts";
 export type AdmiralRow = typeof tables.admiral.$inferSelect;
 export type AdmiralStatus = "bereit" | "unterwegs" | "verwundet" | "gefangen";
 
-const ACTIVE_MISSION = ["outbound", "returning"];
+// Felder: eine stationierte Besatzung bindet ihren Admiral ebenfalls (fields-admiral.ts).
+const ACTIVE_MISSION = ["outbound", "returning", "stationed"];
 
 function fail(code: string): never {
   throw new GameError(code);

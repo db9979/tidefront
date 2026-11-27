@@ -92,7 +92,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   const chosen = useMemo(() => Object.fromEntries(Object.entries(units).filter(([, n]) => n > 0)), [units]);
   const cargoSent = type === "transport" || type === "verlegung" ? Object.fromEntries(Object.entries(cargo).filter(([, n]) => n > 0)) : undefined;
   const naval = target?.blockadeId ? { blockadeId: target.blockadeId } : target?.convoyId ? { convoyId: target.convoyId } : type === "blockade" ? { holdHours } : target?.fieldId ? { fieldId: target.fieldId, ...(type === "besetzen" ? { stayAll } : {}) } : {}; // See, Felder
-  const input = target ? { type, units: chosen, col: target.col, row: target.row, cargo: cargoSent, ...(target.eventId ? { eventId: target.eventId } : admiralId ? { admiralId } : {}), ...naval } : null;
+  const input = target ? { type, units: chosen, col: target.col, row: target.row, cargo: cargoSent, ...(target.eventId ? { eventId: target.eventId } : {}), ...(admiralId ? { admiralId } : {}), ...naval } : null;
   const event = target?.eventId ? worldEvents.data?.events.find((e) => e.id === target.eventId) : undefined;
   const preview = useQuery({
     ...trpc.mission.preview.queryOptions(input ?? { type, units: {}, col: 0, row: 0 }),
@@ -210,7 +210,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         </Card>
       )}
 
-      {!target?.eventId && !target?.fieldId && <AdmiralPick value={admiralId} onChange={setAdmiralId} />}
+      <AdmiralPick value={admiralId} onChange={setAdmiralId} />{/* Admirale führen auch Feld- und Weltereignis-Verbände */}
 
       {type === "ueberfall" && tInfo?.nest && !tInfo.nest.empty && Object.keys(chosen).length > 0 && (
         <Strength balance={balance} units={chosen} level={tInfo.nest.level} />

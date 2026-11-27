@@ -160,7 +160,7 @@ export function ConvoyList() {
 }
 
 /** Geleitschutz beim Annehmen: Schiffe daheim wählen. */
-export function EscortPicker({ base, value, onChange }: { base: BaseData; value: Counts; onChange: (v: Counts) => void }) {
+export function EscortPicker({ base, value, onChange, hint }: { base: BaseData; value: Counts; onChange: (v: Counts) => void; hint?: string }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const ships = base.units.filter((u) => u.home > 0 && meta.data?.balance.units[u.id]?.branch === "see");
   if (ships.length === 0) return <p className="text-xs text-ink2 mt-1">Kein Geleitschutz möglich – keine Schiffe daheim.</p>;
@@ -175,7 +175,7 @@ export function EscortPicker({ base, value, onChange }: { base: BaseData; value:
           </li>
         ))}
       </ul>
-      <p className="text-xs text-ink2">Die Schiffe fahren der Ware entgegen und kommen mit ihr heim (Treibstoff, ein Missionsplatz). Sie kämpfen, wenn das Kartell oder ein Kriegsgegner den Konvoi abfängt.</p>
+      <p className="text-xs text-ink2">{hint ?? "Die Schiffe fahren der Ware entgegen und kommen mit ihr heim (Treibstoff, ein Missionsplatz). Sie kämpfen, wenn das Kartell oder ein Kriegsgegner den Konvoi abfängt."} Minenräumer im Geleit schützen die Ladung in Minenfeldern.</p>
     </div>
   );
 }
@@ -199,11 +199,18 @@ export function LiftBlockade({ missionId }: { missionId: number }) {
 /** Berichte der Seeregeln ohne Kampfbericht (Minen, Blockade, Konvoi). */
 export function NavalReport({ kind, d }: { kind: string; d: Record<string, unknown> }) {
   if (kind === "minen" && d.mines) {
-    const m = d.mines as { action: string; strength?: number; swept?: { owner: string; before: number; after: number }[]; hits?: { owner: string; strength: number; losses: Counts }[]; before?: Counts; after?: Counts; refused?: string };
+    const m = d.mines as { action: string; leg?: string; strength?: number; swept?: { owner: string; before: number; after: number }[]; hits?: { owner: string; strength: number; losses: Counts; share?: number }[]; before?: Counts; after?: Counts; refused?: string; lost?: Counts; cargoLeft?: Counts };
     return (
-      <Card title={<><Icon id="mine" size={18} /> {m.action === "legen" ? "Minenfeld" : m.action === "raeumen" ? "Räumfahrt" : "Minenfeld durchfahren"}</>}>
+      <Card title={<><Icon id="mine" size={18} /> {m.action === "legen" ? "Minenfeld" : m.action === "raeumen" ? "Räumfahrt" : m.action === "konvoi" ? "Konvoi im Minenfeld" : m.leg === "rueckfahrt" ? "Minenfeld auf der Rückfahrt" : "Minenfeld durchfahren"}</>}>
         {m.action === "legen" && <p className="text-sm">{m.refused ? "Nicht gelegt: Höchstzahl an Feldern erreicht." : `Das Feld hat jetzt Stärke ${m.strength}. Fremde Schiffe, die hindurchfahren, sinken.`}</p>}
         {m.action === "raeumen" && <p className="text-sm">{m.swept && m.swept.length > 0 ? m.swept.map((s) => `Feld von ${s.owner}: ${s.before} → ${s.after}`).join("; ") : "Keine Minen gefunden."}</p>}
+        {m.action === "konvoi" && (
+          <div className="text-sm space-y-1">
+            {m.hits?.map((h, i) => <div key={i}>Feld von {h.owner} (Stärke {h.strength}): Ladung −{Math.round((h.share ?? 0) * 1000) / 10} %{Object.keys(h.losses).length > 0 && <> · Geleit verloren <CountsLine counts={h.losses} /></>}</div>)}
+            <div className="text-siegel">Versenkt: {resLine(m.lost)}</div>
+            <div className="text-ink2">Ladung danach: {resLine(m.cargoLeft)}</div>
+          </div>
+        )}
         {m.action === "durchfahrt" && (
           <div className="text-sm space-y-1">
             {m.hits?.map((h, i) => <div key={i}>Feld von {h.owner} (Stärke {h.strength}): verloren <CountsLine counts={h.losses} /></div>)}

@@ -1,4 +1,4 @@
-// Felder: Geleitabteilung einer Besatzung festlegen (begleitet die Ertragskonvois, verteidigt das Feld nicht),
+// Felder: Geleitabteilung einer Besatzung festlegen (begleitet die Ertragskonvois, verteidigt das Feld nur gegen das Kartell),
 // Hinweise zu Vorwarnung und Verstärkung. Teil von „Meine Felder“ (Fields.tsx). Regeln: docs/REGELN-FELDER.md.
 import { useState } from "react";
 import { trpc, trpcClient } from "../lib/trpc.ts";
@@ -28,7 +28,7 @@ export function FieldEscortEditor({ fieldId, garrison, escort }: { fieldId: numb
   const ids = Object.keys(garrison).filter((id) => (garrison[id] ?? 0) > 0);
   return (
     <div className="text-xs mt-1 rounded border border-navy-700 p-2 space-y-1">
-      <p className="text-ink2">Diese Schiffe begleiten jeden Ertragskonvoi und kämpfen gegen Kartell und Kriegsgegner. Sie verteidigen das Feld nicht – der Rest muss eine gültige Besatzung bleiben.</p>
+      <p className="text-ink2">Diese Schiffe begleiten die Ertragskonvois und kämpfen gegen Kartell und Kriegsgegner; fahren mehrere Konvois zugleich, teilen sie sich nach Warenwert auf. Gegen angekündigte Kartellangriffe verteidigen sie auch das Feld, gegen Spieler nicht – der Rest muss eine gültige Besatzung bleiben.</p>
       {ids.map((id) => (
         <div key={id} className="flex items-center justify-between gap-2">
           <span>{label(id)} <span className="text-ink2">(Besatzung {garrison[id]})</span></span>
