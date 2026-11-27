@@ -225,12 +225,12 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
       body: (
         <>
           <P>Gespielt wird in <strong>Saisons</strong> von einigen Wochen. Unter Meldungen → Rangliste siehst du, welche Saison läuft und wie viele Tage bleiben. In den letzten drei Tagen erscheint zusätzlich ein Hinweis auf der Basis.</P>
-          <P>Die <strong>Rangliste</strong> zählt fünf Kategorien; in den ersten vier ergeben je 100 Ressourcen Kostenwert einen Punkt:</P>
+          <P>Die <strong>Rangliste</strong> zählt fünf Kategorien; in den ersten vier ergibt je 100 Kostenwert ein Punkt. Der Kostenwert bewertet Ressourcen zum Richtpreis der Börse (Stahl {fmtNum(b?.market?.refPrice?.stahl ?? 1, 1)}, Treibstoff {fmtNum(b?.market?.refPrice?.treibstoff ?? 1.8, 1)}, Elektronik {fmtNum(b?.market?.refPrice?.elektronik ?? 3, 1)}, Proviant {fmtNum(b?.market?.refPrice?.proviant ?? 0.6, 1)}).</P>
           <ul className="text-sm list-disc pl-5 space-y-1 mb-2 text-slate-200">
             <li><strong>Ausbau:</strong> Kosten aller gebauten Gebäudestufen.</li>
             <li><strong>Militär:</strong> Kosten deiner Einheiten und Anlagen, auch der Verbände unterwegs.</li>
-            <li><strong>Kampf:</strong> Kostenwert der gegnerischen Einheiten und Anlagen, die du im Kampf vernichtest – auch Kartell und Nester.</li>
-            <li><strong>Beute:</strong> alle Ressourcen, die du erbeutest.</li>
+            <li><strong>Kampf:</strong> Kostenwert der gegnerischen Einheiten und Anlagen, die du im Kampf vernichtest – auch Kartell und Nester. Die Abwehr von Kartell-Überfällen (auch Großflotte, Konvoi, Feld) und Kämpfe gegen Großflotte und Belagerungsring zählen nur zu {pct(b?.scoring?.npcDefenseFactor, 0.25)}.</li>
+            <li><strong>Beute:</strong> Wert aller Ressourcen, die du erbeutest.</li>
             <li><strong>Befehle:</strong> Punkte aus abgeholten Tagesbefehlen samt Serienbonus.</li>
           </ul>
           <P>Am Saisonende wird der Endstand festgehalten: Gold, Silber und Bronze für die ersten drei Plätze, dazu je eine Auszeichnung für den Besten jeder Kategorie. Jeder erhält eine Nachricht mit seinem Platz; die <strong>Ruhmeshalle</strong> zeigt alle vergangenen Saisons.</P>

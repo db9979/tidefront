@@ -99,7 +99,7 @@ Größenklassen für Verbände: **klein** bis 10 Einheiten, **mittel** bis 40, *
 - Die Vorwarnzeit gilt bei jedem Ziel neu. Wer erkannt wird, bekommt wie heute die Meldung „Aufklärer gesichtet“.
 
 ### 5.6 Satelliten (spät)
-- Neues Gebäude **Startrampe**: Voraussetzung Kommandozentrale 8, Forschungsamt 5 und Radarstation 6 (erreichbar
+- Neues Gebäude **Startrampe**: Voraussetzung Kommandozentrale 7 (v1.24, vorher 8), Forschungsamt 5 und Radarstation 6 (erreichbar
   etwa ab Tag 28–35, siehe Abschnitt 11). Kosten der Rampe Stufe 1: 3 000 Stahl, 1 000 Treibstoff, 1 000 Elektronik.
   Neuer Forschungszweig
   **Raumfahrt** mit 2 Techniken:
@@ -107,7 +107,7 @@ Größenklassen für Verbände: **klein** bis 10 Einheiten, **mittel** bis 40, *
     verdeckt.
   - **Radarsatellit** (Stufe 2): sieht durch Wolken und Nebel, aber nur Sichtung.
 - **Start** je Satellit: optisch 5 000 Stahl, 2 000 Treibstoff, 3 500 Elektronik (≈ 19 100 Stahl-Gegenwert), Radarsatellit
-  6 000 Stahl, 2 500 Treibstoff, 4 500 Elektronik (≈ 24 000). Lebensdauer **7 Tage**, höchstens
+  5 500 Stahl, 2 200 Treibstoff, 4 000 Elektronik (≈ 21 500; bis v1.23 6 000 / 2 500 / 4 500 ≈ 24 000). Lebensdauer **7 Tage**, höchstens
   **1 Satellit** je Spieler (2 mit Raumfahrt 2).
 - **Bahn:** Alle **6 h** ein Überflug über einen Nord-Süd-Streifen von **600 km** Breite. Der Streifen wandert bei jedem
   Überflug um 1 400 km nach Westen weiter. Nach etwa einem Tag ist die ganze Karte einmal erfasst. Jeder Überflug
@@ -296,7 +296,7 @@ Abweichungen (begründet):
   Radarsatellit setzt den optischen voraus. Kein vorzeitiger Abbruch; nach 7 Tagen verglüht er mit Abschlussbericht.
   Eine Überflug-Zusammenfassung gibt es nicht als Bericht je Überflug (27 je Woche wären zu viele), sondern im Lagebild
   („Zuletzt: 2 Nester, 0 Häfen, 0 Verbände, 5 unter Wolken“) und im Abschlussbericht.
-- **Startrampe:** Stufe 1 genügt für Starts; jede weitere Stufe senkt die Startkosten um 4 % (höchstens 20 %). Keine
+- **Startrampe:** Stufe 1 genügt für Starts; jede weitere Stufe senkt die Startkosten um 10 % (höchstens 30 %, also ab Stufe 4; bis v1.23 4 % / 20 %). Keine
   Stromaufnahme (im Regelwerk nicht vorgesehen).
 - **Störsender:** wirkt auf Punkte im Umkreis von 200 km (nicht auf Sensoren in der Nähe): Fremde Radarstationen und
   Posten erfassen dort nur bis Reichweite × (1 − Minderung); mehrere Störsender zusammen höchstens 50 %. Beim

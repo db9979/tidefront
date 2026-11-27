@@ -140,6 +140,10 @@ test("completeUpgrade rechnet bis zur Fertigstellung mit der alten Stufe", () =>
 test("Kommandopunkte und Missionsplätze", () => {
   assert.equal(commandPoints(makeBase(balance), balance), 60);
   assert.equal(commandPoints(makeBase(balance, { buildings: { kommandozentrale: 4 } }), balance), 180);
+  // v1.24: ab KZ 9 je Stufe 60 statt 30 (KZ 8: 300, KZ 9: 360, KZ 12: 540).
+  assert.equal(commandPoints(makeBase(balance, { buildings: { kommandozentrale: 8 } }), balance), 300);
+  assert.equal(commandPoints(makeBase(balance, { buildings: { kommandozentrale: 9 } }), balance), 360);
+  assert.equal(commandPoints(makeBase(balance, { buildings: { kommandozentrale: 12 } }), balance), 540);
   const slots = [0, 1, 2, 3, 4, 5].map((L) => missionSlots(makeBase(balance, { buildings: { hafenkommandantur: L } }), balance));
   assert.deepEqual(slots, [1, 1, 2, 2, 3, 3]);
 });

@@ -106,7 +106,9 @@ test("Funkmesstechnik und Radarstation verringern die Unsicherheit", () => {
   const best = makeBase(balance, { buildings: { radarstation: 3 }, research: { levels: { funkmesstechnik: 2 }, order: null } });
   assert.equal(forecastSkill(plain, wb), 1);
   assert.ok(Math.abs(forecastSkill(radar, wb) - 0.9) < 1e-12);
-  assert.ok(Math.abs(forecastSkill(best, wb) - 0.6) < 1e-12);
+  // v1.24: 1 − 0,20 × 2 − 0,1 = 0,5 = minFactor (vorher 0,15 je Stufe: 0,6, minFactor nie erreicht).
+  assert.ok(Math.abs(forecastSkill(best, wb) - 0.5) < 1e-12);
+  assert.equal(forecastSkill(best, wb), wb.forecast!.minFactor);
   assert.equal(forecastSkill(best, { ...wb, forecast: { ...wb.forecast!, minFactor: 0.8 } }), 0.8);
   assert.equal(forecastSkill(best, { ...wb, forecast: undefined }), 1);
   const a = stats(24, 1);
