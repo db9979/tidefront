@@ -77,6 +77,7 @@ const ERRORS: Record<string, string> = {
   admiral_name: "Diesen Namen gibt es nicht in der Liste oder er ist schon vergeben.",
   admiral_spec: "Diese Spezialisierung ist nicht wählbar.",
   admiral_rank: "Die zweite Spezialisierung gibt es erst ab Vizeadmiral.",
+  admiral_retrain_used: "Die kostenlose Umschulung ist für diesen Admiral schon verbraucht.",
   admiral_unknown: "Diesen Admiral gibt es nicht (mehr).",
   admiral_busy: "Der Admiral ist nicht bereit (unterwegs, verwundet oder gefangen).",
   admiral_not_captive: "Der Admiral ist nicht in Gefangenschaft.",

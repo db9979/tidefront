@@ -1,0 +1,1 @@
+ALTER TABLE "admiral" ADD COLUMN "retrain_free" boolean DEFAULT true NOT NULL;

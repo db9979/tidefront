@@ -39,7 +39,7 @@ export const PHASE_NAMES: readonly PhaseName[] = ["luftkampf", "luftschlag", "ub
 /**
  * Beute nach einem Sieg. Feste Beute (Piratennest) oder Anteil am ungeschützten Bestand mal
  * Wiederholungsfaktor (und bei Schwachzielen mal weakTargetLootFactor); insgesamt durch die Ladekapazität begrenzt, bei Knappheit proportional
- * gekürzt; je Ressource abgerundet. `mods.loot` (Angreifer) wirkt auf den Anteil, nicht auf feste Beute.
+ * gekürzt; je Ressource abgerundet. `mods.loot` (Angreifer) wirkt auf den Anteil, `mods.nestLoot` auf feste Beute.
  */
 export function computeLoot(
   defender: Pick<DefenderInput, "resources" | "protectedPerResource" | "fixedLoot">,
@@ -56,7 +56,7 @@ export function computeLoot(
   for (const r of balance.resources) {
     let amount = 0;
     if (defender.fixedLoot !== undefined) {
-      amount = defender.fixedLoot[r] ?? 0;
+      amount = (defender.fixedLoot[r] ?? 0) * modValue(mods, "nestLoot");
     } else {
       const unprotected = Math.max(0, (defender.resources?.[r] ?? 0) - (defender.protectedPerResource ?? 0));
       amount = unprotected * balance.loot.maxShareOfUnprotected * modValue(mods, "loot") * repeat;

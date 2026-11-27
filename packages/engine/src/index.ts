@@ -61,7 +61,7 @@ export { ensureStartNest, nearestOpenLevel1, reachableShoreSea, START_NEST_KM } 
 export { spyPreview, spyLaunch, intelView, intelOwnView, type SpyInput } from "./espionage.ts";
 export { gridView, weatherModifiers, missionWeather, battleWeather } from "./weather.ts";
 export * from "./bug-report.ts";
-export { appointAdmiral, chooseAdmiralSpec, stationAdmiral, ransomAdmiral, dismissAdmiral, admiralView, admiralSpecIds, type AdmiralInfo } from "./admirals.ts"; // Admirale
+export { appointAdmiral, chooseAdmiralSpec, retrainAdmiral, stationAdmiral, ransomAdmiral, dismissAdmiral, admiralView, admiralSpecIds, type AdmiralInfo } from "./admirals.ts"; // Admirale
 // Erfolge (Abzeichen) und Wochenziele; recordAchievement ist die Erweiterungsstelle für neue Ereignisse.
 export { recordAchievement, flushAchievementNotices, topBadges, type RecordOptions } from "./achievements.ts";
 export { achievementsView, claimAchievement, weeklyView, claimWeekly } from "./achievements-view.ts";

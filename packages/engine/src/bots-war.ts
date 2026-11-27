@@ -36,6 +36,10 @@ export interface TurnCtx {
   log: string[];
   key: (what: string) => string;
   state: BotState;
+  /** Admirale (bots-admiral.ts): bereiter Admiral für den nächsten Überfall aus seinem Hafen. */
+  admiral?: { id: number; baseId: number; mods: Modifiers };
+  /** Admirale: Kredite, die die Börse für die Ernennung zurückhält. */
+  creditReserve?: number;
 }
 
 /** Einheiten, die nicht kämpfen sollen. */
@@ -114,10 +118,14 @@ export function probe(attacker: AttackerInput, defender: DefenderInput, runs: nu
 }
 
 async function tryLaunch(c: TurnCtx, input: LaunchInput, text: string): Promise<boolean> {
+  // Admirale: ein Überfall aus dem Hafen des bereiten Admirals nimmt ihn mit (Probekampf rechnete ihn schon ein).
+  const adm = input.type === "ueberfall" && c.admiral && c.admiral.baseId === input.baseId ? c.admiral : null;
+  if (adm) input = { ...input, admiralId: adm.id };
   const p = await missionPreview(c.engine, c.bot.id, input);
   if (!p.ok) return false;
   const r = await launchMission(c.engine, c.bot.id, c.key(input.type), input);
-  if (r.ok) c.log.push(text);
+  if (r.ok) c.log.push(adm ? `${text} Mit Admiral.` : text);
+  if (r.ok && adm) c.admiral = undefined;
   return r.ok;
 }
 
