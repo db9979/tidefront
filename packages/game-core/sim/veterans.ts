@@ -24,7 +24,8 @@ const DAY_H = 24;
 const NEST_HOUR = 12;
 const NEST_TRIP_H = 20;
 const TYPES = ["schuetzen", "korvette", "zerstoerer", "jagdbomber", "kampfpanzer"];
-const MARKS = [7, 14, 21, 28];
+let SEASON = 28;
+let MARKS = [7, 14, 21, 28];
 
 type Vet = Record<string, number>;
 interface Scenario {
@@ -70,12 +71,12 @@ function season(balance: Balance, snaps: BotSnapshot[], best: number[], sc: Scen
   const cfg = balance.veterans!;
   const vet: Vet = {};
   const marks: Vet[] = [];
-  const raids = raidHours(balance, 28);
+  const raids = raidHours(balance, SEASON);
   let last: Counts = {};
   let awayUntil = -1;
   let k = 0;
   const army = (h: number) => snaps[Math.min(snaps.length - 1, Math.floor(h / DAY_H))].base;
-  for (let h = 0; h < 28 * DAY_H; h++) {
+  for (let h = 0; h < SEASON * DAY_H; h++) {
     const base = army(h);
     grow(vet, last, base.units);
     last = { ...base.units };
@@ -120,9 +121,11 @@ function bestNests(balance: Balance, snaps: BotSnapshot[]): number[] {
   return best;
 }
 
-export function runVeteranSim(balance: Balance): void {
+export function runVeteranSim(balance: Balance, days = 28): void {
+  SEASON = days;
+  MARKS = Array.from({ length: days / 7 }, (_, i) => 7 * (i + 1));
   if (!balance.veterans) return;
-  const snaps = runBot(balance, 28, Array.from({ length: 28 }, (_, i) => i + 1));
+  const snaps = runBot(balance, SEASON, Array.from({ length: SEASON }, (_, i) => i + 1));
   const best = bestNests(balance, snaps);
   const scenarios: Scenario[] = [
     { label: "nur Kartell-Abwehr", nestDay: () => false },
@@ -137,8 +140,8 @@ export function runVeteranSim(balance: Balance): void {
     ["Gegenprobe Schwellen 10/30/60", { ...v, ranks: v.ranks.map((r, i) => ({ ...r, minXp: [0, 10, 30, 60][i] ?? r.minXp })) }],
   ];
   console.log(`\nVeteranen über eine Saison (v1.13): Ø Erfahrung (Rang) je Typ an Tag ${MARKS.join(" / ")}, ${SEEDS} Seeds`);
-  console.log(`  Nest: höchste Stufe mit ≥ 70 % (Tag 1–28: ${best.slice(1).join("")}), Rückkehr nach ${NEST_TRIP_H} h; Kartell alle 18 h ab Tag ` +
-    `${balance.protection.beginnerDays + 1} (${raidHours(balance, 28).length} Überfälle, ohne Nachtschild 22–6 Uhr), nur wenn der Verband daheim ist`);
+  console.log(`  Nest: höchste Stufe mit ≥ 70 % (Tag 1–${SEASON}: ${best.slice(1).join("")}), Rückkehr nach ${NEST_TRIP_H} h; Kartell alle 18 h ab Tag ` +
+    `${balance.protection.beginnerDays + 1} (${raidHours(balance, SEASON).length} Überfälle, ohne Nachtschild 22–6 Uhr), nur wenn der Verband daheim ist`);
   const short = (xp: number, b: Balance) => `${xp.toFixed(0).padStart(3)} ${(veteranRank(xp, b)?.name ?? "-").slice(0, 3)}`;
   for (const [vLabel, cfg] of all) {
     const b: Balance = { ...balance, veterans: cfg };

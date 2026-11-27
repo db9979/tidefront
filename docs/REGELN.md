@@ -187,8 +187,10 @@ Nach dem Kampf:
 ## Freibeuter-Kartell
 
 - Nester der Stufen 1 bis 5 mit fester Besatzung und Beute (`pirates.nestLevels`), neu besetzt nach `nestRespawnHours`.
-  Ausgelegt auf eine Saison von 28 Tagen: Ein bezahlbarer Verband schlägt Stufe 1 ab Tag 1–2, Stufe 2 ab Tag 3–5,
-  Stufe 3 um Tag 7–10, Stufe 4 um Tag 14–18 und Stufe 5 um Tag 21–28 mit mindestens 70 %. Die Beute einer Stufe passt
+  Fahrplan (ausgelegt auf die ersten 28 Tage der Saison, die seit `SEASON_DAYS` = 42 sechs Wochen dauert): Ein bezahlbarer
+  Verband schlägt Stufe 1 ab Tag 1–2, Stufe 2 ab Tag 3–5, Stufe 3 um Tag 7–10, Stufe 4 um Tag 14–18 und Stufe 5 um
+  Tag 21–28 mit mindestens 70 %. In den Wochen 5 und 6 bleibt Stufe 5 das höchste Nest; Ziele sind dann Weltereignisse
+  (werden mit dem Saisonfortschritt stärker und reicher), Felder, der 3. Hafen und andere Spieler. Die Beute einer Stufe passt
   ungefähr in die Ladung der Landungsschiffe eines solchen Verbands.
 - Überfälle auf Spieler alle `raidIntervalHours` je Stützpunkt. Stärke (seit v1.1):
   - Verteidigungs-Lebenspunkte = Lebenspunkte aller Schiffe (auch U-Boote), Bodentruppen und Anlagen daheim (Flugzeuge zählen nicht).

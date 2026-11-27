@@ -775,3 +775,39 @@ erweiterte Würfel-Varianten in `sim/luck.ts`). Kartell: 400 Seeds je Fall, Ress
    Bedrohung sind die Verluste je Überfall (Bot Tag 7 Ø 9 288 bleibend). Soll das Kartell wieder öfter siegen, ist
    `raidStrengthShareOfDefense` die Stellschraube (nicht die Schiffe). Die Großflotte (Weltereignis) bemisst ihre Stärke
    weiter ungewichtet (`defenseHp`), Schiffe zählen dort voll.
+
+8. **Saison 42 statt 28 Tage** (`SEASON_DAYS`, Vorgabe in `packages/engine/src/season.ts`). Simulation `sim/season42.ts`
+   und Veteranen über 42 Tage (Balance v1.13, 200 Seeds je Kampffall). Bot mit 45 % Rüstung / Wirtschafts-Bot:
+
+| Tag | KZ | HK | Gebäudestufen | Produktion/h | Lager (höchste Ressource) | Ausgaben der Woche Ausbau / Rüstung | Felder | Häfen |
+|---|---|---|---|---|---|---|---|---|
+| 28 | 7 / 8 | 7 / 8 | 101 / 112 | 1127 / 1343 | 31 / 55 % | 99 651 / 8333 · 121 997 | 2 / 3 | 2 / 2 |
+| 35 | 8 / 8 | 8 / 9 | 111 / 120 | 1172 / 1436 | 28 / 50 % | 111 963 / 8144 · 122 333 | 3 / 3 | 2 / 2 |
+| 42 | 8 / 9 | 9 / 10 | 120 / 128 | 1328 / 1645 | 25 / 64 % | 132 367 / 0 · 157 938 | 3 / 3 | 2 / 3 |
+
+   - **Kein wirtschaftlicher Stillstand:** Die Ausbauausgaben je Woche steigen bis Tag 42 weiter (Bot 99 k → 132 k), das
+     Lager läuft nicht über (höchstens 64 %). **Stillstand gibt es militärisch:** Die Kommandopunkte (KZ 8: 300) sind ab
+     etwa Tag 35 voll, die Rüstungsausgaben fallen von 26,8 k (Woche 1) auf 8 k (Woche 4–5) und 0 (Woche 6); der Verband
+     an Tag 35 und 42 ist gleich. Nest 5 fällt ab Tag 21 zu 99–100 %; seine Beute (33 200) sinkt von 37 h auf 25 h
+     Produktion (Netto 13,6 k → 20 k je Angriff). Das Kartell siegt nie (0 %), kostet aber 20–24 h Produktion je Überfall.
+   - **3. Hafen und Felder:** Kommandozentrale 5 an Tag 16 (Wirtschafts-Bot Tag 10), Kommandozentrale 9 nur der
+     Wirtschafts-Bot an Tag 37 (Rüstungs-Bot erreicht bis Tag 42 nur 8). Felder: 2 ab Hafenkommandantur 4, 3 ab
+     Hafenkommandantur 8 (Tag 30 bzw. 23), 4 Felder (Stufe 12) erreicht keiner. Der 3. Hafen bleibt wie in v1.12 gewollt
+     ein Ziel für gezielten Ausbau (nach 3 Tagen bezahlt, K3) – **nicht geändert**; Option, falls er häufiger kommen soll:
+     `expansion.unlockCommandLevels` [5, 8].
+   - **Saisonfortschritt skaliert sinnvoll:** `seasonGrowth`, `lootSeasonGrowth` und die Großflotten-/Belagerungsbeute
+     rechnen mit dem Anteil der Saison (0 … 1), nicht mit Tagen; sie steigen über 42 Tage langsamer, enden aber gleich
+     (×2,0, Schatzschiff 42 750). Gemessen an der Produktion des Bots bleibt die Schatzschiff-Beute über die ganze Saison
+     bei 30–35 h (28-Tage-Saison: 38–41 h), Stärken folgen ohnehin der Verteidigung der Ziele. Die Zahl der Ereignisse
+     wächst mit der Länge (alle 48–96 h). Börse `seasonEnd` (letzte 7 Tage, absolut) passt auch für 6 Wochen.
+     **Nicht geändert.**
+   - **Veteranen und Admirale:** Mit 42 Tagen erreichen aktive Spieler (Nest täglich) Elite bei Zerstörern (ab Tag 28)
+     und Panzern (Tag 42: 90), passive bleiben „Erprobt“ (Schützen 37, Panzer 39 an Tag 42). Ein Admiral mit täglichem
+     Nestangriff ab Tag 10 wird an Tag 16 Admiral (700) – schon in 28 Tagen so; die zusätzlichen Wochen ändern das nicht.
+     **Nicht geändert.**
+   - **Nest 6:** Nötig wäre ein Ziel für die Wochen 5–6, denn ab Tag 28 gibt es kein schwereres Nest. Gerechnet (nicht
+     umgesetzt): Nest 5 × 1,3 (Besatzung, Anlagen, Beute) schlägt der Bot-Verband an Tag 28 / 35 / 42 zu 25 / 82 / 82 %,
+     × 1,4 zu 4 / 62 / 62 %, × 1,2 zu 82 / 100 / 100 %. Ein Nest 6 ≈ Nest 5 × 1,3–1,4 passte ins Fenster Tag 35–42. Es
+     ist aber mehr als ein Balance-Wert: Die Nestplätze und ihre Stufen erzeugt `@tidefront/world` (`nestSites`), der
+     Server legt sie nur beim Seed an. **Nicht umgesetzt** (kein neues System in diesem Auftrag); bis dahin sind
+     Weltereignisse, Felder, 3. Hafen und Spieler das Spätspiel. Balance bleibt **v1.13**.
