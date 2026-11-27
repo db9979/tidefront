@@ -25,6 +25,7 @@ import { UpdateNotices } from "./components/Changelog.tsx";
 import { TickerBar, useTickerPos } from "./components/market/TickerBar.tsx";
 import { useGuide, type GuideAction } from "./components/Guide.tsx";
 import { useDaily } from "./components/Daily.tsx";
+import { useLageBadge } from "./components/lage/LageTab.tsx"; // Lagezentrum: Zahl Dringendes an „Meldungen“
 import { parseOpenUrl, type OpenTarget } from "./lib/push.ts";
 import { usePlanRequests, type PlanPreset } from "./lib/plan-request.ts";
 import { initActiveBase, isBaseQueryKey, isNoBase, resetActiveBase, setActiveBase, useActiveBaseId } from "./lib/active-base.ts";
@@ -107,6 +108,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const guide = useGuide(hasBase);
   // Abholbereit: Tagesbefehle und Auftragsbuch zusammen an „Basis“.
   const claimable = (daily.data?.claimable ?? 0) + (guide.data?.claimable ?? 0);
+  const lageBadge = useLageBadge(hasBase, claimable);
   useLive(loggedIn);
   const now = useNow();
   // Ziel aus einer Benachrichtigung (?tab=…, ?view=…) beim Start und per Nachricht vom Service Worker.
@@ -130,7 +132,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const [helpKey, setHelpKey] = useState(0);
   const [sheet, setSheet] = useState<string | null>(null);
   const [seen, setSeen] = useState(() => initialSeen(playerId));
-  const [sub, setSub] = useState<MeldungenTab>("berichte");
+  const [sub, setSub] = useState<MeldungenTab>(() => (opened.report !== undefined ? "berichte" : "lage")); // Lagezentrum ist die Startseite; ?bericht= öffnet den Bericht
   // „Was hilft?“: Zähler je Sprung (baut Truppen/Börse mit dem gewählten Unterreiter neu auf), Ressource für die Börse.
   const [navSeq, setNavSeq] = useState(0);
   const [marketRes, setMarketRes] = useState<string | undefined>(undefined);
@@ -210,8 +212,8 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
     onLoggedOut();
   };
   const go = (t: Tab) => {
-    // Meldungen öffnen dort, wo Neues liegt.
-    if (t === "berichte" && tab !== "berichte") setSub(unread === 0 && unreadMsgs > 0 ? "nachrichten" : "berichte");
+    // Meldungen öffnen im Lagezentrum (dort stehen auch neue Berichte und Nachrichten).
+    if (t === "berichte" && tab !== "berichte") setSub("lage");
     setPlan(null);
     setHelp(false);
     setHelpView(null);
@@ -278,7 +280,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   ) : tab === "truppen" ? (
     <TroopsScreen key={`${b.id}:${navSeq}`} base={b} onResearch={openResearch} onPlan={() => openPlan(null)} onShowOnMap={showOnMap} />
   ) : tab === "berichte" ? (
-    <MeldungenScreen sub={sub} setSub={setSub} unread={{ berichte: unread, nachrichten: unreadMsgs }} onShowOnMap={showOnMap} />
+    <MeldungenScreen sub={sub} setSub={setSub} unread={{ berichte: unread, nachrichten: unreadMsgs }} urgent={lageBadge.count} seenReport={seen} onShowOnMap={showOnMap} />
   ) : (
     <MarketScreen key={`${b.id}:${navSeq}`} base={b} initialResource={marketRes} />
   );
@@ -314,6 +316,9 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
               <span className="mt-0.5 whitespace-nowrap">{t.label}</span>
               {t.id === "berichte" && unread + unreadMsgs > 0 && (
                 <span className="absolute top-1 right-[18%] min-w-5 h-5 px-1 rounded-full bg-siegel text-white text-[11px] mono grid place-items-center">{unread + unreadMsgs}</span>
+              )}
+              {t.id === "berichte" && lageBadge.count > 0 && (
+                <span data-testid="lage-badge" className={`absolute top-1 left-[18%] min-w-5 h-5 px-1 rounded-full ${lageBadge.attack ? "bg-siegel pulse" : "bg-messing"} text-white text-[11px] mono grid place-items-center`} title="Dringend in der Lage">{lageBadge.count}</span>
               )}
               {t.id === "basis" && claimable > 0 && (
                 <span className="absolute top-1 left-[18%] min-w-5 h-5 px-1 rounded-full bg-moos text-white text-[11px] mono grid place-items-center" title="Belohnung abholbereit">{claimable}</span>

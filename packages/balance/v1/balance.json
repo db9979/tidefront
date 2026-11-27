@@ -149,6 +149,7 @@
     "slippageTolerance": 0.01,
     "tradesPerMinute": 10,
     "convoySpeedKmh": 45,
+    "deliveryHours": 4,
     "news": {
       "maxTotal": 0.25,
       "maxChangePerHour": 0.05,

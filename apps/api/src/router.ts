@@ -54,6 +54,7 @@ import { fieldsRouter } from "./routers/fields.ts"; // Felder
 import { botsRouter } from "./routers/bots.ts"; // KI-Spieler (Verwaltung)
 import { powerRouter } from "./routers/power.ts"; // Seekabel (v1.21)
 import { intelRouter } from "./routers/intel.ts"; // Lagebild Stufe 2
+import { lageRouter } from "./routers/lage.ts"; // Lagezentrum (Meldungen → Lage)
 
 export type { Ctx };
 
@@ -234,6 +235,7 @@ export const appRouter = t.router({
   fields: fieldsRouter, // Felder
   power: powerRouter, // Seekabel / Stromverbund (v1.21)
   intel: intelRouter, // Lagebild Stufe 2: Patrouille, Kampagne, Radarposten, Übersicht
+  lage: lageRouter, // Lagezentrum: alles Anstehende aller Häfen, Zahl am Navigationszeichen
 });
 
 export type AppRouter = typeof appRouter;

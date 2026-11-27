@@ -16,6 +16,8 @@ export type MarketCfg = {
   ceilFactor: number;
   reversionHalfLifeHours: number;
   convoySpeedKmh: number;
+  /** Feste Lieferzeit der Börsenkäufe in Stunden (game-core market/delivery.ts). */
+  deliveryHours?: number;
 };
 
 export const HOUR = 3_600_000;

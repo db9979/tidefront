@@ -30,11 +30,13 @@ test("Börse: verkaufen und kaufen", async ({ page, player, seed }) => {
   await page.locator("#tf-qty").fill("100");
   const buy = page.getByRole("button", { name: /^Kaufen · / });
   await expect(buy).toBeEnabled();
+  await expect(page.locator("[data-delivery-in]")).toHaveText("4 h"); // feste Lieferzeit der Börse
   await buy.click();
   await expect(page.getByRole("status").filter({ hasText: "Gekauft: 100 Stahl" })).toBeVisible();
   const [d] = await seed.sql`select id, status, arrive_at, depart_at from delivery where player_id = ${player.id}`;
   expect(d, JSON.stringify(await seed.sql`select * from delivery where player_id = ${player.id}`)).toBeTruthy();
   expect(d.status).toBe("underway");
+  expect(new Date(d.arrive_at).getTime() - new Date(d.depart_at).getTime()).toBe(4 * 3600_000);
   await expectNoHorizontalOverflow(page, "Börse nach Kauf");
 
   // Konvoi vorspulen

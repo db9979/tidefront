@@ -7,10 +7,12 @@ test("Meldungen: alle Unterreiter", async ({ page, player }) => {
   await page.goto("/");
   await page.getByRole("navigation").getByRole("button", { name: /^Meldungen/ }).click();
   const tabs = page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab");
-  await expect(tabs).toHaveCount(6);
-  for (const name of ["Berichte", "Lagebild", "Bilanz", "Erfolge", "Nachrichten", "Rangliste"]) {
-    await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}`) }).click();
-    await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}`) })).toHaveAttribute("aria-selected", "true");
+  await expect(tabs).toHaveCount(7);
+  // Lagezentrum ist die Startseite; „Lage“ nicht mit „Lagebild“ verwechseln (Zahl am Reiter erlaubt).
+  await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Lage\s*\d*$/ })).toHaveAttribute("aria-selected", "true");
+  for (const name of ["Lage", "Berichte", "Lagebild", "Bilanz", "Erfolge", "Nachrichten", "Rangliste"]) {
+    await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}\\s*\\d*$`) }).click();
+    await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}\\s*\\d*$`) })).toHaveAttribute("aria-selected", "true");
     await expectNoHorizontalOverflow(page, `Meldungen · ${name}`);
   }
   // Rangliste zeigt den eigenen Spieler; Inhalt liegt im zugehörigen Reiterfeld.

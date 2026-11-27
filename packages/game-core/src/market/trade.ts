@@ -27,6 +27,7 @@ import {
 } from "./pricing.ts";
 import { buildTradeLedger } from "./ledger.ts";
 import { addToWindow, tradeWindow } from "./window.ts";
+import { deliveryTravelMs } from "./delivery.ts";
 
 const MS_PER_MINUTE = 60_000;
 const MS_PER_HOUR = 3_600_000;
@@ -329,14 +330,13 @@ export function executeTrade(
   let delivery: Delivery | null = null;
   if (side === "buy") {
     newCreditsCents = creditsCents - built.totalCents;
-    const distanceKm = context.distanceToPortKm > 0 ? context.distanceToPortKm : 0;
     delivery = {
       id: context.tradeId,
       playerId: context.playerId,
       resource,
       qty,
       departMs: nowMs,
-      arriveMs: nowMs + Math.ceil((distanceKm / cfg.convoySpeedKmh) * MS_PER_HOUR),
+      arriveMs: nowMs + deliveryTravelMs(cfg, context.distanceToPortKm), // feste Lieferzeit (delivery.ts)
     };
   } else {
     newCreditsCents = creditsCents + built.totalCents;

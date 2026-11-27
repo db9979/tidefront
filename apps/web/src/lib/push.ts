@@ -130,3 +130,7 @@ export function peekOpenReport(): { id: number; sim: boolean } | null {
 export function clearOpenReport(): void {
   openReport = undefined;
 }
+/** Lagezentrum: diesen Bericht beim nächsten Öffnen der Berichte zeigen. */
+export function setOpenReport(id: number): void {
+  openReport = { id, sim: false };
+}

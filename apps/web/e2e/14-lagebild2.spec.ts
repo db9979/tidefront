@@ -160,6 +160,7 @@ test("Aufklärungskampagne: zwei Nester nacheinander, je ein Lagebild", async ({
       await until(async () => (await seed.sql`select id from battle_report where attacker_player_id = ${player.id} and kind = 'aufklaerung' and nest_id = ${nestId}`)[0], `Lagebild Nest ${nestId}`);
     }
     await page.getByRole("navigation").getByRole("button", { name: "Meldungen" }).click();
+    await page.getByRole("tab", { name: /^Berichte/ }).click(); // Meldungen öffnen im Lagezentrum
     await expect(page.getByText(/^Aufklärung: Piratennest Stufe 2/)).toHaveCount(2);
   } finally {
     await seed.sql`delete from intel_sighting where kind = 'nest' and object_id in ${seed.sql(ids)}`;

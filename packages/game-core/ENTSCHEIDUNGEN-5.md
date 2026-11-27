@@ -429,3 +429,36 @@ Nutzerentscheid (6 Punkte). Regeln: `docs/REGELN-SEE.md` (Abschnitt Konvois), `d
     Nest 1–4, Ziel 0,7–0,99: 40–400 ms, 2.000–14.000 Kämpfe; gegen naives Hochskalieren des Bestands 4–8-mal günstiger.
     „Ausbilden“: `train-request.ts` legt die Mengen 2 min bereit, `TrainRow` übernimmt sie, Sprung über
     `useNav().go({ to: "troops", seg: "ausbilden" })`.
+
+## Lagezentrum (Meldungen → Lage) und feste Lieferzeit der Börse (lag)
+
+- **Lagezentrum, Server statt Client-Zusammenbau.** Erster Reiter „Lage“ in Meldungen (Startseite; `?bericht=` öffnet
+  weiter die Berichte). Gewählt: eine schlanke Abfrage `lage.get` (engine `lage.ts`, `lage-wait.ts`, `lage-types.ts`),
+  weil der Client sonst `base.get` für jeden Hafen bräuchte (je Abruf Settle, Modifikatoren, Gebäude-/Einheitenlisten,
+  Lagebild, Stationierte …) – das Lagezentrum soll aber alle Häfen zeigen. `lage.get` liest nur gespeicherte Zeilen:
+  Häfen (Bau-, Ausbildungs-, Forschungsschlange, Nachtschild, Satelliten), eigene Missionen, eigene Konvois (Empfänger
+  oder Absender, Transporte nur als Verband), Lieferungen ohne Konvoi, laufende Verträge, offene Weltereignisse,
+  Saisonende, Zählungen abholbarer Erfolge/Wochenziele, eigene Aufklärungs-/Erkundungsberichte der letzten
+  `intel.staleHours`. Teuer ist nur `modsOf` je Hafen (Radar-Vorwarnzeit, Lager). Kein `processDue`, keine Karte.
+  Gemessen (Mac, Test mit 2 Häfen, 13 Zeilen): ~12 ms; auf dem Pi grob ×5–10. Tagesbefehle, Auftragsbuch, ungelesene
+  Nachrichten und die letzten 5 Berichte („Zuletzt passiert“) nimmt der Client aus ohnehin geladenen Abfragen.
+- **Gruppen:** „Gleich / heute“ (Termine ≤ 24 h, erkannte Angriffe rot ganz oben mit Erkennungszeit und Vorwarnzeit),
+  „Unterwegs“ (Verbände, Konvois mit Fortschrittsbalken), „Wartet auf dich“ (Belohnungen, leere Bauschlange, freie
+  Ausbildungsplätze Werft/Kaserne/Flugfeld, freie Missionsplätze, Lager ≥ 90 %, Versorgungsmangel,
+  Aufholhilfe-Gutschrift, Lagebilder fremder Häfen mit ≥ 3.000 plünderbarem Warenwert, die in ≤ 6 h veralten),
+  „Zuletzt passiert“. Jede Zeile trägt ein Sprungziel (Karte mit Mission/Konvoi/Ereignis, Gebäudeblatt, Basis,
+  Truppen-Reiter, Forschung, Börse → Verträge, Bericht, Erfolge); vor dem Sprung wird der betroffene Hafen aktiv.
+  Live über `lib/live.ts` (lage.* mit base/missions/reports/market/season), Countdown je Sekunde.
+- **Zahl am Navigationszeichen „Meldungen“** (links, Messing; rot pulsierend bei Angriff): nur Dringendes –
+  erkannte Angriffe + Nachfristen + Häfen mit leerer Bauschlange + abholbare Belohnungen (Erfolge, Wochenziele vom
+  Server; Tagesbefehle, Auftragsbuch vom Client). Eigene Kurzabfrage `lage.badge` (nur Häfen, Modifikatoren, Angriffe,
+  Verträge, zwei Zählungen), damit nicht bei jeder Meldung die ganze Lage gerechnet wird. Ungelesene Berichte/Nachrichten
+  bleiben die rote Zahl rechts. Die Konvoi-Zeile der Basis-Versorgung bleibt unverändert.
+- **Feste Lieferzeit der Börse (Nutzerentscheid, Fairness):** `market.deliveryHours: 4` – jeder Börsenkauf kommt nach
+  genau 4 h an (game-core `market/delivery.ts`: `deliveryTravelMs`, `deliveryRiskKm`); auch am Hafen eines
+  Handelshafens. Der Konvoi fährt den Seeweg in dieser Zeit (Position = Anteil der Fahrzeit, also passend schneller oder
+  langsamer). Kartellrisiko mit fester Strecke `deliveryHours × convoySpeedKmh` = 180 km statt Entfernung (über
+  `cartelMinDistanceKm`): erwarteter Verlust ohne Geleit 0,7 % (Warenwert 2.000) / 0,9 % (5.000) / 1,2 % (10.000) /
+  1,8 % (20.000), Obergrenze 8 % × 30 % = 2,4 % erst ab ~30.500 Warenwert (wie bisher die Obergrenze). Lieferverträge
+  (auch Albers/Falkenberg) unverändert, laufende Lieferungen unverändert (gespeicherte Ankunft). Ohne `deliveryHours`
+  gilt die alte Regel. Balance-Version nicht gehoben (Integrator).

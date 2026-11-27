@@ -6,3 +6,4 @@ export * from "./window.ts";
 export * from "./valuation.ts";
 export * from "./news.ts";
 export * from "./contracts.ts";
+export * from "./delivery.ts";

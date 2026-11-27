@@ -77,10 +77,12 @@ export async function createConvoy(
   v: {
     kind: ConvoyKind; deliveryId?: string; missionId?: number; senderId: number | null; recipientId: number; recipientBaseId: number; // Felder: "feld"
     from: { col: number; row: number }; to: { col: number; row: number }; cargo: ResourceMap; escort?: Counts; departMs: number; arriveMs: number;
+    /** Strecke fürs Kartellrisiko (Börse mit fester Lieferzeit, market-convoy.ts); fehlt: Luftlinie Start–Ziel. */
+    riskKm?: number;
   },
 ): Promise<number> {
   const c = convoysOf(balance);
-  const dist = distanceKm(hexCenter(v.from.col, v.from.row), hexCenter(v.to.col, v.to.row));
+  const dist = v.riskKm ?? distanceKm(hexCenter(v.from.col, v.from.row), hexCenter(v.to.col, v.to.row));
   // Börse und Lieferverträge: geringere Kartellchance (marketChanceFactor/marketMaxChance, docs/REGELN-SEE.md).
   const roll = c ? cartelRoll(randomSeed(), dist, cargoValue(v.cargo, balance), balance, MARKET_KINDS.has(v.kind)) : null;
   const cartelAt = roll?.hit ? Math.round(v.departMs + (v.arriveMs - v.departMs) * roll.atShare) : null;

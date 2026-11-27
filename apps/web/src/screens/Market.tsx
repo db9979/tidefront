@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { market } from "@tidefront/game-core"; // feste Lieferzeit der Börsenkäufe
 import { trpc, type BaseData } from "../lib/trpc.ts";
 import { label } from "../lib/names.ts";
 import { Icon } from "../icons.tsx";
@@ -52,7 +53,7 @@ export function MarketScreen({ base, initialResource }: { base: BaseData; initia
   const siege = !!we.data?.ownSiege;
   const attack = base.incoming.some((i) => i.type === "ueberfall" || i.type === "kartell");
   const port = base.market.port.name;
-  const travelMs = Number.isFinite(base.market.port.distanceKm) && cfg.convoySpeedKmh > 0 ? (base.market.port.distanceKm / cfg.convoySpeedKmh) * 3_600_000 : null;
+  const travelMs = cfg.deliveryHours || (Number.isFinite(base.market.port.distanceKm) && cfg.convoySpeedKmh > 0) ? market.deliveryTravelMs(cfg, base.market.port.distanceKm) : null; // feste Lieferzeit
   const credits = m.data.credits;
   const sel = m.data.resources.find((r) => r.id === resource) ?? m.data.resources[0];
   const halted = m.data.resources.filter((r) => r.haltedUntilMs > now);

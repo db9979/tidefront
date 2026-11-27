@@ -42,6 +42,8 @@ export interface MarketBalance {
     slippageTolerance: number;
     tradesPerMinute: number;
     convoySpeedKmh: number;
+    /** Feste Lieferzeit jedes Börsenkaufs in Stunden (seit 0.35, delivery.ts); fehlt: nach Seeweg und convoySpeedKmh. */
+    deliveryHours?: number;
     /** Marktnachrichten (seit v1.5); fehlt der Eintrag, gibt es keine. */
     news?: MarketNewsBalance;
     /** Lieferverträge (seit v1.31, contracts.ts); fehlt der Eintrag, gibt es keine. */

@@ -46,8 +46,8 @@ export function Slip({ q, cfg, nowMs, ctx, label }: { q: Quote; cfg: MarketCfg; 
       <div className="mt-2 pt-2 border-t border-dashed border-rule text-xs flex items-start gap-2">
         {buy ? (
           <span>
-            Lieferung per Konvoi aus <strong>{ctx.port}</strong>
-            {ctx.travelMs !== null && <> – Ankunft <span className="mono font-semibold">{when(nowMs + ctx.travelMs, nowMs)}</span> (in {fmtDuration(ctx.travelMs)})</>}.
+            Lieferung{ctx.travelMs !== null && <> in <span className="mono font-semibold" data-delivery-in>{fmtDuration(ctx.travelMs).replace(" 00 min", "")}</span></>} per Konvoi aus <strong>{ctx.port}</strong>
+            {ctx.travelMs !== null && <> – Ankunft <span className="mono font-semibold">{when(nowMs + ctx.travelMs, nowMs)}</span></>}.
           </span>
         ) : (
           <span>Ware wird sofort abgezogen, Kredite sofort gutgeschrieben.</span>

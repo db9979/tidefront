@@ -598,7 +598,7 @@ test("bought goods arrive as a delivery, not in stock; sold goods leave at once"
     resource: "elektronik",
     qty: 200,
     departMs: T0,
-    arriveMs: T0 + Math.ceil((90 / M.convoySpeedKmh) * HOUR),
+    arriveMs: T0 + (M.deliveryHours ? M.deliveryHours * HOUR : Math.ceil((90 / M.convoySpeedKmh) * HOUR)),
   });
   assert.ok(buy.delivery !== null && buy.delivery.arriveMs > T0);
 
@@ -610,7 +610,7 @@ test("bought goods arrive as a delivery, not in stock; sold goods leave at once"
 
   const atPort = trade(market, trader, "buy", "elektronik", 1, T0, makeContext({ distanceToPortKm: 0 }));
   expectOk(atPort);
-  assert.equal(atPort.delivery?.arriveMs, T0);
+  assert.equal(atPort.delivery?.arriveMs, T0 + (M.deliveryHours ? M.deliveryHours * HOUR : 0)); // feste Lieferzeit: auch am Hafen
 });
 
 test("ledger: every successful trade sums to zero per currency and resource", () => {

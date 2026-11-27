@@ -7,7 +7,7 @@ export type NavTarget =
   | { to: "building"; id: string } // Basis mit Gebäude-Blatt
   | { to: "base" } // Basis (z. B. Schutz und Nachtschild)
   | { to: "research" }
-  | { to: "market"; resource?: string; seg?: "handel" | "spieler" }
+  | { to: "market"; resource?: string; seg?: "handel" | "spieler" | "vertraege" } // vertraege: Lagezentrum
   | { to: "troops"; seg: "einsatz" | "ausbilden" | "abwehr" }
   | { to: "map" }
   | { to: "meldungen"; sub: "berichte" | "erfolge" | "nachrichten" | "rangliste" | "allianz" | "lagebild" };

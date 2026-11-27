@@ -84,7 +84,7 @@ Beide sind gewöhnliche Schiffe (Kommandopunkte, Unterhalt, Treibstoff, Kampf) u
   Absender „Handelshafen …“) und **Lieferverträge** (`vertrag`, vom Hafen des Verkäufers – auch Albers und Falkenberg –
   zum Hafen des Käufers). Alle fahren die Route über Wasser (Seewege); Position = Anteil der Fahrzeit auf der Route
   (game-core `convoyPosition`, Server und Karte gleich), Abfangpunkt entlang der Route. Ankunftszeiten wie bisher
-  (Börse: Seeweg / `market.convoySpeedKmh`; Verträge: zur Fälligkeit). Lieferungen ohne Konvoi aus älteren Ständen
+  (Börse: fest `market.deliveryHours` = 4 h, siehe unten; Verträge: zur Fälligkeit). Lieferungen ohne Konvoi aus älteren Ständen
   (laufende Börsenlieferungen, alte Verträge mit `delivery = abstrakt`) kommen unverändert an.
 - **Kartell:** Beim Auslaufen wird einmal gewürfelt. Chance = min(`cartelMaxChance`, `cartelBaseChance`
   + `cartelChancePer100Km` × Strecke/100 + `cartelChancePer1000Value` × Warenwert/1000) zum Börsenrichtwert, unter
@@ -95,6 +95,15 @@ Beide sind gewöhnliche Schiffe (Kommandopunkte, Unterhalt, Treibstoff, Kampf) u
   (2 % + 4 % + 2 %) × 0,5 = 4 % Chance → **1,2 %**; ungünstigster Kauf (weit, sehr wertvoll) 8 % × 30 % = **2,4 %**;
   mit unterlegenem Geleit höchstens 8 % × 25 % = 2 %. Zum Vergleich: Börsengebühr 4 %. Ein Börsenkauf bleibt damit
   deutlich lohnend; Geleit lohnt sich für große Käufe. Die Order zeigt Chance und erwarteten Verlust des Kaufs.
+- **Feste Lieferzeit der Börse** (seit 0.35, Fairness): Jeder Börsenkauf kommt nach genau `market.deliveryHours`
+  (4 h) an, egal wie weit der nächste Handelshafen entfernt ist. Der Konvoi fährt den Seeweg mit angepasster
+  Geschwindigkeit (Strecke / 4 h; Position wie immer Anteil der Fahrzeit). Das Kartellrisiko rechnet nicht mehr mit der
+  Entfernung, sondern mit der festen Strecke `deliveryHours × convoySpeedKmh` = 4 × 45 = 180 km (über
+  `cartelMinDistanceKm` 150, also nie risikofrei, für alle gleich): Chance = (2 % + 1,8 % + 0,4 % × Warenwert/1000)
+  × 0,5, höchstens 8 %. Erwarteter Verlust ohne Geleit (× 30 %): Warenwert 2.000 → 2,3 % Chance → **0,69 %**;
+  5.000 → 2,9 % → **0,87 %**; 10.000 → 3,9 % → **1,17 %**; 20.000 → 5,9 % → **1,77 %**; ab etwa 30.500 Warenwert
+  Obergrenze 8 % → **2,4 %** (sehr große Käufe; Geleit lohnt dort). Lieferverträge (auch Albers/Falkenberg) behalten
+  ihre Fälligkeit und rechnen weiter mit der Entfernung. Laufende Lieferungen von vorher kommen unverändert an.
 - **Kriegsgegner:** Konvois, deren Absender oder Empfänger mit dem Betrachter im Krieg ist (nach der Vorlaufzeit),
   erscheinen auf seiner Karte (mit Route). Abfangen dürfen nur Kriegsgegner und das Kartell (`convoy_not_enemy`). Mission `abfangen` mit `convoyId`: Abfangpunkt wie beim Schatzschiff
   (`interceptPoint`), nur mit Schiffen; die Ankunft muss vor dem Einlaufen des Konvois liegen.

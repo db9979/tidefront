@@ -7,13 +7,14 @@ const FILTERS: Record<string, () => { queryKey: readonly unknown[] }[]> = {
   // Tagesbefehle: Fortschritt entsteht mit Ausbau, Ausbildung, Kampf, Handel und Nachrichten.
   // Auftragsbuch und Wochenziele hängen an denselben Ereignissen (Bau-, Ausbildungs-, Missionsende) – sofort neu
   // holen, sonst zeigt „Nächster Auftrag“ bis zu einer Minute den erledigten Schritt.
-  base: () => [trpc.base.pathFilter(), trpc.daily.pathFilter(), trpc.guide.pathFilter(), trpc.achievements.weekly.pathFilter()],
-  missions: () => [trpc.base.pathFilter(), trpc.daily.pathFilter(), trpc.guide.pathFilter(), trpc.achievements.weekly.pathFilter()],
+  // Lagezentrum (lage.*): bündelt Hafen, Missionen, Konvois, Verträge und Belohnungen – mit denselben Meldungen neu.
+  base: () => [trpc.base.pathFilter(), trpc.daily.pathFilter(), trpc.guide.pathFilter(), trpc.achievements.weekly.pathFilter(), trpc.lage.pathFilter()],
+  missions: () => [trpc.base.pathFilter(), trpc.daily.pathFilter(), trpc.guide.pathFilter(), trpc.achievements.weekly.pathFilter(), trpc.lage.pathFilter()],
   reports: () => [
     trpc.report.pathFilter(), trpc.base.pathFilter(), trpc.social.ranking.pathFilter(), trpc.daily.pathFilter(),
-    trpc.guide.pathFilter(), trpc.achievements.weekly.pathFilter(),
+    trpc.guide.pathFilter(), trpc.achievements.weekly.pathFilter(), trpc.lage.pathFilter(),
   ],
-  market: () => [trpc.market.pathFilter(), trpc.base.pathFilter(), trpc.daily.pathFilter(), trpc.playerTrade.pathFilter()],
+  market: () => [trpc.market.pathFilter(), trpc.base.pathFilter(), trpc.daily.pathFilter(), trpc.playerTrade.pathFilter(), trpc.lage.pathFilter()],
   map: () => [trpc.world.pathFilter()],
   messages: () => [trpc.social.messages.pathFilter(), trpc.daily.pathFilter()],
   // Allianzen, Chat, Diplomatie (Kürzel und Beziehungen in der Rangliste)
@@ -21,7 +22,7 @@ const FILTERS: Record<string, () => { queryKey: readonly unknown[] }[]> = {
   // Saisonwechsel: die ganze Welt ist neu.
   season: () => [
     trpc.season.pathFilter(), trpc.social.pathFilter(), trpc.base.pathFilter(), trpc.world.pathFilter(),
-    trpc.report.pathFilter(), trpc.market.pathFilter(), trpc.daily.pathFilter(), trpc.guide.pathFilter(),
+    trpc.report.pathFilter(), trpc.market.pathFilter(), trpc.daily.pathFilter(), trpc.guide.pathFilter(), trpc.lage.pathFilter(),
   ],
 };
 

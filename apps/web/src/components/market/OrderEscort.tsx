@@ -2,7 +2,7 @@
 // aufs Risiko mit der Rechnung des Servers (game-core cartelExpectedLoss: Chance × Verlustanteil für Börsenkonvois).
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { cartelChance, cartelExpectedLoss, convoysOf, type Balance as CoreBalance } from "@tidefront/game-core";
+import { cartelChance, cartelExpectedLoss, convoysOf, market, type Balance as CoreBalance } from "@tidefront/game-core";
 import { trpc, type BaseData } from "../../lib/trpc.ts";
 import { fmtNum } from "../../lib/names.ts";
 import { SmallButton } from "../../ui.tsx";
@@ -18,7 +18,7 @@ export function OrderEscort({ base, resource, qty, value, onChange }: { base: Ba
   const b = meta.data?.balance as unknown as CoreBalance | undefined;
   const cv = b ? convoysOf(b) : null;
   if (!b || !cv) return null;
-  const km = base.market.port.distanceKm;
+  const km = market.deliveryRiskKm(b.market as unknown as market.MarketBalance["market"], base.market.port.distanceKm); // feste Lieferzeit: Risiko für alle gleich
   const worth = qty * (b.market.refPrice[resource] ?? 0);
   const chance = Number.isFinite(km) ? cartelChance(km, worth, b, true) : 0;
   const loss = Number.isFinite(km) ? cartelExpectedLoss(km, worth, b, true) : 0;

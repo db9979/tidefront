@@ -408,7 +408,9 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
   (wann wie viel frei wird); die Order zeigt „frei ab HH:MM“.
 - Kursband: Würde `p'` um mehr als `hourBand` vom Kurs vor einer Stunde oder mehr als `dayBand` vom Kurs vor 24 Stunden abweichen,
   wird der Handel abgelehnt (`band`) und der Markt für `haltMinutes` angehalten.
-- Gekaufte Ware wird nicht sofort gutgeschrieben, sondern als Lieferung mit Ankunftszeit zurückgegeben
+- Gekaufte Ware wird nicht sofort gutgeschrieben, sondern als Lieferung mit Ankunftszeit zurückgegeben – seit 0.35
+  nach fester Lieferzeit `market.deliveryHours` (4 h), unabhängig von der Entfernung, Kartellrisiko mit fester Strecke
+  (docs/REGELN-SEE.md); ohne den Wert wie früher:
   (`Seeweg vom nächsten Handelshafen / convoySpeedKmh`; nächster Hafen und Entfernung über Wasser, Seewege). Verkaufte Ware wird sofort abgezogen, Kredite sofort gutgeschrieben.
   Die Lieferung fährt als **Konvoi** (Art `boerse`) vom Handelshafen über die Seewege zum Käuferhafen: auf der Karte
   sichtbar, vom Kartell (gedämpfte Chance) und von Kriegsgegnern abfangbar, Geleitschutz optional in der Order
