@@ -1,5 +1,5 @@
 {
-  "version": "v1.29",
+  "version": "v1.30",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -139,7 +139,7 @@
     "haltMinutes": 30,
     "floorFactor": 0.4,
     "ceilFactor": 2.5,
-    "reversionHalfLifeHours": 12,
+    "reversionHalfLifeHours": 24,
     "dailyLimitShareOfStorage": 0.2,
     "slippageTolerance": 0.01,
     "tradesPerMinute": 10,
@@ -160,7 +160,8 @@
         "max": 0.1, "neutralFill": 0.5, "fillWeight": 0.2, "deficitWeight": 0.1,
         "minBases": 3, "window": 3, "activeDays": 7, "holdHours": 25
       },
-      "seasonEnd": { "days": 7, "pct": { "stahl": 0.08, "elektronik": 0.08 } }
+      "seasonEnd": { "days": 7, "pct": { "stahl": 0.08, "elektronik": 0.08 } },
+      "tradeBalance": { "factor": 0.5, "windowHours": 72, "depthMultiple": 3, "max": 0.15, "minPorts": 3, "playerShareDivisor": 3, "holdHours": 1 }
     }
   },
   "worldEvents": {

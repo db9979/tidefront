@@ -1,6 +1,7 @@
 // Marktnachrichten: Anlässe. Weltereignisse (Hooks bei Beginn und Ende, dazu Abgleich im Worker), Kriegslage,
-// Knappheit (einmal täglich) und Saisonende. runMarketNews ist der Worker-Job (alle 10 Minuten).
-import { and, count, eq, gt, inArray, lte, or, sql } from "drizzle-orm";
+// Knappheit (einmal je Spieltag), Handelsbilanz und Saisonende. runMarketNews ist der Worker-Job (alle 10 Minuten); er
+// schreibt auch die Stundenschlusskurse für den Saisonchart (market-history.ts).
+import { and, count, eq, gt, inArray, isNotNull, lte, ne, or, sql } from "drizzle-orm";
 import { finaleBalance, market as marketCore, productionRates, settle, storageCapacity, type BaseState } from "@tidefront/game-core";
 import { tables, type Db, type Tx } from "@tidefront/db";
 import { balance, type Engine, type NoticeJob } from "./context.ts";
@@ -8,6 +9,7 @@ import { getSetting, setSetting } from "./settings.ts";
 import {
   afterNewsRun, closeNews, collectNewsPush, newsBalance, persistRefOffsets, RES_NAME, SCARCITY_KEY, upsertNews, type NewsSpec,
 } from "./market-news.ts";
+import { recordMarketCloses } from "./market-history.ts";
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
@@ -149,7 +151,10 @@ export async function scarcityInput(tx: Tx, nowMs: number): Promise<Record<strin
   return out;
 }
 
-/** Knappheit, einmal je UTC-Tag: Tageswert je Ressource, gleitender Mittelwert über `window` Tage. */
+/**
+ * Knappheit, einmal je Spieltag (Kalendertag in der Spielzeitzone, gameDayIndex; wechselt um Mitternacht Spielzeit wie
+ * die Tagesbefehle): Tageswert je Ressource, gleitender Mittelwert über `window` Tage.
+ */
 async function syncScarcity(tx: Tx, nowMs: number): Promise<boolean> {
   const cfg = newsBalance()?.scarcity;
   if (!cfg) return false;
@@ -179,19 +184,80 @@ async function syncScarcity(tx: Tx, nowMs: number): Promise<boolean> {
   return changed;
 }
 
+/** Aktive Häfen für die Handelsbilanz: Häfen von KI-Spielern (nicht abgeschaltet) und von Menschen, die in den letzten
+ * activeDays Tagen (wie Knappheit) gesehen wurden. */
+export async function activePortCount(tx: Tx, nowMs: number): Promise<number> {
+  const days = newsBalance()?.scarcity.activeDays ?? 7;
+  const [r] = await tx
+    .select({ n: count() })
+    .from(tables.base)
+    .innerJoin(tables.player, eq(tables.player.id, tables.base.playerId))
+    .where(or(
+      and(isNotNull(tables.player.botProfile), ne(sql`coalesce(${tables.player.botSettings} ->> 'active', 'true')`, "false")),
+      gt(tables.player.lastSeenAt, new Date(nowMs - days * DAY_MS)),
+    ));
+  return Number(r?.n ?? 0);
+}
+
 /**
- * Worker-Job (alle 10 Minuten): Weltereignisse abgleichen, Kriegslage und Saisonende auswerten, einmal täglich die
- * Knappheit, dann den effektiven Versatz fortschreiben und Pushes einsammeln. Rückgabe: geändert und Push-Aufträge.
+ * Netto-Käufe (Käufe − Verkäufe in Einheiten) je Spieler und Ressource an der Börse seit sinceMs, aus dem Journal: je
+ * Börsenhandel (trade_id „t-…“) gibt der Markt bei Käufen Ware ab (negativ) und nimmt bei Verkäufen Ware auf (positiv).
+ */
+export async function netBuysByPlayer(tx: Tx, sinceMs: number): Promise<Record<string, number[]>> {
+  const rows = await tx.execute<{ player: string; resource: string; net: number }>(sql`
+    select p.account as player, m.asset as resource, (-sum(m.amount))::float8 as net
+    from trade_ledger m
+    join trade_ledger p on p.trade_id = m.trade_id and p.asset = 'credits' and p.account like 'player:%'
+    where m.t_ms > ${sinceMs} and m.account = 'market' and m.asset <> 'credits' and m.trade_id like 't-%'
+    group by p.account, m.asset`);
+  const out: Record<string, number[]> = Object.fromEntries(balance.resources.map((r) => [r, [] as number[]]));
+  for (const r of rows) if (out[r.resource] && Number(r.net) !== 0) out[r.resource].push(Number(r.net));
+  return out;
+}
+
+/**
+ * Handelsbilanz (alle 10 Minuten): Netto-Käufe aller Spieler der letzten windowHours (je Spieler gedeckelt) verschieben
+ * den Richtwert, factor ÷ (depthMultiple × Tiefe), höchstens ±max, ganze Prozent. Unter minPorts aktiven Häfen keine.
+ */
+async function syncTradeBalance(tx: Tx, nowMs: number): Promise<boolean> {
+  const cfg = newsBalance()?.tradeBalance;
+  if (!cfg) return false;
+  const ports = await activePortCount(tx, nowMs);
+  if (ports < cfg.minPorts) return closeNews(tx, "handelsbilanz", nowMs);
+  // Nur Handel der laufenden Saison (am Saisonende stehen die Kurse wieder auf dem Grundrichtwert).
+  const [season] = await tx.select({ startsAt: tables.season.startsAt }).from(tables.season).where(eq(tables.season.status, "running")).limit(1);
+  const net = await netBuysByPlayer(tx, Math.max(nowMs - cfg.windowHours * HOUR_MS, season?.startsAt.getTime() ?? 0));
+  const hold = cfg.holdHours * HOUR_MS;
+  let changed = false;
+  for (const r of balance.resources) {
+    const raw = marketCore.tradeBalancePct(net[r] ?? [], balance.market.depth[r] ?? 0, ports, cfg);
+    const pct = Math.round(raw * 100) / 100;
+    const name = RES_NAME[r] ?? r;
+    const reason = pct > 0 ? `Handelsbilanz: Häfen kaufen mehr ${name}, als sie verkaufen` : `Handelsbilanz: Häfen verkaufen mehr ${name}, als sie kaufen`;
+    const spec: NewsSpec = { key: "handelsbilanz", source: "handelsbilanz", resource: r, pct, reason, startMs: nowMs, endMs: nowMs + hold, fadeMs: hold };
+    changed = (await upsertNews(tx, spec, nowMs)) || changed;
+  }
+  return changed;
+}
+
+/**
+ * Worker-Job (alle 10 Minuten): Weltereignisse abgleichen, Kriegslage, Handelsbilanz und Saisonende auswerten, einmal
+ * je Spieltag die Knappheit, dann den effektiven Versatz fortschreiben und Pushes einsammeln. Rückgabe: geändert und Push-Aufträge.
  */
 export async function runMarketNewsTx(db: Db, nowMs: number): Promise<{ changed: boolean; jobs: NoticeJob[]; offsets: Record<string, number> }> {
-  if (!newsBalance()) return { changed: false, jobs: [], offsets: {} };
   return db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(7340003)`);
+    if (!newsBalance()) {
+      await recordMarketCloses(tx, nowMs);
+      return { changed: false, jobs: [], offsets: {} };
+    }
     let changed = await syncWorldEvents(tx, nowMs);
     changed = (await syncWar(tx, nowMs)) || changed;
     changed = (await syncSeason(tx, nowMs)) || changed;
     changed = (await syncScarcity(tx, nowMs)) || changed;
+    changed = (await syncTradeBalance(tx, nowMs)) || changed;
     const offsets = await persistRefOffsets(tx, nowMs);
+    await recordMarketCloses(tx, nowMs);
     const jobs = await collectNewsPush(tx, nowMs);
     return { changed, jobs, offsets };
   });

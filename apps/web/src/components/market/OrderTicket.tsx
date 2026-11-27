@@ -12,7 +12,7 @@ import type { RemedyDetail } from "../../lib/remedies/index.ts";
 
 /** Sperrgrund mit Ablehnungscode (für „Was hilft?“). */
 type Why = { text: string; code?: string };
-import { allowedRange, limits, maxSensible, when, DAY, type Limits, type MarketCfg, type MarketRes } from "./calc.ts";
+import { allowedRange, dailyFreeAt, dailyWindow, limits, maxSensible, when, type Limits, type MarketCfg, type MarketRes } from "./calc.ts";
 import { Slip } from "./Slip.tsx";
 
 /** Höchstmenge je Handel (wie im Server). */
@@ -65,7 +65,9 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
   const max = maxSensible(lim);
   const maxWhy = (Object.keys(lim) as (keyof Limits)[]).find((k) => lim[k] === max);
   const range = allowedRange(r, nowMs, cfg);
-  const dailyLeft = Math.max(0, r.dailyLimit - r.dailyUsed);
+  const daily = dailyWindow(r, nowMs); // Tageslimit: gleitendes 24-h-Fenster
+  const dailyLeft = daily.left;
+  const nextFree = daily.releases[0];
   const halted = r.haltedUntilMs > nowMs;
   const buy = side === "buy";
 
@@ -75,7 +77,7 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
   if (halted) hard.push({ text: `Handelspause für ${label(r.id)}: noch ${fmtDuration(r.haltedUntilMs - nowMs)} (Kursband verletzt).`, code: "halted" });
   if (buy && ctx.siege) hard.push({ text: "Belagerungsring vor deinem Hafen: keine Käufe, bis er endet oder gebrochen ist.", code: "siege" });
   if (!buy && ctx.attack) hard.push({ text: "Angriff erkannt: Verkäufe gesperrt, bis er vorbei ist.", code: "under_attack" });
-  if (dailyLeft <= 0) hard.push({ text: `Tageslimit für ${label(r.id)} erreicht – neu ab ${when(Math.floor(nowMs / DAY) * DAY + DAY, nowMs)} Uhr.`, code: "daily_limit" });
+  if (dailyLeft <= 0) hard.push({ text: `Tageslimit für ${label(r.id)} erreicht${nextFree ? ` – ${fmtNum(nextFree.qty)} wieder frei ab ${when(nextFree.atMs, nowMs)} Uhr` : ""}.`, code: "daily_limit" });
   if (!buy && ctx.credits >= ctx.creditLimit) hard.push({ text: "Kreditkonto am Kreditlimit: Verkäufe erst nach Käufen wieder möglich.", code: "credit_limit" });
   if (!buy && ctx.stock < 1) hard.push({ text: `Kein Bestand an ${label(r.id)} zum Verkaufen.` });
   if (buy && lim.funds < 1 && !ctx.siege) hard.push({ text: "Zu wenig Kredite für einen Kauf. Erst etwas verkaufen.", code: "funds" });
@@ -84,7 +86,13 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
   const soft: Why[] = [];
   if (valid && hard.length === 0) {
     if (typed > lim.impact) soft.push({ text: `Kurswirkung zu groß: höchstens ${fmtNum(lim.impact)} je Handel.`, code: "impact" });
-    if (typed > dailyLeft) soft.push({ text: `Über dem Tageslimit: heute noch ${fmtNum(dailyLeft)}.`, code: "daily_limit" });
+    if (typed > dailyLeft) {
+      const at = dailyFreeAt(r, nowMs, typed);
+      soft.push({
+        text: `Über dem Tageslimit: jetzt noch ${fmtNum(dailyLeft)}${at !== null ? `, ${fmtNum(typed)} frei ab ${when(at, nowMs)} Uhr` : ` (höchstens ${fmtNum(r.dailyLimit)} in 24 h)`}.`,
+        code: "daily_limit",
+      });
+    }
     if (q && buy && q.totalCredits > ctx.credits) soft.push({ text: `Kredite reichen nicht: ${fmtNum(q.totalCredits, 2)} Kredite nötig.`, code: "funds" });
     if (!buy && typed > ctx.stock) soft.push({ text: `Nur ${fmtNum(ctx.stock)} im Lager.` });
     if (q && !buy && ctx.credits + q.totalCredits > ctx.creditLimit) soft.push({ text: `Kreditlimit: höchstens ${fmtNum(ctx.creditLimit - ctx.credits, 2)} Kredite Erlös möglich.`, code: "credit_limit" });
@@ -150,7 +158,7 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
       </p>
       {!valid && <p className="text-sm text-messing mb-2">{typed > MAX_QTY ? `Menge zu groß (höchstens ${fmtNum(MAX_QTY)}).` : "Menge eingeben (ganze Zahl ab 1)."}</p>}
 
-      <DailyBar used={r.dailyUsed} add={valid ? typed : 0} limit={r.dailyLimit} />
+      <DailyBar used={daily.used} add={valid ? typed : 0} limit={r.dailyLimit} next={nextFree} nowMs={nowMs} />
 
       {q && hard.length === 0 && <Slip q={q} cfg={cfg} nowMs={nowMs} ctx={ctx} label={label(r.id)} />}
       {fresh && quote.data && !quote.data.ok && <ErrorLine text={errorText(quote.data.code)} code={quote.data.code} detail={why} />}
@@ -189,20 +197,22 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
   );
 }
 
-function DailyBar({ used, add, limit }: { used: number; add: number; limit: number }) {
+/** Tageslimit als gleitendes 24-h-Fenster: Verbrauch, diese Order und die nächste Freigabe. */
+function DailyBar({ used, add, limit, next, nowMs }: { used: number; add: number; limit: number; next?: { atMs: number; qty: number }; nowMs: number }) {
   const u = limit > 0 ? Math.min(1, used / limit) : 1;
   const a = limit > 0 ? Math.min(1 - u, add / limit) : 0;
   const over = used + add > limit;
   return (
     <div className="mb-3" role="meter" aria-label="Tageslimit" aria-valuemin={0} aria-valuemax={limit} aria-valuenow={used}>
       <div className="flex justify-between text-[11px] text-ink2 mb-0.5">
-        <span className="font-display uppercase">Tageslimit</span>
+        <span className="font-display uppercase">Tageslimit <span className="normal-case font-sans">(24 h)</span></span>
         <span className="mono">{fmtNum(used)}{add > 0 ? ` + ${fmtNum(add)}` : ""} / {fmtNum(limit)}</span>
       </div>
       <div className="h-2 bg-inset border border-rule flex overflow-hidden">
         <div className="h-full bg-ink" style={{ width: `${u * 100}%` }} />
         <div className={`h-full ${over ? "bg-siegel" : "bg-see/60"} stripes`} style={{ width: `${a * 100}%` }} />
       </div>
+      {next && <p className="text-[11px] text-ink2 mt-0.5">Gleitend: {fmtNum(next.qty)} wieder frei ab <span className="mono">{when(next.atMs, nowMs)}</span> Uhr.</p>}
     </div>
   );
 }

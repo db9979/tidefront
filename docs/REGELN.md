@@ -364,18 +364,25 @@ Werte unter `worldEvents.finale`, Kern in `packages/game-core/src/finale.ts`, En
 
 Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
 
-- Rückkehr zum Richtwert: `p(t) = ref + (p - ref) * 0.5^(Δt / reversionHalfLifeHours)`; wird vor jedem Handel angewendet.
+- Rückkehr zum Richtwert: `p(t) = ref + (p - ref) * 0.5^(Δt / reversionHalfLifeHours)` (24 h seit v1.30, vorher 12 h);
+  wird vor jedem Handel angewendet.
 - Handel über Menge `q`: Kurswirkung `i = q / depth`. Kauf: `p' = p * (1 + i)`. Verkauf: `p' = p / (1 + i)`.
   Ausführungskurs ist das Mittel aus `p` und `p'`.
 - Kauf kostet `q * Ausführungskurs * (1 + fee)`, Verkauf bringt `q * Ausführungskurs * (1 - fee)`; Kredite auf zwei Nachkommastellen, zulasten des Spielers gerundet.
 - Ablehnungsgründe (Code in Klammern), in dieser Reihenfolge geprüft:
   Börse nicht freigeschaltet (`locked`), Handelspause (`halted`), Menge nicht positiv und ganzzahlig (`bad_qty`),
   Kurswirkung über `maxImpactPerTrade` (`impact`), mehr als `tradesPerMinute` (`rate`),
-  Tageslimit `dailyLimitShareOfStorage * Lagerkapazität` je Ressource überschritten (`daily_limit`),
+  Tageslimit `dailyLimitShareOfStorage * Lagerkapazität` je Ressource im gleitenden 24-h-Fenster überschritten (`daily_limit`),
   Verkauf bei erkanntem Angriff auf den Stützpunkt (`under_attack`),
   Verkauf würde das Kreditlimit überschreiten (`credit_limit`), Bestand oder Kredite reichen nicht (`funds`),
   erwarteter Kurs weicht um mehr als `slippageTolerance` ab (`slippage`),
   neuer Kurs außerhalb `[floorFactor, ceilFactor] * ref` (`price_bounds`).
+- **Tageslimit, gleitend (seit v1.30):** Kauf und Verkauf je Ressource zählen zusammen. Jeder Handel wird im Fach seiner
+  vollen Stunde gebucht (`TraderState.tradeHours`); ein Fach zählt, bis 24 Stunden nach Beginn seiner Stunde vergangen
+  sind (Handel um 13:40 ist ab 13:00 am Folgetag wieder frei, also nach 23–24 h). Kein Zurücksetzen um Mitternacht mehr.
+  Zustände von vor v1.30 (Zähler je Spieltag) gelten als ein Fach zur letzten Mitternacht (Spielzeit) und werden damit
+  wie bisher um Mitternacht frei. `market.get` liefert je Ressource `dailyUsed`, `dailyLimit` und `dailyReleases`
+  (wann wie viel frei wird); die Order zeigt „frei ab HH:MM“.
 - Kursband: Würde `p'` um mehr als `hourBand` vom Kurs vor einer Stunde oder mehr als `dayBand` vom Kurs vor 24 Stunden abweichen,
   wird der Handel abgelehnt (`band`) und der Markt für `haltMinutes` angehalten.
 - Gekaufte Ware wird nicht sofort gutgeschrieben, sondern als Lieferung mit Ankunftszeit zurückgegeben
@@ -400,18 +407,31 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
   Schatzschiff erbeutet Stahl und Elektronik −10 %, entkommen +5 %, je `holdHours` voll ab dem Ausgang.
 - **Kriegslage** (Treibstoff): `calm + perWar × laufende Kriege + perRaid × Kartell-Überfälle (24 h)`, begrenzt auf
   `[calm, max]` = −4 … +8 %, ganze Prozent.
-- **Knappheit** (je UTC-Tag; aktive Häfen = Spieler in `activeDays` Tagen gesehen): Tageswert = `fillWeight × (neutralFill −
+- **Knappheit** (einmal je Spieltag, Mitternacht Spielzeit wie Tagesbefehle; aktive Häfen = Spieler in `activeDays` Tagen gesehen): Tageswert = `fillWeight × (neutralFill −
   Median Bestand / Median Lagerkapazität) + deficitWeight × Anteil Häfen mit negativer Netto-Produktion`, ±`max` (10 %);
   Wirkung = Mittel der letzten `window` Tageswerte, ganze Prozent. Unter `minBases` (3) aktiven Häfen keine Wirkung.
+- **Handelsbilanz** (`tradeBalance`, seit v1.30; alle 10 Minuten): Netto-Käufe (Käufe − Verkäufe an der Börse, Einheiten)
+  je Spieler der letzten `windowHours` (72 h, nur laufende Saison) aus dem Journal. Je Spieler zählt höchstens
+  1/`playerShareDivisor` (⅓) der gesamten Bewegung (Summe der Beträge aller Spieler), mit seinem Vorzeichen; ein
+  einzelner Großhändler bewegt den Richtwert also nur zu einem Drittel, ab drei gleich starken Händlern zählt alles.
+  Ziel = `factor` (0,5) × gedeckelte Summe ÷ (`depthMultiple` (3) × Tiefe), ±`max` (15 %), ganze Prozent; Käufe heben,
+  Verkäufe senken. Erst ab `minPorts` (3) aktiven Häfen (Häfen von KI-Spielern, die nicht abgeschaltet sind, und von
+  Menschen, die in `scarcity.activeDays` Tagen gesehen wurden), sonst keine Wirkung. Zählt wie jede Nachricht in die
+  Summe (±25 %) und wirkt über den Versatz mit höchstens 5 %/h.
 - **Saisonende:** letzte `days` (7) Tage Stahl und Elektronik tageweise je 1/7 bis +8 %. **Grenzen:** Summe je Ressource
   ±`maxTotal` (25 %); effektiver Richtwert = Grundrichtwert × (1 + Versatz), der Versatz folgt der Summe ≤ `maxChangePerHour` (5 %) je Stunde.
-- **Schutzregeln:** Rückkehr, Angebot und Handel nutzen den effektiven Richtwert. `price_bounds` bleibt am
-  **Grundrichtwert** (Anlässe, die Spieler mit auslösen können, verschieben den harten Korridor nicht). Kursband und Pause
+- **Schutzregeln:** Rückkehr, Angebot und Handel nutzen den effektiven Richtwert. `price_bounds` (und die Grenzen in der
+  Anzeige) bleibt am **Grundrichtwert** (Anlässe, die Spieler mit auslösen können, verschieben den harten Korridor nicht). Kursband und Pause
   bleiben (Vergleich mit den tatsächlichen Kursen vor 1 h / 24 h); bei 5 %/h löst eine Nachricht allein keine Pause aus.
   Die **Garantie** der Börse gilt mit dem effektiven Richtwert unverändert; ohne Nachrichten ist alles bit-gleich.
 - **Ablauf und Anzeige:** Weltereignisse schreiben ihre Nachricht bei Beginn und Ende; ein Worker-Job wertet alle 10 Minuten
   die Lage aus (Knappheit täglich) und schreibt den Versatz fort. `market.news` zeigt wirkende Nachrichten und die der
-  letzten 24 h; Push „Marktnachricht“ (Vorgabe aus) ab `pushMinPct` (5 %). Saisonende: alles verfällt.
+  letzten 24 h; Push „Marktnachricht“ (Vorgabe aus) ab `pushMinPct` (5 %). Saisonende: alles verfällt. Die **Wertung**
+  (Rohstoffwert, `resValue`) rechnet weiter mit dem festen Grundrichtwert.
+- **Saisonchart:** Derselbe Lauf schreibt je Ressource den Schlusskurs jeder abgeschlossenen vollen Stunde (Kurs zum
+  Stundenende mit Rückkehr, dazu der effektive Richtwert) in `market_price_hour`; fehlende Stunden bis 24 h rückwirkend.
+  `market.chart` liefert sie für die Börse (Zeitraum 24 h aus den Handeln, 7 Tage und Saison aus den Stundenkursen, mit
+  Grund- und effektivem Richtwert). Am Saisonende wird die Tabelle geleert; die Kurse starten wieder am Grundrichtwert.
 
 ## Saison und Wertung
 

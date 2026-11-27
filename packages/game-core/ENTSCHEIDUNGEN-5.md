@@ -149,3 +149,53 @@ Engpass = Rohstoff mit der niedrigsten mittleren Lagerfüllung der Woche):
   ≥ 70 %“) **unverändert**: Stufe 1 Tag 1, 2 Tag 3, 3 Tag 7, 4 Tag 14, 5 Tag 21. Nur der Bot mit 30 % Rüstung
   erreicht Stufe 4/5 an Tag 14/18 statt 18/21; die 42-Tage-Kette erreicht Nest 4 an Tag 11 statt 12, Nest 5 an Tag
   19 statt 20; gedachtes Nest 6 ×1,3–1,5 an Tag 42 100 % statt 84/63/37 % (Tag 28/35 gleich).
+
+## Börse für die kleine Runde: Rückkehr 24 h, Handelsbilanz, gleitendes Tageslimit, Saisonchart (Balance v1.30)
+
+Vom Nutzer freigegeben (Runde 3–10 Menschen + 3 KI). Rechnung des Analysten: `/tmp/tf-review/boerse/sim.ts`,
+`sim-ergebnis.txt` (Stahl-Kurs relativ zum Richtwert, 6 Wochen, N = Spielerzahl):
+
+| Variante | N=3 Stahl Ø / Prov Ø / Pausen | N=6 | N=10 |
+|---|---|---|---|
+| Status quo (Halbwertszeit 12 h) | 1,37 / 0,78 / 2 | 1,45 / 0,75 / 66 | 1,47 / 0,74 / 3 |
+| nur 72 h bzw. 168 h | 1,55 / 0,54 / 0 (168 h: Grenze 525) | 1,56 / 0,54 / 5 | 1,56 / 0,54 / 5 |
+| **dyn. Richtwert + 24 h (gewählt)** | **1,50 / 0,67 / 0** | **1,52 / 0,67 / 2** | **1,52 / 0,66 / 1** |
+
+1. **Rückkehr 12 → 24 h** (`market.reversionHalfLifeHours`). Längere Halbwertszeiten (72/168 h) klebten den Stahlkurs an
+   die Obergrenze; 24 h hält Knappheit spürbar, ohne dass der Kurs anschlägt.
+2. **Handelsbilanz** als Marktnachricht (`news.tradeBalance`, Quelle `handelsbilanz`, Schlüssel `handelsbilanz`; Kern
+   `tradeBalancePct`/`cappedNetBuys` in `news.ts`, Server `syncTradeBalance` in `market-news-sources.ts`):
+   - Netto-Käufe je Spieler aus dem Journal: Börsenhandel (`trade_id` „t-…“), Zeile des Kontos `market` je Ressource
+     (Kauf: Markt gibt ab → negativ, daher Netto = −Summe). Spielerhandel, Lieferungen, Saisonabschluss zählen nicht.
+     Nur die laufende Saison (ab `season.starts_at`), höchstens `windowHours` (72 h). Neuer Index `ledger_t` auf `t_ms`.
+   - **⅓-Deckel:** „Anteil eines Spielers an der Summe gedeckelt“ ist zirkulär, wenn man am gedeckelten Ergebnis misst.
+     Auslegung: Bezug ist die **gesamte Bewegung** G = Σ |Netto je Spieler|; jeder Spieler zählt höchstens G/3 mit seinem
+     Vorzeichen. Ein einzelner Großhändler bewegt den Richtwert also zu einem Drittel, ab drei gleich starken Händlern
+     zählt alles. Als ganzzahliger Teiler `playerShareDivisor: 3` statt 0,3333 (sonst zählten drei Gleiche nicht voll).
+   - **Aktive Häfen** (≥ `minPorts` 3): Häfen von KI-Spielern (nicht abgeschaltet, `bot_settings.active` ≠ false) und von
+     Menschen, die in `scarcity.activeDays` (7) Tagen gesehen wurden. Darunter endet eine laufende Nachricht sofort.
+   - Ganze Prozent (wie Kriegslage), sonst jede 10-Minuten-Runde eine neue Zeile; Halten 1 h + 1 h Abklingen, damit ein
+     stehender Worker die Wirkung auslaufen lässt. Zählt in die Summe (±25 %) und folgt mit ≤ 5 %/h.
+   - Grenzen (`price_bounds`) und Kursband bleiben am Grundrichtwert bzw. an den echten Kursen; die Wertung
+     (`resValue`) bleibt am festen Grundrichtwert. Nebenbei behoben: die Anzeige der Grenzen in der Börse
+     (`calc.ts allowedRange`) rechnete mit dem effektiven statt dem Grundrichtwert.
+   - Aufwand für den Pi: eine Join-Abfrage über die Journalzeilen der letzten 72 h (Index auf `t_ms`) und ein `count`
+     über Häfen, im vorhandenen 10-Minuten-Lauf.
+3. **Tageslimit gleitend** (`window.ts`): Fächer je volle Stunde in `TraderState.tradeHours` (`{ h, q }`, höchstens 24).
+   Ein Fach zählt bis 24 h nach Beginn seiner Stunde (frei nach 23–24 h, Anzeige „frei ab HH:00“) – so bleibt der
+   Zustand klein und die Freigabezeit ist eine glatte Uhrzeit. **Alte Zustände** (`dailyDayIndex`/`dailyVolume`): der
+   Zähler des laufenden Spieltags gilt als ein Fach zur Stunde der letzten Mitternacht (Spielzeit) und wird damit genau
+   wie bisher um Mitternacht frei; ein älterer Tag zählt nicht. Beim nächsten Handel wird nur noch `tradeHours`
+   geschrieben. `market.get` liefert zusätzlich `dailyReleases` (wann wie viel frei wird); die Order zeigt „… wieder frei
+   ab HH:MM“ und für zu große Mengen, ab wann sie passen (`freeAtMs`). **KI-Spieler** lesen den Rest weiter aus
+   `dailyLimit − dailyUsed` der Börsenansicht und handeln damit automatisch im gleitenden Fenster.
+4. **Saisonchart:** eigene Tabelle `market_price_hour (resource, hour_ms, price, ref)`, Schlüssel (resource, hour_ms).
+   Der 10-Minuten-Lauf schreibt je abgeschlossene Stunde einmal den Kurs zum Stundenende (letzter Handel davor mit
+   Rückkehr zum aktuellen effektiven Richtwert) und den effektiven Richtwert; fehlende Stunden bis 24 h rückwirkend
+   (der Marktverlauf reicht 24 h), nie vor dem Start des Marktes. Saisonende: Tabelle geleert (`clearMarketNews`), Kurse
+   wie bisher auf Grundrichtwert. `market.chart` (je Ressource ≤ ~1.000 Punkte) ist eine eigene Abfrage, damit das
+   30-s-Nachladen von `market.get` klein bleibt. Anzeige: Zeitraum 1 h / 24 h (aus den Handeln, mit Kursband) und
+   7 Tage / Saison (Stundenkurse) mit Grundrichtwert (gestrichelt) und effektivem Richtwert (gepunktet, Treppe).
+5. **Knappheit je Spieltag:** der Code nutzte schon `gameDayIndex` (Spielzeitzone); nur Kommentar und REGELN.md sagten
+   noch „UTC-Tag“ – korrigiert, Servertest prüft den gespeicherten Tag.
+6. **„neu ab“ in der Order** (UTC-Mitternacht) entfällt; ersetzt durch die gleitende Freigabe.

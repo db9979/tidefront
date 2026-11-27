@@ -15,6 +15,10 @@ import {
   floorToCents,
   verifyLedger,
   buildTradeLedger,
+  freeAtMs,
+  gameDayIndex,
+  tradedInWindow,
+  windowReleases,
 } from "../src/market/index.ts";
 import type {
   MarketBalance,
@@ -160,19 +164,21 @@ test("rate: more than tradesPerMinute trades within a minute", () => {
   assert.ok(later.trader.recentTradeTimesMs.length <= M.tradesPerMinute);
 });
 
-test("daily_limit: volume above dailyLimitShareOfStorage * capacity, reset at game-time midnight (Europe/Berlin)", () => {
+test("daily_limit: buys plus sells per resource within a sliding 24-hour window (hourly slots), across midnight", () => {
   const prevTz = process.env.TZ;
-  process.env.TZ = "Europe/Berlin"; // Januar: Mitternacht Berlin = 23:00 UTC
+  process.env.TZ = "Europe/Berlin"; // Januar: Mitternacht Berlin = 23:00 UTC – das Fenster kennt keine Mitternacht mehr
   const capacity = 5000;
   const limit = M.dailyLimitShareOfStorage * capacity;
   const first = Math.floor(limit * 0.6);
   const ctx = makeContext({
     storageCapacity: { stahl: capacity, treibstoff: capacity, elektronik: capacity, proviant: capacity },
   });
-  const beforeMidnight = Date.UTC(2026, 0, 15, 22, 58, 0);
+  const beforeMidnight = Date.UTC(2026, 0, 15, 22, 40, 0); // 23:40 Spielzeit
   const market0 = createMarketState(balance, beforeMidnight);
   const r1 = trade(market0, makeTrader(10_000, 10_000, beforeMidnight), "buy", "stahl", first, beforeMidnight, ctx);
   expectOk(r1);
+  assert.deepEqual(r1.trader.tradeHours, [{ h: Math.floor(beforeMidnight / HOUR), q: { stahl: first } }]);
+  assert.equal(r1.trader.dailyVolume, undefined, "kein Kalendertag-Zähler mehr");
   // buys and sells share the limit
   expectReject(trade(r1.market, r1.trader, "sell", "stahl", first, beforeMidnight + 1000, ctx), "daily_limit");
   expectReject(trade(r1.market, r1.trader, "buy", "stahl", first, beforeMidnight + 1000, ctx), "daily_limit");
@@ -180,15 +186,45 @@ test("daily_limit: volume above dailyLimitShareOfStorage * capacity, reset at ga
   expectOk(trade(r1.market, r1.trader, "buy", "stahl", limit - first, beforeMidnight + 1000, ctx));
   // the limit is per resource
   expectOk(trade(r1.market, r1.trader, "buy", "proviant", first, beforeMidnight + 1000, ctx));
-  // still the same game day one second before midnight
-  const lastSecond = Date.UTC(2026, 0, 15, 22, 59, 59);
-  expectReject(trade(r1.market, r1.trader, "buy", "stahl", first, lastSecond, ctx), "daily_limit");
-  // new game day: counter starts again
-  const nextDay = Date.UTC(2026, 0, 15, 23, 0, 0);
-  const r2 = trade(r1.market, r1.trader, "buy", "stahl", first, nextDay, ctx);
+  // midnight (game time) no longer resets the limit
+  const afterMidnight = Date.UTC(2026, 0, 15, 23, 0, 1);
+  expectReject(trade(r1.market, r1.trader, "buy", "stahl", first, afterMidnight, ctx), "daily_limit");
+  const r2 = trade(r1.market, r1.trader, "sell", "stahl", limit - first, afterMidnight, ctx);
   expectOk(r2);
-  assert.equal(r2.trader.dailyVolume.stahl, first);
-  assert.equal(r2.trader.dailyDayIndex, Math.floor(Date.UTC(2026, 0, 16) / DAY)); // Kalendertag 16.1. in Berlin
+  assert.equal(tradedInWindow(r2.trader, "stahl", afterMidnight), limit);
+  // the slot of 22:xx UTC is free from 22:00 UTC the next day (start of its hour + 24 h); the later one stays
+  const releases = windowReleases(r2.trader, "stahl", afterMidnight);
+  assert.deepEqual(releases, [
+    { atMs: Date.UTC(2026, 0, 16, 22, 0, 0), qty: first },
+    { atMs: Date.UTC(2026, 0, 16, 23, 0, 0), qty: limit - first },
+  ]);
+  assert.equal(freeAtMs(releases, limit, limit, first, afterMidnight), Date.UTC(2026, 0, 16, 22, 0, 0));
+  assert.equal(freeAtMs(releases, limit, limit, limit, afterMidnight), Date.UTC(2026, 0, 16, 23, 0, 0));
+  assert.equal(freeAtMs(releases, limit, limit, limit + 1, afterMidnight), null);
+  expectReject(trade(r2.market, r2.trader, "buy", "stahl", 1, Date.UTC(2026, 0, 16, 21, 59, 59), ctx), "daily_limit");
+  const r3 = trade(r2.market, r2.trader, "buy", "stahl", first, Date.UTC(2026, 0, 16, 22, 0, 0), ctx);
+  expectOk(r3);
+  assert.equal(r3.trader.tradeHours!.length, 2, "abgelaufenes Fach fällt weg");
+  if (prevTz === undefined) delete process.env.TZ; else process.env.TZ = prevTz;
+});
+
+test("daily_limit: old trader states (calendar day) are carried over and free at the next game-time midnight", () => {
+  const prevTz = process.env.TZ;
+  process.env.TZ = "Europe/Berlin";
+  const capacity = 5000;
+  const limit = M.dailyLimitShareOfStorage * capacity;
+  const ctx = makeContext({ storageCapacity: { stahl: capacity, treibstoff: capacity, elektronik: capacity, proviant: capacity } });
+  const now = Date.UTC(2026, 0, 15, 15, 30, 0); // 16:30 Spielzeit am 15.1.
+  const { tradeHours: _h, ...fresh } = makeTrader(10_000, 10_000, now);
+  const old: TraderState = { ...fresh, dailyDayIndex: gameDayIndex(now), dailyVolume: { stahl: limit, treibstoff: 0, elektronik: 0, proviant: 0 } };
+  assert.equal(tradedInWindow(old, "stahl", now), limit);
+  expectReject(trade(createMarketState(balance, now), old, "buy", "stahl", 1, now, ctx), "daily_limit");
+  // free at midnight Berlin (23:00 UTC), as before
+  assert.deepEqual(windowReleases(old, "stahl", now), [{ atMs: Date.UTC(2026, 0, 15, 23, 0, 0), qty: limit }]);
+  expectOk(trade(createMarketState(balance, now), old, "buy", "stahl", 1, Date.UTC(2026, 0, 15, 23, 0, 0), ctx));
+  // an older day does not count at all
+  const stale: TraderState = { ...old, dailyDayIndex: gameDayIndex(now) - 1 };
+  assert.equal(tradedInWindow(stale, "stahl", now), 0);
   if (prevTz === undefined) delete process.env.TZ; else process.env.TZ = prevTz;
 });
 
@@ -715,4 +751,12 @@ test("history keeps what the 24-hour band needs and drops older points", () => {
   assert.ok(history[0].tMs <= now - DAY, "one point at or before now - 24h is kept");
   assert.ok(history[1].tMs > now - DAY);
   for (let n = 1; n < history.length; n++) assert.ok(history[n].tMs >= history[n - 1].tMs);
+});
+
+test("reversion: half-life 24 h (v1.30) – after 24 h half the gap to the reference is left, after 12 h about 71 %", () => {
+  assert.equal(M.reversionHalfLifeHours, 24);
+  const market = createMarketState(balance, T0);
+  const moved = { ...market, stahl: { ...market.stahl, price: 1.4, lastUpdateMs: T0 } };
+  assert.ok(Math.abs(currentPrice(moved.stahl, "stahl", balance, T0 + DAY) - 1.2) < 1e-12);
+  assert.ok(Math.abs(currentPrice(moved.stahl, "stahl", balance, T0 + 12 * HOUR) - (1 + 0.4 * Math.SQRT1_2)) < 1e-12);
 });

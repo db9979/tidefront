@@ -181,7 +181,7 @@ const ERRORS: Record<string, string> = {
   bad_qty: "Ungültige Menge.",
   impact: "Die Menge bewegt den Kurs zu stark. Kleinere Menge wählen.",
   rate: "Zu viele Geschäfte in kurzer Zeit.",
-  daily_limit: "Tageslimit für diese Ressource erreicht.",
+  daily_limit: "Tageslimit (24 h) für diese Ressource erreicht.",
   under_attack: "Ein Angriff ist im Anmarsch: Verkäufe gesperrt.",
   credit_limit: "Das Kreditlimit wäre überschritten.",
   funds: "Bestand oder Kredite reichen nicht.",

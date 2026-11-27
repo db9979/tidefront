@@ -203,7 +203,7 @@ test("Saisonende: Stahl und Elektronik steigen in den letzten 7 Tagen tageweise 
   assert.ok(sooner.target.stahl === 0.08 && sooner.offsets.stahl > 0);
 });
 
-/** Spieler mit Börse und Treibstoff (Kredite nur aus Verkäufen, damit das Journal stimmt); Richtwert Treibstoff +20 %, Kurs seit 12 h am Grundrichtwert. */
+/** Spieler mit Börse und Treibstoff (Kredite nur aus Verkäufen, damit das Journal stimmt); Richtwert Treibstoff +20 %, Kurs seit einer Halbwertszeit am Grundrichtwert. */
 async function shiftedMarket(name: string) {
   const p = await newPlayer(name);
   await patchBase(p.baseId, (s) => {
@@ -214,7 +214,8 @@ async function shiftedMarket(name: string) {
   await db.transaction((tx) => upsertNews(tx, { key: "test:handel", source: "kriegslage", resource: "treibstoff", pct: 0.2, reason: "Test", startMs: now - DAY, endMs: now + DAY, fadeMs: 0 }, now));
   await db.insert(tables.serverSetting).values({ key: REF_OFFSETS_KEY, value: JSON.stringify({ atMs: now - 10 * HOUR, offset: { treibstoff: 0.2 } }) })
     .onConflictDoUpdate({ target: tables.serverSetting.key, set: { value: JSON.stringify({ atMs: now - 10 * HOUR, offset: { treibstoff: 0.2 } }) } });
-  const state = { price: base.treibstoff, lastUpdateMs: now - 12 * HOUR, haltedUntilMs: 0, history: [{ tMs: now - 12 * HOUR, price: base.treibstoff }] };
+  const hl = balance.market.reversionHalfLifeHours * HOUR;
+  const state = { price: base.treibstoff, lastUpdateMs: now - hl, haltedUntilMs: 0, history: [{ tMs: now - hl, price: base.treibstoff }] };
   await db.update(tables.market).set({ state }).where(eq(tables.market.resource, "treibstoff"));
   return { ...p, state };
 }
@@ -225,7 +226,7 @@ test("Handel, Angebot und Börsenansicht nutzen den effektiven Richtwert", async
   const view = await marketView(engine, p.playerId);
   const t = view.resources.find((r) => r.id === "treibstoff")!;
   assert.ok(Math.abs(t.ref - eff) < 1e-12 && t.baseRef === base.treibstoff);
-  // Nach einer Halbwertszeit (12 h) liegt der Kurs auf halbem Weg zum effektiven Richtwert.
+  // Nach einer Halbwertszeit liegt der Kurs auf halbem Weg zum effektiven Richtwert.
   assert.ok(Math.abs(t.price - (eff + (base.treibstoff - eff) * 0.5)) < 1e-3, `Kurs ${t.price}`);
   const q = await marketQuote(engine, { side: "sell", resource: "treibstoff", qty: 1000 });
   assert.ok(q.ok);

@@ -45,7 +45,8 @@ Spezifikation offen lässt, und wie der Code es löst. Alle Zahlen kommen aus `b
    `creditLimitPerLevel * Stufe` lägen. Genau das Limit zu erreichen ist erlaubt. Käufe prüft das Limit nicht.
    Folge: Mit Hafenkommandantur 3 kann niemand über 15000 Kredite hinaus verkaufen.
 5. **Tageslimit** zählt Käufe und Verkäufe zusammen, je Ressource, je Spielerzustand (`TraderState`); genau das Limit
-   ist erlaubt. Tageswechsel = UTC-Tagesindex `floor(nowMs / 86400000)`. Abgelehnte Geschäfte zählen nicht.
+   ist erlaubt. Abgelehnte Geschäfte zählen nicht. Seit v1.30 gleitendes 24-h-Fenster mit Fächern je voller Stunde
+   (`window.ts`, `TraderState.tradeHours`; vorher Tageswechsel um Mitternacht, zuerst UTC, ab 0.24.2 Spielzeit).
 6. **Minutenlimit:** Ein Handel wird abgelehnt, wenn in den letzten 60 Sekunden (`t > nowMs - 60000`) schon
    `tradesPerMinute` erfolgreiche Geschäfte liegen, über alle Ressourcen. Abgelehnte Geschäfte zählen nicht.
 7. **Kursband, Vergleichskurs.** Der Verlauf speichert den Kurs nach jedem Handel. „Kurs vor einer Stunde“ ist der letzte

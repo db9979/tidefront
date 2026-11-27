@@ -45,8 +45,9 @@ export function allowedRange(r: MarketRes, nowMs: number, cfg: MarketCfg) {
   const hl = cfg.reversionHalfLifeHours;
   const hourAgo = r.history.length ? priceAtTime(r, nowMs - HOUR, hl) : r.price;
   const dayAgo = r.history.length ? priceAtTime(r, nowMs - DAY, hl) : r.price;
-  const floor = cfg.floorFactor * r.ref;
-  const ceil = cfg.ceilFactor * r.ref;
+  // Grenzen am Grundrichtwert (wie price_bounds im Server; Marktnachrichten verschieben sie nicht).
+  const floor = cfg.floorFactor * (r.baseRef ?? r.ref);
+  const ceil = cfg.ceilFactor * (r.baseRef ?? r.ref);
   const lo = Math.max(floor, hourAgo * (1 - cfg.hourBand), dayAgo * (1 - cfg.dayBand));
   const hi = Math.min(ceil, hourAgo * (1 + cfg.hourBand), dayAgo * (1 + cfg.dayBand));
   return { lo, hi, floor, ceil, hourAgo, dayAgo };
@@ -67,6 +68,23 @@ export function series(r: MarketRes, nowMs: number, spanMs: number, halfLife: nu
   return [...times].sort((a, b) => a - b).map((t) => ({ t, p: t >= nowMs ? r.price : priceAtTime(r, t, halfLife) }));
 }
 
+/**
+ * Handelslimit im gleitenden 24-h-Fenster zum Zeitpunkt nowMs: Verbrauch und kommende Freigaben (bereits fällige, seit
+ * dem letzten Laden der Börse, sind abgezogen).
+ */
+export function dailyWindow(r: MarketRes, nowMs: number): { used: number; left: number; releases: { atMs: number; qty: number }[] } {
+  const all = r.dailyReleases ?? [];
+  const gone = all.filter((x) => x.atMs <= nowMs).reduce((a, x) => a + x.qty, 0);
+  const used = Math.max(0, r.dailyUsed - gone);
+  return { used, left: Math.max(0, r.dailyLimit - used), releases: all.filter((x) => x.atMs > nowMs) };
+}
+
+/** Ab wann `qty` ins Handelslimit passt (jetzt, eine Freigabezeit oder null, wenn das Limit dafür nie reicht). */
+export function dailyFreeAt(r: MarketRes, nowMs: number, qty: number): number | null {
+  const w = dailyWindow(r, nowMs);
+  return market.freeAtMs(w.releases, w.used, r.dailyLimit, qty, nowMs);
+}
+
 /** Kosten eines Kaufs (Kredite, ohne Rundung) – zum Abschätzen der bezahlbaren Menge. */
 function buyCost(qty: number, price: number, depth: number, fee: number): number {
   return qty * price * (1 + qty / depth / 2) * (1 + fee);
@@ -75,7 +93,7 @@ function buyCost(qty: number, price: number, depth: number, fee: number): number
 export type Limits = {
   /** Größte Menge ohne Ablehnung wegen Kurswirkung. */
   impact: number;
-  /** Rest des Tageslimits. */
+  /** Rest des Tageslimits (gleitend 24 h). */
   daily: number;
   /** Bezahlbar (Kauf) bzw. Bestand (Verkauf). */
   funds: number;
@@ -91,7 +109,7 @@ export function limits(side: "buy" | "sell", r: MarketRes, nowMs: number, cfg: M
   const p = r.price;
   const range = allowedRange(r, nowMs, cfg);
   const impact = Math.floor(depth * cfg.maxImpactPerTrade);
-  const daily = Math.max(0, r.dailyLimit - r.dailyUsed);
+  const daily = dailyWindow(r, nowMs).left;
   let funds: number;
   let band: number;
   let credit = Infinity;

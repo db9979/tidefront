@@ -402,7 +402,8 @@ export async function marketView(engine: Engine, playerId: number, baseId?: numb
   // Mehrere Häfen: Tageslimit spielerweit nach dem Lager des Heimathafens; fremde baseId → "no_base".
   if (baseId !== undefined) await ownBase(engine.db, playerId, baseId);
   const cap = await homeStorageCapacity(engine.db, playerId, nowMs);
-  const dayIndex = marketCore.gameDayIndex(nowMs);
+  // Handelslimit: gleitendes 24-h-Fenster (window.ts); alte Zustände (Kalendertag) werden dabei überführt.
+  const window = trader ? marketCore.tradeWindow(trader, nowMs) : [];
   return {
     serverNow: nowMs,
     resources: balance.resources.map((r) => {
@@ -415,8 +416,10 @@ export async function marketView(engine: Engine, playerId: number, baseId?: numb
         baseRef: balance.market.refPrice[r],
         haltedUntilMs: st?.haltedUntilMs ?? 0,
         history: st?.history ?? [],
-        dailyUsed: trader && trader.dailyDayIndex === dayIndex ? (trader.dailyVolume[r as marketCore.ResourceId] ?? 0) : 0,
+        dailyUsed: marketCore.tradedInWindow({ tradeHours: window }, r as marketCore.ResourceId, nowMs),
         dailyLimit: Math.floor(balance.market.dailyLimitShareOfStorage * cap),
+        /** Wann (ms) wie viel des Limits wieder frei wird, aufsteigend (Fächer je volle Stunde, 24 h nach Beginn). */
+        dailyReleases: marketCore.windowReleases({ tradeHours: window }, r as marketCore.ResourceId, nowMs),
       };
     }),
     credits: trader?.credits ?? 0,

@@ -17,7 +17,7 @@ export const SCARCITY_KEY = "market_scarcity";
 
 export const RES_NAME: Record<string, string> = { stahl: "Stahl", treibstoff: "Treibstoff", elektronik: "Elektronik", proviant: "Proviant" };
 
-export type NewsSource = "weltereignis" | "kriegslage" | "knappheit" | "saison";
+export type NewsSource = "weltereignis" | "kriegslage" | "knappheit" | "saison" | "handelsbilanz";
 
 /** Werte aus balance.json; fehlen sie, gibt es keine Marktnachrichten (Richtwert = Grundrichtwert). */
 export function newsBalance(): marketCore.MarketNewsBalance | null {
@@ -251,9 +251,10 @@ export async function collectNewsPush(tx: Tx, nowMs: number): Promise<NoticeJob[
   return jobs;
 }
 
-/** Saisonende: Nachrichten, Versatz und Knappheitswerte verfallen (die Börse steht wieder auf Grundrichtwert). */
+/** Saisonende: Nachrichten, Versatz, Knappheitswerte und Saisonchart verfallen (die Börse steht wieder auf Grundrichtwert). */
 export async function clearMarketNews(tx: Tx): Promise<void> {
   await tx.delete(tables.marketNews);
+  await tx.delete(tables.marketPriceHour); // Saisonchart: der Verlauf beginnt mit der neuen Saison neu
   await tx.delete(tables.serverSetting).where(inArray(tables.serverSetting.key, [REF_OFFSETS_KEY, SCARCITY_KEY]));
 }
 
