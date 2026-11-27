@@ -13,7 +13,7 @@ import {
 } from "@tidefront/world";
 import type { MapData } from "../lib/trpc.ts";
 import { MAP_BTN } from "../map/controls.ts";
-import { serverNow } from "../lib/time.ts";
+import { serverNow, useNow } from "../lib/time.ts";
 import { registerSnapshotSurface } from "../lib/screenshot.ts";
 import { buildTerrain, hexPoints, xyOf } from "../map/terrain.ts";
 import { Graticule } from "../map/graticule.ts";
@@ -385,6 +385,7 @@ export function HexMap(props: HexMapProps) {
 
   // Weltereignisse: nach den Symbolen (die pinnedMarkers neu anlegen) eigene Ebene neu aufbauen.
   const eventLayer = useRef<{ root: Container; pinned: Pinned[] } | null>(null);
+  const minute = useNow(60000); // Schilder mit Restzeit („Blockade · 2 h 05 min“) minütlich neu
   useEffect(() => {
     const s = scene.current;
     if (!ready || !s) return;
@@ -412,7 +413,7 @@ export function HexMap(props: HexMapProps) {
     eventLayer.current = layer;
     relayout(s);
     snap([s.pinnedMarkers]);
-  }, [ready, data, events, naval, fields]);
+  }, [ready, data, events, naval, fields, minute]);
 
   // Lagebild: Kartennebel und Sensorgrenzen unter Routen und Zeichen; endet am Kartenrahmen (normale Maske).
   useEffect(() => {

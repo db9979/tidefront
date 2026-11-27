@@ -1,7 +1,7 @@
 // Abhilfe: Bauen, Ausbilden, Forschung, Versorgung, Taler.
 import { aircraftSlots, espionageOf, spyCap, type BaseState } from "@tidefront/game-core";
 import { fmtNum, label } from "../names.ts";
-import { fmtTime } from "../time.ts";
+import { fmtDuration, fmtTime } from "../time.ts";
 import { build, go, joinDe, lvl, market, missingResources, nextStep, research, stateOf, training } from "./helpers.ts";
 import { techName as techLabel } from "../research.ts";
 import type { RemedyCtx, RemedyTable } from "./types.ts";
@@ -25,11 +25,11 @@ function techOf(ctx: RemedyCtx) {
 export const ECONOMY: RemedyTable = {
   insufficient_resources: (ctx) => missingResources(ctx, ctx.detail.cost),
 
-  queue_full: ({ base }) => {
+  queue_full: ({ base, now }) => {
     if (!base) return { hint: "Die Bauschlange ist voll. Warte, bis ein Ausbau fertig ist, oder brich einen wartenden Auftrag ab." };
     const first = base.buildQueue[0];
     return {
-      hint: `Bauschlange ${base.buildQueue.length}/${base.buildQueueSlots} belegt.${first ? ` Der laufende Ausbau (${label(first.buildingId)}) ist ${fmtTime(first.finishesAt)} fertig.` : ""} Danach ist wieder Platz – oder einen wartenden Auftrag im Bauhof abbrechen.`,
+      hint: `Bauschlange ${base.buildQueue.length}/${base.buildQueueSlots} belegt.${first ? ` Der laufende Ausbau (${label(first.buildingId)}) ist in ${fmtDuration(first.finishesAt - now)} fertig (${fmtTime(first.finishesAt)}).` : ""} Danach ist wieder Platz – oder einen wartenden Auftrag im Bauhof abbrechen.`,
       actions: [go("Zum Bauhof", { to: "base" })],
     };
   },
@@ -88,7 +88,7 @@ export const ECONOMY: RemedyTable = {
     const id = builtIn(ctx);
     const order = id ? ctx.base?.trainingQueue.find((o) => o.builtIn === id) : undefined;
     return {
-      hint: `${id && id !== "anlagen" ? label(id) : "Dieses Gebäude"} bildet schon aus${order ? ` (fertig ${fmtTime(order.finishesAt)})` : ""}. Jedes Gebäude arbeitet einen Auftrag nach dem anderen ab – danach ist es wieder frei.`,
+      hint: `${id && id !== "anlagen" ? label(id) : "Dieses Gebäude"} bildet schon aus${order ? ` (fertig in ${fmtDuration(order.finishesAt - ctx.now)}, ${fmtTime(order.finishesAt)})` : ""}. Jedes Gebäude arbeitet einen Auftrag nach dem anderen ab – danach ist es wieder frei.`,
     };
   },
 
@@ -144,10 +144,10 @@ export const ECONOMY: RemedyTable = {
     };
   },
 
-  research_busy: ({ base }) => {
+  research_busy: ({ base, now }) => {
     const order = (base?.research as { order?: { finishesAt: number } | null } | null)?.order;
     return {
-      hint: `Es läuft schon eine Forschung${order ? ` (fertig ${fmtTime(order.finishesAt)})` : ""}. Das Forschungsamt forscht eine Technik nach der anderen – abwarten oder die laufende abbrechen.`,
+      hint: `Es läuft schon eine Forschung${order ? ` (fertig in ${fmtDuration(order.finishesAt - now)}, ${fmtTime(order.finishesAt)})` : ""}. Das Forschungsamt forscht eine Technik nach der anderen – abwarten oder die laufende abbrechen.`,
       actions: [research],
     };
   },

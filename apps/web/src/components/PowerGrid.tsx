@@ -6,7 +6,8 @@ import type React from "react";
 import { BEAUFORT_WORDS, beaufort } from "@tidefront/game-core";
 import type { BaseData } from "../lib/trpc.ts";
 import { fmtNum } from "../lib/names.ts";
-import { serverNow } from "../lib/time.ts";
+import { fmtAt, fmtDuration, serverNow, useNow } from "../lib/time.ts";
+import { liveStoredAt } from "../lib/live-base.ts";
 import { Icon } from "../icons.tsx";
 import { INK, MESSING, MOOS, SEE, SIEGEL } from "../icons-art.tsx";
 import { Bar } from "../ui.tsx";
@@ -47,7 +48,7 @@ function hourOf(ms: number): number {
 
 /** Uhrzeit hh:mm in Ortszeit des Geräts. */
 function clockOf(ms: number): string {
-  return new Date(ms - (serverNow() - Date.now())).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  return fmtAt(ms); // einheitlich, mit „morgen“
 }
 
 const sum = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a + b, 0);
@@ -81,6 +82,7 @@ export function PowerGrid({ base }: { base: BaseData }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const windCut = (meta.data?.balance as { buildings?: { windpark?: { stormCutoff?: number } } } | undefined)?.buildings?.windpark?.stormCutoff;
   const g = base.grid;
+  const stored = liveStoredAt(base, useNow()); // Speicher live hochgerechnet
   const supply = sum(g.now.supply);
   const demand = sum(g.now.demand);
   const short = g.now.served.radar < 1 || g.now.served.production < 1;
@@ -104,10 +106,10 @@ export function PowerGrid({ base }: { base: BaseData }) {
       {g.now.capacity > 0 && (
         <div>
           <div className="flex justify-between text-xs text-ink2">
-            <span>Speicher {fmtNum(g.now.stored)} / {fmtNum(g.now.capacity)}</span>
+            <span>Speicher {fmtNum(stored)} / {fmtNum(g.now.capacity)}</span>
             <span className="mono">{g.now.charge > 0.5 ? `lädt ${fmtNum(g.now.charge)}/h` : g.now.charge < -0.5 ? `liefert ${fmtNum(-g.now.charge)}/h` : "ruht"}</span>
           </div>
-          <Bar value={g.now.stored / g.now.capacity} tone="green" />
+          <Bar value={stored / g.now.capacity} tone="green" />
         </div>
       )}
       <SurplusNow g={g} />
@@ -130,7 +132,7 @@ export function PowerGrid({ base }: { base: BaseData }) {
       </div>
       {g.warning ? (
         <p className="text-xs text-red-300 font-semibold" role="status">
-          {g.warning.atMs - serverNow() < 60000 ? "Jetzt" : `Voraussichtlich ab ${hourOf(g.warning.atMs)} Uhr`} fehlen {fmtNum(g.warning.missing)} Strom – {g.warning.text}
+          {g.warning.atMs - serverNow() < 60000 ? "Jetzt" : `Voraussichtlich ab ${fmtAt(g.warning.atMs)} Uhr (in ${fmtDuration(g.warning.atMs - serverNow())})`} fehlen {fmtNum(g.warning.missing)} Strom – {g.warning.text}
         </p>
       ) : (
         <p className="text-xs text-moos">Die nächsten {g.curve.length} Stunden reicht der Strom voraussichtlich.</p>

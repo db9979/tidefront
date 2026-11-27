@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient, trpc, trpcClient, type BaseData, type Balance, type Outputs } from "../lib/trpc.ts";
 import { serverNow } from "../lib/time.ts";
+import { useLiveBase } from "../lib/live-base.ts";
 import { useCommand } from "../lib/command.ts";
 import { countLabel, fmtNum } from "../lib/names.ts";
 import { Icon } from "../icons.tsx";
@@ -108,7 +109,8 @@ export function overflowOf(base: BaseData, reward: Record<string, number> | unde
 
 const invalidate = () => [trpc.guide.pathFilter().queryKey, trpc.base.pathFilter().queryKey, trpc.social.ranking.pathFilter().queryKey];
 
-export function Guide({ base, onAction }: { base: BaseData; onAction: (a: GuideAction) => void }) {
+export function Guide({ base: snap, onAction }: { base: BaseData; onAction: (a: GuideAction) => void }) {
+  const base = useLiveBase(snap); // Lagerwarnung mit hochgerechnetem Bestand
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const q = useGuide();
   const [showAll, setShowAll] = useState(false);

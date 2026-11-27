@@ -41,7 +41,7 @@ export async function lageView(engine: Engine, playerId: number, opts: { brief?:
   const nowMs = Date.now();
   const db = engine.db;
   const bases = await basesOfPlayer(db, playerId);
-  const empty: LageView = { serverNow: nowMs, soon: [], underway: [], waiting: [], urgent: { attacks: 0, grace: 0, idleQueues: 0, rewards: 0 } };
+  const empty: LageView = { serverNow: nowMs, soon: [], underway: [], waiting: [], urgent: { attacks: 0, grace: 0, idleQueues: 0, rewards: 0, keys: [] } };
   if (bases.length === 0) return empty;
   const mods = new Map<number, Modifiers>();
   for (const b of bases) mods.set(b.id, await modsOf(db, b, nowMs));
@@ -50,7 +50,9 @@ export async function lageView(engine: Engine, playerId: number, opts: { brief?:
   const contracts = await contractRows(db, playerId, nowMs);
   const rewards = await rewardCounts(db, playerId);
   const idle = bases.filter((b) => b.state.buildQueue.length === 0);
-  const urgent: LageUrgent = { attacks: attacks.length, grace: contracts.filter((r) => r.kind === "nachfrist").length, idleQueues: idle.length, rewards };
+  const grace = contracts.filter((r) => r.kind === "nachfrist");
+  const keys = [...attacks.map((r) => r.key), ...grace.map((r) => r.key), ...idle.map((b) => `leer:${b.id}`), ...(rewards > 0 ? [`belohnungen:${rewards}`] : [])];
+  const urgent: LageUrgent = { attacks: attacks.length, grace: grace.length, idleQueues: idle.length, rewards, keys };
   if (opts.brief) return { ...empty, urgent };
 
   const soon: LageRow[] = [...attacks, ...contracts];
@@ -168,7 +170,10 @@ async function convoyRows(db: DbOrTx, playerId: number, bases: BaseRow[], nowMs:
   const loose = await db.select().from(d).where(and(eq(d.playerId, playerId), eq(d.status, "underway"), gt(d.arriveAt, new Date(nowMs))));
   for (const x of loose) {
     if (convoyDeliveries.has(x.id)) continue;
-    soon.push(row({ key: `lieferung:${x.id}`, kind: "lieferung", atMs: x.arriveAt.getTime(), icon: x.resource, text: `Lieferung trifft ein: ${fmtInt(x.qty)} ${nameOf(x.resource)}`, sub: harborSub(bases, x.baseId), jump: { to: "base", baseId: x.baseId } }));
+    const at = x.arriveAt.getTime();
+    soon.push(row({ key: `lieferung:${x.id}`, kind: "lieferung", atMs: at, icon: x.resource, text: `Lieferung trifft ein: ${fmtInt(x.qty)} ${nameOf(x.resource)}`, sub: harborSub(bases, x.baseId), jump: { to: "base", baseId: x.baseId } }));
+    // Auch Lieferungen ohne Konvoi (vor 0.33 gekauft) stehen unter „Unterwegs“ – mit Fortschritt, gleich wie lange noch.
+    underway.push(row({ key: `lieferung-weg:${x.id}`, kind: "lieferung", atMs: at, icon: x.resource, text: `Lieferung: ${fmtInt(x.qty)} ${nameOf(x.resource)}`, sub: harborSub(bases, x.baseId), progress: { fromMs: x.departAt.getTime(), toMs: at }, jump: { to: "base", baseId: x.baseId } }));
   }
 }
 
@@ -215,4 +220,4 @@ async function worldRows(db: DbOrTx, bases: BaseRow[], nowMs: number): Promise<L
 }
 
 /** Kurzform für die Oberfläche ohne Hafen: leeres Lagezentrum. */
-export const noLage = (nowMs: number): LageView => ({ serverNow: nowMs, soon: [], underway: [], waiting: [], urgent: { attacks: 0, grace: 0, idleQueues: 0, rewards: 0 } });
+export const noLage = (nowMs: number): LageView => ({ serverNow: nowMs, soon: [], underway: [], waiting: [], urgent: { attacks: 0, grace: 0, idleQueues: 0, rewards: 0, keys: [] } });

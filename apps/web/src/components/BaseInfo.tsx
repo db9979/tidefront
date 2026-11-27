@@ -6,7 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, type BaseData } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
-import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
+import { fmtDuration, fmtRange, fmtTime, useNow } from "../lib/time.ts";
+import { useLiveBase } from "../lib/live-base.ts";
 import { researchNote } from "../lib/research.ts";
 import { Icon } from "../icons.tsx";
 import { Button, Card, ErrorLine } from "../ui.tsx";
@@ -34,12 +35,19 @@ export function Supply({ base }: { base: BaseData }) {
           <span>Radar-Vorwarnzeit</span><span className="text-right">{fmtNum(base.radarWarningMinutes, 1)} min<Note text={researchNote(base.modifierSources.find((m) => m.id === "forschung")?.mods, "radarWarning")} /><Note text={researchNote(base.modifierSources.find((m) => m.id === "wetter")?.mods, "radarWarning")?.replace("Forschung", "Nebel") ?? null} /></span>
         </div>
         <p className="text-xs text-ink2">Jede Einheit isst Proviant, auch unterwegs. Der Saldo steht oben in der Leiste bei Proviant. Ist er negativ, schrumpft der Vorrat; bei 0 droht Versorgungsmangel.</p>
-        {(base.rates.proviant ?? 0) < 0 && !base.versorgungsmangel && <p className="text-siegel text-xs">Deine Truppen essen mehr, als du erzeugst: Vorrat reicht noch {fmtNum(Math.floor((base.resources.proviant ?? 0) / -(base.rates.proviant ?? -1)))} h. Versorgungshof ausbauen oder Proviant kaufen.</p>}
+        {(base.rates.proviant ?? 0) < 0 && !base.versorgungsmangel && <p className="text-siegel text-xs">Deine Truppen essen mehr, als du erzeugst: Vorrat reicht noch <ProvisionLeft base={base} />. Versorgungshof ausbauen oder Proviant kaufen.</p>}
         {base.versorgungsmangel && <p className="text-red-300">Versorgungsmangel: keine Ausbildung, Angriff −20 %. Versorgungshof ausbauen oder Proviant kaufen.</p>}
         {base.deliveries.length > 0 && <DeliveryList base={base} />}
       </div>
     </Card>
   );
+}
+
+/** Restdauer des Proviants bei negativem Saldo, aus dem hochgerechneten Bestand (live). */
+function ProvisionLeft({ base }: { base: BaseData }) {
+  const live = useLiveBase(base);
+  const rate = base.rates.proviant ?? 0;
+  return <span className="mono">{rate < 0 ? fmtDuration(((live.resources.proviant ?? 0) / -rate) * 3_600_000) : "–"}</span>;
 }
 
 /** Kleiner Forschungshinweis hinter einem Wert („+20 % durch Forschung“). */
@@ -90,7 +98,7 @@ export function Protection({ base, now }: { base: BaseData; now: number }) {
   const win = p.nightWindow;
   const beginnerEnd = p.createdAtMs + (prot?.beginnerDays ?? 7) * 86400000;
   return (
-    <Card title="Schutz" collapsible storageKey="basis-schutz" defaultOpen={false} summary={<span className={p.status ? "" : "text-siegel"}>{p.status ? `${label(p.status)} aktiv` : "kein Schutz aktiv"}{win ? ` · Nachtschild ${fmtTime(win.startMs)}–${fmtTime(win.endMs)}` : ""}</span>}>
+    <Card title="Schutz" collapsible storageKey="basis-schutz" defaultOpen={false} summary={<span className={p.status ? "" : "text-siegel"}>{p.status ? `${label(p.status)} aktiv` : "kein Schutz aktiv"}{win ? ` · Nachtschild ${fmtRange(win.startMs, win.endMs)}` : ""}</span>}>
       <div className="flex items-start gap-3">
         <Icon id="schild" size={40} />
         <div className="text-sm min-w-0">
@@ -99,7 +107,10 @@ export function Protection({ base, now }: { base: BaseData; now: number }) {
           {p.defeatShieldUntilMs > now && <div className="text-xs text-slate-400">Schutz nach Niederlage bis {fmtTime(p.defeatShieldUntilMs)}</div>}
           {win && (
             <div className="text-xs text-slate-400">
-              {now >= win.startMs && now < win.endMs ? `Nachtschild bis ${fmtTime(win.endMs)}` : `Nächster Nachtschild ${fmtTime(win.startMs)}–${fmtTime(win.endMs)}`}
+              {now >= win.startMs && now < win.endMs
+                ? `Nachtschild bis ${fmtTime(win.endMs)} (noch ${fmtDuration(win.endMs - now)})`
+                : now >= win.endMs ? "Nachtschild vorbei – nächster Zeitraum wird geladen …"
+                : `Nächster Nachtschild ${fmtRange(win.startMs, win.endMs)} (beginnt in ${fmtDuration(win.startMs - now)})`}
               {p.nightShieldSuspendedUntilMs > now ? " (durch eigenen Angriff aufgehoben)" : ""}
             </div>
           )}

@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, type Balance, type BaseData } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum } from "../lib/names.ts";
-import { fmtDuration, fmtTime } from "../lib/time.ts";
+import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
 import { Button, Card, ErrorLine, ResChips, UnitChips } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 import { invalidateOps } from "./AllianceRaids.tsx";
@@ -19,7 +19,7 @@ export function opsLimits(b: Balance | undefined): Limits {
 }
 
 function minutesText(m: number): string {
-  return m < 60 ? `${m} min` : m % 60 === 0 ? `${m / 60} h` : `${Math.floor(m / 60)} h ${m % 60} min`;
+  return fmtDuration(m * 60_000); // einheitlich: „30 min“, „2 h“, „1 T“
 }
 
 /** Missionsplanung (Überfall): denselben Verband als Sammelangriff der Allianz eröffnen. */
@@ -31,13 +31,14 @@ export function RaidOpenCard({ balance, target, units, travelSeconds, ok, onDone
   const joinChoices = [15, 30, 60, 120, 240, 480, 720, 1440].filter((m) => m >= lim.minJoinMinutes && m <= lim.maxJoinHours * 60);
   const [join, setJoin] = useState(joinChoices[1] ?? joinChoices[0] ?? lim.minJoinMinutes);
   const [extra, setExtra] = useState(0);
+  const now = useNow(60_000); // „Ankunft frühestens“ läuft mit der Uhr mit
   const open = useCommand(
     (i: { key: string; col: number; row: number; eventId?: number; units: Counts; joinMinutes: number; arriveMinutes: number }) => trpcClient.allianceOps.open.mutate(i),
     invalidateOps,
   );
   if (!al.data?.alliance) return null;
   const arriveMinutes = Math.min(lim.maxArriveHours * 60, join + extra);
-  const earliest = Date.now() + join * 60000 + (travelSeconds ?? 0) * 1000;
+  const earliest = now + join * 60000 + (travelSeconds ?? 0) * 1000;
   return (
     <Card title={<><Icon id="sammelangriff" size={18} /> Als Sammelangriff eröffnen</>}>
       <p className="text-xs text-ink2 mb-2">Deine Allianz kann bis zur Frist mit eigenen Verbänden beitreten. Alle laufen so aus, dass sie gleichzeitig ankommen; die Beute wird nach Kampfbeitrag geteilt.</p>
@@ -51,7 +52,7 @@ export function RaidOpenCard({ balance, target, units, travelSeconds, ok, onDone
           {[0, 15, 30, 60, 120, 240].map((m) => <option key={m} value={m}>{m === 0 ? "so früh wie möglich" : `+ ${minutesText(m)}`}</option>)}
         </select>
       </label>
-      <p className="text-xs text-ink2 mt-1">Ankunft frühestens {fmtTime(Math.max(earliest, Date.now() + arriveMinutes * 60000))} – ein langsamerer Verband verschiebt sie.</p>
+      <p className="text-xs text-ink2 mt-1">Ankunft frühestens {fmtTime(Math.max(earliest, now + arriveMinutes * 60000))} – ein langsamerer Verband verschiebt sie.</p>
       <Button
         className="w-full mt-2"
         disabled={!ok || open.busy || Object.keys(units).length === 0}

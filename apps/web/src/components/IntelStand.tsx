@@ -1,7 +1,7 @@
 // Lagebild: Stand einer Angabe im Feld-Blatt („Stand: vor 5 h, Radar Hafen X“) und fremde Verbände auf einem Feld.
 // Live-Angaben (jetzt im Sensorbereich) brauchen keinen Stand; veraltete stehen in Klammern (docs/REGELN-LAGEBILD.md).
 import type { MapData } from "../lib/trpc.ts";
-import { fmtDuration } from "../lib/time.ts";
+import { fmtAgo } from "../lib/time.ts";
 
 export type IntelTag = { age: "live" | "bekannt" | "veraltet"; atMs: number; source: string; level: string } | null | undefined;
 export type MapFleet = MapData["fleets"][number];
@@ -10,10 +10,9 @@ const LEVEL_TEXT: Record<string, string> = { sichtung: "Sichtung", erkennung: "E
 const SIZE_TEXT: Record<string, string> = { klein: "klein (bis 10 Einheiten)", mittel: "mittel (bis 40)", gross: "groß (über 40)" };
 const REL_TEXT: Record<string, string> = { allianz: "Allianz", pakt: "Paktpartner", krieg: "Kriegsgegner", neutral: "neutral", kartell: "Kartell" };
 
-/** „vor 5 h“ (unter einer Stunde in Minuten). */
+/** „vor 5 h“ (unter einer Stunde in Minuten) – einheitlich über fmtAgo (lib/time.ts). */
 export function agoText(atMs: number, now: number): string {
-  const ms = Math.max(0, now - atMs);
-  return ms < 60000 ? "gerade eben" : `vor ${fmtDuration(ms)}`;
+  return fmtAgo(atMs, now);
 }
 
 /** Zeile „Stand: vor X (Quelle)“ für bekanntes oder veraltetes Wissen; live: kleine Quellenangabe. */

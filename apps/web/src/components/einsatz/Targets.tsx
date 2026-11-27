@@ -12,7 +12,7 @@ import { hexCenter, seaRoute } from "@tidefront/world";
 import type { Balance, BaseData, MapData } from "../../lib/trpc.ts";
 import type { Target } from "../../App.tsx";
 import { countLabel, fmtNum } from "../../lib/names.ts";
-import { fmtDuration } from "../../lib/time.ts";
+import { fmtDuration, serverNow } from "../../lib/time.ts";
 import { requestPlan } from "../../lib/plan-request.ts";
 import { nearestNests, suggestRaid, suggestScout, travelMs, type Counts, type NestInfo } from "../../lib/strike.ts";
 import type { NestPlan, PlanJob } from "../../lib/raid-plan.ts";
@@ -49,7 +49,7 @@ function usePlans(rows: Row[], base: BaseData, balance: Balance): Record<string,
   const [out, setOut] = useState<Record<string, NestPlan | null>>({});
   const sig = JSON.stringify(rows.map((r) => [r.key, r.nest.level, r.full, r.nest.lagebild?.atMs ?? null])) + JSON.stringify(base.modifiers ?? {}) + String(base.versorgungsmangel);
   useEffect(() => {
-    const now = Date.now();
+    const now = serverNow();
     const jobs: PlanJob[] = rows.filter((r) => r.nest.level !== null && Object.keys(r.full).length > 0).map((r) => {
       const t = travelMs(r.full, r.nest.distanceKm, balance, base.modifiers);
       const at = hexCenter(r.nest.col, r.nest.row);
@@ -153,7 +153,7 @@ function TargetRow({ row, plan, base, balance, onShowOnMap }: { row: Row; plan: 
           {known && (
             <details className="mt-0.5 text-xs" data-testid="ziel-details">
               <summary className="cursor-pointer text-ink2">Details</summary>
-              <NestIntel level={nest.level!} lagebild={nest.lagebild} now={Date.now()} balance={balance} compact />
+              <NestIntel level={nest.level!} lagebild={nest.lagebild} now={serverNow()} balance={balance} compact />
               {plan?.worth && <p className="text-[11px] text-ink2 mt-0.5">Beute bei Sieg ≈ {fmtNum(Math.round(plan.worth.loot[0]))}{plan.worth.loot[1] > plan.worth.loot[0] + 1 ? `–${fmtNum(Math.round(plan.worth.loot[1]))}` : ""} · Verluste ≈ {fmtNum(Math.round(plan.worth.loss))} · Treibstoff ≈ {fmtNum(Math.round(plan.worth.fuel))} (Richtpreis)</p>}
             </details>
           )}
@@ -178,7 +178,7 @@ function TargetRow({ row, plan, base, balance, onShowOnMap }: { row: Row; plan: 
 /** Kurzzeile: Lagebild-Alter, Spanne der Siegchance, Netto. */
 function WorthLine({ nest, plan }: { nest: NestInfo; plan: NestPlan | null | undefined }) {
   const parts: string[] = [];
-  if (nest.lagebild) parts.push(`Lagebild ${agoText(nest.lagebild.atMs, Date.now())}`);
+  if (nest.lagebild) parts.push(`Lagebild ${agoText(nest.lagebild.atMs, serverNow())}`);
   else parts.push("nur Erkennung");
   if (plan?.range) parts.push(`Sieg ${pct(plan.range.min)}–${pct(plan.range.max)}, Ø ${pct(plan.range.mean)}`);
   const w = plan?.worth;

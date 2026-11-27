@@ -5,6 +5,7 @@ import { trpc, trpcClient, type BaseData, type Outputs } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { fmtDuration } from "../lib/time.ts";
+import { useLiveBase } from "../lib/live-base.ts";
 import { ActionBar, Badge, Button, Card, ErrorLine, Loading, UnitChips } from "../ui.tsx";
 import { ActionRemedy, ReasonLine } from "./Remedy.tsx"; // „Was hilft?“
 import { Icon } from "../icons.tsx";
@@ -23,6 +24,7 @@ function Asset({ id, qty }: { id: string; qty: number }) {
 
 export function PlayerTrade({ base }: { base: BaseData }) {
   const list = useQuery({ ...trpc.playerTrade.list.queryOptions(), refetchInterval: 60000 });
+  const res = useLiveBase(base).resources; // Bestand live hochgerechnet
   const me = useQuery(trpc.alliance.get.queryOptions());
   const prices = usePrices();
   const [give, setGive] = useState("stahl");
@@ -42,7 +44,7 @@ export function PlayerTrade({ base }: { base: BaseData }) {
   const ownOpen = open.filter((o) => o.own).length;
   const g = Math.floor(Number(giveQty) || 0);
   const w = Math.floor(Number(wantQty) || 0);
-  const have = give === "credits" ? base.market.credits : base.resources[give] ?? 0;
+  const have = give === "credits" ? base.market.credits : res[give] ?? 0;
   const unlocked = base.market.unlocked;
   // Gesperrt mit bekanntem Grund: der graue Knopf klappt „Was hilft?“ über der Leiste auf.
   const blockCode = !unlocked ? "locked" : ownOpen >= maxOpen ? "too_many_offers" : g > have ? (give === "credits" ? "funds" : "insufficient_resources") : null;
@@ -129,9 +131,10 @@ export function PlayerTrade({ base }: { base: BaseData }) {
 function OfferRow({ o, fee, base, prices, busy, onAccept, onWithdraw }: { o: Offer; fee: number; base: BaseData; prices: Prices | null; busy: boolean; onAccept: (escort?: Record<string, number>) => void; onWithdraw: () => void }) {
   const [confirm, setConfirm] = useState(false);
   const [escort, setEscort] = useState<Record<string, number>>({}); // See: Konvoi – Geleitschutz
+  const res = useLiveBase(base).resources;
   // Aus Sicht des Lesers: beim eigenen Angebot gibt er give, sonst gibt er want und bekommt give.
   const v = o.own ? readerValue(prices, o.give, o.giveQty, o.want, o.wantQty) : readerValue(prices, o.want, o.wantQty, o.give, o.giveQty);
-  const have = o.want === "credits" ? base.market.credits : base.resources[o.want] ?? 0;
+  const have = o.want === "credits" ? base.market.credits : res[o.want] ?? 0;
   const net = o.give === "credits" ? Math.floor(o.giveQty * (1 - fee) * 100) / 100 : o.giveQty - Math.floor(o.giveQty * fee);
   return (
     <li className={`py-2.5 pl-2.5 dotted-row border-l-[3px] ${o.own ? "border-l-see" : v?.strong ? (v.pct < 0 ? "border-l-siegel" : "border-l-messing") : "border-l-rule"}`}>

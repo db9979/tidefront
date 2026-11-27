@@ -63,7 +63,7 @@ export function FieldSheet({ data, sel, onPlan }: { data: FieldsData | null | un
       {f.garrison && <div className="text-xs">Besatzung: <UnitChips counts={f.garrison} /></div>}
       {f.guard && Object.keys(f.guard).length > 0 && <div className="text-xs">Kartell-Wache: <UnitChips counts={f.guard} /></div>}
       {f.guardAtMs && <div className="text-xs text-ink2">Unbewacht – das Kartell kehrt in {fmtDuration(f.guardAtMs - now)} zurück</div>}
-      {f.intel && <div className="text-xs">Lagebild vom {fmtTime(f.intel.atMs)}: <UnitChips counts={f.intel.units} /></div>}
+      {f.intel && <div className="text-xs">Lagebild (Stand {fmtTime(f.intel.atMs)}): <UnitChips counts={f.intel.units} /></div>}
       {!f.garrison && !f.guard && !f.intel && f.relation !== "frei" && <div className="text-xs text-ink2">Besatzung unbekannt – erst aufklären.</div>}
       <IntelStand tag={f.seen} now={now} />
       {f.zone && f.zone.size >= 2 && <div className="text-xs text-moos">Einflusszone: {f.zone.size} Felder{f.zone.bonus ? " – Ertragsbonus aktiv" : ""}</div>}

@@ -7,6 +7,7 @@ import { hexCenterXY } from "@tidefront/world";
 import { routePosition } from "@tidefront/game-core";
 import { INK, PAPER, SIEGEL } from "./symbols.ts";
 import { xyOf } from "./terrain.ts";
+import { fmtDuration } from "../lib/time.ts";
 
 export interface MapWorldEvent {
   id: number;
@@ -125,9 +126,9 @@ function lifeBar(f: NonNullable<MapWorldEvent["finale"]>, y: number): Container 
   return c;
 }
 
+/** Restzeit im einheitlichen Format (lib/time.ts); das Kartenbild wird minütlich neu gebaut (HexMap). */
 function hours(ms: number): string {
-  const h = Math.max(0, ms) / 3600000;
-  return h >= 1 ? `${Math.floor(h)} h ${Math.floor((h % 1) * 60)} min` : `${Math.max(1, Math.round(h * 60))} min`;
+  return fmtDuration(Math.max(1000, ms));
 }
 
 function dashedPath(g: Graphics, pts: { x: number; y: number }[], dash: number): void {

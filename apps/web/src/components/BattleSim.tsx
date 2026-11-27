@@ -58,9 +58,9 @@ export function ProbeKampf({ balance, base, units, versorgungsmangel, modifiers,
   return (
     <div>
       {target.kind === "base" && scout.data && (
-        <p className="text-xs text-ink2 mb-2">Lagebild vom {fmtTime(scout.data.atMs)}. Der Hafen kann sich seither verändert haben.</p>
+        <p className="text-xs text-ink2 mb-2">Lagebild mit Stand {fmtTime(scout.data.atMs)}. Der Hafen kann sich seither verändert haben.</p>
       )}
-      {target.kind === "nest" && target.lagebild && <p className="text-xs text-ink2 mb-2">Genau gegen das Lagebild vom {fmtTime(target.lagebild.atMs)} (Erholung und Beute hochgerechnet).</p>}
+      {target.kind === "nest" && target.lagebild && <p className="text-xs text-ink2 mb-2">Genau gegen das Lagebild mit Stand {fmtTime(target.lagebild.atMs)} (Erholung und Beute hochgerechnet).</p>}
       {target.kind === "nest" && !target.lagebild && <NestRangeLine level={target.level} attacker={attacker} balance={balance} weather={weather} onScout={onScout} />}
       {weather && <p className="text-xs text-ink2 mb-2" data-testid="probe-wetter">Wetter am Ziel zur Ankunft (Vorhersage, Mitte der Spanne): {weatherText(weather)}.</p>}
       <Outcome attacker={attacker} defender={defender} balance={balance} weather={weather} />

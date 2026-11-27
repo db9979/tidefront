@@ -2,6 +2,11 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.37.0 – 27.11.2026
+- **Alle Zeiten und Bestände laufen live:** Countdowns, Ankunftszeiten, „in ca.“-Angaben, Rohstoffstände, rot markierte Kosten und „Was hilft?“-Hinweise rechnen sich ständig neu – ohne erneutes Öffnen. Reichen die Rohstoffe, verschwindet der Hinweis und der Ausbau-Knopf wird von selbst aktiv. Ist ein Bau fertig oder eine Mission angekommen, holt die App die neuen Daten selbst.
+- **Lesbare Zeiten überall gleich:** „45 s“, „56 min“, „1 h 05 min“, „2 T 3 h“, „vor 12 min“, „morgen 06:00 Uhr“ – nie mehr „55:59 min“.
+- **Lagezentrum:** Lieferungen ohne Konvoi (ältere Börsenkäufe) stehen jetzt unter „Unterwegs“. Neue Einträge seit deinem letzten Blick tragen „neu“. Die Zahl an „Meldungen“ verschwindet nach dem Öffnen der Lage und kommt erst bei neuem Dringendem wieder – laufende Angriffe bleiben immer markiert.
+
 ## 0.36.0 – 27.11.2026
 - **Lagezentrum (Meldungen → „Lage“):** Alles, was gerade läuft, auf einer Seite und nach Zeit sortiert – „Gleich / heute“ (Angriffe rot ganz oben, Ankünfte, Konvois und Lieferungen, Bau, Ausbildung, Forschung, fällige Verträge, Nachtschild, Satelliten, Weltereignisse), „Unterwegs“ mit Fortschrittsbalken, „Wartet auf dich“ (abholbare Belohnungen, leere Bauschlange, freie Plätze, volles Lager, veraltende Lagebilder) und „Zuletzt passiert“. Jede Zeile führt per Tippen direkt dorthin; die Zahl an „Meldungen“ zeigt nur Dringendes.
 - **Börsenlieferung in 4 Stunden – für alle gleich (Balance v1.34):** Jeder Börsenkauf kommt nach genau 4 Stunden an, egal wie weit dein Hafen vom Handelshafen liegt; das Kartell-Risiko ist für alle gleich (im Schnitt rund 1 % Warenverlust ohne Geleit).
