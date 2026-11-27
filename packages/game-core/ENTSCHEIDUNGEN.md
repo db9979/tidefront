@@ -244,9 +244,11 @@ Kartell-Konter (2 U-Boote, 30 Schützen: 0 %).
 
 ### C5. Offene Punkte
 
-- **Seed für die Überfallstärke:** Der Server (`packages/engine`, `raidLaunch`) ruft `composeRaid` noch ohne Seed
-  auf. Dann ist der Faktor 1, und die Wache (20 Schützen) trifft immer auf 32 Miliz: Das Kartell siegt dort zu
-  rund 80 % statt 51 %. Der Server sollte beim Auslaufen einen eigenen Seed ziehen und mitgeben.
+- **Seed für die Überfallstärke (erledigt):** Der Server zieht beim Auslaufen einen eigenen Seed, unabhängig vom
+  Kampf-Seed, und gibt ihn mit (`packages/engine/src/handlers.ts`, `raidLaunch`:
+  `composeRaid(state.units, state.defenses, balance, randomSeed(), mods)`). Die Stärke-Schwankung wirkt damit wie in
+  der Simulation; ohne Seed wäre der Faktor 1 gewesen und das Kartell hätte gegen die Wache (20 Schützen, immer
+  32 Miliz) zu rund 80 % statt 51 % gesiegt.
 - **Bunkerlinie:** Die Miliz (`anlage` 1) kann eine Bunkerlinie praktisch nicht zerstören. Eine einzelne Bunkerlinie
   hält deshalb jeden Kartell-Überfall auf, solange sie steht. Gewollt als harter Konter; falls zu billig, Miliz
   `anlage` anheben oder Bunkerlinien in der Stärke stärker gewichten.
@@ -511,8 +513,9 @@ der Angreifer 50 % gewinnt; links ohne Würfel wie v1.3, rechts mit):
    `pirates.raidResearchWeight` (0,5): Das Kartell zählt die Hälfte des LP-Zuwachses aus den Modifikatoren des
    Verteidigers mit (`raidDefenseHp`, `composeRaid(…, mods)`). Kartell-Sieg ohne / halbe / volle Forschung:
    Tag 7 12 / 9 / 8 %, Tag 14 13 / 12 / 11 %, Tag 28 13 / 12 / 11 % (Gewicht 1 überzieht: 17–22 %).
-   **Offen:** Der Server übergibt die Modifikatoren noch nicht (`packages/engine/src/handlers.ts`, `raidLaunch`:
-   `composeRaid(state.units, state.defenses, balance, randomSeed(), mods)`); bis dahin rechnet das Spiel wie v1.6.
+   **Erledigt:** Der Server übergibt die Modifikatoren des Verteidigers (`packages/engine/src/handlers.ts`,
+   `raidLaunch`: `mods = modsOf(…)`, dann `composeRaid(state.units, state.defenses, balance, randomSeed(), mods)`);
+   das Kartell zählt den LP-Zuwachs aus der Forschung also wie oben beschrieben mit.
 
 ## H. Admirale (Welle 2, Block `admirals`, ab v1.8)
 

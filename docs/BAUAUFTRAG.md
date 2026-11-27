@@ -12,7 +12,7 @@ Hobbyprojekt für den Freundeskreis. Gebaut wird mit KI-Agenten. Regeln: `docs/R
 | 2 Server | Datenbank, Ereignis-Queue, Befehle, Konten, WebSocket | fertig (Stand 2), Integrationstests gegen PostgreSQL |
 | 3 Oberfläche | PWA mit Basis, Karte, Truppen, Mission planen, Kampfbericht, Börse | fertig (Stand 2) |
 | 5 Betrieb | Dockerfile, Compose, Sicherung, Startanleitung | fertig (Stand 2), läuft auf `speech.local:8080` |
-| 6 Prüfung | Unabhängiger Testlauf und Durchspielen im Handy-Format | offen |
+| 6 Prüfung | Unabhängiger Testlauf und Durchspielen im Handy-Format | Browser-Testreihe (Playwright, iPhone 13) steht: `npm run e2e`, siehe Paket 6 |
 
 ## Offene Punkte am Regelkern (Stand 2: erledigt)
 
@@ -227,12 +227,34 @@ Oberfläche: React, Vite, Tailwind, TanStack Query, PixiJS für die Karte, als P
 - Compose-Dienste: `api`, `worker`, `migrate`, `postgres`, `valkey`, `backup`. Healthchecks überall.
 - `docker compose up -d` muss auf arm64 ohne Handarbeit starten. Startanleitung im README.
 
+## Paket 6: Prüfung (`apps/web/e2e`)
+
+- Playwright-Testreihe im Handy-Format (Gerät „iPhone 13“, 390 × 664 CSS-Pixel, Touch, Chromium). Start: `npm run e2e`
+  (einmalig `npx playwright install chromium`). Voraussetzung: Docker. Typprüfung der Tests: `npm run typecheck:e2e`.
+- `apps/web/e2e/stack.ts` baut für jeden Lauf eine frische Test-Datenbank (Postgres und Valkey als eigene Container
+  `tf-e2e-pg`/`tf-e2e-valkey`, Daten nur im Arbeitsspeicher, Ports 55452/56392), migriert mit Einladungscode `E2ETEST`
+  und startet api (18380), worker (18381, Abfrage alle 250 ms) und vite (5380). Nach dem Lauf werden die Container
+  entfernt. `npm run e2e:stack` startet denselben Stack von Hand; mit `E2E_REUSE=1 npm run e2e` nutzen die Tests ihn.
+- Spieler und Häfen legt die Testreihe direkt über die Engine an (ohne Ratenbegrenzung); Wartezeiten (Bau, Ausbildung,
+  Missionen, Konvois) werden in der Test-DB vorgezogen (`apps/web/e2e/game.ts`), der Worker arbeitet die Ereignisse
+  regulär ab. Ausbaustände, Einheiten und Bestände kommen per Seed in den Hafenzustand.
+- Abläufe: Registrieren und Anmelden mit Einladungscode, Hafenwahl, Bauschlange (ausbauen, einreihen, abbrechen,
+  fertigstellen), Ausbildung, Überfall auf ein Nest mit Kampfbericht, Börse (verkaufen, kaufen, Lieferung), Meldungen,
+  Handbuch mit Einstellungen und Verwaltung, Hafen umbenennen, Kolonieschiff und Außenposten mit Hafenwahl,
+  Rohstofffeld besetzen, Rundgang durch alle Bildschirme und Blätter.
+- Je Bildschirm geprüft: keine Konsolenfehler und keine unbehandelten Ausnahmen, kein waagerechtes Überlaufen bei
+  390 px (Dokument, Hauptbereich, offene Blätter; Elemente, die rechts herausragen, außer in Schiebeleisten).
+- Gefundene Fehler stehen als `test.fixme` in `apps/web/e2e/10-befunde.spec.ts` (Stand: der Heimathafen lässt sich auf
+  das Feld eines Handelshafens legen, Börsenlieferungen kommen dann sofort an).
+- Ergebnisse und Spuren fehlgeschlagener Tests: `node_modules/.cache/tidefront-e2e/`
+  (`npx playwright show-report node_modules/.cache/tidefront-e2e/report`).
+
 ## Abnahme
 
-- [ ] Ein neuer Spieler registriert sich mit Einladungscode und wählt ein Küstenfeld.
-- [ ] Gebäude ausbauen und Einheiten bauen laufen über Timer, auch wenn die App geschlossen ist.
-- [ ] Ein Überfall auf ein Piratennest läuft komplett durch: Abfahrt, Kampf, Beute, Rückkehr, Kampfbericht.
+- [x] Ein neuer Spieler registriert sich mit Einladungscode und wählt ein Küstenfeld. (E2E `01-anmeldung`)
+- [x] Gebäude ausbauen und Einheiten bauen laufen über Timer, auch wenn die App geschlossen ist. (E2E `02-bauen`, `03-ausbilden`: der Worker schließt ab)
+- [x] Ein Überfall auf ein Piratennest läuft komplett durch: Abfahrt, Kampf, Beute, Rückkehr, Kampfbericht. (E2E `04-mission`)
 - [ ] Das Kartell greift von sich aus an; Nachtschild und Tiefbunker wirken.
-- [ ] An der Börse lässt sich kaufen und verkaufen; die Schutzregeln greifen nachweislich.
+- [ ] An der Börse lässt sich kaufen und verkaufen; die Schutzregeln greifen nachweislich. (Kaufen und Verkaufen: E2E `05-boerse`; Schutzregeln dort nicht einzeln geprüft)
 - [ ] Nach einem Neustart der Container ist der Spielstand unverändert.
 - [ ] Eine Sicherung lässt sich testweise wiederherstellen.
