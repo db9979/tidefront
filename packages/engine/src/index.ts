@@ -113,3 +113,4 @@ export { runEventWatchdog, REPAIR_GIVE_UP, type WatchdogResult } from "./event-w
 export { listFailedEvents, requeueEvent, type FailedEvent } from "./event-admin.ts"; // Verwaltung → Ereignisse
 export { lockPlayerWide, worldLockExclusive, worldLockShared } from "./world-lock.ts";
 export { bumpMapGeneration, enableMapCache } from "./map-cache.ts"; // world.map: geteilte Weltdaten zwischenspeichern
+export * from "./catch-up.ts"; // Aufholhilfe: Baugutschrift (stündlicher Lauf, Startpaket)

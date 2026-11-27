@@ -25,6 +25,8 @@ import { Breakdown } from "../components/Breakdown.tsx";
 import { IntelPanel, SabotageBanner, sabotagedUntil } from "../components/Intel.tsx"; // Nachrichtendienst
 import { BlockadeBanner } from "../components/Naval.tsx"; // See: Blockade („blockiert bis …“)
 import { buildingLive, harborWeather } from "../lib/live-art.ts"; // Bewegte Gebäude
+import { CatchUpLine, CreditCost, buildCostSplit, useBuildCost } from "../components/CatchUp.tsx"; // Aufholhilfe: Baugutschrift
+import type { Balance as CoreBalance } from "@tidefront/game-core";
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 
@@ -105,7 +107,7 @@ export function BaseScreen(props: {
       {GROUPS.map((g) => (
         <Card key={g.title} title={g.title}>
           <div className="grid grid-cols-3 gap-2">
-            {g.ids.map((id) => byId[id] && <BuildingTile key={id} b={byId[id]} live={live(byId[id])} sabotaged={sabotagedUntil(base, id, now) !== null} res={res} queueFull={queueFull} running={queue[0]?.buildingId === id} queued={queue.some((o) => o.buildingId === id)} onOpen={() => setSheet(id)} />)}
+            {g.ids.map((id) => byId[id] && <BuildingTile key={id} b={byId[id]} stock={buildCostSplit(base, byId[id].cost, meta.data?.balance as CoreBalance | undefined).stock} live={live(byId[id])} sabotaged={sabotagedUntil(base, id, now) !== null} res={res} queueFull={queueFull} running={queue[0]?.buildingId === id} queued={queue.some((o) => o.buildingId === id)} onOpen={() => setSheet(id)} />)}
           </div>
         </Card>
       ))}
@@ -195,6 +197,7 @@ function BuildYard({ base, now, onResearch }: { base: BaseData; now: number; onR
       <ErrorLine text={cancel.error} code={cancel.code} />
       <p className="text-xs text-ink2 flex items-center gap-1.5 mt-2"><span className="diamond bg-moos shrink-0" aria-hidden="true" /> = jetzt ausbaubar (Rohstoffe reichen, Platz in der Schlange frei)</p>
       <ResearchLine base={base} now={now} onOpen={onResearch} />
+      <CatchUpLine base={base} />
     </Card>
   );
 }
@@ -216,8 +219,8 @@ function ResearchLine({ base, now, onOpen }: { base: BaseData; now: number; onOp
   );
 }
 
-function BuildingTile({ b, live, res, queueFull, running, queued, onOpen, sabotaged }: { b: Building; live: Live; res: Record<string, number>; queueFull: boolean; running: boolean; queued: boolean; onOpen: () => void; sabotaged?: boolean }) {
-  const can = !queueFull && !b.requires && b.planned < b.maxAllowed && affordable(b.cost, res);
+function BuildingTile({ b, stock, live, res, queueFull, running, queued, onOpen, sabotaged }: { b: Building; stock: Record<string, number> | null; live: Live; res: Record<string, number>; queueFull: boolean; running: boolean; queued: boolean; onOpen: () => void; sabotaged?: boolean }) {
+  const can = !queueFull && !b.requires && b.planned < b.maxAllowed && affordable(stock, res); // Aufholhilfe: nach Abzug der Baugutschrift
   return (
     <button
       type="button"
@@ -241,7 +244,8 @@ function BuildingSheet({ b, live, base, res, onClose, onTroops, onResearch }: { 
   const balance = meta.data?.balance;
   const capped = b.planned >= b.maxAllowed;
   const maxed = !b.cost;
-  const enough = affordable(b.cost, res);
+  const split = useBuildCost(base, b.cost); // Aufholhilfe: Baugutschrift zuerst verrechnet
+  const enough = affordable(split.stock, res);
   const used = base.buildQueue.length;
   const queueFull = used >= base.buildQueueSlots;
   const target = b.planned + 1;
@@ -290,7 +294,7 @@ function BuildingSheet({ b, live, base, res, onClose, onTroops, onResearch }: { 
       {!maxed && (
         <div className="rounded-xl bg-paper border border-rule p-2 mb-3">
           <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-1">Kosten</div>
-          <Cost cost={b.cost} have={res} />
+          {split.credit && split.stock ? <CreditCost credit={split.credit} stock={split.stock} have={res} /> : <Cost cost={b.cost} have={res} />}
           {b.seconds !== null && <div className="text-sm mt-1 flex items-center gap-1"><Icon id="uhr" size={16} /> {fmtSeconds(b.seconds)}{buildNote && <span className="text-xs text-emerald-300">({buildNote})</span>}</div>}
         </div>
       )}

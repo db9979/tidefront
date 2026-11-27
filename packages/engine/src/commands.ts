@@ -50,6 +50,7 @@ import { STATION_TYPE, stationLaunch } from "./alliance-ops-station.ts"; // Alli
 import { createConvoy, isNavalInput, launchNaval, tradeBlocked, transportConvoyRecall } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 import { launchField } from "./fields-missions.ts"; // Felder
 import { FOUNDING_TYPE, TRANSFER_TYPE, launchExpansion } from "./expansion.ts"; // Mehrere Häfen
+import { latePackState } from "./catch-up.ts"; // Aufholhilfe: Startpaket für Spät-Einsteiger
 
 export type Rejected = { ok: false; code: string };
 type Draft<T> = T | (Rejected & { keepWrites?: boolean });
@@ -143,6 +144,9 @@ export function chooseBase(engine: Engine, playerId: number, key: string, input:
     const state: BaseState = createBase(balance, ctx.nowMs, hexCenter(input.col, input.row));
     // IANA-Zeitzone (Sommerzeit); ungültig oder fehlend: fester Versatz wie bisher.
     state.protection = createProtection(ctx.nowMs, input.nightShieldStartHour, input.tzOffsetMinutes, input.timeZone ?? null);
+    // Aufholhilfe: erster Hafen ab Saisontag 8 (Menschen und KI) bekommt das Startpaket als Baugutschrift.
+    const pack = await latePackState(ctx.tx, ctx.nowMs);
+    if (pack) state.catchUp = pack;
     const inserted = await ctx.tx
       .insert(tables.base)
       .values({ playerId, name: input.name, col: input.col, row: input.row, state, isHome: true }) // erster Hafen = Heimathafen

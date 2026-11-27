@@ -482,5 +482,10 @@
         "expandFromCommandLevel": 5, "fields": "all", "trade": false
       }
     }
+  },
+  "catchUp": {
+    "from": 0.7, "full": 0.3, "cap": 0.5, "resumeBelow": 0.6, "minBaseAgeDays": 3,
+    "storeHours": 24, "stopDay": 40, "latePackFromDay": 8, "latePackShare": 0.15,
+    "refreshMinutes": 60, "maxCatchUpHours": 2
   }
 }

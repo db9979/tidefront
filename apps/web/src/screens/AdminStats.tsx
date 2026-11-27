@@ -142,6 +142,12 @@ export function AdminStats() {
         <StatTable rows={[["Ø Stufe Kommandozentrale", fmtNum(s.economy.avgKommandozentrale, 1)]]} />
         <Sub>Gebäudestufen (Anzahl Häfen je Stufe)</Sub>
         <LevelGrid rows={s.economy.buildings.map((b) => ({ ...b, label: label(b.id) }))} />
+        {(s.economy.catchUp ?? []).length > 0 && (
+          <>
+            <Sub>Aufholhilfe (Baugutschrift: Bestand · Summe Zufluss und Startpaket)</Sub>
+            <StatTable rows={s.economy.catchUp.map((c) => [`${c.name}${c.active ? ` · aktiv +${fmtNum(c.bonus * 100)} %` : ""}`, `${fmtNum(c.credit)} · ${fmtNum(c.total)}`])} />
+          </>
+        )}
       </Card>
 
       {s.marketNews && (

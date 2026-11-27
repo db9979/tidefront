@@ -29,6 +29,7 @@ import {
   type Mission,
   type ResourceMap,
 } from "@tidefront/game-core";
+import { catchUpView } from "./catch-up.ts"; // Aufholhilfe
 import { hexCenter, hexDistanceKm, nearestTradePortBySea } from "@tidefront/world";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance, marketBalance, GameError, type Engine } from "./context.ts";
@@ -199,6 +200,8 @@ export async function baseView(engine: Engine, playerId: number, baseId?: number
       buildings,
       buildQueue: s.buildQueue,
       buildQueueSlots: balance.building.queueSlots,
+      /** Aufholhilfe: Baugutschrift (Bestand, Bonus, Herkunft); null ohne Konto. */
+      catchUp: catchUpView(s),
       trainingQueue: s.trainingQueue,
       units,
       defenses: Object.keys(balance.defenses).map((id) => ({ id, count: s.defenses[id] ?? 0 })),

@@ -19,6 +19,7 @@ import { FieldsChapter } from "../components/FieldsChapter.tsx"; // Felder
 import { HarborsChapter } from "../components/HarborsChapter.tsx"; // Mehrere Häfen
 import { BotsChapter } from "../components/BotsChapter.tsx"; // KI-Spieler
 import { LagebildChapter } from "../components/LagebildChapter.tsx"; // Lagebild
+import { CatchUpChapter } from "../components/CatchUpChapter.tsx"; // Aufholhilfe
 import { requestBugReport } from "../lib/bug-log.ts";
 import { HScroll } from "../components/HScroll.tsx";
 
@@ -238,6 +239,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
     },
     // Erfolge (Abzeichen) und Wochenziele (components/AchievementsChapter.tsx)
     { id: "erfolge", icon: "hafenmeister", title: "Erfolge und Wochenziele", body: <AchievementsChapter b={b} /> },
+    { id: "aufholhilfe", icon: "lagerkomplex", title: "Aufholhilfe", body: <CatchUpChapter b={b} /> }, // Baugutschrift
     {
       id: "saison", icon: "nav-bericht", title: "Saison und Wertung",
       body: (

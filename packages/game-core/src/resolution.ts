@@ -12,6 +12,7 @@ import type {
 } from "./types.ts";
 import { addResources, bunkerProtection, buildingLevel, settle } from "./economy.ts";
 import { upgradeCost } from "./buildings.ts";
+import { emptyCatchUp, refValue } from "./catch-up.ts";
 import { trainingCost } from "./units.ts";
 import { applyDefeatShield } from "./protection.ts";
 import { battleVeterancy } from "./veterans.ts";
@@ -268,13 +269,22 @@ export function cancelUpgrade(
   balance: Balance,
   index = 0,
   mods?: Modifiers,
-): Result<{ base: BaseState; refund: ResourceMap; removed: BuildOrder[] }> {
+): Result<{ base: BaseState; refund: ResourceMap; removed: BuildOrder[]; creditRefund: number }> {
   const order = Number.isInteger(index) && index >= 0 ? base.buildQueue[index] : undefined;
   if (order === undefined) return { ok: false, code: "no_order" };
   if (nowMs >= order.finishesAt) return { ok: false, code: "already_finished" };
-  const cost = upgradeCost(order.buildingId, order.targetLevel - 1, balance);
   const share = order.startedAt <= nowMs ? refundShare(order.startedAt, order.finishesAt, nowMs) : 1;
-  let refund = scaled(cost, share);
+  // Aufholhilfe: der aus der Baugutschrift bezahlte Teil geht anteilig in die Gutschrift zurück, nicht ins Lager.
+  let creditRefund = 0;
+  const paid = (o: BuildOrder, part: number): ResourceMap => {
+    const cost = upgradeCost(o.buildingId, o.targetLevel - 1, balance);
+    if (o.credit) {
+      for (const [r, v] of Object.entries(o.credit)) cost[r] = Math.max(0, (cost[r] ?? 0) - v);
+      creditRefund += refValue(o.credit, balance) * part;
+    }
+    return scaled(cost, part);
+  };
+  let refund = paid(order, share);
   const removed: BuildOrder[] = [{ ...order }];
 
   const next = settle(base, nowMs, balance, mods);
@@ -290,7 +300,7 @@ export function cancelUpgrade(
         : Math.min(balance.building.maxLevel, (levels.kommandozentrale ?? 0) + balance.building.levelCapAboveCommand);
     if (o.targetLevel !== level + 1 || o.targetLevel > cap) {
       // Nicht mehr gültig: noch nicht begonnen, also voll erstatten.
-      refund = addResources(refund, upgradeCost(o.buildingId, o.targetLevel - 1, balance));
+      refund = addResources(refund, paid(o, 1));
       removed.push({ ...o });
       return;
     }
@@ -306,7 +316,8 @@ export function cancelUpgrade(
   });
   next.buildQueue = queue;
   next.resources = addResources(next.resources, refund);
-  return { ok: true, base: next, refund, removed };
+  if (creditRefund > 0) next.catchUp = { ...(next.catchUp ?? emptyCatchUp(nowMs)), credit: (next.catchUp?.credit ?? 0) + creditRefund };
+  return { ok: true, base: next, refund, removed, creditRefund };
 }
 
 /**

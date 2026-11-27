@@ -42,6 +42,8 @@ export function cloneBase(base: BaseState): BaseState {
     ...(base.colony ? { colony: { ...base.colony } } : {}),
     // Lagebild Stufe 3: gestartete Satelliten (sonst verschwänden sie beim nächsten settle).
     ...(base.satellites ? { satellites: base.satellites.map((s) => ({ ...s, ...(s.last ? { last: { ...s.last } } : {}) })) } : {}),
+    // Aufholhilfe: Konto der Baugutschrift.
+    ...(base.catchUp ? { catchUp: { ...base.catchUp } } : {}),
   };
 }
 

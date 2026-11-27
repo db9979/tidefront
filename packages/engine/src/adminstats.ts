@@ -47,6 +47,8 @@ export interface AdminStats {
     avgKommandozentrale: number;
     /** levels[i] = Anzahl Stützpunkte mit Stufe i. */
     buildings: { id: string; avg: number; max: number; levels: number[] }[];
+    /** Aufholhilfe: Spieler mit Konto (aktiv, Bonus, Bestand, Summe aus Zufluss und Startpaket), alle Häfen summiert. */
+    catchUp: { playerId: number; name: string; active: boolean; bonus: number; credit: number; total: number }[];
   };
   anomalies: {
     richPlayers: { playerId: number; name: string; total: number; ratio: number }[];
@@ -255,6 +257,13 @@ export async function adminStats(db: Db, days: StatsDays, nowMs = Date.now(), tz
     for (const id of buildingIds) levels.get(id)!.push(s.buildings[id] ?? 0);
   }
   const totals = [...byPlayer.values()];
+  const catchUp = new Map<number, AdminStats["economy"]["catchUp"][number]>();
+  for (const b of bases) {
+    const c = b.state.catchUp;
+    if (!c) continue;
+    const e = catchUp.get(b.player_id) ?? { playerId: b.player_id, name: b.name, active: false, bonus: 0, credit: 0, total: 0 };
+    catchUp.set(b.player_id, { ...e, active: e.active || c.active, bonus: Math.max(e.bonus, c.bonus), credit: e.credit + Math.floor(c.credit), total: e.total + Math.floor(c.earned + (c.pack ?? 0)) });
+  }
   const buildings = buildingIds.map((id) => {
     const ls = levels.get(id)!;
     const max = ls.reduce((a, b) => Math.max(a, b), 0);
@@ -302,7 +311,7 @@ export async function adminStats(db: Db, days: StatsDays, nowMs = Date.now(), tz
     },
     combat,
     nests: nestRows.map((r) => ({ playerId: r.id, name: r.name, maxLevel: r.maxl, wins: r.wins, attempts: r.attempts })),
-    economy: { bases: bases.length, colonies: bases.filter((b) => !b.is_home).length, avgKommandozentrale: kz?.avg ?? 0, buildings },
+    economy: { bases: bases.length, colonies: bases.filter((b) => !b.is_home).length, avgKommandozentrale: kz?.avg ?? 0, buildings, catchUp: [...catchUp.values()].sort((a, b) => b.total - a.total) },
     anomalies: {
       richPlayers,
       repeatedAttacks: rep.map((r) => ({ attacker: r.attacker, defender: r.defender, maxPerDay: r.maxday, total: r.total })),
