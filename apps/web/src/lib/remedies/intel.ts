@@ -1,6 +1,7 @@
-// Abhilfe: Lagebild Stufe 2 – Patrouille, Aufklärungskampagne, Radarposten.
-import { postLimit } from "@tidefront/game-core";
-import { build, lvl, mapAction, missions, training } from "./helpers.ts";
+// Abhilfe: Lagebild Stufe 2 – Patrouille, Aufklärungskampagne, Radarposten; Stufe 3 – Satelliten, Voraussetzungen.
+import { missingRequirement, postLimit, type BaseState } from "@tidefront/game-core";
+import { label } from "../names.ts";
+import { build, lvl, mapAction, missions, research, stateOf, training } from "./helpers.ts";
 import type { RemedyTable } from "./types.ts";
 
 const meldungenLagebild = { label: "Lagebild", go: { to: "meldungen" as const, sub: "lagebild" as const } };
@@ -31,4 +32,34 @@ export const INTEL: RemedyTable = {
   },
   post_too_close: () => ({ hint: "Radarposten brauchen 300 km Abstand zueinander (auch zu Posten, die gerade errichtet werden). Wähle eine Küste weiter weg.", actions: [mapAction, meldungenLagebild] }),
   no_post: () => ({ hint: "Der Posten wurde inzwischen abgebaut oder zerstört.", actions: [missions] }),
+  // Stufe 3: Voraussetzungen (Startrampe, Störsender) und Satelliten
+  building_requires: ({ base, balance, detail }) => {
+    const id = detail?.building ?? "";
+    const need = Object.entries(balance?.buildings[id]?.requires ?? {}).filter(([b, l]) => lvl(base, b) < l);
+    const first = base && balance ? missingRequirement(stateOf(base) as BaseState, id, balance) : null;
+    const list = need.map(([b, l]) => `${label(b)} ${l} (jetzt ${lvl(base, b)})`);
+    return {
+      hint: need.length ? `${label(id)} braucht ${list.join(", ")}.` : "Es fehlen Voraussetzungen in diesem Hafen.",
+      summary: need.length ? `Fehlt ${list.join(", ")}` : undefined,
+      actions: need.slice(0, 3).map(([b]) => build(b)).concat(first && !need.length ? [build(first.id)] : []),
+    };
+  },
+  sat_pad: ({ base, balance }) => {
+    const req = Object.entries(balance?.buildings.startrampe?.requires ?? {}).filter(([b, l]) => lvl(base, b) < l);
+    return {
+      hint: `Satelliten starten von der Startrampe (Hafengebäude)${req.length ? `; sie braucht ${req.map(([b, l]) => `${label(b)} ${l}`).join(", ")}` : ""}.`,
+      summary: req.length ? `Startrampe fehlt · braucht ${req.map(([b, l]) => `${label(b)} ${l}`).join(", ")}` : "Startrampe fehlt",
+      actions: [build("startrampe", "Startrampe bauen"), ...req.slice(0, 2).map(([b]) => build(b))],
+    };
+  },
+  sat_tech: () => ({ hint: "Erforsche im Zweig Raumfahrt den optischen Satelliten (Forschungsamt 5) bzw. den Radarsatelliten (Forschungsamt 6).", summary: "Raumfahrt erforschen", actions: [research] }),
+  sat_limit: ({ balance }) => {
+    const sb = balance?.intel?.satellite;
+    return {
+      hint: sb ? `Du hältst höchstens ${sb.max} Satelliten gleichzeitig, mit erforschtem Radarsatelliten ${sb.maxMore}. Jeder fliegt ${Math.round(sb.lifetimeHours / 24)} Tage.` : "Warte, bis ein Satellit verglüht.",
+      summary: sb ? `höchstens ${sb.max} (mit Raumfahrt 2: ${sb.maxMore})` : undefined,
+      actions: [meldungenLagebild, research],
+    };
+  },
+  sat_type: () => ({ hint: "Wähle einen optischen Satelliten oder einen Radarsatelliten.", summary: "optisch oder Radar wählen" }),
 };

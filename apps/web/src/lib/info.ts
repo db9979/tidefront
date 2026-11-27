@@ -23,6 +23,15 @@ export const BUILDING_TEXT: Record<string, { kurz: string; lang: string }> = {
   kaserne: { kurz: "Bildet Bodentruppen aus", lang: "Schützen, Pioniere und Kampfpanzer. Nur Bodentruppen können erobern und Beute holen. {trainPower}" },
   flugfeld: { kurz: "Flugzeuge und Stellplätze", lang: "Jede Stufe gibt {slots} Stellplätze. Flugzeuge kämpfen nur innerhalb ihrer Reichweite. Bei Sturm am Hafen starten reine Luftmissionen nicht. {trainPower}" },
   radarstation: { kurz: "Vorwarnung bei Angriffen", lang: "Meldet anrückende Angriffe vor der Ankunft: {radarFirst} Minuten auf Stufe 1, je weitere Stufe {radarStep} mehr. Ohne Radar siehst du einen Angriff erst bei Ankunft. Das Radar wird bei Strommangel zuerst versorgt; fehlt Strom, schrumpft die Vorwarnzeit anteilig, ganz ohne Strom gibt es keine. Nebel am Hafen kürzt sie um bis zu {fogRadar} %." },
+  // Lagebild Stufe 3 (v1.23)
+  startrampe: {
+    kurz: "Startet Satelliten",
+    lang: "Von hier starten Satelliten (Meldungen → Lagebild). Braucht Kommandozentrale {padKz}, Forschungsamt {padFa} und Radarstation {padRadar}; die Technik kommt aus dem Zweig Raumfahrt. Ein Satellit fliegt {satDays} Tage und überfliegt alle {satPeriod} h einen {satStrip} km breiten Nord-Süd-Streifen, der jedes Mal {satShift} km nach Westen wandert; {satLive} min lang ist der Streifen live, danach bleibt das Gesehene bekannt. Optisch: Erkennung, aber nicht unter Wolken; Radar: durch Wolken, nur Sichtung. Jede Stufe über 1 senkt die Startkosten um {padDiscount} % (höchstens {padDiscountMax} %).",
+  },
+  stoersender: {
+    kurz: "Stört fremdes Radar",
+    lang: "Fremde Radarstationen, Radarposten und Radarsatelliten sehen im Umkreis von {jamKm} km um diesen Hafen {jamStep} % weniger weit je Stufe, höchstens {jamMax} % (ab Stufe 2 voll). Braucht {jamPower} Strom je Stufe; bei Strommangel ist er aus. Nachteil: Fremdes Radar in {jamReveal} km Umkreis erkennt den Störsender selbst. Voraussetzung Radarstation {jamRadar}.",
+  },
   forschungsamt: {
     kurz: "Forschung dieser Saison",
     lang: "Hier wird geforscht: eine Technik gleichzeitig, Boni bis zum Saisonende. Höhere Stufen öffnen weitere Techniken (ab Stufe 3 und 5), forschen 10 % schneller je Stufe und erhöhen die Chance auf einen Durchbruch. Forschung braucht Strom und wird bei Mangel zuletzt versorgt (Rang 4); dann dauert sie anteilig länger.",
@@ -88,6 +97,23 @@ function numbers(b: Balance | undefined): Record<string, string> {
     cableLoss: String(Math.round((b?.power?.cable?.lossPer100Km ?? 0.1) * 100)),
     trainPower: "Während der Ausbildung braucht es Strom (Rang 3 nach Radar und Produktion); fehlt er, dauert die Ausbildung anteilig länger – die Fertigstellung wird beim Start mit der Stromprognose festgelegt.",
     fogRadar: String(Math.round((b?.weather?.fogRadarMax ?? 0) * 100)),
+    // Lagebild Stufe 3
+    padKz: String(b?.buildings.startrampe?.requires?.kommandozentrale ?? 8),
+    padFa: String(b?.buildings.startrampe?.requires?.forschungsamt ?? 5),
+    padRadar: String(b?.buildings.startrampe?.requires?.radarstation ?? 6),
+    padDiscount: String(Math.round((b?.intel?.satellite?.discountPerLevel ?? 0) * 100)),
+    padDiscountMax: String(Math.round((b?.intel?.satellite?.discountMax ?? 0) * 100)),
+    satDays: String(Math.round((b?.intel?.satellite?.lifetimeHours ?? 168) / 24)),
+    satPeriod: String(b?.intel?.satellite?.periodHours ?? 6),
+    satStrip: fmtNum(b?.intel?.satellite?.stripKm ?? 600),
+    satShift: fmtNum(b?.intel?.satellite?.shiftKm ?? 1400),
+    satLive: String(b?.intel?.satellite?.liveMinutes ?? 20),
+    jamKm: String(b?.intel?.counter?.jammerRadiusKm ?? 200),
+    jamStep: String(Math.round((b?.intel?.counter?.jammerPerLevel ?? 0.25) * 100)),
+    jamMax: String(Math.round((b?.intel?.counter?.jammerMax ?? 0.5) * 100)),
+    jamReveal: String(b?.intel?.counter?.jammerRevealKm ?? 600),
+    jamPower: String(b?.buildings.stoersender?.powerPerLevel ?? 10),
+    jamRadar: String(b?.buildings.stoersender?.requires?.radarstation ?? 5),
   };
 }
 
@@ -145,6 +171,11 @@ export function buildingEffect(balance: Balance, id: string, level: number): str
     return `Forschung +${Math.round(def.researchSpeedPerLevel * (level - 1) * 100)} % schneller, Durchbruch ${Math.round(chance * 100)} %${power}`;
   }
   if (def.warningMinutesBase !== undefined) return level < 1 ? "keine Vorwarnung" : `${def.warningMinutesBase + (def.warningMinutesPerLevel ?? 0) * level} min Vorwarnung${power}`;
+  // Lagebild Stufe 3
+  const cb = balance.intel?.counter;
+  if (cb && id === cb.jammer) return level < 1 ? "kein Störsender" : `fremdes Radar −${Math.round(Math.min(cb.jammerMax, cb.jammerPerLevel * level) * 100)} % in ${cb.jammerRadiusKm} km${power}`;
+  const sb = balance.intel?.satellite;
+  if (sb && id === sb.launchpad) return level < 1 ? "keine Starts" : `Satellitenstart möglich${level > 1 ? `, Startkosten −${Math.round(Math.min(sb.discountMax ?? 0, (sb.discountPerLevel ?? 0) * (level - 1)) * 100)} %` : ""}`;
   if (def.missionSlotsBase !== undefined) {
     const slots = def.missionSlotsBase + Math.floor(level / 2) * (def.missionSlotsPerTwoLevels ?? 0);
     const market = level >= (def.marketFromLevel ?? 99) ? `, Kreditlimit ${fmtNum((def.creditLimitPerLevel ?? 0) * level)}` : "";

@@ -7,6 +7,7 @@ import { intelFogOn, intelRules, sightOf } from "./intel-sight.ts";
 import { knownFor } from "./intel-store.ts";
 import { postRules } from "./intel-post.ts";
 import { mapViewFor } from "./intel-map.ts";
+import { satelliteOptions } from "./intel-sat.ts"; // Stufe 3
 
 const HOUR_MS = 3600000;
 
@@ -69,5 +70,8 @@ export async function intelOverview(engine: Engine, playerId: number) {
     sensors: sight.sensors.map((s) => ({ kind: s.kind, label: s.label, km: s.km, col: s.col, row: s.row, own: s.playerId === playerId })),
     posts: ownPosts.map((p) => ({ id: p.id, col: p.col, row: p.row, crew: p.crew as Record<string, number>, offline: p.offline, baseName: baseById.get(p.baseId)?.name ?? "?", rangeKm: pb?.rangeKm ?? 0 })),
     rules: { patrol: ib.patrol ?? null, campaign: ib.campaign ?? null, post: ib.post ?? null, sonar: ib.sonar ?? null },
+    /** Stufe 3: Satelliten der Partei (nächster Überflug „über …“) und Startmöglichkeiten an eigenen Startrampen. */
+    satellites: view.intel.satellites,
+    launch: await satelliteOptions(db, playerId, nowMs),
   };
 }

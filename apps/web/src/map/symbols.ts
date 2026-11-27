@@ -60,6 +60,16 @@ export const RELATION_COLOR: Record<Relation, number> = { allianz: ALLY, pakt: P
  * Fremder Spielerhafen: Papierkreis mit Anker in der Farbe des Verhältnisses; Allianz mit innerem Doppelring,
  * Krieg mit vier Peilstrichen, geschützt mit gestricheltem Außenring.
  */
+/** Stufe 3: Blitz rechts oben am fremden Hafen – Störsender, vom eigenen Radar erkannt. */
+export function jammerMark(): Container {
+  const c = new Container();
+  const g = new Graphics();
+  g.circle(13, -13, 6).fill({ color: PAPER }).stroke({ color: SIEGEL, width: 1 });
+  g.poly([14, -18, 10.5, -12.5, 13.5, -12.5, 11.5, -8, 16, -14, 13, -14]).fill({ color: SIEGEL });
+  c.addChild(g);
+  return c;
+}
+
 export function otherBaseSymbol(isProtected: boolean, relation: Relation = "neutral"): Container {
   const c = new Container();
   const g = new Graphics();

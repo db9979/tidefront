@@ -100,3 +100,5 @@ export { cablesView } from "./power-cable-view.ts";
 export { launchIntelOp, previewIntelOp, endPatrol, type IntelOp, type IntelOpInput } from "./intel-ops.ts";
 export { dismantlePost } from "./intel-post.ts";
 export { intelOverview } from "./intel-overview.ts";
+export { launchSatellite, MAP_WIDTH_KM, stripPlace } from "./intel-sat.ts"; // Lagebild Stufe 3: Satelliten
+export { counterWorld, clearCounterCache } from "./intel-counter.ts"; // Lagebild Stufe 3: Gegenmittel

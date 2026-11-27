@@ -5,6 +5,7 @@ import {
   commandPoints,
   fleetTotals,
   maxAllowedLevel,
+  missingRequirement,
   plannedLevel,
   productionRates,
   researchCost,
@@ -59,6 +60,18 @@ function greenWeights(s: BaseState): Record<string, number> {
   return out;
 }
 
+/**
+ * Lagebild Stufe 3: Startrampe (Stufe 1 genügt) für Freibeuter und Festung, sobald die Voraussetzungen stehen;
+ * Störsender (bis Stufe 2, dann ist die Wirkung voll) für die Festung ab Radarstation 5.
+ */
+function spaceWeights(s: BaseState, profile: BotProfile): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (profile === "haendler") return out;
+  if (balance.buildings.startrampe && (s.buildings.startrampe ?? 0) < 1 && !missingRequirement(s, "startrampe", balance)) out.startrampe = profile === "freibeuter" ? 1.5 : 0.8;
+  if (profile === "festung" && balance.buildings.stoersender && (s.buildings.stoersender ?? 0) < 2 && !missingRequirement(s, "stoersender", balance)) out.stoersender = 0.6;
+  return out;
+}
+
 /** Erzeuger je Ressource (Knappheit in der Bauordnung). */
 const PRODUCERS: Record<string, string> = { stahlwerk: "stahl", raffinerie: "treibstoff", chipfabrik: "elektronik", versorgungshof: "proviant" };
 
@@ -80,9 +93,9 @@ const RESEARCH: Record<BotProfile, string[]> = {
   haendler: ["hochofen", "lagertechnik", "logistik", "fertigbau", "stahlbetonbunker", "verschluesselung"],
   festung: [
     "infanteriewaffen", "funkmesstechnik", "schiffspanzerung", "drillausbildung", "pioniertechnik", "festungsbau", "lagertechnik",
-    "stahlbetonbunker", "verbundpanzerung", "hochofen", "luftkampftaktik",
+    "stahlbetonbunker", "verbundpanzerung", "hochofen", "luftkampftaktik", "tarnnetze", "optischer_satellit",
   ],
-  freibeuter: ["dampfturbinen", "schiffspanzerung", "prisenrecht", "infanteriewaffen", "sonar", "torpedoleitsysteme", "logistik", "praezisionsbomben"],
+  freibeuter: ["dampfturbinen", "schiffspanzerung", "prisenrecht", "infanteriewaffen", "sonar", "torpedoleitsysteme", "logistik", "praezisionsbomben", "optischer_satellit", "radarsatellit"],
 };
 
 /** Losgröße je Auftrag höchstens. */
@@ -130,7 +143,7 @@ function resourcesValue(state: BaseState): number {
 export function chooseBuild(c: PlanCtx): string | null {
   const s = c.state;
   if (s.buildQueue.length >= Math.min(c.cfg.buildQueue, balance.building.queueSlots)) return null;
-  const weights = { ...BUILD_WEIGHTS[c.profile], ...(c.profile === "haendler" ? greenWeights(s) : {}) };
+  const weights = { ...BUILD_WEIGHTS[c.profile], ...(c.profile === "haendler" ? greenWeights(s) : {}), ...spaceWeights(s, c.profile) };
   const rates = productionRates(s, balance, c.mods, c.nowMs);
   const cap = storageCapacity(s, balance, c.mods);
   if (balance.resources.some((r) => (s.resources[r] ?? 0) > 0.85 * cap)) weights.lagerkomplex = (weights.lagerkomplex ?? 1) * 3;

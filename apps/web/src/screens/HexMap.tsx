@@ -19,7 +19,7 @@ import { buildTerrain, hexPoints, xyOf } from "../map/terrain.ts";
 import { Graticule } from "../map/graticule.ts";
 import { MAP_BOUNDS, attachGestures, clampScale, clampView, minScale, zoomAround } from "../map/gestures.ts";
 import {
-  INK, RELATION_COLOR, SEE, SIEGEL, compassRose, diamondDot, dotSymbol, mapLabel, nameTag, nestSymbol, otherBaseSymbol, ownBaseSymbol, portSymbol, wreckSymbol,
+  INK, RELATION_COLOR, SEE, SIEGEL, compassRose, diamondDot, dotSymbol, mapLabel, nameTag, nestSymbol, otherBaseSymbol, jammerMark, ownBaseSymbol, portSymbol, wreckSymbol,
 } from "../map/symbols.ts";
 import { LOD_NEAR, LOD_OVERVIEW, fade, layout, pinScale, snap, weatherAlpha, type Pinned } from "../map/lod.ts";
 import { buildWeatherLayer, type WeatherLayer } from "../map/weather.ts"; // Wetterschicht (v1.6)
@@ -366,6 +366,7 @@ export function HexMap(props: HexMapProps) {
       // Übersicht: Punkt in der Farbe des Verhältnisses; Kriegsgegner etwas größer.
       add(dotSymbol(RELATION_COLOR[rel], rel === "krieg" ? 3.6 : 3, 0.95), b.col, b.row, { max: LOD_OVERVIEW, fixed: true });
       add(otherBaseSymbol(b.protection !== null, rel), b.col, b.row, { min: LOD_OVERVIEW });
+      if ((b as { jammer?: boolean }).jammer) add(jammerMark(), b.col, b.row, { min: LOD_OVERVIEW }); // Stufe 3: Störsender erkannt
       add(tag, b.col, b.row, { min: LOD_NAMES, fixed: true, prio: PRIO.base });
     }
     // Eigener Hafen zuoberst

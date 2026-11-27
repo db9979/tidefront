@@ -4,7 +4,7 @@
 // - Festung: klärt Nester in Reichweite auf, sobald sie keine bekannten mehr hat (Kampagne, höchstens alle 6 h).
 // - Händler: sparsam, höchstens einmal am Tag, nur Felder (er überfällt keine Nester).
 import { hexCenterXY, hexDistanceKm, hexAtXY, inGrid, terrainAt } from "@tidefront/world";
-import { campaignOf, patrolOf, type BaseState } from "@tidefront/game-core";
+import { activeSatellites, campaignOf, patrolOf, satelliteLaunchCheck, satelliteOf, type BaseState } from "@tidefront/game-core";
 import { balance } from "./context.ts";
 import { launchMission, type LaunchInput } from "./commands.ts";
 import { missionPreview } from "./views.ts";
@@ -12,7 +12,8 @@ import { mapViewFor } from "./intel-map.ts";
 import { botsConfig } from "./bots-core.ts";
 import { launchIntelOp, previewIntelOp } from "./intel-ops.ts";
 import type { TurnCtx } from "./bots-war.ts";
-import type { BaseRow } from "./store.ts";
+import { basesOfPlayer, homeBaseOf, type BaseRow } from "./store.ts";
+import { launchSatellite } from "./intel-sat.ts";
 
 export type BotMap = Awaited<ReturnType<typeof mapViewFor>>;
 
@@ -148,4 +149,35 @@ export async function botPatrol(c: TurnCtx, base: BaseRow & { state: BaseState }
   c.state.recon = { ...(c.state.recon ?? {}), "trip-patrol": c.nowMs };
   c.log.push(`Patrouille mit 2 Korvetten (${pb.hours[0]} h) vor unbekannten Nestern.`);
   return true;
+}
+
+/**
+ * Stufe 3: Satellit starten, wenn es sich lohnt – Freibeuter (und Festung) mit Startrampe und Raumfahrt, wenn kein
+ * eigener Satellit fliegt (bzw. die Höchstzahl nicht erreicht ist), mindestens 4 Nester in 1 500 km unbekannt oder
+ * veraltet sind und nach dem Start noch einmal die Startkosten im Lager bleiben. Optisch zuerst, sonst Radar.
+ */
+export async function botSatellite(c: TurnCtx, base: BaseRow & { state: BaseState }): Promise<boolean> {
+  const sb = satelliteOf(balance.intel);
+  if (!sb || (c.bot.profile !== "freibeuter" && c.bot.profile !== "festung")) return false;
+  if ((base.state.buildings[sb.launchpad] ?? 0) < 1) return false;
+  if (c.nowMs - (c.state.recon?.["trip-satellite"] ?? 0) < 6 * HOUR_MS) return false;
+  const home = await homeBaseOf(c.engine.db, c.bot.id);
+  const techs = home?.state.research?.levels ?? {};
+  const active = (await basesOfPlayer(c.engine.db, c.bot.id)).flatMap((b) => activeSatellites(b.state, c.nowMs));
+  const map = await botMap(c);
+  const unknown = map.nests.filter((n) => (!n.known || n.intel?.age === "veraltet") && hexDistanceKm(base, n) <= 1500).length;
+  if (unknown < 4) return false;
+  const order: ("optisch" | "radar")[] = active.some((s) => s.type === "optisch") ? ["radar"] : ["optisch", "radar"];
+  for (const type of order) {
+    const chk = satelliteLaunchCheck(base.state, type, techs, active.length, balance);
+    if (!chk.ok) continue;
+    // Reserve: nach dem Start bleiben noch einmal die Startkosten (sonst fehlt das Geld für Flotte und Ausbau).
+    if (Object.entries(chk.cost).some(([r, v]) => (base.state.resources[r] ?? 0) < 2 * v)) continue;
+    const r = await launchSatellite(c.engine, c.bot.id, c.key("satellite"), { type, baseId: base.id });
+    if (!r.ok) continue;
+    c.state.recon = { ...(c.state.recon ?? {}), "trip-satellite": c.nowMs };
+    c.log.push(`${type === "optisch" ? "Optischer Satellit" : "Radarsatellit"} gestartet (${unknown} Nester ohne Lagebild in 1 500 km).`);
+    return true;
+  }
+  return false;
 }

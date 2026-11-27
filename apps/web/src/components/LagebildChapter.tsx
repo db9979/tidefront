@@ -22,7 +22,8 @@ export function LagebildChapter({ b }: { b: Balance | undefined }) {
       <P><strong>Wissen hat ein Alter:</strong> Was du einmal gesehen hast, bleibt als <em>bekannt</em> auf der Karte (blasser, im Feld-Blatt „Stand: vor 5 h (Radar Hafen X)“), nach {i.staleHours} Stunden <em>veraltet</em> (Angaben in Klammern) und nach {i.forgetHours} Stunden vergessen. Verbände auf See gibt es nur live; ihre letzte Sichtung bleibt {i.fleetMemoryHours} Stunden stehen.</P>
       <P><strong>Aufklärung und Kampf:</strong> Eine Mission „Aufklärung“ liefert ein genaues <em>Lagebild</em> des Ziels, ebenso jeder Kampfbericht über den Gegner. Ohne Erkennung zeigt die Missionsplanung „Lage unbekannt“ statt Stufe und Besatzung, und es gibt keinen Probekampf. Ein Überfall auf ein unerkanntes Nest ist erlaubt – ist es verlassen, kehrt der Verband mit leeren Händen zurück.</P>
       <Stufe2 b={b} />
-      <P><strong>KI-Spieler</strong> sehen genau so viel wie du. Der Freibeuter klärt laufend mit Kampagnen und Patrouillen auf, die Festung klärt Nester in Reichweite auf, der Händler sparsam Felder.</P>
+      <Stufe3 b={b} />
+      <P><strong>KI-Spieler</strong> sehen genau so viel wie du. Der Freibeuter klärt laufend mit Kampagnen und Patrouillen auf, die Festung klärt Nester in Reichweite auf, der Händler sparsam Felder. Freibeuter und Festung bauen im Spätspiel eine Startrampe und starten Satelliten, wenn viele Nester ohne Lagebild sind.</P>
     </>
   );
 }
@@ -48,6 +49,29 @@ function Stufe2({ b }: { b: Balance | undefined }) {
       {r && <P><strong>Radarposten:</strong> {r.minCrew} Pioniere und ein Landungsschiff errichten auf einer freien Küste oder einem eigenen Rohstofffeld einen Posten (Kosten {Object.entries(r.cost).map(([k, v]) => `${fmtNum(v)} ${k === "stahl" ? "Stahl" : k === "elektronik" ? "Elektronik" : k}`).join(", ")}; Radarstation {r.radarLevel} im Ausgangshafen). Er sieht {fmtNum(r.rangeKm)} km weit wie ein Radar und braucht {fmtNum(r.fuelPerHour)} Treibstoff je Stunde aus seinem Hafen, sonst fällt er aus. Höchstens {r.max} Posten (ab Hafenkommandantur {r.harborLevel}: {r.maxHarbor}), {fmtNum(r.minDistanceKm)} km Abstand zueinander. Gegner greifen ihn wie ein Feld an: Die Pioniere verteidigen, die Anlage ({r.hp} Lebenspunkte) fällt mit ihnen. Beim Abbau (Meldungen → Lagebild) kommen {Math.round(r.refund * 100)} % der Kosten zurück.</P>}
       {s && <P><strong>U-Boote und Sonar:</strong> U-Boote sind für Radar und Ausguck unsichtbar. Korvetten und Zerstörer (U-Jagd) sehen sie im Hafen, auf Patrouille und unterwegs in {fmtNum(s.baseKm)} km, mit der Forschung Sonar {fmtNum(s.perLevelKm)} km mehr je Stufe. U-Boote auf Patrouille sehen andere U-Boote in {fmtNum(s.subKm)} km.</P>}
       <P><strong>Meldungen → Lagebild</strong> zeigt die letzten Sichtungen, fremde Patrouillen und Aufklärer, deine Sensoren mit Reichweite und deine Radarposten. Spionage-Dossiers zählen als Lagebild; nach einem Angriff kennst du den Hafen des Angreifers. Eine Desinformation des Gegners kann die gemeldete Größenklasse seiner Verbände um eine Stufe verfälschen.</P>
+    </>
+  );
+}
+
+type Space = {
+  satellite?: { types: Record<string, { cost: Record<string, number>; cloudMax?: number }>; lifetimeHours: number; periodHours: number; stripKm: number; shiftKm: number; liveMinutes: number; max: number; maxMore: number; discountPerLevel?: number; discountMax?: number };
+  counter?: { camoFieldsFromLevel: number; jammerRadiusKm: number; jammerPerLevel: number; jammerMax: number; jammerRevealKm: number; paintPerLevel: number; admiralRadarFactor: number };
+};
+
+const costText = (c: Record<string, number>) => Object.entries(c).map(([k, v]) => `${fmtNum(v)} ${k === "stahl" ? "Stahl" : k === "treibstoff" ? "Treibstoff" : k === "elektronik" ? "Elektronik" : k}`).join(", ");
+
+/** Stufe 3: Satelliten (Startrampe, Raumfahrt, Bahn, Wolken) und Gegenmittel (Zahlen aus der Balance). */
+function Stufe3({ b }: { b: Balance | undefined }) {
+  const o = (b as unknown as { intel?: Space } | undefined)?.intel;
+  const req = (b?.buildings as Record<string, { requires?: Record<string, number> } | undefined> | undefined)?.startrampe?.requires;
+  const jamPower = (b?.buildings as Record<string, { powerPerLevel?: number } | undefined> | undefined)?.stoersender?.powerPerLevel ?? 10;
+  if (!o?.satellite && !o?.counter) return null;
+  const s = o.satellite;
+  const c = o.counter;
+  return (
+    <>
+      {s && <P><strong>Satelliten:</strong> Im Spätspiel startest du von einer <strong>Startrampe</strong> (braucht {req ? `Kommandozentrale ${req.kommandozentrale}, Forschungsamt ${req.forschungsamt} und Radarstation ${req.radarstation}` : "Kommandozentrale, Forschungsamt und Radarstation"}) Satelliten; die Technik dafür kommt aus dem Forschungszweig <strong>Raumfahrt</strong>. Ein Satellit fliegt {Math.round(s.lifetimeHours / 24)} Tage und überfliegt alle {s.periodHours} Stunden einen {fmtNum(s.stripKm)} km breiten Nord-Süd-Streifen, der bei jedem Überflug {fmtNum(s.shiftKm)} km nach Westen wandert (über den Kartenrand zurück). Der erste Streifen liegt über deinem Hafen; nach etwa fünf Tagen war fast jeder Ort einmal dran. {s.liveMinutes} Minuten lang ist der Streifen live, danach bleibt das Gesehene „bekannt“ – auch wenn du die Karte gerade nicht offen hast. Der <strong>optische Satellit</strong> erkennt alles im Streifen, aber nicht unter Wolken (Bewölkung über {Math.round((s.types.optisch?.cloudMax ?? 0.6) * 100)} % zum Zeitpunkt des Überflugs, echtes Wetter). Der <strong>Radarsatellit</strong> sieht durch Wolken und Nebel, liefert aber nur Sichtungen: fremde Verbände, Wracks und Radarposten. Start: optisch {costText(s.types.optisch?.cost ?? {})}, Radar {costText(s.types.radar?.cost ?? {})}; jede Stufe der Startrampe über 1 spart {Math.round((s.discountPerLevel ?? 0) * 100)} % (höchstens {Math.round((s.discountMax ?? 0) * 100)} %). Höchstens {s.max} Satellit gleichzeitig, mit erforschtem Radarsatelliten {s.maxMore}. Den nächsten Überflug („in 2 h 10 min über …“) zeigen Meldungen → Lagebild und die Karte (lang gestrichelt mit Uhrzeit).</P>}
+      {c && <P><strong>Gegenmittel:</strong> <em>Tarnnetze</em> (Forschung, Zweig Heer): Ausguck und optische Satelliten erkennen deinen Hafen nur noch als Sichtung (Schutzstatus bleibt verborgen); ab Stufe {c.camoFieldsFromLevel} auch deine Felder und Radarposten. Radar, Patrouillen und Aufklärung sehen weiter alles. <em>Störsender</em> (Hafengebäude, Radarstation 5): Fremdes Radar – Häfen, Posten und Radarsatelliten – sieht im Umkreis von {fmtNum(c.jammerRadiusKm)} km um deinen Hafen {Math.round(c.jammerPerLevel * 100)} % weniger weit je Stufe, höchstens {Math.round(c.jammerMax * 100)} %; er braucht {jamPower} Strom je Stufe. Nachteil: Fremdes Radar in {fmtNum(c.jammerRevealKm)} km erkennt ihn (Blitz am Hafen). <em>Tarnanstrich</em>: Fremde Sensoren sehen deine reinen Flugverbände {Math.round(c.paintPerLevel * 100)} % je Stufe später. <em>Funkdisziplin</em>: Ein Admiral mit Spezialisierung Aufklärung halbiert die Radar-Sichtweite fremder Sensoren auf seinen Verband.</P>}
     </>
   );
 }

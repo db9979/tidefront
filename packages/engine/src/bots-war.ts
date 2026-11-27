@@ -134,11 +134,18 @@ export async function raidNest(c: TurnCtx, base: BaseRow & { state: BaseState },
     .map((n) => ({ ...n, d: hexDistanceKm(base, n) }))
     .filter((n) => n.d <= MAX_RANGE_KM)
     .sort((a, b) => b.level - a.level || a.d - b.d);
-  for (const n of nests.slice(0, 12)) {
-    const d = nestDefender(n.level, balance);
-    if (!d.ok) continue;
-    const p = probe({ units: force, modifiers: mods }, d.defender, c.cfg.probeRuns);
-    if (p.winRate < c.cfg.probeWinRate || p.lootValue < 0.8 * p.lossValue) continue;
+  // Probekampf je Stufe nur einmal (gleicher Verband): Mit viel Wissen (Satellit, Stufe 3) stehen oben viele starke
+  // Nester; früher endete die Liste nach 12 Einträgen, bevor eine schaffbare Stufe kam.
+  const fits = new Map<number, boolean>();
+  let tries = 0;
+  for (const n of nests) {
+    if (!fits.has(n.level)) {
+      const d = nestDefender(n.level, balance);
+      const p = d.ok ? probe({ units: force, modifiers: mods }, d.defender, c.cfg.probeRuns) : null;
+      fits.set(n.level, !!p && p.winRate >= c.cfg.probeWinRate && p.lootValue >= 0.8 * p.lossValue);
+    }
+    if (!fits.get(n.level)) continue;
+    if (++tries > 6) break;
     if (await tryLaunch(c, { type: "ueberfall", units: force, col: n.col, row: n.row, baseId: base.id }, `Überfall auf Piratennest Stufe ${n.level} (${Math.round(n.d)} km).`)) return true;
   }
   // Lagebild: unbekannte Nester in Reichweite aufklären (Kampagne; Freibeuter laufend, Festung mit Pause), danach entscheidet der Probekampf.

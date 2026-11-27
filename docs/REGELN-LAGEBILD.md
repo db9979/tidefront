@@ -185,7 +185,7 @@ Größenklassen für Verbände: **klein** bis 10 Einheiten, **mittel** bis 40, *
 |---|---|---|
 | **1 Grundgerüst** ✔ umgesetzt (Balance v1.17) | Abschnitte 2–4, Ausguck, Radarstation (5.1, 5.2), Allianz-Sicht, Kartennebel, Feld-Blatt mit Stand, Planung „Lage unbekannt“ | Nest-Stufen und fremde Verbände nur noch mit Sicht; Radar wird wichtiger |
 | **2 Aufklärung** ✔ umgesetzt (Balance v1.20) | Patrouille (5.4), Kampagne (5.5), mobile Radarstation (5.3), U-Boote/Sonar (5.7), Bordsicht (5.8), Reiter „Lagebild“ | Aktiv aufklären, Posten bauen, Patrouillen abfangen |
-| **3 Satelliten** | Startrampe, Raumfahrt, Bahnen mit Wolken (5.6), Tarnnetze und Störsender (6) | Spätspiel-Ziel, Gegenmittel |
+| **3 Satelliten** ✔ umgesetzt (Balance v1.23) | Startrampe, Raumfahrt, Bahnen mit Wolken (5.6), Tarnnetze und Störsender (6) | Spätspiel-Ziel, Gegenmittel |
 
 Jede Stufe wird ein eigenes Release mit Migration, Tests (auch E2E) und Simulation.
 
@@ -250,7 +250,7 @@ Abweichungen (begründet):
   `radar_post_tick`); aus nur, wenn der Hafen nach der laufenden Produktion keine 3 Treibstoff hat. Die Anlage
   (20 Lebenspunkte) fällt mit der Besatzung: Der Angreifer gewinnt, wenn er Truppen landet und die Pioniere schlägt.
   Keine Radar-Vorwarnung für Angriffe auf Posten. Abbau: 50 % der Kosten als Ladung der heimkehrenden Besatzung.
-  Tarnnetze Stufe 2 (6) folgen mit Stufe 3.
+  Tarnnetze Stufe 2 (6) folgen mit Stufe 3 (umgesetzt).
 - **Sonar** unterwegs gilt auch für Verbände ohne Patrouille (Bordsicht); Sonar erfasst nur U-Boote, keine Objekte.
 - **Bordsicht** der Flugzeuge: nur Verbände (Sichtung); Objekte sichtet ein Flug nicht, ihre Positionen sind ohnehin
   bekannt. Stationierte Feldbesatzungen sehen nichts zusätzlich (sie liegen fest).
@@ -262,9 +262,58 @@ Abweichungen (begründet):
   **Sammelangriffe** lehnen ein leeres Nest nur noch ab, wenn der Spieler es kennt (sonst Bericht „verlassen“).
 - **Reiter „Lagebild“:** letzte Sichtungen (live und gespeichert), fremde Patrouillen und Aufklärer (gemeldet und
   gesichtet), eigene Sensoren je Art mit größter Reichweite, eigene Radarposten mit Abbauen. Der nächste
-  Satellitenüberflug folgt mit Stufe 3.
+  Satellitenüberflug folgt mit Stufe 3 (umgesetzt, siehe unten).
 - **KI-Spieler:** Festung klärt Nester mit Kampagnen auf (alle 6 h, Felder alle 12 h), Händler einmal am Tag Felder,
   Freibeuter laufend Kampagnen und alle 12 h eine Patrouille vor seinen Angriffen (siehe ENTSCHEIDUNGEN-3.md, O).
+
+### Stufe 3: Umsetzung und Abweichungen
+
+Umgesetzt in `packages/game-core/src/intel-sat.ts` (Bahn, Überflug, Streifen, Start-Prüfungen, Kosten der Rampe,
+Gegenmittel), `packages/game-core/src/intel.ts` (Streifen-Sensoren und Gegenmittel in `liveLevelAt`),
+`packages/engine/src/intel-sat.ts` (Start, Sensoren und Anzeige), `intel-sat-pass.ts` (Ereignisse `satellite_pass`,
+`satellite_end`), `intel-counter.ts` (Tarnnetze, Störsender, Tarnanstrich, Funkdisziplin weltweit je cacheSeconds),
+`mail-report-sat.ts` (E-Mails). Oberfläche: Startrampe und Störsender als Gebäude (Gruppe „Aufklärung“, bewegte
+Zeichnungen), Forschungszweig Raumfahrt, Meldungen → Lagebild „Satelliten“ (Start, nächster Überflug), Karte
+(Streifen gestrichelt, nächster Überflug mit Uhrzeit, Blitz am erkannten fremden Störsender), Berichte, Handbuch,
+Legende, „Was hilft?“. Balance v1.23: Gebäude `startrampe`, `stoersender`, Techniken `optischer_satellit`,
+`radarsatellit` (Zweig `raumfahrt`), `tarnnetze` (Heer), Blöcke `intel.satellite` und `intel.counter`. Keine neue
+Tabelle: Satelliten liegen im Zustand des Hafens mit der Startrampe (`state.satellites`). Simulation und Preise:
+`packages/game-core/ENTSCHEIDUNGEN-3.md`, Abschnitt Q.
+
+Abweichungen (begründet):
+- **Abdeckung:** Mit 600 km Breite, 6 h Takt und 1 400 km Wanderung sind nach einem Tag ~26 % der Karte erfasst, nach
+  5 Tagen ~97 % (Kartenbreite 9 190 km). Die Zahlen aus 5.6 bleiben, nur die Schätzung „nach etwa einem Tag“ stimmt
+  nicht. Der erste Überflug kommt 6 h nach dem Start über dem Starthafen; 27 Überflüge je Satellit. Der Streifen ist
+  ein senkrechter Streifen in Projektions-km (wie Kreise und Karte) und endet am Kartenrand (kein Umlauf um die Erde).
+- **Überflug schreibt Wissen:** Zu Beginn jedes Überflugs speichert der Server alles im Streifen als Wissen der Partei
+  (Quelle „Optischer Satellit (Überflug k)“), auch wenn niemand die Karte öffnet; 20 min lang ist der Streifen live.
+  Wolken zum Beginn des Überflugs (echtes Wettermodell, Bewölkung > 0,6) verdecken ein Feld für die ganze Zeit.
+- **Radarsatellit nur Sichtung:** Er schreibt Verbände, Wracks und Radarposten ins Wissen, aber keine Häfen, Nester und
+  Felder (deren Position ist ohnehin bekannt; eine Sichtung soll kein älteres Erkennen überschreiben). Auf der Karte
+  hebt er den Nebel im Streifen, zeigt aber keine Nest-Stufen oder Schutzstatus. Allgemein: Sichtung (auch durch
+  Tarnnetze) zeigt bei Häfen und Nestern nicht mehr als die Position.
+- **Höchstzahl:** 1 Satellit je Spieler, mit erforschtem Radarsatelliten („Raumfahrt 2“) 2 – über alle Häfen; der
+  Radarsatellit setzt den optischen voraus. Kein vorzeitiger Abbruch; nach 7 Tagen verglüht er mit Abschlussbericht.
+  Eine Überflug-Zusammenfassung gibt es nicht als Bericht je Überflug (27 je Woche wären zu viele), sondern im Lagebild
+  („Zuletzt: 2 Nester, 0 Häfen, 0 Verbände, 5 unter Wolken“) und im Abschlussbericht.
+- **Startrampe:** Stufe 1 genügt für Starts; jede weitere Stufe senkt die Startkosten um 4 % (höchstens 20 %). Keine
+  Stromaufnahme (im Regelwerk nicht vorgesehen).
+- **Störsender:** wirkt auf Punkte im Umkreis von 200 km (nicht auf Sensoren in der Nähe): Fremde Radarstationen und
+  Posten erfassen dort nur bis Reichweite × (1 − Minderung); mehrere Störsender zusammen höchstens 50 %. Beim
+  Radarsatelliten wird der Streifen im Störbereich um seine Mitte entsprechend schmaler. Bei Strommangel (Radar-Rang
+  nicht voll versorgt) ist er aus. Erkennbar ist er für fremdes Radar (Hafen, Posten) in 600 km oder im live
+  Radarsatelliten-Streifen: Blitz am Hafen, kein Eintrag ins Wissen. Ab Stufe 2 ist die Wirkung voll; höhere Stufen
+  kosten nur Strom.
+- **Tarnnetze:** wirken auf Ausguck und optischen Satelliten (und damit auch auf das, was diese ins Wissen schreiben);
+  Radar, Patrouillen, Aufklärer, Bordsicht und Aufklärungsmissionen sehen weiter alles. Stufe 2: auch eigene Felder
+  und Radarposten (Posten bleiben als Sichtung sichtbar).
+- **Tarnanstrich auf Flugzeuge:** gilt für Verbände, die nur aus Flugzeugen bestehen (mit Schiffen sieht man den Verband
+  ohnehin); −20 % je Stufe auf alle fremden Sensoren, mindestens 20 % Restweite.
+- **Funkdisziplin:** Admiral mit Spezialisierung Aufklärung (erste oder zweite) halbiert fremdes Radar – Häfen, Posten
+  und Radarsatellit (Streifen schmaler) – auf seinen Verband, solange er die Mission führt.
+- **KI-Spieler:** Freibeuter und Festung bauen die Rampe, forschen Raumfahrt und starten einen Satelliten, wenn
+  mindestens 4 Nester in 1 500 km ohne Lagebild sind und danach noch einmal die Startkosten im Lager bleiben; die
+  Festung baut den Störsender (bis Stufe 2) und forscht Tarnnetze.
 
 ## 11. Entscheidungen (27.11.2026)
 

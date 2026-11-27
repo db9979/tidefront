@@ -217,3 +217,21 @@ test("Standard für unbekannte Berichtsarten, Kürzung langer Tabellen, HTML mas
   assert.ok(m.html.includes("Patrouille &lt;Nordmeer&gt; &amp; Co") && !m.html.includes("<Nordmeer>"), "maskiert");
   assert.ok(m.text.includes("Patrouille <Nordmeer> & Co"), "Text unmaskiert");
 });
+
+test("Lagebild Stufe 3: Satellitenstart und Ende als eigene Abschnitte (Bahn, Kosten, Zusammenfassung)", () => {
+  const atMs = Date.UTC(2026, 10, 27, 13, 5);
+  const start = reportMailParts({
+    id: 2, kind: "satellit", title: "Optischer Satellit gestartet", atMs, role: "attacker", winner: null,
+    data: { satellite: { event: "start", name: "Optischer Satellit", baseName: "Hafen Anna", cost: { stahl: 5000, treibstoff: 2000, elektronik: 3500 }, expiresAtMs: atMs + 168 * 3600000, passes: 27, periodHours: 6, stripKm: 600, liveMinutes: 20, level: "erkennung", cloudMax: 0.6, firstPass: { atMs: atMs + 6 * 3600000, where: "Nordsee (2° W – 6° O)" } } },
+  });
+  assert.match(start.subject, /Optischer Satellit gestartet – erster Überflug über Nordsee/);
+  const m1 = renderMail({ subject: start.subject, heading: start.heading, paragraphs: [], preheader: start.lead, blocks: start.blocks, button: { label: "Im Spiel öffnen", url: "https://x.test/?tab=berichte&bericht=2" }, unsubscribeUrl: "https://x.test/u" });
+  check("satellit-start", { to: "x", ...m1 }, ["Startkosten", "Erster Überflug", "nicht unter Wolken", "5.000"]);
+  const end = reportMailParts({
+    id: 3, kind: "satellit", title: "Radarsatellit verglüht", atMs, role: "attacker", winner: null,
+    data: { satellite: { event: "end", name: "Radarsatellit", baseName: "Hafen Anna", passes: 27, plannedPasses: 27, seen: 140, clouded: 0, last: { atMs, seen: 4, nests: 0, bases: 0, fleets: 4, where: "Biskaya (12° W – 4° W)" } } },
+  });
+  assert.match(end.subject, /Radarsatellit verglüht – 27 Überflüge, 140 Sichtungen/);
+  const m2 = renderMail({ subject: end.subject, heading: end.heading, paragraphs: [], preheader: end.lead, blocks: end.blocks, button: { label: "Im Spiel öffnen", url: "https://x.test/?tab=berichte&bericht=3" }, unsubscribeUrl: "https://x.test/u" });
+  check("satellit-ende", { to: "x", ...m2 }, ["Überflüge", "Sichtungen", "Letzter Überflug", "Biskaya"]);
+});

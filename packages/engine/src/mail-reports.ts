@@ -13,6 +13,7 @@ import {
 import "./mail-report-battle.ts";
 import "./mail-report-intel.ts";
 import "./mail-report-misc.ts";
+import "./mail-report-sat.ts"; // Lagebild Stufe 3: Satelliten
 import { nameOf } from "./names.ts";
 import { veteranView } from "./veterans.ts";
 import { reportGet } from "./views.ts";

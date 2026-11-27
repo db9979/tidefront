@@ -35,9 +35,9 @@ function seedWith(breakthrough: boolean, chance: number): number {
   throw new Error("kein Seed");
 }
 
-test("Technikbaum: 15–22 Techniken in 5 Zweigen (mit Nachrichtendienst), Wirkungen gültig und moderat", () => {
+test("Technikbaum: 15–26 Techniken in 6 Zweigen (mit Nachrichtendienst und Raumfahrt), Wirkungen gültig und moderat", () => {
   const ids = Object.keys(R.techs);
-  assert.ok(ids.length >= 15 && ids.length <= 22, `${ids.length} Techniken`);
+  assert.ok(ids.length >= 15 && ids.length <= 26, `${ids.length} Techniken`);
   assert.deepEqual([...new Set(ids.map((id) => R.techs[id].branch))].sort(), [...R.branches].sort());
   for (const [id, t] of Object.entries(R.techs)) {
     assert.ok(t.maxLevel >= 1 && t.maxLevel <= 3, id);

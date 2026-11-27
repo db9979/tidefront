@@ -17,6 +17,7 @@
 //   <Flicker ox oy>{Flamme}</Flicker>          flackert, solange produziert wird
 //   <Turn cx when="radar">{Schüssel}</Turn>     dreht sich (scaleX), z. B. Antenne
 //   <Bob when="training">{Haken}</Bob>         auf und ab (Kranhaken), <Flutter> für Wimpel, <Glint> für Glanz
+//   <Smoke when="launch" …/>                   Dampf nach einem Satellitenstart (Startrampe, live.launch)
 // Allgemeine Zusätze (Baukran bei laufendem Ausbau) setzt drawings.tsx für jedes Gebäude, ohne eigene Zeile.
 import { createContext, useContext, type CSSProperties, type ReactNode } from "react";
 import { INK, PAPER } from "../icons-art.tsx";
@@ -43,13 +44,15 @@ export type Live = {
   disabled?: boolean;
   /** Speicherfüllstand 0 … 1 (Speicherwerk). */
   fill?: number;
+  /** Startrampe: Start in der letzten halben Stunde (Dampf aus der Flammenrinne). */
+  launch?: boolean;
 };
 
 const Ctx = createContext<Live | null>(null);
 export const LiveScope = Ctx.Provider;
 export const useLive = () => useContext(Ctx);
 
-export type When = "night" | "producing" | "training" | "building" | "radar" | "sunny";
+export type When = "night" | "producing" | "training" | "building" | "radar" | "sunny" | "launch";
 
 /** Gilt die Bedingung im Live-Zustand? null = keine Live-Daten. */
 export function active(l: Live | null, w: When): boolean {
@@ -61,6 +64,7 @@ export function active(l: Live | null, w: When): boolean {
     case "training": return !!l.training;
     case "building": return !!l.building;
     case "radar": return !!l.producing && !l.disabled && !l.powerShort;
+    case "launch": return !!l.launch;
   }
 }
 

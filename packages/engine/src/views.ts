@@ -10,6 +10,8 @@ import {
   harborMarketUnlocked,
   isNestRespawned,
   maxAllowedLevel,
+  missingRequirement,
+  activeSatellites,
   missionSlots,
   planMission,
   plannedLevel,
@@ -110,6 +112,8 @@ export async function baseView(engine: Engine, playerId: number, baseId?: number
       level,
       planned,
       maxAllowed: maxAllowedLevel(s, id, balance),
+      /** Fehlende Voraussetzung (v1.23, z. B. Startrampe: Radarstation 6), sonst null. */
+      requires: missingRequirement(s, id, balance),
       cost: planned < balance.building.maxLevel ? upgradeCost(id, planned, balance) : null,
       seconds: planned < balance.building.maxLevel ? upgradeSeconds(id, planned, balance, mods) : null,
     };
@@ -244,6 +248,8 @@ export async function baseView(engine: Engine, playerId: number, baseId?: number
       veterans: veteranView(s),
       research: home ? researchView(home.state, home.mods) : researchView(s, mods),
       intel: intelView(s, mods, nowMs),
+      /** Lagebild Stufe 3: von hier gestartete Satelliten (Startrampe: Licht und Dampf). */
+      satellites: activeSatellites(s, nowMs).map((x) => ({ id: x.id, type: x.type, launchedAtMs: x.launchedAtMs, expiresAtMs: x.expiresAtMs })),
       /** Allianz-Ops: fremde Verbände im eigenen Hafen (stationiert oder anfahrend). */
       stationed: await stationedView(engine.db, own.id),
     },

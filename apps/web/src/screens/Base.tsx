@@ -33,6 +33,7 @@ const GROUPS: { title: string; ids: string[] }[] = [
   { title: "Strom", ids: ["kraftwerk", "windpark", "solarfeld", "speicherwerk", "elektrolyse", "seekabel"] },
   { title: "Militär", ids: ["werft", "kaserne", "flugfeld"] },
   { title: "Führung und Schutz", ids: ["kommandozentrale", "hafenkommandantur", "radarstation", "tiefbunker", "forschungsamt", "nachrichtendienst"] },
+  { title: "Aufklärung", ids: ["stoersender", "startrampe"] }, // Lagebild Stufe 3
 ];
 
 type Building = BaseData["buildings"][number];
@@ -198,7 +199,7 @@ function BuildYard({ base, now }: { base: BaseData; now: number }) {
 }
 
 function BuildingTile({ b, live, res, queueFull, running, queued, onOpen, sabotaged }: { b: Building; live: Live; res: Record<string, number>; queueFull: boolean; running: boolean; queued: boolean; onOpen: () => void; sabotaged?: boolean }) {
-  const can = !queueFull && b.planned < b.maxAllowed && affordable(b.cost, res);
+  const can = !queueFull && !b.requires && b.planned < b.maxAllowed && affordable(b.cost, res);
   return (
     <button
       type="button"
@@ -228,11 +229,12 @@ function BuildingSheet({ b, live, base, res, onClose, onTroops, onResearch }: { 
   const target = b.planned + 1;
   const reason = maxed
     ? b.planned > b.level ? `Höchststufe eingereiht (Stufe ${b.planned}).` : "Höchststufe erreicht."
+    : b.requires ? `Voraussetzung: ${label(b.requires.id)} Stufe ${b.requires.level}.`
     : capped ? "Erst die Kommandozentrale ausbauen."
     : queueFull ? `Bauschlange voll (${used}/${base.buildQueueSlots}).`
     : !enough ? "Noch nicht genug Ressourcen." : null;
   // Ablehnungscode zum Grund für „Was hilft?“ (grauer Knopf klappt ihn auf).
-  const reasonCode = maxed ? null : capped ? "command_cap" : queueFull ? "queue_full" : !enough ? "insufficient_resources" : null;
+  const reasonCode = maxed ? null : b.requires ? "building_requires" : capped ? "command_cap" : queueFull ? "queue_full" : !enough ? "insufficient_resources" : null;
   const [help, setHelp] = useWhatHelps();
   const now = balance ? buildingEffect(balance, b.id, b.level) : null;
   const next = balance && !maxed ? buildingEffect(balance, b.id, target) : null;

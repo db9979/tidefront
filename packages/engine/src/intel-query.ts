@@ -1,5 +1,6 @@
 // Lagebild: kleine Abfragen für Befehle, Vorschauen, Felder und KI-Spieler (dieselbe Sicht wie die Karte).
 import { eq } from "drizzle-orm";
+import { atLeast } from "@tidefront/game-core";
 import { hexCenterXY } from "@tidefront/world";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { intelFogOn, intelRules, liveAt, sightOf, sourceAt, type Sight } from "./intel-sight.ts";
@@ -14,7 +15,8 @@ export async function nestKnown(db: DbOrTx, playerId: number, nestId: number, no
   const [n] = await db.select().from(tables.nest).where(eq(tables.nest.id, nestId));
   if (!n) return true;
   const sight = await sightOf(db, playerId, nowMs);
-  if (liveAt(sight, n.col, n.row)) return true;
+  const lvl = liveAt(sight, n.col, n.row);
+  if (lvl && atLeast(lvl, "erkennung")) return true;
   const k = knownGet(await knownFor(db, sight, nowMs, ["nest"]), "nest", nestId);
   return !!k && (k.data as { empty?: boolean }).empty === true;
 }
@@ -23,7 +25,8 @@ export async function nestKnown(db: DbOrTx, playerId: number, nestId: number, no
 export interface FieldSight {
   fog: boolean;
   sight: Sight | null;
-  live: (col: number, row: number) => IntelTag | null;
+  /** Stufe 3: ownerId für das Tarnnetz des Besitzers (Stufe 2); nur Erkennung zählt. */
+  live: (col: number, row: number, ownerId?: number | null) => IntelTag | null;
   known: (fieldId: number) => Known | undefined;
   persist: (rows: SightingInput[]) => Promise<void>;
 }
@@ -35,10 +38,10 @@ export async function fieldSight(db: DbOrTx, playerId: number, nowMs: number): P
   return {
     fog: !!sight,
     sight,
-    live: (col, row) => {
+    live: (col, row, ownerId = null) => {
       if (!sight) return null;
-      const lvl = liveAt(sight, col, row);
-      if (!lvl) return null;
+      const lvl = liveAt(sight, col, row, "object", { ownerId, kind: "field" });
+      if (!lvl || !atLeast(lvl, "erkennung")) return null;
       const p = hexCenterXY(col, row);
       return { age: "live", atMs: nowMs, source: sourceAt(sight, p.x, p.y), level: lvl };
     },

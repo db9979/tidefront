@@ -136,7 +136,7 @@ const KIND_LABEL: Record<string, string> = {
   ueberfall: "Überfall", kartell: "Kartell-Überfall", aufklaerung: "Aufklärung", transport: "Lieferung", leer: "Piratennest",
   abgewiesen: "Kartell abgewiesen", weltereignis: "Weltereignis", weltereignis_leer: "Weltereignis", spionage: "Spionage",
   sabotage: "Sabotage", sammelangriff: "Sammelangriff", minen: "Minen", blockade: "Seeblockade", blockadekampf: "Blockadekampf",
-  konvoi: "Konvoi", feld: "Rohstofffeld", gruendung: "Gründung", verlegung: "Verlegung",
+  konvoi: "Konvoi", feld: "Rohstofffeld", gruendung: "Gründung", verlegung: "Verlegung", satellit: "Satellit",
 };
 
 export function kindLabel(kind: string): string {

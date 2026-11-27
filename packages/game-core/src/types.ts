@@ -58,6 +58,8 @@ export interface BuildingDef {
   electrolysisRatio?: number;
   /** Seekabel-Station (v1.21): Kabelleistung je Stufe (Strom/h). */
   cablePerLevel?: number;
+  /** Voraussetzung (v1.23, z. B. Startrampe): andere Gebäude dieses Hafens mindestens auf dieser Stufe. */
+  requires?: Record<string, number>;
 }
 
 export type Branch = "see" | "land" | "luft";
@@ -430,6 +432,8 @@ export interface BaseState {
   cable?: CableLink | null;
   /** Mehrere Häfen: nur bei Kolonien (gegründet per Kolonieschiff); fehlt im Heimathafen. */
   colony?: { foundedAtMs: number };
+  /** Lagebild Stufe 3 (v1.23, intel-sat.ts): von hier gestartete Satelliten (abgelaufene räumt der Server). */
+  satellites?: import("./intel-sat.ts").SatelliteState[];
 }
 
 export interface ProductionInfo {

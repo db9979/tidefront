@@ -101,6 +101,7 @@ export const TECH_NAMES: Record<string, string> = {
   funkmesstechnik: "Funkmesstechnik", strahltriebwerke: "Strahltriebwerke", luftkampftaktik: "Luftkampftaktik",
   tarnanstrich: "Tarnanstrich", praezisionsbomben: "Präzisionsbomben", hochofen: "Hochofen", logistik: "Logistik",
   lagertechnik: "Lagertechnik", fertigbau: "Fertigbau", stahlbetonbunker: "Stahlbetonbunker",
+  tarnnetze: "Tarnnetze", optischer_satellit: "Optischer Satellit", radarsatellit: "Radarsatellit", // Lagebild Stufe 3
 };
 
 function techName(id: string): string {

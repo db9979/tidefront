@@ -387,3 +387,55 @@ Tag 7 ≈ 620/h, Tag 14 ≈ 780/h, Tag 28 ≈ 1 130/h.
    Überfälle (gewonnen), 0–1 Feld; Händler 2–8 Felder aufgeklärt, 0–2 Felder; Freibeuter 2–9 Überfälle (alle gewonnen),
    4–12 Aufklärungen, 6 Patrouillen je Lauf. Der Bot-Testlauf prüft jetzt das Verhalten (Freibeuter gewinnt Überfälle,
    Festung und Freibeuter klären auf, Bots befassen sich mit Feldern) statt „hält ein Feld“ (Kampfglück).
+
+## Q. Lagebild Stufe 3: Satelliten, Tarnnetze, Störsender (Balance v1.23)
+
+Regeln: `docs/REGELN-LAGEBILD.md` 5.6, 6 und 11 (Punkt 3: Satellit fair bemessen, vor Stufe 3 gegen den Wert des
+Wissens prüfen). Zahlen aus `npm run sim` (Abschnitt „Lagebild Stufe 3“, `sim/satellite.ts`), Richtwert der Börse in
+Stahl-Gegenwert, Produktion des Militär-Bots (45 % Rüstung) Tag 28 ≈ 1 130/h, Tag 35 ≈ 1 170/h.
+
+1. **Preis gegen Produktion** (Ziel 2–3 h Produktion je Tag Laufzeit): optischer Satellit 5 000 / 2 000 / 3 500
+   = 19 100 Stahl-Gw. = 16,3 h Produktion an Tag 35 = **2,33 h je Tag** (Tag 28: 2,42 h); Radarsatellit 6 000 / 2 500 /
+   4 500 = 24 000 = 20,5 h = **2,92 h je Tag** (Tag 28: 3,04 h). Beide liegen im Zielband; die Werte aus Abschnitt 11
+   bleiben. Startrampe Stufe 1: 3 000 / 1 000 / 1 000 (≈ 7 800); jede weitere Stufe −4 % auf den Start (höchstens −20 %),
+   damit der Ausbau der Rampe überhaupt etwas bringt.
+2. **Wert des Wissens bei Nest-Überfällen** (Bot-Verband des Tages, eine Woche, Nester ≤ 1 000 km um Brest, Kiel,
+   Halifax, Neapel und Reykjavík, echtes Wetter, Nebel an, 30 Läufe je Hafen; andere Spieler leeren Nester zufällig,
+   0,5 je Nest und Tag). Wissen: (a) nur Radar 6 und eigene Kampfberichte, (b) dazu täglich eine Kampagne (4 Ziele),
+   (c) dazu ein optischer Satellit.
+   | Tag | Wissen | Angriffe | Siege | Niederlagen | Leerfahrten | Netto/Woche |
+   |---|---|---|---|---|---|---|
+   | 35 | nur Radar | 10,7 | 9,1 | 0 | 1,6 | 81 971 |
+   | 35 | + Kampagne | 9,1 | 7,9 | 0 | 1,2 | 85 241 |
+   | 35 | + optischer Satellit | 9,6 | 8,2 | 0 | 1,4 | 83 213 |
+   | 28 | nur Radar | 12,7 | 11,2 | 0 | 1,5 | 72 441 |
+   | 28 | + Kampagne | 9,1 | 7,9 | 0 | 1,2 | 80 089 |
+   | 28 | + optischer Satellit | 10,5 | 9,1 | 0 | 1,4 | 73 145 |
+   Der Satellit bringt bei Nestern nur **+0,7–1,2 Tsd. Netto je Woche** (≈ 1 h Produktion, 4–7 % seines Preises):
+   Nest-Stufen sind feste Weltdaten, der eigene Kampfbericht deckt sie ohnehin auf, und der Verband ab Tag 28 gewinnt
+   Stufe 1–5 sicher (Niederlagen 0). Sein Nutzen ist das Leer-Risiko (−0,2 Leerfahrten je Woche) und vor allem das,
+   was die Simulation nicht misst: Schutzstatus und Verbände fremder Spieler kartenweit (Kampf um Häfen und Felder),
+   der Radarsatellit nur für Verbände. Eine tägliche Kampagne liefert das Nest-Wissen günstiger (≈ 1,6 Tsd. Treibstoff-
+   Gw. je Woche). **Entscheidung:** Preise nicht senken – billiger würde der Satellit für Nester trotzdem nicht lohnen
+   (dafür müsste er ~90 % billiger sein), aber Spielerkriege im Spätspiel entwerten (Rundumsicht für ein paar Stunden
+   Produktion). Er bleibt ein Spätspiel-Werkzeug für den Kampf um Spielerziele; im Handbuch steht, dass Kampagnen für
+   Nester reichen.
+3. **Bahn** (600 km Streifen, alle 6 h, 1 400 km nach Westen; Kartenbreite 9 190 km): Nach einem Tag sind ~26 % der
+   Karte einmal erfasst, nach 3 Tagen ~79 %, nach 5 Tagen ~97 % – nicht „nach etwa einem Tag“ wie in 5.6 geschätzt.
+   Die Zahlen aus 5.6 bleiben (Auftrag); die Wanderung um 1 400 km verteilt die Streifen gleichmäßig. 27 Überflüge
+   in 7 Tagen (der 28. fiele auf das Ende der Lebensdauer).
+4. **Wolken:** Bewölkung über 0,6 trifft im Mittel **49 %** der Felder (Stichprobe: 40 Zeitpunkte im Herbst, jedes
+   vierte Feld; See und Küste 48 %) – ein optischer Überflug sieht also etwa die Hälfte seines Streifens. Der Radarsatellit sieht durch, liefert aber
+   nur Sichtungen (Verbände, Wracks, Posten); Häfen, Nester und Felder schreibt er nicht ins Wissen, damit eine Sichtung
+   kein älteres Erkennen überschreibt.
+5. **Gegenmittel** (Block `intel.counter`): Tarnnetze 2 Stufen im Zweig Heer (900 / 200 / 500 / 300, Forschungsamt 4,
+   nach Pioniertechnik), Störsender 600 / 200 / 900 je Stufe (Faktor 1,5), 10 Strom je Stufe (Rang 1 wie das Radar; bei
+   Strommangel aus), voll ab Stufe 2. Tarnanstrich −20 % je Stufe auf die Sichtweite fremder Sensoren für reine
+   Flugverbände; Admiral mit Aufklärung halbiert fremdes Radar (Häfen, Posten, Radarsatellit) auf seinen Verband.
+6. **KI-Spieler:** Freibeuter und Festung bauen die Startrampe (Stufe 1), sobald die Voraussetzungen stehen, forschen
+   Raumfahrt am Ende ihrer Reihenfolge (Festung auch Tarnnetze) und starten einen Satelliten, wenn mindestens 4 Nester
+   in 1 500 km ohne Lagebild sind und danach noch einmal die Startkosten im Lager liegen (höchstens alle 6 h). Die
+   Festung baut den Störsender bis Stufe 2. Im 8-Tage-Lauf erreicht kein Bot die Startrampe (Tag 28–35); mit
+   `BOT_SIM_SPACE=1` (Startrampe, Raumfahrt und 20 000 je Ressource ab Tag 0) starten Freibeuter und Festung in jedem
+   Lauf je einen Satelliten (4 Läufe). Dabei fiel ein Fehler im Nest-Überfall auf: Mit viel Wissen standen oben
+   viele zu starke Nester, die Liste endete nach 12 Einträgen – jetzt Probekampf je Stufe einmal, bis zu 6 Startversuche.
