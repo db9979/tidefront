@@ -12,6 +12,8 @@ import { EscortPicker } from "../Naval.tsx";
 import { ContractEscortAdvice } from "../EscortAdvice.tsx"; // See: Empfohlenes Geleit je Frachtwert
 import { when } from "./calc.ts";
 import { contractsInvalidate, kr, type ContractsData } from "./Contracts.tsx";
+import { KiAnsehen } from "../politik/KiAnsehen.tsx"; // Weltpolitik: Ansehen je KI-Spieler
+import { EffectHint } from "../politik/EffectHint.tsx";
 
 type Ki = ContractsData["kis"][number];
 type Offer = Ki["offers"][number];
@@ -27,6 +29,7 @@ export function KiOffers({ base, data }: { base: BaseData; data: ContractsData }
   const [open, setOpen] = useState<string | null>(null);
   return (
     <Card title={<><Icon id="transport" size={18} /> Angebote der KI-Spieler</>}>
+      <EffectHint keys={["kiBonus", "contractFee"]} className="mb-2" />
       {data.kis.length === 0 ? (
         <p className="text-sm text-ink2">In dieser Runde gibt es keine KI-Spieler – also keine KI-Verträge. Verträge mit Spielern gehen trotzdem.</p>
       ) : data.kis.map((k) => (
@@ -36,7 +39,7 @@ export function KiOffers({ base, data }: { base: BaseData; data: ContractsData }
             <span className="text-[11px] text-ink2 uppercase font-display">{k.profileText}</span>
           </div>
           <p className="text-xs text-ink2">{CHARACTER[k.profile] ?? ""}</p>
-          {k.refused && <p className="text-xs text-siegel mt-1">Nach deinem Überfall schließt {k.name} 24 Stunden lang nichts mit dir ab.</p>}
+          <KiAnsehen kiId={k.id} name={k.name} />
           <ul className="mt-1">
             {k.offers.map((o) => {
               const id = `${k.id}-${o.side}-${o.resource}`;

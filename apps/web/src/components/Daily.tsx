@@ -9,6 +9,7 @@ import { fmtDuration, useNow } from "../lib/time.ts";
 import { IconTile, Icon } from "../icons.tsx";
 import { Badge, Bar, Button, ErrorLine, ResChips } from "../ui.tsx";
 import { RewardClaim, lostNote, type RewardStorage } from "./RewardClaim.tsx";
+import { GesuchOffers, GesuchSlotInfo } from "./politik/Gesuche.tsx"; // Weltpolitik: Gesuche der KI-Spieler
 
 type Daily = Outputs["daily"]["get"];
 type Challenge = Daily["challenges"][number];
@@ -67,6 +68,7 @@ export function DailyOrders({ onExpandStorage }: { onExpandStorage?: () => void 
         </span>
       </div>
 
+      <GesuchOffers />
       <ol className="divide-y divide-navy-700">
         {d.challenges.map((c) => (
           <ChallengeItem
@@ -115,6 +117,7 @@ function ChallengeItem(props: { c: Challenge; busy: boolean; storage: RewardStor
           {c.rerolled && <span className="text-[11px] text-ink2">neu gewürfelt</span>}
         </div>
         <div className={`font-serif text-[15.5px] leading-tight ${c.claimed ? "text-slate-400 line-through" : ""}`}>{c.text}</div>
+        {c.kind === "gesuch" && c.param && <GesuchSlotInfo id={Number(c.param)} />}
         <div className="flex items-center gap-2 mt-1">
           <div className="flex-1"><Bar value={c.target > 0 ? c.progress / c.target : 0} tone={c.done ? "green" : "brass"} /></div>
           <span className="text-[11px] mono text-ink2 shrink-0">{fmtNum(c.progress)}/{fmtNum(c.target)}</span>

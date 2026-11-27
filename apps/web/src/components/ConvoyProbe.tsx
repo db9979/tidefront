@@ -7,6 +7,7 @@ import { cargoValue, convoysOf, ESCORT_TARGET, ESCORT_VERIFY_OFFSET, ESCORT_VERI
 import { trpc, type BaseData } from "../lib/trpc.ts";
 import { countLabel, fmtNum } from "../lib/names.ts";
 import { CountsLine, SmallButton } from "../ui.tsx";
+import { EffectHint } from "./politik/EffectHint.tsx"; // Weltpolitik: Geleitschutz
 
 type Counts = Record<string, number>;
 
@@ -27,6 +28,7 @@ export function ConvoyProbe({ cargo, escort, base }: { cargo: Counts; escort: Co
   const escorted = Object.values(escort).some((n) => n > 0);
   return (
     <div className="mt-1" data-convoy-probe>
+      <EffectHint keys={["convoyCartelChance"]} className="mb-1" />
       <SmallButton expanded={open} onClick={() => setOpen(!open)}>{open ? "Probekampf schließen" : "Probekampf gegen das Kartell"}</SmallButton>
       {open && result && (
         <div className="mt-1 rounded-[3px] border border-rule bg-inset p-2 text-xs" data-convoy-probe-result>

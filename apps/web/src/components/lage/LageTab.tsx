@@ -21,6 +21,7 @@ import { ClaimAllButton } from "./ClaimAll.tsx";
 import { LageGroup, LageLine, type LageJump, type LageRow } from "./LageList.tsx";
 import { useEffect, useState } from "react";
 import { readLageSeen, useLageSeen, writeLageSeen } from "../../lib/lage-seen.ts";
+import { PolitikPanel } from "../politik/PolitikPanel.tsx"; // Weltpolitik: Gezeit, Seerat, Paktangebote
 
 const RECENT = 5;
 const REPORT_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "kartell", aufklaerung: "aufklaerung", transport: "transport", spionage: "spionage", sabotage: "sabotage", konvoi: "konvoi", blockade: "blockade", minen: "mine", patrouille: "patrouille", satellit: "satellit", sichtung: "sichtung" };
@@ -77,6 +78,7 @@ export function LageTab({ onShowOnMap, unreadMsgs, seenReport, quests: questBar 
       case "rewards": if (j.where === "erfolge") nav.go({ to: "meldungen", sub: "erfolge" }); // Aufträge stehen hier auf der Lage
         else document.querySelector('[aria-label="Aufträge"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
         break;
+      case "politik": document.getElementById("politik-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }); break; // Weltpolitik
     }
   };
 
@@ -114,6 +116,7 @@ export function LageTab({ onShowOnMap, unreadMsgs, seenReport, quests: questBar 
           {underway.map((r) => <LageLine key={r.key} row={r} nowMs={now} onJump={jump} unread={isNew(r.key)} />)}
         </LageGroup>
       )}
+      <PolitikPanel />
       {waiting.length > 0 && (
         <LageGroup title="Wartet auf dich" count={waiting.length} testId="lage-waiting">
           {waiting.map((r) => <LageLine key={r.key} row={r} nowMs={now} onJump={jump} unread={isNew(r.key)} onTap={r.kind === "nachrichten" ? () => nav.go({ to: "meldungen", sub: "nachrichten" }) : undefined} />)}

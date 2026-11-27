@@ -582,7 +582,7 @@
       "pactBreak": -15, "pactBreakHours": 48,
       "bonusDelta": { "misstraut": -0.02, "bekannt": 0, "vertraut": 0.02 },
       "quotaShare": { "misstraut": 0.15, "bekannt": 0.25, "vertraut": 0.35 },
-      "notoriousMean": -30, "notoriousBounty": 0.1
+      "notoriousMean": -30, "notoriousBounty": 0.1, "pactOfferEveryDays": 7
     },
     "gesuche": {
       "kinds": { "liefern": true, "geleit": false, "feld": false },

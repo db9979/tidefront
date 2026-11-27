@@ -14,15 +14,16 @@ const FILTERS: Record<string, () => { queryKey: readonly unknown[] }[]> = {
     trpc.report.pathFilter(), trpc.base.pathFilter(), trpc.social.ranking.pathFilter(), trpc.daily.pathFilter(),
     trpc.guide.pathFilter(), trpc.achievements.weekly.pathFilter(), trpc.lage.pathFilter(),
   ],
-  market: () => [trpc.market.pathFilter(), trpc.base.pathFilter(), trpc.daily.pathFilter(), trpc.playerTrade.pathFilter(), trpc.lage.pathFilter()],
+  market: () => [trpc.market.pathFilter(), trpc.base.pathFilter(), trpc.daily.pathFilter(), trpc.playerTrade.pathFilter(), trpc.lage.pathFilter(), trpc.politik.pathFilter()],
   map: () => [trpc.world.pathFilter()],
   messages: () => [trpc.social.messages.pathFilter(), trpc.daily.pathFilter()],
   // Allianzen, Chat, Diplomatie (Kürzel und Beziehungen in der Rangliste)
-  alliance: () => [trpc.alliance.pathFilter(), trpc.playerTrade.pathFilter()],
+  alliance: () => [trpc.alliance.pathFilter(), trpc.playerTrade.pathFilter(), trpc.politik.pathFilter(), trpc.lage.pathFilter()],
   // Saisonwechsel: die ganze Welt ist neu.
   season: () => [
     trpc.season.pathFilter(), trpc.social.pathFilter(), trpc.base.pathFilter(), trpc.world.pathFilter(),
     trpc.report.pathFilter(), trpc.market.pathFilter(), trpc.daily.pathFilter(), trpc.guide.pathFilter(), trpc.lage.pathFilter(),
+    trpc.politik.pathFilter(), trpc.meta.pathFilter(), // Weltpolitik: Gezeit/Seerat melden „season“
   ],
 };
 

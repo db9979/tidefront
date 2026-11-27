@@ -67,6 +67,8 @@ export interface KiAccess {
   gesuche: boolean;
   pakt: boolean;
   notorious: boolean;
+  /** Ende der Sperre nach einem Überfall (Händler/Festung), sonst null. */
+  blockedUntilMs: number | null;
 }
 
 /** Berüchtigt: Mittel des Ansehens über alle aktiven KI-Spieler ≤ notoriousMean (vorläufiger Ersatz für den Ruf). */
@@ -93,6 +95,7 @@ export async function kiAccess(db: DbOrTx, ki: { id: number; profile: string }, 
   return {
     value, level, refuses: reason !== null, reason, bonusDelta: fx.bonusDelta, quotaShare: fx.quotaShare,
     gesuche: fx.gesuche && reason === null && !notorious, pakt: fx.pakt && reason === null, notorious,
+    blockedUntilMs: strict && blocked ? st!.lastRaidMs! + blockHours * HOUR_MS : null,
   };
 }
 

@@ -3,6 +3,7 @@
 // als politik. Die Oberfläche folgt nach dem Navigationsumbau.
 import { z } from "zod";
 import {
+  acceptPact, cancelPact, isKiOffer,
   acceptGesuch, cancelPolitikWindow, declineGesuch, politikAdminView, politikKiView, politikOverview, seeratVote, setPolitikOff,
 } from "@tidefront/engine";
 import { adminProc, authed, baseRef, t, wrap } from "../trpc.ts";
@@ -26,6 +27,13 @@ export const politikRouter = t.router({
   declineGesuch: authed
     .input(z.object({ key, gesuchId: id }))
     .mutation(({ ctx, input }) => declineGesuch(ctx.engine, ctx.player.id, input.key, input.gesuchId)),
+  /** Paktangebot eines KI-Spielers annehmen (ein Tippen) bzw. ablehnen. Code no_treaty, wenn es kein offenes KI-Angebot ist. */
+  acceptPakt: authed
+    .input(z.object({ id }))
+    .mutation(({ ctx, input }) => wrap(async () => ((await isKiOffer(ctx.engine.db, ctx.player.id, input.id)) ? acceptPact(ctx.engine, ctx.player.id, input.id) : { ok: false as const, code: "no_treaty" }))),
+  declinePakt: authed
+    .input(z.object({ id }))
+    .mutation(({ ctx, input }) => wrap(async () => ((await isKiOffer(ctx.engine.db, ctx.player.id, input.id)) ? cancelPact(ctx.engine, ctx.player.id, input.id) : { ok: false as const, code: "no_treaty" }))),
   admin: adminProc.query(({ ctx }) => politikAdminView(ctx.engine)),
   adminOff: adminProc
     .input(z.object({ part: z.enum(["gezeit", "seerat", "gesuche"]), off: z.boolean() }))

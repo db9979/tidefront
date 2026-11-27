@@ -10,7 +10,9 @@ import { row, SOON_MS, type LageRow } from "./lage-types.ts";
 import { politikKis, politikSeason, seasonPlan } from "./politik-core.ts";
 import { ansehenAll } from "./politik-ansehen.ts";
 import { effectName, whenText } from "./politik-run.ts";
+import { kiPaktOffers } from "./politik-pakt.ts";
 
+const POL = { to: "politik" as const };
 const LEVEL_TEXT: Record<AnsehenLevel, string> = { misstraut: "Misstraut", bekannt: "Bekannt", vertraut: "Vertraut" };
 
 export interface PolitikLage {
@@ -30,9 +32,9 @@ export async function politikLage(db: DbOrTx, playerId: number, nowMs: number): 
     const label = w.slot === "gezeit" && w.source === "plan" ? "Gezeit" : "Seerat-Beschluss";
     const name = `${label}: ${effectName(w.effect, w.good)}`;
     if (nowMs < w.startMs && w.startMs - nowMs <= cfg.gezeit.announceHours * 3_600_000) {
-      out.soon.push(row({ key: `politik:${w.id}:start`, kind: "gezeit", atMs: w.startMs, icon: "wind", text: `${name} beginnt`, sub: WIRKUNG_TEXT[w.effect].satz }));
+      out.soon.push(row({ key: `politik:${w.id}:start`, kind: "gezeit", atMs: w.startMs, icon: "wind", text: `${name} beginnt`, sub: WIRKUNG_TEXT[w.effect].satz, jump: POL }));
     } else if (w.startMs <= nowMs) {
-      out.soon.push(row({ key: `politik:${w.id}:ende`, kind: "gezeit", atMs: w.endMs, icon: "wind", text: `${name} endet`, sub: `Gilt bis ${whenText(w.endMs)} · ${WIRKUNG_TEXT[w.effect].satz}` }));
+      out.soon.push(row({ key: `politik:${w.id}:ende`, kind: "gezeit", atMs: w.endMs, icon: "wind", text: `${name} endet`, sub: `Gilt bis ${whenText(w.endMs)} · ${WIRKUNG_TEXT[w.effect].satz}`, jump: POL }));
     }
   }
   // Seerat: offene Sitzungen ohne eigene Stimme.
@@ -43,7 +45,7 @@ export async function politikLage(db: DbOrTx, playerId: number, nowMs: number): 
       .where(and(eq(tables.seeratStimme.playerId, playerId), inArray(tables.seeratStimme.sitzungId, open.map((x) => x.id))))).map((r) => r.id));
     for (const x of open) {
       if (voted.has(x.id)) continue;
-      const r = { key: `seerat:${x.id}`, kind: "seerat", icon: "anker", text: "Der Seerat tagt – stimme ab", sub: `Abstimmung bis ${whenText(x.closesAt.getTime())}` };
+      const r = { key: `seerat:${x.id}`, kind: "seerat", icon: "anker", text: "Der Seerat tagt – stimme ab", sub: `Abstimmung bis ${whenText(x.closesAt.getTime())}`, jump: POL };
       out.waiting.push(row(r));
       out.soon.push(row({ ...r, key: `seerat:${x.id}:schluss`, atMs: x.closesAt.getTime(), text: "Seerat: Abstimmung endet" }));
     }
@@ -56,12 +58,16 @@ export async function politikLage(db: DbOrTx, playerId: number, nowMs: number): 
     const who = kis.get(r.kiId)?.name ?? "KI-Spieler";
     const what = `${fmtInt(r.qty)} ${nameOf(r.resource)}`;
     if (r.status === "angeboten") {
-      out.waiting.push(row({ key: `gesuch:${r.id}`, kind: "gesuch", atMs: r.expiresAt.getTime(), icon: r.resource, text: `Gesuch von ${who}: liefere ${what}`, sub: `Angebot gilt bis ${whenText(r.expiresAt.getTime())}`, jump: { to: "contracts" } }));
+      out.waiting.push(row({ key: `gesuch:${r.id}`, kind: "gesuch", atMs: r.expiresAt.getTime(), icon: r.resource, text: `Gesuch von ${who}: liefere ${what}`, sub: `Angebot gilt bis ${whenText(r.expiresAt.getTime())} · Annehmen bei den Tagesbefehlen`, jump: { to: "rewards", where: "basis" } }));
     } else {
       const [c] = r.contractId ? await db.select({ dueAt: tables.marketContract.dueAt }).from(tables.marketContract).where(eq(tables.marketContract.id, r.contractId)) : [];
       const due = c?.dueAt.getTime() ?? null;
       out.underway.push(row({ key: `gesuch-weg:${r.id}`, kind: "gesuch", atMs: due, icon: r.resource, text: `Gesuch für ${who}: ${what}`, sub: "Lohn bei Erfüllung des Vertrags", progress: due && r.acceptedAt ? { fromMs: r.acceptedAt.getTime(), toMs: due } : null, jump: { to: "contracts" } }));
     }
+  }
+  // Paktangebote der KI-Spieler (bei „Vertraut“).
+  for (const o of await kiPaktOffers(db, playerId)) {
+    out.waiting.push(row({ key: `pakt:${o.id}`, kind: "pakt", icon: "anker", tone: "gut", text: `${o.kiName} (${o.profileText}) bietet dir einen Nichtangriffspakt an`, sub: "Annehmen oder ablehnen unter Weltpolitik", jump: POL }));
   }
   // Ansehen: Stufe in den letzten 24 h gewechselt.
   const all = await ansehenAll(db, playerId, nowMs, [...kis.keys()]);

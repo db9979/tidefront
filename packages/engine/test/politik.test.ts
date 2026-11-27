@@ -9,7 +9,7 @@ import { COLS, ROWS, isCoast, isTradePortHex, nestSites } from "@tidefront/world
 import { cartelChance, settle, storageCapacity, type BaseState } from "@tidefront/game-core";
 import {
   acceptGesuch, addBot, ansehenAll, balance, balanceNow, chooseBase, declineGesuch, ensurePolitikPlan, invalidatePolitikCache, kiAccess, lageView,
-  marketView, politikKiView, politikOverview, processDue, register, seed, seeratVote, settleGesuche, offerGesuche, trade, type Engine,
+  marketView, politikKiView, politikOverview, acceptPact, cancelPact, kiPaktOffers, offerKiPacts, processDue, register, seed, seeratVote, settleGesuche, offerGesuche, trade, type Engine,
 } from "../src/index.ts";
 import { politikMeta } from "../src/politik-view.ts";
 
@@ -325,4 +325,40 @@ test("Ansehen: Überfall auf den KI-Spieler sperrt Händler 72 h, Stufe Misstrau
   assert.equal(later.reason, null, "nach 72 h keine Sperre mehr");
   const rot = await kiAccess(db, { id: hanse.playerId, profile: "freibeuter" }, C.playerId, now);
   assert.equal(rot.refuses, false, "Freibeuter lehnt nie ab");
+});
+
+test("Paktangebot: der KI-Spieler bietet bei „Vertraut“ den Pakt an (Nachricht, Lage), nicht erneut binnen 7 Tagen; Annehmen mit einem Tippen", async () => {
+  const now = Date.now();
+  for (let i = 0; i < 8; i++) {
+    await db.insert(tables.kiGesuch).values({
+      seasonId, playerId: A.playerId, kiId: hanse.playerId, day: `test-${i}`, kind: "liefern", status: "erfuellt", resource: "stahl", qty: 500,
+      reward: {}, value: 0, offeredAt: new Date(now - 2 * HOUR), expiresAt: new Date(now + HOUR), closedAt: new Date(now - HOUR + i * 1000),
+    });
+  }
+  assert.equal((await kiAccess(db, { id: hanse.playerId, profile: "haendler" }, A.playerId, now)).level, "vertraut");
+  const notes = await db.transaction((tx) => offerKiPacts(tx, now));
+  assert.ok(notes.some(([ids, kind]) => kind === "messages" && ids?.includes(A.playerId)));
+  const offers = await kiPaktOffers(db, A.playerId);
+  assert.equal(offers.length, 1);
+  assert.equal(offers[0].kiId, hanse.playerId);
+  assert.equal((await kiPaktOffers(db, B.playerId)).length, 0, "B ist nicht vertraut");
+  const msgs = await db.select().from(tables.message).where(and(eq(tables.message.toPlayerId, A.playerId), sql`${tables.message.subject} like 'Diplomatie: Paktangebot%'`));
+  assert.equal(msgs.length, 1);
+  assert.ok((await lageView(engine, A.playerId)).waiting.some((r) => r.key === `pakt:${offers[0].id}`));
+  assert.equal((await politikOverview(engine, A.playerId)).pakte.length, 1);
+
+  // Ablehnen: kein neues Angebot innerhalb von 7 Tagen.
+  assert.equal((await cancelPact(engine, A.playerId, offers[0].id)).ok, true);
+  await db.transaction((tx) => offerKiPacts(tx, now + HOUR));
+  assert.equal((await kiPaktOffers(db, A.playerId)).length, 0);
+
+  // Nach der Sperre (Merker entfernt) wieder angeboten; Annehmen macht den Pakt aktiv.
+  await db.delete(tables.ansehenMerker).where(and(eq(tables.ansehenMerker.playerId, A.playerId), eq(tables.ansehenMerker.kind, "pakt_angebot")));
+  await db.transaction((tx) => offerKiPacts(tx, now + 2 * HOUR));
+  const again = await kiPaktOffers(db, A.playerId);
+  assert.equal(again.length, 1);
+  assert.equal((await acceptPact(engine, A.playerId, again[0].id)).ok, true);
+  const [p] = await db.select().from(tables.diplomacy).where(eq(tables.diplomacy.id, again[0].id));
+  assert.equal(p.status, "aktiv");
+  assert.equal((await kiPaktOffers(db, A.playerId)).length, 0);
 });

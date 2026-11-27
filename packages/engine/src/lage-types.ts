@@ -11,7 +11,8 @@ export type LageJump =
   | { to: "troops"; baseId: number; seg: "einsatz" | "ausbilden" | "abwehr" }
   | { to: "contracts" }
   | { to: "report"; id: number }
-  | { to: "rewards"; where: "basis" | "erfolge" };
+  | { to: "rewards"; where: "basis" | "erfolge" }
+  | { to: "politik" }; // Weltpolitik: Abschnitt „Weltpolitik“ auf der Lage (Gezeit, Seerat, Paktangebot)
 
 export interface LageRow {
   /** Stabiler Schlüssel (React, Tests). */

@@ -74,8 +74,11 @@ Idempotenzschlüssel). Alles hängt an der Saison (`season_id`) und beginnt mit 
 - **Berüchtigt** (vorläufiger Ersatz für den globalen Ruf): Mittel des Ansehens über alle aktiven KI-Spieler ≤ − 30.
   Händler und Festung schließen dann nichts ab und geben keine Gesuche; wer einen Berüchtigten angreift, bekommt
   Kopfgeld-Zuschlag + 0,1 (nicht bei Absprache). „Ächtung“ im Seerat ist vorbereitet und aus (`seerat.aechtung`).
-- **Pakt mit einem KI-Spieler:** Vorschlag über die vorhandene Diplomatie; ist der Spieler bei ihm „Vertraut“, gilt der
-  Pakt sofort, sonst Ablehnung (`ki_not_trusted`). Kündigung mit der üblichen Frist; Überfall bis 48 h nach dem Erlöschen
+- **Pakt mit einem KI-Spieler:** Ist ein Mensch ohne Allianz bei ihm „Vertraut“, **bietet der KI-Spieler den Pakt von
+  sich aus an** (Wartungslauf): Systemnachricht, Lage-Eintrag „… bietet dir einen Nichtangriffspakt an“, Annehmen mit
+  einem Tippen oder Ablehnen unter Basis → Lage → Weltpolitik (auch unter Meldungen → Allianz → Diplomatie). Ein neues
+  Angebot desselben KI-Spielers frühestens nach `pactOfferEveryDays` (7) Tagen, auch nach einer Ablehnung. Umgekehrt
+  kann der Mensch vorschlagen; bei „Vertraut“ gilt der Pakt sofort, sonst Ablehnung (`ki_not_trusted`). Kündigung mit der üblichen Frist; Überfall bis 48 h nach dem Erlöschen
   ist Paktbruch.
 - Der globale Ruf (VORLAGE 3.3) folgt nach einer gemessenen Saison.
 
@@ -124,8 +127,22 @@ Idempotenzschlüssel). Alles hängt an der Saison (`season_id`) und beginnt mit 
   eigenen Stimme. Schluss: Ergebnis als Systemnachricht an alle mit Hafen (Stimmenzahlen, KI-Stimmen mit Namen,
   keine Menschennamen). Beginnt der Beschluss, gilt die Gezeit-Meldung (Push, Lage).
 
-## 6. Schnittstelle (für die Oberfläche)
+## 6. Oberfläche
 
-Siehe Router `politik`: `overview` (Kalender, wirkende Regler als Zeilen, Sitzungen mit eigener Stimme und nach dem
-Schluss das Ergebnis), `ki` (Ansehen je KI-Spieler, Verlauf, eigene Gesuche), `vote`, `acceptGesuch`, `declineGesuch`,
-Verwaltung `admin`, `adminOff`, `adminCancel`. Die Oberfläche folgt nach dem Navigationsumbau.
+- **Basis → Lage → Weltpolitik:** laufende und (24 h vorher) angekündigte Gezeit bzw. Beschlüsse mit Restzeit und den
+  wirkenden Reglern, offene Seerat-Sitzung mit einem Knopf je Option (eigene Stimme markiert, änderbar), Ergebnis der
+  letzten 48 h mit Auszählung (Stimmen, Gewichte, KI-Stimmen), Paktangebote, Kalender der Saison zum Aufklappen.
+- **Tagesbefehle:** offenes Gesuch über den drei Befehlen (Annehmen/Ablehnen); im belegten Platz Lieferung,
+  Fälligkeit und Lohn.
+- **Börse → Verträge:** je KI-Spieler Ansehen (Stufe, Wert, Bonus, Kontingent, Sperre mit Restzeit, Verlauf).
+- **Wo es wirkt:** Hinweis mit Restzeit und Wert danach in Order (Gebühr, Tageslimit), KI-Verträgen (Bonus,
+  Vertragsgebühr), Börsenkonvoi und Konvoi-Probekampf (Kartellchance), Spielerhandel (Gebühr).
+- **Verwaltung → Weltpolitik:** Not-Aus je Baustein, Fenster absagen, Sitzungen, Zähler der Gesuche.
+- Handbuch-Kapitel „Weltpolitik“ (Zahlen aus der Grundbalance).
+
+## 7. Schnittstelle
+
+Router `politik`: `overview` (Kalender, wirkende Regler als Zeilen mit Schlüssel/Ende/Wert danach, Sitzungen mit
+eigener Stimme und nach dem Schluss das Ergebnis, Paktangebote), `ki` (Ansehen je KI-Spieler, Verlauf, Sperre, eigene
+Gesuche mit Fälligkeit), `vote`, `acceptGesuch`, `declineGesuch`, `acceptPakt`, `declinePakt`, Verwaltung `admin`,
+`adminOff`, `adminCancel`.

@@ -137,4 +137,5 @@ export { ensurePolitikPlan, POLITIK_HANDLERS } from "./politik-run.ts";
 export { seeratVote, tallySitzung } from "./politik-seerat.ts";
 export { ansehenAll, kiAccess, notoriousOf, notoriousBounty } from "./politik-ansehen.ts";
 export { runGesuche, offerGesuche, settleGesuche, acceptGesuch, declineGesuch } from "./politik-gesuche.ts";
-export { politikOverview, politikKiView, politikMeta, politikAdminView, setPolitikOff, cancelPolitikWindow, effectLines } from "./politik-view.ts";
+export { politikOverview, politikKiView, politikMeta, politikAdminView, setPolitikOff, cancelPolitikWindow, effectLines, type EffectLine } from "./politik-view.ts";
+export { kiPaktOffers, offerKiPacts, isKiOffer } from "./politik-pakt.ts";

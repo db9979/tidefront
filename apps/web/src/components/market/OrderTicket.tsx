@@ -16,6 +16,7 @@ import { allowedRange, dailyFreeAt, dailyWindow, limits, maxSensible, when, type
 import { Slip } from "./Slip.tsx";
 import { OrderEscort } from "./OrderEscort.tsx"; // See: Börsenkonvoi, Geleit optional
 import { noFundsText } from "../../lib/remedies/surplus.ts";
+import { EffectHint } from "../politik/EffectHint.tsx"; // Weltpolitik: Gebühr und Tageslimit der Gezeit
 
 /** Höchstmenge je Handel (wie im Server). */
 const MAX_QTY = 10_000_000;
@@ -163,6 +164,7 @@ export function OrderTicket({ r, cfg, nowMs, ctx, base, initial }: { r: MarketRe
       </p>
       {!valid && <p className="text-sm text-messing mb-2">{typed > MAX_QTY ? `Menge zu groß (höchstens ${fmtNum(MAX_QTY)}).` : "Menge eingeben (ganze Zahl ab 1)."}</p>}
 
+      <EffectHint keys={["fee", "dailyLimit"]} className="mb-3" />
       <DailyBar used={daily.used} add={valid ? typed : 0} limit={r.dailyLimit} next={nextFree} nowMs={nowMs} reserved={daily.reserved} />
 
       {q && hard.length === 0 && <Slip q={q} cfg={cfg} nowMs={nowMs} ctx={ctx} label={label(r.id)} />}

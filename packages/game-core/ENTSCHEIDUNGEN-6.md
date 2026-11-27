@@ -338,3 +338,18 @@ Grundlage `docs/VORLAGE-WELTPOLITIK.md` mit den Nutzerentscheidungen; Regelwerk 
   „Gezeit lenkt Angebote“, Morgenbericht-Zeile, Simulator (`sim/`) mit Plan, Vorankündigung „Gemeinsame Aktion“ 12 h
   früher (nur die Beute + 20 %). Keine Migration (Tabellen `politik_fenster`, `seerat_sitzung`, `seerat_stimme`,
   `ki_gesuch`, `ansehen_merker` nur im Schema).
+
+## Weltpolitik: Oberfläche und Paktangebot der KI (nach dem Navigationsumbau)
+
+- **Kein neuer Reiter:** Abschnitt „Weltpolitik“ auf Basis → Lage zwischen „Unterwegs“ und „Wartet auf dich“
+  (Sprungziel `politik` für Gezeit-, Seerat- und Paktzeilen); Gesuche bei den Tagesbefehlen; Ansehen auf der KI-Karte
+  der Verträge; wirkende Regler als Hinweis an Order, KI-Verträgen, Börsenkonvoi, Konvoi-Probekampf und Spielerhandel
+  (`EffectHint`, Server liefert `lines` mit Schlüssel, Ende und Wert danach). Restzeiten laufen live (`useCountdownNow`).
+- **Unangekündigte Gezeit** zeigt der Kalender ohne Art („angekündigt 24 h vorher“); der Plan selbst bleibt in `meta`
+  (der Client braucht ihn für `balanceAt`), ist also für Neugierige lesbar – bewusst hingenommen.
+- **Handbuch** liest die Grundbalance (`meta.baseBalance`), sonst stünden während einer Gezeit deren Werte als Regel da.
+- **Paktangebot der KI (Nutzerentscheid):** im Wartungslauf (`offerKiPacts`, zusammen mit den Gesuchen) als normale
+  Diplomatie-Zeile `angeboten` mit `proposed_by` = KI; Merker `pakt_angebot` sperrt 7 Tage (auch nach Ablehnung).
+  Nur für Menschen ohne Allianz – in einer Allianz verhandelt die Führung für alle, das Ansehen gilt aber je Mensch.
+  Annehmen/Ablehnen über `politik.acceptPakt/declinePakt` (prüft, dass es ein KI-Angebot an diesen Menschen ist) bzw.
+  die vorhandene Diplomatie.

@@ -11,7 +11,8 @@ import { invalidatePolitikCache, POLITIK_OFF, politikKis, politikOff, politikSea
 import { ansehenAll, kiAccess, notoriousOf } from "./politik-ansehen.ts";
 import { gesucheOf, settleGesuche } from "./politik-gesuche.ts";
 import { ownVotes, tallySitzung, voteCount } from "./politik-seerat.ts";
-import { effectName, whenText } from "./politik-run.ts";
+import { effectName } from "./politik-run.ts";
+import { kiPaktOffers } from "./politik-pakt.ts";
 import { RES_NAME } from "./market-news.ts";
 
 const HOUR_MS = 3_600_000;
@@ -29,27 +30,40 @@ function windowView(w: PolitikWindow, nowMs: number) {
   };
 }
 
-/** Aufschlüsselung der wirkenden Regler: „Gebühr 6 % gilt bis Mi 14:00 – danach 4 %“. */
-export function effectLines(plan: PolitikPlan, nowMs: number): string[] {
+/** Eine wirkende Verschiebung: Schlüssel (für die Stelle, an der sie wirkt), Text jetzt, Ende, Wert danach. */
+export interface EffectLine {
+  key: "fee" | "dailyLimit" | "kiBonus" | "production" | "raidInterval" | "fieldCartelChance" | "convoyCartelChance" | "playerTradeFee" | "contractFee" | "worldEventLoot" | "kindWeights";
+  text: string;
+  /** Nächster Wechsel der wirksamen Balance (Ende des Fensters), null ohne Ende. */
+  untilMs: number | null;
+  /** Wert danach („4 %“), null wenn nicht sinnvoll. */
+  after: string | null;
+}
+
+/** Aufschlüsselung der wirkenden Regler: „Börsengebühr 6 %“ bis … – danach 4 %. */
+export function effectLines(plan: PolitikPlan, nowMs: number): EffectLine[] {
   const n = politikNow(balance, plan, nowMs);
   if (!n) return [];
-  const until = nextChangeMs(plan, nowMs);
-  const bis = until ? ` gilt bis ${whenText(until)}` : "";
-  const out: string[] = [];
+  const untilMs = nextChangeMs(plan, nowMs);
+  const out: EffectLine[] = [];
+  const add = (key: EffectLine["key"], text: string, after: string | null = null) => out.push({ key, text, untilMs, after });
+  const x = (f: number) => `× ${String(Math.round(f * 100) / 100).replace(".", ",")}`;
   const base = balance.market;
-  if (n.fee !== 1) out.push(`Börsengebühr ${pct(base.fee * n.fee)}${bis} – danach ${pct(base.fee)}`);
-  if (n.dailyLimit !== 1) out.push(`Tageslimit ${pct(base.dailyLimitShareOfStorage * n.dailyLimit)} des Lagers${bis} – danach ${pct(base.dailyLimitShareOfStorage)}`);
-  if (n.kiBonus !== 0) out.push(`Vertragsbonus der KI-Spieler ${n.kiBonus > 0 ? "+" : "−"}${pct(Math.abs(n.kiBonus))}${bis}`);
-  for (const [r, f] of Object.entries(n.production)) out.push(`${RES_NAME[r] ?? r}: Produktion und Feldertrag +${pct(f - 1)}${bis}`);
-  if (n.raidInterval !== 1) out.push(`Kartell-Überfälle alle ${Math.round(balance.pirates.raidIntervalHours * n.raidInterval)} h statt ${balance.pirates.raidIntervalHours} h${bis}`);
-  if (n.fieldCartelChance !== 1) out.push(`Kartell-Angriffe auf Felder × ${String(n.fieldCartelChance).replace(".", ",")}${bis}`);
-  if (n.convoyCartelChance !== 1) out.push(`Kartellchance für Konvois × ${String(n.convoyCartelChance).replace(".", ",")}${bis}`);
-  if (n.playerTradeFee !== 1) out.push(`Gebühr im Spielerhandel × ${String(n.playerTradeFee).replace(".", ",")}${bis}`);
-  if (n.contractFee !== 1) out.push(`Vertragsgebühr × ${String(n.contractFee).replace(".", ",")}${bis}`);
-  if (n.worldEventLoot !== 1) out.push(`Neue Weltereignisse: Beute +${pct(n.worldEventLoot - 1)}${bis}`);
-  for (const [k, f] of Object.entries(n.kindWeights)) out.push(`Weltereignis ${k}: Gewicht × ${f}${bis}`);
+  if (n.fee !== 1) add("fee", `Börsengebühr ${pct(base.fee * n.fee)}`, pct(base.fee));
+  if (n.dailyLimit !== 1) add("dailyLimit", `Tageslimit ${pct(base.dailyLimitShareOfStorage * n.dailyLimit)} des Lagers`, pct(base.dailyLimitShareOfStorage));
+  if (n.kiBonus !== 0) add("kiBonus", `Vertragsbonus der KI-Spieler ${n.kiBonus > 0 ? "+" : "−"}${pct(Math.abs(n.kiBonus))}`);
+  for (const [r, f] of Object.entries(n.production)) add("production", `${RES_NAME[r] ?? r}: Produktion und Feldertrag +${pct(f - 1)}`);
+  if (n.raidInterval !== 1) add("raidInterval", `Kartell-Überfälle alle ${Math.round(balance.pirates.raidIntervalHours * n.raidInterval)} h`, `${balance.pirates.raidIntervalHours} h`);
+  if (n.fieldCartelChance !== 1) add("fieldCartelChance", `Kartell-Angriffe auf Felder ${x(n.fieldCartelChance)}`);
+  if (n.convoyCartelChance !== 1) add("convoyCartelChance", `Kartellchance für Konvois ${x(n.convoyCartelChance)}`);
+  if (n.playerTradeFee !== 1) add("playerTradeFee", `Gebühr im Spielerhandel ${x(n.playerTradeFee)}`);
+  if (n.contractFee !== 1) add("contractFee", `Vertragsgebühr der KI-Verträge ${x(n.contractFee)}`);
+  if (n.worldEventLoot !== 1) add("worldEventLoot", `Neue Weltereignisse: Beute +${pct(n.worldEventLoot - 1)}`);
+  for (const [k, f] of Object.entries(n.kindWeights)) add("kindWeights", `Weltereignis ${KIND_NAME[k] ?? k} häufiger (${x(f)})`);
   return out;
 }
+
+const KIND_NAME: Record<string, string> = { schatzschiff: "Schatzschiff", grossflotte: "Großflotte", belagerung: "Belagerung" };
 
 const optionView = (o: string, w: PolitikWindow | undefined) => ({
   key: o,
@@ -89,6 +103,8 @@ export async function politikOverview(engine: Engine, playerId: number) {
     lines: effectLines(plan, nowMs),
     nextChangeMs: nextChangeMs(plan, nowMs),
     seerat,
+    /** Offene Paktangebote der KI-Spieler an dich (Annehmen/Ablehnen: politik.acceptPakt / declinePakt). */
+    pakte: await kiPaktOffers(db, playerId),
   };
 }
 
@@ -108,10 +124,13 @@ export async function politikKiView(engine: Engine, playerId: number) {
       cards.push({
         id: k.id, name: k.name, profile: k.profile, profileText: PROFILE_TEXT[k.profile] ?? k.profile,
         value: a.value, level: a.level, refuses: a.refuses, reason: a.reason, bonusDelta: a.bonusDelta, quotaShare: a.quotaShare,
-        gesuche: a.gesuche, pakt: a.pakt, history: (st?.history ?? []).slice(-10).reverse(),
+        gesuche: a.gesuche, pakt: a.pakt, blockedUntilMs: a.blockedUntilMs, history: (st?.history ?? []).slice(-10).reverse(),
       });
     }
     const rows = s ? await gesucheOf(tx, playerId, s.id) : [];
+    const cids = rows.map((g) => g.contractId).filter((x): x is number => x !== null);
+    const dues = new Map(cids.length === 0 ? [] : (await tx.select({ id: tables.marketContract.id, dueAt: tables.marketContract.dueAt }).from(tables.marketContract)
+      .where(inArray(tables.marketContract.id, cids))).map((c) => [c.id, c.dueAt.getTime()]));
     return {
       serverNow: nowMs,
       notorious: await notoriousOf(tx, playerId, nowMs, all),
@@ -120,7 +139,7 @@ export async function politikKiView(engine: Engine, playerId: number) {
         id: g.id, kiId: g.kiId, kiName: names.get(g.kiId)?.name ?? "?", profileText: PROFILE_TEXT[names.get(g.kiId)?.profile ?? ""] ?? "",
         kind: g.kind, status: g.status, day: g.day, resource: g.resource, qty: g.qty, reward: g.reward as Record<string, number>, value: g.value,
         offeredMs: g.offeredAt.getTime(), expiresMs: g.expiresAt.getTime(), acceptedMs: g.acceptedAt?.getTime() ?? null,
-        closedMs: g.closedAt?.getTime() ?? null, contractId: g.contractId,
+        closedMs: g.closedAt?.getTime() ?? null, contractId: g.contractId, dueMs: g.contractId !== null ? dues.get(g.contractId) ?? null : null,
       })),
     };
   });

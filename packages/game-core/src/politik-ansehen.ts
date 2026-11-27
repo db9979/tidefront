@@ -27,6 +27,8 @@ export interface AnsehenBalance {
   notoriousMean: number;
   /** Kopfgeld-Zuschlag für Angreifer eines Berüchtigten. */
   notoriousBounty: number;
+  /** Paktangebot eines KI-Spielers bei „Vertraut“ höchstens einmal je so viele Tage. */
+  pactOfferEveryDays?: number;
 }
 
 export type AnsehenLevel = "misstraut" | "bekannt" | "vertraut";

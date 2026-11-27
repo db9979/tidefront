@@ -8,6 +8,7 @@ import { fmtNum } from "../../lib/names.ts";
 import { SmallButton } from "../../ui.tsx";
 import { EscortPicker } from "../Naval.tsx";
 import { EscortAdvice } from "../EscortAdvice.tsx"; // See: Empfohlenes Geleit je Frachtwert
+import { EffectHint } from "../politik/EffectHint.tsx"; // Weltpolitik: Geleitschutz
 
 type Counts = Record<string, number>;
 
@@ -32,6 +33,7 @@ export function OrderEscort({ base, resource, qty, value, onChange }: { base: Ba
         <span className="text-[11px] font-display uppercase text-ink2">Konvoi ab {base.market.port.name}</span>
         <SmallButton expanded={open} onClick={() => setOpen(!open)}>{open ? "Geleit schließen" : escorted ? "Geleit ändern" : "Geleit wählen"}</SmallButton>
       </div>
+      <EffectHint keys={["convoyCartelChance"]} className="mt-1" />
       {!escorted && (
         <p className="text-xs text-ink2 mt-1" role="note">
           {chance > 0

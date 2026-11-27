@@ -21,6 +21,7 @@ import { cfgOrFail } from "./contracts-core.ts";
 import { kiContractQuote, signKiContract } from "./contracts-sign.ts";
 import { activeHumans, politikKis, politikOff, politikSeason } from "./politik-core.ts";
 import { kiAccess } from "./politik-ansehen.ts";
+import { offerKiPacts } from "./politik-pakt.ts";
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
@@ -98,9 +99,11 @@ export async function runGesuche(engine: Engine, nowMs: number): Promise<number>
     await tx.execute(sql`select pg_advisory_xact_lock(7340004)`);
     const touched = await settleGesuche(tx, nowMs);
     const offered = await offerGesuche(tx, nowMs);
-    return { touched: [...new Set([...touched, ...offered])], n: offered.length };
+    const notes = await offerKiPacts(tx, nowMs); // Weltpolitik: KI bietet den Pakt bei „Vertraut“ an
+    return { touched: [...new Set([...touched, ...offered])], n: offered.length, notes };
   });
   if (res.touched.length > 0) engine.notify(res.touched, "market");
+  for (const [ids, kind] of res.notes) engine.notify(ids, kind);
   return res.n;
 }
 
