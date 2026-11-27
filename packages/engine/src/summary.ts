@@ -224,7 +224,7 @@ export function summaryMail(d: SummaryData, name: string, timeZone: string, unsu
     blocks,
     button: { label: "Hafen öffnen", url: `${publicUrl()}/?tab=basis` },
     unsubscribeUrl,
-    footerNote: "Du erhältst den Morgenbericht, weil du ihn in den Einstellungen eingeschaltet hast. Abschalten: Einstellungen → Morgenbericht.",
+    footerNote: "Du erhältst den Morgenbericht, weil er in deinen Einstellungen eingeschaltet ist. Abschalten: Einstellungen → Morgenbericht.",
   };
 }
 

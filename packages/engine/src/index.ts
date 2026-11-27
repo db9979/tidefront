@@ -102,3 +102,9 @@ export { dismantlePost } from "./intel-post.ts";
 export { intelOverview } from "./intel-overview.ts";
 export { launchSatellite, MAP_WIDTH_KM, stripPlace } from "./intel-sat.ts"; // Lagebild Stufe 3: Satelliten
 export { counterWorld, clearCounterCache } from "./intel-counter.ts"; // Lagebild Stufe 3: Gegenmittel
+// Spielerbindung und Admin-Kennzahlen (Erinnerungen, Rückhol-E-Mail, Aktivität, Meilensteine, Laufzeiten)
+export { claimNudge, cleanupNudges, hasNudge, milestoneKeys, recordActivity, recordMilestones } from "./activity.ts";
+export * from "./retention.ts";
+export * from "./winback.ts";
+export * from "./admin-kpi.ts";
+export * from "./rpc-timing.ts";

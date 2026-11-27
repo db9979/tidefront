@@ -7,6 +7,7 @@ import { fmtNum, label } from "../lib/names.ts";
 import { Icon } from "../icons.tsx";
 import { Badge, Card, StatTable } from "../ui.tsx";
 import { DayBars, HBars, LevelGrid, RateBar } from "../components/Charts.tsx";
+import { AdminKpi } from "./AdminKpi.tsx";
 
 type Days = 7 | 28;
 
@@ -68,6 +69,8 @@ export function AdminStats() {
         <DayBars label="Registrierungen je Tag" days={dayKeys} series={[{ key: "v", label: "Registrierungen", tone: "ink" }]} values={one(s.registrations.perDay)} height={90} />
         <p className="text-xs text-ink2">{s.registrations.inRange} neu im Zeitraum, {s.registrations.total} insgesamt</p>
       </Card>
+
+      <AdminKpi days={days} />
 
       <Card title="Ressourcenfluss">
         <Sub>Produktion je Stunde (alle Häfen, netto, mit Modifikatoren)</Sub>

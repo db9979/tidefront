@@ -14,8 +14,11 @@ export const MAX_EVENT_ATTEMPTS = 5;
 
 export type ChangeKind = "base" | "missions" | "reports" | "market" | "map" | "messages" | "season" | "alliance";
 
-/** Arten von Benachrichtigungen (Push und E-Mail). */
-export const NOTICE_KINDS = ["attack", "report", "build", "training", "fleet", "delivery", "ops", "test", "market"] as const;
+/**
+ * Arten von Benachrichtigungen (Push und E-Mail). Spielerbindung (retention.ts): daily = Tagesbefehle bereit /
+ * Serie in Gefahr, idle = Bauschlange leer, nest = Nest wieder besetzt, comeback = Rückhol-E-Mail (nur E-Mail).
+ */
+export const NOTICE_KINDS = ["attack", "report", "build", "training", "fleet", "delivery", "ops", "test", "market", "daily", "idle", "nest", "comeback"] as const;
 export type NoticeKind = (typeof NOTICE_KINDS)[number];
 
 /** Eine Benachrichtigung an einen Spieler. facts: Kennzahlen (z. B. Ankunft in, Beute) für die E-Mail. */

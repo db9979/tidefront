@@ -15,9 +15,18 @@ import { TickerSetting } from "../components/market/TickerBar.tsx";
 
 const field = "w-full h-12 rounded-lg field px-3 mb-3";
 
-/** Arten für Push bzw. E-Mail; Marktnachrichten gibt es nur als Push. */
+/** Beschriftungen je Art, ergänzt um die Erinnerungen der Spielerbindung (retention.ts, winback.ts). */
+const LABEL: Record<string, string> = {
+  ...KIND_LABEL,
+  daily: "Tagesbefehle bereit / Serie in Gefahr",
+  idle: "Bauschlange leer",
+  nest: "Nest wieder besetzt (zuletzt von dir besiegt)",
+  comeback: "Rückkehr-Erinnerung (nach 3 Tagen Pause)",
+};
+
+/** Arten für Push bzw. E-Mail; Marktnachrichten nur als Push, die Rückkehr-Erinnerung nur als E-Mail. */
 function kinds(isAdmin: boolean, mail = false): string[] {
-  return Object.keys(KIND_LABEL).filter((k) => (k !== "ops" || isAdmin) && !(mail && k === "market"));
+  return Object.keys(LABEL).filter((k) => (k !== "ops" || isAdmin) && !(mail && k === "market") && !(!mail && k === "comeback"));
 }
 
 function PushCard({ isAdmin }: { isAdmin: boolean }) {
@@ -88,7 +97,7 @@ function PushCard({ isAdmin }: { isAdmin: boolean }) {
         <>
           <div className="divide-y divide-navy-600/70 mb-3">
             {kinds(isAdmin).map((k) => (
-              <Switch key={k} label={KIND_LABEL[k]} on={s.prefs[k as keyof typeof s.prefs] ?? true} onChange={(v) => toggle(k, v)} disabled={busy} />
+              <Switch key={k} label={LABEL[k]} on={s.prefs[k as keyof typeof s.prefs] ?? true} onChange={(v) => toggle(k, v)} disabled={busy} />
             ))}
           </div>
           <div className="flex gap-2">
@@ -155,7 +164,7 @@ function EmailCard({ isAdmin }: { isAdmin: boolean }) {
           {e.verified && (
             <div className="divide-y divide-navy-600/70">
               {kinds(isAdmin, true).map((k) => (
-                <Switch key={k} label={KIND_LABEL[k]} on={e.prefs[k as keyof typeof e.prefs] ?? false} onChange={(v) => void toggle(k, v)} />
+                <Switch key={k} label={LABEL[k]} on={e.prefs[k as keyof typeof e.prefs] ?? false} onChange={(v) => void toggle(k, v)} />
               ))}
             </div>
           )}

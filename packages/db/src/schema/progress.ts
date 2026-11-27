@@ -1,7 +1,7 @@
 // Datenbankschema (drizzle) – Fortschritt und Komfort: Tagesbefehle, Verbandsvorlagen, Morgenbericht, Auftragsbuch.
 // Zusammengeführt in ../schema.ts (drizzle.config.ts liest nur diese Datei).
 import { sql } from "drizzle-orm";
-import { boolean, index, integer, jsonb, pgTable, serial, text, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, primaryKey, serial, text, uniqueIndex } from "drizzle-orm/pg-core";
 import { ts } from "./columns.ts";
 import { player } from "./core.ts";
 import { season } from "./social.ts";
@@ -64,15 +64,19 @@ export const formationTemplate = pgTable("formation_template", {
   updatedAt: ts("updated_at").notNull().defaultNow(),
 }, (t) => [uniqueIndex("formation_template_name").on(t.playerId, sql`lower(${t.name})`)]);
 
-/** Morgenbericht je Spieler; lastSentDay (JJJJ-MM-TT in timeZone) macht den Versand je Tag idempotent. */
+/**
+ * Morgenbericht je Spieler; lastSentDay (JJJJ-MM-TT in timeZone) macht den Versand je Tag idempotent.
+ * Spielerbindung: neue Spieler bekommen bei der Registrierung eine Zeile mit diesen Vorgaben (Bericht und Push an);
+ * bestehende Spieler ohne Zeile gelten weiter als „aus“ (SUMMARY_DEFAULT in comfort.ts).
+ */
 export const morningSummary = pgTable("morning_summary", {
   playerId: integer("player_id").primaryKey().references(() => player.id, { onDelete: "cascade" }),
-  enabled: boolean("enabled").notNull().default(false),
+  enabled: boolean("enabled").notNull().default(true),
   /** Uhrzeit als Minute des Tages (Vorgabe 7:00). */
   minuteOfDay: integer("minute_of_day").notNull().default(420),
   timeZone: text("time_zone").notNull().default("Europe/Berlin"),
   /** Zusätzlich als Push. */
-  push: boolean("push").notNull().default(false),
+  push: boolean("push").notNull().default(true),
   lastSentDay: text("last_sent_day"),
   lastSentAt: ts("last_sent_at"),
   updatedAt: ts("updated_at").notNull().defaultNow(),
@@ -100,3 +104,35 @@ export const guideClaim = pgTable("guide_claim", {
   claimedAt: ts("claimed_at").notNull().defaultNow(),
   boostUsedAt: ts("boost_used_at"),
 }, (t) => [uniqueIndex("guide_claim_pk").on(t.playerId, t.seasonId, t.step)]);
+
+// ================================================================ Spielerbindung und Admin-Kennzahlen
+// player_nudge: Entprellung der Bindungs-Meldungen (Tagesbefehle bereit, Serie in Gefahr, Nest wieder besetzt,
+// Rückhol-E-Mail). Je Spieler und Schlüssel höchstens eine Zeile; wer die Zeile anlegt, versendet (retention.ts).
+// Schlüssel z. B. "daily:2026-11-27", "streak:2026-11-27", "nest:12:1764230400000", "winback:<last_seen ms>".
+
+export const playerNudge = pgTable("player_nudge", {
+  playerId: integer("player_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  key: text("key").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.playerId, t.key] }), index("player_nudge_created").on(t.createdAt)]);
+
+/** Tages-Aktivität (Spieler, Kalendertag in der Spielzeitzone): idempotent beim ersten Aufruf des Tages; Kohorten-Retention. */
+export const playerActivityDay = pgTable("player_activity_day", {
+  playerId: integer("player_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  /** Kalendertag in der Spielzeitzone, z. B. 2026-11-27. */
+  day: text("day").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.playerId, t.day] }), index("player_activity_day_day").on(t.day)]);
+
+/**
+ * Meilensteine je Spieler und Saison, die sich nicht aus vorhandenen Daten ableiten lassen (KZ-Stufe, Missionsplätze,
+ * Startrampe, Satellit). Der Worker erfasst sie alle 10 Minuten aus den Hafen-Zuständen (activity.ts); reachedAt ist
+ * daher auf etwa 10 Minuten genau (Satellit: Startzeit). Erster Eintrag gewinnt.
+ */
+export const playerMilestone = pgTable("player_milestone", {
+  playerId: integer("player_id").notNull().references(() => player.id, { onDelete: "cascade" }),
+  seasonId: integer("season_id").notNull().references(() => season.id, { onDelete: "cascade" }),
+  /** z. B. "kz:5", "slots:3", "startrampe", "satellit". */
+  key: text("key").notNull(),
+  reachedAt: ts("reached_at").notNull(),
+}, (t) => [primaryKey({ columns: [t.playerId, t.seasonId, t.key] })]);

@@ -103,11 +103,18 @@ export async function noticesAfter(tx: Tx, ev: EventRow, due: number, snap: Snap
     if (!b || (b.state.buildings[snap.order.buildingId] ?? 0) < snap.order.targetLevel) return [];
     const name = nameOf(snap.order.buildingId);
     const where = await harborName(tx, b.playerId, b.id);
-    return [{ playerId: b.playerId, notice: {
-      kind: "build", url: "/?tab=basis", tag: `build-${b.id}`, title: "Ausbau fertig",
-      body: `${name}${where ? ` in ${where}` : ""} ist jetzt auf Stufe ${snap.order.targetLevel}.`,
-      facts: [["Gebäude", name], ["Stufe", String(snap.order.targetLevel)]],
-    } }];
+    const body = `${name}${where ? ` in ${where}` : ""} ist jetzt auf Stufe ${snap.order.targetLevel}.`;
+    const facts: [string, string][] = [["Gebäude", name], ["Stufe", String(snap.order.targetLevel)]];
+    const out: NoticeJob[] = [{ playerId: b.playerId, notice: { kind: "build", url: "/?tab=basis", tag: `build-${b.id}`, title: "Ausbau fertig", body, facts } }];
+    // Spielerbindung: Bauschlange leer (einmal je Abschluss, der die Schlange leert). Gleicher Tag wie „Ausbau fertig“:
+    // auf dem Gerät ersetzt diese Meldung die vorige und nennt beides.
+    if (b.state.buildQueue.length === 0) {
+      out.push({ playerId: b.playerId, notice: {
+        kind: "idle", url: "/?tab=basis", tag: `build-${b.id}`, title: `Bauschlange leer${where ? `: ${where}` : ""}`,
+        body: `${body} Die Bauschlange ist leer – gib den nächsten Ausbau in Auftrag.`, facts,
+      } });
+    }
+    return out;
   }
   if (snap.kind === "training") {
     const b = await readBase(tx, ev.baseId!);

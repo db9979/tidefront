@@ -1,7 +1,7 @@
 // tRPC-Grundlagen (Kontext, Prozeduren), getrennt vom Router, damit Teil-Router sie ohne Kreisimport nutzen.
 import { initTRPC, TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { GameError, inputErrorText, type Engine, type InputIssue } from "@tidefront/engine";
+import { GameError, inputErrorText, recordRpc, type Engine, type InputIssue } from "@tidefront/engine";
 
 export interface Ctx {
   engine: Engine;
@@ -12,7 +12,7 @@ export interface Ctx {
   ip: string;
 }
 
-export const t = initTRPC.context<Ctx>().create({
+const root = initTRPC.context<Ctx>().create({
   // Eingabefehler (Zod) als deutscher Kurztext, damit der Client mehr zeigen kann als „Keine Verbindung“.
   errorFormatter({ shape, error }) {
     const issues = (error.cause as { issues?: InputIssue[] } | undefined)?.issues;
@@ -20,6 +20,17 @@ export const t = initTRPC.context<Ctx>().create({
     return { ...shape, data: { ...shape.data, inputError } };
   },
 });
+
+/** Admin-Kennzahlen: Laufzeit jeder Prozedur (Ringpuffer im Speicher, rpc-timing.ts). */
+const timed = root.procedure.use(async ({ path, next }) => {
+  const t0 = performance.now();
+  const r = await next();
+  recordRpc(path, performance.now() - t0, r.ok);
+  return r;
+});
+
+/** Wie die tRPC-Wurzel, aber jede Prozedur (auch authed/adminProc) wird gemessen. */
+export const t = { ...root, procedure: timed } as unknown as typeof root;
 
 export const authed = t.procedure.use(async ({ ctx, next }) => {
   if (!ctx.player) throw new TRPCError({ code: "UNAUTHORIZED" });

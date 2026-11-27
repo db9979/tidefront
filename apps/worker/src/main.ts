@@ -15,7 +15,11 @@ import {
   flushAchievementNotices,
   flushMailDigests,
   noticeHook,
+  cleanupNudges,
   processDue,
+  recordMilestones,
+  runReminders,
+  runWinback,
   refreshDerivedOpen,
   runMarketNews,
   runMorningSummaries,
@@ -72,6 +76,9 @@ async function loop() {
         await runMarketNews(engine, Date.now()).catch((err) => log("market news", String(err)));
         // Tagesbefehle aus dem Zustand (Ökostrom, Vorrat, Produktion …) auch ohne Abruf durch den Spieler fortschreiben.
         await refreshDerivedOpen(db, Date.now()).catch((err) => log("daily derived", String(err)));
+        // Admin-Kennzahlen: Meilensteine aus den Hafen-Zuständen; Spielerbindung: alte Entprellungs-Einträge löschen.
+        await recordMilestones(db, Date.now()).catch((err) => log("milestones", String(err)));
+        await cleanupNudges(db).catch((err) => log("nudge cleanup", String(err)));
       }
       if (Date.now() >= nextOps) {
         // Jede Minute: Kennzahlen, Alarm an Admins, gebündelte E-Mails.
@@ -85,6 +92,11 @@ async function loop() {
           // Erfolge: Push für frisch freigeschaltete Abzeichen.
           const badges = await flushAchievementNotices(engine);
           if (badges > 0) log("achievement notices", { sent: badges });
+          // Spielerbindung: Tagesbefehle bereit / Serie in Gefahr, Nest wieder besetzt, Rückhol-E-Mail.
+          const reminders = await runReminders(engine, Date.now());
+          if (reminders > 0) log("reminders", { sent: reminders });
+          const winback = await runWinback(engine, Date.now());
+          if (winback > 0) log("winback mails", { sent: winback });
         } catch (err) {
           log("ops check failed", String(err));
         }

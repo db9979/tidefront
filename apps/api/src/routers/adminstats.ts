@@ -2,7 +2,9 @@
 // Statistik und Sicherungen (Liste, „Jetzt sichern“, Download-Token für die Fastify-Route backup-download.ts).
 import { z } from "zod";
 import {
+  adminKpiCached,
   adminStatsCached,
+  rpcTimings,
   backupRequests,
   createDownloadToken,
   listBackups,
@@ -16,6 +18,11 @@ export const adminStatsRouter = t.router({
   stats: adminProc
     .input(z.object({ days: z.union([z.literal(7), z.literal(28)]) }))
     .query(({ ctx, input }) => adminStatsCached(ctx.engine.db, input.days)),
+
+  /** Spielerbindung: Menschen/KI, Retention, Meilensteine, Abschlussquoten, Laufzeiten je Prozedur (dieser Prozess). */
+  kpi: adminProc
+    .input(z.object({ days: z.union([z.literal(7), z.literal(28)]) }))
+    .query(async ({ ctx, input }) => ({ ...(await adminKpiCached(ctx.engine.db, input.days)), rpc: rpcTimings() })),
 
   backups: adminProc.query(async ({ ctx }) => ({
     ...(await listBackups()),

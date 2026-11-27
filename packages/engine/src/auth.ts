@@ -80,6 +80,8 @@ export async function register(db: Db, input: { inviteCode: string; name: string
       .values({ name: input.name, passHash: await hashPassword(input.password), trader: rest })
       .returning({ id: tables.player.id });
     await grantAdminOnRegister(tx, p.id, input.name);
+    // Spielerbindung: Morgenbericht (mit Push) für neue Spieler an – Zeile mit den Schema-Vorgaben.
+    await tx.insert(tables.morningSummary).values({ playerId: p.id }).onConflictDoNothing();
     if (personalInvite !== null) await markInviteAccepted(tx, personalInvite, p.id, nowMs);
     return p.id;
   });

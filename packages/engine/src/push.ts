@@ -84,6 +84,8 @@ export const PUSH_DEFAULTS: Record<NoticeKind, boolean> = {
   attack: true, report: true, build: true, training: true, fleet: true, delivery: true, ops: true, test: true,
   // Marktnachricht: standardmäßig aus, in den Einstellungen schaltbar.
   market: false,
+  // Spielerbindung: Erinnerungen als Push an; die Rückhol-Nachricht gibt es nur als E-Mail.
+  daily: true, idle: true, nest: true, comeback: false,
 };
 
 export function wants(prefs: Prefs | null | undefined, defaults: Record<NoticeKind, boolean>, kind: NoticeKind): boolean {

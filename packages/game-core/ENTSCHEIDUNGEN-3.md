@@ -450,3 +450,38 @@ Stahl-Gegenwert, Produktion des Militär-Bots (45 % Rüstung) Tag 28 ≈ 1 130/h
    `BOT_SIM_SPACE=1` (Startrampe, Raumfahrt und 20 000 je Ressource ab Tag 0) starten Freibeuter und Festung in jedem
    Lauf je einen Satelliten (4 Läufe). Dabei fiel ein Fehler im Nest-Überfall auf: Mit viel Wissen standen oben
    viele zu starke Nester, die Liste endete nach 12 Einträgen – jetzt Probekampf je Stufe einmal, bis zu 6 Startversuche.
+
+## R. Spielerbindung und Admin-Kennzahlen (ui)
+
+1. **Neue Benachrichtigungsarten** (`NOTICE_KINDS`): `daily` (Tagesbefehle bereit / Serie in Gefahr), `idle`
+   (Bauschlange leer), `nest` (Nest wieder besetzt), `comeback` (Rückhol-E-Mail, nur E-Mail). Push-Vorgabe: die drei
+   Erinnerungen an; E-Mail-Vorgabe: aus (Bauschlange und Nest gebündelt wie Ausbau), `comeback` an. Jede Art ist in den
+   Einstellungen einzeln schaltbar; der Abmeldelink schaltet auch `comeback` ab.
+2. **Auslösen und Entprellung:** „Bauschlange leer“ entsteht beim Abschluss des letzten Bauauftrags (event-notices.ts,
+   einmal je Abschluss) mit demselben Push-Tag wie „Ausbau fertig“ – auf dem Gerät ersetzt sie diese Meldung und nennt
+   beides. Die übrigen prüft der Worker jede Minute (retention.ts, winback.ts); Tabelle `player_nudge` (Spieler,
+   Schlüssel) sperrt jede Meldung genau einmal (erst sperren, dann senden). „Tagesbefehle bereit“ 9–18 Uhr Spielzeit,
+   nur wer in den letzten 7 Tagen, aber heute noch nicht da war und heute keinen Morgenbericht als Push bekam.
+   „Serie in Gefahr“ 18–23 Uhr ab 2 Tagen Serie, nicht wenn in den letzten 30 Minuten online. „Nest wieder besetzt“
+   nur an den Sieger des letzten gewonnenen Überfalls auf das Nest, höchstens 3 Std. nach der Wiederbesetzung.
+3. **Morgenbericht für neue Spieler an:** Schema-Vorgaben von `morning_summary.enabled` und `.push` auf `true`; die
+   Registrierung legt die Zeile mit diesen Vorgaben an. Bestehende Spieler bleiben unverändert (ohne Zeile gilt weiter
+   `SUMMARY_DEFAULT` = aus; vorhandene Zeilen behalten ihre Werte).
+4. **Rückhol-E-Mail:** an Menschen mit bestätigter Adresse, 3–7 Tage nicht da, 10–20 Uhr Spielzeit, einmal je Pause
+   (Schlüssel `winback:<last_seen_at in ms>` – last_seen ändert sich erst bei Rückkehr). Inhalt aus vorhandenen Daten:
+   Saison und Saisontag, Rang und Punkte, Angriffe und Plünderung seit dem letzten Besuch, Lagerfüllstand (voll =
+   Produktion verfällt), gerissene Tagesserie, leere Bauschlange. Statt einer Spalte `winback_sent_at` nutzt sie die
+   gemeinsame Entprellungstabelle (gleiche Wirkung, keine Änderung an `player_email`).
+5. **Admin-Kennzahlen** (admin-kpi.ts, tRPC `adminStats.kpi`): Menschen und KI-Spieler getrennt (`bot_profile`).
+   Tages-Aktivität `player_activity_day` (Spieler, Spieltag) – eingetragen von `touchLastSeen` (höchstens alle 5 Min.,
+   idempotent je Tag); Kohorten-Retention Tag 1/7/14 nach Registrierung, nur Menschen, nur erreichte Tage zählen.
+   Erst ab Einführung erfasst – ältere Kohorten sind unvollständig (die Oberfläche nennt „erfasst seit“).
+6. **Meilensteine mit Saisontag** (Tag 1 = Saisonstart, je Meilenstein Anzahl, erster und Median-Tag): erster Sieg je
+   Neststufe aus den Kampfberichten, zweiter Hafen aus `base.created_at` (aufgegebene Kolonien fehlen). Nicht
+   ableitbar sind KZ-Stufe, Missionsplätze und Startrampe: der Worker trägt sie alle 10 Minuten aus den Hafen-Zuständen
+   in `player_milestone` ein (auf ~10 Min. genau; der erste Lauf nach Einführung trägt den Bestand mit „jetzt“ ein).
+   Satellit mit der Startzeit aus dem Zustand.
+7. **Abschlussquoten:** Tagesbefehle (vergeben/erledigt/abgeholt, je Stufe, Spieler-Tage mit allen drei abgeholt) und
+   Wochenziele im gewählten Zeitraum, nur Menschen.
+8. **Laufzeit je tRPC-Aufruf:** Middleware an der Wurzel-Prozedur (apps/api/src/trpc.ts), Ringpuffer der letzten 256
+   Messungen je Prozedur im Speicher des API-Prozesses (rpc-timing.ts), p50/p95 nach Nearest-Rank; nach Neustart leer.
