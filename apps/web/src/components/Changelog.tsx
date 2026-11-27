@@ -1,7 +1,6 @@
 // Versionsanzeige und Änderungsprotokoll („Was ist neu?“) aus CHANGELOG.md.
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import changelogRaw from "../../../../CHANGELOG.md?raw";
 import { trpc } from "../lib/trpc.ts";
 import { Badge, Button, Sheet } from "../ui.tsx";
 import { useTickerPos } from "./market/TickerBar.tsx";
@@ -30,7 +29,25 @@ export function parseChangelog(md: string): Release[] {
   return out;
 }
 
-export const RELEASES = parseChangelog(changelogRaw);
+/** Protokoll erst bei Bedarf laden (eigener Chunk, hält den Start schlank). */
+let releasesPromise: Promise<Release[]> | null = null;
+let releasesCache: Release[] | null = null;
+export function loadReleases(): Promise<Release[]> {
+  releasesPromise ??= import("../../../../CHANGELOG.md?raw").then((m) => (releasesCache = parseChangelog(m.default)));
+  return releasesPromise;
+}
+
+/** Versionen aus CHANGELOG.md; null, solange noch geladen wird. enabled=false lädt nichts. */
+export function useReleases(enabled = true): Release[] | null {
+  const [list, setList] = useState<Release[] | null>(releasesCache);
+  useEffect(() => {
+    if (!enabled || list) return;
+    let live = true;
+    void loadReleases().then((r) => { if (live) setList(r); });
+    return () => { live = false; };
+  }, [enabled, list]);
+  return list;
+}
 
 /** Vergleicht Versionen wie 0.10.0 und 0.9.2 numerisch. */
 export function compareVersions(a: string, b: string): number {
@@ -88,10 +105,11 @@ export function VersionLine({ onOpen }: { onOpen: () => void }) {
 }
 
 export function ChangelogSheet({ open, onClose, highlightAfter }: { open: boolean; onClose: () => void; highlightAfter?: string | null }) {
+  const releases = useReleases(open);
   return (
     <Sheet open={open} onClose={onClose} title="Was ist neu?">
       <p className="text-xs text-slate-400 mono mb-3">Diese App: Version {APP_VERSION} · Stand {fmtBuild(BUILD_TIME)}</p>
-      <ReleaseList releases={RELEASES} highlightAfter={highlightAfter} />
+      {releases ? <ReleaseList releases={releases} highlightAfter={highlightAfter} /> : <p className="text-sm text-slate-400">Wird geladen …</p>}
     </Sheet>
   );
 }
@@ -126,7 +144,9 @@ export function UpdateNotices({ playerId, paused = false }: { playerId: number; 
     setOpen(false);
     setSeen(APP_VERSION);
   };
-  const newer = RELEASES.filter((r) => seen && compareVersions(r.version, seen) > 0 && compareVersions(r.version, APP_VERSION) <= 0);
+  // Protokoll nur laden, wenn es eine neue Version zu zeigen gibt.
+  const releases = useReleases(open);
+  const newer = (releases ?? []).filter((r) => seen && compareVersions(r.version, seen) > 0 && compareVersions(r.version, APP_VERSION) <= 0);
   const serverVersion = meta.data?.version;
   const outdated = !!serverVersion && compareVersions(serverVersion, APP_VERSION) > 0;
 
