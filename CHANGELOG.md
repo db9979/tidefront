@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.24.2 – 27.11.2026
+- **Börse:** Das Tageslimit je Ressource wird jetzt um Mitternacht deiner Uhrzeit zurückgesetzt – wie die Tagesbefehle (bisher 01:00 bzw. im Sommer 02:00 Uhr).
+
 ## 0.24.1 – 27.11.2026
 - **Sprache überarbeitet:** Überall stehen jetzt Namen statt interner Kennungen – etwa bei Blockaden, Großflotte und Schatzschiff, Sabotage am Seekabel und den wirksamen Forschungseffekten. Push-Meldungen und Morgenbericht sagen „12 Korvetten“ statt „12 Korvette“, überall gilt richtige Einzahl („1 Einheit“).
 - Zahlen durchgehend deutsch (Dezimalkomma, Tausenderpunkt), einheitliche Begriffe (Hafen, KI-Spieler, Piratennest, Kredite), Zeiten in deiner Uhrzeit statt UTC.

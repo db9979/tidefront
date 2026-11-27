@@ -160,14 +160,16 @@ test("rate: more than tradesPerMinute trades within a minute", () => {
   assert.ok(later.trader.recentTradeTimesMs.length <= M.tradesPerMinute);
 });
 
-test("daily_limit: volume above dailyLimitShareOfStorage * capacity, reset at UTC midnight", () => {
+test("daily_limit: volume above dailyLimitShareOfStorage * capacity, reset at game-time midnight (Europe/Berlin)", () => {
+  const prevTz = process.env.TZ;
+  process.env.TZ = "Europe/Berlin"; // Januar: Mitternacht Berlin = 23:00 UTC
   const capacity = 5000;
   const limit = M.dailyLimitShareOfStorage * capacity;
   const first = Math.floor(limit * 0.6);
   const ctx = makeContext({
     storageCapacity: { stahl: capacity, treibstoff: capacity, elektronik: capacity, proviant: capacity },
   });
-  const beforeMidnight = Date.UTC(2026, 0, 15, 23, 58, 0);
+  const beforeMidnight = Date.UTC(2026, 0, 15, 22, 58, 0);
   const market0 = createMarketState(balance, beforeMidnight);
   const r1 = trade(market0, makeTrader(10_000, 10_000, beforeMidnight), "buy", "stahl", first, beforeMidnight, ctx);
   expectOk(r1);
@@ -178,15 +180,16 @@ test("daily_limit: volume above dailyLimitShareOfStorage * capacity, reset at UT
   expectOk(trade(r1.market, r1.trader, "buy", "stahl", limit - first, beforeMidnight + 1000, ctx));
   // the limit is per resource
   expectOk(trade(r1.market, r1.trader, "buy", "proviant", first, beforeMidnight + 1000, ctx));
-  // still the same UTC day one second before midnight
-  const lastSecond = Date.UTC(2026, 0, 15, 23, 59, 59);
+  // still the same game day one second before midnight
+  const lastSecond = Date.UTC(2026, 0, 15, 22, 59, 59);
   expectReject(trade(r1.market, r1.trader, "buy", "stahl", first, lastSecond, ctx), "daily_limit");
-  // new UTC day: counter starts again
-  const nextDay = Date.UTC(2026, 0, 16, 0, 0, 0);
+  // new game day: counter starts again
+  const nextDay = Date.UTC(2026, 0, 15, 23, 0, 0);
   const r2 = trade(r1.market, r1.trader, "buy", "stahl", first, nextDay, ctx);
   expectOk(r2);
   assert.equal(r2.trader.dailyVolume.stahl, first);
-  assert.equal(r2.trader.dailyDayIndex, Math.floor(nextDay / DAY));
+  assert.equal(r2.trader.dailyDayIndex, Math.floor(Date.UTC(2026, 0, 16) / DAY)); // Kalendertag 16.1. in Berlin
+  if (prevTz === undefined) delete process.env.TZ; else process.env.TZ = prevTz;
 });
 
 test("under_attack: sells are blocked while an attack is detected, buys stay possible", () => {

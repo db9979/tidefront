@@ -149,7 +149,7 @@ export async function scarcityInput(tx: Tx, nowMs: number): Promise<Record<strin
 async function syncScarcity(tx: Tx, nowMs: number): Promise<boolean> {
   const cfg = newsBalance()?.scarcity;
   if (!cfg) return false;
-  const day = marketCore.utcDayIndex(nowMs);
+  const day = marketCore.gameDayIndex(nowMs);
   const raw = await getSetting(tx, SCARCITY_KEY);
   const prev: ScarcityState = raw ? (JSON.parse(raw) as ScarcityState) : { day: -1, history: {} };
   if (prev.day === day) return false;

@@ -399,7 +399,7 @@ export async function marketView(engine: Engine, playerId: number, baseId?: numb
   // Mehrere Häfen: Tageslimit spielerweit nach dem Lager des Heimathafens; fremde baseId → "no_base".
   if (baseId !== undefined) await ownBase(engine.db, playerId, baseId);
   const cap = await homeStorageCapacity(engine.db, playerId, nowMs);
-  const dayIndex = marketCore.utcDayIndex(nowMs);
+  const dayIndex = marketCore.gameDayIndex(nowMs);
   return {
     serverNow: nowMs,
     resources: balance.resources.map((r) => {

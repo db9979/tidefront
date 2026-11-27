@@ -31,10 +31,27 @@ const MS_PER_MINUTE = 60_000;
 const MS_PER_HOUR = 3_600_000;
 const MS_PER_DAY = 86_400_000;
 
-/** UTC day index of a timestamp; the daily limit resets when it changes. */
-export function utcDayIndex(nowMs: number): number {
-  return Math.floor(nowMs / MS_PER_DAY);
+/** Spielzeitzone: TZ der Umgebung (Server), sonst Europe/Berlin. */
+function defaultTimeZone(): string {
+  const tz = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.TZ;
+  if (tz && !tz.startsWith(":")) {
+    try { new Intl.DateTimeFormat("en-CA", { timeZone: tz }); return tz; } catch { /* ungültig */ }
+  }
+  return "Europe/Berlin";
 }
+
+/**
+ * Tagesnummer (Tage seit 1970) des Kalendertags in der Spielzeitzone; das Tageslimit wechselt um Mitternacht
+ * Spielzeit, wie Tagesbefehle (seit 0.24.2; vorher Mitternacht UTC).
+ */
+export function gameDayIndex(nowMs: number, timeZone: string = defaultTimeZone()): number {
+  const f = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+  const p = Object.fromEntries(f.formatToParts(new Date(nowMs)).map((x) => [x.type, x.value]));
+  return Math.floor(Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day)) / MS_PER_DAY);
+}
+
+/** @deprecated Name aus der Zeit vor 0.24.2; gleich gameDayIndex. */
+export const utcDayIndex = (nowMs: number): number => gameDayIndex(nowMs);
 
 function resourceIds(balance: MarketBalance): ResourceId[] {
   return Object.keys(balance.market.refPrice) as ResourceId[];
@@ -75,7 +92,7 @@ export function createTraderState(
   return {
     credits,
     stock: fullStock,
-    dailyDayIndex: utcDayIndex(nowMs),
+    dailyDayIndex: gameDayIndex(nowMs),
     dailyVolume,
     recentTradeTimesMs: [],
   };
@@ -265,7 +282,7 @@ export function executeTrade(
   if (recent.length >= cfg.tradesPerMinute) return reject("rate");
 
   // 6. daily_limit
-  const dayIndex = utcDayIndex(nowMs);
+  const dayIndex = gameDayIndex(nowMs);
   const sameDay = trader.dailyDayIndex === dayIndex;
   const tradedToday = sameDay ? (trader.dailyVolume[resource] ?? 0) : 0;
   const dailyLimit = cfg.dailyLimitShareOfStorage * context.storageCapacity[resource];

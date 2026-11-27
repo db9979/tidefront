@@ -4,10 +4,6 @@ import { build, go, lvl, marketLevel, missions, training } from "./helpers.ts";
 import type { RemedyTable } from "./types.ts";
 
 /** Uhrzeit (Spielerzeit), zu der das Tageslimit der Börse zurückgesetzt wird (Tageswechsel des Servers). */
-function resetClock(): string {
-  const next = Math.ceil(Date.now() / 86_400_000) * 86_400_000;
-  return new Date(next).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-}
 
 const tradePlayers = go("Spielerhandel", { to: "market", seg: "spieler" });
 const own = go("Eigene Angebote", { to: "market", seg: "spieler" });
@@ -38,7 +34,7 @@ export const TRADE: RemedyTable = {
     const share = balance?.market.dailyLimitShareOfStorage ?? 0.2;
     const limit = base ? Math.floor(share * base.capacity) : null;
     return {
-      hint: `Je Ressource und Tag lassen sich ${fmtNum(share * 100)} % der Lagergröße handeln${limit !== null ? ` (hier ${fmtNum(limit)}${detail.resource ? ` ${label(detail.resource)}` : ""})` : ""}. Das Limit wird täglich um ${resetClock()} Uhr zurückgesetzt. Mehr geht mit einem größeren Lagerkomplex.`,
+      hint: `Je Ressource und Tag lassen sich ${fmtNum(share * 100)} % der Lagergröße handeln${limit !== null ? ` (hier ${fmtNum(limit)}${detail.resource ? ` ${label(detail.resource)}` : ""})` : ""}. Das Limit wird täglich um Mitternacht zurückgesetzt. Mehr geht mit einem größeren Lagerkomplex.`,
       actions: [build("lagerkomplex")],
     };
   },
