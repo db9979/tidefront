@@ -2,6 +2,11 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.35.0 – 27.11.2026
+- **Taler statt Kredite:** Die Währung heißt jetzt Taler (kurz „T“, Münzsymbol) – an der Börse, bei Verträgen, Admiralen, Belohnungen, im Handbuch, in E-Mails und Benachrichtigungen. Die Obergrenze, wie viele Taler ein Hafen halten kann, heißt „Kasse“. Beträge und Kontostände bleiben unverändert.
+- **Hilfe bei 0 Talern:** Statt „Zu wenig Kredite“ heißt es „Du hast 0 Taler. Verkaufe zuerst Rohstoffe – z. B. Proviant (Überschuss).“ – ein Knopf schaltet die Order auf Verkaufen und wählt Rohstoff und Menge vor. „Was hilft?“ bietet keine Sprünge mehr zu dem Bildschirm an, auf dem du schon bist.
+- **Gegnerischer Admiral geheim:** In Kampfberichten zwischen Spielern siehst du vom gegnerischen Admiral nur Rang und Namen, nicht seine Wirkung.
+
 ## 0.34.0 – 27.11.2026
 - **„Was fehlt zum Sieg?“** im Probekampf, im Kampfsimulator und an verlorenen Kampfberichten („Was hätte gefehlt?“): sucht die günstigste Verbandsmischung für 70, 90 oder 99 % Siegchance – mit Kommandopunkten, Truppenplätzen und Ausbildungszeit. „Ausbilden“ springt mit vorgewählten Mengen zur Kaserne bzw. Werft, „Mit diesem Verband planen“ direkt in die Missionsplanung.
 - **Kampfsimulator korrigiert:** See-, Feld-, Konvoi-, Weltereignis- und Finale-Kämpfe zählen „Gegner vernichtet“ als Sieg (wie auf dem Server). Siegchance, Verluste und Restkampfkraft erscheinen aus deiner Sicht – auch bei einer Abwehr. Beute aus Berichten wird nicht mehr doppelt verstärkt; bei einem verlorenen Kampf heißt sie „unbekannt“ statt 0. Neue Phasentabelle.
