@@ -2,6 +2,17 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.16.0 – 27.11.2026
+- **Hafen verwalten** (Link oben auf der Basis): Häfen **umbenennen** und eine Kolonie **aufgeben**. Aufgeben geht nur, wenn dort nichts mehr unterwegs ist; was im Hafen liegt, verfällt. Wertvolles also vorher verlegen.
+- Neue Kolonien heißen nach dem **nächstgelegenen Küstenort** („Küste bei Bergen“) statt „<Name> II“.
+- **Belagerung brechen:** Den Ring um einen eigenen Außenposten kannst du jetzt aus einem anderen eigenen Hafen heraus angreifen.
+- **Eingehend:** Eigene Verlegungen und Transporte zu einem Hafen erscheinen dort unter Truppen → Einsatz und in der Zeitleiste – nicht mehr als Angriffswarnung.
+- **Spielerhandel** ist freigeschaltet, sobald irgendeiner deiner Häfen Hafenkommandantur 3 hat (wie die Börse).
+- **Rohstofffelder:** **Geleitschutz** – Schiffe der Besatzung begleiten die Ertragskonvois und kämpfen bei Abfangversuchen mit. **Verstärken** – weitere Schiffe zu einem eigenen Feld schicken, ohne die Besatzung zurückzurufen. **Radar-Vorwarnung**, wenn ein anderer Spieler dein Feld angreift.
+- **Neue Wochenziele:** Erträge von Feldern einfahren und einen neuen Hafen gründen.
+- **Karte:** Windfahnen in der Übersicht stehen nur noch über See.
+- **Schneller laden:** Der Startcode ist weniger als halb so groß; Anmeldung, Hafenwahl und „Was ist neu?“ werden erst bei Bedarf geladen.
+
 ## 0.15.2 – 27.11.2026
 - **Schiebeleisten** (Reiter in Meldungen, Truppen, Allianz, Rangliste, Berichtfilter, Handbuch-Kapitel): Ein Pfeil links oder rechts zeigt, dass es weitere Einträge gibt – antippen schiebt weiter. Die Leisten wackeln nicht mehr nach oben und unten.
 - Verwaltung: **Sicherungen lassen sich löschen** (mit Rückfrage; der Sicherungsdienst löscht die Datei innerhalb einer Minute). Die Knöpfe bei den E-Mail-Einstellungen bleiben auf dem iPhone einzeilig.
