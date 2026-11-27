@@ -14,9 +14,16 @@ export type NavTarget =
 
 export interface RemedyAction { label: string; go: NavTarget }
 
+/** Eine fehlende Menge mit Bestand, Bedarf und Wartezeit (z. B. Ressourcen für einen Ausbau). */
+export interface RemedyItem { id: string; label: string; have: number; need: number; eta?: string }
+
 export interface Remedy {
   /** Konkreter, handlungsleitender Satz (mit Zahlen, wo der Client sie kennt). */
   hint: string;
+  /** Kurzfassung für den eingeklappten Kopf (eine Zeile), z. B. „Fehlt 49 Elektronik · ca. 1 h 14 min“. */
+  summary?: string;
+  /** Fehlende Mengen als Fortschrittszeilen (statt sie im Fließtext aufzuzählen). */
+  items?: RemedyItem[];
   actions?: RemedyAction[];
 }
 

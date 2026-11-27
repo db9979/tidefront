@@ -37,8 +37,8 @@ test.describe("Missionsplätze", () => {
     await expect(preview.getByText("Alle Missionsplätze sind belegt.")).toBeVisible();
     await preview.getByRole("button", { name: /Was hilft/ }).click();
     const hint = preview.locator("[data-remedy]");
-    await expect(hint).toContainText("Missionsplätze: 1 von 1 belegt.");
-    await expect(hint).toContainText("Hafenkommandantur (Stufe 2 → 2 Plätze, jetzt Stufe 1)");
+    await expect(hint).toContainText("1 von 1 belegt"); // Kurzfassung im Kopf
+    await expect(hint).toContainText("Stufe 2 gibt 2 Plätze (jetzt Stufe 1)");
     await expect(hint.getByRole("button", { name: "Laufende Missionen" })).toBeVisible();
     await expectNoHorizontalOverflow(page, "Missionsplanung mit „Was hilft?“");
 
@@ -48,7 +48,7 @@ test.describe("Missionsplätze", () => {
     await expect(launch).toHaveAttribute("aria-disabled", "true");
     await launch.click({ force: true });
     const barHint = page.locator("#tf-actionbar [data-remedy]");
-    await expect(barHint).toContainText("Missionsplätze: 1 von 1 belegt.");
+    await expect(barHint).toContainText("1 von 1 belegt");
     await expectNoHorizontalOverflow(page, "Aktionsleiste mit Hinweis");
 
     // Sprung: Basis mit dem Blatt der Hafenkommandantur.
@@ -74,8 +74,9 @@ test("Fehlende Ressourcen beim Ausbau → Was hilft? → Börse mit Elektronik",
   await expect(up).toHaveAttribute("aria-disabled", "true");
   await up.click({ force: true });
   const hint = sheet.locator("[data-remedy]");
-  await expect(hint).toContainText(/Es fehlen \d+ Elektronik\./);
-  await expect(hint).toContainText("Schneller geht es an der Börse.");
+  await expect(hint).toContainText(/Fehlt \d+ Elektronik/); // Kurzfassung im Kopf
+  await expect(hint).toContainText(/\d+ \/ \d+/); // Fortschrittszeile Bestand / Bedarf
+  await expect(hint).toContainText(/an der Börse/);
   await expectNoHorizontalOverflow(page, "Gebäudeblatt mit „Was hilft?“");
 
   // Sprung zur Börse, Elektronik ist vorgewählt.

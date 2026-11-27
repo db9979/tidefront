@@ -2,6 +2,10 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.19.1 – 27.11.2026
+- **Hinweis-Karten statt Textzeile:** Sperrgründe erscheinen als Karte mit Kurzfassung im Kopf (z. B. „Fehlt 48 Elektronik · ca. 9 h 36 min“ oder „1 von 1 belegt“). Aufgeklappt zeigt sie fehlende Mengen als Fortschrittszeile (Bestand / Bedarf mit Wartezeit), eine kurze Erklärung und die Sprungziele als Kacheln mit Symbol. Gilt überall, wo es „Was hilft“ gibt.
+- Ist die Börse noch gesperrt, führt der Hinweis zur Hafenkommandantur statt zur Börse.
+
 ## 0.19.0 – 27.11.2026
 - **Lagebild (Stufe 1):** Fremde Nest-Stufen, Schutzstatus, Wracks, Feldbesitzer und Verbände auf See sieht man nur noch mit Sicht. Hafen- und Nestpositionen bleiben immer sichtbar.
 - **Sensoren:** Ausguck an jedem Hafen (120 km). Die Radarstation sieht 150 km plus 40 km je Stufe; Strommangel halbiert die Reichweite, Nebel kürzt sie bis 30 %, Sabotage schaltet sie ab. U-Boote bleiben unsichtbar. Die Allianz teilt Sicht und Wissen.

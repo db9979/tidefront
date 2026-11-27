@@ -78,28 +78,32 @@ export function missingResources(ctx: RemedyCtx, cost: Record<string, number> | 
   if (missing.length === 0) {
     return { hint: "Die Bestände reichen inzwischen – bitte erneut versuchen.", actions: [] };
   }
-  const parts: string[] = [`Es fehlen ${joinDe(missing.map((m) => `${fmtNum(m.lack)} ${label(m.r)}`))}.`];
+  const parts: string[] = [];
   // Wartezeit bei aktueller Förderung (je Stunde, nach Strom und Unterhalt).
   const goods = missing.filter((m) => m.r !== "credits"); // Kredite fördert kein Gebäude
-  const waits = goods.map((m) => {
-    const rate = (base.rates as Record<string, number>)[m.r] ?? 0;
-    return rate > 0 ? (m.lack / rate) * 3_600_000 : Infinity;
-  });
-  const wait = Math.max(0, ...waits);
-  if (goods.length > 0 && Number.isFinite(wait)) parts.push(`Bei der jetzigen Förderung ist das in etwa ${fmtDuration(wait)} da.`);
-  else if (goods.length > 0) parts.push("Ohne Förderung kommt es nicht von selbst – Produktion ausbauen oder zukaufen.");
+  const rateOf = (r: string) => (base.rates as Record<string, number>)[r] ?? 0;
+  const waitOf = (m: { r: string; lack: number }) => (rateOf(m.r) > 0 ? (m.lack / rateOf(m.r)) * 3_600_000 : Infinity);
+  const wait = Math.max(0, ...goods.map(waitOf));
+  if (goods.length > 0 && !Number.isFinite(wait)) parts.push("Ohne Förderung kommt es nicht von selbst – Produktion ausbauen oder zukaufen.");
   if (goods.length < missing.length) parts.push("Kredite bringen Verkäufe an der Börse oder im Spielerhandel.");
   const overCap = missing.filter((m) => (cost[m.r] ?? 0) > base.capacity);
   if (overCap.length > 0) parts.push(`Das Lager fasst nur ${fmtNum(Math.floor(base.capacity))} ${label(overCap[0].r)} – erst den Lagerkomplex ausbauen.`);
   const open = base.market.unlocked;
-  parts.push(open ? "Schneller geht es an der Börse." : `Die Börse öffnet ab Hafenkommandantur Stufe ${marketLevel(balance)}.`);
+  parts.push(open ? (Number.isFinite(wait) && goods.length > 0 ? "Warten oder an der Börse zukaufen." : "Schneller geht es an der Börse.") : `Die Börse öffnet ab Hafenkommandantur Stufe ${marketLevel(balance)}.`);
+  const items = missing.map((m) => {
+    const w = m.r === "credits" ? Infinity : waitOf(m);
+    return { id: m.r, label: label(m.r), have: Math.floor(base.resources[m.r] ?? 0), need: Math.ceil(m.need), eta: Number.isFinite(w) ? `in ca. ${fmtDuration(w)}` : undefined };
+  });
+  const summary = `Fehlt ${joinDe(missing.map((m) => `${fmtNum(m.lack)} ${label(m.r)}`))}${goods.length > 0 && Number.isFinite(wait) ? ` · ca. ${fmtDuration(wait)}` : ""}`;
   const actions: RemedyAction[] = [];
   if (overCap.length > 0) actions.push(build("lagerkomplex"));
-  for (const m of goods.slice(0, 2)) actions.push(open ? market(m.r) : market());
-  if (goods.length < missing.length) actions.push(market());
+  // Börse nur anbieten, wenn sie offen ist; sonst führt der Weg über die Hafenkommandantur.
+  if (open) for (const m of goods.slice(0, 2)) actions.push(market(m.r));
+  else if (goods.length > 0) actions.push(build("hafenkommandantur"));
+  if (goods.length < missing.length) actions.push(open ? market() : build("hafenkommandantur"));
   const prod = goods[0] ? producer(balance, goods[0].r) : null;
   if (prod) actions.push(build(prod));
-  return { hint: parts.join(" "), actions: dedupe(actions) };
+  return { hint: parts.join(" "), summary, items, actions: dedupe(actions) };
 }
 
 /** Gleiche Sprünge nur einmal (z. B. zweimal „Zur Börse“). */

@@ -25,10 +25,11 @@ export const MISSIONS: RemedyTable = {
     const hk = lvl(base, "hafenkommandantur");
     const step = nextStep(hk, balance.building.maxLevel, (l) => missionSlots(stateOf(base, { hafenkommandantur: l }), balance));
     const back = base.missions.map((m) => m.returnAtMs).filter((t): t is number => typeof t === "number" && t > now).sort((a, b) => a - b)[0];
-    const parts = [`Missionsplätze: ${base.activeMissions} von ${base.missionSlots} belegt.`];
-    if (step) parts.push(`Mehr Plätze bringt die Hafenkommandantur (Stufe ${step.level} → ${step.value} Plätze, jetzt Stufe ${hk}).`);
-    parts.push(`Oder eine laufende Mission zurückrufen${back ? ` – die nächste ist ${fmtTime(back)} zurück` : ""}.`);
-    return { hint: parts.join(" "), actions: [build("hafenkommandantur"), missions] };
+    const parts: string[] = [];
+    if (step) parts.push(`Mehr Plätze bringt die Hafenkommandantur: Stufe ${step.level} gibt ${step.value} Plätze (jetzt Stufe ${hk}).`);
+    parts.push(`Oder eine laufende Mission zurückrufen${back ? ` – die nächste ist um ${fmtTime(back)} zurück` : ""}.`);
+    const summary = `${base.activeMissions} von ${base.missionSlots} belegt${back ? ` · nächste Rückkehr ${fmtTime(back)}` : ""}`;
+    return { hint: parts.join(" "), summary, actions: [build("hafenkommandantur"), missions] };
   },
 
   command_points: (ctx) => {
@@ -40,6 +41,7 @@ export const MISSIONS: RemedyTable = {
     const target = base && balance && cp > have ? nextStep(lvl(base, "kommandozentrale"), balance.building.maxLevel, (l) => commandPoints(stateOf(base, { kommandozentrale: l }), balance) >= cp ? 1 : 0) : null;
     return {
       hint: `${cp > 0 ? `Der Verband braucht ${fmtNum(cp, 1)} Kommandopunkte, du hast ${fmtNum(have)}. ` : ""}Weniger oder kleinere Einheiten mitschicken – oder die Kommandozentrale ausbauen (+${fmtNum(per)} je Stufe${target ? `; ab Stufe ${target.level} reicht es` : step ? `; Stufe ${step.level}: ${fmtNum(step.value)}` : ""}).`,
+      summary: cp > 0 ? `Verband ${fmtNum(cp, 1)} von ${fmtNum(have)} Kommandopunkten` : undefined,
       actions: [build("kommandozentrale")],
     };
   },
@@ -62,7 +64,9 @@ export const MISSIONS: RemedyTable = {
     const lack = need !== null ? need - have : null;
     const prod = producer(balance, "treibstoff");
     return {
-      hint: `${need !== null ? `Hin und zurück kostet die Fahrt ${fmtNum(need)} Treibstoff, im Lager sind ${fmtNum(have)}${lack && lack > 0 ? ` – es fehlen ${fmtNum(lack)}` : ""}. ` : "Nicht genug Treibstoff für Hin- und Rückfahrt. "}Kleineren oder sparsameren Verband wählen, ein näheres Ziel nehmen, Treibstoff an der Börse kaufen oder die Raffinerie ausbauen.`,
+      hint: "Kleineren oder sparsameren Verband wählen, ein näheres Ziel nehmen, Treibstoff an der Börse kaufen oder die Raffinerie ausbauen.",
+      summary: need !== null && lack && lack > 0 ? `Fehlt ${fmtNum(lack)} Treibstoff für Hin- und Rückfahrt` : undefined,
+      items: need !== null ? [{ id: "treibstoff", label: "Treibstoff", have, need }] : undefined,
       actions: [market("treibstoff"), ...(prod ? [build(prod)] : [])],
     };
   },
