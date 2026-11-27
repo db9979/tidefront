@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { hexCenter, hexDistanceKm, nearestTradePort, terrainAt } from "@tidefront/world";
+import { hexCenter, hexDistanceKm, nearestTradePortBySea, terrainAt } from "@tidefront/world";
 import { trpc, type BaseData } from "../lib/trpc.ts";
 import { fmtDuration, fmtSeconds, useNow } from "../lib/time.ts";
 import { countLabel, fmtNum, label } from "../lib/names.ts";
@@ -198,7 +198,7 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { 
                     <div className="text-emerald-300 text-xs">Schutz: {label(info.base.protection)} – kein Überfall möglich</div>
                   ) : !info.base.own && info.base.relation !== "allianz" && info.base.relation !== "pakt" && <div className="text-siegel text-xs">Kein Schutz aktiv – Überfall möglich</div>}
                   <IntelStand tag={info.base.intel} now={now} />
-                  {isHome && <div className="text-xs text-slate-400">Nächster Handelshafen: {nearestTradePort(home).name} ({fmtNum(nearestTradePort(home).distanceKm)} km)</div>}
+                  {isHome && <div className="text-xs text-slate-400">Nächster Handelshafen: {nearestTradePortBySea(home).name} ({fmtNum(nearestTradePortBySea(home).distanceKm)} km)</div>}
                 </div>
               )}
               {info.nest && info.nest.level === null && (

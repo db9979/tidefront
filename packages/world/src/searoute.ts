@@ -11,6 +11,7 @@
 // Hex-Kette geglättet (Sichtlinie über Wasser): Auf offener See ist die Route die Luftlinie, Umwege nur um Land.
 // Ziel nicht per See erreichbar (Binnenmeer ohne Verbindung): Fahrt zum erreichbaren Feld mit der kürzesten
 // Luftlinie zum Ziel, das letzte Stück gerade (Landung über Land); `partial` = true.
+import { TRADE_PORTS } from "./coast.ts";
 import { COLS, ROWS, hexAtLonLat, hexAtXY, hexCenter, hexCenterXY, hexDistanceKm, hexIndex, inGrid, terrainMap, type Hex } from "./index.ts";
 
 /** Gespeicherte Route: Wegpunkte (Feld-Spalte, -Zeile) von Start bis Ziel und Länge in km (Großkreis je Abschnitt). */
@@ -373,4 +374,18 @@ export function loopRouteHexes(waypoints: readonly { col: number; row: number }[
     for (let k = 0; k < r.hexes.length - 1; k++) out.push([r.hexes[k][0], r.hexes[k][1]]);
   }
   return out;
+}
+
+/**
+ * Seewege: nächster Handelshafen über Wasser (Börsenlieferungen fahren von dort). Entfernung = Länge der Route
+ * (mindestens die Luftlinie); Routen zwischengespeichert.
+ */
+export function nearestTradePortBySea(h: Hex): { name: string; distanceKm: number } {
+  let best = { name: "", distanceKm: Infinity };
+  for (const [lon, lat, name] of TRADE_PORTS) {
+    const p = hexAtLonLat(lon, lat);
+    const km = Math.max(hexDistanceKm(h, p), seaRoute(p, h).km);
+    if (km < best.distanceKm) best = { name, distanceKm: km };
+  }
+  return best;
 }

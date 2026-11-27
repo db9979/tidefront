@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { COLS, QUICK_PICKS, ROWS, hexAtLonLat, hexDistanceKm, hexIndex, isTradePortHex, nearestTradePort, terrainMap } from "@tidefront/world";
+import { COLS, QUICK_PICKS, ROWS, hexAtLonLat, hexDistanceKm, hexIndex, isTradePortHex, nearestTradePortBySea, terrainMap } from "@tidefront/world";
 import { queryClient, trpc, trpcClient } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum } from "../lib/names.ts";
@@ -57,7 +57,7 @@ export function ChooseBase() {
     const nests = map.data.nests.map((n) => ({ n, d: hexDistanceKm(h, n) })).sort((a, b) => a.d - b.d);
     const near = nests.filter((x) => x.d < 900);
     const others = map.data.bases.map((b) => hexDistanceKm(h, b)).sort((a, b) => a - b);
-    return { near, nearest: nests[0], port: nearestTradePort(h), other: others[0] };
+    return { near, nearest: nests[0], port: nearestTradePortBySea(h), other: others[0] };
   };
   const f = sel && isFree ? facts(sel) : null;
 

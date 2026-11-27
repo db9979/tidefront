@@ -84,6 +84,7 @@ Meilenstein 1: `ueberfall`, `aufklaerung`, `transport`.
     Stück gerade (Landung über Land). Mit den Passagen ist jedes Küstenfeld der Karte erreichbar.
   - Patrouillen fahren ihre Runde mit Schiffen ebenfalls über die Seewege und nach der Station über die Route heim;
     Konvois (Transport, Felder, Spielerhandel) fahren die Route, ihre Fahrzeit (Felder, Spielerhandel) nach ihrer Länge.
+  - Kartell-Überfälle und Börsenlieferungen fahren ebenfalls über Wasser (Kartell-Abschnitt, Börse).
 
 Ablauf am Ziel:
 
@@ -213,7 +214,10 @@ Nach dem Kampf:
   etwa 15 %, ab Tag 35 zu 74 %. Fünf feste Inseln (`LATE_NEST_POINTS`, an `nestSites()` angehängt), eigene Wiederkehr
   `respawnHours` 24 h, Beute 29 000 Einheiten (viel Elektronik). migrate/Seed trägt fehlende Plätze nach (vorhandene
   Nester bleiben; Feld mit Hafen erst beim Saisonwechsel). Kein Freischalten nach Saisontag (ENTSCHEIDUNGEN-3.md N).
-- Überfälle auf Spieler alle `raidIntervalHours` je Stützpunkt. Stärke (seit v1.1):
+- Überfälle auf Spieler alle `raidIntervalHours` je Stützpunkt. Der Verband läuft vom Nest mit dem kürzesten Seeweg
+  (unter den drei nächsten nach Luftlinie) über Wasser zum Hafen (Seewege, Entscheidung U): Vorlauf 1 h auf offener
+  See, mal Umwegfaktor (Seeweg / Luftlinie), höchstens 3 h. Karte, Radar und Position folgen der Route.
+- Stärke der Überfälle (seit v1.1):
   - Verteidigungs-Lebenspunkte = Lebenspunkte aller Schiffe (auch U-Boote), Bodentruppen und Anlagen daheim (Flugzeuge zählen nicht).
     Seit v1.13 gewichtet mit `raidHpWeights` (je ID, sonst je Gattung, sonst 1): Schiffe kämpfen nicht am Boden und zählen
     halb (`see` 0,5), Minenräumer 0,1, Landungsschiffe, Kolonieschiffe und Minenleger gar nicht; Bodentruppen und Anlagen voll.
@@ -309,7 +313,7 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
 - Kursband: Würde `p'` um mehr als `hourBand` vom Kurs vor einer Stunde oder mehr als `dayBand` vom Kurs vor 24 Stunden abweichen,
   wird der Handel abgelehnt (`band`) und der Markt für `haltMinutes` angehalten.
 - Gekaufte Ware wird nicht sofort gutgeschrieben, sondern als Lieferung mit Ankunftszeit zurückgegeben
-  (`Entfernung zum Handelshafen / convoySpeedKmh`). Verkaufte Ware wird sofort abgezogen, Kredite sofort gutgeschrieben.
+  (`Seeweg vom nächsten Handelshafen / convoySpeedKmh`; nächster Hafen und Entfernung über Wasser, Seewege). Verkaufte Ware wird sofort abgezogen, Kredite sofort gutgeschrieben.
 - Jeder Handel liefert Journalzeilen (doppelte Buchführung): Summe aller Kredit-Buchungen einschließlich Gebührenkonto ist 0,
   ebenso die Summe je Ressource zwischen Spieler, Markt und Lieferung.
 - Garantie, die Tests prüfen: Keine Folge von Käufen und Verkäufen ohne vergangene Zeit, nach der der Spieler von jeder

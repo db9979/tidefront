@@ -191,7 +191,7 @@ Freigegeben vom Nutzer (27.11.2026). Regeln: docs/REGELN.md (Missionen, „Seewe
   als Linienzug ab der Position (`patrol.homePath`); Kampagne: Abschnitt und Heimweg mit eigener Route
   (`route`/`homeRoute`); Admiral-Heimkehr: Route der Besatzung rückwärts, Fahrzeit nach ihrer Länge. Konvois
   (Transport, Felder, Spielerhandel) fahren die Route (Abfangpunkt, Position); Fahrzeit der Feld- und Handelskonvois nach
-  Routenlänge. Kartellverbände und Börsenlieferungen bleiben gerade (nicht Teil dieser Freigabe).
+  Routenlänge. Kartellverbände und Börsenlieferungen: siehe Nachtrag U.1.
 - **Abwärtskompatibel:** Missionen ohne `route` (vor der Umstellung gestartet) fahren weiter gerade.
 - **Rechenzeit** (Entwicklerrechner, ohne Zwischenspeicher, 300 zufällige Küstenpaare): Median 0,9 ms, p90 3,1 ms,
   höchstens 6–11 ms (New York → Odessa, fast die ganze Karte durchsucht). Ergebnis je Start/Ziel im Zwischenspeicher
@@ -223,6 +223,34 @@ pauschal anheben** – es würde die Fahrten auf offener See (Mehrheit) beschleu
 Spieler in Binnenmeeren (Ostsee, Adria, Schwarzes Meer) benachteiligt wirken, eher gezielt: Treibstoff je km für
 Fahrten mit Route um 10 % senken oder weitere Passagen (z. B. Nord-Ostsee-Kanal ist im Raster schon offen) prüfen.
 Nicht geändert.
+
+### U.1 Nachtrag: Kartell und Börse über Wasser (freigegeben 27.11.2026)
+
+- **Ufer-Regel bestätigt** (Küstenfelder sind Ufer, keine Landbrücke).
+- **Kartell-Überfälle** (`packages/engine/src/kartell-route.ts`, `handlers.ts` raidLaunch): Ausgangsnest = unter den
+  drei nächsten Nestern (Luftlinie) das mit dem kürzesten Seeweg. Bisher lief jeder Überfall in fester Zeit
+  (`RAID_LEAD_MS` = 1 h) unabhängig von der Entfernung; das Kartell hat keine eigene Geschwindigkeit. Damit Takt und
+  Stärke unverändert bleiben, gilt: **Vorlauf = 1 h × (Seeweg / Luftlinie), höchstens 3 h.** Auf offener See bleibt es
+  bei 1 h; nur Häfen hinter Land (Adria, Ostsee, Buchten) bekommen mehr Vorlauf. Die Route steht im Plan (`route`):
+  Karte (Pfeil und Kurs), Sicht und Radar-Erkennung folgen ihr über `fleetPosition`; Kartellverbände ohne Route (vor
+  der Umstellung ausgelaufen) laufen weiter gerade vom nächsten Nest. Großflotte (springt zwischen Zielen) und
+  Belagerung (steht) fahren nicht; das Schatzschiff fuhr schon vorher eine Breitensuche über Seefelder – unverändert.
+- **Börsenlieferungen:** nächster Handelshafen und Entfernung über Wasser (`nearestTradePortBySea`, Börse, Basis,
+  Hafenwahl, Karteninfo); Lieferzeit = Seeweg / `convoySpeedKmh`. Lieferungen haben keine Position auf der Karte.
+- **Messung** (alle 529 Küstenfelder ohne Nest, feste Nestplätze; eigene Rechnung, `npm run -s sim` rechnet ohne
+  Kartell-Fahrt und bleibt unverändert):
+
+  | | Median | p75 | p90 | max | Anteil 1 h | Anteil > 1,5 h | am Deckel 3 h |
+  |---|---|---|---|---|---|---|---|
+  | Kartell-Vorlauf | 60 min | 61 min | 71 min | 158 min | 74 % | 1 % | 0 % |
+
+  Die Radar-Vorwarnung beträgt 10 + 5 min je Stufe und war durch den Vorlauf auf 60 min gedeckelt. Bis Radar Stufe 10
+  ändert sich nichts; ab Stufe 11 bekommen einzelne Häfen hinter Land bis zu ~1 h mehr Vorwarnung (p90 bei Stufe 15:
+  71 statt 60 min). Die Stärke wird beim Auslaufen festgelegt (`raidStrengthShareOfDefense` 0,40) und ändert sich
+  nicht; der Takt (`raidIntervalHours`) läuft ab dem Auslaufen weiter. **Kartell-Überfälle werden nicht entwertet**,
+  kein Balance-Wert geändert. Börse: Seeweg / Luftlinie zum nächsten Handelshafen Median 1,00, p90 1,36, max 3,1.
+- **Rechenzeit:** Kartell-Plan = 3 Wegsuchen, Börse = 10 (je Hafen einmal, danach Zwischenspeicher); über alle 529
+  Küstenfelder zusammen 4,6 s auf dem Entwicklerrechner, also unter 10 ms je Hafen und Auslaufen.
 
 ## W. Spielerbindung und Admin-Kennzahlen
 

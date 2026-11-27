@@ -29,7 +29,7 @@ import {
   type Mission,
   type ResourceMap,
 } from "@tidefront/game-core";
-import { hexCenter, hexDistanceKm, nearestTradePort } from "@tidefront/world";
+import { hexCenter, hexDistanceKm, nearestTradePortBySea } from "@tidefront/world";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance, marketBalance, GameError, type Engine } from "./context.ts";
 import { processDueForBase } from "./events.ts";
@@ -218,7 +218,7 @@ export async function baseView(engine: Engine, playerId: number, baseId?: number
         unlocked: harborLevel >= (balance.buildings.hafenkommandantur.marketFromLevel ?? 3),
         creditLimit: (balance.buildings.hafenkommandantur.creditLimitPerLevel ?? 0) * harborLevel,
         credits: (p?.trader as { credits: number } | undefined)?.credits ?? 0,
-        port: nearestTradePort(own),
+        port: nearestTradePortBySea(own), // Seewege: Entfernung über Wasser (Lieferzeit)
       },
       missions: missions.map((m) => ({
         id: m.id,

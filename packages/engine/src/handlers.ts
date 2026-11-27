@@ -29,7 +29,8 @@ import {
 } from "@tidefront/game-core";
 import { tables, type Tx } from "@tidefront/db";
 import { recordReportIntel } from "./intel-store.ts"; // Lagebild
-import { balance, RAID_LEAD_MS } from "./context.ts";
+import { balance } from "./context.ts";
+import { cartelRaidPlan, nestSpots } from "./kartell-route.ts"; // Seewege: Kartell fährt über Wasser
 import type { EventRow, Handler, HandlerResult } from "./events.ts";
 import { lockBase, lockBases, randomSeed, readBase, saveBase, scheduleEvent } from "./store.ts";
 import { attackWarning, scheduleAttackWarning } from "./event-notices.ts";
@@ -356,12 +357,14 @@ const missionReturn: Handler = async (tx, ev, due) => {
   return { notify };
 };
 
-/** Kartell läuft aus: Verband nach der aktuellen Verteidigung, Ankunft nach RAID_LEAD_MS. */
+/** Kartell läuft aus: Verband nach der aktuellen Verteidigung, Ankunft nach RAID_LEAD_MS (Seewege: länger um Land). */
 const raidLaunch: Handler = async (tx, ev, due) => {
   const b = await lockBase(tx, ev.baseId!);
   if (!b) return none();
   await scheduleEvent(tx, "raid_launch", due + balance.pirates.raidIntervalHours * HOUR_MS, {}, b.id);
-  const arrive = due + RAID_LEAD_MS;
+  // Seewege: vom nächsten Nest über Wasser; Vorlauf 1 h auf offener See, länger um Land (kartell-route.ts).
+  const sea = cartelRaidPlan(await nestSpots(tx), b);
+  const arrive = due + sea.leadMs;
   if (raidBlocked(b.state.protection, due, balance).blocked || raidBlocked(b.state.protection, arrive, balance).blocked) {
     return none();
   }
@@ -374,7 +377,7 @@ const raidLaunch: Handler = async (tx, ev, due) => {
     .insert(tables.mission)
     .values({
       playerId: null, baseId: null, type: "kartell", targetKind: "base", targetId: b.id, targetCol: b.col,
-      targetRow: b.row, plan: { units: raid.units, attacker: raid.attacker, departAtMs: due, arriveAtMs: arrive },
+      targetRow: b.row, plan: { units: raid.units, attacker: raid.attacker, departAtMs: due, arriveAtMs: arrive, ...(sea.route ? { route: sea.route } : {}) },
       status: "outbound", arriveAt: new Date(arrive),
     })
     .returning({ id: tables.mission.id });

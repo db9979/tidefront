@@ -5,9 +5,10 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { eq, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
-import { hexAtLonLat, hexAtXY, hexCenterXY, hexDistanceKm, isCoast, isNavigable, pointAlongRoute, seaRoute } from "@tidefront/world";
+import { hexAtLonLat, hexAtXY, hexCenterXY, hexDistanceKm, isCoast, isNavigable, nearestTradePort, nearestTradePortBySea, nestSites, pointAlongRoute, seaRoute } from "@tidefront/world";
 import { fleetPosition, type BaseState, type Mission } from "@tidefront/game-core";
-import { baseView, chooseBase, launchMission, mapViewFor, missionPreview, recallOwnMission, register, seed, type Engine } from "../src/index.ts";
+import { RAID_LEAD_MS, baseView, chooseBase, launchMission, mapViewFor, missionPreview, processDue, recallOwnMission, register, seed, type Engine } from "../src/index.ts";
+import { CARTEL_LEAD_CAP, cartelRaidPlan } from "../src/kartell-route.ts";
 
 const url = process.env.TEST_DATABASE_URL;
 const DAY = 24 * 3600000;
@@ -113,4 +114,45 @@ test("Seewege: Missionen ohne Route (Bestand vor der Umstellung) fahren weiter g
   const m = { status: "outbound", arriveAt: new Date(now + 3600000), returnAt: null, plan: { departAtMs: now - 3600000, travelSeconds: 7200 } };
   const pos = fleetPosition(m, home, tgt, now)!;
   assert.ok(Math.abs(pos.at.x - 50) < 1e-6 && Math.abs(pos.at.y) < 1e-6);
+});
+
+test("Seewege: Kartell-Vorlauf 1 h auf offener See, länger um Land (gedeckelt); Überfall trägt die Route", async () => {
+  const nests = nestSites();
+  // Rechnung: Vorlauf = 1 h × (Seeweg / Luftlinie des gewählten Nests), höchstens CARTEL_LEAD_CAP.
+  for (const [lon, lat] of [[-9.1, 38.7], [13.8, 45.6], [18.5, 59.3], [-70.2, 43.6]] as const) {
+    const h = coastAt(lon, lat);
+    const p = cartelRaidPlan(nests, h);
+    assert.ok(p.route, "Route vom Nest");
+    assert.ok(p.leadMs >= RAID_LEAD_MS && p.leadMs <= CARTEL_LEAD_CAP * RAID_LEAD_MS);
+    const last = p.route!.hexes[p.route!.hexes.length - 1];
+    assert.deepEqual(last, [h.col, h.row], "Route endet am Hafen");
+  }
+  // Ablauf: raid_launch legt die Kartell-Mission mit Route an; Position unterwegs liegt auf der Route.
+  const v = await newPlayer("Zielhafen", coastAt(16.4, 43.5));
+  const [b] = await db.select().from(tables.base).where(eq(tables.base.id, v.baseId));
+  const s = b.state as BaseState;
+  s.protection.createdAtMs = 0;
+  await db.update(tables.base).set({ state: s }).where(eq(tables.base.id, v.baseId));
+  const [ev] = await db.select().from(tables.gameEvent).where(sql`${tables.gameEvent.baseId} = ${v.baseId} and ${tables.gameEvent.type} = 'raid_launch' and ${tables.gameEvent.status} = 'pending'`);
+  assert.ok(ev, "raid_launch geplant");
+  await processDue(engine, ev.dueAt.getTime() + 1, 1000);
+  const [m] = await db.select().from(tables.mission).where(sql`${tables.mission.type} = 'kartell' and ${tables.mission.targetId} = ${v.baseId}`);
+  assert.ok(m, "Kartell läuft aus");
+  const plan = m.plan as Mission;
+  assert.ok(plan.route && plan.route.hexes.length >= 2, "Route im Plan");
+  const lead = m.arriveAt.getTime() - plan.departAtMs;
+  const nest = { col: plan.route!.hexes[0][0], row: plan.route!.hexes[0][1] };
+  const expect = Math.round(RAID_LEAD_MS * Math.min(CARTEL_LEAD_CAP, Math.max(1, plan.route!.km / hexDistanceKm(nest, v))));
+  assert.equal(lead, expect, "Vorlauf nach Routenlänge");
+  const mid = fleetPosition(m, hexCenterXY(nest.col, nest.row), hexCenterXY(v.col, v.row), plan.departAtMs + lead / 2)!;
+  const on = pointAlongRoute(plan.route!, plan.route!.km / 2);
+  assert.ok(Math.hypot(mid.at.x - on.x, mid.at.y - on.y) < 1, "Kartell auf halber Route");
+});
+
+test("Seewege: Börsenlieferung nach dem Seeweg zum nächsten Handelshafen", () => {
+  const h = coastAt(13.8, 45.6); // Adria: Genua liegt in Luftlinie nah, über Wasser weit
+  const sea = nearestTradePortBySea(h);
+  const air = nearestTradePort(h);
+  assert.ok(sea.distanceKm >= air.distanceKm);
+  assert.ok(Number.isFinite(sea.distanceKm) && sea.name !== "");
 });
