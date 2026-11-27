@@ -39,6 +39,8 @@ export interface LageUrgent {
   idleQueues: number;
   /** Serverseitig gezählte abholbare Belohnungen (Erfolge, Wochenziele); Tagesbefehle/Auftragsbuch zählt die Oberfläche. */
   rewards: number;
+  /** Schlüssel der dringenden Einträge: die Oberfläche zählt nur, was seit dem letzten Öffnen der Lage neu ist. */
+  keys: string[];
 }
 
 export const HOUR_MS = 3_600_000;

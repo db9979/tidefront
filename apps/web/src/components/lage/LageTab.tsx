@@ -15,6 +15,8 @@ import { Loading } from "../../ui.tsx";
 import type { Target } from "../../App.tsx";
 import type { MeldungenTab } from "../../screens/Meldungen.tsx";
 import { LageGroup, LageLine, type LageJump, type LageRow } from "./LageList.tsx";
+import { useEffect, useState } from "react";
+import { readLageSeen, useLageSeen, writeLageSeen } from "../../lib/lage-seen.ts";
 
 const RECENT = 5;
 const REPORT_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "kartell", aufklaerung: "aufklaerung", transport: "transport", spionage: "spionage", sabotage: "sabotage", konvoi: "konvoi", blockade: "blockade", minen: "mine", patrouille: "patrouille", satellit: "satellit", sichtung: "sichtung" };
@@ -35,6 +37,13 @@ export function LageTab({ onShowOnMap, onSub, unreadMsgs, seenReport }: {
   const reports = useQuery({ ...trpc.report.list.queryOptions(), refetchInterval: 60000 });
   const daily = useDaily();
   const guide = useGuide();
+  // Stand beim letzten Öffnen: Einträge, die seitdem dazugekommen sind, tragen „neu“ (erster Besuch: keine Markierung).
+  const [before] = useState(() => readLageSeen());
+  const quests0 = (daily.data?.claimable ?? 0) + (guide.data?.claimable ?? 0);
+  const allKeys = lage.data ? [...lage.data.soon, ...lage.data.underway, ...lage.data.waiting].map((r) => r.key).concat(lage.data.urgent.keys, quests0 > 0 ? [`belohnung:quests:${quests0}`] : []) : null;
+  const sig = allKeys?.join("|") ?? "";
+  useEffect(() => { if (allKeys) writeLageSeen(allKeys, Date.now()); }, [sig]); // eslint-disable-line react-hooks/exhaustive-deps
+  const isNew = (key: string) => before !== null && !before.keys.includes(key);
   if (!lage.data) return <Loading cards={3} error={lage.error ?? undefined} onRetry={() => void lage.refetch()} />;
 
   /** Mehrere Häfen: vor dem Sprung den betroffenen Hafen aktiv machen (Heimathafen = null). */
@@ -82,17 +91,17 @@ export function LageTab({ onShowOnMap, onSub, unreadMsgs, seenReport }: {
       )}
       {soon.length > 0 && (
         <LageGroup title="Gleich / heute" count={soon.length} testId="lage-soon">
-          {soon.map((r) => <LageLine key={r.key} row={r} nowMs={now} onJump={jump} />)}
+          {soon.map((r) => <LageLine key={r.key} row={r} nowMs={now} onJump={jump} unread={isNew(r.key)} />)}
         </LageGroup>
       )}
       {underway.length > 0 && (
         <LageGroup title="Unterwegs" count={underway.length} testId="lage-underway">
-          {underway.map((r) => <LageLine key={r.key} row={r} nowMs={now} onJump={jump} />)}
+          {underway.map((r) => <LageLine key={r.key} row={r} nowMs={now} onJump={jump} unread={isNew(r.key)} />)}
         </LageGroup>
       )}
       {waiting.length > 0 && (
         <LageGroup title="Wartet auf dich" count={waiting.length} testId="lage-waiting">
-          {waiting.map((r) => <LageLine key={r.key} row={r} nowMs={now} onJump={jump} onTap={r.kind === "nachrichten" ? () => onSub("nachrichten") : undefined} />)}
+          {waiting.map((r) => <LageLine key={r.key} row={r} nowMs={now} onJump={jump} unread={isNew(r.key)} onTap={r.kind === "nachrichten" ? () => onSub("nachrichten") : undefined} />)}
         </LageGroup>
       )}
       {recent.length > 0 && (
@@ -111,7 +120,10 @@ export function LageTab({ onShowOnMap, onSub, unreadMsgs, seenReport }: {
 /** Zahl am Navigationszeichen „Meldungen“: nur Dringendes (Angriff, abholbereit, Nachfrist, leere Bauschlange). */
 export function useLageBadge(enabled: boolean, quests: number): { count: number; attack: boolean } {
   const q = useQuery({ ...trpc.lage.badge.queryOptions(), enabled, refetchInterval: 60000 });
+  const seen = useLageSeen();
   const u = q.data;
-  const count = (u ? u.attacks + u.grace + u.idleQueues + u.rewards : 0) + quests;
+  // Nur, was seit dem letzten Öffnen der Lage neu ist; laufende Angriffe zählen immer (Sicherheit).
+  const keys = [...(u?.keys ?? []), ...(quests > 0 ? [`belohnung:quests:${quests}`] : [])];
+  const count = keys.filter((k) => k.startsWith("angriff:") || !seen.has(k)).length;
   return { count, attack: (u?.attacks ?? 0) > 0 };
 }

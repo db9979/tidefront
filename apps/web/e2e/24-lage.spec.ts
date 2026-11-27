@@ -47,6 +47,9 @@ test("Lage: Konvoi und Bau, Antippen springt, Zahl am Navigationszeichen bei abh
   await expect(badge).toHaveText(String(before + 1));
   await nav.click();
   await expect(page.getByTestId("lage-waiting").locator('[data-lage-key="belohnung:erfolge"]')).toContainText("abholbereit");
+  // Neu seit dem letzten Öffnen markiert; nach dem Öffnen der Lage verschwindet die Zahl.
+  await expect(page.getByTestId("lage-waiting").locator('[data-lage-key="belohnung:erfolge"]').getByLabel("neu")).toBeVisible();
+  await expect(badge).toHaveCount(0);
   expect((await readState(seed.sql, player.baseId)).buildQueue).toHaveLength(1);
   await seed.sql`delete from convoy where id = ${cv.id}`;
 });
