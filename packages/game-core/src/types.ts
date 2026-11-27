@@ -40,6 +40,9 @@ export interface BuildingDef {
   slotsPerLevel?: number;
   commandPointsBase?: number;
   commandPointsPerLevel?: number;
+  /** Spätspiel (v1.24): ab dieser Stufe der Kommandozentrale gibt jede Stufe commandPointsLatePerLevel statt commandPointsPerLevel. */
+  commandPointsLateFromLevel?: number;
+  commandPointsLatePerLevel?: number;
   missionSlotsBase?: number;
   missionSlotsPerTwoLevels?: number;
   marketFromLevel?: number;
@@ -198,6 +201,8 @@ export interface Balance {
     raidHpWeights?: Record<string, number>;
   };
   market: MarketBalance;
+  /** Wertung (seit v1.24, engine/scoring.ts); fehlt es, zählt jeder Kampf voll. */
+  scoring?: ScoringBalance;
   /** Forschung (seit v1.3); fehlt sie, gibt es keine Forschung. */
   research?: ResearchBalance;
   /** Veteranen (seit v1.4); fehlt es, sammeln Einheiten keine Erfahrung. */
@@ -221,6 +226,16 @@ export interface Balance {
   intel?: import("./intel.ts").IntelBalance;
 }
 
+/** Wertung (v1.24). Punkte bewerten Ressourcen zum Börsen-Richtpreis (market.refPrice). */
+export interface ScoringBalance {
+  /**
+   * Faktor auf Kampfpunkte gegen das Kartell bzw. NPC: Abwehr von Überfällen ohne angreifenden Spieler (Kartell, Großflotte,
+   * Konvoi, Feld) und Angriffe auf die Weltereignisse in npcWorldEventKinds.
+   */
+  npcDefenseFactor: number;
+  /** Weltereignisse, deren Bekämpfung als Abwehr zählt (Großflotte, Belagerungsring). */
+  npcWorldEventKinds?: string[];
+}
 // ---------------------------------------------------------------- Ergebnis
 
 export type Fail = { ok: false; code: string };

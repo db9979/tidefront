@@ -23,8 +23,8 @@ Abschnitt O; Simulation `node packages/game-core/sim/power-green.ts`.
 
 ## Elektrolyse (Gebäude `elektrolyse`)
 
-- Aufnahme `electrolysisPerLevel * L` (40) Strom je Stunde, `electrolysisRatio` (10) Strom-Stunden → 1 Treibstoff, also
-  höchstens 4 Treibstoff je Stunde und Stufe. Braucht selbst keinen Strom. Kosten 160 Stahl, 90 Elektronik, 35 s.
+- Aufnahme `electrolysisPerLevel * L` (40) Strom je Stunde, `electrolysisRatio` (6, bis v1.23: 10) Strom-Stunden → 1
+  Treibstoff, also höchstens 6,7 Treibstoff je Stunde und Stufe. Braucht selbst keinen Strom. Kosten 160 Stahl, 90 Elektronik, 35 s.
 - Nimmt **nur Ökostrom-Überschuss** auf, nie Kraftwerksstrom (sonst würde Treibstoff zu mehr Treibstoff: 3 Treibstoff
   → 60 Strom → 6 Treibstoff). Weil Ökostrom zuerst den Bedarf deckt, kann mehr Kraftwerk den Ökostrom-Überschuss nur
   verringern; die Kraftwerk-Drosselung bei Treibstoff 0 bleibt eindeutig.

@@ -39,7 +39,9 @@ Vier Ressourcen: `stahl`, `treibstoff`, `elektronik`, `proviant`. Strom ist eine
   beim Einreihen bezahlt. Die Zielstufe zählt bereits eingereihte Aufträge desselben Gebäudes mit; `maxLevel` und der
   Deckel über die Kommandozentrale gelten für diese Zielstufe, eingereihte Stufen der Kommandozentrale zählen dabei mit.
   Ein Auftrag beginnt, wenn der vorige fertig ist (frühestens beim Einreihen); seine Bauzeit richtet sich nach der Zielstufe.
-- Kommandopunkte eines Stützpunkts: `commandPointsBase + commandPointsPerLevel * L`.
+- Kommandopunkte eines Stützpunkts: `commandPointsBase + commandPointsPerLevel * L`; ab Stufe
+  `commandPointsLateFromLevel` (v1.24: 9) zählt jede Stufe `commandPointsLatePerLevel` (60) statt 30
+  (KZ 8: 300, KZ 9: 360, KZ 10: 420, KZ 12: 540).
 - Tiefbunker: schützt je Ressource `protectedBase * protectedGrowth^L` vor Plünderung.
 - Missionsplätze: `missionSlotsBase + floor(L / 2) * missionSlotsPerTwoLevels` (Hafenkommandantur).
 - Börse ab Hafenkommandantur Stufe `marketFromLevel`; Kreditlimit `creditLimitPerLevel * L`.
@@ -330,12 +332,17 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
 ## Saison und Wertung
 
 - Eine Saison dauert `SEASON_DAYS` Tage (Betriebseinstellung, Vorgabe 42). Es läuft immer genau eine Saison.
-- Kostenwert = Summe aller Ressourcen der Baukosten. Punkte je Kategorie = `floor(Kostenwert / 100)`, Gesamt = Summe der Kategorien.
+- Kostenwert = Ressourcen der Baukosten zum Börsen-Richtpreis (v1.24, `market.refPrice`: Stahl 1, Treibstoff 1,8,
+  Elektronik 3, Proviant 0,6; vorher Summe aller Ressourcen). Punkte je Kategorie = `floor(Kostenwert / 100)`,
+  Gesamt = Summe der Kategorien. Die Punkte werden nicht gespeichert, sondern bei jedem Abruf aus Stand und
+  Kampfberichten berechnet; eine geänderte Wertung gilt sofort für die ganze laufende Saison.
   - **Ausbau:** Kosten aller gebauten Gebäudestufen.
   - **Militär:** Einheiten und Anlagen des Stützpunkts einschließlich der Verbände unterwegs.
   - **Kampf:** Kostenwert der gegnerischen Einheiten und Anlagen, die laut Kampfbericht der Saison vernichtet wurden
     (als Angreifer und als Verteidiger, auch gegen Nester und Kartell). Schnellboot zählt 250, Piratenmiliz 40.
-  - **Beute:** Summe der Beute aus eigenen Überfällen der Saison.
+    Abwehr ohne angreifenden Spieler (Kartell-Überfall, Großflotte, Konvoi, Feld) und Angriffe auf Großflotte und
+    Belagerungsring zählen nur `scoring.npcDefenseFactor` (v1.24: × 0,25); Nester, Schatzschiff und Spielerkämpfe voll.
+  - **Beute:** Wert der Beute aus eigenen Überfällen der Saison (zum Richtpreis).
   - **Befehle:** Punkte aus abgeholten Tagesbefehlen der Saison samt Serienbonus (bereits Punkte, kein Kostenwert;
     siehe Abschnitt Tagesbefehle).
 - Rang nach Gesamtpunkten; Punktgleiche teilen den Rang.

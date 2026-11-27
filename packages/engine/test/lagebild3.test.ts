@@ -85,11 +85,11 @@ after(async () => {
   await client.end();
 });
 
-test("Startrampe: Voraussetzungen Kommandozentrale 8, Forschungsamt 5, Radarstation 6", () => {
+test("Startrampe: Voraussetzungen Kommandozentrale 7 (v1.24, vorher 8), Forschungsamt 5, Radarstation 6", () => {
   const def = balance.buildings.startrampe;
-  assert.deepEqual(def.requires, { kommandozentrale: 8, forschungsamt: 5, radarstation: 6 });
+  assert.deepEqual(def.requires, { kommandozentrale: 7, forschungsamt: 5, radarstation: 6 });
   assert.deepEqual(def.cost, { stahl: 3000, treibstoff: 1000, elektronik: 1000 });
-  const s = { resources: { ...rich }, resUpdatedAt: fake, buildings: { kommandozentrale: 8, forschungsamt: 5, radarstation: 5 }, units: {}, unitsAway: {}, defenses: {}, buildQueue: [], trainingQueue: [], versorgungsmangel: false, protection: { createdAtMs: 0 } } as unknown as BaseState;
+  const s = { resources: { ...rich }, resUpdatedAt: fake, buildings: { kommandozentrale: 7, forschungsamt: 5, radarstation: 5 }, units: {}, unitsAway: {}, defenses: {}, buildQueue: [], trainingQueue: [], versorgungsmangel: false, protection: { createdAtMs: 0 } } as unknown as BaseState;
   assert.equal(startUpgrade(s, "startrampe", fake, balance).ok ? "ok" : (startUpgrade(s, "startrampe", fake, balance) as { code: string }).code, "building_requires");
   s.buildings.radarstation = 6;
   assert.equal(startUpgrade(s, "startrampe", fake, balance).ok, true);

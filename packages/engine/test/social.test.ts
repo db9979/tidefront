@@ -119,11 +119,12 @@ test("Rangliste: Punkte je Kategorie nach Formel", async () => {
     s.units = {};
     s.defenses = { bunkerlinie: 1 };
   });
-  // A überfällt B: B verliert Korvette und Küstenbatterie (550 + 600), A verliert 10 Schützen (500), Beute 1550.
+  // Werte zum Richtpreis (v1.24: Stahl 1, Treibstoff 1,8, Elektronik 3, Proviant 0,6).
+  // A überfällt B: B verliert Korvette und Küstenbatterie (730 + 800), A verliert 10 Schützen (420), Beute 1000 + 550 × 1,8 = 1990.
   await addReport({ attacker: A.playerId, defender: B.playerId, battle: battle({ schuetzen: 10 }, { korvette: 1, kuestenbatterie: 1 }, { stahl: 1000, treibstoff: 550 }) });
   // A gegen ein Nest: 4 Schnellboote (je 250) und 10 Milizionäre (je 40) = 1400, Beute 900.
   await addReport({ attacker: A.playerId, defender: null, battle: battle({}, { schnellboot: 4, piratenmiliz: 10 }, { stahl: 900 }) });
-  // Kartell gegen B: B vernichtet 2 Schnellboote (500), das Kartell erbeutet etwas (zählt für niemanden).
+  // Kartell gegen B: B vernichtet 2 Schnellboote (500 × npcDefenseFactor 0,25 = 125), das Kartell erbeutet etwas (zählt für niemanden).
   await addReport({ kind: "kartell", attacker: null, defender: B.playerId, battle: battle({ schnellboot: 2 }, {}, { stahl: 5000 }) });
   // Zählen nicht: Aufklärung und ein Bericht vor Saisonbeginn.
   await addReport({ kind: "aufklaerung", attacker: A.playerId, defender: null });
@@ -132,11 +133,13 @@ test("Rangliste: Punkte je Kategorie nach Formel", async () => {
   const rows = await computeStandings(db, season.startsAt.getTime(), Date.now());
   const a = rows.find((r) => r.playerId === A.playerId)!;
   const b = rows.find((r) => r.playerId === B.playerId)!;
-  assert.equal(buildingValue({ stahlwerk: 2 }), 150 + 225);
+  // Stahlwerk: 120 + 30 × 1,8 = 174, Stufe 2: 180 + 45 × 1,8 = 261.
+  assert.equal(buildingValue({ stahlwerk: 2 }), 174 + 261);
+  // A: Ausbau 435, Militär 2 Korvetten 1460, Kampf 1530 + 1400, Beute 1990 + 900. B: Bunkerlinie 460, Kampf 420 + 125.
   assert.deepEqual({ ausbau: a.ausbau, militaer: a.militaer, kampf: a.kampf, beute: a.beute, total: a.total },
-    { ausbau: 3, militaer: 11, kampf: 25, beute: 24, total: 63 });
+    { ausbau: 4, militaer: 14, kampf: 29, beute: 28, total: 75 });
   assert.deepEqual({ ausbau: b.ausbau, militaer: b.militaer, kampf: b.kampf, beute: b.beute, total: b.total },
-    { ausbau: 0, militaer: 4, kampf: 10, beute: 0, total: 14 });
+    { ausbau: 0, militaer: 4, kampf: 5, beute: 0, total: 9 });
   assert.equal(a.rank, 1);
   assert.equal(b.rank, 2);
   assert.equal(a.base?.name, "Hafen Arne");
@@ -150,7 +153,7 @@ test("Rangliste: Punkte je Kategorie nach Formel", async () => {
   clearRankingCache();
   const view = await rankingView(engine, A.playerId);
   const a2 = view.rows.find((r) => r.playerId === A.playerId)!;
-  assert.equal(a2.militaer, 11);
+  assert.equal(a2.militaer, 14);
   assert.equal(a2.own, true);
   assert.equal(view.season?.number, 1);
 });

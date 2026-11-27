@@ -1,0 +1,1 @@
+ALTER TABLE "game_event" ADD COLUMN "orig_due_at" timestamp with time zone;
