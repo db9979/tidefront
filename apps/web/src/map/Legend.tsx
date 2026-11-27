@@ -26,6 +26,8 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { icon: <TacticalIcon kind="wreck" />, text: "Wrackfeld, bergbar" },
       { icon: <TacticalIcon kind="port" />, text: "Handelshafen der Börse" },
       { icon: <><TacticalIcon kind="ship" size={22} /><TacticalIcon kind="shipBack" size={22} /></>, text: "Eigener Verband: Hinfahrt, Rückfahrt – antippen für Details" },
+      { icon: <><ConvoyMark fill="#2d5b7a" /><ConvoyMark fill="#a8331f" /></>, text: "Konvoi (Börse, Vertrag, Handel, Transport, Feldertrag) mit gestrichelter Route über Wasser: blau eigener, rot Kriegsgegner (abfangbar), dunkel mit Geleit – antippen für Details" },
+      { icon: <ConvoyMark fill="#fbf8f0" />, text: "Heller Konvoi mit Schild „Konvoi · klein/mittel/groß“: fremder Konvoi in Sensorreichweite, ohne Route; Ladung genau erst mit Lagebild" },
     ],
   },
   {
@@ -153,6 +155,17 @@ function FleetArrow() {
       <circle r="10" fill="#fbf8f0" stroke="#18273a" strokeWidth={1.2} />
       <polygon points="0,-8 5,5 0,2 -5,5" fill="#18273a" transform="rotate(45)" />
       <text x="0" y="13" textAnchor="middle" fontSize="7" fontWeight="600" fill="#18273a" fontFamily="'IBM Plex Mono', monospace">M</text>
+    </svg>
+  );
+}
+
+function ConvoyMark({ fill }: { fill: string }) {
+  return (
+    <svg width="22" height="16" viewBox="-11 -8 22 16" aria-hidden="true">
+      <path d="M-9 0 H9 L6 4.5 H-7 Z" fill={fill} stroke="#18273a" strokeWidth={1} />
+      <rect x="-5" y="-4" width="4" height="4" fill="#fbf8f0" stroke="#18273a" strokeWidth={0.9} />
+      <rect x="0" y="-3" width="3.5" height="3" fill="#fbf8f0" stroke="#18273a" strokeWidth={0.9} />
+      <path d="M5.5 0 V-6" stroke="#18273a" strokeWidth={1} />
     </svg>
   );
 }

@@ -3,7 +3,7 @@
 // Spielern mit Konvoi, Preisband, Paarbremse, Absprache-Schutz, Vormerkung im Tageslimit und Saisonende.
 import { after, before, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
-import { eq, inArray, like, sql } from "drizzle-orm";
+import { and, eq, inArray, like, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
 import { isCoast, nestSites, COLS, ROWS, isTradePortHex } from "@tidefront/world";
 import { settle, storageCapacity, type BaseState } from "@tidefront/game-core";
@@ -175,6 +175,14 @@ test("KI-Vertrag: Kauf bei Albers – Anzahlung, Treuhandware, Lieferung zur Fä
   const done = await contract(c.id);
   assert.equal(done.status, "erfuellt");
   assert.equal(done.deliveredQty, 2000);
+  // Konvoi von Albers' Hafen (Art „vertrag“), Ankunft zur Fälligkeit; Kartell hier ausgeschaltet (Zufall).
+  const [acv] = await db.select().from(tables.convoy).where(eq(tables.convoy.deliveryId, done.deliveryId!));
+  assert.ok(acv && acv.kind === "vertrag" && acv.senderId === albers.playerId && acv.recipientId === a.playerId, "Albers liefert per Konvoi");
+  assert.equal(c.delivery, "konvoi");
+  await db.update(tables.convoy).set({ cartelAt: null }).where(eq(tables.convoy.id, acv.id));
+  await db.delete(tables.gameEvent).where(and(eq(tables.gameEvent.type, "convoy_raid"), sql`${tables.gameEvent.payload}->>'convoyId' = ${String(acv.id)}`));
+  assert.equal(await deliveredTo(a.playerId, c.id, "stahl"), 0, "noch unterwegs");
+  await runUntil(acv.arriveAt.getTime() + 1000);
   assert.equal(await deliveredTo(a.playerId, c.id, "stahl"), 2000);
   assert.ok(await stock(a.baseId, "stahl") >= 3000);
   const paid = Math.ceil(2000 * c.buyerUnit * 100 - 1e-6) / 100;
@@ -264,7 +272,7 @@ test("KI-Vertrag: Verkauf an Falkenberg (Pfand, Spieler liefert) und Rotbart-Kon
   assert.equal(sent.status, "erfuellt");
   assert.equal(sent.deliveryId, `mc-${rc.id}`);
   const [cv] = await db.select().from(tables.convoy).where(eq(tables.convoy.deliveryId, sent.deliveryId!));
-  assert.ok(cv && cv.kind === "handel" && cv.recipientId === c0.playerId && cv.senderId === rot.playerId, "Konvoi auf der Karte");
+  assert.ok(cv && cv.kind === "vertrag" && cv.recipientId === c0.playerId && cv.senderId === rot.playerId, "Konvoi auf der Karte");
   // Ankunft zur Fälligkeit; ist der Seeweg länger als die Laufzeit, fährt er sofort und kommt später.
   assert.ok(cv.arriveAt.getTime() >= rc.dueAt.getTime());
   if (rc.settleAt.getTime() > rc.createdAt.getTime() + 120_000) assert.equal(cv.arriveAt.getTime(), rc.dueAt.getTime());

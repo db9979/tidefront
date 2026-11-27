@@ -335,3 +335,47 @@ abweichend: **Verträge zwischen Spielern sofort**, mit Schutz. Regeln: `docs/RE
     Kurs bringt und sein Lager es trägt (liefern ab 40 % Füllung und doppeltem Bestand, kaufen bis 60 %) – wie faire Angebote
     im Spielerhandel. Das ist ein Spielervertrag (Band, Konvoi, Strafen in den Topf); KI-Spieler bieten selbst keine an und
     schließen keine Verträge untereinander (Vorlage, Abgrenzung).
+
+## Konvois: Börse und Verträge auf See, Konvoi-Blatt, fremde Konvois im Lagebild
+
+Nutzerentscheid (6 Punkte). Regeln: `docs/REGELN-SEE.md` (Abschnitt Konvois), `docs/REGELN.md` (Börse, Lieferverträge).
+
+1. **Fehler Kartenposition:** Konvois fuhren auf dem Server schon über die Route (Seewege), die Karte zeichnete eine
+   Gerade und bewegte das Schiff linear. Neu: `convoyPosition` in `game-core/route-position.ts` (Anteil der Fahrzeit auf
+   der Route, Abschnitte in Großkreis-km wie `pointAlongRoute`) für Server (`naval-convoy-view.ts`) und Karte
+   (`apps/web/src/lib/convoy.ts`, `map/naval.ts`: Linienzug über die Wegpunkte, Schiff alle 2 s neu gesetzt). Der
+   Abfangpunkt rechnet wie bisher `interceptPoint` über die Route (`buildRoute` aus denselben Wegpunkten); ein Test zeigt,
+   dass beide Rechnungen auf dasselbe Feld (±1) kommen.
+2. **Börsenkäufe** fahren als Konvoi `boerse` vom nächsten Handelshafen (`nearestTradePortBySea` liefert jetzt auch das
+   Feld) zum Käuferhafen, Absender `null` (Anzeige „Handelshafen …“). Ankunft unverändert aus `executeTrade`. Geleit
+   optional in der Order (`market.trade.escort`, `attachTradeEscort` wie im Spielerhandel); scheitert das Geleit, wird
+   der ganze Kauf abgelehnt (nichts halb). **Lieferverträge** fahren als Konvoi `vertrag`; Albers (Händler) und
+   Falkenberg (Festung) bekommen `convoy: true` (Abfahrt zur Fälligkeit minus Fahrzeit wie bei Rotbart). Für Verkäufe an
+   die KI fährt die Ware des Spielers ebenso als Konvoi zum KI-Hafen (Verlust trägt dann die KI, bezahlt ist bei
+   Abwicklung). Alte Lieferungen ohne Konvoi und alte Verträge mit `delivery = abstrakt` bleiben, wie sie sind.
+   **Minen:** Börsenkonvois bleiben ausgenommen (fremde Felder vor dem eigenen Hafen sollen die Börse nicht entwerten);
+   Vertragskonvois zählen wie Handelskonvois (Rotbart/Spielerverträge taten das schon).
+3. **Balance (Integrator hebt die Version):** `convoys.marketChanceFactor` 0,5, `marketMaxChance` 0,08 für `boerse` und
+   `vertrag`. Rechnung (erwarteter Verlust ohne Geleit = Chance × `lossShareUnescorted` 0,3):
+   - typischer Kauf 400 km, Warenwert 5.000: (0,02 + 0,04 + 0,02) × 0,5 = 4 % → **1,2 %**;
+   - Kauf 1.000 km, 10.000: (0,02 + 0,10 + 0,04) × 0,5 = 8 % → **2,4 %** (Obergrenze);
+   - jeder Kauf höchstens 8 % × 30 % = **2,4 %**, mit unterlegenem Geleit 8 % × 25 % = 2 %; unter 150 km nie.
+   Zum Vergleich: Börsengebühr 4 %, Handelskonvois bis 12 % × 30 % = 3,6 %. Ziel „≤ 3–5 %“ ist eingehalten, Börsenkäufe
+   bleiben lohnend; für große Käufe lohnt Geleit. Kartellverband nach Warenwert wie bisher. Die Order zeigt Chance und
+   erwarteten Verlust des konkreten Kaufs (`cartelExpectedLoss`).
+4. **Abfangen** bleibt Kriegsgegnern und dem Kartell vorbehalten (`convoy_not_enemy` unverändert, Test).
+5. **Konvoi-Blatt:** Antippen eines Felds mit Konvoi (≤ 70 km von der aktuellen Position) zeigt Art, Absender →
+   Empfänger (Hafen), Ladung, Geleit, Ankunft, Route (Seeweg km, Wegpunkte) bzw. Kurs. Für Kriegsgegner „Abfangen“ mit
+   Abfangpunkt und Ankunft aus `mission.preview` (previewIntercept, alle Schiffe daheim) und Weiter zur Missionsplanung
+   (launchIntercept). Einen Probekampf gegen ein Konvoi-Geleit gibt es (noch) nicht – der Kampfsimulator gehört
+   dev-simulator; das Blatt nennt stattdessen, ob gekämpft wird (Geleit) oder kampflos geplündert.
+6. **Lagebild:** Mit Kartennebel erscheinen fremde Konvois (auch neutrale und verbündete) nur in Sensorreichweite der
+   Partei (`liveAt(..., "fleet")`, Allianz teilt Sicht): Sichtung = Position, Kurs, Größenklasse der Ladung
+   (`cargoSizeClass` nach Warenwert, 2.000/10.000); Erkennung dazu Art, Absender, Empfänger, Geleit ja/nein. Genaue
+   Ladung und Geleit nur mit Lagebild des Zielhafens (Wissen `base` mit Stufe `lagebild`, nicht veraltet) – das gilt mit
+   Nebel auch für Kriegsgegner (Route und Zeiten sehen sie weiter, damit Abfangen planbar bleibt). Fremde ohne Krieg:
+   keine Route, kein Ziel, keine Zeiten. Ohne Nebel wie bisher (eigene und feindliche mit Ladung). Konvoi-Sichtungen
+   werden nicht als Wissen gespeichert (sie sind nur live).
+7. **KI-Spieler** kaufen weiter über `trade` (ohne Geleit); ihre Börsenkonvois sind ebenso überfallbar. Keine eigene
+   Geleit-Logik – der erwartete Verlust (≤ 2,4 %) ist kleiner als die Gebühr.
+8. **Schema:** keine Änderung (Spalte `convoy.kind` ist Text; neue Werte `boerse`, `vertrag`).

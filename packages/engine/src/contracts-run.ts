@@ -1,7 +1,8 @@
 // Lieferverträge (v1.31): Abwicklung als Ereignis contract_due (Schritte remind, settle, grace, expire). Bei Fälligkeit
 // wird erfüllt, so weit Kredite und Ware reichen; sonst 12 h Nachfrist, danach anteilig mit Strafe auf den unerfüllten
-// Teil. Albers und Falkenberg liefern abstrakt (sofort ins Lager), Rotbart und Spielerverträge per Konvoi über die
-// Seewege (abfangbar, Geleit des Käufers). Lieferungen zählen ins gleitende Tageslimit und in die Handelsbilanz.
+// Teil. Neue Verträge liefern per Konvoi über die Seewege (Art „vertrag“: abfangbar, Geleit des Käufers; KI-Profile mit
+// convoy: Albers, Falkenberg, Rotbart); alte Verträge mit delivery „abstrakt“ liefern weiter sofort ins Lager.
+// Lieferungen zählen ins gleitende Tageslimit und in die Handelsbilanz.
 import { eq, inArray, sql } from "drizzle-orm";
 import { deliverCargo, settle, market as marketCore, type BaseState, type Counts } from "@tidefront/game-core";
 import { tables, type Tx } from "@tidefront/db";
@@ -191,11 +192,11 @@ async function settleNow(tx: Tx, c: ContractRow, due: number, final: boolean, no
     status, deliveredQty: r.qty, buyerPenaltyCents: r.buyerPenaltyCents, sellerPenaltyCents: r.sellerPenaltyCents, deliveryId, closedAt: new Date(due),
   }).where(eq(tables.marketContract.id, c.id));
 
-  // Konvoi (Rotbart, Spielerverträge): abfangbar; Geleit des Käufers läuft aus, wenn möglich.
+  // Konvoi (KI-Hafen bzw. Verkäuferhafen → Käuferhafen): abfangbar; Geleit des Käufers läuft aus, wenn möglich.
   let escortNote = "";
   if (deliveryId && sellerBase && buyerBase) {
     const convoyId = await createConvoy(tx, {
-      kind: "handel", deliveryId, senderId: c.sellerId, recipientId: c.buyerId!, recipientBaseId: buyerBase.id,
+      kind: "vertrag", deliveryId, senderId: c.sellerId, recipientId: c.buyerId!, recipientBaseId: buyerBase.id,
       from: sellerBase, to: buyerBase, cargo: { [c.resource]: r.qty }, departMs: due, arriveMs,
     });
     const escort = (c.escort as Counts | null) ?? {};

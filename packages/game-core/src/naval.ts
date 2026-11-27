@@ -60,6 +60,15 @@ export interface ConvoysBalance {
   lossShareEscortBeaten: number;
   /** Anteil der Ladung, den ein siegreicher Abfangverband höchstens erbeutet (durch Laderaum begrenzt). */
   plunderShare: number;
+  /**
+   * Börsenlieferungen und Lieferverträge (Konvoiart boerse/vertrag): Faktor auf die Kartellchance und eigene Obergrenze
+   * (fehlt: wie Handelskonvois). Hält den erwarteten Ladungsverlust ohne Geleit klein (docs/REGELN-SEE.md).
+   */
+  marketChanceFactor?: number;
+  marketMaxChance?: number;
+  /** Größenklasse der Ladung für fremde Konvois (Warenwert bis klein bzw. mittel, darüber groß). */
+  cargoSmallMaxValue?: number;
+  cargoMediumMaxValue?: number;
 }
 
 export function minesOf(b: Balance): MinesBalance | null {
@@ -261,19 +270,34 @@ export function cargoValue(cargo: ResourceMap, balance: Balance): number {
 }
 
 /** Chance, dass das Kartell einen Konvoi abfängt (0 unter cartelMinDistanceKm). */
-export function cartelChance(distance: number, value: number, balance: Balance): number {
+export function cartelChance(distance: number, value: number, balance: Balance, market = false): number {
   const c = convoysOf(balance);
   if (!c || distance < c.cartelMinDistanceKm || value <= 0) return 0;
   const raw = c.cartelBaseChance + (c.cartelChancePer100Km * distance) / 100 + (c.cartelChancePer1000Value * value) / 1000;
+  if (market) return Math.max(0, Math.min(c.marketMaxChance ?? c.cartelMaxChance, raw * (c.marketChanceFactor ?? 1)));
   return Math.max(0, Math.min(c.cartelMaxChance, raw));
+}
+
+/** Erwarteter Ladungsanteil, den das Kartell ohne Geleit nimmt (Chance × Verlustanteil); Anzeige und Rechnung. */
+export function cartelExpectedLoss(distance: number, value: number, balance: Balance, market = false): number {
+  return cartelChance(distance, value, balance, market) * (convoysOf(balance)?.lossShareUnescorted ?? 0);
+}
+
+/** Größenklasse einer Ladung, wie fremde Sensoren sie einschätzen (nach Warenwert). */
+export function cargoSizeClass(cargo: ResourceMap, balance: Balance): "klein" | "mittel" | "gross" {
+  const c = convoysOf(balance);
+  const v = cargoValue(cargo, balance);
+  if (v <= (c?.cargoSmallMaxValue ?? 2000)) return "klein";
+  if (v <= (c?.cargoMediumMaxValue ?? 10000)) return "mittel";
+  return "gross";
 }
 
 /**
  * Würfel beim Auslaufen: Fängt das Kartell ab, und wann (Anteil der Fahrt in [0,25; 0,75])? Deterministisch per Seed.
  */
-export function cartelRoll(seed: number, distance: number, value: number, balance: Balance): { hit: boolean; chance: number; atShare: number } {
+export function cartelRoll(seed: number, distance: number, value: number, balance: Balance, market = false): { hit: boolean; chance: number; atShare: number } {
   const rng = mulberry32(seed);
-  const chance = cartelChance(distance, value, balance);
+  const chance = cartelChance(distance, value, balance, market);
   const roll = rng();
   return { hit: roll < chance, chance, atShare: 0.25 + rng() * 0.5 };
 }

@@ -129,3 +129,22 @@ export function patrolAt(p: PatrolPlan, nowMs: number): { at: XY; from: XY; to: 
   return { at, from: at, to: ahead };
 }
 
+
+/**
+ * Konvoi (Handel, Börse, Vertrag, Transport, Feldertrag) jetzt: Position (Projektions-km) entlang seiner Route über
+ * Wasser, gleichmäßig zwischen Abfahrt und Ankunft (Abschnitte in Großkreis-km wie die Fahrzeit). Server (naval-convoy)
+ * und Karte (apps/web/src/map/naval.ts) rechnen dieselbe Position; fehlt die Route, gerade von from nach to.
+ */
+export function convoyPosition(
+  c: { route?: { hexes: readonly (readonly [number, number])[]; km: number } | null; from: { col: number; row: number }; to: { col: number; row: number }; departAtMs: number; arriveAtMs: number },
+  nowMs: number,
+): { at: XY; from: XY; to: XY } {
+  const f = frac(nowMs, c.departAtMs, c.arriveAtMs);
+  if (c.route && c.route.hexes.length >= 2) {
+    const p = routeAt(c.route, f);
+    return { at: { x: p.x, y: p.y }, from: p.from, to: p.to };
+  }
+  const a = hexCenterXY(c.from.col, c.from.row);
+  const b = hexCenterXY(c.to.col, c.to.row);
+  return { at: lerp(a, b, f), from: a, to: b };
+}

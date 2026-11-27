@@ -1,7 +1,7 @@
 // See: Minen, Blockade und Konvois – Oberfläche: Kartenblatt, Hafenbanner, Minenwarnung in der Planung, Haltezeit,
 // Geleitschutz beim Handel, Konvoi-Zeile, Berichte und „Blockade aufheben“ (docs/REGELN-SEE.md).
 import { useQuery } from "@tanstack/react-query";
-import { hexDistanceKm } from "@tidefront/world";
+import { hexAtXY, hexDistanceKm } from "@tidefront/world";
 import { trpc, trpcClient, type BaseData, type Outputs } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { errorText, fmtNum, label } from "../lib/names.ts";
@@ -9,6 +9,8 @@ import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
 import { Button, Card, CountsLine, ErrorLine, Stepper, SmallButton } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 import type { Target } from "../App.tsx";
+import { convoyXY } from "../lib/convoy.ts"; // Konvoi: Position entlang der Route
+import { ConvoyCard, convoyTitle } from "./ConvoySheet.tsx"; // Konvoi-Blatt
 
 export type NavalData = Outputs["naval"]["view"];
 type Convoy = NavalData["convoys"][number];
@@ -74,19 +76,19 @@ export function HoldHours({ value, onChange }: { value: number; onChange: (h: nu
   );
 }
 
-/** Was auf einem Kartenfeld an Seegeschehen liegt. */
-export function navalAt(data: NavalData | undefined, t: { col: number; row: number }) {
+/** Was auf einem Kartenfeld an Seegeschehen liegt (Konvois an ihrer Position jetzt, entlang der Route). */
+export function navalAt(data: NavalData | undefined, t: { col: number; row: number }, now = Date.now()) {
   return {
     mines: data?.minefields.filter((f) => f.col === t.col && f.row === t.row) ?? [],
     blockade: data?.blockades.find((b) => b.col === t.col && b.row === t.row),
-    convoys: data?.convoys.filter((c) => hexDistanceKm(c.at, t) < 70) ?? [],
+    convoys: data?.convoys.filter((c) => { const p = convoyXY(c, now); return hexDistanceKm(hexAtXY(p.x, p.y), t) < 70; }) ?? [],
   };
 }
 
 /** Kartenblatt: Minenfeld, Blockade, Konvoi am gewählten Feld mit passenden Aktionen. */
-export function NavalSheet({ data, sel, onPlan }: { data: NavalData | undefined; sel: { col: number; row: number }; onPlan: (t: Target) => void }) {
+export function NavalSheet({ data, sel, onPlan, base }: { data: NavalData | undefined; sel: { col: number; row: number }; onPlan: (t: Target) => void; base?: BaseData }) {
   const now = useNow();
-  const a = navalAt(data, sel);
+  const a = navalAt(data, sel, now);
   if (a.mines.length === 0 && !a.blockade && a.convoys.length === 0) return null;
   return (
     <div className="mt-1 space-y-1.5 text-xs">
@@ -110,15 +112,7 @@ export function NavalSheet({ data, sel, onPlan }: { data: NavalData | undefined;
           </span>
         </div>
       )}
-      {a.convoys.map((c) => (
-        <div key={c.id} className="flex items-start gap-2">
-          <Icon id="konvoi" size={22} />
-          <span>
-            <ConvoyText c={c} now={now} />
-            {c.enemy && <Button className="mt-1" onClick={() => onPlan({ col: c.at.col, row: c.at.row, convoyId: c.id })}>Konvoi abfangen</Button>}
-          </span>
-        </div>
-      ))}
+      {a.convoys.map((c) => <ConvoyCard key={c.id} c={c} now={now} base={base} onPlan={onPlan} />)}
     </div>
   );
 }
@@ -127,8 +121,8 @@ function ConvoyText({ c, now }: { c: Convoy; now: number }) {
   const last = c.events.at(-1);
   return (
     <>
-      <strong>{c.enemy ? `Feindlicher Konvoi (an ${c.recipient})` : c.kind === "transport" ? "Eigener Transport" : "Handelskonvoi"}</strong> · {resLine(c.cargo)} · Ankunft in {fmtDuration(c.arriveAtMs - now)}
-      <span className="block text-ink2">{c.escorted ? <>Geleit: <CountsLine counts={c.escort} /></> : "ohne Geleitschutz"}</span>
+      <strong>{convoyTitle(c)}{c.enemy && c.recipient ? ` (an ${c.recipient})` : ""}</strong> · {c.cargo ? resLine(c.cargo) : "Ladung unbekannt"}{c.arriveAtMs !== null && ` · Ankunft in ${fmtDuration(c.arriveAtMs - now)}`}
+      <span className="block text-ink2">{c.escorted ? <>Geleit: <CountsLine counts={c.escort} /></> : "ohne Geleitschutz – Risiko: das Kartell fängt gelegentlich ab"}</span>
       {last && <span className={`block ${last.escortHeld ? "text-moos" : "text-siegel"}`}>{last.by === "kartell" ? "Kartell" : last.name} griff an: {last.escortHeld ? "abgewehrt" : `verloren ${resLine(last.lost)}`}</span>}
     </>
   );

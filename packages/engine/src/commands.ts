@@ -48,6 +48,7 @@ import { applyPendingBoost } from "./guide.ts";
 import { admiralForLaunch, assignAdmiral } from "./admirals-core.ts"; // Admirale
 import { STATION_TYPE, stationLaunch } from "./alliance-ops-station.ts"; // Allianz-Ops: Stationierung
 import { createConvoy, isNavalInput, launchNaval, tradeBlocked, transportConvoyRecall } from "./naval.ts"; // See: Minen/Blockade/Konvoi
+import { createMarketConvoy } from "./market-convoy.ts"; // See: Börsenkäufe als Konvoi
 import { launchField } from "./fields-missions.ts"; // Felder
 import { FOUNDING_TYPE, TRANSFER_TYPE, launchExpansion } from "./expansion.ts"; // Mehrere Häfen
 import { endBeginnerElsewhere } from "./pvp.ts"; // PvP: Anfängerschutz endet beim ersten Spielerüberfall
@@ -414,7 +415,7 @@ export function trade(
   engine: Engine,
   playerId: number,
   key: string,
-  input: { side: "buy" | "sell"; resource: string; qty: number; expectedPrice: number; baseId?: number },
+  input: { side: "buy" | "sell"; resource: string; qty: number; expectedPrice: number; baseId?: number; escort?: Record<string, number> },
 ) {
   const request = { side: input.side, resource: input.resource, qty: input.qty, expectedPrice: input.expectedPrice };
   return runCommand(engine, playerId, key, "trade", async (ctx) => {
@@ -481,6 +482,7 @@ export function trade(
         departAt: new Date(d.departMs), arriveAt: new Date(d.arriveMs),
       });
       await scheduleEvent(ctx.tx, "delivery_arrive", d.arriveMs, { deliveryId: d.id }, b.id);
+      await createMarketConvoy(ctx.tx, playerId, { ...b, state }, d, input.escort); // See: Börsenkonvoi (Geleit optional)
     }
     await trackProgress(ctx.tx, playerId, "handel", result.quote.totalCredits, { atMs: ctx.nowMs });
     ctx.notify.push([[playerId], "base"], [null, "market"]);

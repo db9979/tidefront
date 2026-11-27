@@ -16,9 +16,10 @@ import {
   previewBlockade, previewBlockadeAttack,
 } from "./naval-blockade.ts";
 import {
-  convoyRaidHandler, convoysView, deliveryConvoyArrived, escortArrive, interceptArrive, launchIntercept, previewIntercept,
+  convoyRaidHandler, deliveryConvoyArrived, escortArrive, interceptArrive, launchIntercept, previewIntercept,
   transportConvoyArrive,
 } from "./naval-convoy.ts";
+import { convoysView } from "./naval-convoy-view.ts"; // Karte, Börse, Lagebild (fremde Konvois in Sicht)
 
 export { NAVAL_TYPES, type NavalInput };
 export { liftBlockade, activeBlockade } from "./naval-blockade.ts";

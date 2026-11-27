@@ -1,7 +1,7 @@
 // Ordermaske: Kauf/Verkauf, Menge mit Schnellwahl, Kurszettel als Vorschau, Tageslimit und Sperrgründe vorab.
 import { useEffect, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { trpc, trpcClient } from "../../lib/trpc.ts";
+import { trpc, trpcClient, type BaseData } from "../../lib/trpc.ts";
 import { useCommand } from "../../lib/command.ts";
 import { errorText, fmtNum, label } from "../../lib/names.ts";
 import { fmtDuration } from "../../lib/time.ts";
@@ -14,6 +14,7 @@ import type { RemedyDetail } from "../../lib/remedies/index.ts";
 type Why = { text: string; code?: string };
 import { allowedRange, dailyFreeAt, dailyWindow, limits, maxSensible, when, type Limits, type MarketCfg, type MarketRes } from "./calc.ts";
 import { Slip } from "./Slip.tsx";
+import { OrderEscort } from "./OrderEscort.tsx"; // See: Börsenkonvoi, Geleit optional
 
 /** Höchstmenge je Handel (wie im Server). */
 const MAX_QTY = 10_000_000;
@@ -36,8 +37,9 @@ export type OrderCtx = {
   attack: boolean;
 };
 
-export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketCfg; nowMs: number; ctx: OrderCtx }) {
+export function OrderTicket({ r, cfg, nowMs, ctx, base }: { r: MarketRes; cfg: MarketCfg; nowMs: number; ctx: OrderCtx; base?: BaseData }) {
   const [side, setSide] = useState<"buy" | "sell">("buy");
+  const [escort, setEscort] = useState<Record<string, number>>({}); // See: Geleit für den Börsenkonvoi
   const [qtyText, setQtyText] = useState("100");
   const [qty, setQty] = useState(100);
   const [done, setDone] = useState<string | null>(null);
@@ -53,8 +55,8 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
     placeholderData: keepPreviousData,
   });
   const exec = useCommand(
-    (i: { key: string; side: "buy" | "sell"; resource: string; qty: number; expectedPrice: number }) => trpcClient.market.trade.mutate(i),
-    () => [trpc.market.pathFilter().queryKey, trpc.base.pathFilter().queryKey],
+    (i: { key: string; side: "buy" | "sell"; resource: string; qty: number; expectedPrice: number; escort?: Record<string, number> }) => trpcClient.market.trade.mutate(i),
+    () => [trpc.market.pathFilter().queryKey, trpc.base.pathFilter().queryKey, trpc.naval.pathFilter().queryKey], // See: neuer Börsenkonvoi
   );
 
   const typed = Number(qtyText) || 0;
@@ -161,6 +163,7 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
       <DailyBar used={daily.used} add={valid ? typed : 0} limit={r.dailyLimit} next={nextFree} nowMs={nowMs} reserved={daily.reserved} />
 
       {q && hard.length === 0 && <Slip q={q} cfg={cfg} nowMs={nowMs} ctx={ctx} label={label(r.id)} />}
+      {buy && base && hard.length === 0 && <OrderEscort base={base} resource={r.id} qty={valid ? typed : 0} value={escort} onChange={setEscort} />}
       {fresh && quote.data && !quote.data.ok && <ErrorLine text={errorText(quote.data.code)} code={quote.data.code} detail={why} />}
 
       {(hard.length > 0 || soft.length > 0) && (
@@ -184,8 +187,10 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
           if (blocked && firstWhy) return setWhyOpen(!whyOpen);
           if (!q) return;
           setDone(null);
-          const res = await exec.run({ side, resource: r.id, qty, expectedPrice: q.executionPrice });
-          if (res?.ok) setDone(buy ? `Gekauft: ${fmtNum(qty)} ${label(r.id)} – der Konvoi ist unterwegs.` : `Verkauft: ${fmtNum(qty)} ${label(r.id)}.`);
+          const esc = buy && Object.values(escort).some((n) => n > 0) ? escort : undefined;
+          const res = await exec.run({ side, resource: r.id, qty, expectedPrice: q.executionPrice, ...(esc ? { escort: esc } : {}) });
+          if (res?.ok && esc) setEscort({});
+          if (res?.ok) setDone(buy ? `Gekauft: ${fmtNum(qty)} ${label(r.id)} – der Konvoi ist unterwegs${esc ? " (mit Geleit)" : ""}.` : `Verkauft: ${fmtNum(qty)} ${label(r.id)}.`);
         }}
       >
         {buy ? "Kaufen" : "Verkaufen"}{q ? ` · ${fmtNum(q.totalCredits, 2)} Kr` : ""}

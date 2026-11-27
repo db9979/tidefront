@@ -1,14 +1,18 @@
 // See: Minen, Blockade und Konvois auf der Karte im Kupferstich-Stil: Minenfeld (gestrichelter Kreis mit Seemine),
-// Blockade (Kettenring um den Hafen), Konvoi (Route und Frachtschiff). Linien in Weltkoordinaten (km), Zeichen in
-// Bildschirmgröße (Gegenskalierung durch HexMap, wie bei den Weltereignissen).
+// Blockade (Kettenring um den Hafen), Konvoi (Route über Wasser als Linienzug und Frachtschiff, das entlang der Route
+// fährt – dieselbe Rechnung wie der Server: game-core convoyPosition). Fremde Konvois in Sensorreichweite (Lagebild)
+// ohne Route an der gemeldeten Position. Linien in Weltkoordinaten (km), Zeichen in Bildschirmgröße (Gegenskalierung
+// durch HexMap, wie bei den Weltereignissen).
 import { Container, Graphics, Text } from "pixi.js";
-import { hexCenterXY } from "@tidefront/world";
+import { hexCenterXY, routePointsXY } from "@tidefront/world";
+import { convoyXY, type MapConvoy } from "../lib/convoy.ts";
+import { serverNow } from "../lib/time.ts";
 import { INK, PAPER, SIEGEL, SEE } from "./symbols.ts";
 
 export interface MapNaval {
   minefields: { id: number; col: number; row: number; strength: number; own: boolean; allied: boolean }[];
   blockades: { id: number; col: number; row: number; endsAtMs: number; role: string }[];
-  convoys: { id: number; from: { col: number; row: number }; to: { col: number; row: number }; departAtMs: number; arriveAtMs: number; enemy: boolean; escorted: boolean }[];
+  convoys: MapConvoy[];
   rules?: { mines: { fieldRadiusKm: number } | null };
 }
 
@@ -66,6 +70,17 @@ export function convoySymbol(color: number): Container {
   return c;
 }
 
+function dashedLine(g: Graphics, pts: { x: number; y: number }[], dash: number): void {
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    const k = Math.max(1, Math.floor(Math.hypot(b.x - a.x, b.y - a.y) / (dash * 2)));
+    for (let j = 0; j < k; j++) {
+      const t0 = j / k, t1 = (j + 0.5) / k;
+      g.moveTo(a.x + (b.x - a.x) * t0, a.y + (b.y - a.y) * t0).lineTo(a.x + (b.x - a.x) * t1, a.y + (b.y - a.y) * t1);
+    }
+  }
+}
+
 function hours(ms: number): string {
   const h = Math.max(0, ms) / 3600000;
   return h >= 1 ? `${Math.floor(h)} h` : `${Math.max(1, Math.round(h * 60))} min`;
@@ -95,20 +110,26 @@ export function buildNavalLayer(n: MapNaval, now: number): { root: Container; pi
     pin(blockadeRing(color), p.x, p.y);
     pin(tag(`Blockade · ${hours(b.endsAtMs - now)}`, color, 30), p.x, p.y, 0.12);
   }
+  const ships: { c: MapConvoy; obj: Container }[] = [];
   for (const c of n.convoys) {
-    const a = hexCenterXY(c.from.col, c.from.row);
-    const b = hexCenterXY(c.to.col, c.to.row);
-    const color = c.enemy ? SIEGEL : SEE;
-    const len = Math.hypot(b.x - a.x, b.y - a.y);
-    const k = Math.max(1, Math.floor(len / 14));
-    for (let i = 0; i < k; i++) {
-      const t0 = i / k, t1 = (i + 0.5) / k;
-      lines.moveTo(a.x + (b.x - a.x) * t0, a.y + (b.y - a.y) * t0).lineTo(a.x + (b.x - a.x) * t1, a.y + (b.y - a.y) * t1);
-    }
+    const color = c.enemy ? SIEGEL : c.own ? SEE : INK;
+    if (c.route && c.route.length >= 2) dashedLine(lines, routePointsXY({ hexes: c.route }), 7);
+    else if (c.from && c.to) dashedLine(lines, [hexCenterXY(c.from.col, c.from.row), hexCenterXY(c.to.col, c.to.row)], 7);
     lines.stroke({ color, width: 1, pixelLine: true, alpha: 0.8 });
-    const t = Math.max(0, Math.min(1, (now - c.departAtMs) / Math.max(1, c.arriveAtMs - c.departAtMs)));
-    const ship = convoySymbol(c.escorted ? INK : color);
-    pin(ship, a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, 0.08);
+    const at = convoyXY(c, now);
+    const ship = convoySymbol(c.escorted ? INK : c.own || c.enemy ? color : PAPER);
+    pin(ship, at.x, at.y, 0.08);
+    ships.push({ c, obj: ship });
+    if (!c.own && !c.enemy) pin(tag(`Konvoi · ${c.size === "gross" ? "groß" : c.size}`, INK, 10), at.x, at.y, 0.12);
+  }
+  // Fahrt entlang der Route: alle 2 s neu setzen (gleiche Rechnung wie der Server); endet mit der Ebene.
+  const moving = ships.filter((s) => s.c.departAtMs !== null);
+  if (moving.length > 0) {
+    const timer = setInterval(() => {
+      const t = serverNow();
+      for (const s of moving) { const p = convoyXY(s.c, t); s.obj.position.set(p.x, p.y); }
+    }, 2000);
+    root.once("destroyed", () => clearInterval(timer));
   }
   return { root, pinned };
 }

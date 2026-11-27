@@ -1,7 +1,7 @@
 // See: Konvois – Spielerhandel-Lieferungen und Transporte reisen als Konvoi. Das Kartell fängt gelegentlich ab
 // (Würfel beim Auslaufen), Kriegsgegner mit einer Abfangmission. Geleitschutz kämpft; ohne ihn geht Ladung verloren
 // (docs/REGELN-SEE.md, Abschnitt Konvois).
-import { and, eq, gt, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import {
   activeUnits,
   buildRoute,
@@ -60,22 +60,29 @@ export interface ConvoyRow {
   arriveAt: Date;
 }
 
-type ConvoyEvent = { atMs: number; by: "kartell" | "spieler" | "minen"; name: string; lost: ResourceMap; escortHeld: boolean | null };
+/** Konvoiarten: Spielerhandel, Börsenlieferung (vom Handelshafen), Liefervertrag, Transport, Feldertrag. */
+export type ConvoyKind = "handel" | "boerse" | "vertrag" | "transport" | "feld";
+/** Lieferungen, die beim Einlaufen durch Minenfelder fahren (Börsenkonvois bleiben ausgenommen, wie bisher die Börse). */
+const MINE_KINDS: ReadonlySet<string> = new Set(["handel", "vertrag"]);
+const MARKET_KINDS: ReadonlySet<string> = new Set(["boerse", "vertrag"]);
+
+export type ConvoyEvent = { atMs: number; by: "kartell" | "spieler" | "minen"; name: string; lost: ResourceMap; escortHeld: boolean | null };
 
 // Seewege: Konvois fahren über Wasser (Wegpunkte der Route, zwischengespeichert); Abfangen und Position entlang der Route.
-const route = (c: ConvoyRow) => buildRoute(seaRoute({ col: c.fromCol, row: c.fromRow }, { col: c.toCol, row: c.toRow }).hexes.map(([col, row]) => hexCenter(col, row)), c.departAt.getTime(), c.arriveAt.getTime());
+export const route = (c: ConvoyRow) => buildRoute(seaRoute({ col: c.fromCol, row: c.fromRow }, { col: c.toCol, row: c.toRow }).hexes.map(([col, row]) => hexCenter(col, row)), c.departAt.getTime(), c.arriveAt.getTime());
 
 /** Legt einen Konvoi an und würfelt einmal, ob (und wann) das Kartell abfängt. */
 export async function createConvoy(
   tx: Tx,
   v: {
-    kind: "handel" | "transport" | "feld"; deliveryId?: string; missionId?: number; senderId: number | null; recipientId: number; recipientBaseId: number; // Felder: "feld"
+    kind: ConvoyKind; deliveryId?: string; missionId?: number; senderId: number | null; recipientId: number; recipientBaseId: number; // Felder: "feld"
     from: { col: number; row: number }; to: { col: number; row: number }; cargo: ResourceMap; escort?: Counts; departMs: number; arriveMs: number;
   },
 ): Promise<number> {
   const c = convoysOf(balance);
   const dist = distanceKm(hexCenter(v.from.col, v.from.row), hexCenter(v.to.col, v.to.row));
-  const roll = c ? cartelRoll(randomSeed(), dist, cargoValue(v.cargo, balance), balance) : null;
+  // Börse und Lieferverträge: geringere Kartellchance (marketChanceFactor/marketMaxChance, docs/REGELN-SEE.md).
+  const roll = c ? cartelRoll(randomSeed(), dist, cargoValue(v.cargo, balance), balance, MARKET_KINDS.has(v.kind)) : null;
   const cartelAt = roll?.hit ? Math.round(v.departMs + (v.arriveMs - v.departMs) * roll.atShare) : null;
   const [row] = await tx.insert(tables.convoy).values({
     kind: v.kind, deliveryId: v.deliveryId ?? null, missionId: v.missionId ?? null, senderId: v.senderId, recipientId: v.recipientId,
@@ -359,7 +366,7 @@ export async function transportConvoyRecall(tx: Tx, missionId: number): Promise<
  */
 export async function deliveryConvoyArrived(tx: Tx, deliveryId: string, due: number): Promise<void> {
   const c = await lockConvoy(tx, { deliveryId });
-  if (c && c.kind === "handel" && c.status === "underway") {
+  if (c && MINE_KINDS.has(c.kind) && c.status === "underway") {
     const escort = await liveEscort(tx, c, due);
     const r = await convoyMineTransit(tx, c, escort, due);
     if (r.hits.length > 0) {
@@ -378,34 +385,6 @@ export async function deliveryConvoyArrived(tx: Tx, deliveryId: string, due: num
     }
   }
   await tx.update(tables.convoy).set({ status: "arrived" }).where(eq(tables.convoy.deliveryId, deliveryId));
-}
-
-/** Konvois für Karte und Börse: eigene (Empfänger oder Absender) und die von Kriegsgegnern, mit Position. */
-export async function convoysView(db: DbOrTx, playerId: number, nowMs: number) {
-  const rows = (await db.select().from(tables.convoy).where(and(eq(tables.convoy.status, "underway"), gt(tables.convoy.arriveAt, new Date(nowMs))))) as ConvoyRow[];
-  const out = [];
-  const war = new Map<number, boolean>();
-  const enemy = async (id: number | null) => {
-    if (id === null || id === playerId) return false;
-    if (!war.has(id)) war.set(id, await atWar(db, playerId, id, nowMs));
-    return war.get(id)!;
-  };
-  for (const c of rows) {
-    const own = c.recipientId === playerId || c.senderId === playerId;
-    const hostileConvoy = !own && ((await enemy(c.recipientId)) || (await enemy(c.senderId)));
-    if (!own && !hostileConvoy) continue;
-    const pos = routePosition(route(c), nowMs);
-    const here = hexAtLonLat(pos.lon, pos.lat);
-    out.push({
-      id: c.id, kind: c.kind, deliveryId: c.deliveryId, missionId: c.missionId, own, enemy: hostileConvoy,
-      from: { col: c.fromCol, row: c.fromRow }, to: { col: c.toCol, row: c.toRow }, at: here,
-      departAtMs: c.departAt.getTime(), arriveAtMs: c.arriveAt.getTime(),
-      cargo: c.cargo as ResourceMap, escort: activeCounts(c.escort as Counts), escorted: hasShips(c.escort as Counts),
-      events: (c.events as ConvoyEvent[]) ?? [],
-      recipient: own ? null : await playerName(db, c.recipientId),
-    });
-  }
-  return out;
 }
 
 /** Konvois zu bestimmten Lieferungen (Börse/Handel). */

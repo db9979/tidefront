@@ -94,7 +94,7 @@ export function MarketScreen({ base, initialResource }: { base: BaseData; initia
         <Card id="tf-order" title={<><Icon id="credits" size={18} /> Order {label(sel.id)}</>} right={<span className="text-[11px] text-ink2">Gebühr {cfg.fee * 100} %</span>}>
           {unlocked ? (
             <OrderTicket r={sel} cfg={cfg} nowMs={now}
-              ctx={{ credits, creditLimit: base.market.creditLimit, stock: base.resources[sel.id] ?? 0, port, travelMs, siege, attack }} />
+              ctx={{ credits, creditLimit: base.market.creditLimit, stock: base.resources[sel.id] ?? 0, port, travelMs, siege, attack }} base={base} />
           ) : (
             <div className="flex gap-3 items-center rounded-lg border border-dashed border-ink/50 bg-inset p-3" role="status">
               <Icon id="hafenkommandantur" size={52} />

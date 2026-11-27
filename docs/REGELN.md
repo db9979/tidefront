@@ -410,6 +410,10 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
   wird der Handel abgelehnt (`band`) und der Markt für `haltMinutes` angehalten.
 - Gekaufte Ware wird nicht sofort gutgeschrieben, sondern als Lieferung mit Ankunftszeit zurückgegeben
   (`Seeweg vom nächsten Handelshafen / convoySpeedKmh`; nächster Hafen und Entfernung über Wasser, Seewege). Verkaufte Ware wird sofort abgezogen, Kredite sofort gutgeschrieben.
+  Die Lieferung fährt als **Konvoi** (Art `boerse`) vom Handelshafen über die Seewege zum Käuferhafen: auf der Karte
+  sichtbar, vom Kartell (gedämpfte Chance) und von Kriegsgegnern abfangbar, Geleitschutz optional in der Order
+  (`escort`); Minenfelder treffen ihn nicht (`docs/REGELN-SEE.md`, Abschnitt Konvois). Lieferungen ohne Konvoi aus älteren
+  Ständen kommen unverändert an.
 - Jeder Handel liefert Journalzeilen (doppelte Buchführung): Summe aller Kredit-Buchungen einschließlich Gebührenkonto ist 0,
   ebenso die Summe je Ressource zwischen Spieler, Markt und Lieferung.
 - Garantie, die Tests prüfen: Keine Folge von Käufen und Verkäufen ohne vergangene Zeit, nach der der Spieler von jeder
@@ -490,8 +494,9 @@ und bezahlt wird bei Fälligkeit. Gegenpartei ist ein KI-Spieler oder ein andere
   Füllung einschließlich zugesagter Käufe, 25 % des freien Platzes abzüglich zugesagter Käufe; je Mensch höchstens
   1/`perHumanDivisor` (⅓); Anzeige in Stufen von `quotaStep` (500). Händler und Festung schließen `attackBlockHours` (24 h)
   nichts mit einem Spieler ab, der sie überfallen hat. Keine Verträge zwischen KI-Spielern.
-- **Lieferung:** Händler und Festung abstrakt zur Fälligkeit (darf das Lager überschreiten, nicht abfangbar). Rotbart und
-  Spielerverträge **als Konvoi über die Seewege** (Abwicklung und Abfahrt zur Fälligkeit minus Fahrzeit; ist der Seeweg
+- **Lieferung:** Alle KI-Profile (`convoy`: Händler, Festung, Freibeuter) und Spielerverträge **als Konvoi über die
+  Seewege** (Art `vertrag`, Kartellchance gedämpft wie bei der Börse; ältere Verträge mit `delivery = abstrakt` liefern
+  weiter zur Fälligkeit direkt ins Lager) (Abwicklung und Abfahrt zur Fälligkeit minus Fahrzeit; ist der Seeweg
   länger als die Laufzeit, fährt er sofort und kommt später): Kartellwürfel, Abfangen durch Kriegsgegner und Minen wie beim
   Spielerhandel; Geleit des Käufers (beim Abschluss angegeben) läuft bei Abfahrt aus, wenn die Schiffe dann im Hafen sind.
   Verlust trägt der Käufer. **Belagerung** des Käuferhafens bzw. **Blockade** des Verkäuferhafens halten die Abwicklung in

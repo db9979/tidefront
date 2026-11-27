@@ -380,12 +380,21 @@ export function loopRouteHexes(waypoints: readonly { col: number; row: number }[
  * Seewege: nächster Handelshafen über Wasser (Börsenlieferungen fahren von dort). Entfernung = Länge der Route
  * (mindestens die Luftlinie); Routen zwischengespeichert.
  */
-export function nearestTradePortBySea(h: Hex): { name: string; distanceKm: number } {
-  let best = { name: "", distanceKm: Infinity };
+export function nearestTradePortBySea(h: Hex): { name: string; distanceKm: number; col: number; row: number } {
+  let best = { name: "", distanceKm: Infinity, col: h.col, row: h.row };
   for (const [lon, lat, name] of TRADE_PORTS) {
     const p = hexAtLonLat(lon, lat);
     const km = Math.max(hexDistanceKm(h, p), seaRoute(p, h).km);
-    if (km < best.distanceKm) best = { name, distanceKm: km };
+    if (km < best.distanceKm) best = { name, distanceKm: km, col: p.col, row: p.row }; // Feld: Abfahrt des Börsenkonvois
   }
   return best;
+}
+
+/** Name des Handelshafens auf einem Feld (Absender eines Börsenkonvois), sonst null. */
+export function tradePortNameAt(col: number, row: number): string | null {
+  for (const [lon, lat, name] of TRADE_PORTS) {
+    const p = hexAtLonLat(lon, lat);
+    if (p.col === col && p.row === row) return name;
+  }
+  return null;
 }

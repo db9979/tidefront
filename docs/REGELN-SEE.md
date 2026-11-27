@@ -39,13 +39,13 @@ Beide sind gewöhnliche Schiffe (Kommandopunkte, Unterhalt, Treibstoff, Kampf) u
     Wendepunkt (die Hinfahrt bis dorthin zählt dann nicht extra). Verluste fehlen bei der Rückkehr; Ladung (Beute,
     Bergegut), die der verbliebene Laderaum nicht mehr fasst, sinkt mit. Bericht „Minenfeld auf der Rückfahrt“.
     Ausgenommen ist das Geleit des Annehmenden im Spielerhandel: seine Rückfahrt ist der Konvoiweg (siehe unten).
-  - **Handelskonvois** (Spielerhandel) fahren beim Einlaufen durch die Felder auf ihrer Route, deren Besitzer gegen
+  - **Handelskonvois** (Spielerhandel, Lieferverträge) fahren beim Einlaufen durch die Felder auf ihrer Route, deren Besitzer gegen
     Absender **und** Empfänger feindlich ist. Die Ladung verliert je Feld deterministisch
     min(`maxLossShare`, Stärke × `lossPerStrength`) × `cargoLossFactor` (0,5) × (1 − Räumschutz des Geleits), je Ressource
     abgerundet (Journal `delivery:<id>` → `versenkt`); das Feld verliert dafür `strengthPerHit`. Geleitschiffe sinken wie
     ein Verband. Bericht „Konvoi im Minenfeld“ an den Empfänger; die Felder werden beiden Handelspartnern bekannt.
-  - Kartell, Weltereignisse, Ertragskonvois der Rohstofffelder und **Börsenlieferungen** (keine Konvois) bleiben
-    bewusst ausgenommen.
+  - Kartell, Weltereignisse, Ertragskonvois der Rohstofffelder und **Börsenkonvois** bleiben bewusst ausgenommen
+    (Börsenkäufe sollen nicht an fremden Minen vor dem eigenen Hafen hängen).
 - **Räumen:** Mission `raeumen` mit mindestens einem Minenräumer auf ein Seefeld. Die Räumleistung Σ `mineSweeper`
   senkt die Stärke eigener und feindlicher Felder auf dem Feld (verbündete bleiben). Die Hinfahrt zum Feld ist eine
   gewöhnliche Durchfahrt (mit dem Räumschutz des Verbands).
@@ -79,14 +79,24 @@ Beide sind gewöhnliche Schiffe (Kommandopunkte, Unterhalt, Treibstoff, Kampf) u
 
 ## Konvois
 
-- **Spielerhandel-Lieferungen** (je Ware und Richtung) und **Transporte** reisen als Konvoi auf der geraden Route
-  zwischen den Häfen (Zeit wie bisher). Börsenlieferungen vom Handelshafen sind keine Konvois.
+- Als Konvoi reisen (Art `kind`): **Spielerhandel-Lieferungen** (`handel`, je Ware und Richtung), **Transporte**
+  (`transport`), **Felderträge** (`feld`), **Börsenkäufe** (`boerse`, vom nächsten Handelshafen über See zum Käuferhafen,
+  Absender „Handelshafen …“) und **Lieferverträge** (`vertrag`, vom Hafen des Verkäufers – auch Albers und Falkenberg –
+  zum Hafen des Käufers). Alle fahren die Route über Wasser (Seewege); Position = Anteil der Fahrzeit auf der Route
+  (game-core `convoyPosition`, Server und Karte gleich), Abfangpunkt entlang der Route. Ankunftszeiten wie bisher
+  (Börse: Seeweg / `market.convoySpeedKmh`; Verträge: zur Fälligkeit). Lieferungen ohne Konvoi aus älteren Ständen
+  (laufende Börsenlieferungen, alte Verträge mit `delivery = abstrakt`) kommen unverändert an.
 - **Kartell:** Beim Auslaufen wird einmal gewürfelt. Chance = min(`cartelMaxChance`, `cartelBaseChance`
   + `cartelChancePer100Km` × Strecke/100 + `cartelChancePer1000Value` × Warenwert/1000) zum Börsenrichtwert, unter
   `cartelMinDistanceKm` 0. Trifft es, greift ein Kartellverband (Schnellboote: `cartelBoatsPer1000Value` je 1000
   Warenwert, `cartelMinBoats`–`cartelMaxBoats`) zwischen 25 % und 75 % der Fahrt an.
+- **Börse und Verträge** (`boerse`, `vertrag`): Chance × `marketChanceFactor` (0,5), höchstens `marketMaxChance` (8 %).
+  Erwarteter Verlust ohne Geleit = Chance × `lossShareUnescorted` (30 %): typischer Kauf (400 km, Warenwert 5.000)
+  (2 % + 4 % + 2 %) × 0,5 = 4 % Chance → **1,2 %**; ungünstigster Kauf (weit, sehr wertvoll) 8 % × 30 % = **2,4 %**;
+  mit unterlegenem Geleit höchstens 8 % × 25 % = 2 %. Zum Vergleich: Börsengebühr 4 %. Ein Börsenkauf bleibt damit
+  deutlich lohnend; Geleit lohnt sich für große Käufe. Die Order zeigt Chance und erwarteten Verlust des Kaufs.
 - **Kriegsgegner:** Konvois, deren Absender oder Empfänger mit dem Betrachter im Krieg ist (nach der Vorlaufzeit),
-  erscheinen auf seiner Karte. Mission `abfangen` mit `convoyId`: Abfangpunkt wie beim Schatzschiff
+  erscheinen auf seiner Karte (mit Route). Abfangen dürfen nur Kriegsgegner und das Kartell (`convoy_not_enemy`). Mission `abfangen` mit `convoyId`: Abfangpunkt wie beim Schatzschiff
   (`interceptPoint`), nur mit Schiffen; die Ankunft muss vor dem Einlaufen des Konvois liegen.
 - **Kampf:** Hat der Konvoi Geleitschutz mit Schiffen, kämpft der Angreifer auf See dagegen (Verluste bleiben). Ladung:
   - Kartell: ohne Geleit verliert der Konvoi `lossShareUnescorted`, unterliegt das Geleit `lossShareEscortBeaten`,
@@ -106,7 +116,20 @@ Beide sind gewöhnliche Schiffe (Kommandopunkte, Unterhalt, Treibstoff, Kampf) u
   Rückfahrt läuft durch Minen). Fehlen Schiffe, Treibstoff oder ein Missionsplatz, fährt die Ware ohne Geleit; der
   Anbieter erhält einen Hinweis. Für dieselbe Ware gibt es nur ein Geleit: Hat der Anbieter eines eingetragen, kann der
   Annehmende kein eigenes stellen (`offer_escorted`). Das Geleit kämpft mit den Modifikatoren seines Hafens.
-- Anzeige: Konvois unterwegs in der Börse und auf der Karte (Route, Position, Geleit, Angriffe).
+- **Geleit für Börsenkäufe:** optional in der Order (`market.trade` mit `escort`): Die Schiffe fahren dem Konvoi zum
+  Handelshafen entgegen (Mission `geleit`, wie beim Spielerhandel). Fehlt etwas (Treibstoff, Missionsplatz, nur
+  Schiffe), wird der Kauf abgelehnt. Ohne Geleit zeigt die Order das Risiko. KI-Spieler kaufen ohne Geleit.
+- **Fremde Konvois im Lagebild:** Mit Kartennebel erscheinen Konvois Dritter (auch ohne Krieg, auch der Allianz) nur,
+  solange sie in Sensorreichweite der Partei fahren (Sicht wie fremde Verbände, Allianz teilt Sicht): Sichtung (Radar)
+  zeigt Position, Kurs und Größenklasse der Ladung (nach Warenwert: bis `cargoSmallMaxValue` klein, bis
+  `cargoMediumMaxValue` mittel, darüber groß); Erkennung dazu Art, Absender, Empfänger und ob Geleit fährt. Die genaue
+  Ladung und das Geleit nur mit Lagebild des Zielhafens (Spionage, nicht veraltet) – das gilt mit Kartennebel auch für
+  Konvois von Kriegsgegnern. Fremde Konvois ohne Krieg: keine Route und kein Ziel. Ohne
+  Kartennebel wie bisher: nur eigene und feindliche Konvois (mit Ladung).
+- Anzeige: Konvois unterwegs in der Börse und auf der Karte (Route als Linienzug über Wasser, Schiff fährt entlang der
+  Route, Geleit, Angriffe). Antippen öffnet das Konvoi-Blatt: Art, Absender → Empfänger, Ladung, Geleit, Ankunft,
+  Route; bei Kriegsgegnern „Abfangen“ mit Abfangpunkt (Vorschau mit allen Schiffen daheim), Planung in der
+  Missionsplanung.
 
 ## Saisonende
 

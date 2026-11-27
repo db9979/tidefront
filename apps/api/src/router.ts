@@ -209,6 +209,7 @@ export const appRouter = t.router({
         resource: z.string().max(20),
         qty: z.number().int().min(1).max(10_000_000),
         expectedPrice: z.number().positive(),
+        escort: z.record(z.string().max(40), z.number().int().min(0).max(100_000)).optional(), // See: Geleit für den Börsenkonvoi
         ...baseRef,
       }))
       .mutation(({ ctx, input }) => trade(ctx.engine, ctx.player.id, input.key, input)),

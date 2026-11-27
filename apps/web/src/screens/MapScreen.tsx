@@ -243,7 +243,7 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { 
               )}
               {freeCoast && <FoundingInfo base={base} sel={sel} />}
               {meta.data?.balance.weather && terrainAt(sel.col, sel.row) !== "land" && <WeatherLine at={sel} wb={meta.data.balance.weather} now={now} home={home} radar={hasRadar} />}
-              <NavalSheet data={naval.data} sel={sel} onPlan={onPlan} />
+              <NavalSheet data={naval.data} sel={sel} onPlan={onPlan} base={base} />
               <FieldSheet data={fields.data} sel={sel} onPlan={onPlan} />
               <PostSheet map={map.data} sel={sel} now={now} freeCoast={freeCoast} sea={terrainAt(sel.col, sel.row) === "sea"} onPlan={onPlan} />{/* Lagebild Stufe 2 */}
               {!info.base && !info.nest && !info.wreck && !info.event && !info.naval && !info.field && !freeCoast && info.fleets.length === 0 && !(map.data.posts ?? []).some((p) => p.col === sel.col && p.row === sel.row) && (

@@ -177,8 +177,8 @@
       "ki": {
         "sellFromFill": 0.4, "buyToFill": 0.6, "quotaShare": 0.25, "perHumanDivisor": 3, "quotaStep": 500, "attackBlockHours": 24,
         "profiles": {
-          "haendler": { "sells": ["stahl", "treibstoff", "elektronik", "proviant"], "buys": ["stahl", "treibstoff", "elektronik", "proviant"], "days": [1, 2, 3, 5, 7], "abo": true, "bonus": 0 },
-          "festung": { "sells": [], "buys": ["stahl", "elektronik"], "days": [2, 3, 5, 7], "abo": true, "bonus": 0.02 },
+          "haendler": { "sells": ["stahl", "treibstoff", "elektronik", "proviant"], "buys": ["stahl", "treibstoff", "elektronik", "proviant"], "days": [1, 2, 3, 5, 7], "abo": true, "bonus": 0, "convoy": true },
+          "festung": { "sells": [], "buys": ["stahl", "elektronik"], "days": [2, 3, 5, 7], "abo": true, "bonus": 0.02, "convoy": true },
           "freibeuter": { "sells": ["treibstoff", "elektronik"], "buys": [], "days": [1, 2], "abo": false, "bonus": 0.02, "maxQty": 2000, "convoy": true }
         }
       },
@@ -297,7 +297,8 @@
   "convoys": {
     "cartelBaseChance": 0.02, "cartelChancePer100Km": 0.01, "cartelChancePer1000Value": 0.004, "cartelMaxChance": 0.12, "cartelMinDistanceKm": 150,
     "cartelBoatsPer1000Value": 0.8, "cartelMinBoats": 2, "cartelMaxBoats": 12,
-    "lossShareUnescorted": 0.3, "lossShareEscortBeaten": 0.25, "plunderShare": 0.6
+    "lossShareUnescorted": 0.3, "lossShareEscortBeaten": 0.25, "plunderShare": 0.6,
+    "marketChanceFactor": 0.5, "marketMaxChance": 0.08, "cargoSmallMaxValue": 2000, "cargoMediumMaxValue": 10000
   },
   "weather": {
     "seed": 1906,
