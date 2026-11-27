@@ -35,7 +35,7 @@ import { hexCenter, hexDistanceKm, nearestTradePort } from "@tidefront/world";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance, marketBalance, GameError, type Engine } from "./context.ts";
 import { processDueForBase } from "./events.ts";
-import { activeMissionCount, basesOfPlayer, homeBaseOf, ownBase, type BaseRow } from "./store.ts";
+import { activeMissionCount, ADMIRAL_RETURN_TYPE, basesOfPlayer, homeBaseOf, ownBase, type BaseRow } from "./store.ts";
 import { loadMarket, targetAt, type LaunchInput } from "./commands.ts";
 import { effectiveMarketRefs, marketRefs } from "./market-news.ts";
 // Weltereignisse: Vorschau einer Mission gegen ein Ereignis.
@@ -201,7 +201,7 @@ export async function baseView(engine: Engine, playerId: number, baseId?: number
       defenses: Object.keys(balance.defenses).map((id) => ({ id, count: s.defenses[id] ?? 0 })),
       commandPoints: commandPoints(s, balance),
       missionSlots: missionSlots(s, balance),
-      activeMissions: missions.length,
+      activeMissions: missions.filter((m) => m.type !== ADMIRAL_RETURN_TYPE).length, // Felder: Admiral allein heim belegt keinen Platz
       aircraftSlots: { used: aircraftSlotsUsed(s, balance), total: aircraftSlots(s, balance) },
       bunkerProtection: bunkerProtection(s, balance, mods),
       radarWarningMinutes: warn,

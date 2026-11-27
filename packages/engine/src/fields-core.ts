@@ -215,6 +215,10 @@ export async function fieldsView(engine: Engine, playerId: number, _baseId?: num
       zone: z ? { id: z.zone, size: z.size, bonus: z.bonus } : null,
     };
   });
+  // Admiral, der eine eigene Besatzung führt (fields-admiral.ts; abziehbar ohne Rückruf).
+  const mineMissions = mine.map((m) => m.missionId).filter((x): x is number => x !== null);
+  const leaders = new Map((mineMissions.length > 0 ? await db.select({ id: tables.admiral.id, name: tables.admiral.name, missionId: tables.admiral.missionId })
+    .from(tables.admiral).where(and(eq(tables.admiral.playerId, playerId), inArray(tables.admiral.missionId, mineMissions))) : []).map((a) => [a.missionId, { id: a.id, name: a.name }]));
   const minePart = mine.map((m) => {
     const z = zones.get(m.id);
     const i = rank.get(m.id)!;
@@ -236,6 +240,7 @@ export async function fieldsView(engine: Engine, playerId: number, _baseId?: num
       baseId: m.baseId,
       home: m.baseId !== null ? baseNames.get(m.baseId) ?? null : null,
       capturedAtMs: m.capturedAt?.getTime() ?? null,
+      admiral: m.missionId !== null ? leaders.get(m.missionId) ?? null : null,
     };
   });
   const am = await allianceMap(db);

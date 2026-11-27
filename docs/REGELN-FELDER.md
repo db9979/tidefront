@@ -31,7 +31,12 @@ Begründung und Simulation: `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt J,
    **Admiral:** Aufklärung, Besetzen und Verstärkung können einen Admiral mitnehmen (Missionsrolle wie bei jedem
    Verband: Kampf, Tempo, Treibstoff …). Nach der Einnahme bleibt er bei der Besatzung (Status „unterwegs“, kein
    Hafenkommandant, keine andere Mission) und führt sie bei jedem Angriff auf das Feld (Spieler und Kartell; Erfahrung
-   und Schicksalswurf wie gewohnt), nicht die Geleitabteilung. Er kehrt mit der Besatzung heim (Rückruf, Niederlage).
+   und Schicksalswurf wie gewohnt), nicht die Geleitabteilung. Er kehrt mit der Besatzung heim (Rückruf, Niederlage)
+   oder allein: **Admiral abziehen** (Feld bzw. Admiralsansicht, Befehl `fields.admiralRecall`) schickt ihn auf einem
+   Kurierboot in den Hafen des Felds – Fahrzeit Entfernung ÷ Geschwindigkeit des schnellsten Schiffs (Korvette,
+   60 km/h), ohne Treibstoff und ohne Missionsplatz. Bis zur Ankunft ist er „unterwegs“, danach bereit; die Besatzung
+   hält das Feld ohne ihn, ein anderer Admiral kann sie per Verstärkung übernehmen. Ein gefangener Admiral kann nicht
+   abziehen (`admiral_busy`); ohne Admiral `field_no_admiral`.
    Eine Verstärkung mit Admiral übergibt ihn der Besatzung, wenn sie keinen hat (aus einem anderen Hafen wechselt er
    dabei in den Hafen des Felds); hat sie schon einen, ist das Auslaufen gesperrt (`field_has_admiral`) bzw. die
    Verstärkung kehrt bei Ankunft um.

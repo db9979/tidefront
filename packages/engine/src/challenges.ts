@@ -1,7 +1,7 @@
 // Tagesbefehle, Datenbankseite: Vergabe (lazy, idempotent), Fortschritts-Schnittstelle trackProgress und
 // die Auswertung von Ereignissen (Vorher/Nachher um den Handler, aufgerufen aus events.ts).
 // Fehler hier dürfen Spielereignisse und Befehle nie blockieren: alles läuft in einem eigenen Savepoint.
-import { and, asc, count, countDistinct, eq, gte, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
+import { and, asc, count, countDistinct, eq, gte, inArray, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
 import { protectionStatus, settle, type Counts, type Mission, type ResourceMap, type TrainingOrder } from "@tidefront/game-core";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance } from "./context.ts";
@@ -152,6 +152,30 @@ export async function refreshDerived(tx: DbOrTx, playerId: number, rows: Challen
   return rows.map((r) => out.get(r.id)!);
 }
 
+/**
+ * Takt (Worker, alle 10 Minuten) und Ereignisse: offene zustandsbasierte Befehle des laufenden Tages fortschreiben,
+ * auch wenn der Spieler die Befehle nicht ansieht (Ökostrom, Stromspeicher und Vorrat schwanken; wer erst abends
+ * nachsieht, soll den Höchststand vom Mittag behalten). Eine Abfrage über den Index, Arbeit nur für Spieler mit
+ * offenen Befehlen dieser Art; Fehler eines Spielers halten die anderen nicht auf. playerId: nur dieser Spieler.
+ */
+export async function refreshDerivedOpen(db: DbOrTx, nowMs: number, playerId?: number): Promise<number> {
+  const conds = [eq(dc.day, dayKey(nowMs)), isNull(dc.completedAt), inArray(dc.kind, [...DERIVED_KINDS])];
+  if (playerId !== undefined) conds.push(eq(dc.playerId, playerId));
+  const rows = await db.select().from(dc).where(and(...conds));
+  const byPlayer = new Map<number, ChallengeRow[]>();
+  for (const r of rows) byPlayer.set(r.playerId, [...(byPlayer.get(r.playerId) ?? []), r]);
+  let done = 0;
+  for (const [pid, list] of byPlayer) {
+    try {
+      const next = await refreshDerived(db, pid, list, nowMs);
+      done += next.filter((r) => r.completedAt).length;
+    } catch (err) {
+      console.error("refreshDerivedOpen", pid, String(err));
+    }
+  }
+  return done;
+}
+
 // ---------------------------------------------------------------- Ereignisse (Vorher/Nachher)
 
 export type ChallengeSnapshot =
@@ -198,6 +222,8 @@ async function after(tx: Tx, ev: EventRow, due: number, snap: NonNullable<Challe
     let n = 0;
     for (const [id, level] of Object.entries(b.state.buildings)) n += Math.max(0, level - (snap.buildings[id] ?? 0));
     await trackProgress(tx, snap.playerId, "ausbau", n, at);
+    // Neue Stufe: Produktion, Kommandozentrale, Speicherwerk, Wind/Solar sofort fortschreiben (zustandsbasiert).
+    if (n > 0) await refreshDerivedOpen(tx, due, snap.playerId);
     return;
   }
   if (snap.kind === "training") {

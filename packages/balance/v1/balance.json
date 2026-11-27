@@ -1,5 +1,5 @@
 {
-  "version": "v1.15",
+  "version": "v1.16",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -177,6 +177,7 @@
       "shareOfDefense": 0.8,
       "minSchnellboote": 10,
       "miliPerBoot": 8,
+      "raidWeights": true,
       "lootPool": { "stahl": 5000, "treibstoff": 2500, "elektronik": 1200, "proviant": 1800 }
     },
     "belagerung": {

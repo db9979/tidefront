@@ -25,7 +25,7 @@ export * from "./invite.ts";
 export { inviteMail } from "./invite-mail.ts";
 export { scheduleAttackWarning } from "./event-notices.ts";
 export * from "./daily.ts";
-export { trackProgress, challengePoints, ensureAssigned } from "./challenges.ts";
+export { trackProgress, challengePoints, ensureAssigned, refreshDerivedOpen } from "./challenges.ts";
 export { dayKey, dayStartMs, nextDayStartMs, addDays, KINDS as CHALLENGE_KINDS, drawDay, poolContext, streakBonus } from "./challenge-pool.ts";
 export * from "./backups.ts";
 export * from "./adminstats.ts";
@@ -73,6 +73,7 @@ export { navalView, navalRouteMines, liftBlockade, clearNaval, NAVAL_TYPES } fro
 // Felder: Rohstofffelder einnehmen
 export { fieldsView, spawnFields, FIELD_KIND_TEXT } from "./fields-core.ts";
 export { fieldRecall } from "./fields-missions.ts";
+export { fieldAdmiralRecall } from "./fields-admiral.ts"; // Felder: Admiral ohne Rückruf abziehen
 export { setFieldEscort } from "./fields-escort.ts";
 export { ensureFieldPlanner, clearFields } from "./fields-run.ts";
 // KI-Spieler (Bots)

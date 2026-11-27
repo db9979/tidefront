@@ -13,7 +13,11 @@ import {
 } from "./bots-core.ts";
 import { buildingsValue, chooseBuild, chooseResearch, chooseTraining, militaryTarget, militaryValue, type PlanCtx } from "./bots-plan.ts";
 import { layMines, raidNest, raidPlayer, type TurnCtx } from "./bots-war.ts";
-import { expansionTurn, fieldTurn, marketTurn, offersTurn } from "./bots-econ.ts";
+import { expansionTurn, marketTurn, offersTurn } from "./bots-econ.ts";
+import { fieldTurn, wantsField } from "./bots-fields.ts";
+
+/** Zusatzanteile der Doktrin, solange ein Feldverband fehlt (bots-fields.ts). */
+const FIELD_DOCTRINE = { korvette: 0.15, zerstoerer: 0.05 };
 
 async function loadOwn(engine: Engine, botId: number, nowMs: number) {
   const rows = await basesOfPlayer(engine.db, botId);
@@ -59,7 +63,8 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
     };
     // Ausbilden nach Doktrin (Kolonieschiff steuert expansionTurn).
     const drill = async () => {
-      const t = chooseTraining(plan);
+      // Fehlen Schiffe für ein Rohstofffeld, bekommt die Doktrin einen Zusatzanteil Kriegsschiffe.
+      const t = chooseTraining(plan, wantsField(c) && c.state.fieldTarget?.baseId === b.id ? FIELD_DOCTRINE : {});
       for (const o of t.orders) {
         const r = await train(engine, bot.id, c.key("train"), o.id, o.count, b.id);
         if (!r.ok) {

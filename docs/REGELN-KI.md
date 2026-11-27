@@ -37,7 +37,15 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
 - **Forschung:** feste Reihenfolge je Spielweise, höchstens bis zu einem Anteil am Gebäudewert (10/20/8 %).
 - **Börse:** Überschuss verkaufen, knappe Ressource zukaufen (alle; Händler früher und mehr). **Spielerhandel**
   (Händler): fremde Angebote annehmen, die zum Richtwert mindestens gleichwertig sind; bis zu zwei eigene Angebote.
-- **Felder:** freie Felder mit der kleinsten Besatzung, die die Vorschau annimmt; bewachte nur nach Probekampf.
+- **Felder:** alle drei Spielweisen nehmen Rohstofffelder in bis zu 700 km (nahe und niedrige Stufen zuerst). Bewachte
+  Felder nur nach Probekampf gegen die Kartell-Wache (bekanntes Lagebild, sonst Wache der Stufe aus dem Handbuch;
+  Sieg = Wache vernichtet wie im Feldkampf). Der kleinste Teil der Schiffe, der die Wache schlägt **und** als ganze
+  Besatzung einen Kartellangriff der Stufe hält, läuft aus und bleibt (stayAll). Dafür sinkt die Heimwache nur um
+  diesen Verband (die Hälfte der Heimwache bleibt; Händler: die Hälfte der Schiffe). Wer Nester angreift, lässt
+  einen Missionsplatz frei. Fehlen Schiffe, merkt sich der Bot das Feld 36 h: Überfälle lassen den Feldverband
+  daheim, die Rüstung baut zusätzlich Korvetten und Zerstörer. Hält eine Besatzung nach Verlusten den nächsten
+  Kartellangriff nicht mehr, schickt er eine Verstärkung. Händler nehmen Felder nur mit ganz sicherem Probekampf
+  (alle Durchläufe gewonnen) – zusätzlicher Ertrag passt zur Handelsspielweise.
 - **Gründung:** ab Kommandozentrale 7 (Händler) / 9 (Festung) / 5 (Freibeuter), sobald ein Platz frei ist.
 
 ## Angriffe und Schutz

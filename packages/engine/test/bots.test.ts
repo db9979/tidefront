@@ -13,6 +13,9 @@ import {
 } from "../src/index.ts";
 import { humanCooldownActive, playerTargets, type TurnCtx } from "../src/bots-war.ts";
 import { botsConfig } from "../src/bots-core.ts";
+import { fieldProbe, fieldTurn, reservedForField } from "../src/bots-fields.ts";
+import { withoutReserve } from "../src/bots-war.ts";
+import { ensureFieldPlanner } from "../src/index.ts";
 
 const url = process.env.TEST_DATABASE_URL;
 const DAY = 24 * 3600000;
@@ -214,6 +217,43 @@ test("Worker-Takt: reihum, höchstens turnsPerMinute, abschaltbar; Dauer je Zug"
   await updateBot(db, after[0].id, { active: true });
   // Ereignisse laufen weiter (keine Abhängigkeit vom Bot-Takt).
   await processDue(engine, Date.now(), 500);
+});
+
+test("Felder: Probekampf zählt die vernichtete Wache, Bot besetzt ein bewachtes Feld, Feldverband bleibt daheim", async () => {
+  // Feldkampf: Sieg = Wache vernichtet (ohne Truppen gibt es keinen „Sieg“ im Hafenkampf – alter Fehler).
+  assert.equal(fieldProbe({ korvette: 3 }, { schnellboot: 4 }, {}, 8), 1);
+  assert.equal(fieldProbe({ korvette: 2 }, { schnellboot: 8 }, {}, 8), 0);
+  assert.equal(fieldProbe({ korvette: 1 }, {}, {}, 8), 1, "freies Feld");
+  assert.deepEqual(withoutReserve({ korvette: 10, schuetzen: 40, landungsschiff: 2 }, { korvette: 3 }), { korvette: 7, schuetzen: 40, landungsschiff: 2 });
+  assert.deepEqual(withoutReserve({ korvette: 1, zerstoerer: 4 }, { korvette: 4 }), { zerstoerer: 2 }, "fehlende Korvetten über Zerstörer");
+  const bot = (await loadBots(db)).find((b) => b.profile === "festung")!;
+  const home = (await homeBaseOf(db, bot.id))!;
+  await db.update(tables.mission).set({ status: "done" }).where(eq(tables.mission.playerId, bot.id));
+  await ensureFieldPlanner(db, Date.now());
+  // Nur bewachte Felder (Kartell-Wache nach Stufe), damit der Probekampf entscheidet.
+  for (const f of await db.select().from(tables.resourceField)) {
+    await db.update(tables.resourceField).set({ ownerId: null, missionId: null, guard: (balance as unknown as { fields: { guard: Record<string, number>[] } }).fields.guard[f.tier - 1], guardAt: null }).where(eq(tables.resourceField.id, f.id));
+  }
+  // Zu wenig Schiffe: kein Auslaufen, aber ein gemerktes Ziel, das Überfälle daheim lassen.
+  await patchBase(home.id, (s) => {
+    s.units = { korvette: 2 }; s.unitsAway = {};
+    Object.assign(s.buildings, { hafenkommandantur: 6, kommandozentrale: 6 });
+    s.resources = { stahl: 50_000, treibstoff: 50_000, elektronik: 50_000, proviant: 50_000 };
+  });
+  const c = { ...ctxFor(await loadBot(db, bot.id)), rand: () => 0.99 };
+  const weak = { ...home, state: (await homeBaseOf(db, bot.id))!.state };
+  assert.equal(await fieldTurn(c, weak, {}), false);
+  assert.ok(c.state.fieldTarget, "Ziel gemerkt");
+  assert.ok((reservedForField(c, home.id).korvette ?? 0) >= 3, JSON.stringify(c.state.fieldTarget));
+  // Genug Schiffe: Besetzen gegen die Wache über die Befehle, Heimwache bleibt.
+  await patchBase(home.id, (s) => { s.units = { korvette: 16, zerstoerer: 4 }; });
+  const strong = { ...home, state: (await homeBaseOf(db, bot.id))!.state };
+  assert.equal(await fieldTurn(c, strong, {}), true, c.log.join(" | "));
+  assert.equal(c.state.fieldTarget, undefined, "Ziel erledigt");
+  const [m] = await db.select().from(tables.mission).where(and(eq(tables.mission.playerId, bot.id), eq(tables.mission.type, "besetzen")));
+  assert.ok(m && m.status === "outbound", "Besetzen läuft");
+  const st = (await homeBaseOf(db, bot.id))!.state;
+  assert.ok((st.units.korvette ?? 0) + (st.units.zerstoerer ?? 0) >= 3, "Heimwache bleibt daheim");
 });
 
 test("Saisonwechsel: Bot ohne Hafen gründet im nächsten Zug einen neuen", async () => {

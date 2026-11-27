@@ -1,5 +1,5 @@
-// KI-Spieler: Börse, Spielerhandel, Rohstofffelder und Gründung – alles über die vorhandenen Befehle
-// (trade, createOffer/acceptOffer, launchMission mit fieldId bzw. Gründung, train).
+// KI-Spieler: Börse, Spielerhandel und Gründung – alles über die vorhandenen Befehle
+// (trade, createOffer/acceptOffer, launchMission zur Gründung, train). Rohstofffelder: bots-fields.ts.
 import { and, eq, inArray } from "drizzle-orm";
 import {
   allowedBases,
@@ -7,7 +7,6 @@ import {
   startTraining,
   storageCapacity,
   type BaseState,
-  type Counts,
   type Modifiers,
 } from "@tidefront/game-core";
 import { hexDistanceKm } from "@tidefront/world";
@@ -16,11 +15,10 @@ import { balance } from "./context.ts";
 import { train, trade } from "./commands.ts";
 import { marketQuote, marketView, missionPreview } from "./views.ts";
 import { acceptOffer, createOffer, offersView } from "./player-trade.ts";
-import { fieldsView } from "./fields-core.ts";
 import { launchMission } from "./commands.ts";
 import { FOUNDING_TYPE } from "./expansion.ts";
 import { coastFields } from "./bots-core.ts";
-import { probe, type TurnCtx } from "./bots-war.ts";
+import type { TurnCtx } from "./bots-war.ts";
 import type { BaseRow } from "./store.ts";
 
 type Base = BaseRow & { state: BaseState };
@@ -94,54 +92,6 @@ export async function offersTurn(c: TurnCtx, base: Base, mods: Modifiers): Promi
   const wantQty = Math.max(1, Math.round((giveQty * ref(give)) / ref(want) * 1.05));
   const r = await createOffer(c.engine, c.bot.id, c.key("offer"), { give, giveQty, want, wantQty, visibility: "public", baseId: base.id });
   if (r.ok) c.log.push(`Handel: Angebot ${giveQty} ${give} gegen ${wantQty} ${want} eingestellt.`);
-}
-
-/** Rohstofffeld besetzen: freie Felder (alle Spielweisen außer „none“), bewachte nur mit Probekampf („all“). */
-export async function fieldTurn(c: TurnCtx, base: Base, mods: Modifiers): Promise<boolean> {
-  if (c.cfg.fields === "none" || c.rand() < c.cfg.noise) return false;
-  const view = await fieldsView(c.engine, c.bot.id);
-  if (!view || view.mine.length >= view.maxFields) return false;
-  const ships: Counts = {};
-  for (const [id, n] of Object.entries(base.state.units)) {
-    const k = Math.floor(n * (1 - Math.min(0.5, c.cfg.homeGuardShare)));
-    if (k > 0 && balance.units[id]?.branch === "see" && !["kolonieschiff", "minenleger", "minenraeumer", "landungsschiff"].includes(id)) ships[id] = k;
-  }
-  if (Object.keys(ships).length === 0) return false;
-  const guards = (balance as unknown as { fields?: { guard: Counts[] } }).fields?.guard ?? [];
-  const candidates = view.fields
-    .filter((f) => f.relation === "frei" || (c.cfg.fields === "all" && f.relation === "kartell"))
-    .map((f) => ({ ...f, d: hexDistanceKm(base, f) }))
-    .filter((f) => f.d < 700)
-    .sort((a, b) => a.d - b.d)
-    .slice(0, 4);
-  for (const f of candidates) {
-    let units: Counts;
-    if (f.relation === "kartell") {
-      const p = probe({ units: ships, modifiers: mods }, { units: guards[f.tier - 1] ?? {}, defenses: {} }, Math.max(3, c.cfg.probeRuns));
-      if (p.winRate < Math.max(0.8, c.cfg.probeWinRate)) continue;
-      units = ships;
-    } else {
-      // Kleinste Besatzung, die die Vorschau annimmt.
-      units = {};
-      let found = false;
-      for (const k of [2, 4, 6, 8, 12]) {
-        units = Object.fromEntries(Object.entries(ships).map(([id, n]) => [id, Math.min(n, k)]));
-        const p = await missionPreview(c.engine, c.bot.id, { type: "besetzen", units, col: f.col, row: f.row, fieldId: f.id, baseId: base.id });
-        if (p.ok) { found = true; break; }
-        if (p.code !== "garrison_too_weak" && p.code !== "field_no_garrison") break;
-      }
-      if (!found) continue;
-    }
-    const input = { type: "besetzen", units, col: f.col, row: f.row, fieldId: f.id, baseId: base.id };
-    const p = await missionPreview(c.engine, c.bot.id, input);
-    if (!p.ok) continue;
-    const r = await launchMission(c.engine, c.bot.id, c.key("field"), input);
-    if (r.ok) {
-      c.log.push(`Rohstofffeld ${f.kind} (Stufe ${f.tier}) wird besetzt.`);
-      return true;
-    }
-  }
-  return false;
 }
 
 /** Gründung: Kolonieschiff bauen lassen und zu einem freien Küstenfeld schicken (ab einer Stufe der Kommandozentrale). */

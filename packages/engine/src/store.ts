@@ -1,6 +1,6 @@
 // Zugriff auf Zeilen mit Sperren. Reihenfolge der Sperren überall: Ereignis, Stützpunkte (aufsteigende ID),
 // Spieler, Marktzeile.
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 import type { BaseState } from "@tidefront/game-core";
 import { hexCenter } from "@tidefront/world";
 import { tables, type DbOrTx } from "@tidefront/db";
@@ -102,12 +102,16 @@ export async function scheduleEvent(
   await tx.insert(tables.gameEvent).values({ type, dueAt: new Date(dueAtMs), payload, baseId });
 }
 
+/** Felder: Admiral fährt allein von einer Besatzung heim (fields-admiral.ts); belegt keinen Missionsplatz. */
+export const ADMIRAL_RETURN_TYPE = "admiral_heimkehr";
+
 export async function activeMissionCount(tx: DbOrTx, baseId: number): Promise<number> {
   const [r] = await tx
     .select({ n: sql<number>`count(*)::int` })
     .from(tables.mission)
     // Allianz-Ops: gebundene (staged) und stationierte Verbände belegen ihren Missionsplatz.
-    .where(and(eq(tables.mission.baseId, baseId), inArray(tables.mission.status, ["outbound", "returning", "staged", "stationed", "holding"]))); // See: holding = Blockade
+    .where(and(eq(tables.mission.baseId, baseId), inArray(tables.mission.status, ["outbound", "returning", "staged", "stationed", "holding"]), // See: holding = Blockade
+      ne(tables.mission.type, ADMIRAL_RETURN_TYPE)));
   return r?.n ?? 0;
 }
 

@@ -26,6 +26,7 @@ import { NPC_UNIT_VALUE } from "./scoring.ts";
 import { botsConfig, type BotRow, type BotState, type ProfileConfig } from "./bots-core.ts";
 import { value } from "./bots-plan.ts";
 import type { BaseRow } from "./store.ts";
+import { reservedForField } from "./bots-fields.ts";
 
 export interface TurnCtx {
   engine: Engine;
@@ -66,6 +67,29 @@ export function strikeForce(state: BaseState, guardShare: number): Counts {
   return out;
 }
 
+/**
+ * Feldverband daheim lassen (bots-fields.ts): Kampfschiffe des Angriffsverbands abziehen, bis ihre Kommandopunkte den
+ * reservierten Verband decken (Korvetten zuerst, dann die übrigen Schiffe).
+ */
+export function withoutReserve(force: Counts, reserve: Counts): Counts {
+  let cp = 0;
+  for (const [id, n] of Object.entries(reserve)) cp += (balance.units[id]?.commandPoints ?? 0) * n;
+  if (cp <= 0) return force;
+  const out = { ...force };
+  const ships = Object.keys(out)
+    .filter((id) => balance.units[id]?.branch === "see" && (balance.units[id].attack.see ?? 0) > 0 && id !== "landungsschiff")
+    .sort((a, b) => Number(b === "korvette") - Number(a === "korvette") || a.localeCompare(b));
+  for (const id of ships) {
+    const per = balance.units[id].commandPoints ?? 1;
+    const k = Math.min(out[id], Math.ceil(cp / per));
+    out[id] -= k;
+    cp -= k * per;
+    if (out[id] <= 0) delete out[id];
+    if (cp <= 0) break;
+  }
+  return out;
+}
+
 export function forceValue(units: Counts): number {
   let v = 0;
   for (const [id, n] of Object.entries(units)) {
@@ -101,7 +125,7 @@ async function tryLaunch(c: TurnCtx, input: LaunchInput, text: string): Promise<
 /** Überfall auf ein Piratennest, wenn der Verband es sicher schafft. */
 export async function raidNest(c: TurnCtx, base: BaseRow & { state: BaseState }, mods: Modifiers): Promise<boolean> {
   if (!c.cfg.attackNests || c.cfg.probeRuns <= 0) return false;
-  const force = strikeForce(base.state, c.cfg.homeGuardShare);
+  const force = withoutReserve(strikeForce(base.state, c.cfg.homeGuardShare), reservedForField(c, base.id));
   const fv = forceValue(force);
   if (fv < 2000) return false;
   const nests = (await c.engine.db.select().from(tables.nest))
@@ -167,7 +191,7 @@ async function lastScout(c: TurnCtx, targetBaseId: number): Promise<ScoutReport 
 /** Angriff auf einen Spielerhafen: erst Aufklärung, dann Probekampf gegen das Lagebild (Durchläufe je Spielweise). */
 export async function raidPlayer(c: TurnCtx, base: BaseRow & { state: BaseState }, mods: Modifiers): Promise<boolean> {
   if (c.cfg.attackPlayers <= 0 || c.cfg.probeRuns <= 0 || c.rand() > c.cfg.attackPlayers) return false;
-  const force = strikeForce(base.state, c.cfg.homeGuardShare);
+  const force = withoutReserve(strikeForce(base.state, c.cfg.homeGuardShare), reservedForField(c, base.id));
   if (forceValue(force) < 3000) return false;
   const targets = await playerTargets(c, base);
   for (const t of targets.filter((x) => (c.state.avoid?.[String(x.id)] ?? 0) <= c.nowMs).slice(0, 4)) {

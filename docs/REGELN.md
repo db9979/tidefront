@@ -247,7 +247,9 @@ Zeitlich begrenzte Ereignisse auf der Karte, die alle Spieler betreffen und Zusa
 - **Großflotte:** Region um einen zufälligen Hafen (`regionRadiusKm`), Ziele sind bis zu `maxTargets` Häfen außerhalb
   des Anfängerschutzes, nach Entfernung zum Mittelpunkt. Sammelpunkt: Seefeld bis drei Felder vor dem ersten Hafen.
   Ankündigung `announceHours` vorher per Karte, Systemnachricht an alle und Push an die Ziele. Verband aus Schnellbooten
-  (`shareOfDefense`, `minSchnellboote`, Bezug: die Zielhäfen) und `miliPerBoot` Milizionären je Boot. Danach greift
+  (`shareOfDefense`, `minSchnellboote`, Bezug: Median der Lebenspunkte der Zielhäfen) und `miliPerBoot` Milizionären
+  je Boot. Seit v1.16 (`raidWeights`) zählen die Schiffe daheim im Bezug gewichtet wie beim Kartell-Überfall
+  (`pirates.raidHpWeights`: Kriegsschiffe halb, Landungs-, Kolonieschiffe und Minenleger gar nicht; ohne Forschung). Danach greift
   sie alle `attackIntervalHours` den nächsten Hafen an (Kampf wie Kartell-Überfall: eigene Landungskapazität, Beute
   ohne Laderaumgrenze); ein Hafen unter Nachtschild, Anfängerschutz oder Schutz nach Niederlage wird übersprungen.
   Ihre Verluste bleiben. Sind alle Schnellboote versenkt oder alle Ziele abgearbeitet, endet sie. Spieler können sie
@@ -383,7 +385,10 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
 - Fortschritt zählt nur für Geschehen am selben Spieltag (Zeitpunkt des Ereignisses) und nur nach der Vergabe:
   Ausbau, Ausbildung, Anlagen, Kampf, Aufklärung, Transport, Wrack und Beute aus den verarbeiteten Ereignissen,
   Börsenhandel (Kreditbetrag des Handels) und Bauschlange (höchste Länge) aus den Befehlen. Vorrat, Produktion,
-  Forschung zählt beim Abschluss (Ereignis). Kommandozentrale, Nachrichten und die Strom-Befehle werden beim Abruf und Abholen aus dem Zustand gelesen.
+  Forschung zählt beim Abschluss (Ereignis). Kommandozentrale, Nachrichten und die Strom-Befehle werden aus dem Zustand
+  gelesen: beim Abruf und Abholen, nach jedem abgeschlossenen Ausbau des Spielers und alle 10 Minuten im Worker-Takt
+  (nur Spieler mit offenen Befehlen dieser Art). Es zählt der beste Stand des Tages – wer erst abends nachsieht, behält
+  den Höchststand von Ökostrom, Stromspeicher oder Vorrat vom Mittag (auf 10 Minuten genau).
 - Belohnung je Befehl: Ressourcenpaket im Wert 400 / 1.000 / 2.500 × (1 + 0,3·s) (Stahl 40 %, Treibstoff 25 %,
   Elektronik 15 %, Proviant 20 %, auf 10 gerundet; s bei der Vergabe) und 3 / 6 / 12 Punkte der Kategorie Befehle.
   Abholen ist ein Befehl mit Idempotenz-Schlüssel und gelingt genau einmal; die Ressourcen werden auch über die

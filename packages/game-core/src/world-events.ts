@@ -3,7 +3,7 @@
 // Belagerungsabzug. Werte unter balance.worldEvents.
 import type { AttackerInput, Balance, BattleReport, Counts, GeoPoint, ResourceMap } from "./types.ts";
 import { distanceKm } from "./geo.ts";
-import { defenseHp } from "./pirates.ts";
+import { defenseHp, raidDefenseHp } from "./pirates.ts";
 import { mulberry32, randomInt } from "./rng.ts";
 
 const HOUR_MS = 3600000;
@@ -45,6 +45,8 @@ export interface WorldEventsBalance {
     minSchnellboote: number;
     miliPerBoot: number;
     lootPool: ResourceMap;
+    /** v1.16 (L7): Stärke-Bezug mit den Gewichten des Kartells (`pirates.raidHpWeights`), sonst ungewichtet. */
+    raidWeights?: boolean;
   };
   belagerung: {
     durationHours: number;
@@ -131,6 +133,15 @@ export function composeArmada(refHp: number, progress: number, balance: Balance)
   const f = strengthFactor(progress, balance);
   const n = boats(refHp, g.shareOfDefense, f, g.minSchnellboote, balance);
   return { units: { schnellboot: n, piratenmiliz: n * g.miliPerBoot }, lootPool: scaleRes(g.lootPool, f) };
+}
+
+/**
+ * Lebenspunkte eines Zielhafens als Bezug der Großflotte. Sie landet wie das Kartell Miliz, die Schiffe daheim kämpfen
+ * nur auf See mit: mit `grossflotte.raidWeights` (v1.16) gewichtet wie der Kartell-Überfall (`raidDefenseHp` ohne
+ * Forschung), sonst ungewichtet (`defenseHp`, bis v1.15).
+ */
+export function armadaTargetHp(units: Counts, defenses: Counts, balance: Balance): number {
+  return worldEventsBalance(balance).grossflotte.raidWeights ? raidDefenseHp(units, defenses, balance) : defenseHp(units, defenses, balance);
 }
 
 /** Belagerungsring aus Schnellbooten; Bezug ist der belagerte Hafen. */

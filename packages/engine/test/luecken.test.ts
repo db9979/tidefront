@@ -12,8 +12,8 @@ import {
 } from "@tidefront/game-core";
 import {
   adminStats, balance, baseView, battleWeather, CHALLENGE_KINDS, chooseBase, dailyView, dayKey, drawDay, hallOfFame, launchMission,
-  missionPreview, modifiersFor, poolContext, processDue, register, registerModifierSource, runningSeason, seasonEnd, seed,
-  spawnWorldEvent, spyLaunch, type Engine, type NoticeJob,
+  missionPreview, modifiersFor, poolContext, processDue, refreshDerivedOpen, register, registerModifierSource, runningSeason, seasonEnd, seed,
+  spawnWorldEvent, spyLaunch, upgrade, type Engine, type NoticeJob,
 } from "../src/index.ts";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -296,6 +296,30 @@ test("Tagesbefehle: Wind und Sonne – Ausbau nur mit Kraftwerk, Ökostrom nur m
   const v = await dailyView(engine, p.playerId);
   assert.ok(v.challenges.find((x) => x.kind === "windsolar")!.done, "Windpark 2 + Solarfeld 1 = Stufe 3");
   assert.ok(v.challenges.find((x) => x.kind === "oekostrom")!.progress >= 1, "Wind weht immer etwas");
+});
+
+test("Tagesbefehle aus dem Zustand zählen auch ohne Abruf: Takt im Worker und Ausbau-Ereignis", async () => {
+  const p = await newPlayer("Sonnenwart", 76);
+  await patchBase(p.baseId, (s) => {
+    s.buildings.kraftwerk = 3; s.buildings.windpark = 2; s.buildings.kommandozentrale = 5; s.resources = { ...rich };
+  });
+  await quiet();
+  await setDaily(p.playerId, [{ kind: "windsolar", target: 3 }, { kind: "oekostrom", target: 1 }, { kind: "lager", target: 40000, param: "stahl" }]);
+  const row = async (kind: string) => (await db.select().from(dc).where(and(eq(dc.playerId, p.playerId), eq(dc.day, dayKey(Date.now())), eq(dc.kind, kind))))[0];
+  // Takt (alle 10 Minuten im Worker): Ökostrom und Vorrat werden fortgeschrieben, ohne dass der Spieler nachsieht.
+  await refreshDerivedOpen(db, Date.now());
+  assert.ok((await row("oekostrom")).completedAt, "Ökostrom im Takt erfüllt");
+  assert.ok((await row("lager")).completedAt, "Vorrat im Takt erfüllt");
+  assert.equal((await row("windsolar")).completedAt, null, "Windpark 2 reicht nicht für 3");
+  // Ein späterer Abruf mit weniger Strom nimmt den Stand nicht zurück.
+  const v = await dailyView(engine, p.playerId);
+  assert.ok(v.challenges.find((x) => x.kind === "oekostrom")!.done);
+  // Ausbau-Ereignis: die neue Stufe zählt sofort (Wind + Sonne = 3), auch ohne Abruf.
+  const up = await upgrade(engine, p.playerId, key(), "solarfeld");
+  assert.equal(up.ok, true, JSON.stringify(up));
+  const finish = (await stateOf(p.baseId)).buildQueue.at(-1)!.finishesAt;
+  await runUntil(finish + 1000);
+  assert.ok((await row("windsolar")).completedAt, "Ausbau schreibt windsolar fort");
 });
 
 test("Belagerung und Admin-Statistik rechnen die Produktion mit Modifikatoren", async () => {

@@ -689,7 +689,7 @@ Ziel: Felder sind Entscheidungen und Konflikte, kein passiver Mehrertrag.
    (Missionsrolle, nicht `defense`: er führt einen Verband, keinen Hafen), Erfahrung und Schicksalswurf wie üblich;
    die Geleitabteilung führt er nicht. Er kehrt mit der Besatzung heim (Rückruf, Niederlage). Verstärkung mit Admiral:
    er übernimmt eine Besatzung ohne Admiral (Hafenwechsel wie die Schiffe); höchstens ein Admiral je Besatzung.
-   Bewusst einfach: kein eigener Status „bei Besatzung“ (Anzeige als Posten), kein Abziehen des Admirals ohne Rückruf.
+   Bewusst einfach: kein eigener Status „bei Besatzung“ (Anzeige als Posten). Abziehen ohne Rückruf: siehe 14.
 12. **Geleitabteilung gegen das Kartell.** Kartellangriffe auf das Feld sind eine Stunde vorher gemeldet; die
    Abteilung kehrt dafür zurück und kämpft mit der ganzen Besatzung – auch wenn gerade kein Konvoi fährt. Gegen
    Spielerangriffe (nur Radar-Vorwarnung mit halber Zeit) verteidigt sie weiter nicht. Folge (`sim/fields.ts`): die
@@ -701,7 +701,16 @@ Ziel: Felder sind Entscheidungen und Konflikte, kein passiver Mehrertrag.
    der Besatzung und der Abteilung abgezogen. Simulation: Kartell gegen drei gleich große Konvois, 1 Korvette Geleit
    hält im Mittel je Konvoi 33 %, 2 Korvetten 67 % (Anteile 1/1/0); volle Deckung erst ab drei Schiffen. Gewollt:
    Geleit für viele Konvois kostet mehr Schiffe; die Rechnung bleibt fair (jedes Schiff schützt genau einen Konvoi).
-14. **Offen:** Wochenziel-Art für Felder (siehe 10) und Admiral ohne Rückruf von der Besatzung abziehen.
+14. **Erledigt:** Wochenziel-Art für Felder (siehe 10). **Admiral abziehen ohne Rückruf** (`fieldAdmiralRecall`,
+   `fields-admiral.ts`): Der Admiral fährt allein in den Hafen des Felds, Fahrzeit = Entfernung ÷ Geschwindigkeit des
+   schnellsten Schiffs der Balance (Korvette 60 km/h). Gewählt statt eines festen Werts, weil die Fahrzeit dann mit der
+   Entfernung wächst wie jede andere Fahrt und ein Admiral nie schneller ist als ein Verband; ohne Treibstoff und
+   Missionsplatz (ein Kurierboot ist kein Verband, die Besatzung belegt ihren Platz weiter). Umsetzung ohne
+   Schemaänderung als Mission `admiral_heimkehr` (Status „returning“, leere Einheiten, normales `mission_return`);
+   `activeMissionCount` und die Missionszahl der Hafenansicht zählen sie nicht. Status „unterwegs“ ergibt sich wie
+   sonst aus der Mission, Posten „kehrt allein von … heim“, Meldung „Admiral zurück“. Gefangene ziehen nicht ab,
+   verwundete schon (sie heilen daheim weiter). Danach kann ein anderer Admiral die Besatzung per Verstärkung
+   übernehmen. Knopf am eigenen Feld und in der Admiralsansicht.
 
 ## K. Mehrere Häfen: Gründung und Verlegung (Welle 3 „Expansion“, Teil 2, Block `expansion`, v1.11)
 
@@ -880,8 +889,7 @@ erweiterte Würfel-Varianten in `sim/luck.ts`). Kartell: 400 Seeds je Fall, Ress
 
 7. **Offen:** Gegen ausgewogene Häfen gewinnt das Kartell jetzt kaum noch (Bot-Hafen 0 %, starke Häfen 1–2 %); seine
    Bedrohung sind die Verluste je Überfall (Bot Tag 7 Ø 9 288 bleibend). Soll das Kartell wieder öfter siegen, ist
-   `raidStrengthShareOfDefense` die Stellschraube (nicht die Schiffe). Die Großflotte (Weltereignis) bemisst ihre Stärke
-   weiter ungewichtet (`defenseHp`), Schiffe zählen dort voll.
+   `raidStrengthShareOfDefense` die Stellschraube (nicht die Schiffe). **Großflotte (erledigt, v1.16):** siehe 9.
 
 8. **Saison 42 statt 28 Tage** (`SEASON_DAYS`, Vorgabe in `packages/engine/src/season.ts`). Simulation `sim/season42.ts`
    und Veteranen über 42 Tage (Balance v1.13, 200 Seeds je Kampffall). Bot mit 45 % Rüstung / Wirtschafts-Bot:
@@ -919,6 +927,33 @@ erweiterte Würfel-Varianten in `sim/luck.ts`). Kartell: 400 Seeds je Fall, Ress
      Server legt sie nur beim Seed an. Umsetzung als eigenes Paket (Nest 6); bis dahin sind
      Weltereignisse, Felder, 3. Hafen und Spieler das Spätspiel. Balance bleibt **v1.13**.
 
+9. **Großflotte gewichtet wie das Kartell (L7, Balance v1.16).** Die Großflotte kämpft wie ein Kartell-Überfall:
+   Seekampf gegen die Schiffe daheim, dann landet ihre Miliz (`miliPerBoot` je Schnellboot, eigene Landungskapazität).
+   Ihr Bezug war ungewichtet (`defenseHp`, Median der Zielhäfen) – dasselbe Muster wie L2: Schiffe locken mehr Boote und
+   Miliz an, kämpfen an Land aber nicht mit. Simulation `sim/armada.ts` (`npm run sim`, Abschnitt „Großflotte“,
+   400 Seeds, erster Angriff mit voller Stärke, alle drei Ziele gleich; Saisonmitte bzw. Bot-Tag/42).
+   Sieg % Großflotte / Ø bleibender Schiffsverlust / Ø Verlust gesamt / Schnellboote:
+
+| Verteidigung | ungewichtet (bis v1.15) | **gewichtet (v1.16)** |
+|---|---|---|
+| 40 Schützen | 100 % / 0 / 1008 / 23 | **100 % / 0 / 1008 / 23** |
+| 40 Sch. + 8 Korvetten | 100 % / 5491 / 6499 / 36 | **92 % / 3325 / 4324 / 24** |
+| 40 Sch. + 4 Zerstörer | 100 % / 7278 / 8286 / 39 | **100 % / 4417 / 5425 / 26** |
+| 40 Sch. + 4 Landungsschiffe | 100 % / 4440 / 5448 / 30 | **100 % / 3965 / 4973 / 23** |
+| 80 Sch., 2 Batterien (+ 8 Korvetten) | 100 % / 0 / 2016 / 36 (100 % / 5258 / 7274 / 60) | **100 % / 0 / 2016 / 36 (100 % / 4314 / 6330 / 48)** |
+| Bot-Hafen Tag 7 (ohne Schiffe) | 100 % / 9170 / 21 688 / 88 (76 % / 0 / 10 904 / 58) | **75 % / 9138 / 20 672 / 68** (76 % ohne Schiffe) |
+| Bot-Hafen Tag 14 / 28 | 100 % / 19 780 · 29 060 / 181 · 337 Boote | **100 % / 19 701 · 29 060 / 138 · 258 Boote** |
+
+   Befund: Ungewichtet hob die eigene Flotte die Siegchance der Großflotte (Bot Tag 7: 76 % ohne Schiffe → 100 % mit)
+   und vergrößerte sie um ein Drittel bis zur Hälfte; gewichtet bleibt sie beim Bezug ohne Schiffe (75 % gegen 76 %),
+   und kleine Flotten verlieren ein Drittel weniger (8 Korvetten 5491 → 3325, 4 Zerstörer 7278 → 4417). Liegt der
+   Hafen nicht im Median der Region (zwei Nachbarn ohne Schiffe), ändert sich nichts. **Entscheidung:**
+   `worldEvents.grossflotte.raidWeights` = true: Bezug je Zielhafen `armadaTargetHp` = `raidDefenseHp` ohne Forschung
+   (die Großflotte rechnete nie mit Forschung; das bleibt). Schatzschiff und Belagerung kämpfen nur auf See, dort
+   zählen Schiffe voll – unverändert. Nebenbefund (nicht geändert): Gegen Häfen ab Tag 14 siegt die Großflotte
+   auch gewichtet immer; gedacht ist, sie vorher auf See zu schwächen (Beute für Schaden). Stellschraube wäre
+   `grossflotte.shareOfDefense` (0,8).
+
 ## M. KI-Spieler (Bots, Balance-Block `bots`)
 
 Regeln: `docs/REGELN-KI.md`. Code: `packages/engine/src/bots-*.ts`. Testlauf: `packages/engine/test/bots-sim.test.ts`.
@@ -954,8 +989,19 @@ Regeln: `docs/REGELN-KI.md`. Code: `packages/engine/src/bots-*.ts`. Testlauf: `p
 10. **Testlauf** (`BOT_SIM_DAYS=10`, verstellte Uhr, echte Engine mit Kartell-Überfällen): Punkte an Tag 10
     Freibeuter 2524 / 2338, Festung 1959 / 1855, Händler 1541 / 1035 (zwei Läufe); Freibeuter 10–13 Überfälle (fast
     alle gewonnen, Beute 510–534 Punkte), Festung 3–4 Nester, Händler keine; Gebäudestufen 59–70 (Start 0).
-    Offen: Rohstofffelder nimmt im Testlauf noch niemand (alle anfangs bewacht, die Heimwache an Schiffen ist klein),
     Gründungen erst nach Tag 10 (Kolonieschiff braucht Hafenkommandantur 6).
+    **Felder (erledigt):** Ursache war der Probekampf: er zählte `winner === "attacker"`, im Feldkampf ohne Truppen gibt
+    es diesen Sieg nie (der Feldkampf wertet „Wache vernichtet“, `strandTroops`) – jeder Probekampf ergab 0 %. Jetzt
+    (`bots-fields.ts`): Sieg = Wache vernichtet und die Überlebenden bilden eine Besatzung; dazu muss der Verband als
+    ganze Besatzung (stayAll) einen Kartellangriff der Stufe halten (sonst verlor der Bot das Feld mit der
+    Mindestbesatzung nach 1–2 Tagen: im Testlauf 3–4 Einnahmen, 0–1 gehalten). Heimwache nur um den Feldverband
+    gesenkt (halbe Heimwache bleibt), ein Missionsplatz bleibt für Nester frei (sonst fielen die Nestangriffe der
+    Festung von 9 auf 0), gemerktes Ziel 36 h (Überfälle lassen den Feldverband daheim, Doktrin +15 % Korvetten,
+    +5 % Zerstörer), Verstärkung, wenn die Besatzung den nächsten Kartellangriff nicht mehr hält. Bedarf (Probekampf,
+    200 Seeds): Wache Stufe 1/2/3 (4/8/14 Schnellboote) fällt sicher ab 3/5/10 Korvetten bzw. 2/4/8 Zerstörern;
+    Kartellangriff 9/12/18 hält eine Besatzung ab 3/4/5 Korvetten. Testlauf (`BOT_SIM_DAYS=14`, drei Läufe), Felder
+    an Tag 10 / Tag 14: Freibeuter 0–2 / 2, Festung 1 / 1, Händler 1–2 / 1–2 (Höchstzahl je nach Hafenkommandantur
+    1–2); Feldverluste an das Kartell 0–2 je Lauf (alle Bots), Nestangriffe der Festung 5–11, Freibeuter 8–18.
 
 ## N. Nest Stufe 6 als Spätspiel-Ziel (Balance v1.15)
 

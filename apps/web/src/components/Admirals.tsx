@@ -8,6 +8,7 @@ import { fmtNum } from "../lib/names.ts";
 import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
 import { Button, Card, Cost, ErrorLine } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
+import { AdmiralRecall } from "./Fields.tsx"; // Felder: Admiral ohne Rückruf abziehen
 
 type Line = { spec: string; path: string; factor: number };
 type View = NonNullable<Awaited<ReturnType<typeof trpcClient.admiral.get.query>>>;
@@ -147,7 +148,8 @@ function AdmiralItem({ a, v, now }: { a: Admiral; v: View; now: number }) {
           {a.mission.length > 0 && <div className="text-[11.5px] text-ink2">Auf Mission: {modLineText(a.mission)}</div>}
           {a.defense.length > 0 && <div className="text-[11.5px] text-ink2">Verteidigung: {modLineText(a.defense)}</div>}
           {a.harbor.length > 0 && <div className="text-[11.5px] text-ink2">Hafen: {modLineText(a.harbor)}</div>}
-          {a.post && <div className="text-[11.5px] text-see mt-0.5">{a.post[0].toUpperCase() + a.post.slice(1)} – kehrt mit ihr heim (Rückruf unter Meine Felder)</div>}
+          {a.post && <div className="text-[11.5px] text-see mt-0.5">{a.post[0].toUpperCase() + a.post.slice(1)}{a.postFieldId ? " – kehrt mit ihr heim oder allein, wenn du ihn abziehst" : ""}</div>}
+          {a.postFieldId && <AdmiralRecall fieldId={a.postFieldId} />}
           {a.stationed && <div className="text-[11.5px] text-moos mt-0.5">Hafenkommandant{a.status !== "bereit" ? " – führt die Verteidigung, sobald er bereit ist" : ""}</div>}
         </div>
       </div>

@@ -162,8 +162,10 @@ export interface AdmiralInfo {
   here: boolean;
   status: AdmiralStatus;
   until: number | null;
-  /** Felder: Posten, wenn er eine Feldbesatzung führt (sonst null). */
+  /** Felder: Posten, wenn er eine Feldbesatzung führt oder allein von ihr heimfährt (sonst null). */
   post: string | null;
+  /** Felder: Feld, dessen Besatzung er führt (Abziehen ohne Rückruf möglich), sonst null. */
+  postFieldId: number | null;
   battles: number;
   wins: number;
   mission: AdmiralModLine[];
@@ -196,7 +198,8 @@ export async function admiralView(engine: Engine, playerId: number, baseId?: num
       stationed: a.stationed,
       baseId: a.baseId, baseName: names.get(a.baseId) ?? "", here: a.baseId === own.id,
       ...admiralStatus(a, active, nowMs),
-      post: posts.get(a.id) ?? null,
+      post: posts.get(a.id)?.text ?? null,
+      postFieldId: posts.get(a.id)?.fieldId ?? null,
       battles: a.battles, wins: a.wins,
       mission: admiralModLines(specs, a.xp, "mission", balance),
       defense: admiralModLines(specs, a.xp, "defense", balance),
