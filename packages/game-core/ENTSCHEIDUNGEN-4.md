@@ -366,3 +366,21 @@ Tag 8) traten mit den Ursachen oben auf; in 16 Testläufen (8 Tage, verschiedene
 beim Freibeuter ab Tag 14–28, Festung meist 2–3); die Festung erreicht die Startrampe in 41 Tagen noch nicht (KZ 6–8).
 `bots-sim.test.ts` läuft jetzt mit fester Startzeit (`BOT_SIM_T0`) und prüft zusätzlich: Freibeuter gewinnt mehr
 Überfälle als der Händler.
+
+## Lektorat 0.22 – Sprache und Einheitlichkeit (Kürzel lek)
+
+1. **Namen statt Kennungen:** Weltereignis-Arten, Sabotageziel Seekabel, Berichtsarten (posten, sichtung, patrouille,
+   kampagne), Missionsarten und alle Techniken haben deutsche Namen in Web und Engine. Die Techniknamen der Engine
+   stehen nur noch in `engine/src/names.ts` (`TECH_NAMES`, von research.ts weitergereicht). `nameOf()` macht
+   unbekannte IDs wie `label()` lesbar (ae → ä …). Test `game-core/test/namen.test.ts` verlangt für jede Balance-ID,
+   jede Missionsart und jeden Fehlercode (aus den Quellen gelesen) einen Namen bzw. Text.
+2. **Mehrzahl:** gemeinsame Hilfen `nOf(n, eins, viele)` (Web `lib/names.ts`, Engine `names.ts`, mail-report-kit
+   reicht sie weiter) und `countName/countsText` (Engine, Tabelle wie Web-`PLURAL`) für Push und Morgenbericht.
+3. **Begriffe:** „Hafen“ statt „Stützpunkt“, „KI-Spieler“ statt „Bot“ (Verwaltung darf „Bot“), „Piratennest“,
+   Gebäude „Seekabel“, abgeschaltete Funktionen „in dieser Saison“, „Einstellungen → Verwaltung“ statt „Admin-Menü“,
+   Versorgungsmangel „Angriff −20 %“, „Kredite“ im Fließtext („Kr“ nur in Kurszetteln und Zahlenzeilen).
+4. **Zeiten:** Sabotage-Ende in Serverzeit (`clock`), nicht UTC; das Börsen-Tageslimit nennt die Uhrzeit des
+   Tageswechsels in Spielerzeit. Dauern in Zahlenzeilen „h“/„min“, im Satz „Stunden“.
+5. **Zahlen:** Faktoren mit Dezimalkomma („×0,85“), Mengen mit Tausenderpunkt auch in Engine-Texten.
+6. **Handbuch:** Zahl und Namen der Forschungszweige und die Spanne der Forschungsamt-Stufen kommen aus der Balance.
+7. **Remedy-Kurzfassungen** im Stichwortstil „Fehlt: …“.

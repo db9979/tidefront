@@ -94,7 +94,7 @@ export function missingResources(ctx: RemedyCtx, cost: Record<string, number> | 
     const w = m.r === "credits" ? Infinity : waitOf(m);
     return { id: m.r, label: label(m.r), have: Math.floor(base.resources[m.r] ?? 0), need: Math.ceil(m.need), eta: Number.isFinite(w) ? `in ca. ${fmtDuration(w)}` : undefined };
   });
-  const summary = `Fehlt ${joinDe(missing.map((m) => `${fmtNum(m.lack)} ${label(m.r)}`))}${goods.length > 0 && Number.isFinite(wait) ? ` · ca. ${fmtDuration(wait)}` : ""}`;
+  const summary = `Fehlt: ${joinDe(missing.map((m) => `${fmtNum(m.lack)} ${label(m.r)}`))}${goods.length > 0 && Number.isFinite(wait) ? ` · ca. ${fmtDuration(wait)}` : ""}`;
   const actions: RemedyAction[] = [];
   if (overCap.length > 0) actions.push(build("lagerkomplex"));
   // Börse nur anbieten, wenn sie offen ist; sonst führt der Weg über die Hafenkommandantur.

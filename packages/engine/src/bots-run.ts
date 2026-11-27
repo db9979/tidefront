@@ -7,6 +7,7 @@ import { train, upgrade } from "./commands.ts";
 import { processDueForBase } from "./events.ts";
 import { basesOfPlayer } from "./store.ts";
 import { modsOf } from "./modifiers.ts";
+import { fmtInt, nameOf } from "./names.ts";
 import { researchChoose, researchStart } from "./research.ts";
 import {
   appendLog, botsConfig, botsEnabled, ensureHome, loadBot, loadBots, nextTurnAt, removeBotStep, saveBotState, type BotRow,
@@ -64,7 +65,7 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
         if (!r.ok) break;
         const sim = startUpgrade(plan.state, id, nowMs, balance, plan.mods);
         if (sim.ok) plan.state = sim.base;
-        c.log.push(`${b.name}: Ausbau ${id} begonnen.`);
+        c.log.push(`${b.name}: Ausbau ${nameOf(id)} begonnen.`);
       }
     };
     // Ausbilden nach Doktrin (Kolonieschiff steuert expansionTurn).
@@ -74,12 +75,12 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
       for (const o of t.orders) {
         const r = await train(engine, bot.id, c.key("train"), o.id, o.count, b.id);
         if (!r.ok) {
-          c.log.push(`${b.name}: Ausbildung ${o.id} abgelehnt (${r.code}).`);
+          c.log.push(`${b.name}: Ausbildung ${nameOf(o.id)} abgelehnt (${r.code}).`);
           continue;
         }
         const sim = startTraining(plan.state, o.id, o.count, nowMs, balance, plan.mods);
         if (sim.ok) plan.state = sim.base;
-        c.log.push(`${b.name}: ${o.count} × ${o.id} in Ausbildung.`);
+        c.log.push(`${b.name}: ${fmtInt(o.count)} × ${nameOf(o.id)} in Ausbildung.`);
       }
       return t.saving;
     };
@@ -112,7 +113,7 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
       const tech = chooseResearch(plan);
       if (tech) {
         const r = await researchStart(engine, bot.id, c.key("research"), tech);
-        if (r.ok) c.log.push(`Forschung ${tech} begonnen.`);
+        if (r.ok) c.log.push(`Forschung ${nameOf(tech)} begonnen.`);
       }
     }
   }

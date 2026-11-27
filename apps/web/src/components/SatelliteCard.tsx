@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { hexAtXY, ROWS, HEX_SIZE_KM } from "@tidefront/world";
 import { queryClient, trpc, trpcClient } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
-import { errorText, fmtNum, label } from "../lib/names.ts";
+import { errorText, fmtNum, label, nOf } from "../lib/names.ts";
 import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
 import { Icon } from "../icons.tsx";
@@ -68,7 +68,7 @@ export function SatelliteCard({ sats, launch, onShowOnMap }: { sats: SatView[]; 
                     <div className="text-sm text-ink2">kein weiterer Überflug</div>
                   )}
                   <div className="text-xs text-ink2">aus {s.baseName} · Überflug {s.passesDone}/{s.passes} · verglüht {fmtTime(s.expiresAtMs)}</div>
-                  {s.last && <div className="text-xs text-ink2">Zuletzt: {fmtNum(s.last.nests)} Nester, {fmtNum(s.last.bases)} Häfen, {fmtNum(s.last.fleets)} Verbände{s.last.clouded > 0 ? `, ${fmtNum(s.last.clouded)} unter Wolken` : ""}</div>}
+                  {s.last && <div className="text-xs text-ink2">Zuletzt: {nOf(s.last.nests, "Nest", "Nester")}, {nOf(s.last.bases, "Hafen", "Häfen")}, {nOf(s.last.fleets, "Verband", "Verbände")}{s.last.clouded > 0 ? `, ${fmtNum(s.last.clouded)} unter Wolken` : ""}</div>}
                 </div>
                 {(s.live ?? s.next) && <SmallButton onClick={() => onShowOnMap(stripTarget((s.live ?? s.next)!))}>Karte</SmallButton>}
               </div>

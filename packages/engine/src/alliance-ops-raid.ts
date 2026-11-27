@@ -18,6 +18,7 @@ import {
 import { hexCenter } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError, type Engine, type NoticeJob } from "./context.ts";
+import { nOf } from "./names.ts";
 import { activeMissionCount, lockBase, lockOwnBase, readBase, saveBase, scheduleEvent, withSite } from "./store.ts";
 import { missionWeather } from "./weather.ts";
 import { modifiersFor, modsOf } from "./modifiers.ts";
@@ -222,8 +223,8 @@ export function joinRaid(engine: Engine, playerId: number, key: string, input: {
     const others = (await raidMembers(ctx.tx, raid.id)).map((m) => m.playerId);
     const r = await joinWith(ctx, raid, input.units, input.baseId);
     const who = await nameOf(ctx.tx, playerId);
-    await systemMessage(ctx.tx, ctx.notify, [...others, playerId], `Sammelangriff auf ${raid.targetName}`, `${who} tritt dem Sammelangriff bei (${others.length + 1} Verbände). Auslaufen ${clock(raid.joinDeadline.getTime())} Uhr.`);
-    jobs.push(...pushAll(others, `Sammelangriff: ${who} ist dabei`, `${others.length + 1} Verbände gegen ${raid.targetName}.`, `raid-${raid.id}`));
+    await systemMessage(ctx.tx, ctx.notify, [...others, playerId], `Sammelangriff auf ${raid.targetName}`, `${who} tritt dem Sammelangriff bei (${nOf(others.length + 1, "Verband", "Verbände")}). Auslaufen ${clock(raid.joinDeadline.getTime())} Uhr.`);
+    jobs.push(...pushAll(others, `Sammelangriff: ${who} ist dabei`, `${nOf(others.length + 1, "Verband", "Verbände")} gegen ${raid.targetName}.`, `raid-${raid.id}`));
     ctx.notify.push([await memberIds(ctx.tx, raid.allianceId), "alliance"]);
     return { ok: true as const, missionId: r.missionId };
   }).then((r) => {
@@ -245,7 +246,7 @@ export function withdrawRaid(engine: Engine, playerId: number, key: string, raid
     if (!mine) fail("not_joined");
     await releaseStaged(ctx.tx, mine.missionId, ctx.nowMs);
     const rest = (await raidMembers(ctx.tx, raid.id)).map((m) => m.playerId);
-    await systemMessage(ctx.tx, ctx.notify, [...rest, playerId], `Sammelangriff auf ${raid.targetName}`, `${await nameOf(ctx.tx, playerId)} hat sich zurückgezogen (${rest.length} Verbände).`);
+    await systemMessage(ctx.tx, ctx.notify, [...rest, playerId], `Sammelangriff auf ${raid.targetName}`, `${await nameOf(ctx.tx, playerId)} hat sich zurückgezogen (${rest.length ? `noch ${nOf(rest.length, "Verband", "Verbände")}` : "keine Verbände mehr"}).`);
     ctx.notify.push([[playerId], "base"], [[playerId], "missions"], [await memberIds(ctx.tx, raid.allianceId), "alliance"]);
     return { ok: true as const };
   });
@@ -354,7 +355,7 @@ export const raidLaunch: Handler = async (tx, ev, due) => {
   await scheduleEvent(tx, "alliance_raid_arrive", sched.arriveAtMs, { raidId: raid.id }, raid.targetKind === "base" ? raid.targetId : null);
   const ids = keep.map((k) => k.playerId);
   const late = sched.arriveAtMs > raid.desiredArriveAt.getTime() + MIN ? " (später als gewünscht: der langsamste Verband bestimmt die Ankunft)" : "";
-  const text = `${keep.length} Verbände laufen gegen ${raid.targetName} aus. Gemeinsame Ankunft ${clock(sched.arriveAtMs)} Uhr${late}.`;
+  const text = `${keep.length === 1 ? "1 Verband läuft" : `${keep.length} Verbände laufen`} gegen ${raid.targetName} aus. Gemeinsame Ankunft ${clock(sched.arriveAtMs)} Uhr${late}.`;
   await systemMessage(tx, notes, ids, `Sammelangriff läuft aus`, text);
   const result: HandlerResult = { notify: [...notes, [ids, "missions"], [await memberIds(tx, raid.allianceId), "alliance"]], push: pushAll(ids, "Sammelangriff läuft aus", text, `raid-${raid.id}`) };
   if (raid.targetKind === "base" && general.state) {

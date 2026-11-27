@@ -52,7 +52,7 @@ export function AdminKpi({ days }: { days: 7 | 28 }) {
           head={["", "Menschen", "KI"]}
           rows={[
             ["gesamt (mit Hafen)", `${h.total} (${h.withBase})`, `${b.total} (${b.withBase})`],
-            ["aktiv 24 Std.", String(h.active24h), String(b.active24h)],
+            ["aktiv 24 h", String(h.active24h), String(b.active24h)],
             ["aktiv 7 Tage", String(h.active7d), String(b.active7d)],
           ]}
         />

@@ -15,7 +15,6 @@ const MAX = 2000;
 
 const SEND_ERRORS: Record<string, string> = {
   self: "Du kannst dir nicht selbst schreiben.",
-  no_recipient: "Diesen Spieler gibt es nicht.",
   empty: "Die Nachricht ist leer.",
 };
 

@@ -1,7 +1,7 @@
 // Meldungen → Bilanz: persönliche Kampfbilanz der Saison (Server: report.stats, kurz zwischengespeichert).
 import { useQuery } from "@tanstack/react-query";
 import { trpc, type Outputs } from "../lib/trpc.ts";
-import { fmtNum, label } from "../lib/names.ts";
+import { fmtNum, label, nOf } from "../lib/names.ts";
 import { Card, Loading, StatTable, UnitChips } from "../ui.tsx";
 import { Icon, IconTile } from "../icons.tsx";
 import { D20 } from "../components/BattleDice.tsx";
@@ -34,7 +34,7 @@ function LuckMeter({ avg, expected }: { avg: number; expected: number }) {
   // Skala 1 … 20, Erwartung als Strich, eigener Schnitt als Raute.
   const x = (v: number) => 4 + ((v - 1) / 19) * 192;
   return (
-    <svg viewBox="0 0 200 22" width="100%" height="22" aria-label={`Durchschnitt ${avg.toFixed(1)} gegenüber ${expected}`}>
+    <svg viewBox="0 0 200 22" width="100%" height="22" aria-label={`Durchschnitt ${fmtNum(avg, 1)} gegenüber ${String(expected).replace(".", ",")}`}>
       <line x1="4" y1="11" x2="196" y2="11" stroke="var(--color-ink2)" strokeWidth="1" />
       {[1, 5, 10, 15, 20].map((t) => <line key={t} x1={x(t)} y1="7" x2={x(t)} y2="15" stroke="var(--color-rule)" />)}
       <line x1={x(expected)} y1="3" x2={x(expected)} y2="19" stroke="var(--color-ink)" strokeDasharray="2 2" />
@@ -70,7 +70,7 @@ export function BattleStatsScreen() {
 
       <Card title="Versenkt und vernichtet">
         <StatTable rows={[
-          ["Versenkte Tonnage", `${fmtNum(s.sunkValue)} (${fmtNum(s.sunkShips)} Schiffe)`],
+          ["Versenkte Tonnage", `${fmtNum(s.sunkValue)} (${nOf(s.sunkShips, "Schiff", "Schiffe")})`],
           ["Vernichteter Gesamtwert", fmtNum(s.destroyedValue)],
           ["Eigene Verluste (Wert)", fmtNum(s.ownLossValue)],
           ["Stärkstes besiegtes Nest", s.strongestNest === null ? "–" : `Stufe ${s.strongestNest}`],
@@ -95,7 +95,7 @@ export function BattleStatsScreen() {
         {luck.average === null ? <p className="text-sm text-ink2">Noch keine Würfe (Berichte vor dem Kriegsglück zählen nicht).</p> : (
           <>
             <p className="text-sm">
-              Schnitt <strong className="mono">{luck.average.toFixed(2).replace(".", ",")}</strong> aus {fmtNum(luck.rolls)} Würfen – erwartet {String(luck.expected).replace(".", ",")}.{" "}
+              Schnitt <strong className="mono">{fmtNum(luck.average, 2)}</strong> aus {fmtNum(luck.rolls)} Würfen – erwartet {String(luck.expected).replace(".", ",")}.{" "}
               <span className={diff >= 0 ? "text-moos" : "text-siegel"}>{Math.abs(diff) < 0.25 ? "Ganz durchschnittlich." : diff > 0 ? "Das Glück ist mit dir." : "Pech gehabt."}</span>
             </p>
             <LuckMeter avg={luck.average} expected={luck.expected} />

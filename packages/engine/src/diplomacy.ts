@@ -158,7 +158,7 @@ export function declareWar(engine: Engine, playerId: number, target: string) {
     const activeFromMs = nowMs + WAR_LEAD_MS;
     await tx.insert(tables.diplomacy).values({ partyA: a, partyB: b, kind: "krieg", status: "aktiv", proposedBy: own, activeFrom: new Date(activeFromMs) });
     await tell(tx, notes, [own, target], "Diplomatie: Kriegserklärung",
-      `${await partyName(tx, own)} erklärt ${await partyName(tx, target)} den Krieg. Der Krieg beginnt ${fmt(activeFromMs)} Uhr; ` +
+      `${await partyName(tx, own)} erklärt ${await partyName(tx, target)} den Krieg. Der Krieg beginnt am ${fmt(activeFromMs)} Uhr; ` +
       "ab dann entfällt bei gegenseitigen Überfällen die Schwachziel-Kürzung der Beute.");
     return { ok: true as const, activeFromMs };
   });

@@ -129,7 +129,7 @@ async function mailBugReport(
       paragraphs: [r.subject, ...(r.text ? r.text.split(/\n{2,}/).slice(0, 20) : ["(ohne Beschreibung)"])],
       facts,
       button: { label: "In der Verwaltung öffnen", url: `${publicUrl()}/?view=admin` },
-      footerNote: "Log und Screenshot hängen an. Die Meldung steht auch im Admin-Menü unter „Fehlermeldungen“.",
+      footerNote: "Log und Screenshot hängen an. Die Meldung steht auch unter Einstellungen → Verwaltung → „Fehlermeldungen“.",
     }, { attachments });
     sent ||= res.ok;
   }

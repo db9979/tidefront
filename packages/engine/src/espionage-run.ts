@@ -34,6 +34,7 @@ import { TECH_NAMES } from "./research.ts";
 import { scoutWithDisinfo } from "./espionage.ts";
 import { trackProgress } from "./challenges.ts";
 import { KIND_TEXT, openWorldEvents, systemMessage } from "./world-events.ts";
+import { clock } from "./names.ts";
 import { recordReportIntel } from "./intel-store.ts"; // Lagebild Stufe 2: Dossier als Lagebild
 
 const HOUR_MS = 3600000;
@@ -41,13 +42,9 @@ const HOUR_MS = 3600000;
 /** Namen der Sabotageziele für Berichte und Nachrichten. */
 export const SABOTAGE_TEXT: Record<string, string> = {
   kraftwerk: "Kraftwerk", radarstation: "Radarstation", werft: "Werft", kaserne: "Kaserne", flugfeld: "Flugfeld",
-  forschungsamt: "Forschungsamt", bauschlange: "Bauschlange",
+  forschungsamt: "Forschungsamt", bauschlange: "Bauschlange", seekabel: "Seekabel",
 };
 const KIND_TITLE: Record<string, string> = { erkunden: "Erkunden", sabotage: "Sabotage", desinformation: "Desinformation", kartell: "Kartell-Aufklärung" };
-
-function clock(ms: number): string {
-  return new Date(ms).toISOString().slice(11, 16);
-}
 
 async function nameOf(tx: Tx, id: number | null): Promise<string> {
   if (id === null) return "?";
@@ -210,7 +207,7 @@ export const spyArrive: Handler = async (tx, ev, due) => {
       for (const at of r.build) await scheduleEvent(tx, "build_complete", at, {}, target.id);
       await scheduleEvent(tx, "spy_sabotage_end", r.sabotage.untilMs, {}, target.id);
       const name = SABOTAGE_TEXT[spy.building] ?? spy.building;
-      const effect = spy.building === "bauschlange" ? `Der Ausbau verzögert sich um ${espionageOf(balance)!.sabotage.delayHours} Stunden.` : `${name} fällt aus bis ${clock(r.sabotage.untilMs)} Uhr (UTC).`;
+      const effect = spy.building === "bauschlange" ? `Der Ausbau verzögert sich um ${espionageOf(balance)!.sabotage.delayHours} Stunden.` : `${name} fällt aus bis ${clock(r.sabotage.untilMs)} Uhr.`;
       detail = { sabotage: { ...r.sabotage, effect } };
       const sabotageReportId = await insertReport(tx, {
         kind: "sabotage", title: `Sabotage in ${target.name}: ${name}`, attackerPlayerId: null, defenderPlayerId: target.playerId,

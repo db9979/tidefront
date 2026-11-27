@@ -191,7 +191,7 @@ export const KINDS: Record<string, KindDef> = {
       const rate = c.production[r] ?? 0;
       return { param: r, target: Math.max(Math.ceil(rate) + 1, Math.ceil(rate * (t === 1 ? 1.15 : 1.35))) };
     },
-    text: (n, p) => `Steigere die ${RES_NAME[p ?? ""] ?? p}-Produktion auf ${fmt(n)} je Stunde`,
+    text: (n, p) => `Steigere die Produktion von ${RES_NAME[p ?? ""] ?? p} auf ${fmt(n)} je Stunde`,
   },
   kommando: {
     icon: "kommandozentrale",

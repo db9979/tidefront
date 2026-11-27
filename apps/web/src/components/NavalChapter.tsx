@@ -15,7 +15,7 @@ export function NavalChapter({ b }: { b: Balance | undefined }) {
   const c = b?.convoys;
   const ml = b?.units.minenleger;
   const mr = b?.units.minenraeumer;
-  if (!m && !k && !c) return <P>Minen, Blockaden und Konvois sind in dieser Welt nicht verfügbar.</P>;
+  if (!m && !k && !c) return <P>Minen, Blockaden und Konvois sind in dieser Saison nicht verfügbar.</P>;
   return (
     <>
       {m && (

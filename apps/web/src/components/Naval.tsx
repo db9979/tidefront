@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { hexDistanceKm } from "@tidefront/world";
 import { trpc, trpcClient, type BaseData, type Outputs } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
-import { fmtNum, label } from "../lib/names.ts";
+import { errorText, fmtNum, label } from "../lib/names.ts";
 import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
 import { Button, Card, CountsLine, ErrorLine, Stepper, SmallButton } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
@@ -224,7 +224,7 @@ export function NavalReport({ kind, d }: { kind: string; d: Record<string, unkno
     const b = d.blockade as { targetName?: string; attackerName?: string; endsAtMs?: number; refused?: string; factor?: number };
     return (
       <Card title={<><Icon id="blockade" size={18} /> Seeblockade</>}>
-        <p className="text-sm">{b.refused ? `Die Blockade vor ${b.targetName} begann nicht (${b.refused === "fleet_lost" ? "Verband verloren" : label(b.refused)}).` : `${b.attackerName} blockiert ${b.targetName} bis ${fmtTime(b.endsAtMs ?? 0)}: Produktion −${Math.round((1 - (b.factor ?? 1)) * 100)} %, Lieferungen zurückgehalten, Börsenverkäufe gesperrt.`}</p>
+        <p className="text-sm">{b.refused ? `Die Blockade vor ${b.targetName} begann nicht: ${b.refused === "fleet_lost" ? "Verband verloren." : errorText(b.refused)}` : `${b.attackerName} blockiert ${b.targetName} bis ${fmtTime(b.endsAtMs ?? 0)}: Produktion −${Math.round((1 - (b.factor ?? 1)) * 100)} %, Lieferungen zurückgehalten, Börsenverkäufe gesperrt.`}</p>
       </Card>
     );
   }

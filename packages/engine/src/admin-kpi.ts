@@ -68,7 +68,7 @@ const MILESTONE_ORDER = ["kz", "slots", "nest", "hafen2", "startrampe", "satelli
 export function milestoneLabel(id: string): string {
   const [k, n] = id.split(":");
   if (k === "kz") return `Kommandozentrale Stufe ${n}`;
-  if (k === "slots") return `${n} Missionsplätze`;
+  if (k === "slots") return `${n} ${n === "1" ? "Missionsplatz" : "Missionsplätze"}`;
   if (k === "nest") return `Erster Sieg Nest Stufe ${n}`;
   if (k === "hafen2") return "Zweiter Hafen";
   if (k === "startrampe") return "Startrampe gebaut";

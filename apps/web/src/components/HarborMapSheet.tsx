@@ -29,7 +29,7 @@ export function FoundingInfo({ base, sel }: { base: BaseData; sel: { col: number
         )}
         <li className={f.ships > 0 ? "text-moos" : ""}>{f.ships > 0 ? `✓ ${f.ships} ${label("kolonieschiff")} in ${base.name}` : `· ${label("kolonieschiff")} aus der Werft nötig (wird verbraucht)`}</li>
       </ul>
-      {!rules.live && <div className="text-xs text-messing mt-1">Die Gründung ist auf diesem Server noch nicht freigeschaltet.</div>}
+      {!rules.live && <div className="text-xs text-messing mt-1">Die Gründung ist in dieser Saison noch nicht freigeschaltet.</div>}
     </div>
   );
 }

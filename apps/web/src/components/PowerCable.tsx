@@ -34,7 +34,7 @@ export function PowerCable({ baseId }: { baseId: number }) {
   if (v.station < 1 && v.cables.length === 0) {
     return (
       <p className="text-xs text-ink2" data-testid="seekabel-hinweis">
-        Seekabel: Mit einer Seekabel-Station gibst du Ökostrom-Überschuss an einen eigenen Hafen oder ein Allianzmitglied ab
+        Seekabel: Mit dem Gebäude Seekabel gibst du Ökostrom-Überschuss an einen eigenen Hafen oder ein Allianzmitglied ab
         (bis {fmtNum(v.maxKm)} km, {pct(v.lossPer100Km)} Verlust je 100 km).
       </p>
     );

@@ -5,7 +5,7 @@ import { commandPointsAt } from "@tidefront/game-core";
 
 export const BUILDING_TEXT: Record<string, { kurz: string; lang: string }> = {
   kommandozentrale: {
-    kurz: "Herz des Stützpunkts",
+    kurz: "Herz des Hafens",
     lang: "Gibt Kommandopunkte – sie begrenzen, wie groß ein Verband sein darf. Kein anderes Gebäude darf mehr als {cap} Stufen über der Kommandozentrale liegen.",
   },
   stahlwerk: { kurz: "Produziert Stahl", lang: "Stahl braucht fast alles: Gebäude, Schiffe, Panzer. Verbraucht Strom." },
@@ -35,7 +35,7 @@ export const BUILDING_TEXT: Record<string, { kurz: string; lang: string }> = {
   },
   forschungsamt: {
     kurz: "Forschung dieser Saison",
-    lang: "Hier wird geforscht: eine Technik gleichzeitig, Boni bis zum Saisonende. Höhere Stufen öffnen weitere Techniken (ab Stufe 3 und 5), forschen 10 % schneller je Stufe und erhöhen die Chance auf einen Durchbruch. Forschung braucht Strom und wird bei Mangel zuletzt versorgt (Rang 4); dann dauert sie anteilig länger.",
+    lang: "Hier wird geforscht: eine Technik gleichzeitig, Boni bis zum Saisonende. Höhere Stufen öffnen weitere Techniken (die nötige Stufe steht bei jeder Technik), forschen 10 % schneller je Stufe und erhöhen die Chance auf einen Durchbruch. Forschung braucht Strom und wird bei Mangel zuletzt versorgt (Rang 4); dann dauert sie anteilig länger.",
   },
   nachrichtendienst: {
     kurz: "Spione und Gegenspionage",
@@ -48,8 +48,8 @@ export const UNIT_TEXT: Record<string, string> = {
   korvette: "Schnelles, günstiges Kriegsschiff. Stark gegen Schnellboote der Piraten, jagt mit Wasserbomben U-Boote.",
   zerstoerer: "Schweres Kriegsschiff mit starker Flugabwehr und U-Jagd. Bonus gegen Korvetten.",
   landungsschiff: "Trägt {lsTroops} Plätze Truppen und {lsCargo} Beute. Ohne Landungsschiff keine Landung, kein Sieg.",
-  uboot: "Getaucht und schwer zu fassen: feuert in einer eigenen Phase U-Boot-Angriff vor dem Seegefecht Torpedos aus dem Verborgenen, stark gegen Landungsschiffe. Nur Einheiten mit U-Jagd (Korvette, Zerstörer) können es treffen. Trifft keine Küstenbatterien, wenig gegen Schnellboote.",
-  schuetzen: "Günstige Infanterie. Erobert, verteidigt und hält den Stützpunkt gegen Kartell-Überfälle.",
+  uboot: "Getaucht und schwer zu fassen: feuert in einer eigenen Phase („U-Boot-Angriff“) vor dem Seegefecht Torpedos aus dem Verborgenen, stark gegen Landungsschiffe. Nur Einheiten mit U-Jagd (Korvette, Zerstörer) können es treffen. Trifft keine Küstenbatterien, wenig gegen Schnellboote.",
+  schuetzen: "Günstige Infanterie. Erobert, verteidigt und hält den Hafen gegen Kartell-Überfälle.",
   pioniere: "Halbieren den Schaden von Minensperren und knacken Bunkerlinien (Bonus ×4).",
   kampfpanzer: "Teuer, aber stark im Bodenkampf. Bonus gegen Schützen und Piratenmiliz. Braucht {panzerSize} Plätze.",
   abfangjaeger: "Kämpft um die Luftüberlegenheit. Wer sie hat, dessen Bomber treffen härter.",

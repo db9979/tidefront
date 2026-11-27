@@ -11,7 +11,7 @@ import { incomingDetected } from "./views.ts";
 import { normalizeBaseName } from "./harbor-names.ts";
 import { systemMessage } from "./world-events.ts";
 import { STATION_TYPE } from "./alliance-ops-station.ts";
-import { amounts, nameOf } from "./names.ts";
+import { amounts, fmtInt, nameOf } from "./names.ts";
 
 function fail(code: string): never {
   throw new GameError(code);
@@ -124,7 +124,7 @@ export function abandonColony(engine: Engine, playerId: number, key: string, bas
     ));
     // mission (base_id) und Missionsverlauf dieses Hafens fallen per Kaskade; Rohstofffelder sind oben ausgeschlossen.
     await tx.delete(tables.base).where(eq(tables.base.id, b.id));
-    const lost = Object.entries(s.units).filter(([, v]) => v > 0).map(([id, v]) => `${v} × ${nameOf(id)}`);
+    const lost = Object.entries(s.units).filter(([, v]) => v > 0).map(([id, v]) => `${fmtInt(v)} × ${nameOf(id)}`);
     await systemMessage(tx, [playerId], `Außenposten ${b.name} aufgegeben`,
       `Du hast den Außenposten ${b.name} (Feld ${b.col}/${b.row}) aufgegeben. Verfallen sind die Bestände (${amounts(s.resources)})` +
       `${lost.length ? `, die Einheiten (${lost.join(", ")})` : ""} und alle Gebäude. Admirale des Hafens dienen jetzt im Heimathafen ${home.name}.`, nowMs);

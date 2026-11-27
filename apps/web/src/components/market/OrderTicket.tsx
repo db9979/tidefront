@@ -85,9 +85,9 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
   if (valid && hard.length === 0) {
     if (typed > lim.impact) soft.push({ text: `Kurswirkung zu groß: höchstens ${fmtNum(lim.impact)} je Handel.`, code: "impact" });
     if (typed > dailyLeft) soft.push({ text: `Über dem Tageslimit: heute noch ${fmtNum(dailyLeft)}.`, code: "daily_limit" });
-    if (q && buy && q.totalCredits > ctx.credits) soft.push({ text: `Kredite reichen nicht: ${fmtNum(q.totalCredits, 2)} Kr nötig.`, code: "funds" });
+    if (q && buy && q.totalCredits > ctx.credits) soft.push({ text: `Kredite reichen nicht: ${fmtNum(q.totalCredits, 2)} Kredite nötig.`, code: "funds" });
     if (!buy && typed > ctx.stock) soft.push({ text: `Nur ${fmtNum(ctx.stock)} im Lager.` });
-    if (q && !buy && ctx.credits + q.totalCredits > ctx.creditLimit) soft.push({ text: `Kreditlimit: höchstens ${fmtNum(ctx.creditLimit - ctx.credits, 2)} Kr Erlös möglich.`, code: "credit_limit" });
+    if (q && !buy && ctx.credits + q.totalCredits > ctx.creditLimit) soft.push({ text: `Kreditlimit: höchstens ${fmtNum(ctx.creditLimit - ctx.credits, 2)} Kredite Erlös möglich.`, code: "credit_limit" });
     if (q && (q.priceAfter > range.hi || q.priceAfter < range.lo)) soft.push({ text: "Der Kurs verließe das Kursband – der Handel würde abgelehnt und eine Pause ausgelöst.", code: "band" });
   }
   const firstWhy = [...hard, ...soft].find((w) => hasRemedy(w.code));

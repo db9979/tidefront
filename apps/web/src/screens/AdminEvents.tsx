@@ -12,6 +12,20 @@ const CODE_TEXT: Record<string, string> = {
   already_pending: "Für dasselbe Objekt ist bereits ein Ereignis dieses Typs offen (z. B. vom Wächter neu angelegt).",
 };
 
+/** Lesbare Namen der Ereignistypen (die Kennung steht klein daneben). */
+const TYPE_TEXT: Record<string, string> = {
+  mission_arrive: "Ankunft einer Mission", mission_return: "Rückkehr einer Mission", build_complete: "Ausbau fertig",
+  training_complete: "Ausbildung fertig", research_complete: "Forschung fertig", attack_warning: "Radar-Warnung",
+  raid_launch: "Kartell läuft aus", raid_arrive: "Kartell kommt an", delivery_arrive: "Lieferung", season_end: "Saisonende",
+  spy_arrive: "Spionageauftrag", spy_sabotage_end: "Ende einer Sabotage", pact_expire: "Pakt läuft aus",
+  alliance_raid_launch: "Sammelangriff läuft aus", alliance_raid_arrive: "Sammelangriff kommt an",
+  world_event_spawn: "Weltereignis beginnt", world_event_move: "Weltereignis bewegt sich", world_event_attack: "Angriff eines Weltereignisses",
+  world_event_end: "Weltereignis endet", blockade_end: "Blockade endet", convoy_raid: "Konvoi abfangen",
+  field_tick: "Felder: Ertrag", field_delivery: "Felder: Lieferung", field_raid: "Felder: Kartell-Angriff", field_warning: "Felder: Warnung",
+  patrol_tick: "Patrouille", patrol_end: "Patrouille endet", radar_post_tick: "Radarposten",
+  satellite_pass: "Satellit: Überflug", satellite_end: "Satellit verglüht",
+};
+
 function when(ms: number | null): string {
   if (ms === null) return "–";
   return new Date(ms).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -50,7 +64,8 @@ export function AdminEvents() {
           <li key={e.id} className="border border-rule rounded p-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="mono text-sm">#{e.id}</span>
-              <span className="font-semibold text-sm">{e.type}</span>
+              <span className="font-semibold text-sm">{TYPE_TEXT[e.type] ?? e.type}</span>
+              {TYPE_TEXT[e.type] && <span className="mono text-xs text-ink2">{e.type}</span>}
               <span className="text-xs text-ink2">fällig {when(e.origDueAtMs ?? e.dueAtMs)}</span>
               <span className="text-xs text-ink2">{e.attempts} Versuche</span>
               <span className="flex-1" />

@@ -13,7 +13,8 @@ import { tables } from "@tidefront/db";
 import { balance } from "./context.ts";
 import { launchMission } from "./commands.ts";
 import { missionPreview } from "./views.ts";
-import { FIELD_TYPE, fieldsView, rules } from "./fields-core.ts";
+import { FIELD_TYPE, fieldName, fieldsView, rules } from "./fields-core.ts";
+import { fmtInt, nameOf } from "./names.ts";
 import type { TurnCtx } from "./bots-war.ts";
 import { scoutNearest, scoutsUnknown } from "./bots-intel.ts"; // Lagebild
 import { activeMissionCount, type BaseRow } from "./store.ts";
@@ -129,7 +130,7 @@ export async function fieldTurn(c: TurnCtx, base: Base, mods: Modifiers): Promis
       const input = { type: FIELD_TYPE, units: add, col: m.col, row: m.row, fieldId: m.id, baseId: base.id };
       if (!(await missionPreview(c.engine, c.bot.id, input)).ok) continue;
       if ((await launchMission(c.engine, c.bot.id, c.key("reinforce"), input)).ok) {
-        c.log.push(`Besatzung auf ${m.kind} (Stufe ${m.tier}) wird verstärkt (${countsText(add)}).`);
+        c.log.push(`Besatzung auf ${fieldName(m)} wird verstärkt (${countsText(add)}).`);
         return true;
       }
     }
@@ -165,7 +166,7 @@ export async function fieldTurn(c: TurnCtx, base: Base, mods: Modifiers): Promis
     const r = await launchMission(c.engine, c.bot.id, c.key("field"), input);
     if (r.ok) {
       delete c.state.fieldTarget;
-      c.log.push(`Rohstofffeld ${f.kind} (Stufe ${f.tier}) wird besetzt (${countsText(units)}).`);
+      c.log.push(`${fieldName(f)} wird besetzt (${countsText(units)}).`);
       return true;
     }
   }
@@ -185,7 +186,7 @@ export async function fieldTurn(c: TurnCtx, base: Base, mods: Modifiers): Promis
   return scouted;
 }
 
-const countsText = (u: Counts) => Object.entries(u).map(([id, n]) => `${n} × ${id}`).join(", ");
+const countsText = (u: Counts) => Object.entries(u).map(([id, n]) => `${fmtInt(n)} × ${nameOf(id)}`).join(", ");
 
 /** Kleinste Verstärkung aus `ships`, mit der die Besatzung einen Kartellangriff der Stufe hält (oder null). */
 export function smallestAdd(ships: Counts, garrison: Counts, raid: Counts, runs: number, need: number): Counts | null {

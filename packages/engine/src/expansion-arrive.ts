@@ -16,7 +16,7 @@ import { colonyNameAt } from "./harbor-names.ts";
 const HOUR_MS = 3600000;
 
 /** Gründe einer gescheiterten Gründung als Text für den Bericht. */
-const FOUNDING_FAIL_TEXT: Record<string, string> = {
+export const FOUNDING_FAIL_TEXT: Record<string, string> = {
   field_taken: "Feld besetzt", too_close: "zu nah an einem fremden Hafen", too_close_own: "zu nah an einem eigenen Hafen",
   resource_field: "Rohstofffeld", trade_port: "Handelshafen", not_coast: "keine Küste", too_far: "zu weit vom Heimathafen",
   command_level: "Kommandozentrale zu niedrig", base_limit: "Höchstzahl Häfen erreicht", colony_ship: "kein Kolonieschiff",

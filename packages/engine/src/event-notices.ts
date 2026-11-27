@@ -6,7 +6,7 @@ import { tables, type Tx } from "@tidefront/db";
 import { balance, type NoticeJob } from "./context.ts";
 import type { EventRow, Handler } from "./events.ts";
 import { ADMIRAL_RETURN_TYPE, lockBase, readBase, scheduleEvent } from "./store.ts";
-import { amounts, clock, fmtInt, minutesText, nameOf } from "./names.ts";
+import { amounts, clock, countName, fmtInt, minutesText, nameOf } from "./names.ts";
 import { modsOf } from "./modifiers.ts";
 import { detectedAtOf, isDetected, markDetected, warnFactor } from "./radar.ts";
 import { attackWarningMail } from "./mail-notices.ts"; // E-Mail: Lage und empfohlene Schritte
@@ -122,7 +122,7 @@ export async function noticesAfter(tx: Tx, ev: EventRow, due: number, snap: Snap
     const left = new Set(b.state.trainingQueue.map((o) => `${o.builtIn}|${o.id}|${o.finishesAt}`));
     const done = snap.orders.filter((o) => o.finishesAt <= due && !left.has(`${o.builtIn}|${o.id}|${o.finishesAt}`));
     if (done.length === 0) return [];
-    const what = done.map((o) => `${fmtInt(o.count)} ${nameOf(o.id)}`).join(", ");
+    const what = done.map((o) => `${fmtInt(o.count)} ${countName(o.id, o.count)}`).join(", ");
     const where = await harborName(tx, b.playerId, b.id);
     return [{ playerId: b.playerId, notice: {
       kind: "training", url: "/?tab=truppen", tag: `training-${b.id}`, title: "Ausbildung fertig", body: `Bereit${where ? ` in ${where}` : ""}: ${what}.`,

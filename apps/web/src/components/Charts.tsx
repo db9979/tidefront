@@ -171,7 +171,7 @@ export function LevelGrid({ rows }: { rows: { id: string; label: string; levels:
                     <rect x={labelW + l * cell + 0.5} y={y0 + 0.5} width={cell - 1} height={cell - 1} fill={PAPER} stroke={RULE} strokeWidth="0.6" />
                     {n > 0 && <rect x={labelW + l * cell + 0.5} y={y0 + 0.5} width={cell - 1} height={cell - 1} fill={SEE} opacity={0.18 + 0.82 * (n / maxCount)} />}
                     {n > 0 && <text x={labelW + l * cell + cell / 2} y={y0 + cell * 0.7} textAnchor="middle" fontSize="8" fill={n / maxCount > 0.5 ? PAPER : INK} className="mono">{n}</text>}
-                    <title>{`${r.label}, Stufe ${l}: ${n} Stützpunkte`}</title>
+                    <title>{`${r.label}, Stufe ${l}: ${n} Häfen`}</title>
                   </g>
                 );
               })}

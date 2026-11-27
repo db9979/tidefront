@@ -14,6 +14,7 @@ import { abandonBlockers, abandonColony } from "./harbors.ts";
 import { withdrawOffer } from "./player-trade.ts";
 import { fieldRecall } from "./fields-missions.ts";
 import { ownedBy } from "./fields-core.ts";
+import { FOUNDING_FAIL_TEXT } from "./expansion-arrive.ts";
 
 export const BOT_PROFILES = ["haendler", "festung", "freibeuter"] as const;
 export type BotProfile = (typeof BOT_PROFILES)[number];
@@ -260,7 +261,7 @@ export async function ensureHome(engine: Engine, bot: BotRow, nowMs: number): Pr
       ...f, name: harborNameOf(bot.name), nightShieldStartHour: cfg.nightShieldStartHour, tzOffsetMinutes: zoneOffsetMinutes(nowMs),
     });
     if (r.ok) return `Hafen gegründet auf Feld ${f.col}/${f.row}.`;
-    if (r.code !== "field_taken" && r.code !== "resource_field") return `Hafengründung abgelehnt (${r.code}).`;
+    if (r.code !== "field_taken" && r.code !== "resource_field") return `Hafengründung abgelehnt (${FOUNDING_FAIL_TEXT[r.code] ?? r.code}).`;
   }
   return "Hafengründung: Feld jeweils schon belegt.";
 }

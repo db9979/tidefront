@@ -178,7 +178,7 @@ export async function botSatellite(c: TurnCtx, base: BaseRow & { state: BaseStat
     const r = await launchSatellite(c.engine, c.bot.id, c.key("satellite"), { type, baseId: base.id });
     if (!r.ok) continue;
     c.state.recon = { ...(c.state.recon ?? {}), "trip-satellite": c.nowMs };
-    c.log.push(`${type === "optisch" ? "Optischer Satellit" : "Radarsatellit"} gestartet (${unknown} Nester ohne Lagebild in 1 500 km).`);
+    c.log.push(`${type === "optisch" ? "Optischer Satellit" : "Radarsatellit"} gestartet (${unknown} Nester ohne Lagebild in 1.500 km).`);
     return true;
   }
   return false;

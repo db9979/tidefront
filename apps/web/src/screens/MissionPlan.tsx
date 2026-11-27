@@ -33,7 +33,7 @@ import { IntelOpsPlan, type IntelOpKind } from "../components/IntelOpsPlan.tsx";
 const TYPES = [
   { id: "ueberfall", text: "Überfall", hint: "Kampf am Ziel, Beute bei Sieg" },
   { id: "aufklaerung", text: "Aufklärung", hint: "Lagebild ohne Kampf" },
-  { id: "transport", text: "Transport", hint: "Ladung an einen Stützpunkt" },
+  { id: "transport", text: "Transport", hint: "Ladung an einen Hafen" },
   { id: "spionage", text: "Spionage", hint: "Spione des Nachrichtendiensts: Erkunden, Sabotage, Desinformation, Kartell" },
   { id: "stationierung", text: "Stationieren", hint: "Truppen verteidigen den Hafen eines Verbündeten mit, bis du sie zurückrufst" }, // Allianz-Ops
   // See: Minen/Blockade/Konvoi (Abfangen nur mit einem Konvoi als Ziel, über die Karte)
@@ -200,7 +200,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           {target?.fieldId && <FieldTargetLine fieldId={target.fieldId} />}
           {target?.eventId && <>Weltereignis <strong>{event ? KIND_TITLE[event.kind] : "…"}</strong>{event?.siege ? ` vor ${event.siege.name}` : ""} – nur Überfall; {event?.kind === "schatzschiff" ? "Abfangpunkt wird berechnet." : "Kampf auf See."}<br /></>}
           {target && (type === "gruendung" || ownTarget || type === "verlegung") && <ExpansionTargetLine type={type} base={base} map={map.data} target={target} fields={fieldsQ.data?.fields} units={chosen} />}
-          {target && type !== "gruendung" && type !== "verlegung" && !ownTarget && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.base && <>Stützpunkt <strong>{tInfo.base.name}</strong> ({tInfo.base.owner}){tInfo.base.protection && <span className="text-messing"> · geschützt: {label(tInfo.base.protection)}</span>}</>}
+          {target && type !== "gruendung" && type !== "verlegung" && !ownTarget && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.base && <>Hafen <strong>{tInfo.base.name}</strong> ({tInfo.base.owner}){tInfo.base.protection && <span className="text-messing"> · geschützt: {label(tInfo.base.protection)}</span>}</>}
           {target && !target.eventId && !target.blockadeId && !target.convoyId && tInfo?.nest && (tInfo.nest.level === null ? <>Piratennest – <strong>Lage unbekannt</strong> (Stufe und Zustand erst mit Sicht oder Aufklärung)</> : <>Piratennest Stufe <strong>{tInfo.nest.level}</strong>{tInfo.nest.empty ? " (verlassen)" : ""}</>)}
           {target && type !== "gruendung" && type !== "verlegung" && !target.eventId && !target.blockadeId && !target.convoyId && !tInfo?.base && !tInfo?.nest && !target.fieldId && <span className="text-slate-400">Feld {target.col}/{target.row}: kein Ziel</span>}
         </p>

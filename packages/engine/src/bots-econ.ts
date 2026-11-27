@@ -20,6 +20,7 @@ import { acceptOffer, createOffer, offersView } from "./player-trade.ts";
 import { launchMission } from "./commands.ts";
 import { FOUNDING_TYPE } from "./expansion.ts";
 import { coastFields } from "./bots-core.ts";
+import { fmtInt, nameOf } from "./names.ts";
 import type { TurnCtx } from "./bots-war.ts";
 import type { BaseRow } from "./store.ts";
 
@@ -61,7 +62,7 @@ async function doTrade(c: TurnCtx, base: Base, side: "buy" | "sell", resource: s
   if (!q.ok) return 0;
   const r = await trade(c.engine, c.bot.id, c.key("trade"), { side, resource, qty, expectedPrice: q.executionPrice, baseId: base.id });
   if (!r.ok) return 0;
-  c.log.push(`Börse: ${qty} ${resource} ${side === "sell" ? "verkauft" : "gekauft"}.`);
+  c.log.push(`Börse: ${fmtInt(qty)} ${nameOf(resource)} ${side === "sell" ? "verkauft" : "gekauft"}.`);
   return side === "sell" ? q.totalCredits : 0;
 }
 
@@ -80,7 +81,7 @@ export async function offersTurn(c: TurnCtx, base: Base, mods: Modifiers): Promi
     if (stock(o.give) + o.giveQty > 0.9 * cap) continue;
     const r = await acceptOffer(c.engine, c.bot.id, c.key("accept"), o.id, undefined, base.id);
     if (r.ok) {
-      c.log.push(`Handel: Angebot von ${o.seller.name} angenommen (${o.giveQty} ${o.give} gegen ${o.wantQty} ${o.want}).`);
+      c.log.push(`Handel: Angebot von ${o.seller.name} angenommen (${fmtInt(o.giveQty)} ${nameOf(o.give)} gegen ${fmtInt(o.wantQty)} ${nameOf(o.want)}).`);
       return;
     }
   }
@@ -93,7 +94,7 @@ export async function offersTurn(c: TurnCtx, base: Base, mods: Modifiers): Promi
   const giveQty = Math.max(200, Math.floor(stock(give) * 0.1));
   const wantQty = Math.max(1, Math.round((giveQty * ref(give)) / ref(want) * 1.05));
   const r = await createOffer(c.engine, c.bot.id, c.key("offer"), { give, giveQty, want, wantQty, visibility: "public", baseId: base.id });
-  if (r.ok) c.log.push(`Handel: Angebot ${giveQty} ${give} gegen ${wantQty} ${want} eingestellt.`);
+  if (r.ok) c.log.push(`Handel: Angebot ${fmtInt(giveQty)} ${nameOf(give)} gegen ${fmtInt(wantQty)} ${nameOf(want)} eingestellt.`);
 }
 
 /** Hinweise der Gründung an die Wirtschaft des Heimathafens (bots-plan.ts: Rücklage, Vorrang, freie Werft). */

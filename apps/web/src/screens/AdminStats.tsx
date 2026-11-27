@@ -60,7 +60,7 @@ export function AdminStats() {
         <Sub>Aktive Spieler</Sub>
         <StatTable rows={[
           ["Spieler gesamt (mit Hafen)", `${s.players.total} (${s.players.withBase})`],
-          ["aktiv letzte 24 Std.", String(s.players.active24h)],
+          ["aktiv letzte 24 h", String(s.players.active24h)],
           ["aktiv letzte 7 Tage", String(s.players.active7d)],
           ["aktiv in dieser Saison", String(s.players.activeSeason)],
         ]} />

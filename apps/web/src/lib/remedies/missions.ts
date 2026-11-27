@@ -66,7 +66,7 @@ export const MISSIONS: RemedyTable = {
     const prod = producer(balance, "treibstoff");
     return {
       hint: "Kleineren oder sparsameren Verband wählen, ein näheres Ziel nehmen, Treibstoff an der Börse kaufen oder die Raffinerie ausbauen.",
-      summary: need !== null && lack && lack > 0 ? `Fehlt ${fmtNum(lack)} Treibstoff für Hin- und Rückfahrt` : undefined,
+      summary: need !== null && lack && lack > 0 ? `Fehlt: ${fmtNum(lack)} Treibstoff für Hin- und Rückfahrt` : undefined,
       items: need !== null ? [{ id: "treibstoff", label: "Treibstoff", have, need }] : undefined,
       actions: [market("treibstoff"), ...(prod ? [build(prod)] : [])],
     };

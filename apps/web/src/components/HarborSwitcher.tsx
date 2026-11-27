@@ -105,7 +105,7 @@ export function FoundingHint({ base, onPlan }: { base: BaseData; onPlan?: () => 
         <li className={f.ships > 0 ? "text-moos" : ""}>{f.ships > 0 ? `✓ ${f.ships} Kolonieschiff${f.ships > 1 ? "e" : ""} daheim` : "· Kolonieschiff aus der Werft (wird bei der Gründung verbraucht)"}</li>
         <li>· Freies Küstenfeld im Umkreis von {fmtNum(rules.maxRangeKm)} km, mit Abstand zu anderen Häfen</li>
       </ul>
-      {!rules.live && <p className="mt-1 text-xs text-messing">Die Gründung ist auf diesem Server noch nicht freigeschaltet.</p>}
+      {!rules.live && <p className="mt-1 text-xs text-messing">Die Gründung ist in dieser Saison noch nicht freigeschaltet.</p>}
       {onPlan && f.possible && <Button className="mt-2 w-full" onClick={onPlan}>Küstenfeld auf der Karte wählen</Button>}
     </div>
   );

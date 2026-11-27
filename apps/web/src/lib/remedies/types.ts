@@ -20,7 +20,7 @@ export interface RemedyItem { id: string; label: string; have: number; need: num
 export interface Remedy {
   /** Konkreter, handlungsleitender Satz (mit Zahlen, wo der Client sie kennt). */
   hint: string;
-  /** Kurzfassung für den eingeklappten Kopf (eine Zeile), z. B. „Fehlt 49 Elektronik · ca. 1 h 14 min“. */
+  /** Kurzfassung für den eingeklappten Kopf (eine Zeile), z. B. „Fehlt: 49 Elektronik · ca. 1 h 14 min“. */
   summary?: string;
   /** Fehlende Mengen als Fortschrittszeilen (statt sie im Fließtext aufzuzählen). */
   items?: RemedyItem[];

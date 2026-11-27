@@ -12,7 +12,7 @@ export function HarborsChapter({ b }: { b: Balance | undefined }) {
   const x = expansionRules(b);
   return (
     <>
-      {!x.live && <P><em>Die Gründung ist auf diesem Server noch nicht freigeschaltet; die Zahlen unten sind vorläufig.</em></P>}
+      {!x.live && <P><em>Die Gründung ist in dieser Saison noch nicht freigeschaltet; die Zahlen unten sind vorläufig.</em></P>}
       <P>Dein erster Hafen ist dein <strong>Heimathafen</strong>. Später kannst du bis zu {x.maxBases} Häfen halten: den 2. ab Kommandozentrale Stufe {x.unlockCommandLevels[0] ?? "–"}, den 3. ab Stufe {x.unlockCommandLevels[1] ?? "–"} (jeweils im Heimathafen).</P>
       <P><strong>Gründen:</strong> Baue in der Werft ein <strong>Kolonieschiff</strong>, tippe auf der Karte ein freies Küstenfeld an (kein Hafen, Nest, Handelshafen oder Rohstofffeld) und wähle „Außenposten gründen“. Das Ziel muss höchstens {fmtNum(x.maxRangeKm)} km vom aktiven Hafen entfernt sein und Abstand zu anderen Häfen halten. Bei Ankunft entsteht der Außenposten, das Kolonieschiff wird verbraucht. Wer zuerst ankommt, bekommt das Feld.</P>
       <P><strong>Hafenwahl:</strong> Oben in der Kopfleiste steht der aktive Hafen. Ein Tipp darauf zeigt alle Häfen mit Ressourcen, Bauschlange und Angriffswarnung; „Hierhin wechseln“ macht einen Hafen aktiv. Basis, Truppen, Börse und Missionen beziehen sich immer auf den aktiven Hafen – Missionen laufen dort aus. Wird irgendein Hafen angegriffen, blinkt die Warnung an „Basis“.</P>

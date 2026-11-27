@@ -26,6 +26,7 @@ import {
 import { hexCenter, hexDistanceKm, terrainAt } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError } from "./context.ts";
+import { nOf } from "./names.ts";
 import { activeMissionCount, basesOfPlayer, ownBase, saveBase, type BaseRow } from "./store.ts";
 import { modsOf } from "./modifiers.ts";
 import {
@@ -212,7 +213,7 @@ async function transit(tx: Tx, m: MissionRowLike, a: GeoPoint, b: GeoPoint, unit
   const back = leg === "rueckfahrt" ? " auf der Rückfahrt" : "";
   // Ein Bericht je Feldbesitzer-Gruppe: der Verband sieht alles, die Besitzer sehen „ihren“ Treffer.
   await storeNavalReport(tx, {
-    kind: "minen", title: lost > 0 ? `Minentreffer${back}: ${lost} Einheiten verloren` : `Minenfeld${back} durchfahren – ohne Verluste`,
+    kind: "minen", title: lost > 0 ? `Minentreffer${back}: ${nOf(lost, "Einheit", "Einheiten")} verloren` : `Minenfeld${back} durchfahren – ohne Verluste`,
     attackerPlayerId: pid, defenderPlayerId: owners[0], attackerBaseId: m.baseId,
     report: { mines: { action: "durchfahrt", leg, hits, before: units, after: left, missionType: m.type } }, atMs: due,
   });

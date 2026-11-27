@@ -29,7 +29,7 @@ export function LagebildTab({ onShowOnMap }: { onShowOnMap: (t: Target) => void 
   const dismantle = useCommand((i: { key: string; postId: number }) => trpcClient.intel.dismantlePost.mutate(i), () => [trpc.intel.pathFilter().queryKey, trpc.base.pathFilter().queryKey, trpc.world.map.pathFilter().queryKey]);
   if (!q.data) return <Loading cards={3} />;
   const d = q.data;
-  if (!d.enabled) return <Card title="Lagebild"><p className="text-sm">Auf diesem Server gibt es keinen Kartennebel: Du siehst die ganze Welt.</p></Card>;
+  if (!d.enabled) return <Card title="Lagebild"><p className="text-sm">In dieser Saison gibt es keinen Kartennebel: Du siehst die ganze Welt.</p></Card>;
   const now = d.serverNow;
   const here = (col: number | null, row: number | null) => col !== null && row !== null
     ? <SmallButton onClick={() => onShowOnMap({ col, row })}>Karte</SmallButton> : null;
@@ -41,7 +41,7 @@ export function LagebildTab({ onShowOnMap }: { onShowOnMap: (t: Target) => void 
 
   return (
     <div className="space-y-3" data-testid="lagebild-tab">
-      {!d.fog && <p className="text-xs text-ink2">Der Kartennebel ist auf diesem Server aus; Sensoren laufen trotzdem.</p>}
+      {!d.fog && <p className="text-xs text-ink2">Der Kartennebel ist in dieser Saison aus; Sensoren laufen trotzdem.</p>}
 
 
       <Card title="Eigene Sensoren">
