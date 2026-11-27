@@ -191,6 +191,7 @@
     "firstSpawnAfterHours": 24,
     "retryHours": 6,
     "minSeasonHoursLeft": 36,
+    "maxConcurrent": 2,
     "kindWeights": { "schatzschiff": 1, "grossflotte": 1, "belagerung": 1 },
     "seasonGrowth": 1,
     "minReferenceHp": 1500,

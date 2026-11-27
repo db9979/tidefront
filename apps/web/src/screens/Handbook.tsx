@@ -43,6 +43,15 @@ function labLevelsText(techs: Record<string, { requiresBuildingLevel?: number }>
 }
 
 /** Kachel im Schnellzugriff oben im Handbuch. */
+const EVENT_NAME: Record<string, string> = { schatzschiff: "das Schatzschiff", grossflotte: "die Großflotte", belagerung: "den Belagerungsring" };
+
+/** Wertung eigener Angriffe auf Weltereignisse aus balance.scoring.npcWorldEventKinds (Hotfix 0.38.1, TX-01). */
+function npcEventText(kinds: string[] | undefined, factor: string): string {
+  const list = (kinds ?? []).map((k) => EVENT_NAME[k] ?? k);
+  if (list.length === 0) return "Eigene Angriffe auf Schatzschiff, Großflotte und Belagerungsring zählen voll.";
+  return `Eigene Angriffe auf ${list.join(" und ")} zählen ebenfalls nur zu ${factor}.`;
+}
+
 function QuickButton({ onClick, title, icon, mark, accent = false }: { onClick: () => void; title: string; icon?: string; mark?: string; accent?: boolean }) {
   return (
     <button type="button" onClick={onClick} className={`tap panel rounded-xl p-2 flex flex-col items-center gap-1 text-center ${accent ? "border-siegel" : ""}`}>
@@ -168,7 +177,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
             <li><strong>Luftkampf:</strong> Abfangjäger beider Seiten. Wer danach mehr Jäger-Lebenspunkte hat, hat Luftüberlegenheit.</li>
             <li><strong>Luftschlag:</strong> Flak und Schiffe schießen auf Bomber, dann treffen die Bomber Schiffe und Anlagen – mit eigener Luftüberlegenheit ×{fmtNum(b?.combat.airSuperiorityBomberBonus ?? 1.25, 2)}, gegen fremde Luftüberlegenheit nur ×{fmtNum(b?.combat.airSuperiorityBomberMalus ?? 0.75, 2)}.</li>
             <li><strong>U-Boot-Angriff:</strong> Getauchte U-Boote beider Seiten feuern eine Torpedosalve auf Schiffe über Wasser – ohne Gegenwehr.</li>
-            <li><strong>Seegefecht:</strong> Schiffe gegeneinander, Küstenbatterien feuern mit. U-Boote schießen weiter, können aber nur von Schiffen mit <strong>U-Jagd</strong> (Korvette, Zerstörer) getroffen werden – nicht von Bombern, Batterien oder dem Kartell.</li>
+            <li><strong>Seegefecht:</strong> Schiffe gegeneinander, Küstenbatterien feuern mit. U-Boote schießen weiter, können aber nur von Schiffen mit <strong>U-Jagd</strong> (Korvette, Zerstörer) getroffen werden – nicht von Bombern, Batterien oder dem Kartell. Einen Konvoi oder ein Feld halten sie aber nicht: Bleiben dort nur U-Boote übrig, ist es verloren.</li>
             <li><strong>Landung:</strong> Nur mit überlebenden Landungsschiffen. Truppen, für die nach dem Seegefecht kein Platz mehr auf den Landungsschiffen ist, gehen verloren. Minen treffen einmal (Pioniere halbieren), dann Bodenkampf gegen Truppen und Bunkerlinie.</li>
           </ol>
           <P>Du gewinnst, wenn nach der Landung keine Verteidiger und keine Bunkerlinie mehr stehen und eigene Truppen leben. Schaden verteilt sich nach Lebenspunkten auf die Gegner; angefangener Schaden bleibt über Runden erhalten.</P>
@@ -181,7 +190,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
       id: "schutz", icon: "schild", title: "Kartell und Schutz",
       body: (
         <>
-          <P>Das <strong>Freibeuter-Kartell</strong> greift jeden Hafen etwa alle {b?.pirates.raidIntervalHours ?? 18} Stunden an. Seine Schnellboote laufen vom nächsten Nest über Wasser aus: meist eine Stunde vor dem Angriff, bei Häfen hinter Land (Umweg um eine Halbinsel) bis zu drei Stunden. Seine Stärke richtet sich nach den Lebenspunkten deiner Bodentruppen, Anlagen und Schiffe daheim und schwankt von Überfall zu Überfall um bis zu ±{pct(b?.pirates.raidStrengthSpread, 0.3)}. Kriegsschiffe zählen nur zur Hälfte, weil sie an Land nicht mitkämpfen; Landungsschiffe, Kolonieschiffe, Minenleger und Flugzeuge zählen nicht. Eine Flotte daheim lockt also keine stärkeren Überfälle an, sondern versenkt Schnellboote, bevor die Miliz landet. Die Miliz landet von den Schnellbooten und greift Bodentruppen und Bunkerlinie gleich hart an: Eine Bunkerlinie ist ein starker Schutz, hält aber nicht jeden Überfall auf. Bodentruppen, Bunkerlinie und Küstenbatterien sind die beste Abwehr. Das Wetter am Hafen gilt auch hier: Das Kartell hat keine Flugzeuge, aber deine Jäger und Bomber treffen bei Sturm schwächer und der Luftschlag leidet unter Wolken.</P>
+          <P>Das <strong>Freibeuter-Kartell</strong> greift jeden Hafen etwa alle {b?.pirates.raidIntervalHours ?? 18} Stunden an. Seine Schnellboote laufen vom nächsten Nest über Wasser aus: meist eine Stunde vor dem Angriff, bei Häfen hinter Land (Umweg um eine Halbinsel) bis zu drei Stunden. Seine Stärke richtet sich nach den Lebenspunkten deiner Bodentruppen, Anlagen und Schiffe daheim und schwankt von Überfall zu Überfall um bis zu ±{pct(b?.pirates.raidStrengthSpread, 0.3)}. Kriegsschiffe zählen zu {pct(b?.pirates.raidHpWeights?.see, 0.5)}, weil sie an Land nicht mitkämpfen; Landungsschiffe, Kolonieschiffe, Minenleger und Flugzeuge zählen nicht. Eine Flotte daheim macht die Überfälle also etwas stärker: Sie versenkt Schnellboote, bevor die Miliz landet, verliert dabei aber selbst Schiffe – bei jedem Überfall. Getauchte U-Boote kann das Kartell nicht treffen. Wer seine Flotte auf Feldern oder auf See hat, verliert daheim weniger Schiffe, braucht dann aber Bodentruppen und Anlagen. Die Miliz landet von den Schnellbooten und greift Bodentruppen und Bunkerlinie gleich hart an: Eine Bunkerlinie ist ein starker Schutz, hält aber nicht jeden Überfall auf. Bodentruppen, Bunkerlinie und Küstenbatterien sind die beste Abwehr. Das Wetter am Hafen gilt auch hier: Das Kartell hat keine Flugzeuge, aber deine Jäger und Bomber treffen bei Sturm schwächer und der Luftschlag leidet unter Wolken.</P>
           <P><strong>Anfängerschutz:</strong> {b?.protection.beginnerDays ?? 7} Tage nach der Gründung – er endet vorzeitig, sobald du selbst einen Spielerhafen überfällst (auch im Sammelangriff; Nester, Felder und Weltereignisse nicht). Die Missionsplanung warnt vorher. <strong>Nachtschild:</strong> täglich {b?.protection.nightShieldHours ?? 8} Stunden ab der Startstunde, die du in der Basis wählst; ohne gewählte Stunde ist er aus. Eine Änderung gilt erst nach {b?.protection.nightShieldChangeHours ?? 24} Stunden und ist so lange auch gesperrt – den Schild gegen einen schon gemeldeten Angriff einzuschalten geht nicht. Ein eigener Überfall hebt ihn für diese Nacht auf. <strong>Nach einer Niederlage:</strong> {b?.protection.afterDefeatShieldHours ?? 8} Stunden Schutz.</P>
           <P>Das <strong>Radar</strong> meldet anrückende Angriffe vor der Ankunft: {radar ? `${(radar.warningMinutesBase ?? 0) + (radar.warningMinutesPerLevel ?? 0)} Minuten auf Stufe 1, je Stufe ${radar.warningMinutesPerLevel ?? 0} mehr` : "je Stufe länger"}; ohne Radar siehst du einen Angriff erst bei Ankunft. Einmal erkannt bleibt ein Angriff sichtbar, auch wenn das Radar danach Strom verliert oder Nebel aufzieht. Der <strong>Tiefbunker</strong> schützt einen Grundstock jeder Ressource vor Plünderung.</P>
         </>
@@ -258,7 +267,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
           <ul className="text-sm list-disc pl-5 space-y-1 mb-2 text-slate-200">
             <li><strong>Ausbau:</strong> Kosten aller gebauten Gebäudestufen.</li>
             <li><strong>Militär:</strong> Kosten deiner Einheiten und Anlagen, auch der Verbände unterwegs.</li>
-            <li><strong>Kampf:</strong> Kostenwert der gegnerischen Einheiten und Anlagen, die du im Kampf vernichtest – auch Kartell und Nester. Die Abwehr von Kartell-Überfällen (auch Großflotte, Konvoi, Feld) und Kämpfe gegen Großflotte und Belagerungsring zählen nur zu {pct(b?.scoring?.npcDefenseFactor, 0.25)}.</li>
+            <li><strong>Kampf:</strong> Kostenwert der gegnerischen Einheiten und Anlagen, die du im Kampf vernichtest – auch Kartell und Nester. Die Abwehr von Kartell-Überfällen (auch Großflotte, Konvoi, Feld) zählt nur zu {pct(b?.scoring?.npcDefenseFactor, 0.25)}. {npcEventText(b?.scoring?.npcWorldEventKinds, pct(b?.scoring?.npcDefenseFactor, 0.25))}{(b?.scoring?.armadaFactor ?? 1) !== 1 ? ` Kämpfe gegen die Armada des Saisonfinales zählen zu ${pct(b?.scoring?.armadaFactor, 0.5)}.` : ""}</li>
             <li><strong>Beute:</strong> Wert aller Ressourcen, die du erbeutest.</li>
             <li><strong>Befehle:</strong> Punkte aus abgeholten Tagesbefehlen samt Serienbonus.</li>
           </ul>

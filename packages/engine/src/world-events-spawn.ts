@@ -31,7 +31,7 @@ import type { Handler, HandlerResult } from "./events.ts";
 import { randomSeed, scheduleEvent } from "./store.ts";
 import { worldEventNews } from "./market-news-sources.ts";
 import {
-  KIND_TEXT, notice, openWorldEvents, ordinaryEventsUntil, playersWithBase, resText, runningSeasonRow, systemMessage,
+  KIND_TEXT, notice, openOrdinaryCount, openWorldEvents, ordinaryEventsUntil, playersWithBase, resText, runningSeasonRow, systemMessage,
   type ArmadaTarget, type Hex, type WorldEventData,
 } from "./world-events.ts";
 
@@ -257,7 +257,11 @@ export async function spawnWorldEvent(
   return { id: row.id, kind: d.kind, jobs };
 }
 
-/** game_event world_event_spawn: Ereignis anlegen, nächstes planen (Abstand spawnIntervalHours). */
+/**
+ * game_event world_event_spawn: Ereignis anlegen, nächstes planen (Abstand spawnIntervalHours, ohne Ziel retryHours).
+ * Liegt der Nachfolger hinter der Finale-Ankündigung oder Saisonende − minSeasonHoursLeft, wird keiner geplant; der
+ * Planer (ensureWorldEventPlanner) hält dann über earliestNextSpawn denselben Abstand ein und plant ebenfalls nichts.
+ */
 export const worldEventSpawn: Handler = async (tx, ev, due) => {
   const w = worldEventsBalance(balance);
   const season = await runningSeasonRow(tx);
@@ -268,7 +272,9 @@ export const worldEventSpawn: Handler = async (tx, ev, due) => {
   const wanted = (WORLD_EVENT_KINDS as readonly string[]).includes(String(ev.payload.kind)) ? (ev.payload.kind as WorldEventKind) : "schatzschiff";
   const progress = seasonProgress(season.startsAt.getTime(), season.endsAt.getTime(), due);
   if (due >= until) return none();
-  const made = await spawnWorldEvent(tx, due, wanted, season.id, progress);
+  // Deckel: höchstens maxConcurrent gewöhnliche Ereignisse gleichzeitig, sonst wie „kein Ziel“ (neuer Versuch).
+  const full = (await openOrdinaryCount(tx)) >= (w.maxConcurrent ?? Infinity);
+  const made = full ? null : await spawnWorldEvent(tx, due, wanted, season.id, progress);
   const next = nextSpawn(due, randomSeed(), balance);
   const at = made ? next.atMs : due + w.retryHours * HOUR_MS;
   if (at <= season.endsAt.getTime() - w.minSeasonHoursLeft * HOUR_MS && at < until) {

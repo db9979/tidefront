@@ -66,7 +66,7 @@ async function bill(tx: Tx, c: CableRow, from: BaseRow, to: BaseRow, nowMs: numb
   let traders = new Map<number, { credits: number }>();
   if (paying) {
     const rows = await tx.select({ id: tables.player.id, trader: tables.player.trader }).from(tables.player)
-      .where(inArray(tables.player.id, [c.fromPlayerId, c.toPlayerId])).orderBy(tables.player.id).for("update");
+      .where(inArray(tables.player.id, [c.fromPlayerId, c.toPlayerId])).orderBy(tables.player.id).for("no key update");
     traders = new Map(rows.map((r) => [r.id, r.trader as { credits: number }]));
     credits = traders.get(c.toPlayerId)?.credits ?? 0;
   }

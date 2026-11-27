@@ -7,7 +7,7 @@ import { isCoast, nestSites, COLS, ROWS, isTradePortHex } from "@tidefront/world
 import { market as marketCore, type BaseState } from "@tidefront/game-core";
 import {
   auditLedger, balance, chooseBase, marketNewsView, marketQuote, marketRefs, marketView, register, runMarketNewsTx, runningSeason,
-  seed, spawnWorldEvent, trade, upsertNews, REF_OFFSETS_KEY, SCARCITY_KEY, type Engine,
+  pruneMarketNews, seed, spawnWorldEvent, trade, upsertNews, REF_OFFSETS_KEY, SCARCITY_KEY, type Engine,
 } from "../src/index.ts";
 import { endWorldEvent, lockWorldEvent } from "../src/world-events.ts";
 import { collectNewsPush } from "../src/market-news.ts";
@@ -122,6 +122,32 @@ test("Weltereignis verschiebt den Richtwert sanft und klingt nach dem Ende ab", 
   await runMarketNewsTx(db, E + news.worldEvents.belagerung.fadeHours * HOUR + 1);
   const gone = await marketRefs(db, E + news.worldEvents.belagerung.fadeHours * HOUR + 2);
   assert.equal(gone.refs.proviant, base.proviant, "nach dem Abklingen exakt der Grundrichtwert");
+});
+
+test("Hotfix AN-02: beendetes Ereignis legt im Abgleich keine toten Zeilen an, die Wartung löscht ausgeklungene", async () => {
+  const p = await newPlayer("Totzeilen");
+  const season = await runningSeason(db);
+  const T = Date.now();
+  const ev = await db.transaction((tx) => spawnWorldEvent(tx, T, "belagerung", season!.id, 0, p.baseId));
+  assert.ok(ev);
+  const E = T + HOUR;
+  await db.transaction(async (tx) => {
+    const row = await lockWorldEvent(tx, ev.id);
+    await endWorldEvent(tx, row!, "expired", E);
+  });
+  const fade = news.worldEvents.belagerung.fadeHours * HOUR;
+  const [r0] = await rowsOf(`we:${ev.id}`);
+  assert.equal(r0.effectiveUntil?.getTime(), E + fade, "effective_until = Ende + Abklingen");
+  // Abgleich alle 10 Minuten über den ganzen Rückblick (48 h nach dem Ende): weiterhin genau eine Zeile.
+  for (let t = E; t <= E + 49 * HOUR; t += 10 * 60000) await runMarketNewsTx(db, t);
+  assert.equal((await rowsOf(`we:${ev.id}`)).length, 1, "keine toten Zeilen");
+  // Wartung: erst 48 h nach dem Ausklingen gelöscht; Zeilen ohne effective_until werden nachgetragen.
+  await db.update(tables.marketNews).set({ effectiveUntil: null });
+  assert.equal(await pruneMarketNews(db, E + fade + 47 * HOUR), 0);
+  const [back] = await rowsOf(`we:${ev.id}`);
+  assert.equal(back.effectiveUntil?.getTime(), E + fade, "nachgetragen");
+  assert.ok((await pruneMarketNews(db, E + fade + 49 * HOUR)) >= 1);
+  assert.equal((await rowsOf(`we:${ev.id}`)).length, 0);
 });
 
 test("Schatzschiff erbeutet: Stahl und Elektronik −10 % ab dem Ausgang", async () => {

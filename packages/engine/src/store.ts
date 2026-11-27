@@ -115,6 +115,16 @@ export async function activeMissionCount(tx: DbOrTx, baseId: number): Promise<nu
   return r?.n ?? 0;
 }
 
+/** Zufallsquelle für Seeds; null = crypto. Tests setzen eine feste Folge (setRandomSeedSource), Hotfix 0.38.1 TE-02. */
+let seedSource: (() => number) | null = null;
+
+/** Nur für Tests: feste Zufallsfolge (z. B. aus mulberry32) für alle Seeds der Engine; null stellt crypto wieder her. */
+export function setRandomSeedSource(next: (() => number) | null): void {
+  seedSource = next;
+}
+
+/** Seed für Kampf-, Kartell- und Ereigniswürfe (uint32). */
 export function randomSeed(): number {
+  if (seedSource) return Math.floor(seedSource() * 4294967296) >>> 0;
   return crypto.getRandomValues(new Uint32Array(1))[0];
 }

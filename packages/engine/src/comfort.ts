@@ -88,7 +88,7 @@ export async function saveTemplate(
     if (type !== null && !(MISSION_TYPES as readonly string[]).includes(type)) return { ok: false, code: "bad_type" };
     return await db.transaction(async (tx) => {
       // Spielerzeile sperren: Obergrenze auch bei gleichzeitigem Speichern.
-      await tx.select({ id: tables.player.id }).from(tables.player).where(eq(tables.player.id, playerId)).for("update");
+      await tx.select({ id: tables.player.id }).from(tables.player).where(eq(tables.player.id, playerId)).for("no key update");
       const [existing] = await tx
         .select({ id: tables.formationTemplate.id })
         .from(tables.formationTemplate)
