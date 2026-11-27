@@ -11,6 +11,23 @@ import { ReasonLine } from "./Remedy.tsx"; // „Was hilft?“
 import { Icon } from "../icons.tsx";
 import { AdmiralRecall } from "./Fields.tsx"; // Felder: Admiral ohne Rückruf abziehen
 
+/** Bild je Spezialisierung (vorhandene Symbole). */
+const SPEC_ICON: Record<string, string> = {
+  angriff: "ueberfall", verteidigung: "schild", landung: "landungsschiff", logistik: "transport",
+  aufklaerung: "aufklaerung", beutemeister: "kran", uboot: "uboot",
+};
+
+/** Auswahlknopf einer Spezialisierung: Symbol + Name. */
+function SpecButton({ id, name, active, onClick }: { id: string; name: string; active: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} aria-pressed={active}
+      className={`tap rounded-lg px-2 py-1.5 text-left text-sm border flex items-center gap-2 min-w-0 ${active ? "border-sea-400 bg-sea-400/10 font-semibold" : "border-rule"}`}>
+      <Icon id={SPEC_ICON[id] ?? "admiral"} size={28} className="shrink-0" />
+      <span className="min-w-0 hyphens-manual">{name}</span>
+    </button>
+  );
+}
+
 type Line = { spec: string; path: string; factor: number };
 type View = NonNullable<Awaited<ReturnType<typeof trpcClient.admiral.get.query>>>;
 type Admiral = View["list"][number];
@@ -103,11 +120,7 @@ export function AdmiralsPanel() {
         <div className="mt-3 border-t border-rule pt-3">
           <div className="font-display text-[11px] uppercase tracking-[0.12em] text-ink2 mb-1">Admiral ernennen</div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-            {v.specs.map((x) => (
-              <button key={x.id} type="button" onClick={() => setSpec(x.id)} className={`tap rounded-lg px-2 py-1.5 text-left text-sm border ${spec === x.id ? "border-sea-400 bg-sea-400/10 font-semibold" : "border-rule"}`}>
-                {x.name}
-              </button>
-            ))}
+            {v.specs.map((x) => <SpecButton key={x.id} id={x.id} name={x.name} active={spec === x.id} onClick={() => setSpec(x.id)} />)}
           </div>
           <SpecInfo spec={v.specs.find((x) => x.id === spec)} />
           <label className="block text-sm mt-2">
@@ -168,7 +181,7 @@ function AdmiralItem({ a, v, now }: { a: Admiral; v: View; now: number }) {
             <StatusChip a={a} now={now} />
           </div>
           <div className="text-xs text-ink2">
-            {a.specs.map(specName).join(" und ")} · Erfahrung {fmtNum(a.xp)}{a.next ? ` · ${a.next.name} ab ${fmtNum(a.next.minXp)}` : " · höchster Rang"}
+            {a.specs.map((id) => <span key={id} className="inline-flex items-center gap-0.5 align-middle mr-1"><Icon id={SPEC_ICON[id] ?? "admiral"} size={16} />{specName(id)}</span>)}· Erfahrung {fmtNum(a.xp)}{a.next ? ` · ${a.next.name} ab ${fmtNum(a.next.minXp)}` : " · höchster Rang"}
             {a.battles > 0 ? ` · ${nOf(a.wins, "Sieg", "Siege")} in ${a.battles} ${a.battles === 1 ? "Kampf" : "Kämpfen"}` : ""}
           </div>
           {a.mission.length > 0 && <div className="text-[11.5px] text-ink2">Auf Mission: {modLineText(a.mission)}</div>}
@@ -225,11 +238,7 @@ function Retrain({ a, v }: { a: Admiral; v: View }) {
     <div className="mt-2 border border-rule rounded-lg p-2">
       <div className="font-display text-[11px] uppercase tracking-[0.12em] text-ink2 mb-1">Umschulung – {specName(a.specs[0])} ersetzen</div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-        {choices.map((x) => (
-          <button key={x.id} type="button" onClick={() => { setSpec(x.id); setSure(false); }} className={`tap rounded-lg px-2 py-1.5 text-left text-sm border ${spec === x.id ? "border-sea-400 bg-sea-400/10 font-semibold" : "border-rule"}`}>
-            {x.name}
-          </button>
-        ))}
+        {choices.map((x) => <SpecButton key={x.id} id={x.id} name={x.name} active={spec === x.id} onClick={() => { setSpec(x.id); setSure(false); }} />)}
       </div>
       <SpecInfo spec={v.specs.find((x) => x.id === spec)} />
       {spec && sure && (

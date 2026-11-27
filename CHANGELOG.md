@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.28.3 – 27.11.2026
+- **Admirale mit Bildern:** Jede Spezialisierung zeigt beim Ernennen und Umschulen ihr Symbol (Angriff, Verteidigung, Landungstrupp, Logistik, Aufklärung, Beutemeister, U-Boot-Taktik); auch in der Admiralsliste steht das Symbol neben der Spezialisierung.
+
 ## 0.28.2 – 27.11.2026
 - **Flugzeuge statt Schiffe:** Reine Flugzeug- und Drohnenverbände erscheinen auf der Karte mit einem Flugzeug-Symbol statt eines Schiffs. Missionsleiste und Einsatz-Karten sagen „Hinflug“ und „Rückflug“.
 - „Zurückrufen“ bricht auf schmalen Bildschirmen sauber um.
