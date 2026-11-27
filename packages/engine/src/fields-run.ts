@@ -5,7 +5,7 @@
 import { and, eq, isNull, lte, sql } from "drizzle-orm";
 import {
   activeUnits, blockadeOf, cargoValue, cartelFieldRaid, clampEscort, combineModifiers, deliverCargo, fieldUpkeep, fieldYield,
-  resolveBattle, settle, strandTroops, type Counts,
+  resolveBattle, settle, settleBattle, victoryRuleOf, type Counts,
 } from "@tidefront/game-core";
 import { seaRoute } from "@tidefront/world";
 import { tables, type Db, type Tx } from "@tidefront/db";
@@ -148,7 +148,7 @@ async function fieldRaid(tx: Tx, payload: Record<string, unknown>, due: number):
   const seed = randomSeed();
   const res = resolveBattle({ units }, { units: garrison, defenses: {}, modifiers: combineModifiers(await garrisonMods(tx, f, due), admD?.mods) }, balance, seed, battleWeather(f.col, f.row, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
-  const { report, destroyed } = strandTroops(res.report, balance);
+  const { report, destroyed } = settleBattle(res.report, balance, victoryRuleOf("feld"));
   const admirals = await admiralsAfterBattle(tx, report, seed, null, admD, due);
   const name = fieldName(f);
   const notify: Notes = [[null, "map"], [[owner], "reports"], [[owner], "missions"]];

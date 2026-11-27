@@ -190,6 +190,15 @@ test("Angriff auf Spielerhafen: Warnung mit Schritten, Kampfbericht für beide S
   const setupB = (forB!.data as { battle: { setup: { attacker: { modifiers?: object; modifiersHidden?: boolean } } } }).battle.setup;
   assert.equal(setupB.attacker.modifiers, undefined);
   assert.equal(forB!.opponentIsPlayer, true);
+  // Boni beidseitig geheim (F5): auch die Eingaben des Angreifers (data.attacker) ohne seine Modifikatoren; der
+  // Angreifer sieht seine eigenen, aber nicht die des Verteidigers.
+  const inputB = (forB!.data as { attacker?: { units?: object; modifiers?: object } }).attacker;
+  assert.ok(inputB?.units, "Einheiten des Angreifers bleiben");
+  assert.equal(inputB && "modifiers" in inputB, false);
+  const forA = await reportViewFor(engine, A.playerId, br.id);
+  const dataA = forA!.data as { attacker?: { modifiers?: object }; battle: { setup: { defender: { modifiers?: object } } } };
+  assert.ok(dataA.attacker && "modifiers" in dataA.attacker, "eigene Modifikatoren bleiben");
+  assert.equal(dataA.battle.setup.defender.modifiers, undefined);
 });
 
 test("Spionage: Dossier für den Absender", async () => {

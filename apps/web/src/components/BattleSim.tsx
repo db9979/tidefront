@@ -1,95 +1,44 @@
-// Kampfsimulator (eigener, nachgeladener Chunk): Probekampf in der Missionsplanung und freier Simulator.
-// Rechnet mit resolveBattle aus dem Regelkern; Einheiten kommen generisch aus der Balance.
+// Kampfsimulator (eigener, nachgeladener Chunk): Probekampf in der Missionsplanung; der freie Simulator liegt in
+// FreeSim.tsx (hier weitergereicht). Rechnet mit simulateBattle aus dem Regelkern (Siegregel und Beute je Kampfart
+// wie der Server, Sicht der eigenen Seite); Einheiten kommen generisch aus der Balance.
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { AttackerInput, CombatWeather, DefenderInput } from "@tidefront/game-core";
 import { trpc, type Balance, type BaseData } from "../lib/trpc.ts";
-import { errorText, fmtNum, label } from "../lib/names.ts";
 import { fmtTime } from "../lib/time.ts";
-import { unitTone } from "../lib/info.ts";
 import { nestDefenderOf, nestRangeRates } from "../lib/sim-nest.ts"; // Lebendige Nester
 import { nestProbeDefenders, type MapNestLagebild } from "../lib/nest-intel.ts";
-import { positive, raidAgainst, simulate, splitDefender, type Counts, type Range, type SimStats } from "../lib/sim.ts";
-import { Icon, IconTile } from "../icons.tsx";
-import { Bar, Button, ResChips, Stepper } from "../ui.tsx";
-import { SimHistogram } from "./SimHistogram.tsx";
+import { positive, type Counts } from "../lib/sim.ts";
+import type { Target } from "../App.tsx";
+import { Button, SmallButton } from "../ui.tsx";
+import { Outcome, SimNote, pct, weatherText } from "./SimResult.tsx";
+import { WinSearch } from "./WinSearch.tsx";
 
-const pct = (v: number) => `${fmtNum(v * 100)} %`;
-const rangeText = (r: Range) => `Ø ${fmtNum(r.avg, r.avg < 10 && r.avg % 1 !== 0 ? 1 : 0)} (${fmtNum(r.min)}–${fmtNum(r.max)})`;
-
-function LossRows({ title, rows }: { title: string; rows: Record<string, Range> }) {
-  const ids = Object.keys(rows);
-  return (
-    <div>
-      <div className="text-[11px] font-display uppercase tracking-[0.12em] text-ink2 mb-1">{title}</div>
-      {ids.length === 0 ? <p className="text-sm text-ink2">keine</p> : (
-        <dl className="grid grid-cols-[1fr_auto] gap-x-3 text-sm">
-          {ids.map((id) => (
-            <div key={id} className="contents">
-              <dt className="py-0.5 border-b border-dotted border-rule flex items-center gap-1.5"><Icon id={id} size={18} /> {label(id)}</dt>
-              <dd className="py-0.5 border-b border-dotted border-rule text-right mono">{rangeText(rows[id])}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-    </div>
-  );
-}
-
-/** Ergebnis über alle Durchläufe: Siegchance, Verluste, Beute, Spannweite. */
-export function SimResult({ stats, ownTitle = "Eigene Verluste", enemyTitle = "Verluste des Gegners", showLoot = true }: { stats: SimStats; ownTitle?: string; enemyTitle?: string; showLoot?: boolean }) {
-  const tone = stats.winRate >= 0.8 ? "green" : stats.winRate >= 0.5 ? "brass" : "red";
-  const color = { green: "text-moos", brass: "text-messing", red: "text-siegel" }[tone];
-  const lootAvg = Object.fromEntries(Object.entries(stats.loot).map(([r, v]) => [r, Math.round(v.avg)]));
-  return (
-    <div className="space-y-3">
-      <div>
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-sm text-ink2">Siegchance</span>
-          <span className={`font-serif text-3xl ${color}`}>{pct(stats.winRate)}</span>
-        </div>
-        <Bar value={stats.winRate} tone={tone} />
-        <div className="text-xs text-ink2 mt-1">
-          Spannweite {pct(stats.winInterval[0])}–{pct(stats.winInterval[1])} (90 %, Kriegsglück eingerechnet) · Landung in {pct(stats.landedRate)} der {stats.runs} Durchläufe · verlorene Einheiten {rangeText(stats.attackerLostTotal)}
-        </div>
-      </div>
-      <SimHistogram stats={stats} />
-      <LossRows title={ownTitle} rows={stats.attackerLost} />
-      <LossRows title={enemyTitle} rows={stats.defenderLost} />
-      {showLoot && (
-        <div>
-          <div className="text-[11px] font-display uppercase tracking-[0.12em] text-ink2 mb-1">Beute (Ø je Kampf)</div>
-          <div className="text-sm"><ResChips values={lootAvg} empty="keine" /></div>
-          {stats.lootTotal.max > 0 && <div className="text-xs text-ink2 mt-1 mono">insgesamt {rangeText(stats.lootTotal)}</div>}
-        </div>
-      )}
-    </div>
-  );
-}
-
-const NOTE = "Je 50 Durchläufe mit festen Seeds. Nicht berücksichtigt: Abschlag für wiederholte Angriffe, Schwachziel-Regel, Wracks.";
-
-function Outcome({ attacker, defender, balance, ownTitle, enemyTitle, weather }: { attacker: AttackerInput; defender: DefenderInput; balance: Balance; ownTitle?: string; enemyTitle?: string; weather?: CombatWeather }) {
-  const r = useMemo(() => simulate(attacker, defender, balance, undefined, weather), [attacker, defender, balance, weather]);
-  if (Object.keys(attacker.units).length === 0) return <p className="text-sm text-ink2">Angreifer wählen.</p>;
-  if (!r.ok) return <p className="text-sm text-siegel">{errorText(r.code)}</p>;
-  return <SimResult stats={r.stats} ownTitle={ownTitle} enemyTitle={enemyTitle} />;
-}
+export { FreeSim, type FreeSimPreset } from "./FreeSim.tsx";
+export { SimResult, Outcome } from "./SimResult.tsx";
 
 export type ProbeTarget =
   | { kind: "nest"; level: number; empty: boolean; lagebild?: MapNestLagebild | null } // Lebendige Nester
   | { kind: "base"; col: number; row: number; name: string };
 
-/** Probekampf in der Missionsplanung: gewählter Verband gegen Nest-Besatzung oder letztes Lagebild. */
-export function ProbeKampf({ balance, units, versorgungsmangel, modifiers, target, onScout }: { balance: Balance; units: Counts; versorgungsmangel: boolean; modifiers?: BaseData["modifiers"]; target: ProbeTarget; onScout: () => void }) {
+/**
+ * Probekampf in der Missionsplanung: gewählter Verband gegen Nest-Besatzung oder letztes Lagebild, mit dem
+ * vorhergesagten Wetter am Ziel zur Ankunft (`weather`). „Was fehlt zum Sieg?“ sucht den günstigsten Verband.
+ */
+export function ProbeKampf({ balance, base, units, versorgungsmangel, modifiers, target, onScout, weather, planAt }: {
+  balance: Balance; base: BaseData; units: Counts; versorgungsmangel: boolean; modifiers?: BaseData["modifiers"]; target: ProbeTarget; onScout: () => void; weather?: CombatWeather; planAt?: Target | null;
+}) {
   const scout = useQuery({ ...trpc.comfort.scout.queryOptions(target.kind === "base" ? { col: target.col, row: target.row } : { col: 0, row: 0 }), enabled: target.kind === "base" });
-  // Eigene Modifikatoren (Forschung, Veteranen) rechnen mit; das Ziel ohne (sein Stand ist unbekannt).
+  const [win, setWin] = useState(false);
+  // Eigene Modifikatoren (Forschung, Veteranen, Admiral) rechnen mit; das Ziel ohne (sein Stand ist unbekannt).
   const attacker = useMemo<AttackerInput>(() => ({ units: positive(units), versorgungsmangel, ...(modifiers ? { modifiers } : {}) }), [units, versorgungsmangel, modifiers]);
-  const defender = useMemo<DefenderInput | null>(() => {
-    if (target.kind === "nest") return target.lagebild ? nestProbeDefenders(target.level, target.lagebild, Date.now(), balance)[0] : nestDefenderOf(target.level, "mid", balance);
+  const defenders = useMemo<DefenderInput[] | null>(() => {
+    if (target.kind === "nest") return nestProbeDefenders(target.level, target.lagebild, Date.now(), balance);
     const s = scout.data;
-    return s ? { units: s.units, defenses: s.defenses, resources: s.resources, protectedPerResource: s.protectedPerResource } : null;
+    return s ? [{ units: s.units, defenses: s.defenses, resources: s.resources, protectedPerResource: s.protectedPerResource }] : null;
   }, [target, scout.data, balance]);
+  // Ohne Lagebild gegen die Mitte (wie im Handbuch), mit Lagebild genau; „Was fehlt“ rechnet über die ganze Spanne.
+  const defender = useMemo<DefenderInput | null>(() => (target.kind === "nest" && !target.lagebild ? nestDefenderOf(target.level, "mid", balance) : defenders?.[0] ?? null), [target, defenders, balance]);
 
   if (target.kind === "nest" && target.empty) return <p className="text-sm text-ink2">Das Nest ist verlassen – kein Kampf.</p>;
   if (target.kind === "base") {
@@ -104,147 +53,36 @@ export function ProbeKampf({ balance, units, versorgungsmangel, modifiers, targe
       );
     }
   }
-  if (!defender) return <p className="text-sm text-siegel">Unbekanntes Ziel.</p>;
+  if (!defender || !defenders) return <p className="text-sm text-siegel">Unbekanntes Ziel.</p>;
+  const { units: _u, ...conditions } = attacker;
   return (
     <div>
       {target.kind === "base" && scout.data && (
         <p className="text-xs text-ink2 mb-2">Lagebild vom {fmtTime(scout.data.atMs)}. Der Hafen kann sich seither verändert haben.</p>
       )}
       {target.kind === "nest" && target.lagebild && <p className="text-xs text-ink2 mb-2">Genau gegen das Lagebild vom {fmtTime(target.lagebild.atMs)} (Erholung und Beute hochgerechnet).</p>}
-      {target.kind === "nest" && !target.lagebild && <NestRangeLine level={target.level} attacker={attacker} balance={balance} onScout={onScout} />}
-      <Outcome attacker={attacker} defender={defender} balance={balance} />
-      <p className="text-xs text-ink2 mt-2">{NOTE}{versorgungsmangel ? " Dein Versorgungsmangel ist eingerechnet." : ""}</p>
+      {target.kind === "nest" && !target.lagebild && <NestRangeLine level={target.level} attacker={attacker} balance={balance} weather={weather} onScout={onScout} />}
+      {weather && <p className="text-xs text-ink2 mb-2" data-testid="probe-wetter">Wetter am Ziel zur Ankunft (Vorhersage, Mitte der Spanne): {weatherText(weather)}.</p>}
+      <Outcome attacker={attacker} defender={defender} balance={balance} weather={weather} />
+      <SimNote attacker={attacker} defender={defender} weather={weather} extra={versorgungsmangel ? "Dein Versorgungsmangel ist eingerechnet." : undefined} />
+      <div className="mt-3">
+        {win
+          ? <WinSearch target={{ attacker: conditions, defenders, ...(weather ? { weather } : {}) }} base={base} balance={balance} planAt={planAt} autoStart />
+          : <SmallButton onClick={() => setWin(true)}>Was fehlt zum Sieg?</SmallButton>}
+      </div>
     </div>
   );
 }
 
 /** Probekampf ohne Lagebild: Siegchance über die Spanne (ungünstigster Wurf … günstigster, im Mittel). */
-function NestRangeLine({ level, attacker, balance, onScout }: { level: number; attacker: AttackerInput; balance: Balance; onScout: () => void }) {
-  const r = useMemo(() => nestRangeRates(attacker, level, balance), [attacker, level, balance]);
+function NestRangeLine({ level, attacker, balance, weather, onScout }: { level: number; attacker: AttackerInput; balance: Balance; weather?: CombatWeather; onScout: () => void }) {
+  const r = useMemo(() => nestRangeRates(attacker, level, balance, weather), [attacker, level, balance, weather]);
   if (!r || r.min === r.max) return <p className="text-xs text-ink2 mb-2">Besatzung von Nest Stufe {level} (fest).</p>;
   return (
     <div className="text-sm mb-2" data-testid="probe-spanne">
       <p>Siegchance <strong>{pct(r.min)}–{pct(r.max)}</strong>, im Mittel <strong>{pct(r.mean)}</strong> <span className="text-xs text-ink2">(unterer Wert: ungünstigster Wurf)</span></p>
       <p className="text-xs text-ink2">Ohne Lagebild ist nur die Spanne der Besatzung bekannt; unten die Rechnung gegen die Mitte. Mit Lagebild genauer –</p>
       <Button kind="secondary" className="mt-1" onClick={onScout}>Aufklärung schicken</Button>
-    </div>
-  );
-}
-
-/** Zählungen bearbeiten: vorhandene Typen mit Zähler, weitere über eine Auswahl hinzufügen. */
-function CountEditor({ ids, counts, onChange, balance }: { ids: string[]; counts: Counts; onChange: (c: Counts) => void; balance: Balance }) {
-  const shown = ids.filter((id) => (counts[id] ?? 0) > 0);
-  const rest = ids.filter((id) => !((counts[id] ?? 0) > 0));
-  return (
-    <div>
-      <ul className="divide-y divide-rule">
-        {shown.map((id) => (
-          <li key={id} className="py-1.5 flex items-center justify-between gap-2">
-            <span className="flex items-center gap-2 text-sm min-w-0 flex-1"><IconTile id={id} size={32} tone={unitTone(balance, id)} /><span className="min-w-0 break-words leading-tight">{label(id)}</span></span>
-            <Stepper value={counts[id] ?? 0} onChange={(v) => onChange({ ...counts, [id]: v })} />
-          </li>
-        ))}
-      </ul>
-      {rest.length > 0 && (
-        <select className="mt-2 h-11 w-full rounded-lg field px-2 text-sm" value="" onChange={(e) => e.target.value && onChange({ ...counts, [e.target.value]: 1 })}>
-          <option value="">+ Einheit hinzufügen …</option>
-          {rest.map((id) => <option key={id} value={id}>{label(id)}</option>)}
-        </select>
-      )}
-    </div>
-  );
-}
-
-type AttMode = "eigen" | "frei" | "kartell" | "bericht";
-
-/** Vorbelegung aus einem Bericht („Im Kampfsimulator öffnen“): Verbände, Kampfbedingungen, Wetter am Kampfort. */
-export interface FreeSimPreset { attacker: AttackerInput; defender: DefenderInput; weather?: CombatWeather }
-
-/** Freier Simulator: beide Seiten frei wählbar, Vorlagen für Nester, eigenen Hafen und Kartell-Überfall. */
-export function FreeSim({ balance, base, preset }: { balance: Balance; base: BaseData; preset?: FreeSimPreset }) {
-  const home = useMemo(() => positive(Object.fromEntries(base.units.filter((u) => !balance.units[u.id]?.covert).map((u) => [u.id, u.home]))), [base.units, balance]);
-  const ownDef = useMemo(() => positive(Object.fromEntries(base.defenses.map((d) => [d.id, d.count]))), [base.defenses]);
-  const nestLevels = Object.keys(balance.pirates.nestLevels).sort((a, b) => Number(a) - Number(b));
-  const fromReport = useMemo(() => (preset ? { att: positive(preset.attacker.units), def: positive({ ...preset.defender.units, ...preset.defender.defenses }) } : null), [preset]);
-  const [attMode, setAttMode] = useState<AttMode>(preset ? "bericht" : "eigen");
-  const [att, setAtt] = useState<Counts>(fromReport?.att ?? home);
-  const [defPreset, setDefPreset] = useState<string>(preset ? "bericht" : nestLevels[0] ? `nest:${nestLevels[0]}` : "frei");
-  const [def, setDef] = useState<Counts>(() => {
-    if (fromReport) return fromReport.def;
-    const d = nestLevels[0] ? nestDefenderOf(Number(nestLevels[0]), "mid", balance) : null;
-    return d ? { ...d.units, ...d.defenses } : {};
-  });
-  // Lebendige Nester: Vorlagen „Mitte“, „ungünstig“ und „aus Lagebild“ (genaue Lagebilder der Karte).
-  const map = useQuery(trpc.world.map.queryOptions());
-  const known = (map.data?.nests ?? []).filter((n) => n.level !== null && !n.empty && n.lagebild);
-  const presetDefender = (v: string): DefenderInput | null => {
-    const [kind, a, b] = v.split(":");
-    if (kind === "nest") return nestDefenderOf(Number(a), b === "worst" ? "worst" : "mid", balance);
-    if (kind === "lagebild") { const n = known.find((x) => x.id === Number(a)); return n ? nestProbeDefenders(n.level!, n.lagebild, Date.now(), balance)[0] : null; }
-    return null;
-  };
-  const pickDefender = (v: string) => {
-    setDefPreset(v);
-    if (v === "bericht" && fromReport) { setDef(fromReport.def); return; }
-    const d = presetDefender(v);
-    if (d) setDef({ ...d.units, ...d.defenses });
-    else if (v === "hafen") setDef({ ...home, ...ownDef });
-  };
-  const pickAttacker = (m: AttMode) => {
-    setAttMode(m);
-    if (m === "eigen") setAtt(home);
-    if (m === "bericht" && fromReport) setAtt(fromReport.att);
-    if (m === "kartell") pickDefender("hafen");
-  };
-
-  const playerIds = Object.keys(balance.units).filter((id) => !balance.units[id].covert); // Spione kämpfen nicht
-  const attIds = preset ? [...playerIds, ...Object.keys(balance.npcUnits)] : playerIds; // Bericht: auch Kartell-Angreifer
-  const defIds = [...playerIds, ...Object.keys(balance.npcUnits), ...Object.keys(balance.defenses)];
-  const split = useMemo(() => splitDefender(def, balance), [def, balance]);
-  const attacker = useMemo<AttackerInput>(
-    // Eigene Verbände rechnen mit den eigenen Modifikatoren (Forschung, Veteranen).
-    () => (attMode === "bericht" && preset ? { ...preset.attacker, units: positive(att) } : attMode === "kartell" ? raidAgainst(split.units, split.defenses, balance) : { units: positive(att), versorgungsmangel: attMode === "eigen" && base.versorgungsmangel, ...(attMode === "eigen" ? { modifiers: base.modifiers } : {}) }),
-    [attMode, att, split, balance, base.versorgungsmangel, base.modifiers, preset],
-  );
-  const defender = useMemo<DefenderInput>(() => {
-    const nest = defPreset.startsWith("nest:") || defPreset.startsWith("lagebild:") ? presetDefender(defPreset) : null;
-    if (nest) return { ...split, fixedLoot: nest.fixedLoot };
-    if (defPreset === "bericht" && preset) return { ...preset.defender, ...split };
-    if (defPreset === "hafen") return { ...split, resources: base.resources, protectedPerResource: base.bunkerProtection, versorgungsmangel: base.versorgungsmangel, modifiers: base.modifiers };
-    return split;
-  }, [defPreset, split, balance, base, preset]);
-
-  const tab = (m: AttMode, text: string) => (
-    <button key={m} type="button" onClick={() => pickAttacker(m)} className={`tap flex-1 rounded-lg border text-sm ${attMode === m ? "border-ink bg-card font-semibold reticle" : "border-rule"}`}>{text}</button>
-  );
-
-  return (
-    <div className="space-y-4">
-      <section>
-        <h3 className="font-serif text-lg mb-1 flex items-center gap-2"><Icon id="ueberfall" size={24} /> Angreifer</h3>
-        <div className="flex gap-2 mb-2">{preset && tab("bericht", "Bericht")}{tab("eigen", "Eigene")}{tab("frei", "Frei")}{tab("kartell", "Kartell")}</div>
-        {attMode === "kartell" ? (
-          <p className="text-sm">So stellt das Kartell einen Überfall gegen die Verteidigung rechts zusammen: <strong>{Object.entries(attacker.units).map(([id, n]) => `${fmtNum(n)} ${label(id)}`).join(", ")}</strong> (ohne Schwankung).</p>
-        ) : (
-          <CountEditor ids={attIds} counts={att} onChange={(c) => { setAtt(c); if (attMode !== "bericht") setAttMode("frei"); }} balance={balance} />
-        )}
-      </section>
-      <section>
-        <h3 className="font-serif text-lg mb-1 flex items-center gap-2"><Icon id="schild" size={24} /> Verteidiger</h3>
-        <select className="h-11 w-full rounded-lg field px-2 text-sm mb-2" value={defPreset} onChange={(e) => pickDefender(e.target.value)}>
-          {preset && <option value="bericht">Aus dem Bericht</option>}
-          {nestLevels.map((l) => <option key={l} value={`nest:${l}`}>Nest Stufe {l} (Mitte)</option>)}
-          {nestLevels.map((l) => <option key={`w${l}`} value={`nest:${l}:worst`}>Nest Stufe {l} ungünstig</option>)}
-          {known.map((n) => <option key={`l${n.id}`} value={`lagebild:${n.id}`}>Nest Stufe {n.level} aus Lagebild ({n.col}/{n.row})</option>)}
-          <option value="hafen">Eigener Hafen (daheim)</option>
-          <option value="frei">Frei</option>
-        </select>
-        <CountEditor ids={defIds} counts={def} onChange={(c) => { setDef(c); if (defPreset === "hafen" || defPreset === "bericht" || defPreset.startsWith("nest:") || defPreset.startsWith("lagebild:")) return; setDefPreset("frei"); }} balance={balance} />
-      </section>
-      <section className="rounded-xl bg-paper border border-rule p-3">
-        <Outcome attacker={attacker} defender={defender} balance={balance} weather={preset?.weather} ownTitle={attMode === "kartell" ? "Verluste des Kartells" : "Verluste des Angreifers"} enemyTitle="Verluste des Verteidigers" />
-        <p className="text-xs text-ink2 mt-2">{NOTE} Beute bei Nestern fest, beim eigenen Hafen aus den Beständen über dem Bunkerschutz.{preset?.weather ? " Wetter am Kampfort des Berichts eingerechnet." : ""}</p>
-      </section>
     </div>
   );
 }

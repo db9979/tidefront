@@ -10,6 +10,7 @@ import { Icon } from "../icons.tsx";
 import { Button, Card } from "../ui.tsx";
 import { ProbeCard } from "./SimLauncher.tsx";
 import type { ProbeTarget } from "./BattleSim.tsx";
+import { lostAttack } from "./ReportSim.tsx"; // „Was hätte gefehlt?“
 
 type Obj = Record<string, unknown>;
 const obj = (v: unknown): Obj | null => (v && typeof v === "object" && !Array.isArray(v) ? (v as Obj) : null);
@@ -41,15 +42,16 @@ function ScoutActions({ reportId, target }: { reportId: number; target: NonNulla
       </div>
       {base.data && meta.data && (
         <div className="mt-3">
-          <ProbeCard balance={meta.data.balance} base={base.data} units={home} target={probe} onScout={() => requestPlan({ target: at, type: "aufklaerung" })} />
+          <ProbeCard balance={meta.data.balance} base={base.data} units={home} target={probe} planAt={at} onScout={() => requestPlan({ target: at, type: "aufklaerung" })} />
         </div>
       )}
     </>
   );
 }
 
-export function ReportActions({ r, onSim }: { r: { id: number; kind: string; role: string; data: Obj; simulable?: boolean }; onSim: () => void }) {
+export function ReportActions({ r, onSim, onMissing }: { r: { id: number; kind: string; role: string; data: Obj; simulable?: boolean }; onSim: () => void; onMissing?: () => void }) {
   const target = r.role === "attacker" ? scoutTarget(r.kind, r.data) : null;
+  const lost = !!r.simulable && lostAttack(r); // verlorener eigener Angriff: „Was hätte gefehlt?“
   if (!r.simulable && !target) return null;
   return (
     <Card>
@@ -60,6 +62,7 @@ export function ReportActions({ r, onSim }: { r: { id: number; kind: string; rol
         </p>
       </div>
       <Button kind={target ? "secondary" : "primary"} className="w-full mb-2" onClick={onSim}>Im Kampfsimulator öffnen</Button>
+      {lost && onMissing && <Button kind="secondary" className="w-full mb-2" onClick={onMissing}>Was hätte gefehlt?</Button>}
       {target && <ScoutActions reportId={r.id} target={target} />}
     </Card>
   );

@@ -6,7 +6,7 @@
 // Wind und Nebel relativ, Bewölkung absolut. Das Rauschen ist um 0 symmetrisch, die Vorhersage im Mittel unverzerrt.
 // Funkmesstechnik und Radarstation verringern die Unsicherheit (forecastSkill).
 import type { BaseState, GeoPoint } from "./types.ts";
-import { daylightAt, weatherAt, weatherNoise, type Weather, type WeatherBalance } from "./weather.ts";
+import { combatWeatherOf, daylightAt, weatherAt, weatherNoise, type CombatWeather, type Weather, type WeatherBalance } from "./weather.ts";
 
 const HOUR_MS = 3600000;
 /** Verstärkung des Rauschens (Spitzen werden bei ±1 gekappt; mittlerer Betrag ≈ 0,55 des Höchstwerts). */
@@ -130,4 +130,13 @@ export function forecastRange(point: GeoPoint, ms: number, nowMs: number, wb: We
   const clouds: [number, number] = [clamp01(lo((w) => w.clouds) - s.clouds), clamp01(hi((w) => w.clouds) + s.clouds)];
   const fog: [number, number] = [clamp01(lo((w) => w.fog) / (1 + s.fog)), clamp01(hi((w) => w.fog) / Math.max(0.01, 1 - s.fog))];
   return { wind, clouds, fog, stormPossible: wind[1] >= wb.stormFrom, stormCertain: wind[0] >= wb.stormFrom };
+}
+
+/**
+ * Kampfwetter zur Ankunft aus der Vorhersage (Probekampf, „Lohnende Ziele“): Mitte der Spannbreite von Wind und
+ * Bewölkung. Für Gegenwart und Vergangenheit das tatsächliche Wetter.
+ */
+export function forecastCombatWeather(point: GeoPoint, ms: number, nowMs: number, wb: WeatherBalance, factor = 1): CombatWeather {
+  const r = forecastRange(point, ms, nowMs, wb, factor);
+  return combatWeatherOf({ wind: (r.wind[0] + r.wind[1]) / 2, clouds: (r.clouds[0] + r.clouds[1]) / 2 }, wb);
 }

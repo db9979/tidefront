@@ -43,7 +43,7 @@ export const PHASE_NAMES: readonly PhaseName[] = ["luftkampf", "luftschlag", "ub
  * gekürzt; je Ressource abgerundet. `mods.loot` (Angreifer) wirkt auf den Anteil, `mods.nestLoot` auf feste Beute.
  */
 export function computeLoot(
-  defender: Pick<DefenderInput, "resources" | "protectedPerResource" | "fixedLoot">,
+  defender: Pick<DefenderInput, "resources" | "protectedPerResource" | "fixedLoot" | "fixedLootFinal">,
   cargoCapacity: number,
   priorAttacksInWindow: number,
   balance: Balance,
@@ -57,7 +57,7 @@ export function computeLoot(
   for (const r of balance.resources) {
     let amount = 0;
     if (defender.fixedLoot !== undefined) {
-      amount = (defender.fixedLoot[r] ?? 0) * modValue(mods, "nestLoot");
+      amount = (defender.fixedLoot[r] ?? 0) * (defender.fixedLootFinal ? 1 : modValue(mods, "nestLoot"));
     } else {
       const unprotected = Math.max(0, (defender.resources?.[r] ?? 0) - (defender.protectedPerResource ?? 0));
       amount = unprotected * balance.loot.maxShareOfUnprotected * modValue(mods, "loot") * repeat;

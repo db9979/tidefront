@@ -8,14 +8,15 @@
 // hochgerechnet, Alter des Lagebilds) und eine Bewertung „lohnend?“ (Netto zum Richtpreis: Beute bei Sieg gegen
 // Treibstoff hin und zurück und erwartete Verluste). Sortierung: lohnend und erreichbar zuerst.
 import { useEffect, useMemo, useState } from "react";
-import { seaRoute } from "@tidefront/world";
+import { hexCenter, seaRoute } from "@tidefront/world";
 import type { Balance, BaseData, MapData } from "../../lib/trpc.ts";
 import type { Target } from "../../App.tsx";
 import { countLabel, fmtNum } from "../../lib/names.ts";
 import { fmtDuration } from "../../lib/time.ts";
 import { requestPlan } from "../../lib/plan-request.ts";
 import { nearestNests, suggestRaid, suggestScout, travelMs, type Counts, type NestInfo } from "../../lib/strike.ts";
-import type { NestPlan } from "../../lib/raid-plan.ts";
+import type { NestPlan, PlanJob } from "../../lib/raid-plan.ts";
+import { runPlans } from "../../lib/sim-client.ts"; // Vorschläge im Web Worker (Oberfläche bleibt flüssig)
 import { useGuide } from "../Guide.tsx";
 import { TacticalIcon } from "../../map/TacticalIcon.tsx";
 import { Icon } from "../../icons.tsx";
@@ -43,24 +44,25 @@ export function pickNests(all: NestInfo[], mission: { id: number; level: number 
   return [...pick.values()].sort((a, b) => Number(b.mission) - Number(a.mission) || a.distanceKm - b.distanceKm).slice(0, MAX_ROWS).sort((a, b) => a.distanceKm - b.distanceKm);
 }
 
-/** Vorschläge je Nest aus dem Probekampf (nachgeladen; rechnet nach dem Zeichnen). */
+/** Vorschläge je Nest aus dem Probekampf (im Web Worker; Wetter am Nest zur Ankunft aus der Vorhersage). */
 function usePlans(rows: Row[], base: BaseData, balance: Balance): Record<string, NestPlan | null> {
   const [out, setOut] = useState<Record<string, NestPlan | null>>({});
   const sig = JSON.stringify(rows.map((r) => [r.key, r.nest.level, r.full, r.nest.lagebild?.atMs ?? null])) + JSON.stringify(base.modifiers ?? {}) + String(base.versorgungsmangel);
   useEffect(() => {
+    const now = Date.now();
+    const jobs: PlanJob[] = rows.filter((r) => r.nest.level !== null && Object.keys(r.full).length > 0).map((r) => {
+      const t = travelMs(r.full, r.nest.distanceKm, balance, base.modifiers);
+      const at = hexCenter(r.nest.col, r.nest.row);
+      return {
+        key: r.key, full: r.full, level: r.nest.level!,
+        opts: { versorgungsmangel: base.versorgungsmangel, modifiers: base.modifiers, lagebild: r.nest.lagebild, nowMs: now, travelKm: travelKmOf(base, r.nest, r.full, balance), ...(t !== null ? { arrival: { lat: at.lat, lon: at.lon, atMs: now + t } } : {}) },
+      };
+    });
+    if (jobs.length === 0) { setOut({}); return; }
+    const run = runPlans(jobs, balance);
     let off = false;
-    const t = setTimeout(() => {
-      void import("../../lib/raid-plan.ts").then(({ planNestRaid }) => {
-        if (off) return;
-        const next: Record<string, NestPlan | null> = {};
-        for (const r of rows) {
-          if (r.nest.level === null || Object.keys(r.full).length === 0) continue;
-          next[r.key] = planNestRaid(r.full, r.nest.level, balance, { versorgungsmangel: base.versorgungsmangel, modifiers: base.modifiers, lagebild: r.nest.lagebild, travelKm: travelKmOf(base, r.nest, r.full, balance) });
-        }
-        setOut(next);
-      });
-    }, 50);
-    return () => { off = true; clearTimeout(t); };
+    run.promise.then((res) => { if (!off) setOut(Object.fromEntries(res.map((r) => [r.key, r.plan]))); }, () => {});
+    return () => { off = true; run.cancel(); };
   }, [sig, balance]);
   return out;
 }
@@ -106,7 +108,7 @@ export function TargetsCard({ base, balance, map, onShowOnMap }: { base: BaseDat
           <ul className="divide-y divide-rule">
             {[...rows].sort((a, b) => Number(worthwhile(plans[b.key])) - Number(worthwhile(plans[a.key])) || Number(b.mission) - Number(a.mission) || a.nest.distanceKm - b.nest.distanceKm).map((r) => <TargetRow key={r.key} row={r} plan={plans[r.key]} base={base} balance={balance} onShowOnMap={onShowOnMap} />)}
           </ul>
-          {!noFleet && <p className="text-[11px] text-ink2 mt-1">Vorschlag: kleinster Verband aus deinem Bestand, der im Probekampf (ohne Wetter) mindestens 9 von 10 Kämpfen gewinnt – mit Lagebild genau, sonst im Mittel über die Spanne der Besatzung. Netto: Beute bei Sieg zum Richtpreis minus Treibstoff hin und zurück und erwartete Verluste. Raute antippen zeigt das Nest auf der Karte.</p>}
+          {!noFleet && <p className="text-[11px] text-ink2 mt-1">Vorschlag: kleinster Verband aus deinem Bestand, der im Probekampf (mit dem vorhergesagten Wetter am Nest zur Ankunft, geprüft gegen 200 weitere Würfe) mindestens 9 von 10 Kämpfen gewinnt – mit Lagebild genau, sonst im Mittel über die Spanne der Besatzung. Netto: Beute bei Sieg zum Richtpreis minus Treibstoff hin und zurück und erwartete Verluste. Raute antippen zeigt das Nest auf der Karte.</p>}
         </>
       )}
     </Card>
@@ -135,7 +137,7 @@ function TargetRow({ row, plan, base, balance, onShowOnMap }: { row: Row; plan: 
           <div className="flex items-baseline justify-between gap-2">
             <strong className="font-serif text-[15px] leading-tight">{known ? `Nest Stufe ${ROMAN[nest.level!] ?? nest.level}` : "Stufe unbekannt"}</strong>
             {known && !empty && (
-              <span className={`font-serif text-lg leading-none ${color}`} title="Siegchance des Vorschlags laut Probekampf (100 Durchläufe)">
+              <span className={`font-serif text-lg leading-none ${color}`} title="Siegchance des Vorschlags laut Probekampf (geprüft gegen 200 weitere Würfe, mit Wetter zur Ankunft)">
                 {rate === undefined ? <span className="text-xs text-ink2 font-sans">rechnet …</span> : rate === null ? "–" : pct(rate)}
               </span>
             )}

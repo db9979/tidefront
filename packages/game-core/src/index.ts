@@ -38,3 +38,6 @@ export * from "./pvp.ts"; // Spieler gegen Spieler: Kopfgeld, Mutfaktor, Paarbre
 export * from "./catch-up.ts"; // Aufholhilfe: Baugutschrift für kleine Häfen und Spät-Einsteiger
 export * from "./battle-setup.ts"; // Kampfbedingungen im Bericht
 export * from "./report-sim.ts"; // Bericht → Kampfsimulator
+export * from "./battle-victory.ts"; // Sieger und Beute nach Kampfart (Server und Simulator)
+export * from "./battle-sim.ts"; // Kampfsimulator: Läufe zusammenfassen, Sicht der eigenen Seite, Phasen
+export * from "./win-search.ts"; // „Was fehlt zum Sieg?“: günstigster Verband zur Zielsicherheit

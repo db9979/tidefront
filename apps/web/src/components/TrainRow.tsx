@@ -2,7 +2,8 @@
 // einzeiligen Ausbildungszeilen (Symbol · Name · Bestand · Stepper · Bauen, ~64 px). Werte, Aufschlüsselung und
 // Kosten je Stück stehen im Infoblatt (ⓘ); Kosten und Dauer der gewählten Menge erscheinen kompakt unter der
 // Zeile, sobald die Menge ≥ 1 ist – also immer vor dem Bauen.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { claimTrainScroll, trainPresetFor } from "../lib/train-request.ts"; // „Was fehlt zum Sieg?“ → Ausbilden
 import { trpc, trpcClient, type BaseData, type Balance } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
@@ -89,8 +90,11 @@ export function TrainGroup({ builtIn, title, base, balance, now }: { builtIn: st
 
 /** needLevel: Baugebäude ist noch unter der Mindeststufe der Einheit (requiresLevel). */
 function TrainRow(props: { id: string; have: number; away: number; base: BaseData; balance: Balance; busy: boolean; secondsEach: number | null; cost: Record<string, number> | undefined; needLevel?: number }) {
-  // Start bei 0: die Zeile bleibt einzeilig; ab Menge 1 erscheinen Kosten und Dauer darunter.
-  const [n, setN] = useState(0);
+  // Start bei 0: die Zeile bleibt einzeilig; ab Menge 1 erscheinen Kosten und Dauer darunter. Vorwahl aus
+  // „Was fehlt zum Sieg?“ übernimmt die fehlende Menge (die erste solche Zeile scrollt ins Bild).
+  const [n, setN] = useState(() => trainPresetFor(props.id));
+  const row = useRef<HTMLLIElement>(null);
+  useEffect(() => { if (n > 0 && trainPresetFor(props.id) > 0 && claimTrainScroll()) row.current?.scrollIntoView({ block: "center" }); }, []);
   const cmd = useCommand((i: { key: string; id: string; count: number }) => trpcClient.base.train.mutate(i), invalidateBase);
   const [info, setInfo] = useState(false);
   const vet = props.base.veterans?.find((v) => v.id === props.id);
@@ -109,7 +113,7 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
   const detail = { unit: props.id, cost: scale(props.cost, Math.max(1, n)) };
   const [help, setHelp] = useWhatHelps();
   return (
-    <li className="py-2.5">
+    <li ref={row} className="py-2.5" data-train={props.id}>
       <div className="flex items-center gap-2">
         {/* Symbol mit ⓘ (oben) und Bestand (unten) als Marken: die Namensspalte bleibt frei für den Namen. */}
         <button type="button" onClick={() => setInfo(true)} aria-label={`${label(props.id)}: Info, Bestand ${fmtNum(props.have)}`} className="shrink-0 relative">

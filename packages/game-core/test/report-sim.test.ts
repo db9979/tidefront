@@ -48,7 +48,10 @@ test("Neuer Kampfbericht: Verbände vor dem Kampf, Anlagen, Wetter, Modifikatore
   assert.equal(p.defender.protectedPerResource, 200);
   assert.deepEqual(p.weather, weather);
   if (phases.some((x) => "luckFactor" in x)) assert.deepEqual(p.luck, { attacker: 1.1, defender: 0.9 });
-  assert.ok(p.notes.some((n) => n.includes("tatsächlichen Beute")));
+  // Ohne Landung verloren, keine Beute: Beute unbekannt statt 0 (F4).
+  assert.equal(rep.winner, "defender");
+  assert.equal(p.loot.kind, "unbekannt");
+  assert.ok(p.notes.some((n) => n.includes("Beute unbekannt")));
   // Gegner ist ein Spieler: seine Forschung bleibt unbekannt.
   const hidden = reportSimPreset("ueberfall", "attacker", data, balance, { opponentIsPlayer: true });
   assert.equal(hidden?.defender.modifiers, undefined);

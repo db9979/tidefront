@@ -23,7 +23,8 @@ import { FinalePreview } from "../components/Finale.tsx"; // Saisonfinale
 // Nachrichtendienst: Spionageaufträge
 import { SpyPlan } from "../components/SpyPlan.tsx";
 // Admirale: Führung des Verbands
-import { AdmiralPick, useAdmiralChoice } from "../components/Admirals.tsx";
+import { AdmiralPick, useAdmiralChoice, withAdmiralMods } from "../components/Admirals.tsx";
+import { combatWeatherOf, type CombatWeather, type WeatherBalance } from "@tidefront/game-core"; // Probekampf mit Wetter am Ziel
 // Allianz-Ops: Stationieren, als Sammelangriff eröffnen
 import { RaidOpenCard } from "../components/AllianceOps.tsx";
 import { HoldHours, MineWarning } from "../components/Naval.tsx"; // See: Minen/Blockade/Konvoi
@@ -147,6 +148,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
     nest: map.data.nests.find((n) => n.col === target.col && n.row === target.row),
   } : null;
   const p = preview.data;
+  // Probekampf und Einschätzung: Wetter am Ziel zur Ankunft aus der Vorhersage (Mitte der Spanne).
+  const probeWeather = arrivalCombatWeather(p && "weather" in p ? p.weather?.atTarget : undefined, balance.weather as WeatherBalance | undefined);
   // „Was hilft?“: Verband und Entfernung für konkrete Zahlen (Treibstoff, Kommandopunkte, Reichweite).
   const why = { units: chosen, cargo: cargoSent, type, distanceKm: p && "distanceKm" in p ? p.distanceKm : undefined };
 
@@ -251,7 +254,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
 
       {/* Lagebild: ohne Erkennung keine Stärke und kein Probekampf */}
       {type === "ueberfall" && tInfo?.nest && tInfo.nest.level !== null && !tInfo.nest.empty && Object.keys(chosen).length > 0 && (
-        <Strength balance={balance} units={chosen} level={tInfo.nest.level} />
+        <Strength balance={balance} units={chosen} level={tInfo.nest.level} lagebild={tInfo.nest.lagebild} weather={probeWeather} modifiers={withAdmiralMods(base.modifiers, admiral?.lines ?? [])} versorgungsmangel={base.versorgungsmangel} />
       )}
       {type === "ueberfall" && target && Object.keys(chosen).length > 0 && ((tInfo?.nest && tInfo.nest.level !== null) || (tInfo?.base && tInfo.base.id !== base.id)) && (
         <ProbeCard
@@ -262,6 +265,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           admiral={admiral}
           target={tInfo.nest && tInfo.nest.level !== null ? { kind: "nest", level: tInfo.nest.level, empty: !!tInfo.nest.empty, lagebild: tInfo.nest.lagebild } : { kind: "base", col: target.col, row: target.row, name: tInfo.base!.name }}
           onScout={() => setType("aufklaerung")}
+          weather={probeWeather}
+          planAt={target}
         />
       )}
 
@@ -330,8 +335,36 @@ function unitCount(n: number): string {
   return `${fmtNum(n)} ${n === 1 ? "Einheit" : "Einheiten"}`;
 }
 
-/** Grobe Einschätzung gegen ein Nest: Feuerkraft zur See und an Land im Vergleich (keine Simulation). */
-function Strength({ balance, units, level }: { balance: Balance; units: Record<string, number>; level: number }) {
+type Arrival = { wind: number; clouds: number; forecast?: { wind: [number, number]; clouds: [number, number] } };
+const mid = (r: [number, number]) => (r[0] + r[1]) / 2;
+/** Kampfwetter aus der Ankunftsvorhersage der Vorschau (Mitte der Spanne), undefined ohne Wetter. */
+function arrivalCombatWeather(a: Arrival | undefined, wb: WeatherBalance | undefined): CombatWeather | undefined {
+  if (!a || !wb) return undefined;
+  return combatWeatherOf(a.forecast ? { wind: mid(a.forecast.wind), clouds: mid(a.forecast.clouds) } : a, wb);
+}
+
+/** Siegchance wie im Probekampf (nachgeladen, gleiche Rechnung und Seeds); null solange sie rechnet. */
+function useProbeRate(units: Record<string, number>, level: number, lagebild: unknown, modifiers: unknown, versorgungsmangel: boolean, weather: CombatWeather | undefined, balance: Balance): number | null {
+  const [rate, setRate] = useState<number | null>(null);
+  const sig = JSON.stringify([units, level, lagebild, modifiers, versorgungsmangel, weather]);
+  useEffect(() => {
+    let off = false;
+    setRate(null);
+    void import("../lib/sim-nest.ts").then(({ nestProbeRate }) => {
+      if (off) return;
+      setRate(nestProbeRate({ units, versorgungsmangel, ...(modifiers ? { modifiers: modifiers as never } : {}) }, level, lagebild as never, balance, weather));
+    });
+    return () => { off = true; };
+  }, [sig, balance]);
+  return rate;
+}
+
+/**
+ * Einschätzung gegen ein Nest: Feuerkraft zur See und an Land im Vergleich, das Urteil aus derselben Rechnung wie der
+ * Probekampf (Siegchance mit Wetter, Modifikatoren und Admiral) – kein Widerspruch zwischen beiden.
+ */
+function Strength({ balance, units, level, lagebild, weather, modifiers, versorgungsmangel }: { balance: Balance; units: Record<string, number>; level: number; lagebild?: unknown; weather?: CombatWeather; modifiers?: unknown; versorgungsmangel: boolean }) {
+  const rate = useProbeRate(units, level, lagebild ?? null, modifiers ?? null, versorgungsmangel, weather, balance);
   const nest = balance.pirates.nestLevels[String(level)] as Record<string, unknown> | undefined;
   if (!nest) return null;
   const all = { ...balance.units, ...balance.npcUnits } as Balance["units"];
@@ -357,8 +390,10 @@ function Strength({ balance, units, level }: { balance: Balance; units: Record<s
   }
   const rows: [string, number, number][] = [["See", sea, enemySea], ["Land", land, enemyLand]];
   const noLanding = space === 0 || troops === 0;
-  const ratio = Math.min(enemySea > 0 ? sea / enemySea : 9, enemyLand > 0 ? land / enemyLand : 9);
-  const verdict = noLanding ? ["Ohne Landungsschiff und Truppen kein Sieg und keine Beute.", "text-red-300"] : ratio >= 1.6 ? ["Gute Aussichten.", "text-emerald-300"] : ratio >= 1 ? ["Knapp – mit Verlusten rechnen.", "text-brass-300"] : ["Riskant – der Verband ist wohl zu schwach.", "text-red-300"];
+  const probe = rate === null ? "" : ` (Probekampf: ${fmtNum(Math.round(rate * 100))} % Sieg)`;
+  const verdict = noLanding ? ["Ohne Landungsschiff und Truppen kein Sieg und keine Beute.", "text-red-300"]
+    : rate === null ? ["Einschätzung rechnet …", "text-slate-400"]
+    : rate >= 0.8 ? [`Gute Aussichten${probe}.`, "text-emerald-300"] : rate >= 0.5 ? [`Knapp – mit Verlusten rechnen${probe}.`, "text-brass-300"] : [`Riskant – der Verband ist wohl zu schwach${probe}.`, "text-red-300"];
   return (
     <Card title="Einschätzung">
       <div className="space-y-2 text-sm">
@@ -371,14 +406,14 @@ function Strength({ balance, units, level }: { balance: Balance; units: Record<s
             </div>
           </div>
         ))}
-        <p className={`font-semibold ${verdict[1]}`}>{verdict[0]}</p>
+        <p className={`font-semibold ${verdict[1]}`} data-testid="einschaetzung">{verdict[0]}</p>
         {subs > 0 && (
           <p className="text-xs text-slate-300">
             {enemyHunt > 0 ? "Das Nest hat U-Jagd: auch U-Boote können sinken." : "Das Nest hat keine U-Jagd: deine U-Boote sind dort nicht zu treffen."}
             {batteries > 0 ? " Küstenbatterien treffen sie nicht, werden aber auch nicht von Torpedos getroffen – sie schießen weiter auf die Schiffe über Wasser." : ""}
           </p>
         )}
-        <p className="text-xs text-slate-400">Grobe Schätzung aus den Angriffswerten, ohne Zufall, Boni und Lebenspunkte. Eine Aufklärung zeigt die Besatzung genau.</p>
+        <p className="text-xs text-slate-400">Balken: Angriffswerte ohne Zufall, Boni und Lebenspunkte. Das Urteil kommt aus dem Probekampf (50 Durchläufe, mit Wetter am Ziel). Eine Aufklärung zeigt die Besatzung genau.</p>
       </div>
     </Card>
   );

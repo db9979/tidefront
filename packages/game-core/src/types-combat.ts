@@ -34,6 +34,8 @@ export interface DefenderInput {
   protectedPerResource?: number;
   /** Feste Beute (Piratennest) statt eines Anteils. */
   fixedLoot?: ResourceMap;
+  /** fixedLoot ist schon die fertige Beute (aus einem Bericht): kein Beute-Modifikator des Angreifers mehr darauf. */
+  fixedLootFinal?: boolean;
   /** Modifikatoren des Verteidigers (Angriff, Lebenspunkte). Bunkerschutz steckt schon in protectedPerResource. */
   modifiers?: Modifiers;
 }

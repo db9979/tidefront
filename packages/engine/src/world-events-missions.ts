@@ -14,7 +14,7 @@ import {
   resolveBattle,
   settle,
   slowestSpeedKmh,
-  strandTroops,
+  settleBattle, victoryRuleOf, // Sieger nach Kampfart (wie der Simulator)
   type AttackerInput,
   type Counts,
   type Mission,
@@ -213,7 +213,7 @@ export async function eventMissionArrive(
   const seed = randomSeed();
   const res = resolveBattle(attacker, { units: activeUnits(ev.units), defenses: {} }, balance, seed, battleWeather(m.targetCol, m.targetRow, due));
   if (!res.ok) throw new Error(`battle: ${res.code}`);
-  const { report: raw, destroyed } = strandTroops(res.report, balance);
+  const { report: raw, destroyed } = settleBattle(res.report, balance, victoryRuleOf("weltereignis"));
   const admirals = await admiralsAfterBattle(tx, raw, seed, admA, null, due); // Admirale: Erfahrung, Schicksal
   const before = forceHp(activeUnits(ev.units), balance);
   const left = activeUnits(raw.defender.final);

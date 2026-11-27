@@ -379,3 +379,53 @@ Nutzerentscheid (6 Punkte). Regeln: `docs/REGELN-SEE.md` (Abschnitt Konvois), `d
 7. **KI-Spieler** kaufen weiter über `trade` (ohne Geleit); ihre Börsenkonvois sind ebenso überfallbar. Keine eigene
    Geleit-Logik – der erwartete Verlust (≤ 2,4 %) ist kleiner als die Gebühr.
 8. **Schema:** keine Änderung (Spalte `convoy.kind` ist Text; neue Werte `boerse`, `vertrag`).
+## Kampfsimulator: Korrekturen aus der Prüfung und „Was fehlt zum Sieg?“ (sim)
+
+1. **Siegregel je Kampfart (F1):** `settleBattle(report, balance, rule)` und `victoryRuleOf(kind, data)` in
+   `battle-victory.ts`. „vernichtung“ (Weltereignis inkl. Finale und Sammelangriff auf Ereignisse, Feld, Konvoi,
+   Blockadekampf) = `strandTroops`, sonst „landung“ (Sieger aus `resolveBattle`). Der Server ruft an allen sieben Stellen
+   `settleBattle(res.report, balance, victoryRuleOf("<art>"))` statt `strandTroops` direkt; der Simulator nimmt die Regel aus
+   dem Bericht (`ReportSimPreset.rule`). `bots-fields.ts` (KI-Planung) bleibt bei `strandTroops` – gleiche Wirkung.
+2. **Beute dieser Kampfarten (`LootRule`):** Großflotte/Belagerung „je LP“ aus dem Bericht (tatsächliche Beute / vernichtete
+   LP, im Simulator durch den Laderaum begrenzt; der Beutepool selbst steht nicht im Bericht – Hinweis), Finale aus der
+   Balance (`finaleLoot`, ohne Schatz), Schatzschiff nur bei Vernichtung (sonst unbekannt), Konvoi (Spieler) aus der Ladung
+   (`convoyPlunder`), Feld/Blockade/Konvoi-Abwehr keine.
+3. **Sicht der eigenen Seite (F2):** `simulateBattle(…, { mine })` liefert Siegchance, Verluste („eigene“/„des Gegners“),
+   Restkampfkraft (Histogramm) und Phasen aus Sicht von `mine`; FreeSim: Bericht → Seite des Lesers, Modus Kartell →
+   Verteidiger („Abwehrchance“).
+4. **Beute aus Berichten (F3/F4):** `DefenderInput.fixedLootFinal` – tatsächliche Beute als feste Beute wird nicht erneut
+   mit `nestLoot` multipliziert (und bei Spielerhäfen nie). Verlorener Angriff ohne gespeicherte Bestände: Beuteregel
+   „unbekannt“ (Anzeige „unbekannt“, Hinweis „Bestände … – Beute unbekannt“) statt 0. Abwehr (Leser verteidigt) ohne Beute:
+   kein Hinweis; die Oberfläche setzt die heutigen eigenen Bestände ein (`ownStockNeeded`).
+5. **Boni beidseitig geheim (F5, Nutzerentscheid):** `hideOpponentSetup` entfernt bei Spieler-Gegnern neben
+   `battle.setup.<gegner>.modifiers` auch `data.attacker.modifiers`, wenn der Angreifer der Gegner ist (Altberichte und
+   Blockadekampf). Eigene Werte bleiben. **Nicht** entfernt: die Zeilen „Einfluss“ des gegnerischen Admirals im
+   Admiral-Abschnitt (`data.admirals.<seite>.lines`) – das ist ein bestehender, getesteter Teil des Berichts; ob er auch
+   geheim sein soll, ist offen. Altbericht-Hinweis „Modifikatoren des Angreifers nicht gespeichert“ entfällt beim Kartell
+   (nur Kartell-Einheiten, U4).
+6. **Wetter im Probekampf (U1):** `combatWeatherOf(wind, clouds)` und `forecastCombatWeather` (Mitte der Vorhersage-Spanne).
+   Missionsplanung: aus `preview.weather.atTarget.forecast`; „Lohnende Ziele“: Vorhersage am Nest zur Ankunft (Fahrzeit des
+   Bestands, Unsicherheitsfaktor 1). Die „Einschätzung“ nennt ihr Urteil jetzt aus derselben Rechnung wie der Probekampf
+   (gleiche Seeds, Wetter, Admiral), die Feuerkraft-Balken bleiben als Erklärung.
+7. **Plansuche (U2):** `smallestWinningRaid` prüft den Vorschlag gegen 200 andere Seeds (ab 10000); hält er nicht, wächst er
+   zwischen Vorschlag und Bestand (Halbierung über den Anteil). Die gemeldete Siegquote ist die geprüfte. Rechnung im Web
+   Worker (`sim.worker.ts`, je Aufgabe ein Worker, Abbruch beendet ihn); ohne Worker nach einem Takt im Haupt-Thread.
+8. **Phasen und Hinweise (D1):** je Phase „fand statt / vorn (mehr LP des Gegners vernichtet als eigene verloren) /
+   entschied die Niederlage“; Landung und Bodenkampf getrennt. „Nicht berücksichtigt“ nur, wenn zutreffend
+   (`simNotConsidered`: Wiederholungsabschlag und Schwachziel nur bei Beute aus dem Bestand, Wetter nur ohne Wetter).
+   „Wracks“ entfällt (beeinflusst weder Sieg noch Beute).
+9. **Freier Simulator (U3):** „Eigener Hafen“ mit Hafenmodifikatoren × Hafenkommandant (Admiral `here && stationed &&
+   bereit`, Verteidigungszeilen), stationierte Verbündete zuschaltbar. Kartell mit den Modifikatoren des Hafens (wie der
+   Server, ohne Admiral) und Regler „Kartellstärke“ über die Schwankung (1 ± raidStrengthSpread). Der Verwaltungsregler
+   „Kartell-Stärke“ ist dem Spieler nicht bekannt und bleibt außen vor.
+10. **„Was fehlt zum Sieg?“ (`win-search.ts`):** gierig aufbauen (Paket je Art ≈ 15 % des Verbandswerts, Bodentruppen samt
+    Landungsschiffen, Wertung Sieg = 1 sonst ½ Anteil vernichteter LP, nahe am Ziel mit allen 100 Such-Seeds; ohne Zugewinn
+    größere Pakete), dann verkleinern (erst neue Einheiten, teure zuerst, dann eigene, dann Landungsschiffe), Hürde der
+    Suche Ziel + 30 % des Rests (90 → 93 %), Prüfung gegen 300 Seeds ab 20000, hält es nicht: mit eigenen Seeds (30000)
+    nachlegen. Kosten = Richtpreis der neuen Einheiten (Bestand kostet nichts), Gleichstand nach Gesamtwert.
+    Ausbildungszeit: je Baugebäude nacheinander, Gebäude parallel (laufende Aufträge und Strom nicht eingerechnet).
+    Grenzen: Kommandopunkte je Mission, Truppenplatz, ausbildbare Arten (Baugebäude + Stufe), freie Stellplätze für neue
+    Flugzeuge. Nicht erreichbar (Kommandopunkte, keine Art, kein Fortschritt) wird ehrlich gemeldet. Messung (Node):
+    Nest 1–4, Ziel 0,7–0,99: 40–400 ms, 2.000–14.000 Kämpfe; gegen naives Hochskalieren des Bestands 4–8-mal günstiger.
+    „Ausbilden“: `train-request.ts` legt die Mengen 2 min bereit, `TrainRow` übernimmt sie, Sprung über
+    `useNav().go({ to: "troops", seg: "ausbilden" })`.
