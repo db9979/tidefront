@@ -2,6 +2,17 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.21.0 – 27.11.2026
+- **Lagebild Stufe 2 – Patrouille:** Schiffe oder Drohnen fahren 2–4 Wegpunkte auf See ab (4/8/12 h); Schiffe sehen 100 km, Drohnen 200 km. Abfangjäger fremder Häfen schießen Drohnen ab. Wer erfasst wird, erhält „Fremde Patrouille gesichtet“.
+- **Aufklärungskampagne:** bis zu 4 Ziele in einer Fahrt, je Ziel ein Lagebild, Erkennung 150 km um die Route; das Ziel erfährt „Aufklärer gesichtet“.
+- **Radarposten:** 5 Pioniere und ein Landungsschiff errichten auf einer Küste oder einem eigenen Feld einen Posten (250 km Sicht, 3 Treibstoff je Stunde); er ist angreifbar, Abbau gibt 50 % zurück.
+- **Bordsicht:** Jeder eigene Verband auf See sieht unterwegs (Kriegsschiffe 80 km, Transporter 40, Drohnen 200, Flugzeuge 120 nur Sichtung); der Sichtkreis wandert auf der Karte mit.
+- **U-Boote** sind nur mit Sonar sichtbar (U-Jagd im Hafen und unterwegs, 60 km plus 40 km je Sonar-Stufe).
+- **Neuer Reiter Meldungen → Lagebild:** letzte Sichtungen, fremde Patrouillen, eigene Sensoren und Radarposten.
+- Spionage-Dossiers und Kampfberichte (auch für den Verteidiger) zählen als Lagebild; Desinformation verfälscht Größenklassen; Sammelangriffe verraten leere Nester nicht mehr. KI-Spieler klären auf – die Festung findet und überfällt wieder Nester.
+- **E-Mails ausführlich:** Kampfberichte mit Ergebnis-Banner, Kurzfazit, Kennzahlen, beiden Verbänden (Start, Verlust, Übrig), Beute, Wetter, Admiralen und Veteranenrängen; Aufklärung und Spionage mit Lagebild bzw. Dossier; Angriffswarnung mit Ankunft, Größe, Lage und empfohlenen Schritten. Aussagekräftige Betreffzeilen, gebündelte Meldungen und Morgenbericht mit Kacheln und Tabellen, Dunkelmodus, „Im Spiel öffnen“ führt direkt zum Bericht.
+- Balance v1.22.
+
 ## 0.20.1 – 27.11.2026
 - **Versorgung bewegt sich:** Die Quellen Kraftwerk, Wind, Sonne, Speicher (und Seekabel) zeigen die bewegten Gebäudebilder – Dampf, Windräder nach echtem Wind, Glanz bei Sonne, Füllstand.
 - **Wetter-Symbole** in der Vorhersage und im Wetterkärtchen der Karte bewegen sich leise: Sonne dreht, Wolken und Nebel ziehen, Mond glimmt, Wind weht, Sturm rüttelt. Bei „Bewegung reduzieren“ bleibt alles still.
