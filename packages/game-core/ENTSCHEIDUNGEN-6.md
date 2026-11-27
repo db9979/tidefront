@@ -217,6 +217,53 @@ aktiv; Bauhof-Countdown läuft ohne Neuladen.
   der Treibstoff reicht; scheitert das Geleit beim Kauf, kaufen sie ohne. Kleinere Käufe weiter ohne Geleit.
 - Keine Balance-Änderung, keine Schemaänderung.
 
+## Hotfix „Welle 0“ aus der Abschlussprüfung 0.38 (hot)
+
+- **Weltereignis-Flut (ST-01/AN-01, kritisch):** Lag der Nachfolger eines Spawns hinter der Finale-Ankündigung bzw.
+  Saisonende − `minSeasonHoursLeft` (auch im Retry-Pfad ohne Ziel), plante der Handler keinen; der Worker-Planer
+  (`ensureWorldEventPlanner`, alle 10 min) setzte dann `max(jetzt, Saisonstart + firstSpawnAfterHours)` = sofort.
+  Fix: Der Planer ist an den Verlauf gebunden – `earliestNextSpawn` = max(letztes entstandenes gewöhnliches Ereignis
+  der Saison + `spawnIntervalHours[0]`, letzter Versuch (erledigtes `world_event_spawn` der Saison) + `retryHours`).
+  Damit greifen die bestehenden Grenzen (Ankündigung, Saisonende − 36 h) auch im Planer, und er plant nichts mehr.
+  Bewusst **kein** „geparkter“ Merker-Eintrag im game_event: die Kartell-Aufklärung zeigt das nächste ausstehende
+  `world_event_spawn` als „nächstes Ereignis“ an und hätte dann einen Scheintermin gemeldet. Erledigte Ereignisse
+  bleiben 3 Tage (cleanup), Versuche liegen höchstens `retryHours` auseinander – das reicht als Merker.
+  Zusätzlich Deckel `worldEvents.maxConcurrent` = 2 (Balance-Wert, ohne Versionssprung; fehlt er: kein Deckel):
+  sind so viele gewöhnliche Ereignisse offen (ohne Finale), behandelt der Handler den Spawn wie „kein Ziel“
+  (neuer Versuch nach `retryHours`). Der Deckel sitzt im Handler, nicht in `spawnWorldEvent` (Verwaltung/Tests
+  dürfen weiterhin gezielt anlegen). Regressionstest `world-events-season.test.ts`: ganze Saison im 10-min-Takt mit und
+  ohne Finale – höchstens ein Ereignis je Tag, Abstand ≥ 48 h, keines nach der Ankündigung bzw. in den letzten 36 h.
+  Gegenprobe ohne die Bindung: Test schlägt fehl (2 je Tag schon mit Deckel).
+- **market_news (AN-02):** Ursache wie vom Prüfer korrigiert – der Abgleich beendeter Ereignisse (48 h) fügte nach dem
+  Ausklingen jede Runde eine sofort tote Zeile ein. `upsertNews` legt keine Zeile mehr an, deren Ende + Abklingen
+  schon vorbei ist. Neue Spalte `market_news.effective_until` (= ends_at + fade_minutes, vom Server bei jedem
+  Schreiben gesetzt) mit Index `market_news_live`; `liveRows` und `market.news` filtern darüber (Zeilen ohne Wert
+  fallen auf den alten Ausdruck zurück). Eine erzeugte Spalte geht nicht (timestamptz + interval ist nicht immutable).
+  Wartung (`cleanup` → `pruneMarketNews`): trägt fehlende `effective_until` nach und löscht Zeilen, die seit 48 h
+  ausgeklungen und älter als 48 h sind. Spalte nullable, damit die Migration ohne Nachtrag läuft.
+- **Spielersperren (TE-01):** alle Sperren auf `player` mit `FOR NO KEY UPDATE` (Handel, Verträge, Spielerhandel,
+  Admirale, Wochenziele, Seekabel, Komfort, Einladungen). Geändert wird nur trader/JSON, nie der Schlüssel; FK-Inserts
+  (Nachricht, Mission, Zähler) warten nicht mehr. Test `player-locks.test.ts` (lock_timeout 1 s) plus Quelltext-Wächter.
+- **Wackelige Server-Tests (TE-02):** Zufallsquelle der Engine injizierbar (`setRandomSeedSource` in store.ts, nur
+  Tests); auch der Planer zieht die Art jetzt über `randomSeed`. fields2 „Geleitabteilung“ und luecken
+  „Weltereignisse“ setzen einen festen Seed (`TF_TEST_SEED` überschreibt). Probe über 80 Seeds: luecken scheitert bei
+  4 von 80 (der Jäger versenkt die kleine Großflotte vor dem Hafenangriff) – echte Würfelabhängigkeit, jetzt fest.
+  Schwellen unverändert.
+- **U-Boote halten nichts (TST-01, Nutzerentscheid Variante C, Teil A):** neue Siegregel `halten` für Konvoi und Feld
+  (`victoryRuleOf`): wie `vernichtung`, aber getauchte Einheiten zählen nicht als haltend – bleiben nur sie übrig, ist
+  der Konvoi bzw. das Feld verloren; die U-Boote überleben (im Bericht als Überlebende, Feld: sie kehren heim, auch
+  nach einem verlorenen Spielerangriff). Gegen NPC-Verbände sonst unverändert (`vernichtung`, ENTSCHEIDUNGEN-3).
+  Weltereignis, Finale und Blockadekampf bleiben `vernichtung`. `escortCapable` schließt getauchte Typen aus (keine
+  U-Boot-Empfehlung, KI-Geleit ebenso). Simulator, Probekampf, Bericht-Nachrechnen und KI-Feldplanung nutzen dieselbe
+  Regel. Armada-U-Jagd kommt erst nach Simulation. Texte: Handbuch (Kampfablauf, Kartell und Schutz), Seefahrt,
+  Felder, REGELN.md, REGELN-SEE.md.
+- **Texte:** Handbuch Wertung liest `npcDefenseFactor`, `npcWorldEventKinds` (leer → „zählen voll“) und `armadaFactor`
+  aus der Balance; „Kartell und Schutz“ nennt die Schiffsverluste daheim und den Gewichtungsanteil aus
+  `pirates.raidHpWeights.see` statt des widersprüchlichen Satzes; KI-Kapitel (Händler überfällt Nester bis Stufe
+  `nestMaxLevel`, alle drei nehmen Felder und bieten Verträge, „KI-Spieler“ statt „Bot“); Begrüßung „Menü → Handbuch“;
+  REGELN.md Paketschlüssel 50/25/15/10; REGELN-SEE „seit 0.36“. Nest-6-Zahlen (REGELN.md, M-02) bleiben bis zur
+  Balance-Entscheidung.
+
 ## Abschlussprüfung 0.38 – Welle 1: Fehler und Technik
 
 - **TST-02 Geleitstrecken wie gebucht.** Seewege sind richtungsabhängig; das Geleit fährt immer vom eigenen Hafen los

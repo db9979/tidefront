@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  cartelChance, cartelConvoyForce, convoysOf, escortCost, escortTradeoff, expectedCartelGroup, probeEscort, recommendEscort,
+  cartelChance, cartelConvoyForce, convoysOf, escortCapable, escortCost, escortTradeoff, expectedCartelGroup, probeEscort, recommendEscort,
   resolveBattle, settleBattle, simSeed, victoryRuleOf, ESCORT_TARGET, type Counts,
 } from "../src/index.ts";
 import { loadBalance } from "./helpers.ts";
@@ -118,4 +118,16 @@ test("Abwägung: erwarteter Verlust ohne Geleit gegen Kosten – kleine Fracht l
   assert.ok(Math.abs(off.lossEscorted - t.chance * 0.05 * c.lossShareEscortBeaten * 20000) < 1e-9);
   assert.ok(Math.abs(off.saving - (t.lossUnescorted - off.lossEscorted)) < 1e-9);
   assert.equal(off.worth, off.saving > cost.total);
+});
+
+test("Hotfix TST-01: U-Boote sind kein empfohlenes Geleit; reines U-Boot-Geleit hält nie", () => {
+  assert.equal(escortCapable("uboot", balance), false);
+  for (const value of [1000, 8000, 30000]) {
+    const a = recommendEscort({ value, riskKm: 180, market: true, trip, home: fleet }, balance);
+    assert.equal(a.units?.uboot ?? 0, 0, `Wert ${value}: kein U-Boot in der Empfehlung`);
+    const onlySubs = recommendEscort({ value, riskKm: 180, market: true, trip, home: { uboot: 40 } }, balance);
+    assert.notEqual(onlySubs.status, "ok", `Wert ${value}: nur U-Boote daheim, keine Empfehlung`);
+    const p = probeEscort({ uboot: 10 }, cartelConvoyForce(value, balance), balance, { runs: 30 })!;
+    assert.equal(p.winRate, 0, "U-Boote halten den Konvoi nicht");
+  }
 });

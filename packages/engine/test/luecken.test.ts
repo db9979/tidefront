@@ -7,7 +7,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
 import { nestSites, isCoast, hexDistanceKm, COLS, ROWS } from "@tidefront/world";
 import {
-  productionRates, settle, spyRollOf, worldEventsBalance,
+  mulberry32, productionRates, settle, spyRollOf, worldEventsBalance,
   type BaseState, type Mission, type SpyMission, type WorldEventKind,
 } from "@tidefront/game-core";
 import {
@@ -15,6 +15,7 @@ import {
   missionPreview, modifiersFor, poolContext, processDue, refreshDerivedOpen, register, registerModifierSource, runningSeason, seasonEnd, seed,
   spawnWorldEvent, spyLaunch, upgrade, type Engine, type NoticeJob,
 } from "../src/index.ts";
+import { setRandomSeedSource } from "../src/store.ts";
 
 const url = process.env.TEST_DATABASE_URL;
 const HOUR = 3600000;
@@ -123,10 +124,12 @@ before(async () => {
 });
 
 after(async () => {
+  setRandomSeedSource(null);
   await client.end();
 });
 
 test("Weltereignisse: Vorschau und Plan mit Wetter der Route, Kämpfe mit Wetter am Kampfort", async () => {
+  setRandomSeedSource(mulberry32(Number(process.env.TF_TEST_SEED ?? 382002))); // TE-02: Kampf- und Kartellwürfe deterministisch
   const a = await newPlayer("Ziel", 90);
   const c = await newPlayer("Jaeger", coastNear(a, 3));
   await quiet();

@@ -51,15 +51,24 @@ test("Börsen-Order: Empfehlung übernehmen setzt das Geleit; Konvoi-Blatt: Prob
 
   // Konvoi-Blatt: langsame Fahrt mitten auf der Route, kein Kartell; Probekampf gegen die erwartete Gruppe. Start auf
   // offener See weiter weg, damit die Konvoimitte nicht unter dem Geleitverband (auf dem Weg zum Handelshafen) liegt.
+  // Die Konvoimitte muss weit weg vom eigenen Hafen (dort legt gerade der Geleitverband ab) und vom Handelshafen liegen,
+  // sonst träfe das Antippen ein anderes Blatt statt des Konvois.
   const to = { col: cv.to_col as number, row: cv.to_row as number };
-  let from = { col: cv.from_col as number, row: cv.from_row as number };
-  search: for (let r = to.row - 10; r <= to.row + 10; r++) for (let c = to.col - 10; c <= to.col + 10; c++) {
-    const d = hexDistanceKm(to, { col: c, row: r });
-    if (terrainAt(c, r) === "sea" && d >= 250 && d <= 450 && hexDistanceKm(from, { col: c, row: r }) >= 200 && seaRoute({ col: c, row: r }, to).hexes.length >= 4) { from = { col: c, row: r }; break search; }
-  }
+  const market = { col: cv.from_col as number, row: cv.from_row as number };
   const now = Date.now();
+  const mid = (f: { col: number; row: number }) =>
+    convoyPosition({ route: seaRoute(f, to), from: f, to, departAtMs: now - 5 * DAY, arriveAtMs: now + 5 * DAY }, now).at;
+  let from: { col: number; row: number } | null = null;
+  search: for (let r = to.row - 30; r <= to.row + 30; r++) for (let c = to.col - 30; c <= to.col + 30; c++) {
+    const f = { col: c, row: r };
+    const d = hexDistanceKm(to, f);
+    if (terrainAt(c, r) !== "sea" || d < 300 || d > 900 || seaRoute(f, to).hexes.length < 4) continue;
+    const m = hexAtXY(mid(f).x, mid(f).y);
+    if (hexDistanceKm(player, m) >= 150 && hexDistanceKm(market, m) >= 100) { from = f; break search; }
+  }
+  if (!from) throw new Error("Kein Konvoi-Start fern von eigenem Hafen und Handelshafen gefunden");
   await seed.sql`update convoy set from_col = ${from.col}, from_row = ${from.row}, depart_at = ${new Date(now - 5 * DAY).toISOString()}, arrive_at = ${new Date(now + 5 * DAY).toISOString()}, cartel_at = null where id = ${cv.id}`;
-  const p = convoyPosition({ route: seaRoute(from, to), from, to, departAtMs: now - 5 * DAY, arriveAtMs: now + 5 * DAY }, Date.now()).at;
+  const p = mid(from);
   await page.goto("/");
   await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
   const card = page.locator(`[data-convoy="${cv.id}"]`);

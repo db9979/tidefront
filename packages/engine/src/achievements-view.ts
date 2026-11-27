@@ -51,7 +51,7 @@ async function payReward(tx: Tx, playerId: number, reward: Record<string, number
     lost = d.lost;
   }
   if (credits > 0) {
-    const [p] = await tx.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, playerId)).for("update");
+    const [p] = await tx.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, playerId)).for("no key update");
     const trader = p.trader as { credits: number };
     const next = Math.round((trader.credits + credits) * 100) / 100;
     await tx.update(tables.player).set({ trader: { ...trader, credits: next } }).where(eq(tables.player.id, playerId));

@@ -28,6 +28,8 @@ export interface WorldEventsBalance {
   minReferenceHp: number;
   /** Banner „Ereignis in der Nähe“ bis zu dieser Entfernung. */
   nearbyKm: number;
+  /** Höchstens so viele gewöhnliche Ereignisse gleichzeitig offen (Hotfix 0.38.1); fehlt: kein Deckel. */
+  maxConcurrent?: number;
   schatzschiff: {
     durationHours: [number, number];
     routeKm: [number, number];
@@ -255,12 +257,16 @@ export function activeUnits(units: Counts): Counts {
 
 /**
  * Kampf auf See gegen einen Kartellverband: Sinken alle Schiffe des Verteidigers, ertrinken die Truppen an
- * Bord (sie zählen als Verluste). Liefert den angepassten Bericht und ob der Verband vernichtet ist.
+ * Bord (sie zählen als Verluste). Liefert den angepassten Bericht und ob der Verband vernichtet ist. submergedHold false
+ * (Siegregel „halten“: Konvoi, Feld): bleiben nur getauchte Einheiten übrig, gilt der Verteidiger als geschlagen; die
+ * U-Boote bleiben im Bericht als Überlebende.
  */
-export function strandTroops(report: BattleReport, balance: Balance): { report: BattleReport; destroyed: boolean } {
-  const all = { ...balance.units, ...balance.npcUnits };
+export function strandTroops(report: BattleReport, balance: Balance, submergedHold = true): { report: BattleReport; destroyed: boolean } {
+  const all: Record<string, { branch?: string; submerged?: boolean }> = { ...balance.units, ...balance.npcUnits };
+  // Hotfix 0.38.1 (TST-01): beim Halten (Konvoi, Feld) zählen getauchte Einheiten nicht – sie überleben, halten aber nicht.
+  const holds = (id: string) => submergedHold || !all[id]?.submerged;
   const final = { ...report.defender.final };
-  const shipsLeft = Object.entries(final).some(([id, n]) => n > 0 && all[id]?.branch === "see");
+  const shipsLeft = Object.entries(final).some(([id, n]) => n > 0 && all[id]?.branch === "see" && holds(id));
   const losses = { ...report.defender.losses };
   const survivors = { ...report.defender.survivors };
   const returned = { ...report.defender.returned };
@@ -274,7 +280,7 @@ export function strandTroops(report: BattleReport, balance: Balance): { report: 
       }
     }
   }
-  const destroyed = Object.values(final).every((n) => n <= 0);
+  const destroyed = Object.entries(final).every(([id, n]) => n <= 0 || !holds(id));
   return {
     destroyed,
     report: { ...report, winner: destroyed ? "attacker" : "defender", defender: { ...report.defender, final, losses, survivors, returned } },
