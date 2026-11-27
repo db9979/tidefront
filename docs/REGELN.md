@@ -192,6 +192,8 @@ Nach dem Kampf:
   ungefähr in die Ladung der Landungsschiffe eines solchen Verbands.
 - Überfälle auf Spieler alle `raidIntervalHours` je Stützpunkt. Stärke (seit v1.1):
   - Verteidigungs-Lebenspunkte = Lebenspunkte aller Schiffe (auch U-Boote), Bodentruppen und Anlagen daheim (Flugzeuge zählen nicht).
+    Seit v1.13 gewichtet mit `raidHpWeights` (je ID, sonst je Gattung, sonst 1): Schiffe kämpfen nicht am Boden und zählen
+    halb (`see` 0,5), Minenräumer 0,1, Landungsschiffe, Kolonieschiffe und Minenleger gar nicht; Bodentruppen und Anlagen voll.
   - Grundstärke in Booten = `raidStrengthShareOfDefense * Verteidigungs-Lebenspunkte / hp(schnellboot)`, mindestens `raidMinSchnellboote`.
   - Forschung des Verteidigers (seit v1.7): Vom Zuwachs der Lebenspunkte durch Modifikatoren (`hp` je Gattung, Anlagen
     `anlage`) zählt das Kartell den Anteil `raidResearchWeight` (0,5) mit; ohne Forschung unverändert.
@@ -199,9 +201,13 @@ Nach dem Kampf:
     nicht der Kampf-Seed). Milizionäre = `Grundstärke * Faktor * raidMiliPerBoot`, gerundet, mindestens 1;
     Schnellboote = `Milizionäre / raidMiliPerBoot`, aufgerundet.
   - Das Kartell führt eigene Landungskapazität mit (`raidMiliPerBoot` je Schnellboot).
+  - Die Miliz trifft die Bunkerlinie so hart wie Bodentruppen (`piratenmiliz.attack.anlage` = `land` = 5, seit v1.13; vorher
+    1). Eine Bunkerlinie bleibt ein starker Schutz, hält aber nicht mehr jeden Überfall auf.
 - Kein Überfall während Nachtschild, Anfängerschutz oder Schutz nach Niederlage. Greift ein Schutz erst während der Anfahrt,
   dreht der Verband bei Ankunft ohne Kampf ab; der Verteidiger erhält dazu einen Bericht (`abgewiesen`).
-- Kartell und Nester haben keine U-Boote und keine U-Jagd (v1.2): U-Boote sind für sie unverwundbar.
+- Kartell und Nester haben keine U-Boote und keine U-Jagd (v1.2): U-Boote sind für sie unverwundbar. In v1.13 per
+  Simulation geprüft und so belassen (U-Boot-Verbände sind gegen Nester nicht besser als Zerstörer;
+  `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt L).
 
 ## Weltereignisse des Kartells
 

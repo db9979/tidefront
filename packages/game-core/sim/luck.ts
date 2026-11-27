@@ -96,7 +96,7 @@ export function runLuckVariants(balance: Balance): void {
     ["±20 % (Rand ±25 %)", { ...luck, min: 0.75, max: 1.25, innerMin: 0.8, innerMax: 1.2 }],
     ["±25 % (Rand ±30 %)", { ...luck, min: 0.7, max: 1.3, innerMin: 0.75, innerMax: 1.25 }],
   ];
-  const steps = [1, 1.08, 1.15, 1.3, 1.5];
+  const steps = [1, 1.05, 1.08, 1.1, 1.15, 1.2, 1.3, 1.5]; // v1.13: dazu 5 / 10 / 20 % Überlegenheit
   const pct = (x: number) => `${(x * 100).toFixed(0).padStart(3)} %`;
   console.log(`\n  Varianten des Würfels (v1.7): Sieg % / gekippte Kämpfe % bei Feuerkraft × (Bezug: ohne Würfel 50 %)`);
   console.log(`  ${"".padEnd(28)}${steps.map((s) => `×${s.toFixed(2)}`.padStart(13)).join("")}`);

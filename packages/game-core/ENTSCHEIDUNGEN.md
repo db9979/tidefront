@@ -247,16 +247,15 @@ Kartell-Konter (2 U-Boote, 30 Schützen: 0 %).
 - **Seed für die Überfallstärke:** Der Server (`packages/engine`, `raidLaunch`) ruft `composeRaid` noch ohne Seed
   auf. Dann ist der Faktor 1, und die Wache (20 Schützen) trifft immer auf 32 Miliz: Das Kartell siegt dort zu
   rund 80 % statt 51 %. Der Server sollte beim Auslaufen einen eigenen Seed ziehen und mitgeben.
-- **Bunkerlinie:** Die Miliz (`anlage` 1) kann eine Bunkerlinie praktisch nicht zerstören. Eine einzelne Bunkerlinie
-  hält deshalb jeden Kartell-Überfall auf, solange sie steht. Gewollt als harter Konter; falls zu billig, Miliz
-  `anlage` anheben oder Bunkerlinien in der Stärke stärker gewichten.
-- **Flotte daheim lockt größere Überfälle an:** Schiffe zählen zur Stärke, kämpfen aber nicht am Boden. Ein
-  Stützpunkt mit vielen Schiffen und wenig Bodentruppen verliert häufiger (Bot nach 28 Tagen 13 %).
+- ~~**Bunkerlinie:** Die Miliz (`anlage` 1) kann eine Bunkerlinie praktisch nicht zerstören.~~ **Erledigt (v1.13,
+  L1):** Miliz `anlage` 1 → 5; eine Bunkerlinie bleibt starker Schutz, hält aber nicht mehr jeden Überfall auf.
+- ~~**Flotte daheim lockt größere Überfälle an.**~~ **Erledigt (v1.13, L2):** Schiffe zählen in der Überfallstärke
+  halb, Transporter gar nicht (`pirates.raidHpWeights`); Kartell gegen den Bot-Hafen 11–14 % → 0 %.
 - Der Bot schickt den ganzen Verband und rechnet keine Verluste aus früheren Überfällen oder Kartell-Angriffen ein.
   Weitere Landungsschiffe für mehr Ladung baut er nicht; ab Stufe 2 lohnt ein zweites Schiff für die volle Beute.
-- **U-Boote (v1.2):** Ob Nester der Stufen 3–5 oder das Kartell später U-Jagd bekommen, nach Spielerfahrung
-  entscheiden (Mechanik vorhanden: jede NPC-Einheit oder Anlage mit `attack.uboot`). Aufklärung zeigt U-Boote wie jede
-  andere Einheit; ein „getarntes“ Lagebild gibt es nicht.
+- **U-Boote (v1.2):** ~~Ob Nester der Stufen 3–5 oder das Kartell später U-Jagd bekommen.~~ **Entschieden (v1.13,
+  L5):** keine U-Jagd für Kartell und Nester (Mechanik bleibt vorhanden: jede NPC-Einheit oder Anlage mit
+  `attack.uboot`). Aufklärung zeigt U-Boote wie jede andere Einheit; ein „getarntes“ Lagebild gibt es nicht.
 
 ## D. Modifikatoren und Forschung (v1.3)
 
@@ -313,7 +312,8 @@ ergibt rund ×1,46 gegen Überwasserschiffe (Gegenmittel Sonar +20 % U-Jagd). Be
 ### D2. Offene Punkte
 
 - Wetter, Admirale und Weltereignisse melden sich mit `registerModifierSource` im Server an (`packages/engine/src/modifiers.ts`).
-- Ob die Kartell-Stärke Forschung des Verteidigers berücksichtigen soll (D1), nach Spielerfahrung entscheiden.
+- ~~Ob die Kartell-Stärke Forschung des Verteidigers berücksichtigen soll (D1).~~ **Erledigt (v1.7, G3; Server seit
+  dem Merge 4a22249, L6):** Anteil `raidResearchWeight` 0,5, `raidLaunch` übergibt die Modifikatoren.
 - Die Admin-Statistik rechnet Produktion ohne Modifikatoren.
 
 ## E. Kriegsglück und Veteranen (v1.4)
@@ -370,9 +370,10 @@ der Angreifer 50 % gewinnt; links ohne Würfel wie v1.3, rechts mit):
 
 ### E2. Offene Punkte
 
-- Ob ±15 % (innen) für „knapp überlegen = 60–75 %“ zu zahm ist, nach Spielerfahrung entscheiden (Stellschraube
-  `innerMin`/`innerMax`, Mittel bleibt 1, solange beide um 1 symmetrisch sind).
-- Veteranen-Werte (Schwellen, Gewinn) sind geschätzt; die Kampfbilanz zeigt die Ränge, Admin-Statistik noch nicht.
+- ~~Ob ±15 % (innen) für „knapp überlegen = 60–75 %“ zu zahm ist.~~ **Entschieden (G2, v1.13 L3):** ±15 % bleibt
+  (5 / 10 / 20 % Überlegenheit: 62–71 / 75–78 / 89–94 %).
+- ~~Veteranen-Werte (Schwellen, Gewinn) sind geschätzt.~~ **Geprüft (v1.13, L4):** Schwellen 15/40/80 und Gewinn 10/4
+  bleiben. Offen bleibt nur: Admin-Statistik zeigt die Ränge noch nicht (die Kampfbilanz zeigt sie).
 - Probekampf und freier Simulator rechnen mit den eigenen Modifikatoren (Forschung, Veteranen), das Ziel ohne
   (Forschung und Erfahrung des Gegners zeigt die Aufklärung nicht).
 
@@ -511,8 +512,8 @@ der Angreifer 50 % gewinnt; links ohne Würfel wie v1.3, rechts mit):
    `pirates.raidResearchWeight` (0,5): Das Kartell zählt die Hälfte des LP-Zuwachses aus den Modifikatoren des
    Verteidigers mit (`raidDefenseHp`, `composeRaid(…, mods)`). Kartell-Sieg ohne / halbe / volle Forschung:
    Tag 7 12 / 9 / 8 %, Tag 14 13 / 12 / 11 %, Tag 28 13 / 12 / 11 % (Gewicht 1 überzieht: 17–22 %).
-   **Offen:** Der Server übergibt die Modifikatoren noch nicht (`packages/engine/src/handlers.ts`, `raidLaunch`:
-   `composeRaid(state.units, state.defenses, balance, randomSeed(), mods)`); bis dahin rechnet das Spiel wie v1.6.
+   ~~**Offen:** Der Server übergibt die Modifikatoren noch nicht.~~ **Erledigt (L6):** `raidLaunch` ruft
+   `composeRaid(state.units, state.defenses, balance, randomSeed(), mods)` mit `mods = modsOf(…)` auf.
 
 ## H. Admirale (Welle 2, Block `admirals`, ab v1.8)
 
@@ -639,3 +640,138 @@ Ziel: Felder sind Entscheidungen und Konflikte, kein passiver Mehrertrag.
    Hafen. Transport in eigene Häfen ist erlaubt.
 7. **Offen:** „Kolonie aufgeben“ (P5); Umbenennen eines Hafens; Ortsname aus der Karte statt „<Name> II“; Auftragsbuch-
    und Wochenziel-Schritt für Gründungen.
+
+## L. Offene Balance-Fragen per Simulation entschieden (Balance v1.13)
+
+Auf dem Server spielt bisher nur ein Mensch; die „nach Spielerfahrung“ offenen Fragen aus C5, D2 und E2 sind deshalb mit
+Simulationen entschieden (`npm run sim`, neue Abschnitte aus `sim/raids.ts`, `sim/veterans.ts`, `sim/uboot-npc.ts`,
+erweiterte Würfel-Varianten in `sim/luck.ts`). Kartell: 400 Seeds je Fall, Ressourcen 8000/4000/2000/3000, Bunkerschutz
+300; übrige Fälle 200–400 Seeds. Werte zum Richtwert in Stahl-Äquivalent.
+
+1. **Bunkerlinie (C5).** Die Überfallstärke wächst mit den Lebenspunkten, die Miliz traf die Bunkerlinie aber nur mit
+   `anlage` 1. In drei Runden Bodenkampf fiel sie deshalb nie, und „Bunkerlinie steht“ heißt „Verteidiger hält“: Eine
+   Bunkerlinie für 460 Stahl-Äquivalent machte jeden Hafen immun gegen Kartell-Siege. Sieg % Kartell (in Klammern:
+   Bunkerlinie fällt, %) je Miliz-`anlage`, Schiffe schon nach L2 gewichtet:
+
+| Verteidigung | ohne Bunker | anlage 1 | 3 | **5** | 6 | 8 |
+|---|---|---|---|---|---|---|
+| 1 Bunkerlinie allein (11 Schützen, gleich teuer: 100 %) | 100 % | 0 (0) | 0 (0) | **14 (14)** | 40 (40) | 79 (79) |
+| 20 Schützen + 1 Bunkerlinie (31 Schützen: 1 %) | 52 % | 0 (0) | 0 (0) | **0 (18)** | 1 (40) | 26 (75) |
+| 40 Schützen + 1 Bunkerlinie | 1 % | 0 (0) | 0 (0) | **0 (21)** | 2 (42) | 17 (74) |
+| 50 Schützen, 3 Batterien + 1 Bunkerlinie | 9 % | 0 (0) | 0 (1) | **1 (25)** | 8 (38) | 17 (56) |
+| 40 Schützen, 4 Batterien, 2 Flak + 1 Bunkerlinie | 43 % | 0 (0) | 5 (18) | **19 (51)** | 33 (60) | 49 (68) |
+| stark (3 Zerst., 2 Batt., 80 Sch.) + 2 Bunkerlinien | 3 % | 0 (0) | 0 (30) | **1 (63)** | 3 (71) | 8 (81) |
+| Bot-Hafen Tag 14 / 28 + 1 Bunkerlinie | 0 % | 0 (0) | 0 (0) | **0 (3 / 2)** | 0 (8 / 7) | 0 (20) |
+
+   Kosten gegen Schutz (Ersparnis an Beute und bleibenden Verlusten je Überfall; 0,83 Überfälle je Tag nach Nachtschild;
+   abzüglich 460 Kosten und 40 % Reparatur bei Zerstörung; Summe über 7 / 14 / 28 Tage):
+   - anlage 1: Wache 20 Schützen 3420 je Überfall → +19 489 / +39 439 / +79 337; 50 Schützen + 3 Batterien 519 →
+     +2 567 / +5 594 / +11 648; 40 Schützen + 4 Batterien + 2 Flak 2753 → +15 597 / +31 655 / +63 770.
+   - anlage 5: 3386 → +19 293 / +39 047 / +78 554; 426 → +2 025 / +4 511 / +9 482; 1485 → +8 202 / +16 865 / +34 190.
+
+   Befund: Am unteren Ende ist die Bunkerlinie nicht billiger als Truppen (11 Schützen mehr wirken gleich: 20 → 31 Schützen
+   52 → 1 %); zu billig war ihre **Unzerstörbarkeit**: In Häfen mit viel Anlagen-Lebenspunkten (Batterien, Flak) drehte sie
+   43 % in 0 %, und sie veraltete nie. **Entscheidung:** `npcUnits.piratenmiliz.attack.anlage` 1 → **5** (= `land`: Die
+   Miliz trifft Bunker und Truppen gleich hart). Das ist der höchste geprüfte Wert, bei dem eine Bunkerlinie in keinem Fall
+   schadet (mit 6 hebt sie 40 Schützen von 1 auf 2 %, mit 8 ist sie bei 40 Schützen + Batterien schlechter als keine).
+   Eine Bunkerlinie bleibt das wirksamste Einzelstück und hat sich in allen Fällen nach ein bis zwei Tagen bezahlt, ist
+   aber kein Freibrief mehr (allein 14 % Kartell-Sieg, Batterie-Hafen 43 → 19 %). Eine stärkere Gewichtung der
+   Bunkerlinie in der Überfallstärke (geprüft ×1,5 / ×2 / ×3) wurde verworfen: Sie lockt größere Überfälle an und macht den
+   Bau schädlich (anlage 3, Gewicht 2, vor L2: 40 Schützen + Bunker 1 → 4 %, Bot Tag 7 11 → 14 %) – derselbe Fehler wie bei
+   der Flotte (L2). Nester ändern sich nicht (dort verteidigt die Miliz). Auch die Großflotte (Weltereignis) landet Miliz
+   und trifft Bunkerlinien nun mit 5.
+
+2. **Flotte daheim (C5).** Schiffe zählten voll zur Überfallstärke, das Kartell setzte die zusätzliche Miliz aber allein
+   gegen die Bodentruppen ein. Sieg % Kartell / Ø bleibender Schiffsverlust je Überfall (Tr. = Landungsschiff,
+   Kolonieschiff, Minenleger; Miliz anlage 5):
+
+| Verteidigung | alle 1 (v1.12) | See 0,75, Tr. 0 | See 0,5 | **See 0,5, Tr. 0** | See 0,25, Tr. 0 |
+|---|---|---|---|---|---|
+| 20 Schützen (Bezug) | 52 % | 52 % | 52 % | **52 %** | 52 % |
+| 20 Sch. + 1 Zerstörer | 58 % / 78 | 33 % / 0 | 11 % / 0 | **11 % / 0** | 4 % / 0 |
+| 20 Sch. + 2 Landungsschiffe | 100 % / 963 | 52 % / 103 | 76 % / 438 | **52 % / 103** | 52 % / 103 |
+| 40 Schützen (Bezug) | 1 % | 1 % | 1 % | **1 %** | 1 % |
+| 40 Sch. + 8 Korvetten | 6 % / 1891 | 0 % / 1354 | 0 % / 871 | **0 % / 871** | 0 % / 405 |
+| 40 Sch. + 4 Zerstörer | 60 % / 2584 | 28 % / 1843 | 1 % / 1102 | **1 % / 1102** | 0 % / 141 |
+| 40 Sch. + 4 Landungsschiffe | 100 % / 2245 | 1 % / 655 | 76 % / 1440 | **1 % / 655** | 1 % / 655 |
+| 40 Sch. + 4 U-Boote | 14 % / 0 | 2 % / 0 | 0 % / 0 | **0 % / 0** | 0 % / 0 |
+| 40 Sch. + 2 Minenleger | 76 % / 2712 | 1 % / 1233 | 38 % / 2059 | **1 % / 1233** | 1 % / 1233 |
+| Bot-Hafen Tag 7 / 14 / 28 | 11 / 14 / 13 % | 0 / 0 / 0 % | 0 / 0 / 0 % | **0 / 0 / 0 %** | 0 / 0 / 0 % |
+| Schiffsverlust Bot Tag 7 / 14 / 28 | 7190 / 13 617 / 21 007 | 5523 / 10 536 / 16 387 | 5615 / 9932 / 15 503 | **5029 / 9038 / 14 155** | 4436 / 7538 / 12 000 |
+
+   Der Bot-Hafen ohne Schiffe verliert in allen Varianten 0 %: Seine 11–14 % kamen allein von der Flotte. **Entscheidung:**
+   neu `pirates.raidHpWeights` = `{ see: 0,5, minenraeumer: 0,1, minenleger: 0, landungsschiff: 0, kolonieschiff: 0 }`
+   (Schlüssel: Einheiten-ID vor Gattung, sonst 1; Anlagen je ID). 0,5 ist das höchste Gewicht, bei dem kein Kriegsschiff
+   die Siegchance des Kartells über den Bezug ohne Schiffe hebt (0,6: 40 Schützen + 4 Zerstörer 1 → 6 %, 0,75: → 28 %).
+   Schiffe ohne Seekampfwert (Angriff `see` ≤ 10) heben sie auch mit 0,5 (2 Landungsschiffe 52 → 76 %) und zählen nicht;
+   Minenräumer (`see` 15) mit 0,1 (40 Schützen + 2 Minenräumer: 0,5 → 22 %, 0,2 → 6 %, 0,1 → 3 %, 0 → 1 %).
+   Bleibende Verluste des Bot-Hafens je Überfall sinken insgesamt von 14 720 / 26 727 / 39 823 auf 9 288 / 16 694 / 24 964
+   (Tag 7 / 14 / 28). Code: `raidHpWeight`, `raidDefenseHp` (gewichtet, auch der Forschungsanteil); `defenseHp` bleibt
+   ungewichtet (Weltereignisse). Ohne `raidHpWeights` rechnet alles wie v1.12.
+
+   Wirkung auf die Kartell-Tabelle aus C3 (v1.12 → v1.13): Wache 20 Schützen 50 → 50 %, 30 Schützen 2 → 2 %,
+   2 Korvetten + 30 Sch. 11 → 0 %, 2 U-Boote + 30 Sch. 18 → 0 %, 4 U-Boote + 40 Sch. 14 → 0 %, 5 Korvetten + 3 Batterien
+   + 50 Sch. 7 → 0 %, „gut“ (60 Sch., Bunker, 2 Batt.) 0 → 1 %, „stark“ 0 → 1 %, „sehr stark“ 0 → 2 %; Bot-Hafen
+   Tag 7 / 28 12 / 13 → 0 / 0 % (auch mit U-Boot-Doktrinen 11–16 → 0 %). Nest-Fahrplan unverändert (Stufe 1–5: Tag 1, 3,
+   7, 14, 21). Die Tabelle „Kartell gegen Forschung“ (G3) zeigt gegen den Bot-Hafen nun überall 0 %.
+
+3. **Kriegsglück (E2).** Varianten des Würfels (400 Seeds, vier Gefechte, Bezug „ohne Würfel 50 %“), Sieg % bei 5 / 10 /
+   20 % Überlegenheit (Feuerkraft ×1,05 / ×1,10 / ×1,20), dazu ×1,5:
+
+| Würfel innen (Rand) | ×1,05 | ×1,10 | ×1,20 | ×1,50 |
+|---|---|---|---|---|
+| ±10 % (±15 %) | 67–73 % | 80–89 % | 95–99 % | 100 % |
+| **±15 % (±20 %) aktuell** | **62–71 %** | **75–78 %** | **89–94 %** | **100 %** |
+| ±20 % (±25 %) | 58–67 % | 68–74 % | 84–86 % | 99–100 % |
+| ±25 % (±30 %) | 54–64 % | 60–69 % | 77–81 % | 96–100 % |
+
+   „Knapp überlegen“ (5–10 %) liegt mit ±15 % bei 62–78 %, also im Ziel 60–75 % (oben am Rand); ±20 % träfe 10 % etwas
+   besser, fiele bei 5 % aber unter 60 % und ließe bei ×1,3 jeden 15. bis 20. Kampf kippen (5–7 % statt 1–4 %).
+   **Entscheidung:** nicht zu zahm, `combat.luck` bleibt unverändert.
+
+4. **Veteranen (E2).** Saison-Simulation (`sim/veterans.ts`, 200 Seeds): Verband des Bots am jeweiligen Tag, Nest der
+   höchsten Stufe mit ≥ 70 % (Rückkehr nach 20 h), Kartell alle 18 h ab Tag 8 ohne Nachtschild (21 Überfälle), nur wenn
+   der Verband daheim ist; Erfahrung wie im Spiel, Ränge wirken im Kampf, Verluste und Zuwachs verwässern. Ø Erfahrung an
+   Tag 7 / 14 / 21 / 28:
+
+| Spielweise | Schützen | Korvette | Zerstörer | Jagdbomber | Kampfpanzer |
+|---|---|---|---|---|---|
+| nur Kartell-Abwehr | 0 / 28 / 31 / 32 | 0 / 10 / 10 / 9 | 0 / 12 / 11 / 11 | 0 / 10 / 10 / 11 | 0 / 32 / 37 / 33 |
+| Nest alle 2 Tage | 7 / 19 / 25 / 27 | 9 / 16 / 13 / 13 | 0 / 26 / 16 / 19 | 4 / 5 / 8 / 8 | 5 / 31 / 43 / 36 |
+| Nest täglich | 12 / 16 / 17 / 19 | 15 / 22 / 28 / 25 | 0 / 32 / 52 / 88 | 6 / 4 / 4 / 5 | 13 / 33 / 46 / 38 |
+
+   Ränge (15 / 40 / 80): Schützen und Panzer werden in Woche 2 „Erprobt“, aktive Spieler haben Zerstörer und Panzer in
+   Woche 3 als „Veteran“; „Elite“ erreicht nur ein kleiner, selten nachgebauter Bestand (4 Zerstörer bei täglichen
+   Nestangriffen, Tag 28). Korvetten und Jagdbomber bleiben Rekruten bis Erprobt, weil sie oft verloren gehen und
+   nachgebaut werden – gewollt: Erfahrung belohnt Überleben. Gegenproben: `xpWin` 15 macht reine Kartell-Abwehr schon an
+   Tag 14 zu Veteranen (Schützen 43, Panzer 50); Schwellen 10/30/60 heben ebenfalls vor allem die passive Abwehr
+   (Schützen und Panzer „Veteran“ ab Tag 14–21). **Entscheidung:** Werte bleiben (Schwellen 15/40/80, `xpWin` 10,
+   `xpLoss` 4, `lossPenalty` 0,5): Ränge sind erreichbar, Elite bleibt selten, der Bonus (+5/+10/+15 %) entscheidet keine
+   Saison. Vereinfachung der Simulation: Verluste werden sofort ersetzt; ohne Ersatz läge die Erfahrung etwas höher.
+
+5. **U-Jagd für Kartell und Nester (C5).** Bot-Doktrinen gegen Nester (Sieg / Netto je Angriff = Beute − bleibende
+   Verluste − Treibstoff) und im Kartell-Überfall (`sim/uboot-npc.ts`, 200 Seeds), jeweils Tag 21 · Tag 28:
+
+| Doktrin | Nest 4 | Nest 5 | Kartell: Sieg / bleibende Verluste |
+|---|---|---|---|
+| Zerstörer (Vorgabe) | 100 % / 12 012 · 11 972 | 99 % / 13 551 · 100 % / 17 180 | 0 % / 21 463 · 24 747 |
+| U-Boote statt Zerstörer | 100 % / 11 999 · 12 069 | 97 % / 7891 · 100 % / 10 684 | 0 % / 21 092 · 24 378 |
+| schwere U-Boot-Rüstung | 100 % / 15 664 · 15 822 | 92 % / 10 557 · 95 % / 10 762 | 0 % / 19 496 · 22 135 |
+
+   Die ersten Prüftage mit ≥ 70 % sind für alle Doktrinen gleich (Stufe 1–5: Tag 1, 3, 7, 14, 21). U-Boote sind gegen
+   Nester nicht überlegen (sie treffen keine Anlagen; gegen Stufe 5 22–42 % weniger Netto); nur die schwere Rüstung bringt
+   gegen Stufe 3/4 bis +32 % Netto. Im Kartell-Überfall gehen U-Boote nie verloren, der Hafen verliert insgesamt aber nur
+   1–13 % weniger. Gegenprobe Schnellboot mit U-Jagd 10: Das Kartell versenkt dann in fast jedem Überfall alle U-Boote
+   (4 von 4, 9,2 von 11) – viel zu stark, weil die Zahl der Schnellboote mit dem Hafen wächst. **Entscheidung:** keine
+   U-Jagd für Kartell und Nester. Sollte sie später nötig werden, dann über eine eigene Nest-Einheit der Stufen 3–5, nicht
+   über das Schnellboot.
+
+6. **Kartell gegen Forschung (D2).** Schon umgesetzt, nur dokumentiert: v1.7 `pirates.raidResearchWeight` 0,5 (G3), der
+   Server übergibt die Modifikatoren seit dem Merge 4a22249 (`packages/engine/src/handlers.ts`, `raidLaunch`:
+   `composeRaid(…, randomSeed(), mods)` mit `mods = modsOf(tx, b, due)`). Seit v1.13 gewichtet `raidDefenseHp` auch den
+   Forschungsanteil nach L2.
+
+7. **Offen:** Gegen ausgewogene Häfen gewinnt das Kartell jetzt kaum noch (Bot-Hafen 0 %, starke Häfen 1–2 %); seine
+   Bedrohung sind die Verluste je Überfall (Bot Tag 7 Ø 9 288 bleibend). Soll das Kartell wieder öfter siegen, ist
+   `raidStrengthShareOfDefense` die Stellschraube (nicht die Schiffe). Die Großflotte (Weltereignis) bemisst ihre Stärke
+   weiter ungewichtet (`defenseHp`), Schiffe zählen dort voll.
