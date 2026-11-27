@@ -25,8 +25,21 @@ export interface AttackValues {
   uboot?: number;
 }
 
+/**
+ * Stufenabhängige Kostenmischung (v1.29): Beim Ausbau von Stufe L auf L+1 wird der Anteil min(max, perLevel × L) der
+ * Stahlkosten zum Börsen-Richtpreis (market.refPrice) wertgleich auf andere Rohstoffe umgelegt, gewichtet nach `to`
+ * (bzw. BuildingDef.costShiftTo). Höhere Stufen verlagern also mehr; der Gesamtwert bleibt (bis auf Rundung) gleich.
+ */
+export interface CostShift {
+  perLevel: number;
+  max: number;
+  to: ResourceMap;
+}
+
 export interface BuildingDef {
   cost: ResourceMap;
+  /** Kostenverschiebung (v1.29): Zielmischung des von Stahl verlagerten Werts; ohne Angabe building.costShift.to. */
+  costShiftTo?: ResourceMap;
   seconds: number;
   produces?: string;
   perHour?: number;
@@ -148,6 +161,8 @@ export interface Balance {
     productionGrowth: number;
     /** Höchstzahl der Aufträge in der Bauschlange eines Stützpunkts. */
     queueSlots: number;
+    /** Stufenabhängige Kostenmischung (v1.29), siehe upgradeCost. */
+    costShift?: CostShift;
   };
   buildings: Record<string, BuildingDef>;
   units: Record<string, UnitDef>;

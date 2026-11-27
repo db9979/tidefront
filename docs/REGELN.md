@@ -32,6 +32,10 @@ Vier Ressourcen: `stahl`, `treibstoff`, `elektronik`, `proviant`. Strom ist eine
 ## Gebäude
 
 - Kosten für den Ausbau von Stufe L auf L+1: `cost * costFactor^L`, je Ressource aufgerundet.
+  Kostenmischung (v1.29, `building.costShift`): vor dem Aufrunden wird der Anteil `min(max, perLevel × L)` des Stahls
+  (0,03 je Stufe, höchstens 35 %) wertgleich zum Börsen-Richtpreis auf die Zielmischung `to` umgelegt (Elektronik 75 %,
+  Proviant 25 %; Kaserne und Versorgungshof je 50 % über `costShiftTo`). Stufe 0 bleibt unverändert, höhere Stufen
+  verlagern mehr; Gesamtwert und Bauzeiten bleiben gleich.
 - Bauzeit: `seconds * timeFactor^L`, höchstens `maxBuildSeconds`.
 - Höchststufe `maxLevel`. Kein Gebäude außer der Kommandozentrale darf höher sein als
   `Stufe Kommandozentrale + levelCapAboveCommand`.

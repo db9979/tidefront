@@ -13,13 +13,27 @@ export function missingRequirement(base: BaseState, buildingId: string, balance:
   return null;
 }
 
-/** Kosten für den Ausbau von Stufe `level` auf `level + 1`, je Ressource aufgerundet. */
+/**
+ * Kosten für den Ausbau von Stufe `level` auf `level + 1`, je Ressource aufgerundet: cost × costFactor^level, dann
+ * (v1.29, building.costShift) der Anteil min(max, perLevel × level) des Stahls wertgleich zum Richtpreis auf die
+ * Zielmischung umgelegt.
+ */
 export function upgradeCost(buildingId: string, level: number, balance: Balance): ResourceMap {
   const def = balance.buildings[buildingId];
-  const cost: ResourceMap = {};
-  for (const r of balance.resources) {
-    cost[r] = Math.ceil((def.cost[r] ?? 0) * balance.building.costFactor ** level);
+  const raw: ResourceMap = {};
+  for (const r of balance.resources) raw[r] = (def.cost[r] ?? 0) * balance.building.costFactor ** level;
+  const shift = balance.building.costShift;
+  const share = shift ? Math.min(shift.max, shift.perLevel * level) : 0;
+  const to = def.costShiftTo ?? shift?.to ?? {};
+  const weight = Object.values(to).reduce((a, w) => a + w, 0);
+  const price = balance.market.refPrice;
+  if (share > 0 && weight > 0 && (raw.stahl ?? 0) > 0) {
+    const moved = raw.stahl * share;
+    raw.stahl -= moved;
+    for (const [r, w] of Object.entries(to)) raw[r] = (raw[r] ?? 0) + (moved * (price.stahl ?? 1) * w) / weight / (price[r] ?? 1);
   }
+  const cost: ResourceMap = {};
+  for (const r of balance.resources) cost[r] = Math.ceil(raw[r] ?? 0);
   return cost;
 }
 

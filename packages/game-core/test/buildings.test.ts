@@ -15,7 +15,8 @@ import { HOUR, T0, approx, loadBalance, makeBase } from "./helpers.ts";
 
 const balance = loadBalance();
 
-test("Kostenformel für mehrere Stufen, aufgerundet", () => {
+test("Kostenformel für mehrere Stufen, aufgerundet (ohne Kostenverschiebung, die prüft cost-shift.test.ts)", () => {
+  const balance = { ...loadBalance(), building: { ...loadBalance().building, costShift: undefined } };
   assert.deepEqual(upgradeCost("stahlwerk", 0, balance), { stahl: 120, treibstoff: 30, elektronik: 0, proviant: 0 });
   assert.deepEqual(upgradeCost("stahlwerk", 1, balance), { stahl: 180, treibstoff: 45, elektronik: 0, proviant: 0 });
   assert.deepEqual(upgradeCost("stahlwerk", 2, balance), { stahl: 270, treibstoff: 68, elektronik: 0, proviant: 0 });
