@@ -2,7 +2,7 @@
 // Nachrichtendienst). s = 1 … 5.
 import { G, Hall, Windows, Lattice, Flag, Lamp, Fence, Dish, Ground, Tank, Sphere, WATER, h, hd, p, ln, fine, red, type Draw } from "./parts.tsx";
 import { INK, MOOS, SEE } from "../icons-art.tsx";
-import { Glint, Rotor, useLive } from "./motion.tsx";
+import { Blink, Bob, Glint, Rotor, Smoke, useLive } from "./motion.tsx";
 
 const lamps = (...xs: number[]) => xs.map((x) => <Lamp key={x} x={x} />);
 
@@ -116,7 +116,8 @@ const elektrolyse: Draw = (s) => {
       {Array.from({ length: cells }, (_, i) => (
         <g key={i}>
           <path d={`M${10 + i * 7} ${G} V${G - 7} H${15 + i * 7} V${G} Z`} {...h} strokeWidth={0.9} />
-          <circle cx={12.5 + i * 7} cy={G - 9 - (i % 2) * 2} r={0.9} {...fine} strokeWidth={0.6} />
+          {/* Gasblasen steigen, solange Überschuss in die Elektrolyse fließt */}
+          <Bob when="producing" amp={2.5} period={1.8 + (i % 3) * 0.4}><circle cx={12.5 + i * 7} cy={G - 9 - (i % 2) * 2} r={0.9} {...fine} strokeWidth={0.6} /></Bob>
         </g>
       ))}
       <path d={`M8 ${G - 13 - s} H${6 + w - 2} M${8 + w / 2} ${G - 13 - s} l2 -4 h-2 l2 -4`} {...ln} strokeWidth={1.1} />
@@ -126,7 +127,7 @@ const elektrolyse: Draw = (s) => {
       {s >= 3 && <path d={`M${w + 23} ${G - 8} H${w + 30}`} {...ln} strokeWidth={1.1} />}
       {s >= 4 && <Fence x1={2} x2={5} />}
       {s >= 5 && lamps(w + 26, 90)}
-      <path d={`M${w + 15} ${G - 16 - 2 * s} c-2 -3 2 -4 1 -7`} {...fine} strokeWidth={0.7} strokeDasharray="1.5 1.5" />
+      <Smoke x={w + 15} y={G - 16 - 2 * s} d={`M${w + 15} ${G - 16 - 2 * s} c-2 -3 2 -4 1 -7`} />
       <Ground x1={2} x2={94} />
     </>
   );
@@ -141,6 +142,8 @@ const seekabel: Draw = (s) => {
       <Windows x={12} y={G - 6 - s} cols={3 + Math.floor(s / 2)} gap={5} lit={s >= 5} />
       <circle cx={46} cy={G - drum} r={drum} {...h} strokeWidth={1.1} />
       <circle cx={46} cy={G - drum} r={drum / 3} {...p} strokeWidth={0.9} />
+      {/* Kontrolllicht: blinkt, solange Strom über das Kabel geht */}
+      <Blink x={24} y={G - 16 - s} r={1.3} when="producing" color="#6fb3d9" period={1.6} />
       <path d={`M${46 + drum} ${G - drum} C${60} ${G - drum} ${64} ${G - 2} ${70} ${G + 1} S ${84} ${G + 4} ${94} ${G + 4}`} fill="none" stroke={INK} strokeWidth={1.6} />
       <path d={`M68 ${G} V${G - 4} H94 V${G}`} {...p} strokeWidth={1} />
       {s >= 2 && <Lattice x={36} ht={20 + 3 * s} w={5} />}

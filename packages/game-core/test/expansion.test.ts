@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  allowedBases, colonyProtection, createColony, createProtection, foundingBlocker, fuelCost, hexSteps, mergeVeterancy,
+  allowedBases, cloneBase, colonyProtection, createColony, settle, createProtection, foundingBlocker, fuelCost, hexSteps, mergeVeterancy,
   nextUnlockLevel, planMission, protectionStatus, startTraining, startUpgrade, type FoundingCheck,
 } from "../src/index.ts";
 import { DAY, HOUR, T0, loadBalance, makeBase } from "./helpers.ts";
@@ -145,4 +145,11 @@ test("Verlegung mischt Veteranen gewichtet mit dem Bestand des Ziels", () => {
   assert.equal(v?.zerstoerer, 5, "andere Typen unverändert");
   assert.equal(v?.uboot, 8, "neuer Typ übernimmt die Erfahrung");
   assert.equal(mergeVeterancy(makeBase(balance), undefined, { korvette: 2 }), undefined);
+});
+
+test("Kolonie-Markierung übersteht cloneBase und settle (Sperre für Gebäude nur im Heimathafen)", () => {
+  const b = makeBase(balance, { buildings: { kommandozentrale: 3 } });
+  b.colony = { foundedAtMs: 1000 };
+  assert.deepEqual(cloneBase(b).colony, { foundedAtMs: 1000 });
+  assert.deepEqual(settle(b, b.resUpdatedAt + 3_600_000, balance).colony, { foundedAtMs: 1000 });
 });

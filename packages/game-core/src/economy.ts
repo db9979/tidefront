@@ -38,6 +38,8 @@ export function cloneBase(base: BaseState): BaseState {
     ...(base.powerStored !== undefined ? { powerStored: base.powerStored } : {}),
     ...(base.powerLog ? { powerLog: clonePowerLog(base.powerLog) } : {}),
     ...(base.cable ? { cable: { ...base.cable } } : {}),
+    // Außenposten-Markierung: ohne sie greifen die Sperren für Gebäude nur im Heimathafen nach jedem settle nicht mehr.
+    ...(base.colony ? { colony: { ...base.colony } } : {}),
   };
 }
 

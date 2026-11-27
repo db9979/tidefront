@@ -34,6 +34,10 @@ export function buildingLive(base: BaseData, id: string, level: number, now: num
   } else if (id === "radarstation") {
     live.producing = true;
     live.powerShort = g.served.radar < 0.999;
+  } else if (id === "elektrolyse") {
+    live.producing = (g.surplus?.fuel ?? 0) >= 0.5; // Ökostrom-Überschuss fließt in die Elektrolyse
+  } else if (id === "seekabel") {
+    live.producing = (g.surplus?.cable ?? 0) >= 0.5 || (base.grid.now.supply?.cable ?? 0) >= 0.5; // sendet oder empfängt
   } else if (id === "speicherwerk") {
     live.fill = g.capacity > 0 ? g.stored / g.capacity : 0;
   }
