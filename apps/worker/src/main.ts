@@ -24,6 +24,7 @@ import {
   runMarketNews,
   runMorningSummaries,
   runBotsDue,
+  runCatchUp,
   runEventWatchdog,
   rankSnapshot,
   type Engine,
@@ -95,6 +96,11 @@ async function maintenance(): Promise<void> {
   await step("nudge cleanup", () => cleanupNudges(db));
   // PvP: Rang-Momentaufnahme des Spieltags (Kopfgeld, Mutfaktor) bald nach Mitternacht festhalten.
   await step("pvp rank snapshot", () => rankSnapshot(db, Date.now()));
+  // Aufholhilfe: einmal je Stunde Median der Ausbaupunkte, Rückstand und Zufluss der Baugutschrift.
+  await step("catch up", async () => {
+    const n = await runCatchUp(engine, Date.now());
+    if (n > 0) log("catch up", { bases: n });
+  });
 }
 
 async function loop() {

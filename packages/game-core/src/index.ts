@@ -32,3 +32,4 @@ export * from "./intel-sat.ts"; // Lagebild Stufe 3: Satelliten, Tarnnetze, Stö
 export * from "./route-position.ts"; // Seewege: Position unterwegs (Route, Rückruf, Patrouille, Kampagne)
 export * from "./raid-plan.ts"; // Einstieg: kleinster siegreicher Verband gegen ein Nest
 export * from "./pvp.ts"; // Spieler gegen Spieler: Kopfgeld, Mutfaktor, Paarbremse
+export * from "./catch-up.ts"; // Aufholhilfe: Baugutschrift für kleine Häfen und Spät-Einsteiger

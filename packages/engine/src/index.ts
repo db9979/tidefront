@@ -116,3 +116,4 @@ export { bumpMapGeneration, enableMapCache } from "./map-cache.ts"; // world.map
 export { rankSnapshot, clearRankSnapshot, colluded, bountyByPlayer, type RankSnapshot } from "./pvp.ts"; // Spieler gegen Spieler
 export { recordTies } from "./pvp-ties.ts";
 export { pvpTargetView, suspiciousPairs, setReportExcluded } from "./pvp-view.ts";
+export * from "./catch-up.ts"; // Aufholhilfe: Baugutschrift (stündlicher Lauf, Startpaket)

@@ -6,6 +6,7 @@ import { Icon } from "../icons.tsx";
 import { ResourceSheet } from "./ResourceSheet.tsx";
 import { HarborSwitcher } from "./HarborSwitcher.tsx";
 import { MenuSheet, type MenuItem } from "./MenuSheet.tsx";
+import { CatchUpStrip } from "./CatchUp.tsx";
 export type { MenuItem } from "./MenuSheet.tsx";
 
 function short(n: number): string {
@@ -91,6 +92,7 @@ export function ResourceBar({ base, asOf, now, onMenu, onSwitchBase, onPlanFound
           <span className="text-[11px] leading-none font-display tracking-[0.04em]">Menü</span>
         </button>
       </div>
+      <CatchUpStrip base={base} />{/* Aufholhilfe: Baugutschrift */}
       {open && <ResourceSheet base={base} res={open} amount={liveAmount(base, asOf, now, open)} onClose={() => setOpen(null)} />}
       <MenuSheet open={menu} onClose={() => setMenu(false)} onPick={(i) => { setMenu(false); onMenu(i); }} />
     </header>

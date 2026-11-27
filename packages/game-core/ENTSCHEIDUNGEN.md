@@ -399,3 +399,4 @@ der Angreifer 50 % gewinnt; links ohne Würfel wie v1.3, rechts mit):
   je Typ mit Ø Erfahrung; `veteranStats` in `engine/adminstats.ts`).
 - Probekampf und freier Simulator rechnen mit den eigenen Modifikatoren (Forschung, Veteranen), das Ziel ohne
   (Forschung und Erfahrung des Gegners zeigt die Aufklärung nicht).
+- AB. Aufholhilfe und folgende → `ENTSCHEIDUNGEN-5.md`

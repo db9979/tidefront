@@ -412,6 +412,35 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
   Nester sind wieder besetzt, die Börse steht auf Richtwert, Tagesbefehle und Serien verfallen. Konten, Nachrichten und die Ruhmeshalle bleiben.
   Jeder Spieler wählt einen neuen Hafen und erhält erneut Anfängerschutz.
 
+## Aufholhilfe
+
+Baugutschrift für Häfen weit unter dem Median und für Spät-Einsteiger (Balance-Block `catchUp`;
+Vorlage „Aufholhilfe“ (docs/VORLAGE-AUFHOLHILFE.md) mit Nutzerentscheiden vom 27.11.2026; Rechnung
+`node packages/game-core/sim/aufholhilfe.ts`). Gilt für Menschen und KI-Spieler gleich.
+
+- **Rückstand r** = eigene Ausbaupunkte (Kostenwert aller gebauten Gebäudestufen, alle Häfen) / Median der
+  Ausbaupunkte aller Spieler (KI eingeschlossen), deren erster Hafen mindestens `minBaseAgeDays` (3) Tage alt ist.
+  Der Worker rechnet einmal je `refreshMinutes` (60) und speichert den Median zwischen (`server_setting catch_up`).
+- **Bonus b** = `cap` × clamp((`from` − r) / (`from` − `full`); 0; 1) mit `from` 0,70, `full` 0,30, `cap` 0,50:
+
+  | r | ≥ 70 % | 60 % | 50 % | 40 % | ≤ 30 % |
+  |---|---|---|---|---|---|
+  | b | 0 | +12,5 % | +25 % | +37,5 % | +50 % |
+
+- **Hysterese:** Die Hilfe endet bei r ≥ 70 % und beginnt erst wieder unter `resumeBelow` (60 %).
+- **Zufluss:** je Stunde b × Gebäudeproduktion des Hafens (ohne Grundrate, nach Strom, ohne Forschungszuschläge) zum
+  Richtwert in das Konto `catchUp` des Hafens; höchstens `maxCatchUpHours` (2) Stunden je Lauf, Bestand höchstens
+  `storeHours` (24) Stunden Zufluss (darüber ruht er). Ab Saisontag `stopDay` (40) kein Zufluss mehr.
+- **Startpaket:** Wer seinen ersten Hafen der Saison ab Saisontag `latePackFromDay` (8; Tag 1 = Saisonbeginn) wählt,
+  erhält einmalig `latePackShare` (15 %) des Median-Ausbauwerts als Gutschrift (bei der Hafenwahl, Median aus dem
+  Zwischenspeicher). Kolonien erhalten kein Paket.
+- **Verwendung:** Die Gutschrift bezahlt nur Gebäudestufen und wird beim Ausbau **zuerst** verbraucht: Sie deckt
+  denselben Anteil jeder Ressource der Kosten (abgerundet), den Rest zahlt das Lager. Der Auftrag merkt sich den
+  Gutschrift-Teil; ein Abbruch erstattet ihn (anteilig wie üblich) in die Gutschrift, nicht ins Lager.
+- Die Gutschrift zählt nicht zum Lager, ist nicht plünderbar, handelbar oder transportierbar und verfällt mit den
+  Häfen zum Saisonende. Bauzeiten ändern sich nicht. Einheiten, Anlagen, Forschung kann sie nicht bezahlen.
+- Die Verwaltung (Statistik → Wirtschaft) zeigt je Spieler „aktiv“, Bonus, Bestand und Summe aus Zufluss und Paket.
+
 ## Tagesbefehle
 
 - Spieltag: Tageswechsel um 0:00 Uhr in der Zeitzone des Servers (`TZ`, Vorgabe `Europe/Berlin`).

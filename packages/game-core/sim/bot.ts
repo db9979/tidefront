@@ -203,7 +203,8 @@ export function runBot(
     const r = startUpgrade(base, id, t, balance);
     if (r.ok) {
       base = r.base;
-      spentBuild += value(cost, balance);
+      // Aufholhilfe: aus der Baugutschrift bezahlte Teile sind keine eigenen Ausgaben (Rüstungsanteil unverzerrt).
+      spentBuild += value(cost, balance) - value(r.order.credit ?? {}, balance);
     }
   }
 

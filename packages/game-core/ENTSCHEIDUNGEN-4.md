@@ -476,3 +476,5 @@ Umgesetzt mit den empfohlenen Antworten 1a–7a; Zahlen im eigenen Balance-Block
     einen Spielerhafen) und Kartenblatt zeigen Kopfgeld, Mutfaktor, Paarbremse und Absprache (`social.pvpTarget`);
     Missionsplanung warnt „Dein Anfängerschutz endet damit“; Kampfbericht nennt Kopfgeld/Mut/Absprache; Verwaltung
     „Auffällige Paare“ mit „Bericht aus der Wertung nehmen“.
+
+Fortsetzung in `ENTSCHEIDUNGEN-5.md`.
