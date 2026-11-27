@@ -1,11 +1,12 @@
 // Stufenbilder der Strom- und Geheimdienstbauten (Windpark, Solarfeld, Speicherwerk, Nachrichtendienst). s = 1 … 5.
 import { G, Hall, Windows, Lattice, Flag, Lamp, Fence, Dish, Ground, Tank, h, hd, p, ln, fine, type Draw } from "./parts.tsx";
-import { INK } from "../icons-art.tsx";
+import { INK, MOOS } from "../icons-art.tsx";
+import { Glint, Rotor, useLive } from "./motion.tsx";
 
 const lamps = (...xs: number[]) => xs.map((x) => <Lamp key={x} x={x} />);
 
-/** Windrad: schlanker Mast, Gondel, drei Flügel (Winkel a in Grad). */
-function Turbine({ x, ht, r, a = 0 }: { x: number; ht: number; r: number; a?: number }) {
+/** Windrad: schlanker Mast, Gondel, drei Flügel (Winkel a in Grad); der Rotor dreht mit dem Wind (motion.tsx). */
+function Turbine({ x, ht, r, a = 0, i = 0 }: { x: number; ht: number; r: number; a?: number; i?: number }) {
   const hy = G - ht;
   const blades = [0, 120, 240].map((d) => {
     const rad = ((d + a) * Math.PI) / 180;
@@ -18,7 +19,9 @@ function Turbine({ x, ht, r, a = 0 }: { x: number; ht: number; r: number; a?: nu
   return (
     <>
       <path d={`M${x - 1.6} ${G} L${x - 0.7} ${hy} H${x + 0.7} L${x + 1.6} ${G} Z`} {...p} strokeWidth={1.2} />
-      <path d={blades.join(" ")} {...p} strokeWidth={1} />
+      <Rotor cx={x} cy={hy} phase={i}>
+        <path d={blades.join(" ")} {...p} strokeWidth={1} />
+      </Rotor>
       <circle cx={x} cy={hy} r={1.8} {...hd} strokeWidth={1} />
     </>
   );
@@ -29,7 +32,7 @@ const windpark: Draw = (s) => {
   const xs = [48, 24, 72, 86].slice(0, n);
   return (
     <>
-      {xs.map((x, i) => <Turbine key={x} x={x} ht={34 + 3 * s - i * 4} r={12 + s - i} a={i * 37} />)}
+      {xs.map((x, i) => <Turbine key={x} x={x} ht={34 + 3 * s - i * 4} r={12 + s - i} a={i * 37} i={i} />)}
       {s >= 3 && <Hall x={4} w={14} ht={8} roof="shed" fill="h" />}
       {s >= 4 && <path d={`M18 ${G - 6} Q33 ${G - 2} ${xs[1] ?? 48} ${G - 1}`} {...fine} strokeWidth={0.7} />}
       {s >= 5 && <Flag x={11} y={G - 10} ht={8} wide={5} />}
@@ -48,6 +51,7 @@ function Panels({ x, w, y = G }: { x: number; w: number; y?: number }) {
       <path d={`M${x + 3} ${y} V${y - 3} M${x + w - 3} ${y} V${top + 1}`} {...ln} strokeWidth={1} />
       <path d={`M${x} ${y - 3} L${x + 2} ${top} H${x + w + 2} L${x + w} ${y - 3} Z`} {...hd} strokeWidth={1.1} />
       <path d={grid} {...fine} strokeWidth={0.6} />
+      <Glint d={`M${x + w * 0.35 + 2} ${top + 1} L${x + w * 0.35 - 0.5} ${y - 4}`} delay={(x * 0.13 + y * 0.05) % 6} />
     </>
   );
 }
@@ -70,6 +74,19 @@ const solarfeld: Draw = (s) => {
   );
 };
 
+/** Ladebalken am Speicherwerk: echter Füllstand (live.fill), nur mit Live-Daten. */
+function Charge({ x, y, w }: { x: number; y: number; w: number }) {
+  const l = useLive();
+  if (l?.fill === undefined) return null;
+  const f = Math.max(0, Math.min(1, l.fill));
+  return (
+    <>
+      <rect x={x} y={y} width={w} height={2.4} fill="none" stroke={INK} strokeWidth={0.6} />
+      {f > 0 && <rect x={x + 0.4} y={y + 0.4} width={(w - 0.8) * f} height={1.6} fill={MOOS} />}
+    </>
+  );
+}
+
 const speicherwerk: Draw = (s) => {
   const n = s >= 4 ? 3 : s >= 2 ? 2 : 1;
   const ht = 16 + 2 * s;
@@ -79,6 +96,7 @@ const speicherwerk: Draw = (s) => {
       <Hall x={58} w={26} ht={12 + s} roof="flat" />
       <Windows x={61} y={G - 8 - s} cols={4} gap={5} lit={s >= 5} />
       <path d={`M64 ${G - 12 - s} l3 -5 h-3 l3 -5`} {...ln} strokeWidth={1.2} stroke={INK} />
+      <Charge x={61} y={G - 4} w={20} />
       {s >= 3 && <Lattice x={88} ht={22 + 2 * s} w={6} />}
       {s >= 3 && <path d={`M${10 + n * 15} ${G - ht + 4} Q50 ${G - ht} 58 ${G - 10}`} {...fine} strokeWidth={0.7} />}
       {s >= 5 && lamps(50, 86)}

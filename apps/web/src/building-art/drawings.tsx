@@ -4,6 +4,7 @@ import { WIRTSCHAFT } from "./draw-wirtschaft.tsx";
 import { MILITAER } from "./draw-militaer.tsx";
 import { ENERGIE } from "./draw-energie.tsx";
 import { ART, INK } from "../icons-art.tsx";
+import { BuildCrane, LiveScope, type Live } from "./motion.tsx";
 
 /** Zeichnungen je Gebäude; neue Gebäude ergänzen hier ihre Funktion, sonst gilt das normale Symbol. */
 export const DRAWINGS: Record<string, Draw> = { ...WIRTSCHAFT, ...MILITAER, ...ENERGIE };
@@ -25,12 +26,17 @@ function Plan({ draw }: { draw: Draw }) {
   );
 }
 
-export default function Drawing({ id, stage, animate }: { id: string; stage: number; animate: boolean }) {
+/** Zeichnung der Stufe; live (motion.tsx) steuert die Bewegung, der Bauplan bleibt ruhend. Baukran für alle Gebäude. */
+export default function Drawing({ id, stage, animate, live }: { id: string; stage: number; animate: boolean; live: Live | null }) {
   const draw = DRAWINGS[id];
-  if (!draw) return <svg x={20} y={10} width={56} height={56} viewBox="0 0 64 64" overflow="visible">{ART[id] ?? <circle cx="32" cy="32" r="12" fill="url(#tf-h)" stroke={INK} strokeWidth={2.4} />}</svg>;
+  const crane = <LiveScope value={live}><BuildCrane /></LiveScope>;
+  if (!draw) return <><svg x={20} y={10} width={56} height={56} viewBox="0 0 64 64" overflow="visible">{ART[id] ?? <circle cx="32" cy="32" r="12" fill="url(#tf-h)" stroke={INK} strokeWidth={2.4} />}</svg>{crane}</>;
   return (
-    <g key={stage} className={animate ? "tf-grow" : undefined}>
-      {stage === 0 ? <Plan draw={draw} /> : draw(stage)}
-    </g>
+    <>
+      <g key={stage} className={animate ? "tf-grow" : undefined}>
+        <LiveScope value={stage === 0 ? null : live}>{stage === 0 ? <Plan draw={draw} /> : draw(stage)}</LiveScope>
+      </g>
+      {crane}
+    </>
   );
 }

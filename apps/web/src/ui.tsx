@@ -18,7 +18,36 @@ export function useStoredOpen(storageKey: string | undefined, defaultOpen: boole
     setOpenState(v);
     if (storageKey) localStorage.setItem(`tf-open:${storageKey}`, v ? "1" : "0");
   };
+  // Von außen aufklappen (openCard), auch wenn die Karte schon steht.
+  useEffect(() => {
+    if (!storageKey) return;
+    const on = (e: Event) => { if ((e as CustomEvent<string>).detail === storageKey) setOpenState(true); };
+    window.addEventListener("tf-open", on);
+    return () => window.removeEventListener("tf-open", on);
+  }, [storageKey]);
   return [open, setOpen];
+}
+
+/**
+ * Einklappbare Karte von außen öffnen und hineinrollen (z. B. Stromfeld der Kopfleiste → „Versorgung“):
+ * merkt „offen“, benachrichtigt eine stehende Karte und rollt, sobald das Element mit id da ist
+ * (nach einem Reiterwechsel etwas später, damit die gemerkte Rollposition des Reiters es nicht überschreibt).
+ */
+export function openCard(storageKey: string, id: string) {
+  localStorage.setItem(`tf-open:${storageKey}`, "1");
+  window.dispatchEvent(new CustomEvent("tf-open", { detail: storageKey }));
+  const until = performance.now() + 2500;
+  let hits = 0;
+  const tick = () => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ block: "start", behavior: hits === 0 ? "auto" : "smooth" });
+      hits++;
+    }
+    // Mehrmals: Inhalt wächst beim Aufklappen, die Rollposition des Reiters wird bis zu ~1,2 s wiederhergestellt.
+    if (performance.now() < until && hits < 4) setTimeout(tick, el ? 450 : 60);
+  };
+  setTimeout(tick, 30);
 }
 
 /**

@@ -1,6 +1,7 @@
 // Stufenbilder der Militär-, Schutz- und Führungsbauten. s = Ausbauabschnitt 1 … 5.
 import { G, Hall, Windows, Crane, Lattice, Flag, Wall, Lamp, Fence, Dish, Ground, Crest, WATER, LIGHT, h, hd, p, ln, fine, red, type Draw } from "./parts.tsx";
 import { INK, PAPER, SIEGEL, SEE } from "../icons-art.tsx";
+import { Blink, BlinkGroup, Flutter, Turn, active, useLive } from "./motion.tsx";
 
 const lamps = (...xs: number[]) => xs.map((x) => <Lamp key={x} x={x} />);
 
@@ -41,9 +42,9 @@ const werft: Draw = (s) => {
   return (
     <>
       {s >= 2 && <><Hall x={68} w={26} ht={14 + s} roof="arch" fill="h" /><path d={`M73 ${G} V${G - 9} H89 V${G}`} {...p} strokeWidth={1.1} /></>}
-      {s >= 5 ? <Crane x={50} ht={52} reach={26} dir={-1} base={G - 1} /> : null}
-      <Crane x={9} ht={32 + 3 * s} reach={16 + 2 * s} />
-      {s >= 3 && <Crane x={84} ht={32 + 3 * s} reach={14 + 2 * s} dir={-1} />}
+      {s >= 5 ? <Crane x={50} ht={52} reach={26} dir={-1} base={G - 1} work="training" /> : null}
+      <Crane x={9} ht={32 + 3 * s} reach={16 + 2 * s} work="training" />
+      {s >= 3 && <Crane x={84} ht={32 + 3 * s} reach={14 + 2 * s} dir={-1} work="training" />}
       {/* Schiff im Dock */}
       {s >= 2 && <path d={`M${48 + hw * 0.1} ${deck} V${deck - 6 - s} H${48 + hw * 0.32} V${deck} Z`} {...p} strokeWidth={1.3} />}
       {s >= 2 && <Windows x={48 + hw * 0.1 + 2} y={deck - 5 - s} cols={Math.max(1, Math.floor((hw * 0.22 - 3) / 4))} gap={4} size={2} lit={lit} />}
@@ -68,7 +69,7 @@ const kaserne: Draw = (s) => {
   return (
     <>
       {s >= 3 && <Hall x={x - 6} w={26} ht={ht + 3} roof="gable" fill="h" />}
-      {s >= 2 && <Flag x={end + 4} ht={22 + s} wide={8} />}
+      {s >= 2 && <Flag x={end + 4} ht={22 + s} wide={8} flutter="training" />}
       <Hall x={x} w={w} ht={ht} roof="gable" />
       <path d={`M${x} ${G - ht} L${x + w / 2} ${G - ht - w * 0.28} L${end} ${G - ht} L${end - 3} ${G - ht + 1.5} L${x + w / 2} ${G - ht - w * 0.28 + 3} L${x + 3} ${G - ht + 1.5} Z`} {...h} strokeWidth={1.2} />
       <Windows x={x + 4} y={G - ht + 4} cols={Math.floor((w / 2 - 8) / 5)} gap={5} size={3} lit={lit} />
@@ -99,7 +100,8 @@ const flugfeld: Draw = (s) => {
           <path d={`M87 ${G} V${G - 24 - s} H92 V${G} Z`} {...p} strokeWidth={1.3} />
           <path d={`M84.5 ${G - 24 - s} V${G - 30 - s} H94.5 V${G - 24 - s} Z`} {...hd} strokeWidth={1.2} />
           <path d={`M89.5 ${G - 30 - s} V${G - 35 - s}`} {...fine} />
-          {s >= 4 && <path d={`M89.5 ${G - 35 - s} L95 ${G - 33.5 - s} L89.5 ${G - 32 - s}`} {...red} />}
+          {s >= 4 && <Flutter ox={89.5} oy={G - 33.5 - s} when="training"><path d={`M89.5 ${G - 35 - s} L95 ${G - 33.5 - s} L89.5 ${G - 32 - s}`} {...red} /></Flutter>}
+          {s < 4 && <Blink x={89.5} y={G - 35.5 - s} r={1} when="training" color={SIEGEL} period={1.6} hard />}
         </>
       )}
       {xs.map((x) => (
@@ -110,14 +112,19 @@ const flugfeld: Draw = (s) => {
       ))}
       <rect x={48 - half} y={G} width={half * 2} height={3} fill={INK} />
       <path d={Array.from({ length: Math.floor(half / 4) }, (_, i) => `M${48 - half + 3 + i * 8} ${G + 1.5} h4`).join("")} stroke={PAPER} strokeWidth={1} />
+      <Blink x={48 - half + 1.5} y={G - 1.2} r={1.1} when="training" period={1.8} hard />
+      <Blink x={48 + half - 1.5} y={G - 1.2} r={1.1} when="training" period={1.8} delay={-0.9} hard />
       {s >= 5 && Array.from({ length: 7 }, (_, i) => <circle key={i} cx={48 - half + 2 + (i * (half * 2 - 4)) / 6} cy={G - 1.2} r={1.1} fill={LIGHT} stroke={INK} strokeWidth={0.5} />)}
     </>
   );
 };
 
-/** Funkwellen (Seeblau). */
+/** Funkwellen (Seeblau); mit Live-Daten nur bei laufendem Radar, dann leise pulsierend. */
 function Waves({ x, y, n }: { x: number; y: number; n: number }) {
-  return <path d={Array.from({ length: n }, (_, i) => `M${x + 3 + i * 4} ${y - 3 - i * 2} a${5 + i * 4} ${5 + i * 4} 0 0 1 ${3 + i} ${6 + i * 3}`).join("")} fill="none" stroke={SEE} strokeWidth={1.2} strokeLinecap="round" />;
+  const l = useLive();
+  if (l && !active(l, "radar")) return null;
+  const path = <path d={Array.from({ length: n }, (_, i) => `M${x + 3 + i * 4} ${y - 3 - i * 2} a${5 + i * 4} ${5 + i * 4} 0 0 1 ${3 + i} ${6 + i * 3}`).join("")} fill="none" stroke={SEE} strokeWidth={1.2} strokeLinecap="round" />;
+  return l ? <g className="tf-mv tf-blink" style={{ animationDuration: "3s" }}>{path}</g> : path;
 }
 
 const radarstation: Draw = (s) => {
@@ -128,7 +135,7 @@ const radarstation: Draw = (s) => {
       {s >= 5 && <><Lattice x={10} ht={56} w={7} /><circle cx={10} cy={G - 57} r={1.6} fill={SIEGEL} stroke={INK} strokeWidth={0.6} /></>}
       {s >= 3 && <><path d={`M22 ${G} V${G - 14}`} {...ln} /><Dish cx={22} y={G - 16} r={6 + (s >= 4 ? 1 : 0)} tilt={25} /></>}
       <Lattice x={46} ht={th} w={10} />
-      <Dish cx={46} y={top - 2} r={9 + s} />
+      <Turn cx={46} cy={top - 2} when="radar"><Dish cx={46} y={top - 2} r={9 + s} /></Turn>
       <Waves x={46 + 4 + s} y={top - 6} n={Math.min(3, 1 + Math.floor(s / 2))} />
       {s >= 2 && <><Hall x={52} w={14} ht={8} fill="h" /><Windows x={55} y={G - 6} cols={2} gap={5} lit={s >= 5} /></>}
       {s >= 4 && (
@@ -166,6 +173,10 @@ const hafenkommandantur: Draw = (s) => {
       <path d={bands} stroke={SIEGEL} strokeWidth={2.6} />
       <path d={`M52.5 ${lt} H63.5 L62 ${lt - 5} H54 Z`} {...hd} strokeWidth={1.2} />
       <path d={`M58 ${lt - 5} V${lt - 8}`} {...ln} strokeWidth={1.1} />
+      <BlinkGroup when="night" period={3.2}>
+        <path d={`M63 ${lt - 3} L94 ${lt - 11} V${lt + 6} L63 ${lt - 1.5} Z`} fill={LIGHT} opacity={0.35} />
+      </BlinkGroup>
+      <Blink x={58} y={lt - 2.5} r={2.2} when="night" period={3.2} />
       {s >= 2 && <path d={`M62 ${G - 1} H94 M66 ${G - 1} V${G + 4} M74 ${G - 1} V${G + 4} M82 ${G - 1} V${G + 4} M90 ${G - 1} V${G + 4}`} {...ln} strokeWidth={1.3} />}
       {s >= 5 && <><Flag x={92} y={G - 1} ht={14} /><Crest cx={33} cy={G - ht - 5} r={2.2} /><Lamp x={70} /></>}
       <path d={`M1 ${G} H62`} {...ln} strokeWidth={1.3} />

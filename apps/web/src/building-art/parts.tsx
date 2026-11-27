@@ -2,6 +2,7 @@
 // Bildfläche 96×80, Grundlinie y = 72. Alle Bausteine stehen auf der Grundlinie, sofern nicht anders angegeben.
 import type { ReactNode, SVGAttributes } from "react";
 import { INK, PAPER, SIEGEL, SEE, MESSING } from "../icons-art.tsx";
+import { Bob, Flutter, Smoke, type When } from "./motion.tsx";
 
 export const W = 96;
 export const H = 80;
@@ -45,14 +46,14 @@ export function Windows({ x, y, cols, rows = 1, gap = 5, size = 2.6, lit = false
   return <path d={d} fill={lit ? LIGHT : PAPER} stroke={INK} strokeWidth={0.8} />;
 }
 
-/** Schornstein mit optionalem Rauch. */
+/** Schornstein mit optionalem Rauch (steigt, solange das Gebäude produziert; siehe motion.tsx). */
 export function Chimney({ x, ht, w = 5, smoke = true, band = false }: { x: number; ht: number; w?: number; smoke?: boolean; band?: boolean }) {
   const top = G - ht;
   return (
     <>
       <path d={`M${x} ${G} L${x + 0.6} ${top} H${x + w - 0.6} L${x + w} ${G} Z`} {...p} />
       {band && <path d={`M${x + 0.7} ${top + 4} H${x + w - 0.7}`} stroke={SIEGEL} strokeWidth={2.2} />}
-      {smoke && <path d={`M${x + w / 2} ${top - 2} c-2 -4 3 -5 2 -9 c-1 -3 3 -4 5 -6`} {...fine} strokeDasharray="1.6 2.2" />}
+      {smoke && <Smoke x={x + w / 2} y={top - 2} />}
     </>
   );
 }
@@ -94,8 +95,8 @@ export function Column({ x, ht, w = 5 }: { x: number; ht: number; w?: number }) 
   );
 }
 
-/** Turmdrehkran (Gitter angedeutet), Ausleger nach rechts (dir 1) oder links (-1). */
-export function Crane({ x, ht, reach, dir = 1, base = G }: { x: number; ht: number; reach: number; dir?: 1 | -1; base?: number }) {
+/** Turmdrehkran (Gitter angedeutet), Ausleger nach rechts (dir 1) oder links (-1); work: Haken hebt, solange die Bedingung gilt. */
+export function Crane({ x, ht, reach, dir = 1, base = G, work }: { x: number; ht: number; reach: number; dir?: 1 | -1; base?: number; work?: When }) {
   const top = base - ht;
   const tip = x + dir * reach;
   return (
@@ -103,8 +104,17 @@ export function Crane({ x, ht, reach, dir = 1, base = G }: { x: number; ht: numb
       <path d={`M${x - 1.5} ${base} V${top} M${x + 1.5} ${base} V${top}`} {...ln} strokeWidth={1.2} />
       <path d={zig(x - 1.5, x + 1.5, base, top)} {...fine} strokeWidth={0.7} />
       <path d={`M${x - dir * 7} ${top} H${tip} M${x} ${top - 5} L${tip} ${top} M${x} ${top - 5} L${x - dir * 7} ${top}`} {...ln} strokeWidth={1.2} />
-      <path d={`M${tip - dir * 3} ${top} V${top + ht * 0.4}`} {...fine} />
-      <rect x={tip - dir * 3 - 2} y={top + ht * 0.4} width={4} height={3} {...hd} strokeWidth={0.8} />
+      {work ? (
+        <Bob when={work} amp={ht * 0.15}>
+          <path d={`M${tip - dir * 3} ${top} V${top + ht * 0.4}`} {...fine} />
+          <rect x={tip - dir * 3 - 2} y={top + ht * 0.4} width={4} height={3} {...hd} strokeWidth={0.8} />
+        </Bob>
+      ) : (
+        <>
+          <path d={`M${tip - dir * 3} ${top} V${top + ht * 0.4}`} {...fine} />
+          <rect x={tip - dir * 3 - 2} y={top + ht * 0.4} width={4} height={3} {...hd} strokeWidth={0.8} />
+        </>
+      )}
       <rect x={x - dir * 7 - (dir > 0 ? 0 : 4)} y={top} width={4} height={3} {...hd} strokeWidth={0.8} />
     </>
   );
@@ -137,13 +147,14 @@ export function Lattice({ x, ht, w = 8, base = G }: { x: number; ht: number; w?:
   return <path d={d} {...ln} strokeWidth={1} />;
 }
 
-/** Fahnenmast mit Wimpel in Siegelrot. */
-export function Flag({ x, y = G, ht = 14, wide = 7 }: { x: number; y?: number; ht?: number; wide?: number }) {
+/** Fahnenmast mit Wimpel in Siegelrot; flutter: Wimpel flattert, solange die Bedingung gilt. */
+export function Flag({ x, y = G, ht = 14, wide = 7, flutter }: { x: number; y?: number; ht?: number; wide?: number; flutter?: When }) {
   const top = y - ht;
+  const pennant = <path d={`M${x} ${top} L${x + wide} ${top + 2.2} L${x} ${top + 4.5} Z`} {...red} />;
   return (
     <>
       <path d={`M${x} ${y} V${top}`} {...ln} strokeWidth={1.2} />
-      <path d={`M${x} ${top} L${x + wide} ${top + 2.2} L${x} ${top + 4.5} Z`} {...red} />
+      {flutter ? <Flutter ox={x} oy={top + 2.2} when={flutter}>{pennant}</Flutter> : pennant}
     </>
   );
 }

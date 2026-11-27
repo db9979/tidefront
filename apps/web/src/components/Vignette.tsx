@@ -1,13 +1,15 @@
 // Kleine Kupferstich-Vignette des eigenen Hafens (Leuchtturm, Mole, Speicher) für den Basis-Kopf.
 // Der Hafen wächst mit dem Gesamtausbau (Summe aller Gebäudestufen): Häuser, Kran, Schiffe, Schornstein, Licht, Flagge.
+// Nachts (Tageslicht am Hafen < 0,2) blinkt das Leuchtfeuer (CSS „tf-blink“, siehe building-art/motion.tsx).
 import { INK, PAPER, SIEGEL } from "../icons-art.tsx";
 
 const LIGHT = "#e8b64c";
 const ln = { fill: "none", stroke: INK, strokeWidth: 0.8, strokeLinejoin: "round" } as const;
 const pp = { fill: PAPER, stroke: INK, strokeWidth: 0.8, strokeLinejoin: "round" } as const;
 
-export function HarborVignette({ size = 96, levels = 0 }: { size?: number; levels?: number }) {
+export function HarborVignette({ size = 96, levels = 0, daylight }: { size?: number; levels?: number; daylight?: number }) {
   const at = (n: number) => levels >= n;
+  const night = daylight !== undefined && daylight < 0.2;
   return (
     <div className="shrink-0 border border-ink p-[3px] bg-card" aria-hidden="true">
       <svg viewBox="0 0 96 72" width={size} height={(size * 72) / 96} className="block">
@@ -24,6 +26,12 @@ export function HarborVignette({ size = 96, levels = 0 }: { size?: number; level
         <path d="M59.3 32 H66.7 M58.8 40 H67.2" stroke={SIEGEL} strokeWidth="2.4" />
         <path d="M57 22 H69 L67 17 H59 Z" fill={INK} />
         <path d="M63 17 V13" stroke={INK} />
+        {night && (
+          <g className="tf-mv tf-blink" style={{ animationDuration: "3.2s" }} data-testid="leuchtfeuer">
+            <path d="M68 19.5 L94 12 V27 Z" fill={LIGHT} opacity={0.35} />
+            <circle cx={63} cy={19.6} r={2.3} fill={LIGHT} stroke={INK} strokeWidth={0.4} />
+          </g>
+        )}
         <path d="M69 19 L92 13 M69 20 L92 26" stroke={INK} strokeWidth="0.5" strokeDasharray="2 2" />
         <path d="M12 51 L14 40 H44 L46 51" fill={PAPER} stroke={INK} />
         <path d="M20 40 V32 H30 V40" fill={PAPER} stroke={INK} />

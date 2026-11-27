@@ -4,7 +4,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc.ts";
 import { useLive } from "./lib/live.ts";
 import { useNow } from "./lib/time.ts";
-import { ActionBarHost, Loading } from "./ui.tsx";
+import { ActionBarHost, Loading, openCard } from "./ui.tsx";
 import { Icon } from "./icons.tsx";
 // Anmeldung und Hafenwahl nur bei Bedarf laden: angemeldete Spieler mit Hafen brauchen sie nicht.
 const AuthScreen = lazy(() => import("./screens/Auth.tsx").then((m) => ({ default: m.AuthScreen })));
@@ -277,7 +277,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   return (
     <NavContext.Provider value={{ go: navTo, base: b }}>
     <div className="h-full flex flex-col max-w-xl mx-auto">
-      <ResourceBar base={b} asOf={base.data.serverNow} now={now} onSwitchBase={switchBase} onPlanFounding={() => go("karte")} onHelp={() => { setHelpView(null); setHelp((h) => !h); }} />
+      <ResourceBar base={b} asOf={base.data.serverNow} now={now} onSwitchBase={switchBase} onPlanFounding={() => go("karte")} onPower={() => { setSheet(null); go("basis"); openCard("basis-versorgung", "versorgung"); }} onHelp={() => { setHelpView(null); setHelp((h) => !h); }} />
       {/* Kurszeile: auf der Börse immer (oben, außer „unten“ gewählt), sonst nach Einstellung. */}
       {(onMarket ? tickerPos !== "unten" : tickerPos === "oben") && <TickerBar onOpen={() => go("boerse")} />}
       <main ref={mainScroll.ref} onScroll={mainScroll.onScroll} className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto overflow-x-hidden p-3 pb-8 scroll-pb-8"}`}><Suspense fallback={<Loading />}>{content}</Suspense>{!fullBleed && <ActionBarHost />}</main>

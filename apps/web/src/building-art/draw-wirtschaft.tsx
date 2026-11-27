@@ -1,6 +1,7 @@
 // Stufenbilder der Wirtschaftsgebäude und der Kommandozentrale. s = Ausbauabschnitt 1 … 5.
 import { G, Hall, Windows, Chimney, Tank, Sphere, Column, Crane, Lattice, Flag, Wall, Lamp, Fence, Ground, Crest, h, hd, p, ln, fine, red, type Draw } from "./parts.tsx";
-import { SIEGEL, INK } from "../icons-art.tsx";
+import { SIEGEL, INK, MOOS } from "../icons-art.tsx";
+import { Blink, Flicker, Smoke } from "./motion.tsx";
 
 const lamps = (...xs: number[]) => xs.map((x) => <Lamp key={x} x={x} />);
 
@@ -63,7 +64,7 @@ const raffinerie: Draw = (s) => {
   return (
     <>
       {s >= 3 ? <Lattice x={88} ht={fh} w={6} /> : <path d={`M88 ${G} V${G - fh}`} {...ln} />}
-      <path d={`M88 ${G - fh - 1} c-3 -4 1 -6 0 -9 c3 3 4 6 0 9 Z`} {...red} />
+      <Flicker ox={88} oy={G - fh - 1}><path d={`M88 ${G - fh - 1} c-3 -4 1 -6 0 -9 c3 3 4 6 0 9 Z`} {...red} /></Flicker>
       {[0, 1, 2].slice(0, nCol).map((i) => <Column key={i} x={52 + i * 8} ht={30 + 3 * s - i * 5} w={6 - i * 0.5} />)}
       {s >= 3 && <path d={`M28 ${G - 20} H52 M28 ${G - 20} V${G} M40 ${G - 20} V${G - 14} M52 ${G - 18} H${52 + nCol * 8}`} {...ln} strokeWidth={1.1} />}
       {tanks.slice(0, nTank).map((t) => <Tank key={t.x} {...t} />)}
@@ -91,6 +92,9 @@ const chipfabrik: Draw = (s) => {
       ))}
       <Hall x={x} w={w} ht={ht} />
       <path d={`M${x + 3} ${top + 5} H${x + w - 3} M${x + 3} ${top + 9} H${x + w - 3}`} {...fine} />
+      {Array.from({ length: 3 + s }, (_, i) => (
+        <Blink key={i} x={x + 6 + (i * (w - 12)) / (2 + s)} y={top + 7} r={0.8} when="producing" color={i % 3 ? MOOS : "#e8b64c"} period={1.1 + (i % 4) * 0.35} delay={-((i * 0.53) % 1.7)} hard />
+      ))}
       {s >= 2 && <Windows x={x + 4} y={G - 6} cols={Math.floor((w - 8) / 7)} gap={7} size={3} lit={lit} />}
       {s >= 4 && <><Tank x={x + w + 2} w={7} ht={13} fill="p" />{s >= 5 && <Tank x={x - 9} w={7} ht={11} fill="p" />}</>}
       {s >= 5 && <Flag x={x + w * 0.3 + 2} y={top - 7} ht={9} />}
@@ -126,7 +130,7 @@ function Tower({ x, w, ht }: { x: number; w: number; ht: number }) {
   return (
     <>
       <path d={`M${x} ${G} C${x + w * 0.2} ${G - ht * 0.45} ${x + w * 0.2} ${t + ht * 0.25} ${x + w * 0.08} ${t} H${x + w * 0.92} C${x + w * 0.8} ${t + ht * 0.25} ${x + w * 0.8} ${G - ht * 0.45} ${x + w} ${G} Z`} {...h} />
-      <path d={`M${x + w * 0.25} ${t - 2} c-1 -4 4 -5 4 -8 c1 3 6 2 7 6`} {...fine} strokeDasharray="1.6 2.2" />
+      <Smoke x={x + w * 0.25} y={t - 2} d={`M${x + w * 0.25} ${t - 2} c-1 -4 4 -5 4 -8 c1 3 6 2 7 6`} />
     </>
   );
 }

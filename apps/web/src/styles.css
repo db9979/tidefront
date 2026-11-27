@@ -158,7 +158,28 @@ input, select, textarea { color: var(--color-ink); }
 .tf-plan path, .tf-plan rect, .tf-plan circle { fill: none; stroke: var(--color-see); stroke-width: 1; stroke-dasharray: 2.4 1.8; }
 @keyframes tf-grow { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 .tf-grow { animation: tf-grow 600ms ease-out; }
-@media (prefers-reduced-motion: reduce) { .tf-grow { animation: none !important; } }
+/* Bewegte Gebäude (building-art/motion.tsx): nur transform/opacity; Ursprung je Element per transform-origin. */
+@keyframes tf-spin { to { transform: rotate(360deg); } }
+.tf-spin { animation: tf-spin 4s linear infinite; }
+@keyframes tf-smoke { 0% { transform: translate(0, 3px); opacity: 0; } 30% { opacity: var(--tf-op, 0.9); } 100% { transform: translate(2px, -8px); opacity: 0; } }
+.tf-smoke { animation: tf-smoke 3.2s ease-out infinite; }
+@keyframes tf-flicker { 0%, 100% { transform: scale(1, 1); } 25% { transform: scale(0.88, 1.14); } 50% { transform: scale(1.06, 0.86); } 75% { transform: scale(0.94, 1.08); } }
+.tf-flicker { animation: tf-flicker 0.9s ease-in-out infinite; }
+@keyframes tf-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.12; } }
+.tf-blink { animation: tf-blink 2.4s ease-in-out infinite; }
+@keyframes tf-turn { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(-1); } }
+.tf-turn { animation: tf-turn 6s ease-in-out infinite; }
+@keyframes tf-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(var(--tf-amp, 4px)); } }
+.tf-bob { animation: tf-bob 3.6s ease-in-out infinite; }
+@keyframes tf-swing { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(9deg); } }
+.tf-swing { animation: tf-swing 7s ease-in-out infinite; }
+@keyframes tf-flutter { 0%, 100% { transform: scaleX(1) skewY(0); } 50% { transform: scaleX(0.82) skewY(7deg); } }
+.tf-flutter { animation: tf-flutter 1.4s ease-in-out infinite; }
+@keyframes tf-glint { 0%, 72%, 100% { opacity: 0; } 82% { opacity: 0.85; } }
+.tf-glint { animation: tf-glint 6s ease-in-out infinite; }
+/* Unsichtbar (außerhalb des Bildschirms) oder Tab verborgen: anhalten. */
+[data-tf-off] .tf-mv, html.tf-hidden .tf-mv { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .tf-grow, .tf-mv { animation: none !important; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }

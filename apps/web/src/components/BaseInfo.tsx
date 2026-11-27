@@ -17,7 +17,7 @@ const sum = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a +
 
 export function Supply({ base }: { base: BaseData }) {
   return (
-    <Card title="Versorgung" collapsible storageKey="basis-versorgung" defaultOpen={false} summary={<SupplySummary base={base} />}>
+    <Card id="versorgung" title="Versorgung" collapsible storageKey="basis-versorgung" defaultOpen={false} summary={<SupplySummary base={base} />}>
       <div className="space-y-2 text-sm">
         <PowerGrid base={base} />
         <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-slate-300 [&>span:nth-child(even)]:mono">

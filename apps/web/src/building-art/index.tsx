@@ -1,7 +1,11 @@
 // Stufenbilder der Gebäude: dasselbe Gebäude wächst mit der Ausbaustufe sichtbar mit.
 // Die Zeichnungen liegen in einem nachgeladenen Chunk (drawings.tsx); bis dahin steht das normale Symbol da.
-import { lazy, Suspense, useRef } from "react";
+// Bewegung (Rotor, Rauch, Lichter …) nach Spielzustand: Prop `live`, Bausteine und Regeln in motion.tsx.
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { ART, INK, MESSING } from "../icons-art.tsx";
+import type { Live } from "./motion.tsx";
+
+export type { Live } from "./motion.tsx";
 
 const Drawing = lazy(() => import("./drawings.tsx"));
 
@@ -25,14 +29,40 @@ function Placeholder({ id }: { id: string }) {
   return <svg x={20} y={10} width={56} height={56} viewBox="0 0 64 64" overflow="visible">{ART[id] ?? <circle cx="32" cy="32" r="12" fill="url(#tf-h)" stroke={INK} strokeWidth={2.4} />}</svg>;
 }
 
-/** Stufenbild eines Gebäudes; size = Breite in px (Höhe 5/6 davon). */
-export function BuildingArt({ id, level, size = 72, className }: { id: string; level: number; size?: number; className?: string }) {
+// Animationen nur, solange sichtbar: ein gemeinsamer IntersectionObserver setzt data-tf-off (CSS pausiert dann),
+// ein verborgener Tab setzt html.tf-hidden. Beides ohne React-State, also ohne Neu-Rendern.
+let io: IntersectionObserver | null = null;
+function watchVisible(el: Element): () => void {
+  if (typeof IntersectionObserver === "undefined") return () => {};
+  io ??= new IntersectionObserver((es) => {
+    for (const e of es) {
+      if (e.isIntersecting) delete (e.target as HTMLElement).dataset.tfOff;
+      else (e.target as HTMLElement).dataset.tfOff = "1";
+    }
+  }, { rootMargin: "48px" });
+  io.observe(el);
+  return () => io?.unobserve(el);
+}
+if (typeof document !== "undefined") {
+  const sync = () => document.documentElement.classList.toggle("tf-hidden", document.hidden);
+  document.addEventListener("visibilitychange", sync);
+  sync();
+}
+
+/**
+ * Stufenbild eines Gebäudes; size = Breite in px (Höhe 5/6 davon).
+ * live: Spielzustand für die Bewegung (motion.tsx); ohne live ruhend (Handbuch, Vorschau, Bauhof).
+ */
+export function BuildingArt({ id, level, size = 72, className, live }: { id: string; level: number; size?: number; className?: string; live?: Live | null }) {
   const stage = stageOf(level);
   const first = useRef(stage);
+  const ref = useRef<SVGSVGElement>(null);
+  const moving = !!live;
+  useEffect(() => (moving && ref.current ? watchVisible(ref.current) : undefined), [moving]);
   return (
-    <svg viewBox="0 0 96 80" width={size} height={(size * 80) / 96} className={className} aria-hidden="true" style={{ overflow: "visible" }}>
+    <svg ref={ref} viewBox="0 0 96 80" width={size} height={(size * 80) / 96} className={className} aria-hidden="true" style={{ overflow: "visible" }}>
       <Suspense fallback={<Placeholder id={id} />}>
-        <Drawing id={id} stage={stage} animate={stage !== first.current} />
+        <Drawing id={id} stage={stage} animate={stage !== first.current} live={live ?? null} />
       </Suspense>
     </svg>
   );

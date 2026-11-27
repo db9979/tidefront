@@ -9,7 +9,7 @@ import { fmtDuration, fmtSeconds, fmtTime, useNow } from "../lib/time.ts";
 import { liveResources } from "../lib/live.res.ts";
 import { buildingEffect, buildingText, cancelLoss, cancelQuestion } from "../lib/info.ts";
 import { Icon, IconTile } from "../icons.tsx";
-import { BuildingArt, BuildingArtTile, nextStageLevel, stageOf } from "../building-art/index.tsx";
+import { BuildingArt, BuildingArtTile, nextStageLevel, stageOf, type Live } from "../building-art/index.tsx";
 import { Badge, Bar, Button, Card, Cost, CountsLine, ErrorLine, Sheet } from "../ui.tsx";
 import { ReasonLine, useWhatHelps } from "../components/Remedy.tsx"; // „Was hilft?“
 import type { GuideAction } from "../components/Guide.tsx";
@@ -24,6 +24,7 @@ import { buildingBreakdown } from "../lib/breakdown.ts";
 import { Breakdown } from "../components/Breakdown.tsx";
 import { IntelPanel, SabotageBanner, sabotagedUntil } from "../components/Intel.tsx"; // Nachrichtendienst
 import { BlockadeBanner } from "../components/Naval.tsx"; // See: Blockade („blockiert bis …“)
+import { buildingLive, harborWeather } from "../lib/live-art.ts"; // Bewegte Gebäude
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 
@@ -51,6 +52,9 @@ export function BaseScreen(props: {
   const queue = base.buildQueue;
   const queueFull = queue.length >= base.buildQueueSlots;
   const byId = Object.fromEntries(base.buildings.map((b) => [b.id, b]));
+  const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
+  const windCut = meta.data?.balance.buildings.windpark?.stormCutoff;
+  const live = (b: Building) => buildingLive(base, b.id, b.level, now, windCut);
 
   const quests = useQuestSummary();
   const questBar = <QuestBar base={base} onAction={props.onGuide} />;
@@ -61,7 +65,7 @@ export function BaseScreen(props: {
     <div>
       {/* Hafen-Kopf (kompakt, ~90 px) */}
       <section className="mb-3 pb-2.5 flex items-center gap-3 border-b border-rule">
-        <HarborVignette size={72} levels={base.buildings.reduce((a, b) => a + b.level, 0)} />
+        <HarborVignette size={72} levels={base.buildings.reduce((a, b) => a + b.level, 0)} daylight={harborWeather(base).daylight} />
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-2">
             <h1 className="font-serif text-[26px] leading-none truncate flex-1 min-w-0 pt-1">{base.name}</h1>
@@ -100,7 +104,7 @@ export function BaseScreen(props: {
       {GROUPS.map((g) => (
         <Card key={g.title} title={g.title}>
           <div className="grid grid-cols-3 gap-2">
-            {g.ids.map((id) => byId[id] && <BuildingTile key={id} b={byId[id]} sabotaged={sabotagedUntil(base, id, now) !== null} res={res} queueFull={queueFull} running={queue[0]?.buildingId === id} queued={queue.some((o) => o.buildingId === id)} onOpen={() => setSheet(id)} />)}
+            {g.ids.map((id) => byId[id] && <BuildingTile key={id} b={byId[id]} live={live(byId[id])} sabotaged={sabotagedUntil(base, id, now) !== null} res={res} queueFull={queueFull} running={queue[0]?.buildingId === id} queued={queue.some((o) => o.buildingId === id)} onOpen={() => setSheet(id)} />)}
           </div>
         </Card>
       ))}
@@ -114,7 +118,7 @@ export function BaseScreen(props: {
       <Protection base={base} now={now} />
 
       {sheet && byId[sheet] && (
-        <BuildingSheet b={byId[sheet]} base={base} res={res} onClose={() => setSheet(null)} onTroops={props.onTroops} onResearch={props.onResearch} />
+        <BuildingSheet b={byId[sheet]} live={live(byId[sheet])} base={base} res={res} onClose={() => setSheet(null)} onTroops={props.onTroops} onResearch={props.onResearch} />
       )}
     </div>
   );
@@ -193,7 +197,7 @@ function BuildYard({ base, now }: { base: BaseData; now: number }) {
   );
 }
 
-function BuildingTile({ b, res, queueFull, running, queued, onOpen, sabotaged }: { b: Building; res: Record<string, number>; queueFull: boolean; running: boolean; queued: boolean; onOpen: () => void; sabotaged?: boolean }) {
+function BuildingTile({ b, live, res, queueFull, running, queued, onOpen, sabotaged }: { b: Building; live: Live; res: Record<string, number>; queueFull: boolean; running: boolean; queued: boolean; onOpen: () => void; sabotaged?: boolean }) {
   const can = !queueFull && b.planned < b.maxAllowed && affordable(b.cost, res);
   return (
     <button
@@ -201,7 +205,7 @@ function BuildingTile({ b, res, queueFull, running, queued, onOpen, sabotaged }:
       onClick={onOpen}
       className={`relative rounded-xl px-1.5 pt-2 pb-2 flex flex-col items-center text-center border bg-card transition ${queued ? "reticle" : "border-rule"} active:scale-[0.97]`}
     >
-      <BuildingArt id={b.id} level={b.level} size={68} />
+      <BuildingArt id={b.id} level={b.level} size={68} live={live} />
       <span className="w-full font-serif text-[12.5px] mt-1 leading-tight break-words hyphens-auto" lang="de">{shy(label(b.id))}</span>
       <span className="mt-1 flex items-center gap-1">
         <span className={`w-[22px] h-[22px] rounded-full grid place-items-center text-[11px] mono border ${b.level > 0 ? "border-ink text-ink" : "border-rule text-ink2"}`}>{b.level}</span>
@@ -212,7 +216,7 @@ function BuildingTile({ b, res, queueFull, running, queued, onOpen, sabotaged }:
   );
 }
 
-function BuildingSheet({ b, base, res, onClose, onTroops, onResearch }: { b: Building; base: BaseData; res: Record<string, number>; onClose: () => void; onTroops: () => void; onResearch: () => void }) {
+function BuildingSheet({ b, live, base, res, onClose, onTroops, onResearch }: { b: Building; live: Live; base: BaseData; res: Record<string, number>; onClose: () => void; onTroops: () => void; onResearch: () => void }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const up = useCommand((i: { key: string; buildingId: string }) => trpcClient.base.upgrade.mutate(i), invalidateBase);
   const balance = meta.data?.balance;
@@ -240,7 +244,7 @@ function BuildingSheet({ b, base, res, onClose, onTroops, onResearch }: { b: Bui
   return (
     <Sheet open onClose={onClose} title={<>{label(b.id)} <span className="text-ink2 font-sans text-sm mono">Stufe {b.level}</span></>} icon={<IconTile id={b.id} size={56} />}>
       <p className="text-sm text-slate-200 mb-3">{buildingText(balance, b.id)}</p>
-      <StagePictures id={b.id} level={b.level} target={maxed ? null : target} />
+      <StagePictures id={b.id} level={b.level} target={maxed ? null : target} live={live} />
       {sabotaged !== null && <p className="text-sm text-siegel mb-2">Sabotiert bis {fmtTime(sabotaged)} – der Täter ist unbekannt.</p>}
       {b.id === "nachrichtendienst" && b.level > 0 && <IntelPanel base={base} now={Date.now()} />}
       {(now || next) && (
@@ -287,15 +291,15 @@ function BuildingSheet({ b, base, res, onClose, onTroops, onResearch }: { b: Bui
   );
 }
 
-/** Stufenbilder im Info-Blatt: jetzt und nach dem nächsten Ausbau nebeneinander. */
-function StagePictures({ id, level, target }: { id: string; level: number; target: number | null }) {
+/** Stufenbilder im Info-Blatt: jetzt (bewegt, live) und nach dem nächsten Ausbau (ruhend) nebeneinander. */
+function StagePictures({ id, level, target, live }: { id: string; level: number; target: number | null; live: Live }) {
   const next = nextStageLevel(level);
   const changes = target !== null && stageOf(target) !== stageOf(level);
   return (
     <div className="mb-3">
       <div className="grid grid-cols-2 gap-2">
         <figure className="rounded-xl bg-[#f6f1e5] border border-rule p-1.5 flex flex-col items-center">
-          <BuildingArt id={id} level={level} size={128} />
+          <BuildingArt id={id} level={level} size={128} live={live} />
           <figcaption className="text-[11px] uppercase tracking-wider text-slate-400 mt-1">Jetzt · Stufe {level}</figcaption>
         </figure>
         {target !== null ? (
