@@ -253,6 +253,8 @@ test("Berichte aus Ereignissen: Nest, Abwehr ohne Verluste, Spionage – jeder B
 test("Tagesbefehle-Fortschritt zählt mit (Handel, Ausbau); Zustand: Prachtbau, Serie, Saisonplatzierung", async () => {
   await db.transaction(async (tx) => {
     await trackProgress(tx, B.playerId, "handel", 800, { atMs: Date.now() });
+    // Mini-Geschäft unter minCountedTradeCredits (500) zählt nicht für Erfolg/Wochenziel (Wirtschaftsprüfung 0.24).
+    await trackProgress(tx, B.playerId, "handel", 3, { atMs: Date.now() });
     await trackProgress(tx, B.playerId, "ausbau", 2, { atMs: Date.now() });
   });
   assert.equal(await counter(B.playerId, "handel"), 1);

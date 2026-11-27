@@ -23,6 +23,8 @@ export interface AchievementsBalance {
   /** Gemeinsame Belohnung je Stufe (Bronze, Silber, Gold). */
   rewards: [AchievementReward, AchievementReward, AchievementReward];
   list: Record<string, AchievementDef>;
+  /** Erfolg „Kaufmann“ und Wochenziel „Geschäfte“ zählen nur Börsengeschäfte ab diesem Wert (Kredite, seit 0.24.4). */
+  minCountedTradeCredits?: number;
   weekly: {
     /** Ressourcenwert je Ziel bei Kommandozentrale 0; wächst um stageGrowth je Stufe. */
     goalValue: number;

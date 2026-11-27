@@ -100,7 +100,8 @@ export async function recordAchievement(tx: DbOrTx, playerId: number, counter: s
 /** Tagesbefehle-Fortschritt, der auch für Erfolge und Wochenziele zählt (aufgerufen aus trackProgress). */
 const FROM_DAILY: Record<string, (amount: number) => [string, number][]> = {
   ausbau: (n) => [["gebaeudestufen", n]],
-  handel: () => [["handel", 1]],
+  // Nur Geschäfte ab minCountedTradeCredits zählen (Wirtschaftsprüfung 0.24: Mini-Handel als Belohnungsquelle).
+  handel: (credits) => (credits >= (balance.achievements?.minCountedTradeCredits ?? 0) ? [["handel", 1]] : []),
   forschung: (n) => [["forschung", n]],
   wrack: (n) => [["wrack", n]],
   anlagen: (n) => [["anlagen", n]],

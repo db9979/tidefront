@@ -397,7 +397,8 @@ export function drawDay(c: PoolContext, seedText: string): (Draw & { slot: Tier 
 /** Punkte der Kategorie Befehle je Stufe. */
 export const TIER_POINTS = [3, 6, 12];
 const TIER_VALUE = [400, 1000, 2500];
-const SHARE: Record<string, number> = { stahl: 0.4, treibstoff: 0.25, elektronik: 0.15, proviant: 0.2 };
+// Paketschlüssel (Wirtschaftsprüfung 0.24: Stahl ist der Engpass, Proviant im Überfluss).
+const SHARE: Record<string, number> = { stahl: 0.5, treibstoff: 0.25, elektronik: 0.15, proviant: 0.1 };
 
 /** Ressourcenpaket im Gesamtwert `value`, aufgeteilt nach festem Schlüssel, auf 10 gerundet. */
 export function resourcePackage(value: number): ResourceMap {

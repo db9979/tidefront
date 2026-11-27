@@ -163,7 +163,7 @@ export const WEEKLY_KINDS: Record<string, WeeklyKind> = {
   handel: {
     icon: "credits",
     spec: (c) => (c.marketOpen ? { param: null, target: 5 } : null),
-    text: (n) => `Schließe ${n} Geschäfte an der Börse ab`,
+    text: (n) => `Schließe ${n} Geschäfte an der Börse ab (je mindestens ${fmt(balance.achievements?.minCountedTradeCredits ?? 0)} Kredite)`,
   },
   abwehr: {
     icon: "schild",
