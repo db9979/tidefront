@@ -2,6 +2,13 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.30.0 – 27.11.2026
+- **Berichte neu aufbereitet – wie die E-Mails:** Ergebnis-Kopf, Kurzfazit, Kennzahlen und Tabellen mit Einheiten-, Anlagen- und Ressourcensymbolen; Kampfberichte mit Gefechtsverlauf. Alle Einzelheiten aufklappbar.
+- **„Im Kampfsimulator öffnen“** an jedem Kampfbericht: Der Simulator startet mit beiden Verbänden vor dem Kampf, Anlagen, Wetter und Boni (Forschung des Gegners bleibt geheim). Zum Vergleich steht das Kriegsglück des echten Kampfs daneben; danach frei änderbar („Was, wenn ich 5 Korvetten mehr gehabt hätte?“).
+- Aufklärungsberichte: „Angreifen planen“, Entfernung, Probekampf und Simulator mit deinem Bestand gegen das aufgeklärte Ziel.
+- **E-Mails** zu Kämpfen haben den Link „Im Kampfsimulator öffnen“.
+- **Behoben:** Der Bericht-Link aus E-Mails öffnete den Bericht nicht immer.
+
 ## 0.29.0 – 27.11.2026
 - **Börse mit Gedächtnis (Balance v1.30):** Kurse halten Knappheit länger – ohne Handel halbiert sich die Abweichung vom Richtwert erst nach 24 statt 12 Stunden.
 - **Handelsbilanz:** Kaufen alle Spieler über drei Tage mehr, als sie verkaufen, steigt der Richtwert (bis +15 %), im umgekehrten Fall fällt er. Ein einzelner Spieler bewegt höchstens ein Drittel davon; gilt ab drei aktiven Häfen. Die Wertung rechnet weiter mit dem festen Grundrichtwert.
