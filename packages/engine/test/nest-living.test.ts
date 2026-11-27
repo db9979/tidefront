@@ -145,8 +145,9 @@ test("Abwehr: Überlebende, sofort ≥ 70 %, Kampfbericht = Lagebild; Eroberung 
   const oldLoot = after1.lootAt!.getTime();
   await advance((await missionOf(weak.missionId)).returnAt!.getTime() + 1000);
   // Starker Überfall: Eroberung, Beute 130 %.
-  await patchBase(A.baseId, (s) => { s.units.korvette = 25; s.units.zerstoerer = 12; s.units.landungsschiff = 8; s.units.schuetzen = 260; s.units.kampfpanzer = 12; });
-  const strong = await launchMission(engine, A.playerId, key(), { type: "ueberfall", units: { korvette: 25, zerstoerer: 12, landungsschiff: 8, schuetzen: 260, kampfpanzer: 12 }, ...pos });
+  // Deutlich überlegen (Kriegsglück und Wurf dürfen den Sieg nicht kippen).
+  await patchBase(A.baseId, (s) => { s.units.korvette = 40; s.units.zerstoerer = 20; s.units.landungsschiff = 10; s.units.schuetzen = 400; s.units.kampfpanzer = 20; s.buildings.kommandozentrale = Math.max(s.buildings.kommandozentrale ?? 0, 20); });
+  const strong = await launchMission(engine, A.playerId, key(), { type: "ueberfall", units: { korvette: 40, zerstoerer: 20, landungsschiff: 10, schuetzen: 400, kampfpanzer: 20 }, ...pos });
   assert.equal(strong.ok, true, JSON.stringify(strong));
   if (!strong.ok) return;
   const arrive = (await missionOf(strong.missionId)).arriveAt.getTime();
