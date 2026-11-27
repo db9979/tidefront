@@ -20,7 +20,7 @@ const NAMES: Record<string, string> = {
   minenleger: "Minenleger", minenraeumer: "Minenräumer", minen: "Minen legen", raeumen: "Minen räumen", blockade: "Blockade",
   abfangen: "Konvoi abfangen", geleit: "Geleitschutz", konvoi: "Konvoi", blockadekampf: "Blockadekampf", mine: "Minenfeld",
   // Felder: Rohstofffelder
-  besetzen: "Besetzen", feld: "Rohstofffeld", oelfeld: "Ölfeld", erzbucht: "Erzbucht", fischgrund: "Fischgrund", elektronikwrack: "Elektronik-Wrack",
+  besetzen: "Besetzen", admiral_heimkehr: "Admiral auf Heimfahrt", feld: "Rohstofffeld", oelfeld: "Ölfeld", erzbucht: "Erzbucht", fischgrund: "Fischgrund", elektronikwrack: "Elektronik-Wrack",
   // Mehrere Häfen
   kolonieschiff: "Kolonieschiff", gruendung: "Gründung", verlegung: "Verlegung", heimathafen: "Heimathafen", aussenposten: "Außenposten",
 };
@@ -259,6 +259,7 @@ const ERRORS: Record<string, string> = {
   escort_no_cargo: "Kredite reisen nicht per Konvoi – Geleit gibt es nur für Ressourcen.",
   offer_escorted: "Der Anbieter stellt für diese Ware schon Geleit – eigenes Geleit ist hier nicht möglich.",
   field_has_admiral: "Die Besatzung dieses Felds hat schon einen Admiral.",
+  field_no_admiral: "Diese Besatzung führt kein Admiral.",
   // Mehrere Häfen: Gründung und Verlegung
   expansion_off: "Gründen und Verlegen sind auf diesem Server noch nicht freigeschaltet.",
   base_limit: "Kein weiterer Hafen möglich: Höchstzahl erreicht oder die Kommandozentrale des Heimathafens ist noch zu klein.",

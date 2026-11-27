@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   applySiegePenalty,
   armadaAttacker,
+  armadaTargetHp,
+  defenseHp,
   buildRoute,
   capLoot,
   composeArmada,
@@ -160,4 +162,20 @@ test("Belagerung: 30 % der Gebäudeproduktion, nicht bei vollem Lager, nie negat
 test("Ereignisse sind in einer Saison mehrfach möglich (Abstand 2–4 Tage)", () => {
   assert.ok(w.spawnIntervalHours[0] >= 2 * 24 && w.spawnIntervalHours[1] <= 4 * 24);
   assert.ok(28 * DAY / (w.spawnIntervalHours[1] * HOUR) >= 7);
+});
+
+test("Großflotte (v1.16): Stärke-Bezug gewichtet Schiffe wie das Kartell, Landungsschiffe zählen nicht", () => {
+  assert.equal(w.grossflotte.raidWeights, true);
+  const troops = { schuetzen: 40 };
+  const withShips = { schuetzen: 40, zerstoerer: 4 };
+  assert.equal(armadaTargetHp(troops, {}, balance), defenseHp(troops, {}, balance), "ohne Schiffe unverändert");
+  const z = balance.units.zerstoerer.hp * 4;
+  assert.ok(approx(armadaTargetHp(withShips, {}, balance), defenseHp(troops, {}, balance) + z * 0.5, 1e-9), "Zerstörer halb");
+  assert.equal(armadaTargetHp({ ...troops, landungsschiff: 4 }, {}, balance), defenseHp(troops, {}, balance), "Landungsschiffe 0");
+  // Mehr Schnellboote nur durch Kampfwert, nicht durch die volle Flotte daheim.
+  const ref = (u: Record<string, number>) => composeArmada(referenceHp([armadaTargetHp(u, {}, balance)], balance), 0.5, balance).units.schnellboot;
+  assert.ok(ref(withShips) < composeArmada(referenceHp([defenseHp(withShips, {}, balance)], balance), 0.5, balance).units.schnellboot);
+  // Ohne Schalter wie bis v1.15.
+  const old = { ...balance, worldEvents: { ...w, grossflotte: { ...w.grossflotte, raidWeights: false } } };
+  assert.equal(armadaTargetHp(withShips, {}, old as typeof balance), defenseHp(withShips, {}, balance));
 });

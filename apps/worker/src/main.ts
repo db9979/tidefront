@@ -15,6 +15,7 @@ import {
   flushMailDigests,
   noticeHook,
   processDue,
+  refreshDerivedOpen,
   runMarketNews,
   runMorningSummaries,
   runBotsDue,
@@ -66,6 +67,8 @@ async function loop() {
         await ensureFieldPlanner(db, Date.now()).catch((err) => log("fields planner", String(err)));
         // Marktnachrichten: Lage auswerten (täglich Knappheit), effektiven Richtwert fortschreiben, Push.
         await runMarketNews(engine, Date.now()).catch((err) => log("market news", String(err)));
+        // Tagesbefehle aus dem Zustand (Ökostrom, Vorrat, Produktion …) auch ohne Abruf durch den Spieler fortschreiben.
+        await refreshDerivedOpen(db, Date.now()).catch((err) => log("daily derived", String(err)));
       }
       if (Date.now() >= nextOps) {
         // Jede Minute: Kennzahlen, Alarm an Admins, gebündelte E-Mails.

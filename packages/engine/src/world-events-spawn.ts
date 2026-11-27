@@ -2,6 +2,7 @@
 // Saisonfortschritt und Spielerstärke zusammen, plant Fahrt, Angriffe und Ende, kündigt per Nachricht und Push an.
 // Nie gegen Spieler im Anfängerschutz; die Belagerung trifft nur gerade ungeschützte Häfen.
 import {
+  armadaTargetHp,
   buildRoute,
   composeArmada,
   composeSiege,
@@ -42,6 +43,8 @@ interface Candidate extends Hex {
   name: string;
   state: BaseState;
   hp: number;
+  /** Bezug der Großflotte (v1.16: Schiffe gewichtet wie beim Kartell, sie landet Miliz). */
+  armadaHp: number;
 }
 
 type Rng = () => number;
@@ -89,7 +92,10 @@ async function candidates(tx: Tx, due: number): Promise<Candidate[]> {
   return rows
     .map((b) => {
       const state = settle(b.state as BaseState, due, balance);
-      return { baseId: b.id, playerId: b.playerId, name: b.name, col: b.col, row: b.row, state, hp: defenseHp(state.units, state.defenses, balance) };
+      return {
+        baseId: b.id, playerId: b.playerId, name: b.name, col: b.col, row: b.row, state, hp: defenseHp(state.units, state.defenses, balance),
+        armadaHp: armadaTargetHp(state.units, state.defenses, balance),
+      };
     })
     .filter((c) => !isBeginnerProtected(c.state.protection, due, balance));
 }
@@ -163,7 +169,7 @@ function draftArmada(rng: Rng, due: number, cands: Candidate[], progress: number
     .map((x) => x.c);
   const tree = [...seaBfs(center, 3).values()].sort((a, b) => b.hops - a.hops);
   const assembly = tree[0]?.hex ?? center;
-  const comp = composeArmada(referenceHp(inRegion.map((c) => c.hp), balance), progress, balance);
+  const comp = composeArmada(referenceHp(inRegion.map((c) => c.armadaHp), balance), progress, balance);
   const activeAtMs = due + g.announceHours * HOUR_MS;
   const targets: ArmadaTarget[] = inRegion.map((c) => ({ baseId: c.baseId, playerId: c.playerId, name: c.name, col: c.col, row: c.row, status: "pending" }));
   const names = targets.map((x) => x.name).join(", ");

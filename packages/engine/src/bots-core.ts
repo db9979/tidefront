@@ -83,6 +83,8 @@ export interface BotState {
   avoid?: Record<string, number>;
   /** Fehler in Folge (für den Abstand des nächsten Versuchs). */
   errors?: number;
+  /** Rohstofffeld, für das Schiffe fehlen: Überfälle lassen diesen Verband daheim, die Rüstung legt Schiffe nach. */
+  fieldTarget?: { fieldId: number; baseId: number; units: Record<string, number>; untilMs: number };
 }
 
 export interface BotRow { id: number; name: string; profile: BotProfile; settings: BotSettings; state: BotState }

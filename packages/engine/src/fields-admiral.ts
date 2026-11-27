@@ -3,13 +3,19 @@
 // Besatzung (Mission „stationed“, Status „unterwegs“) und führt sie bei Angriffen auf das Feld (Spieler und Kartell),
 // nicht die Geleitabteilung. Mit der Besatzung kehrt er heim (Rückruf, Niederlage). Eine Verstärkung bringt ihren
 // Admiral zur Besatzung, wenn diese noch keinen hat (sonst kehrt die Verstärkung um).
+// Abziehen ohne Rückruf (fieldAdmiralRecall): der Admiral fährt allein auf einem Kurierboot heim – Fahrzeit mit dem
+// schnellsten Schiff, ohne Treibstoff und Missionsplatz (Mission ADMIRAL_RETURN_TYPE, Status „returning“); die
+// Besatzung hält das Feld ohne ihn. Bis zur Ankunft ist er „unterwegs“.
 import { and, eq } from "drizzle-orm";
 import type { Mission, Modifiers } from "@tidefront/game-core";
+import { hexDistanceKm } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
-import { GameError } from "./context.ts";
+import { balance, GameError, type Engine } from "./context.ts";
 import { admiralForLaunch, admiralPreviewMods, admiralStatus } from "./admirals-core.ts";
 import { missionAdmiral, type BattleAdmiral } from "./admirals-battle.ts";
-import { fieldName, type FieldRow } from "./fields-core.ts";
+import { fieldById, fieldName, type FieldRow } from "./fields-core.ts";
+import { ADMIRAL_RETURN_TYPE, readBase, scheduleEvent } from "./store.ts";
+import { runCommand } from "./commands.ts";
 
 /** Admiral, der eine Besatzung (stationierte Mission) führt – nur, wenn er weder verwundet noch gefangen ist. */
 export async function garrisonAdmiral(tx: Tx, m: { id: number; plan: unknown; playerId: number | null }, due: number): Promise<BattleAdmiral | null> {
@@ -61,13 +67,60 @@ export async function reinforceAdmiral(tx: Tx, m: { id: number }, plan: Mission,
   return { ok: true, admiralId: a.id };
 }
 
-/** Ansicht „Admirale“: Posten je Admiral, der eine Feldbesatzung führt (Admiral-ID → Text). */
-export async function admiralPosts(db: DbOrTx, rows: { id: number; missionId: number | null }[]): Promise<Map<number, string>> {
-  const out = new Map<number, string>();
+/** Ansicht „Admirale“: Posten je Admiral bei einer Feldbesatzung oder auf der Heimfahrt davon (Text, Feld zum Abziehen). */
+export async function admiralPosts(db: DbOrTx, rows: { id: number; missionId: number | null }[]): Promise<Map<number, { text: string; fieldId: number | null }>> {
+  const out = new Map<number, { text: string; fieldId: number | null }>();
   for (const r of rows.filter((x) => x.missionId !== null)) {
     const [f] = await db.select().from(tables.resourceField).where(eq(tables.resourceField.missionId, r.missionId!));
     const [m] = await db.select({ status: tables.mission.status }).from(tables.mission).where(eq(tables.mission.id, r.missionId!));
-    if (f && m?.status === "stationed") out.set(r.id, `führt die Besatzung auf ${fieldName(f as FieldRow)}`);
+    if (f && m?.status === "stationed") out.set(r.id, { text: `führt die Besatzung auf ${fieldName(f as FieldRow)}`, fieldId: f.id });
+  }
+  // Allein auf der Heimfahrt von einer Besatzung (fieldAdmiralRecall).
+  for (const r of rows.filter((x) => x.missionId !== null && !out.has(x.id))) {
+    const [m] = await db.select({ type: tables.mission.type, status: tables.mission.status, targetId: tables.mission.targetId }).from(tables.mission).where(eq(tables.mission.id, r.missionId!));
+    if (m?.type !== ADMIRAL_RETURN_TYPE || m.status !== "returning" || m.targetId === null) continue;
+    const [f] = await db.select().from(tables.resourceField).where(eq(tables.resourceField.id, m.targetId));
+    out.set(r.id, { text: `kehrt allein von ${f ? fieldName(f as FieldRow) : "einem Rohstofffeld"} heim`, fieldId: null });
   }
   return out;
+}
+
+/** Geschwindigkeit des Kurierboots: das schnellste Schiff der Balance (km/h). */
+export function admiralBoatKmh(): number {
+  return Math.max(1, ...Object.values(balance.units).filter((u) => u.branch === "see").map((u) => u.speedKmh ?? 0));
+}
+
+/**
+ * Admiral von einer Besatzung abziehen, ohne sie zurückzurufen: er fährt allein in den Hafen des Felds (sein Hafen)
+ * und ist bei Ankunft wieder bereit. Gefangen kann er nicht abziehen; verwundet fährt er heim und heilt dort weiter.
+ * Codes: no_field, field_no_admiral, admiral_busy.
+ */
+export function fieldAdmiralRecall(engine: Engine, playerId: number, key: string, fieldId: number) {
+  return runCommand<{ ok: true; admiralId: number; returnAtMs: number }>(engine, playerId, key, "fieldAdmiralRecall", async (ctx) => {
+    const field = await fieldById(ctx.tx, fieldId, true); // Reihenfolge wie beim Rückruf: Feld vor Besatzung
+    if (!field || field.ownerId !== playerId || field.missionId === null) throw new GameError("no_field");
+    const [m] = await ctx.tx.select().from(tables.mission).where(eq(tables.mission.id, field.missionId)).for("update");
+    if (!m || m.status !== "stationed" || m.baseId === null) throw new GameError("no_field");
+    const plan = m.plan as Mission;
+    const id = plan.admiralId;
+    const [a] = id ? await ctx.tx.select().from(tables.admiral).where(eq(tables.admiral.id, id)).for("update") : [];
+    if (!a || a.missionId !== m.id || a.playerId !== playerId) throw new GameError("field_no_admiral");
+    if (a.captiveUntil && a.captiveUntil.getTime() > ctx.nowMs) throw new GameError("admiral_busy");
+    const home = await readBase(ctx.tx, m.baseId);
+    if (!home) throw new GameError("no_field");
+    const returnAtMs = ctx.nowMs + Math.round((hexDistanceKm(field, home) / admiralBoatKmh()) * 3600000);
+    const [r] = await ctx.tx.insert(tables.mission).values({
+      playerId, baseId: home.id, type: ADMIRAL_RETURN_TYPE, targetKind: "field", targetId: field.id, targetCol: field.col, targetRow: field.row,
+      plan: { ...plan, units: {}, admiralId: a.id, departAtMs: ctx.nowMs, arriveAtMs: ctx.nowMs, returnAtMs, recalledAtMs: undefined },
+      status: "returning", returning: {}, cargoHome: {}, arriveAt: new Date(ctx.nowMs), returnAt: new Date(returnAtMs),
+    }).returning({ id: tables.mission.id });
+    await scheduleEvent(ctx.tx, "mission_return", returnAtMs, { missionId: r.id }, home.id);
+    // Die Besatzung führt er nicht mehr; der Admiral hängt an der Heimfahrt (Status „unterwegs“ bis zur Ankunft).
+    await ctx.tx.update(tables.mission).set({ plan: { ...plan, admiralId: undefined } }).where(eq(tables.mission.id, m.id));
+    const set: Partial<typeof tables.admiral.$inferInsert> = { missionId: r.id };
+    if (a.baseId !== home.id) Object.assign(set, { baseId: home.id, stationed: false });
+    await ctx.tx.update(tables.admiral).set(set).where(eq(tables.admiral.id, a.id));
+    ctx.notify.push([[playerId], "missions"], [[playerId], "base"]);
+    return { ok: true as const, admiralId: a.id, returnAtMs };
+  });
 }

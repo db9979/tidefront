@@ -70,7 +70,20 @@ export function FieldSheet({ data, sel, onPlan }: { data: FieldsData | null | un
       </div>
       {mine && <FieldIncomingLines incoming={mine.incoming} reinforcements={mine.reinforcements} />}
       {mine && <Button kind="secondary" className="w-full mt-2" onClick={() => onPlan({ col: f.col, row: f.row, fieldId: f.id, fieldMission: "besetzen" })}>Verstärken (Schiffe zur Besatzung schicken)</Button>}
+      {mine?.admiral && <AdmiralRecall fieldId={f.id} name={mine.admiral.name} />}
       {mine && <RecallButton fieldId={f.id} />}
+    </div>
+  );
+}
+
+/** Admiral der Besatzung allein heimschicken (die Besatzung hält das Feld weiter). */
+export function AdmiralRecall({ fieldId, name }: { fieldId: number; name?: string }) {
+  const go = useCommand((i: { key: string; fieldId: number }) => trpcClient.fields.admiralRecall.mutate(i), () => [...invalidate(), trpc.admiral.pathFilter().queryKey]);
+  return (
+    <div className="mt-2">
+      {name && <div className="text-xs text-see">Admiral {name} führt die Besatzung.</div>}
+      <Button kind="secondary" className="w-full" disabled={go.busy} onClick={() => void go.run({ fieldId })}>Admiral abziehen (fährt allein heim, Besatzung bleibt)</Button>
+      <ErrorLine text={go.error} />
     </div>
   );
 }

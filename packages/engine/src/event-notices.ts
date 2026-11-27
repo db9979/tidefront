@@ -5,7 +5,7 @@ import { radarWarningMinutes, settle, type BaseState, type BuildOrder, type Modi
 import { tables, type Tx } from "@tidefront/db";
 import { balance, type NoticeJob } from "./context.ts";
 import type { EventRow, Handler } from "./events.ts";
-import { lockBase, readBase, scheduleEvent } from "./store.ts";
+import { ADMIRAL_RETURN_TYPE, lockBase, readBase, scheduleEvent } from "./store.ts";
 import { amounts, clock, fmtInt, minutesText, nameOf } from "./names.ts";
 import { modsOf } from "./modifiers.ts";
 import { detectedAtOf, isDetected, markDetected, warnFactor } from "./radar.ts";
@@ -133,6 +133,13 @@ export async function noticesAfter(tx: Tx, ev: EventRow, due: number, snap: Snap
   const [m] = await tx.select().from(tables.mission).where(eq(tables.mission.id, Number(ev.payload.missionId)));
   if (!m || m.status === snap.status) return [];
   if (ev.type === "mission_return" && m.status === "done" && m.playerId !== null && m.type === "spionage") return spyReturnNotice(tx, m);
+  if (ev.type === "mission_return" && m.status === "done" && m.playerId !== null && m.type === ADMIRAL_RETURN_TYPE) {
+    const where = await harborName(tx, m.playerId, m.baseId);
+    return [{ playerId: m.playerId, notice: {
+      kind: "fleet", url: "/?tab=truppen", tag: `admiral-back-${m.id}`, title: "Admiral zurück",
+      body: `Dein Admiral ist allein von der Feldbesatzung ${where ? `nach ${where} ` : ""}heimgekehrt und wieder bereit.`,
+    } }];
+  }
   if (ev.type === "mission_return" && m.status === "done" && m.playerId !== null) {
     const cargo = amounts(m.cargoHome as Record<string, number>);
     const where = await harborName(tx, m.playerId, m.baseId);

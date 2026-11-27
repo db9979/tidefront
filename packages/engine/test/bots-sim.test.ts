@@ -1,6 +1,7 @@
 // Testlauf KI-Spieler über mehrere Spieltage (TEST_DATABASE_URL; die Datenbank wird geleert): drei Bots spielen mit
 // verstellter Uhr (Date.now) gegen die echte Engine – Ereignisse, Kartell-Überfälle, Felder und Befehle wie im Betrieb.
-// Erwartung: jeder Bot wächst sinnvoll, der Freibeuter (stark) liegt vor dem Händler (leicht). Zahlen im Testprotokoll.
+// Erwartung: jeder Bot wächst sinnvoll, der Freibeuter (stark) liegt vor dem Händler (leicht), Festung oder Freibeuter
+// halten ein Rohstofffeld. Zahlen im Testprotokoll (Felder je Tag; BOT_SIM_SHIPS=1: Schiffe und gemerktes Feldziel).
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { sql } from "drizzle-orm";
@@ -50,13 +51,22 @@ test(`Testlauf über ${DAYS} Spieltage: alle Bots wachsen, Freibeuter stärker a
     }
     if ((t - t0) % 86400000 === 0 && t > t0) {
       const s = await computeStandings(db, t0, t);
-      daily.push(`Tag ${(t - t0) / 86400000}: ` + s.filter((r) => r.bot).map((r) => `${r.name} ${r.total}`).join(", "));
+      const fieldRows = await db.execute<{ player_id: number; n: number }>(sql`select player_id, count(*)::int as n from resource_field where player_id is not null group by player_id`);
+      const fieldsOf = (id: number) => fieldRows.find((x) => x.player_id === id)?.n ?? 0;
+      daily.push(`Tag ${(t - t0) / 86400000}: ` + s.filter((r) => r.bot).map((r) => `${r.name} ${r.total} (Felder ${fieldsOf(r.playerId)})`).join(", "));
+      if (process.env.BOT_SIM_SHIPS) {
+        for (const b of await loadBots(db)) {
+          const ships = (await basesOfPlayer(db, b.id)).map((x) => JSON.stringify({ home: x.state.units, away: x.state.unitsAway }));
+          daily.push(`  ${b.name}: ${ships.join(" | ")} Ziel ${JSON.stringify(b.state.fieldTarget ?? null)}`);
+        }
+      }
     }
   }
   fake = t0 + DAYS * 86400000;
   const standings = (await computeStandings(db, t0, fake)).filter((r) => r.bot);
   const byProfile = new Map<string, (typeof standings)[number]>();
   const lines: string[] = [];
+  const fieldsHeld = new Map<string, number>();
   const checks: (() => void)[] = [];
   for (const b of await loadBots(db)) {
     const s = standings.find((r) => r.playerId === b.id)!;
@@ -66,10 +76,12 @@ test(`Testlauf über ${DAYS} Spieltage: alle Bots wachsen, Freibeuter stärker a
     const [raids] = await db.execute<{ n: number; won: number }>(sql`select count(*)::int as n, count(*) filter (where winner = 'attacker')::int as won
       from battle_report where attacker_player_id = ${b.id} and kind = 'ueberfall'`);
     const [fields] = await db.execute<{ n: number }>(sql`select count(*)::int as n from resource_field where player_id = ${b.id}`);
+    const [taken] = await db.execute<{ n: number }>(sql`select count(*)::int as n from battle_report where attacker_player_id = ${b.id} and kind = 'feld' and winner = 'attacker'`);
+    fieldsHeld.set(b.profile, fields.n);
     const [trades] = await db.execute<{ n: number }>(sql`select count(*)::int as n from command_log where player_id = ${b.id} and command in ('trade', 'offerCreate', 'offerAccept')`);
     lines.push(`${b.name} (${b.profile}): Züge ${turns.get(b.id)}, Häfen ${bases.length}, Gebäudestufen ${levels}, ` +
       `Punkte ${s.total} (Ausbau ${s.ausbau}, Militär ${s.militaer}, Kampf ${s.kampf}, Beute ${s.beute}), ` +
-      `Überfälle ${raids.n} (gewonnen ${raids.won}), Felder ${fields.n}, Handel ${trades.n}`);
+      `Überfälle ${raids.n} (gewonnen ${raids.won}), Felder ${fields.n} (Feldkämpfe gewonnen ${taken.n}), Handel ${trades.n}`);
     checks.push(() => {
       assert.ok(levels >= 40, `${b.name} baut aus (${levels} Stufen)`);
       assert.ok(s.ausbau > 100, `${b.name} wächst`);
@@ -83,4 +95,6 @@ test(`Testlauf über ${DAYS} Spieltage: alle Bots wachsen, Freibeuter stärker a
   console.log(`# Bot-Zug: ${turnMs.length} Züge, Median ${sorted[Math.floor(sorted.length / 2)]} ms, 95 % ${sorted[Math.floor(sorted.length * 0.95)]} ms, max ${sorted[sorted.length - 1]} ms`);
   for (const c of checks) c();
   assert.ok(byProfile.get("freibeuter")!.total > byProfile.get("haendler")!.total, "Freibeuter stärker als Händler");
+  // Felder (M.10): Festung und Freibeuter nehmen bewachte Felder nach Probekampf.
+  assert.ok((fieldsHeld.get("festung") ?? 0) + (fieldsHeld.get("freibeuter") ?? 0) >= 1, "Festung oder Freibeuter halten ein Feld");
 });

@@ -8,8 +8,8 @@ import { createDb, migrateDb, tables } from "@tidefront/db";
 import { nestSites, isCoast, hexDistanceKm, COLS, ROWS } from "@tidefront/world";
 import type { BaseState } from "@tidefront/game-core";
 import {
-  acceptOffer, admiralView, chooseBase, createOffer, ensureFieldPlanner, fieldRecall, launchMission, processDue, register, runningSeason,
-  seed, setFieldEscort, spawnWorldEvent, type Engine,
+  acceptOffer, admiralView, baseView, chooseBase, createOffer, ensureFieldPlanner, fieldAdmiralRecall, fieldRecall, fieldsView, launchMission,
+  processDue, register, runningSeason, seed, setFieldEscort, spawnWorldEvent, type Engine,
 } from "../src/index.ts";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -204,6 +204,52 @@ test("Felder: Verstärkung bringt ihren Admiral zur Besatzung ohne Admiral", asy
   const st = await admiralStatusOf(a.playerId, adm);
   assert.equal(st.status, "unterwegs");
   assert.match(st.post ?? "", /Besatzung/);
+});
+
+test("Felder: Admiral ohne Rückruf abziehen – fährt allein heim, Besatzung hält das Feld, kein Missionsplatz", async () => {
+  const a = await newPlayer("Abzieher", coastNear(null));
+  await ensureFieldPlanner(db, Date.now());
+  await db.delete(tables.gameEvent).where(eq(tables.gameEvent.type, "field_tick"));
+  const adm = await addAdmiral(a.playerId, a.baseId);
+  const f = await freeField(a);
+  const gid = await capture(a, f, { zerstoerer: 2, korvette: 2 }, adm);
+  const mine = (await fieldsView(engine, a.playerId))!.mine.find((m) => m.id === f.id)!;
+  assert.equal(mine.admiral?.id, adm, "Feldansicht nennt den Admiral");
+  assert.equal((await admiralStatusOf(a.playerId, adm)).postFieldId, f.id, "Admiralsansicht: abziehbar");
+  const slotsBefore = (await baseView(engine, a.playerId)).base!.activeMissions;
+  const unitsBefore = { ...(await stateOf(a.baseId)).units };
+  const t0 = Date.now();
+  const r = await fieldAdmiralRecall(engine, a.playerId, key(), f.id);
+  assert.equal(r.ok, true, JSON.stringify(r));
+  const back = (r as { returnAtMs: number }).returnAtMs;
+  const hours = hexDistanceKm(f, a) / 60; // schnellstes Schiff (Korvette) 60 km/h
+  assert.ok(Math.abs((back - t0) / HOUR - hours) < 0.05, `Fahrzeit ${(back - t0) / HOUR} h statt ${hours} h`);
+  // Besatzung bleibt, ohne Admiral; das Feld gehört weiter dem Spieler.
+  const g = await missionRow(gid);
+  assert.equal(g.status, "stationed");
+  assert.equal((g.plan as { admiralId?: number }).admiralId, undefined);
+  const [fr] = await db.select().from(tables.resourceField).where(eq(tables.resourceField.id, f.id));
+  assert.equal(fr.ownerId, a.playerId);
+  let st = await admiralStatusOf(a.playerId, adm);
+  assert.equal(st.status, "unterwegs");
+  assert.match(st.post ?? "", /allein/);
+  assert.equal(st.postFieldId, null);
+  assert.equal((await baseView(engine, a.playerId)).base!.activeMissions, slotsBefore, "Heimfahrt belegt keinen Missionsplatz");
+  // Zweimal geht nicht; ein anderer Admiral kann die Besatzung jetzt übernehmen.
+  const again = await fieldAdmiralRecall(engine, a.playerId, key(), f.id);
+  assert.equal(again.ok ? "ok" : (again as { code: string }).code, "field_no_admiral");
+  const adm2 = await addAdmiral(a.playerId, a.baseId, "angriff");
+  const re = await launchMission(engine, a.playerId, key(), { type: "besetzen", units: { korvette: 1 }, col: f.col, row: f.row, fieldId: f.id, admiralId: adm2 });
+  assert.equal(re.ok, true, JSON.stringify(re));
+  await runUntil(back + 1000);
+  st = await admiralStatusOf(a.playerId, adm);
+  assert.equal(st.status, "bereit", "nach der Heimfahrt bereit");
+  assert.equal(st.post, null);
+  const units = (await stateOf(a.baseId)).units;
+  assert.equal(units.zerstoerer ?? 0, unitsBefore.zerstoerer ?? 0, "keine Schiffe mitgekommen");
+  // Unbekannte Felder werden abgelehnt.
+  const other = await fieldAdmiralRecall(engine, a.playerId, key(), 999999);
+  assert.equal(other.ok ? "ok" : (other as { code: string }).code, "no_field");
 });
 
 test("Weltereignis: Admiral führt den Verband gegen die Großflotte (Bericht, Erfahrung, Status)", async () => {
