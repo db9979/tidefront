@@ -2,6 +2,17 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.40.0 – 27.11.2026
+
+- „Alle abholen“ holt alle Belohnungen in einem Schritt. Passt etwas nicht mehr ins Lager, bleibt es liegen, statt zu verfallen.
+- Geleitkosten werden nach der tatsächlich gebuchten Route berechnet. Die Schnellknöpfe der Order gehen nicht mehr über „Max“ hinaus.
+- Lieferverträge: Die Vertragsgrenze steht schon vor dem Annehmen da; ein Angebot über der Grenze lässt sich nicht annehmen.
+- Lage: Beitrittsanfragen und Allianz-Einladungen erscheinen unter „Wartet auf dich“, ebenso das nahende Ende des Anfängerschutzes. Belohnungen nennen nur die Quellen, aus denen wirklich etwas kommt.
+- Pushes kommen gebündelt (höchstens alle 15 Minuten). Neue Einstellung „Ruhezeit“ (Standard 23–7 Uhr, abschaltbar); Angriffe kommen immer sofort.
+- Erinnerung nach längerer Abwesenheit und Hinweis zum Saisonwechsel per Mail und Push.
+- Erfolg „Kaufmann“ zählt nach bezahlten Handelsgebühren.
+- Technik: stabilere Live-Verbindung, Wiederholung bei Datenbank-Konflikten, eine zentrale Spielzeitzone.
+
 ## 0.39.0 – 27.11.2026
 
 - Neue Navigation: Die Basis startet mit „Lage“ – was gerade auf dich wartet, mit „Alle abholen“. Gebäude, Versorgung und Schutz liegen im Unterreiter „Hafen“.
