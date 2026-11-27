@@ -8,6 +8,7 @@ import { knownFor } from "./intel-store.ts";
 import { postRules } from "./intel-post.ts";
 import { mapViewFor } from "./intel-map.ts";
 import { satelliteOptions } from "./intel-sat.ts"; // Stufe 3
+import { FIELD_KIND_TEXT } from "./fields-core.ts";
 
 const HOUR_MS = 3600000;
 
@@ -43,7 +44,7 @@ export async function intelOverview(engine: Engine, playerId: number) {
       const pos = k.kind === "base" ? baseById.get(k.objectId) : k.kind === "nest" ? nests.get(k.objectId) : k.kind === "field" ? fields.get(k.objectId) : { col: Number(d.col), row: Number(d.row) };
       const name = k.kind === "base" ? `Hafen ${baseById.get(k.objectId)?.name ?? "?"}`
         : k.kind === "nest" ? (typeof d.level === "number" ? `Piratennest Stufe ${d.level}${d.empty ? " (verlassen)" : ""}` : "Piratennest")
-        : k.kind === "field" ? `Rohstofffeld ${fields.get(k.objectId)?.kind ?? ""}`.trim()
+        : k.kind === "field" ? (FIELD_KIND_TEXT[fields.get(k.objectId)?.kind ?? ""] ?? "Rohstofffeld")
         : k.kind === "wreck" ? "Wrackfeld"
         : k.kind === "post" ? `Radarposten (${String(d.owner ?? "?")})`
         : `${d.patrol ? "Patrouille" : "Verband"} ${d.owner ? `von ${String(d.owner)}` : "(unbekannt)"} · ${String(d.size ?? "")}`;
