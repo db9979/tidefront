@@ -37,6 +37,8 @@ export function EinsatzTiles({ base, balance, onShowOnMap }: { base: BaseData; b
   const tpl = useQuery(trpc.comfort.templates.queryOptions());
   const a = adm.data;
   const f = fields.data;
+  // Felder besetzen nur Schiffe mit Kampfkraft zur See (field_ships_only); grüne Raute erst, wenn eines daheim liegt.
+  const warships = base.units.some((u) => u.home > 0 && balance.units[u.id]?.branch === "see" && (balance.units[u.id]?.attack?.see ?? 0) > 0);
   const close = () => setOpen(null);
   const mapAndClose = (t: Target) => { close(); onShowOnMap(t); };
   return (
@@ -44,10 +46,10 @@ export function EinsatzTiles({ base, balance, onShowOnMap }: { base: BaseData; b
       <div className="grid grid-cols-2 gap-2">
         <Tile icon="admiral" title="Admirale" figure={a ? `${a.list.length}/${a.slots}` : "…"} can={!!a && a.list.length < a.slots}
           hint={!a ? "" : a.list.length === 0 ? (a.slots > 0 ? "ernennen möglich" : "noch kein Platz") : a.list.map((x) => x.name).join(", ")} onOpen={() => setOpen("admirale")} />
-        <Tile icon="oelfeld" title={"Rohstoff\u00ADfelder"} figure={f ? `${f.mine.length}/${f.maxFields}` : "…"} can={!!f && f.maxFields > 0 && f.mine.length < f.maxFields}
-          hint={!f ? "" : f.maxFields === 0 ? "ab Hafen\u00ADkommandantur" : f.mine.length === 0 ? "besetzen möglich" : "Ertrag per Konvoi"} onOpen={() => setOpen("felder")} />
+        <Tile icon="oelfeld" title={"Rohstoff\u00ADfelder"} figure={f ? `${f.mine.length}/${f.maxFields}` : "…"} can={!!f && f.maxFields > 0 && f.mine.length < f.maxFields && warships}
+          hint={!f ? "" : f.maxFields === 0 ? "ab Hafen\u00ADkommandantur" : f.mine.length >= f.maxFields ? "Ertrag per Konvoi" : !warships ? "erst Kriegsschiffe bauen" : f.mine.length === 0 ? "besetzen möglich" : "Ertrag per Konvoi"} onOpen={() => setOpen("felder")} />
         <Tile icon="geleit" title="Vorlagen" figure={tpl.data ? String(tpl.data.length) : "…"} hint="Verband mit einem Tipp" onOpen={() => setOpen("vorlagen")} />
-        <Tile icon="wuerfel" title="Kampfsimulator" hint="Kämpfe durchrechnen" onOpen={() => setOpen("simulator")} />
+        <Tile icon="wuerfel" title={"Kampf\u00ADsimulator"} hint="Kämpfe durchrechnen" onOpen={() => setOpen("simulator")} />
       </div>
 
       {open === "admirale" && (

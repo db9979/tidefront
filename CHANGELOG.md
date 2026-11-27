@@ -2,6 +2,11 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.24.5 – 27.11.2026
+- **Behoben:** Die Kachel „Rohstofffelder“ meldete „besetzen möglich“ auch ohne Kriegsschiffe im Hafen; jetzt steht dort „erst Kriegsschiffe bauen“.
+- Stromanzeige oben: bei gedecktem Bedarf ein ✓ statt des abgeschnittenen „gedec…“.
+- „Kampfsimulator“ wird in der Kachel sauber getrennt.
+
 ## 0.24.4 – 27.11.2026
 - **Warnung vor vollem Lager:** Tagesbefehle, Wochenziele und Erfolge zeigen vor dem Abholen, wie viel bei vollem Lager verfallen würde – mit „Lagerkomplex ausbauen“ oder „Trotzdem abholen“. Die Bestätigung nennt, was verfallen ist.
 - **Balance v1.25 (Wirtschaft):** Belohnungen der Wochenziele halbiert – sie waren fast so groß wie die halbe Wochenproduktion. Belohnungspakete enthalten mehr vom knappen Stahl und weniger Proviant.

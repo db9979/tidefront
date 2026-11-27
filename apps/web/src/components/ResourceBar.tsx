@@ -45,7 +45,7 @@ function PowerField({ base, onOpen }: { base: BaseData; onOpen: () => void }) {
       title={`${desc} · ${store}`}
     >
       <div className={`text-[13.5px] leading-tight font-semibold truncate flex items-center ${covered ? "font-sans text-[12px]" : "mono"} ${bal < 0 ? "text-siegel" : "text-moos"}`}>
-        <Icon id="strom" size={12} className="shrink-0 -ml-0.5" />{covered ? "gedeckt" : `${sign}${short(Math.abs(bal))}`}
+        <Icon id="strom" size={12} className="shrink-0 -ml-0.5" />{covered ? <span aria-hidden="true">✓</span> : `${sign}${short(Math.abs(bal))}`}
       </div>
       <div className="text-[11px] leading-tight mono text-ink2 truncate">{second}</div>
       <div className="h-[2px] mt-0.5 bg-rule/80 overflow-hidden" aria-hidden="true">
