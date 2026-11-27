@@ -48,7 +48,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { icon: <span className="opacity-50 flex"><TacticalIcon kind="nest" level={2} /></span>, text: "Blass: bekannt, aber nicht live (Stand im Feld-Blatt); sehr blass: veraltet (über 24 h)" },
       { icon: <FleetArrow />, text: "Pfeil: fremder Verband mit Kurs; K/M/G = klein, mittel, groß; Farbe nur mit Erkennung" },
       // Lagebild Stufe 2
-      { icon: <SensorRing />, text: "Kreis um deinen Verband auf See: Bordsicht, wandert mit (Kriegsschiff 80 km, Transporter 40, Drohne 200)" },
+      { icon: <SensorRing />, text: "Kreis um deinen Verband auf See: Bordsicht, wandert mit (Kriegsschiff 105 km = eigenes Feld und alle Nachbarfelder, Transporter 40, Drohne 200); der Nebel hellt mit auf" },
       { icon: <Icon id="patrouille" size={22} />, text: "Rote gestrichelte Runde: deine Patrouille auf Station; nummerierte Ringe: Wegpunkte bzw. Ziele beim Planen" },
       { icon: <PostMark />, text: "Mast im Kreis: Radarposten (blau eigener, rot fremder; blass: ohne Treibstoff oder nicht live)" },
       { icon: <SonarRing />, text: "Grüner Kreis: Sonar – nur U-Boote werden darin sichtbar" },

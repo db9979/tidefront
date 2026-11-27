@@ -105,7 +105,7 @@ export async function stationPreview(db: DbOrTx, playerId: number, own: BaseRow,
   const r = await planStation(db, { ...own, state: settle(own.state, nowMs, balance, mods) }, input.units, input, nowMs);
   if (!r.ok) return { ok: false as const, code: r.code, distanceKm, weather };
   return {
-    ok: true as const, distanceKm, travelSeconds: r.mission.travelSeconds, fuelCost: r.mission.fuelCost, arriveAtMs: r.mission.arriveAtMs,
+    ok: true as const, distanceKm, travelSeconds: r.mission.travelSeconds, route: r.mission.route ?? null, fuelCost: r.mission.fuelCost, arriveAtMs: r.mission.arriveAtMs,
     returnAtMs: r.mission.returnAtMs, target: { kind: "base", own: ownHost }, intercept: null, weather: withArrival(weather, input.col, input.row, r.mission.arriveAtMs, nowMs, own.state), weatherFactor: r.mission.weather?.shipFactor ?? 1,
   };
 }

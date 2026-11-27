@@ -230,3 +230,4 @@ export * from "./labels.ts";
 export { LAND, WATER, WATER_DRAW, ISLANDS } from "./coast.ts";
 export { fieldSites, type FieldSite } from "./fields.ts"; // Felder
 export { COAST_PLACES, PLACE_FAR_KM, PLACE_NEAR_KM, nearestPlace, nearestLabel, placeNameAt, type Place } from "./places.ts"; // Mehrere Häfen: Ortsnamen
+export * from "./searoute.ts"; // Seewege (Wegsuche über Wasserfelder)

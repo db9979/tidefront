@@ -7,7 +7,7 @@
 // Sperrreihenfolge: Angebot, Stützpunkte aufsteigend, Spieler aufsteigend.
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { settle, deliverCargo, market as marketCore, type Counts } from "@tidefront/game-core";
-import { hexDistanceKm } from "@tidefront/world";
+import { hexDistanceKm, seaRoute } from "@tidefront/world";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, type Engine } from "./context.ts";
 import { runCommand, type Ctx } from "./commands.ts";
@@ -42,7 +42,8 @@ export function feeOf(asset: string, qty: number, fee: number): number {
 }
 
 export function travelMs(a: { col: number; row: number }, b: { col: number; row: number }): number {
-  return Math.max(MIN_TRAVEL_MS, Math.round((hexDistanceKm(a, b) / balance.market.convoySpeedKmh) * 3600000));
+  // Seewege: der Konvoi fährt über Wasser (Route zwischengespeichert).
+  return Math.max(MIN_TRAVEL_MS, Math.round((Math.max(hexDistanceKm(a, b), seaRoute(a, b).km) / balance.market.convoySpeedKmh) * 3600000));
 }
 
 /** Gründe, aus denen das Geleit des Anbieters bei Annahme nicht ausläuft (Systemnachricht). */

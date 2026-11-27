@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   allowedBases, cloneBase, colonyProtection, createColony, settle, createProtection, foundingBlocker, fuelCost, hexSteps, mergeVeterancy,
-  nextUnlockLevel, planMission, protectionStatus, startTraining, startUpgrade, type FoundingCheck,
+  missionTravelKm, nextUnlockLevel, planMission, protectionStatus, startTraining, startUpgrade, type FoundingCheck,
 } from "../src/index.ts";
 import { DAY, HOUR, T0, loadBalance, makeBase } from "./helpers.ts";
 
@@ -118,7 +118,7 @@ test("Planung Gründung: genau ein Kolonieschiff, Geleit, Ladung bis Kapazität,
   const input = { type: "gruendung", units: { [ship]: 1, korvette: 2 }, origin, target, activeMissions: 0, cargo: { stahl: 2000 } };
   const r = planMission(base, input, T0, balance);
   assert.ok(r.ok, JSON.stringify(r));
-  const d = r.mission.distanceKm;
+  const d = missionTravelKm(r.mission); // Seewege: Länge der Route
   assert.equal(r.mission.fuelCost, fuelCost({ korvette: 2 }, d, balance) + fuelCost({ [ship]: 1 }, d, balance, undefined, 1));
   assert.equal(r.mission.returnAtMs - T0, 2 * (r.mission.arriveAtMs - T0));
   assert.equal(r.base.unitsAway[ship], 1);
@@ -133,7 +133,7 @@ test("Planung Verlegung: nur Hinfahrt, Treibstoff einfach, Ladung erlaubt", () =
   const base = makeBase(balance, { units: { korvette: 4, zerstoerer: 2 }, resources: { treibstoff: 50_000 } });
   const r = planMission(base, { type: "verlegung", units: { korvette: 4, zerstoerer: 2 }, origin, target, activeMissions: 0 }, T0, balance);
   assert.ok(r.ok, JSON.stringify(r));
-  assert.equal(r.mission.fuelCost, fuelCost({ korvette: 4, zerstoerer: 2 }, r.mission.distanceKm, balance, undefined, 1));
+  assert.equal(r.mission.fuelCost, fuelCost({ korvette: 4, zerstoerer: 2 }, missionTravelKm(r.mission), balance, undefined, 1));
   assert.equal(r.mission.returnAtMs, r.mission.arriveAtMs);
   assert.deepEqual(planMission(base, { type: "aufklaerung", units: { korvette: 1 }, origin, target, activeMissions: 0, cargo: { stahl: 1 } }, T0, balance), { ok: false, code: "cargo_not_allowed" });
 });

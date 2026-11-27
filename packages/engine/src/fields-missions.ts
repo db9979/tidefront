@@ -98,7 +98,7 @@ export async function previewField(db: DbOrTx, playerId: number, own: BaseRow, i
     if (!r.ok) return { ok: false as const, code: r.code, distanceKm };
     const m = r.mission;
     return {
-      ok: true as const, distanceKm: m.distanceKm, travelSeconds: m.travelSeconds, fuelCost: m.fuelCost, arriveAtMs: m.arriveAtMs,
+      ok: true as const, distanceKm: m.distanceKm, travelSeconds: m.travelSeconds, route: m.route ?? null, fuelCost: m.fuelCost, arriveAtMs: m.arriveAtMs,
       returnAtMs: m.returnAtMs, target: { kind: "field", own: reinforce }, intercept: null,
       weather: field ? missionWeather(own.col, own.row, field.col, field.row, nowMs) : null, weatherFactor: m.weather?.shipFactor ?? 1,
     };

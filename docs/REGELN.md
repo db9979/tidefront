@@ -70,6 +70,20 @@ Meilenstein 1: `ueberfall`, `aufklaerung`, `transport`.
 - Reisezeit: `Entfernung / langsamste speedKmh` der Schiffe (seit v1.6 mal Sturmzuschlag der Route, bis +30 %); reine Luftmissionen nach der langsamsten Luftgeschwindigkeit, bei Sturm am Hafen kein Start (`storm`).
 - Treibstoff: Summe `fuelPer100Km * Anzahl * Entfernung / 100`, mal 2 für Hin- und Rückweg, aufgerundet; wird beim Start abgezogen.
 - Entfernung zwischen Hexfeldern: Großkreis-Entfernung der Feldmittelpunkte in Kilometern.
+- **Seewege** (Entscheidung „U. Seewege und Bordsicht“, ENTSCHEIDUNGEN-4.md): Verbände mit mindestens einem Schiff fahren
+  eine Route über Wasserfelder statt der Luftlinie; Reisezeit und Treibstoff richten sich nach der Länge dieser Route
+  (die Reichweite der Flugzeuge weiter nach der Luftlinie). Reine Luft- und Drohnenverbände fliegen Luftlinie.
+  - Befahrbar sind See- und Küstenfelder sowie Passagen (Gibraltar, Ärmelkanal/Dover, Dardanellen–Marmarameer–Bosporus,
+    Suezkanal, Öresund/Großer Belt, Messina, Kertsch; `packages/world/src/searoute.ts` PASSAGES). Das Gelände ändert sich
+    dadurch nicht. An Küstenfeldern fährt ein Schiff entlang, aber nicht quer über eine Landenge: zwischen zwei
+    Küstenfeldern nur über ein gemeinsames Wasserfeld, durch ein Küstenfeld nur, wenn Ein- und Ausfahrt rund um das Feld
+    über Wasser verbunden sind. Auf offener See ist die Route die Luftlinie (geglättet), Umwege nur um Land.
+  - Die Route wird beim Start einmal gerechnet und im Missionsplan gespeichert (Wegpunkte, Länge); Karte, Bordsicht,
+    Rückruf (zurück über dasselbe Stück der Route) und Heimfahrt folgen ihr. Ältere Missionen ohne Route fahren gerade.
+  - Ziel nicht über Wasser erreichbar: Fahrt bis zum erreichbaren Feld mit der kürzesten Luftlinie zum Ziel, das letzte
+    Stück gerade (Landung über Land). Mit den Passagen ist jedes Küstenfeld der Karte erreichbar.
+  - Patrouillen fahren ihre Runde mit Schiffen ebenfalls über die Seewege und nach der Station über die Route heim;
+    Konvois (Transport, Felder, Spielerhandel) fahren die Route, ihre Fahrzeit (Felder, Spielerhandel) nach ihrer Länge.
 
 Ablauf am Ziel:
 

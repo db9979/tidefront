@@ -351,6 +351,15 @@ export interface MissionInput {
   cargo?: ResourceMap;
   targetProtection?: ProtectionState; // Schutz des Ziels; Überfälle auf geschützte Ziele werden abgelehnt
   weather?: RouteWeather; // Wetter entlang der Route bei Abfahrt (v1.6); fehlt es, kein Wettereinfluss
+  /** Seewege: vorgegebene Route (null = Luftlinie erzwingen); fehlt sie, rechnet planMission sie bei Schiffen selbst. */
+  route?: MissionRoute | null;
+}
+
+/** Seewege: Route eines Verbands mit Schiffen (Wegpunkte als [Spalte, Zeile], Länge in km); siehe @tidefront/world seaRoute. */
+export interface MissionRoute {
+  hexes: [number, number][];
+  km: number;
+  partial?: boolean;
 }
 
 export interface Mission {
@@ -370,6 +379,7 @@ export interface Mission {
   detectedAtMs?: number; // vom Radar des Ziels erkannt (Server); einmal erkannt bleibt erkannt
   weather?: { avgWind: number; storminess: number; shipFactor: number }; // Wetter bei Abfahrt (v1.6)
   admiralId?: number; // Admirale: Führer des Verbands (Server); fehlt ohne Admiral
+  route?: MissionRoute; // Seewege: Route über Wasser (mit Schiffen); fehlt = Luftlinie (auch alte Missionen)
 }
 
 export interface FleetCheck {

@@ -5,7 +5,7 @@
 import { and, eq, ne } from "drizzle-orm";
 import {
   aircraftSlots, aircraftSlotsUsed, allowedBases, combineModifiers, expansionOf, foundingBlocker, planMission,
-  type Counts, type Modifiers, type ResourceMap,
+  type Counts, type MissionRoute, type Modifiers, type ResourceMap,
 } from "@tidefront/game-core";
 import { TRADE_PORTS, hexAtLonLat, hexCenter, hexDistanceKm, isCoast } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
@@ -142,6 +142,7 @@ export type ExpansionPreview =
   | {
     ok: true; distanceKm: number; travelSeconds: number; fuelCost: number; arriveAtMs: number; returnAtMs: number;
     target: { kind: string; own: boolean }; intercept: null; weather: ReturnType<typeof missionWeather>; weatherFactor: number;
+    route: MissionRoute | null; // Seewege
     /** Häfen: eigene, laufende Gründungen, erlaubt (Kommandozentrale des Heimathafens), Höchstzahl. */
     expansion: { bases: number; pending: number; allowed: number; max: number };
   };
@@ -157,7 +158,7 @@ export async function previewExpansion(db: DbOrTx, playerId: number, own: BaseRo
     const bases = await db.select({ id: tables.base.id }).from(tables.base).where(eq(tables.base.playerId, playerId));
     const m = r.mission;
     return {
-      ok: true as const, distanceKm: m.distanceKm, travelSeconds: m.travelSeconds, fuelCost: m.fuelCost, arriveAtMs: m.arriveAtMs,
+      ok: true as const, distanceKm: m.distanceKm, travelSeconds: m.travelSeconds, route: m.route ?? null, fuelCost: m.fuelCost, arriveAtMs: m.arriveAtMs,
       returnAtMs: m.returnAtMs, target: { kind: input.type === FOUNDING_TYPE ? SITE_TARGET : "base", own: input.type === TRANSFER_TYPE },
       intercept: null, weather: withArrival(weather, input.col, input.row, m.arriveAtMs, nowMs, own.state), weatherFactor: m.weather?.shipFactor ?? 1,
       expansion: { bases: bases.length, pending: await pendingFoundings(db, playerId), allowed: home ? allowedBases(home.state, balance) : 1, max: e.maxBases },

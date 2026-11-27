@@ -311,6 +311,7 @@ export async function missionPreview(
     ok: true as const,
     distanceKm,
     travelSeconds: r.mission.travelSeconds,
+    route: r.mission.route ?? null, // Seewege: Wegpunkte und Länge (Planungskarte, Weglänge)
     fuelCost: r.mission.fuelCost,
     arriveAtMs: r.mission.arriveAtMs,
     returnAtMs: r.mission.returnAtMs,

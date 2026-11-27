@@ -5,10 +5,10 @@
 // Meldung „Aufklärer gesichtet“ (scoutSighted).
 import { and, eq, sql } from "drizzle-orm";
 import {
-  activeUnits, campaignCheck, campaignOf, fuelCost, travelSeconds, validateFleet,
+  activeUnits, campaignCheck, campaignOf, fuelCost, hasShipUnits, travelSeconds, validateFleet,
   type BaseState, type Counts, type Mission,
 } from "@tidefront/game-core";
-import { hexDistanceKm } from "@tidefront/world";
+import { hexDistanceKm, seaRoute, seaRouteCopy, type Hex } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError, type NoticeJob } from "./context.ts";
 import { activeMissionCount, saveBase, scheduleEvent, type BaseRow } from "./store.ts";
@@ -23,6 +23,11 @@ export interface CampaignInput {
 }
 
 type Target = CampaignPlan["targets"][number];
+
+/** Seewege: Abschnittslänge mit Schiffen über Wasser, sonst Luftlinie. */
+function legKm(units: Counts, a: Hex, b: Hex): number {
+  return hasShipUnits(units, balance) ? Math.max(hexDistanceKm(a, b), seaRoute(a, b).km) : hexDistanceKm(a, b);
+}
 
 /** Ziel auf einem Feld: fremder Hafen, Nest oder Rohstofffeld. Codes: no_target, own_base. */
 async function resolveTarget(db: DbOrTx, playerId: number, t: { col: number; row: number }): Promise<Target> {
@@ -58,12 +63,12 @@ export async function planCampaign(db: DbOrTx, playerId: number, own: BaseRow, i
   let extraKm = 0;
   let at = r.mission.arriveAtMs;
   for (let i = 1; i < targets.length; i++) {
-    const km = hexDistanceKm(targets[i - 1], targets[i]);
+    const km = legKm(input.units, targets[i - 1], targets[i]);
     extraKm += km;
     at += Math.ceil(legSec(km) * 1000);
   }
-  const homeKm = hexDistanceKm(targets[targets.length - 1], own);
-  extraKm += homeKm - hexDistanceKm(first, own);
+  const homeKm = legKm(input.units, targets[targets.length - 1], own);
+  extraKm += homeKm - legKm(input.units, first, own);
   const extra = Math.max(0, fuelCost(input.units, extraKm, balance, mods, 1));
   if ((r.base.resources.treibstoff ?? 0) < extra) return { ok: false as const, code: "fuel" };
   r.base.resources = { ...r.base.resources, treibstoff: (r.base.resources.treibstoff ?? 0) - extra };
@@ -100,10 +105,13 @@ export async function campaignContinue(tx: Tx, missionId: number, due: number): 
   const next = c.targets[c.index + 1];
   const factor = plan.weather?.shipFactor ?? 1;
   const sec = (km: number) => (travelSeconds(units, km, balance) ?? 0) * factor;
-  const arrive = due + Math.ceil(sec(hexDistanceKm(cur, next)) * 1000);
-  const back = sec(hexDistanceKm(next, home));
+  const arrive = due + Math.ceil(sec(legKm(units, cur, next)) * 1000);
+  const back = sec(legKm(units, next, home));
+  // Seewege: Route des aktuellen Abschnitts und des Heimwegs vom neuen Ziel (intel-route.ts fleetPosition).
+  const ships = hasShipUnits(units, balance);
   const nextPlan = {
     ...plan, arriveAtMs: arrive, returnAtMs: arrive + Math.ceil(back * 1000), travelSeconds: back,
+    ...(ships ? { route: seaRouteCopy(seaRoute(cur, next)), homeRoute: seaRouteCopy(seaRoute(next, home)) } : {}),
     campaign: { ...c, index: c.index + 1, legFrom: { col: cur.col, row: cur.row }, legDepartMs: due },
   };
   await tx.execute(sql`delete from game_event where type = 'mission_return' and status = 'pending' and payload->>'missionId' = ${String(m.id)}`);

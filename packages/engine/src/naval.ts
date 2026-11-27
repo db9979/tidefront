@@ -62,6 +62,7 @@ export async function previewNaval(db: DbOrTx, playerId: number, own: BaseRow, i
       ok: true as const,
       distanceKm: m.distanceKm,
       travelSeconds: m.travelSeconds,
+      route: m.route ?? null, // Seewege
       fuelCost: m.fuelCost,
       arriveAtMs: m.arriveAtMs,
       returnAtMs: m.returnAtMs,

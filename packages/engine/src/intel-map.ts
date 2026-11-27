@@ -173,6 +173,7 @@ async function mapViewFrom(db: DbOrTx, playerId: number, nowMs: number, bases: B
       fog,
       sensors: (sight?.sensors ?? []).map((s) => ({
         col: s.col, row: s.row, km: s.km, kind: s.kind, label: s.label, own: s.playerId === playerId,
+        ...(s.missionId !== undefined && s.playerId === playerId ? { missionId: s.missionId } : {}), // Seewege: Nebel wandert mit
         // Stufe 3: Satellitenstreifen (x0 … x1) und die unter Wolken verdeckten Felder (optisch).
         ...(s.strip ? { strip: { x0: s.strip.x0, x1: s.strip.x1, hidden: stripCells(s) } } : {}),
       })),

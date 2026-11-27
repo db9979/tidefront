@@ -48,7 +48,7 @@ export async function mobileSensors(db: DbOrTx, members: number[], bases: BaseIn
       : fleetPosition(m, hexCenterXY(b.col, b.row), hexCenterXY(m.targetCol, m.targetRow), nowMs);
     if (!pos) continue;
     const h = hexAtXY(pos.at.x, pos.at.y);
-    const common = { x: pos.at.x, y: pos.at.y, col: h.col, row: h.row, baseId: b.id, playerId: m.playerId };
+    const common = { x: pos.at.x, y: pos.at.y, col: h.col, row: h.row, baseId: b.id, playerId: m.playerId, missionId: m.id };
     if (m.type === "aufklaerung" && m.status === "outbound" && ib.campaign) {
       out.push({ ...common, kind: "aufklaerer", km: ib.campaign.revealKm, label: `Aufklärer aus ${b.name}` });
     }

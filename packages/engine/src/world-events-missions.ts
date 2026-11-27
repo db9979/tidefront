@@ -135,6 +135,7 @@ export async function previewAgainstEvent(db: DbOrTx, playerId: number, own: Bas
     ok: true as const,
     distanceKm,
     travelSeconds: r.mission.travelSeconds,
+    route: r.mission.route ?? null, // Seewege
     fuelCost: r.mission.fuelCost,
     arriveAtMs: r.mission.arriveAtMs,
     returnAtMs: r.mission.returnAtMs,

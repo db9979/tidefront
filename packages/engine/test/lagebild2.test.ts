@@ -7,6 +7,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
 import { COLS, ROWS, hexCenterXY, hexDistanceKm } from "@tidefront/world";
 import type { BaseState, Mission } from "@tidefront/game-core";
+import { balance } from "../src/context.ts";
 import {
   chooseBase, clearPersistThrottle, clearSightCache, knownFor, launchIntelOp, launchMission, mapViewFor, previewIntelOp,
   processDue, register, seed, sightOf, type Engine,
@@ -92,7 +93,7 @@ test("Patrouille: Prüfungen (Einheiten, Wegpunkte, Dauer, Drohnen, Land)", asyn
   const ok = await p({});
   assert.equal(ok.ok, true, JSON.stringify(ok));
   if (ok.ok) {
-    assert.equal(ok.sightKm, 100);
+    assert.equal(ok.sightKm, balance.intel!.patrol!.shipSightKm);
     assert.ok(ok.sonarKm! >= 60, "Korvetten haben Sonar");
     assert.ok(ok.fuelCost > 0);
   }
@@ -109,7 +110,7 @@ test("Patrouille: Station mit Sicht um die Position, Nest unterwegs erkannt, Hei
   const m1 = await missionOf(r.missionId);
   assert.equal(m1.status, "holding");
   const sight = await sightOf(db, A.playerId, fake);
-  assert.ok(sight.sensors.some((s) => s.kind === "patrouille" && s.km === 100));
+  assert.ok(sight.sensors.some((s) => s.kind === "patrouille" && s.km === balance.intel!.patrol!.shipSightKm));
   const n = await nestOf(A.playerId, nest);
   assert.equal(n.level, 2, "Patrouille erkennt das Nest");
   assert.match(n.intel!.source, /Patrouille/);
@@ -186,7 +187,7 @@ test("Bordsicht: ein Verband auf Mission erkennt ein Nest unterwegs (Quelle „V
   fresh();
   const n = await nestOf(A.playerId, passing, t);
   assert.equal(n.level, 2, "unterwegs erkannt");
-  assert.match(n.intel!.source, /^Verband aus/, "Bordsicht des Überfallverbands (Kriegsschiff 80 km)");
+  assert.match(n.intel!.source, /^Verband aus/, "Bordsicht des Überfallverbands (Kriegsschiff 105 km)");
   // Wissen bleibt nach der Vorbeifahrt („bekannt“).
   fresh();
   const later = await nestOf(A.playerId, passing, m.arriveAt.getTime() + 2 * HOUR);

@@ -70,7 +70,7 @@ test("Patrouille: Wegpunkte auf der Karte antippen, auslaufen, Nest am Wegpunkt 
     await tapPlanMap(page, wp1!, wp2!);
     await expect(page.getByRole("button", { name: /^2 · / })).toBeVisible();
     await page.getByRole("listitem").filter({ hasText: /^Korvette\d/ }).getByRole("button", { name: "alle" }).click();
-    await expect(page.getByTestId("intel-preview")).toContainText("Sicht 100 km");
+    await expect(page.getByTestId("intel-preview")).toContainText("Sicht 105 km");
     await expectNoHorizontalOverflow(page, "Patrouille planen");
     await page.getByRole("button", { name: "Auslaufen" }).click();
     await expect(page.getByText("Mission gestartet")).toBeVisible();

@@ -250,6 +250,6 @@ test("Transport liefert Ladung beim Ziel ab; Wrackgut wird geborgen", async () =
   assert.ok(cargo.stahl > 400 && cargo.elektronik > 80, JSON.stringify(cargo));
   const left = await db.select().from(tables.wreck).where(sql`${tables.wreck.col} = ${b.col} and ${tables.wreck.row} = ${b.row}`);
   assert.equal(left.length, 0);
-  await processDue(engine, back.returnAt!.getTime() + 1);
+  await processDue(engine, back.returnAt!.getTime() + 1, 1000); // Seewege: lange Route (Grönland → Ostsee), viele Ereignisse dazwischen
   assert.equal((await stateOf(a.baseId)).units.landungsschiff, 1);
 });
