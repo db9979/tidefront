@@ -68,7 +68,7 @@ test("Karte: Wetter standardmäßig aus, Sichtungen-Blatt, Legende mit „?“-R
   await page.keyboard.press("Escape");
   await page.getByTestId("map-sichtungen").click();
   const sheet = page.getByRole("dialog");
-  await expect(sheet.getByRole("heading", { name: "Sichtungen" })).toBeVisible();
+  await expect(sheet.getByRole("heading", { name: "Sichtungen", exact: true }).first()).toBeVisible(); // Blatttitel; die Liste kann eine gleichnamige Zwischenüberschrift tragen
   await expect(sheet.getByTestId("lagebild-tab")).toBeVisible();
   await expectNoHorizontalOverflow(page, "Karte · Sichtungen");
   await shot(page, "m-karte-sichtungen");
