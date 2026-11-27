@@ -294,7 +294,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
             <button
               key={t.id}
               type="button"
-              onClick={() => go(t.id)}
+              onClick={() => { if (t.id === "karte" && tab === "karte" && !plan && !help && !research) setMapSeq((n) => n + 1); go(t.id); }} // erneut „Karte“: Blatt zu, frisch
               className={`tap relative flex flex-col items-center justify-center pt-1.5 pb-1 text-[11px] leading-tight ${active ? "text-ink font-semibold" : "text-ink2"}`}
               aria-current={active ? "page" : undefined}
             >

@@ -45,6 +45,17 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { 
   const [centerOn, setCenterOn] = useState<Target>(focus ?? { col: base.col, row: base.row });
   // Sprungziel nur einmal verwenden: sonst öffnet sich das Blatt bei jeder Rückkehr zur Karte erneut.
   useEffect(() => { if (focus) onFocusUsed?.(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // App aus dem Hintergrund (Startbildschirm-App, Tab-Wechsel) nach mehr als 30 s: offenes Blatt schließen.
+  useEffect(() => {
+    let hiddenAt = 0;
+    const onVis = () => {
+      if (document.hidden) { hiddenAt = Date.now(); return; }
+      if (hiddenAt && Date.now() - hiddenAt > 30_000) { setSel(null); setMissionId(null); }
+      hiddenAt = 0;
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
   // Wetterschicht (v1.6): abschaltbar, Wahl bleibt im Gerät.
   const [showWeather, setShowWeather] = useState(() => localStorage.getItem("tf-wetter") !== "aus");
   // Lagebild: Schicht „Sensoren“ (gestrichelte Reichweiten) an/aus, Wahl bleibt im Gerät.

@@ -78,6 +78,24 @@ test("Einsatz: Flotte, Ziele, laufende Mission, Kacheln", async ({ page, player,
   await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
   await expect(page.getByRole("button", { name: "Hineinzoomen" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Zeiten" })).toHaveCount(0);
+  // Erneut „Karte“ antippen schließt die offene Missionsleiste; ebenso die Rückkehr nach > 30 s im Hintergrund.
+  await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
+  await page.locator("li[data-mission]").first().getByRole("button", { name: "Auf der Karte" }).click();
+  await expect(page.getByRole("button", { name: "Zeiten" })).toBeVisible();
+  await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
+  await expect(page.getByRole("button", { name: "Zeiten" })).toHaveCount(0);
+  await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
+  await page.locator("li[data-mission]").first().getByRole("button", { name: "Auf der Karte" }).click();
+  await expect(page.getByRole("button", { name: "Zeiten" })).toBeVisible();
+  await page.evaluate(() => {
+    const vis = (hidden: boolean) => { Object.defineProperty(document, "hidden", { configurable: true, get: () => hidden }); document.dispatchEvent(new Event("visibilitychange")); };
+    vis(true);
+    const now = Date.now;
+    Date.now = () => now() + 31_000;
+    vis(false);
+    Date.now = now;
+  });
+  await expect(page.getByRole("button", { name: "Zeiten" })).toHaveCount(0);
   await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
 
   // Zurückrufen über die Karte der Mission

@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.22.2 – 27.11.2026
+- **Behoben:** Ein offenes Blatt auf der Karte (Feld, Nest, Hafen oder Missionsleiste) blieb stehen, wenn man die App aus dem Hintergrund wieder öffnete. Nach mehr als 30 Sekunden im Hintergrund schließt es sich jetzt; außerdem schließt erneutes Antippen von „Karte“ das Blatt und zeigt die Karte frisch.
+
 ## 0.22.1 – 27.11.2026
 - **Sensor-Reichweiten deutlich erkennbar:** Bordsicht, Ausguck, Radar, Posten und Sonar zeigen ihre Reichweite jetzt als zart getönte Fläche mit Papier-Saum und kräftiger gestrichelter Linie. Strichstärke und Strichlänge bleiben in jeder Zoomstufe gleich, sodass sich die Kreise klar von Windstrichen und Gelände abheben. Eigene Sensoren durchgehend kräftig, die der Allianz feiner gestrichelt.
 
