@@ -57,6 +57,7 @@ export const UNIT_TEXT: Record<string, string> = {
   aufklaerungsdrohne: "Kämpft nicht. Schnell und mit großer Reichweite – ideal für Aufklärung.",
   minenleger: "Legt auf offener See nahe dem eigenen Hafen ein Minenfeld (Stärke {mineLayer} je Schiff). Fremde Verbände, die hindurchfahren, verlieren Schiffe.",
   minenraeumer: "Räumt fremde Minenfelder (Stärke {mineSweeper} je Schiff) und schützt im Verband vor Minen. Hat U-Jagd.",
+  kolonieschiff: "Gründet einen weiteren Hafen auf einer freien Küste bis {colonyRange} km vom Heimathafen (Mission „Gründung“) und wird dabei verbraucht. Bringt {colonyStart} als Startvorrat mit. Kämpft nicht – mit Geleitschutz losschicken. Weitere Häfen ab Kommandozentrale {colonyLevels}.",
   spion: "Kämpft nicht und fährt in keinem Verband mit. Reist unauffällig und schnell zu Spionageaufträgen; wird er enttarnt, ist er verloren und das Ziel erfährt den Absender.",
   kuestenbatterie: "Feuert im Seegefecht schwer auf Schiffe und im Bodenkampf auf gelandete Truppen.",
   flakstellung: "Schießt im Luftschlag auf angreifende Bomber.",
@@ -72,6 +73,9 @@ function numbers(b: Balance | undefined): Record<string, string> {
   return {
     cap: String(b?.building.levelCapAboveCommand ?? 3),
     ubootLevel: String(b?.units.uboot?.requiresLevel ?? 3),
+    colonyRange: fmtNum(b?.expansion?.maxRangeKm ?? 900),
+    colonyStart: Object.entries(b?.expansion?.startResources ?? { stahl: 1000, treibstoff: 500, elektronik: 250, proviant: 500 }).map(([r, n]) => `${fmtNum(n)} ${label(r)}`).join(", "),
+    colonyLevels: (b?.expansion?.unlockCommandLevels ?? [5, 8]).join(" und "),
     mineLayer: String((b?.units.minenleger as { mineLayer?: number } | undefined)?.mineLayer ?? 25), // See: Minen
     mineSweeper: String((b?.units.minenraeumer as { mineSweeper?: number } | undefined)?.mineSweeper ?? 30),
     werftSpeed: `${Math.round((b?.buildings.werft?.buildSpeedPerLevel ?? 0.1) * 100)} %`,

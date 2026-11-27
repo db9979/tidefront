@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.24.3 – 27.11.2026
+- **Behoben:** Das Info-Blatt des Kolonieschiffs hatte keine Beschreibung. Jetzt erklärt es Reichweite, Startvorrat und ab welcher Kommandozentrale weitere Häfen möglich sind.
+
 ## 0.24.2 – 27.11.2026
 - **Börse:** Das Tageslimit je Ressource wird jetzt um Mitternacht deiner Uhrzeit zurückgesetzt – wie die Tagesbefehle (bisher 01:00 bzw. im Sommer 02:00 Uhr).
 

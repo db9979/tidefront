@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { hasErrorText, hasLabel } from "../../../apps/web/src/lib/names.ts";
 import { BRANCHES, TECH, pathLabel, shy } from "../../../apps/web/src/lib/research.ts";
+import { BUILDING_TEXT, UNIT_TEXT } from "../../../apps/web/src/lib/info.ts";
 import { countName, countsText, hasName, nameOf, nOf } from "../../engine/src/names.ts";
 import { loadBalance } from "./helpers.ts";
 
@@ -97,4 +98,10 @@ test("Mehrzahl und Rückfall: Engine wie Oberfläche", () => {
   assert.equal(pathLabel("attackUnit.korvette"), "Angriff Korvetten");
   assert.equal(pathLabel("trainingTime.nachrichtendienst"), "Ausbildungszeit Nachrichtendienst");
   assert.equal(shy("Chipfabrik"), "Chip­fabrik");
+});
+
+test("Jede Einheit und jedes Gebäude hat eine Beschreibung im Info-Blatt", () => {
+  const b = loadBalance();
+  for (const id of Object.keys(b.units)) assert.ok((UNIT_TEXT[id] ?? "").length > 20, `Einheit ohne Beschreibung: ${id}`);
+  for (const id of Object.keys(b.buildings)) assert.ok((BUILDING_TEXT[id]?.lang ?? "").length > 20, `Gebäude ohne Beschreibung: ${id}`);
 });
