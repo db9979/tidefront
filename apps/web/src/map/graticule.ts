@@ -1,5 +1,6 @@
 // Gradnetz: Längen- und Breitengrade als feine Linien, Beschriftung am linken und oberen Bildrand.
 // Abstand der Beschriftung je Zoom (5°/10°/20°), nie überlappend, jede auf kleinem Papierschild.
+import { MAP_BOUNDS } from "./gestures.ts";
 import { Container, Graphics, Text } from "pixi.js";
 import { LAT1, LON0 } from "@tidefront/world";
 import { xyOf } from "./terrain.ts";
@@ -64,14 +65,16 @@ export class Graticule {
   place(world: { x: number; y: number; scale: { x: number } }, w: number, h: number, top = 4, left = 4): void {
     const s = world.scale.x;
     for (const [lat, t] of this.latText) {
-      const sy = world.y + xyOf(LON0, lat).y * s;
-      // oben links liegt der Knopf „Mein Hafen“: erst darunter beschriften
-      t.visible = lat % this.latStep === 0 && sy > top + 84 && sy < h - 20;
+      const wy = xyOf(LON0, lat).y;
+      const sy = world.y + wy * s;
+      // oben links liegt das Wetterkärtchen: erst darunter beschriften; nur Linien innerhalb des Kartenrahmens
+      t.visible = lat % this.latStep === 0 && sy > top + 84 && sy < h - 20 && wy >= MAP_BOUNDS.y0 && wy <= MAP_BOUNDS.y1;
       t.position.set(left, sy - 15);
     }
     for (const [lon, t] of this.lonText) {
-      const sx = world.x + xyOf(lon, LAT1).x * s;
-      t.visible = lon % this.lonStep === 0 && sx > left + 44 && sx < w - 50;
+      const wx = xyOf(lon, LAT1).x;
+      const sx = world.x + wx * s;
+      t.visible = lon % this.lonStep === 0 && sx > left + 44 && sx < w - 50 && wx >= MAP_BOUNDS.x0 && wx <= MAP_BOUNDS.x1;
       t.position.set(sx + 3, top);
     }
   }

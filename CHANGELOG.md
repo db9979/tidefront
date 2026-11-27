@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.17.1 – 27.11.2026
+- **Karte:** Sauberer Kartenrand mit Rahmen wie auf einer Seekarte. Wetter (Fronten, Tiefs, Wolken), Gradnetz und Gelände enden am Rand, statt beim Schieben über den Rand ins Leere weiterzulaufen; Breiten- und Längenangaben erscheinen nur noch innerhalb der Karte.
+
 ## 0.17.0 – 27.11.2026
 - **KI-Spieler:** Drei Mitspieler mit eigener Spielweise – **Händler** (leicht: Wirtschaft, Börse, Spielerhandel), **Festung** (mittel: Verteidigung, Forschung, Nester) und **Freibeuter** (stark: Überfälle mit Aufklärung und Probekampf, Minen, frühe Kolonien). Sie spielen nach denselben Regeln wie alle, haben Ruhezeiten mit Nachtschild und besetzen auch Rohstofffelder. In Rangliste und Spielerübersicht tragen sie das Zeichen **KI**. Ob ein KI-Spieler Menschen angreifen darf, stellt die Verwaltung je Bot ein (zu Beginn: nein); dann gelten alle Schutzregeln und 12 Stunden Pause je Spieler.
 - **Saison 6 statt 4 Wochen.** Die laufende Saison endet am 7. Januar.

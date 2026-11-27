@@ -96,6 +96,23 @@ const PRIO = { always: -1, ocean: 0, sea: 1, bigRegion: 2, region: 3, port: 4, b
 /** Ab hier Namensschilder von Häfen und fremden Stützpunkten. */
 const LOD_NAMES = 0.4;
 
+/** Rechteck der Karte (Weltkoordinaten) als Maske für Ebenen, die nicht über den Rand hinaus zeichnen sollen. */
+function mapClip(): Graphics {
+  const b = MAP_BOUNDS;
+  return new Graphics().rect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0).fill(0xffffff);
+}
+
+/** Kartenrahmen wie auf einer Seekarte: kräftige Außenlinie, feine Innenlinie, dazwischen ein schmaler Rand. */
+function chartFrame(): Graphics {
+  const b = MAP_BOUNDS;
+  const gap = (b.x1 - b.x0) * 0.004;
+  const w = b.x1 - b.x0;
+  const h = b.y1 - b.y0;
+  return new Graphics()
+    .rect(b.x0, b.y0, w, h).stroke({ color: INK, width: 1, pixelLine: true, alpha: 0.55 })
+    .rect(b.x0 - gap, b.y0 - gap, w + 2 * gap, h + 2 * gap).stroke({ color: INK, width: gap * 0.45, alpha: 0.8 });
+}
+
 /** Sichtbarkeit und Größe aller Zeichen bei Zoomänderung neu bestimmen. */
 function relayout(s: Scene): void {
   layout([s.pinnedStatic, s.pinnedMarkers], s.world.scale.x);
@@ -171,8 +188,16 @@ export function HexMap(props: HexMapProps) {
         app.stage.addChild(world);
         const terrain = buildTerrain();
         world.addChild(terrain.root);
+        const terrainMask = mapClip(); // Gelände endet sauber am Kartenrahmen
+        world.addChild(terrainMask);
+        terrain.root.mask = terrainMask;
         const graticule = new Graticule();
         world.addChild(graticule.lines);
+        // Gradnetz endet am Kartenrand (beim Schwenken über den Rand sonst Linien im Leeren).
+        const gratMask = mapClip();
+        world.addChild(gratMask);
+        graticule.lines.mask = gratMask;
+        world.addChild(chartFrame());
         const freeG = new Graphics();
         const routes = new Graphics();
         const pinnedLayer = new Container();
@@ -398,10 +423,16 @@ export function HexMap(props: HexMapProps) {
     if (!ready || !s || !weather) return;
     const layer = buildWeatherLayer(weather);
     s.world.addChildAt(layer.root, s.world.getChildIndex(s.routes));
+    // Wetter (Fronten, Tiefs, Wolken) nur innerhalb der Karte zeichnen.
+    const clip = mapClip();
+    s.world.addChild(clip);
+    layer.root.mask = clip;
     layer.update(serverNow(), s.world.scale.x);
     weatherLayer.current = layer;
     return () => {
       weatherLayer.current = null;
+      layer.root.mask = null;
+      clip.destroy();
       layer.root.destroy({ children: true });
     };
   }, [ready, weather]);
