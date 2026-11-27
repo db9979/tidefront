@@ -182,3 +182,37 @@ Tests: `test/zeit-anzeige.test.ts` (Formate, Hochrechnung mit Lagergrenze/0-Gren
 E2E `24-live-zeit.spec.ts` mit Playwright-Uhr (Abrufe und WebSocket währenddessen angehalten, damit der Server die
 vorgespulte Zeit nicht zurückstellt): Gebäudeblatt offen → Bestand steigt, Wartezeit sinkt, Blocker weg, Ausbau
 aktiv; Bauhof-Countdown läuft ohne Neuladen.
+
+## Empfohlenes Geleit je Frachtwert (Nutzerentscheid)
+
+- **Regelkern** `escort-advice.ts` / `escort-search.ts` (rein, Browser, Server-Tests, KI-Spieler):
+  `expectedCartelGroup(Wert, riskKm, market)` liefert genau den Verband, den der Server würfelt (`cartelConvoyForce`:
+  Schnellboote nach Warenwert – nicht zufällig, daher keine Spanne), dazu Chance (`cartelChance`, Börse/Vertrag mit
+  `marketChanceFactor`) und erwarteten Verlust ohne Geleit (Chance × `lossShareUnescorted` × Wert). `probeEscort`
+  rechnet `resolveBattle` (Kartell greift an, Geleit verteidigt mit den Modifikatoren des Heimathafens) mit
+  `settleBattle` + `victoryRuleOf("konvoi")` wie `fightEscort` auf dem Server. **Ohne Wetter**: Ort und Zeit des Überfalls
+  (25–75 % der Fahrt) stehen vorab nicht fest.
+- **Empfehlung** `recommendEscort`: günstigste Mischung aus den Kriegsschiffen daheim (Schiff mit Seewaffen, nicht
+  verdeckt, ohne Truppen-/Laderaum – Landungs- und Kolonieschiffe dürfen mitfahren, werden aber nicht empfohlen), die
+  die Gruppe in ≥ 90 % der Probekämpfe abwehrt. Kosten zum Richtpreis: Treibstoff hin und zurück (`fuelCost`) +
+  Proviant-Unterhalt für die Stunden, die die Schiffe fehlen (läuft auch daheim – hier bewusst der Fahrt zugerechnet,
+  wie gewünscht) + erwartete Schiffsverluste (Chance × mittlerer versenkter Baukostenwert). Suche: je Typ allein
+  (Halbierung), je Typpaar (zwei Zeiger), ganzer Bestand verkleinert (teure Typen zuerst); 100 Such-Seeds, danach
+  Prüfung mit 200 frischen Seeds (ab 20.000) – hält sie dort nicht, wächst sie um das Schiff, das am meisten hilft.
+  Kommandopunkte werden beachtet; Treibstoffmangel wird gemeldet. Reicht der Bestand nicht: `short` mit der
+  Siegchance aller Kriegsschiffe daheim und „es fehlen etwa N Zerstörer oder M Korvetten“ (je Typ kleinste Zusatzzahl,
+  höchstens 60, die zwei billigsten nach Baukosten).
+- **Abwägung**: ersparter Verlust = Verlust ohne Geleit − Chance × (1 − Siegchance) × `lossShareEscortBeaten` × Wert;
+  „Lohnt sich“ wenn größer als die Kosten, sonst „Lohnt sich nicht (erwarteter Verlust nur ~N T)“. Kriegsgegner sind
+  nicht eingerechnet (Geleit kann trotzdem sinnvoll sein; der Kasten sagt das bei kurzer Strecke).
+- **Strecken je Ort:** Börse `deliveryRiskKm` (fest 180 km), Geleitfahrt = Seeweg zum Handelshafen, fehlt bis zur
+  Ankunft (4 h). KI-Vertrag: Strecke = Fahrzeit × `convoySpeedKmh` (Seeweg; der Server würfelt mit der Luftlinie –
+  die Chance ist eher etwas zu hoch), Schiffe fehlen so lange wie der Konvoi fährt. Spielervertrag und Geleit des
+  Anbieters im Spielerhandel: Partner/Käufer unbekannt → Richtstrecke 500 km, im Kasten genannt (die Kartellgruppe
+  und damit Empfehlung und Siegchance hängen nur am Warenwert).
+- **Oberfläche:** Kasten „Geleitschutz“ (`EscortAdvice.tsx`) in Börsen-Order, Spielerhandel (Anbieter), KI- und
+  Spielerverträgen (Kauf); „Empfehlung übernehmen“ setzt die Mengen. Konvoi-Blatt: „Probekampf gegen das Kartell“
+  für eigene Konvois (Geleit gegen die Gruppe zur Ladung, 200 Prüf-Seeds).
+- **KI-Spieler:** Börsenkäufe ab 10.000 Warenwert (`BOT_ESCORT_MIN_VALUE`) mit der Empfehlung, wenn sie `ok` ist und
+  der Treibstoff reicht; scheitert das Geleit beim Kauf, kaufen sie ohne. Kleinere Käufe weiter ohne Geleit.
+- Keine Balance-Änderung, keine Schemaänderung.
