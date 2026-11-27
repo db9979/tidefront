@@ -5,14 +5,12 @@
 // acht je Abholung (sonst HTTP 429 bei der Ratenbegrenzung von 120 Prozeduren je Minute).
 import { queryClient, trpc, trpcClient } from "./trpc.ts";
 
-/** Integrator: auf true stellen, sobald `rewards.claimAll` ({ key } → ClaimAllResult) im Server liegt. */
-export const SERVER_CLAIM_ALL = false;
+/** Der Server-Endpunkt `rewards.claimAll` ist da (Welle 1); die Einzelabholung bleibt als Rückfallweg. */
+export const SERVER_CLAIM_ALL = true;
 
 export type ClaimAllResult =
-  | { ok: true; claimed: { guide: number; daily: number; weekly: number; achievements: number; total: number }; rewards: Record<string, number>; lost: Record<string, number> }
+  | { ok: true; claimed: { guide: number; daily: number; weekly: number; achievements: number; total: number }; rewards: Record<string, number>; lost: Record<string, number>; skipped?: { total: number } }
   | { ok: false; code: string };
-
-type ServerClaimAll = { rewards: { claimAll: { mutate: (i: { key: string }) => Promise<ClaimAllResult> } } };
 
 const add = (into: Record<string, number>, from: Record<string, number> | null | undefined) => {
   for (const [k, v] of Object.entries(from ?? {})) if (typeof v === "number" && v > 0) into[k] = (into[k] ?? 0) + v;
@@ -81,7 +79,7 @@ async function claimEach(): Promise<ClaimAllResult> {
 /** Alles Abholbereite abholen; danach eine gebündelte Folgeabfrage. */
 export async function claimAll(): Promise<ClaimAllResult> {
   try {
-    if (SERVER_CLAIM_ALL) return await (trpcClient as unknown as ServerClaimAll).rewards.claimAll.mutate({ key: crypto.randomUUID() });
+    if (SERVER_CLAIM_ALL) return await trpcClient.rewards.claimAll.mutate({ key: crypto.randomUUID() });
     return await claimEach();
   } finally {
     await invalidateRewardsSoon(0);

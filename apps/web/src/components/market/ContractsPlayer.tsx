@@ -57,17 +57,22 @@ function ProposalRow({ p, base, now, busy, onAccept }: { p: Proposal; base: Base
         <span>fällig {when(p.dueAtMs, now)} Uhr</span>
         <span>{p.side === "buy" ? "Anzahlung" : "Pfand"} {kr(p.securityCredits)}</span>
         {!p.inBand && <span className="text-siegel">Preis außerhalb des Bands – nicht mehr annehmbar</span>}
+        {p.overLimit && (
+          <span className="text-siegel" data-contract-over-limit>
+            Zu groß für dich: Vertragslieferungen höchstens {fmtNum(p.room)} {label(p.resource)} in diesem 24-h-Fenster (Vertragsgrenze).
+          </span>
+        )}
       </div>
       {!confirm ? (
         <div className="flex justify-end mt-1">
-          <Button disabled={busy || !p.inBand || !base.market.unlocked} onClick={() => setConfirm(true)}>Annehmen</Button>
+          <Button disabled={busy || !p.inBand || p.overLimit || !base.market.unlocked} onClick={() => setConfirm(true)}>Annehmen</Button>
         </div>
       ) : (
         <div className="mt-2 rounded-lg border border-rule p-2" role="group" aria-label="Vertrag annehmen">
           <p className="text-sm">Du {p.side === "buy" ? "zahlst" : "hinterlegst als Pfand"} jetzt <strong className="mono">{kr(p.securityCredits)}</strong>;
             {p.side === "buy" ? " der Rest wird bei Fälligkeit abgebucht." : " die Ware wird bei Abfahrt des Konvois aus deinem Hafen abgebucht."}</p>
           {p.side === "buy" && <EscortPicker base={base} value={escort} onChange={setEscort} hint="Die Schiffe laufen bei Abfahrt des Konvois aus, wenn sie dann im Hafen sind." />}
-          {p.side === "buy" && <ContractEscortAdvice base={base} resource={p.resource} qty={p.qty} escort={escort} onApply={setEscort} />}
+          {p.side === "buy" && <ContractEscortAdvice base={base} resource={p.resource} qty={p.qty} route={p.route} escort={escort} onApply={setEscort} />}
           <div className="flex gap-2 mt-2">
             <Button kind="secondary" className="flex-1" onClick={() => setConfirm(false)}>Abbrechen</Button>
             <Button className="flex-1" disabled={busy} onClick={() => {
@@ -129,7 +134,7 @@ function ProposeForm({ base, data }: { base: BaseData; data: ContractsData }) {
       {b && <p className={`text-xs mt-1 ${okPrice ? "text-ink2" : "text-siegel"}`}>Erlaubt: {fmtNum(b.min, 3)} bis {fmtNum(b.max, 3)} je Einheit (Kurs {fmtNum(b.course, 3)}).
         {side === "sell" ? ` Du bekommst ${fmtNum(price * (1 - b.fee), 3)} nach ${fmtNum(b.fee * 100)} % Grundaufschlag.` : ""}</p>}
       {side === "buy" && <EscortPicker base={base} value={escort} onChange={setEscort} hint="Die Schiffe laufen bei Abfahrt des Konvois aus, wenn sie dann im Hafen sind." />}
-      {side === "buy" && qty > 0 && <ContractEscortAdvice base={base} resource={resource} qty={qty} escort={escort} onApply={setEscort} />}
+      {side === "buy" && qty > 0 && <ContractEscortAdvice base={base} resource={resource} qty={qty} assumedKm={data.partnerKm} escort={escort} onApply={setEscort} />}
       <p className="text-xs text-ink2 mt-1">Deine {side === "buy" ? "Anzahlung" : "Pfand"} ({fmtNum(data.cfg.depositShare * 100)} %) geht sofort in Treuhand; das Angebot gilt {data.cfg.offerHours} Stunden.</p>
       {done && <p className="text-moos text-sm mt-1 font-semibold" role="status">{done}</p>}
       <div className="flex justify-end mt-2">

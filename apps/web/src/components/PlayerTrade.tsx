@@ -76,7 +76,7 @@ export function PlayerTrade({ base }: { base: BaseData }) {
         <EscortPicker base={base} value={sellEscort} onChange={setSellEscort}
           hint="Die Schiffe bleiben bis zur Annahme im Hafen; dann begleiten sie deine Ware zum Käufer und fahren heim (Treibstoff, ein Missionsplatz). Fehlen sie dann, fährt die Ware ohne Geleit." />
       )}
-      {give !== "credits" && g > 0 && <SellerEscortAdvice base={base} resource={give} qty={g} escort={sellEscort} onApply={setSellEscort} />}
+      {give !== "credits" && g > 0 && <SellerEscortAdvice base={base} resource={give} qty={g} escort={sellEscort} onApply={setSellEscort} assumedKm={list.data.partnerKm} />}
       {g > 0 && w > 0 && (
         <div className="mb-2 flex items-start gap-2">
           <DevTag v={readerValue(prices, give, g, want, w)} />

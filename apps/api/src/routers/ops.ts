@@ -21,6 +21,8 @@ import {
   pushSubscribe,
   pushToPlayer,
   pushUnsubscribe,
+  quietHoursView, // Ruhezeit für Pushes
+  setQuietHours,
   requestPasswordResetMail,
   resetPassword,
   saveSmtp,
@@ -86,6 +88,11 @@ export const pushRouter = t.router({
   setPrefs: authed
     .input(z.object({ endpoint, prefs }))
     .mutation(async ({ ctx, input }) => ({ ok: await pushSetPrefs(ctx.engine.db, ctx.player.id, input.endpoint, cleanPrefs(input.prefs)) })),
+  /** Ruhezeit des Spielers (alle Geräte): Minute des Tages in der Spielzeitzone; Angriffe gehen immer sofort. */
+  quiet: authed.query(({ ctx }) => quietHoursView(ctx.engine.db, ctx.player.id)),
+  setQuiet: authed
+    .input(z.object({ on: z.boolean(), fromMin: z.number().int().min(0).max(1439), toMin: z.number().int().min(0).max(1439) }))
+    .mutation(({ ctx, input }) => setQuietHours(ctx.engine.db, ctx.player.id, input)),
   test: authed.mutation(async ({ ctx }) => {
     if (!(await ctx.rateLimit(`pushtest:${ctx.player.id}`, 5, 600))) return { ...rate, sent: 0 };
     const sent = await pushToPlayer(ctx.engine, ctx.player.id, {

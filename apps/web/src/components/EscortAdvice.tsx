@@ -126,15 +126,15 @@ export const SELLER_ASSUMED_KM = 500;
  * Warenwert (Empfehlung und Siegchance gelten), Chance und Kosten rechnen mit einer Richtstrecke von SELLER_ASSUMED_KM
  * (hin mit dem Konvoi, zurück gleich lang).
  */
-export function SellerEscortAdvice({ base, resource, qty, escort, onApply }: { base: BaseData; resource: string; qty: number; escort: Counts; onApply: (u: Counts) => void }) {
+export function SellerEscortAdvice({ base, resource, qty, escort, onApply, assumedKm }: { base: BaseData; resource: string; qty: number; escort: Counts; onApply: (u: Counts) => void; assumedKm?: number | null }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const b = meta.data?.balance;
   if (!b) return null;
-  const km = SELLER_ASSUMED_KM;
+  const km = assumedKm && assumedKm > 0 ? assumedKm : SELLER_ASSUMED_KM; // TST-02: Median der Seewege zu den anderen Häfen
   const hours = (2 * km) / (b.market.convoySpeedKmh || 45);
   return (
     <EscortAdvice base={base} cargoValue={qty * (b.market.refPrice[resource] ?? 0)} riskKm={km} market={false} trip={{ km, awayHours: hours }} escort={escort} onApply={onApply}
-      note={`Käufer noch unbekannt: Überfallchance und Kosten gerechnet mit etwa ${fmtNum(km)} km Seeweg; die Kartellgruppe richtet sich nur nach dem Warenwert.`} />
+      note={`Käufer noch unbekannt: Überfallchance und Kosten gerechnet mit etwa ${fmtNum(km)} km Seeweg${assumedKm ? " (Mittel zu den anderen Häfen)" : ""}; die Kartellgruppe richtet sich nur nach dem Warenwert.`} />
   );
 }
 
@@ -144,16 +144,28 @@ export function SellerEscortAdvice({ base, resource, qty, escort, onApply }: { b
  * Server würfelt – die Chance ist eher zu hoch); die Schiffe fehlen so lange, wie der Konvoi fährt. Ohne Fahrzeit
  * (Spielervertrag, Hafen des Partners hier unbekannt) mit der Richtstrecke wie beim Spielerhandel.
  */
-export function ContractEscortAdvice({ base, resource, qty, travelMs, escort, onApply }: { base: BaseData; resource: string; qty: number; travelMs?: number; escort: Counts; onApply: (u: Counts) => void }) {
+export function ContractEscortAdvice({ base, resource, qty, travelMs, route, assumedKm, escort, onApply }: {
+  base: BaseData; resource: string; qty: number; travelMs?: number;
+  /** TST-02: Partner bekannt – Strecken vom Server wie gebucht (Risiko Luftlinie, Geleit Hafen → Partner, Fahrzeit). */
+  route?: { riskKm: number; escortKm: number; travelMs: number } | null;
+  /** Partner noch offen: Median der Geleitstrecken (Server), sonst SELLER_ASSUMED_KM. */
+  assumedKm?: number | null;
+  escort: Counts; onApply: (u: Counts) => void;
+}) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const b = meta.data?.balance;
   if (!b || !(qty > 0)) return null;
   const speed = b.market.convoySpeedKmh || 45;
+  const value = qty * (b.market.refPrice[resource] ?? 0);
+  if (route) {
+    return <EscortAdvice base={base} cargoValue={value} riskKm={route.riskKm} market trip={{ km: route.escortKm, awayHours: route.travelMs / 3_600_000 }} escort={escort} onApply={onApply} />;
+  }
   const known = travelMs !== undefined && travelMs > 0;
-  const km = known ? (travelMs / 3_600_000) * speed : SELLER_ASSUMED_KM;
+  const guess = assumedKm && assumedKm > 0 ? assumedKm : SELLER_ASSUMED_KM;
+  const km = known ? (travelMs / 3_600_000) * speed : guess;
   const hours = known ? travelMs / 3_600_000 : km / speed;
   return (
-    <EscortAdvice base={base} cargoValue={qty * (b.market.refPrice[resource] ?? 0)} riskKm={km} market trip={{ km, awayHours: hours }} escort={escort} onApply={onApply}
-      note={known ? undefined : `Hafen des Partners hier unbekannt: Überfallchance und Kosten gerechnet mit etwa ${fmtNum(km)} km Seeweg.`} />
+    <EscortAdvice base={base} cargoValue={value} riskKm={km} market trip={{ km, awayHours: hours }} escort={escort} onApply={onApply}
+      note={known ? undefined : `Partner noch offen: Überfallchance und Kosten gerechnet mit etwa ${fmtNum(km)} km Seeweg${assumedKm ? " (Mittel zu den anderen Häfen)" : ""}.`} />
   );
 }

@@ -20,6 +20,8 @@ import {
   recordMilestones,
   runReminders,
   runWinback,
+  runSeasonNotice,
+  flushPushes,
   refreshDerivedOpen,
   runMarketNews,
   runMorningSummaries,
@@ -137,6 +139,15 @@ async function loop() {
         await step("winback mails", async () => {
           const winback = await runWinback(engine, Date.now());
           if (winback > 0) log("winback mails", { sent: winback });
+        });
+        // AN-06/AN-07: Saisonwechsel-Nachricht (Mail + Push), gesammelte Pushes (15-min-Bündel, nach der Ruhezeit).
+        await step("season notice", async () => {
+          const n = await runSeasonNotice(engine, Date.now());
+          if (n > 0) log("season notice", { sent: n });
+        });
+        await step("push bundles", async () => {
+          const n = await flushPushes(engine, Date.now());
+          if (n > 0) log("push bundles", { sent: n });
         });
         // KI-Spieler: höchstens bots.turnsPerMinute fällige Bots reihum (abschaltbar: Server-Einstellung bots_enabled).
         if (process.env.BOTS_DISABLED !== "1") {

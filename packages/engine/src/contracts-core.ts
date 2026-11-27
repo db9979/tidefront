@@ -160,11 +160,11 @@ export async function dailyLimitOf(db: DbOrTx, playerId: number, nowMs: number):
   return Math.floor(balance.market.dailyLimitShareOfStorage * (await homeStorageCapacity(db, playerId, nowMs)));
 }
 
-/** Prüft: Vertragslieferungen der Ressource in jedem 24-h-Fenster ≤ limitShare × Tageslimit (Code daily_limit). */
+/** Prüft: Vertragslieferungen der Ressource in jedem 24-h-Fenster ≤ limitShare × Tageslimit (Code contract_limit, TST-03: eigener Code statt daily_limit der Börse). */
 export async function checkWindow(db: DbOrTx, playerId: number, resource: string, added: marketCore.DuePoint[], nowMs: number): Promise<void> {
   const cfg = cfgOrFail();
   const limit = cfg.limitShare * (await dailyLimitOf(db, playerId, nowMs));
-  if (marketCore.maxWindowLoad(await duePoints(db, playerId, resource), added) > limit) fail("daily_limit");
+  if (marketCore.maxWindowLoad(await duePoints(db, playerId, resource), added) > limit) fail("contract_limit");
 }
 
 /** Kasse des Spielers (Stufe der höchsten Hafenkommandantur). */

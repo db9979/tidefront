@@ -1,6 +1,7 @@
 // Werkzeug für ausführliche Bericht-Mails: Abschnitts-Register (je Berichtsart bzw. Datenteil ein Renderer),
 // Formatierung von Zahlen, Zeiten, Einheiten (mit Textsymbol) und Ressourcen. Neue Berichtsarten melden hier
 // einen eigenen Abschnitt an (registerReportSection); ohne eigenen Abschnitt greift der Standard in mail-reports.ts.
+import { gameTimeZone } from "@tidefront/game-core";
 import { balance } from "./context.ts";
 import type { Cell, MailBlock } from "./mail-blocks.ts";
 import { fmtInt, nameOf } from "./names.ts";
@@ -74,7 +75,7 @@ export { nOf } from "./names.ts";
 
 export const pct = (part: number, whole: number) => (whole > 0 ? `${Math.round((part / whole) * 100)} %` : "0 %");
 
-const TZ = () => process.env.TZ || "Europe/Berlin";
+const TZ = () => gameTimeZone();
 
 /** „Fr., 27.11., 14:05 Uhr“ in der Zeitzone des Servers. */
 export function dateTime(ms: number): string {

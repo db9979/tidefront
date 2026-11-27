@@ -6,7 +6,7 @@ import { and, asc, desc, eq, isNotNull, isNull, lt } from "drizzle-orm";
 import { deliverToStorage } from "./guide.ts";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, GameError, type Engine } from "./context.ts";
-import { runCommand } from "./commands.ts";
+import { runCommand, type Ctx } from "./commands.ts";
 import { baseOfPlayer, lockBase, saveBase } from "./store.ts";
 import { modsOf } from "./modifiers.ts";
 import { addLost, rewardStorage } from "./reward-storage.ts";
@@ -118,19 +118,22 @@ export async function achievementsView(engine: Engine, playerId: number) {
 
 /** Belohnung einer freigeschalteten Stufe abholen (genau einmal). Codes: no_base, not_unlocked, already_claimed. */
 export function claimAchievement(engine: Engine, playerId: number, key: string, achievementId: string, tier: number) {
-  return runCommand<{ ok: true; reward: Record<string, number>; lost: Record<string, number> }>(engine, playerId, key, "achievementClaim", async (ctx) => {
-    const t = tables.achievementTier;
-    const [row] = await ctx.tx.select().from(t)
-      .where(and(eq(t.playerId, playerId), eq(t.achievementId, achievementId), eq(t.tier, tier)))
-      .for("update");
-    if (!row || !achievementById(achievementId)) fail("not_unlocked");
-    if (row.claimedAt) fail("already_claimed");
-    const reward = row.reward as Record<string, number>;
-    const lost = await payReward(ctx.tx, playerId, reward, ctx.nowMs, `erfolg-${row.id}`);
-    await ctx.tx.update(t).set({ claimedAt: new Date(ctx.nowMs) }).where(eq(t.id, row.id));
-    ctx.notify.push([[playerId], "base"]);
-    return { ok: true as const, reward, lost };
-  });
+  return runCommand<{ ok: true; reward: Record<string, number>; lost: Record<string, number> }>(engine, playerId, key, "achievementClaim", (ctx) => claimAchievementIn(ctx, playerId, achievementId, tier));
+}
+
+/** Kern von claimAchievement in einer bestehenden Transaktion (auch für „Alle abholen“, rewards-claim.ts). */
+export async function claimAchievementIn(ctx: Ctx, playerId: number, achievementId: string, tier: number) {
+  const t = tables.achievementTier;
+  const [row] = await ctx.tx.select().from(t)
+    .where(and(eq(t.playerId, playerId), eq(t.achievementId, achievementId), eq(t.tier, tier)))
+    .for("update");
+  if (!row || !achievementById(achievementId)) fail("not_unlocked");
+  if (row.claimedAt) fail("already_claimed");
+  const reward = row.reward as Record<string, number>;
+  const lost = await payReward(ctx.tx, playerId, reward, ctx.nowMs, `erfolg-${row.id}`);
+  await ctx.tx.update(t).set({ claimedAt: new Date(ctx.nowMs) }).where(eq(t.id, row.id));
+  ctx.notify.push([[playerId], "base"]);
+  return { ok: true as const, reward, lost };
 }
 
 // ---------------------------------------------------------------- Wochenziele
@@ -191,30 +194,32 @@ export async function weeklyView(engine: Engine, playerId: number) {
  */
 export function claimWeekly(engine: Engine, playerId: number, key: string, goalId: number) {
   return runCommand<{ ok: true; reward: Record<string, number>; bonus: Record<string, number> | null; lost: Record<string, number> }>(
-    engine, playerId, key, "weeklyClaim", async (ctx) => {
-      const wg = tables.weeklyGoal;
-      await refreshGreenCounter(ctx.tx, playerId, ctx.nowMs); // Ökostrom (v1.21)
-      const [found] = await ctx.tx.select().from(wg).where(and(eq(wg.id, goalId), eq(wg.playerId, playerId))).for("update");
-      if (!found) fail("no_goal");
-      if (found.claimedAt) fail("already_claimed");
-      const [row] = await refreshWeeklyDerived(ctx.tx, playerId, [found], ctx.nowMs);
-      if (!row.completedAt) fail("not_done");
-      const reward = row.reward as Record<string, number>;
-      const lost = await payReward(ctx.tx, playerId, reward, ctx.nowMs, `woche-${row.id}`);
-      await ctx.tx.update(wg).set({ claimedAt: new Date(ctx.nowMs) }).where(eq(wg.id, row.id));
+    engine, playerId, key, "weeklyClaim", (ctx) => claimWeeklyIn(ctx, playerId, goalId));
+}
 
-      // Wochenbonus: alle drei Ziele der Woche abgeholt, noch kein Bonus gezahlt (Zeilen gesperrt).
-      let bonus: Record<string, number> | null = null;
-      const week = await ctx.tx.select().from(wg).where(and(eq(wg.playerId, playerId), eq(wg.week, row.week))).for("update");
-      if (week.length >= 3 && week.every((r) => r.claimedAt !== null || r.id === row.id) && !week.some((r) => r.bonus !== null)) {
-        const own = await baseOfPlayer(ctx.tx, playerId); // Mehrere Häfen: bewusst Heimathafen (Bonus nach dessen Kommandozentrale)
-        bonus = weeklyBonus(own?.state.buildings.kommandozentrale ?? 0);
-        addLost(lost, await payReward(ctx.tx, playerId, bonus, ctx.nowMs, `woche-${row.week}-bonus-${playerId}`));
-        await ctx.tx.update(wg).set({ bonus }).where(eq(wg.id, row.id));
-      }
-      await recordAchievement(ctx.tx, playerId, "wochenziele", 1, { atMs: ctx.nowMs });
-      ctx.notify.push([[playerId], "base"]);
-      return { ok: true as const, reward, bonus, lost };
-    },
-  );
+/** Kern von claimWeekly in einer bestehenden Transaktion (auch für „Alle abholen“, rewards-claim.ts). */
+export async function claimWeeklyIn(ctx: Ctx, playerId: number, goalId: number) {
+  const wg = tables.weeklyGoal;
+  await refreshGreenCounter(ctx.tx, playerId, ctx.nowMs); // Ökostrom (v1.21)
+  const [found] = await ctx.tx.select().from(wg).where(and(eq(wg.id, goalId), eq(wg.playerId, playerId))).for("update");
+  if (!found) fail("no_goal");
+  if (found.claimedAt) fail("already_claimed");
+  const [row] = await refreshWeeklyDerived(ctx.tx, playerId, [found], ctx.nowMs);
+  if (!row.completedAt) fail("not_done");
+  const reward = row.reward as Record<string, number>;
+  const lost = await payReward(ctx.tx, playerId, reward, ctx.nowMs, `woche-${row.id}`);
+  await ctx.tx.update(wg).set({ claimedAt: new Date(ctx.nowMs) }).where(eq(wg.id, row.id));
+
+  // Wochenbonus: alle drei Ziele der Woche abgeholt, noch kein Bonus gezahlt (Zeilen gesperrt).
+  let bonus: Record<string, number> | null = null;
+  const week = await ctx.tx.select().from(wg).where(and(eq(wg.playerId, playerId), eq(wg.week, row.week))).for("update");
+  if (week.length >= 3 && week.every((r) => r.claimedAt !== null || r.id === row.id) && !week.some((r) => r.bonus !== null)) {
+    const own = await baseOfPlayer(ctx.tx, playerId); // Mehrere Häfen: bewusst Heimathafen (Bonus nach dessen Kommandozentrale)
+    bonus = weeklyBonus(own?.state.buildings.kommandozentrale ?? 0);
+    addLost(lost, await payReward(ctx.tx, playerId, bonus, ctx.nowMs, `woche-${row.week}-bonus-${playerId}`));
+    await ctx.tx.update(wg).set({ bonus }).where(eq(wg.id, row.id));
+  }
+  await recordAchievement(ctx.tx, playerId, "wochenziele", 1, { atMs: ctx.nowMs });
+  ctx.notify.push([[playerId], "base"]);
+  return { ok: true as const, reward, bonus, lost };
 }

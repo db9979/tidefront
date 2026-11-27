@@ -134,14 +134,14 @@ test("lage.get bündelt Angriff, Bau, Ausbildung, Mission, Konvoi, Vertrag; brie
   assert.ok(v.underway.some((r) => r.key === `verband:${m.id}` && r.progress !== null), "Verband unterwegs");
   assert.ok(v.waiting.some((r) => r.key === `leer:${second.baseId}` && r.urgent), "leere Bauschlange der Kolonie");
   assert.ok(!v.waiting.some((r) => r.key === `leer:${a.baseId}`), "Heimathafen baut");
-  { const { keys, ...n } = v.urgent; assert.deepEqual(n, { attacks: 1, grace: 1, idleQueues: 1, rewards: 0 }); assert.equal(keys.length, 3); assert.ok(keys.includes(`leer:${second.baseId}`)); }
+  { const { keys, ...n } = v.urgent; assert.deepEqual(n, { attacks: 1, grace: 1, idleQueues: 1, rewards: 0, rewardSources: { achievements: 0, weekly: 0 } }); assert.equal(keys.length, 3); assert.ok(keys.includes(`leer:${second.baseId}`)); }
   const jump = v.soon.find((r) => r.key === `ankunft:${m.id}`)!.jump;
   assert.deepEqual(jump, { to: "map", col: foe.col, row: foe.row, baseId: a.baseId, missionId: m.id });
 
   // Abholbare Erfolgsstufe zählt als dringend; brief liefert nur die Zahlen.
   await db.insert(tables.achievementTier).values({ playerId: a.playerId, achievementId: "handel", tier: 1, reward: { stahl: 100 } });
   const b = await lageView(engine, a.playerId, { brief: true });
-  { const { keys, ...n } = b.urgent; assert.deepEqual(n, { attacks: 1, grace: 1, idleQueues: 1, rewards: 1 }); assert.equal(keys.length, 4); }
+  { const { keys, ...n } = b.urgent; assert.deepEqual(n, { attacks: 1, grace: 1, idleQueues: 1, rewards: 1, rewardSources: { achievements: 1, weekly: 0 } }); assert.equal(keys.length, 4); }
   assert.equal(b.soon.length + b.underway.length + b.waiting.length, 0);
   assert.ok(ms < 2000, "schlank");
 });

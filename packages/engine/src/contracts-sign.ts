@@ -14,6 +14,7 @@ import {
   saveTrader, withCredits, type ContractRow,
 } from "./contracts-core.ts";
 import { contractKi, kiDeal, kiRefuses, kiStocks, quotaOf, type KiDealInput } from "./contracts-ki.ts";
+import { buyerEscortRoute } from "./trade-routes.ts";
 
 const HOUR_MS = 3_600_000;
 
@@ -64,12 +65,14 @@ export async function kiContractQuote(engine: Engine, playerId: number, input: K
     course: deal.inputs.k, expected: deal.tranches.map((t) => t.price.expected), instantPrice: instant, halted: deal.inputs.halted,
     tranches: deal.tranches.map((t) => ({ dueMs: t.dueMs, settleMs: t.settleMs, qty: t.qty, price: input.side === "buy" ? t.price.buyerUnit : t.price.sellerUnit })),
     delivery: deal.delivery, travelMs: deal.travelMs, quota, fits: deal.totalQty <= quota,
+    /** Kauf per Konvoi: Strecken wie gebucht (Risiko Luftlinie, Geleit Hafen → KI-Hafen), TST-02. */
+    route: input.side === "buy" ? buyerEscortRoute(own, kiHome) : null,
   };
 }
 
 /**
  * Vertrag mit einer KI abschließen. Codes: no_contracts, no_ki, ki_refuses, bad_qty, not_offered, no_abo, bad_term,
- * locked, halted, under_attack, quota, too_many_contracts, rate, daily_limit, credit_limit, funds, slippage.
+ * locked, halted, under_attack, quota, too_many_contracts, rate, contract_limit, credit_limit, funds, slippage.
  */
 export function signKiContract(engine: Engine, playerId: number, key: string, input: KiSignInput) {
   return runCommand<{ ok: true; contractIds: number[]; firstDueMs: number }>(engine, playerId, key, "contractSignKi", async (ctx: Ctx) => {
@@ -93,9 +96,9 @@ export function signKiContract(engine: Engine, playerId: number, key: string, in
     const escort = deal.delivery === "konvoi" && input.side === "buy" ? cleanEscort(input.escort) : {};
     const stocks = await kiStocks(tx, ki.id, playerId, nowMs, kiBase);
     if (!stocks || deal.totalQty > quotaOf(stocks, input.side, input.resource, ki)) fail("quota");
+    const traders = await lockTraders(tx, [playerId, ki.id]); // TE-06: Sperre vor den Grenzprüfungen
     await checkCounts(tx, playerId, nowMs, true);
     await checkWindow(tx, playerId, input.resource, deal.tranches.map((t) => ({ atMs: t.settleMs, qty: t.qty })), nowMs);
-    const traders = await lockTraders(tx, [playerId, ki.id]);
     const me = traders.get(playerId)!;
     const kiTrader = traders.get(ki.id)!;
     await checkCreditLimit(tx, playerId, input.side === "buy" ? "buyer" : "seller", input.side === "buy" ? deal.totalCents - deal.securityCents : deal.totalCents, me.credits);

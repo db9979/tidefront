@@ -3,6 +3,7 @@
 // jeder Handel landet im Fach seiner vollen Stunde (Stundennummer floor(ms / 1 h)); ein Fach zählt, bis 24 Stunden nach
 // Beginn seiner Stunde vergangen sind (ein Handel um 13:40 ist ab 13:00 am Folgetag wieder frei, also nach 23–24 h).
 import type { ResourceId, TradeHour, TraderState } from "./types.ts";
+import { gameTimeZone } from "../time-zone.ts";
 
 const MS_PER_HOUR = 3_600_000;
 const MS_PER_DAY = 86_400_000;
@@ -10,13 +11,9 @@ const MS_PER_DAY = 86_400_000;
 /** Länge des gleitenden Fensters in Stunden. */
 export const TRADE_WINDOW_HOURS = 24;
 
-/** Spielzeitzone: TZ der Umgebung (Server), sonst Europe/Berlin. */
+/** Spielzeitzone: TZ der Umgebung (Server), sonst Europe/Berlin – eine Quelle: time-zone.ts (gameTimeZone, TE-07). */
 export function defaultTimeZone(): string {
-  const tz = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.TZ;
-  if (tz && !tz.startsWith(":")) {
-    try { new Intl.DateTimeFormat("en-CA", { timeZone: tz }); return tz; } catch { /* ungültig */ }
-  }
-  return "Europe/Berlin";
+  return gameTimeZone();
 }
 
 function localParts(nowMs: number, timeZone: string): Record<string, string> {

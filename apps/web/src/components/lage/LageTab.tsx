@@ -77,6 +77,7 @@ export function LageTab({ onShowOnMap, unreadMsgs, seenReport, quests: questBar 
       case "rewards": if (j.where === "erfolge") nav.go({ to: "meldungen", sub: "erfolge" }); // Aufträge stehen hier auf der Lage
         else document.querySelector('[aria-label="Aufträge"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
         break;
+      case "alliance": nav.go({ to: "meldungen", sub: "allianz" }); break; // TST-15: Beitrittsanfragen
     }
   };
 
@@ -87,7 +88,7 @@ export function LageTab({ onShowOnMap, unreadMsgs, seenReport, quests: questBar 
   const weeklyReady = weekly.data?.hasBase ? [...weekly.data.goals, ...weekly.data.older].filter((x) => x.done && !x.claimed).length : 0;
   const allReady = quests + weeklyReady + (ach.data?.claimable ?? 0);
   // TST-16: nur die Quellen nennen, die wirklich etwas abholbereit haben.
-  const sources = [gq > 0 ? `${gq} im Auftragsbuch` : "", dq > 0 ? `${dq} aus Tagesbefehlen` : ""].filter(Boolean).join(", ");
+  const sources = [gq > 0 ? `${gq} im Auftragsbuch` : "", dq > 0 ? `${dq} ${dq === 1 ? "Tagesbefehl" : "Tagesbefehle"}` : ""].filter(Boolean).join(", ");
   const waiting: LageRow[] = [
     ...(quests > 0 ? [local({ key: "belohnung:quests", kind: "belohnung", icon: "hafenmeister", tone: "gut", urgent: true,
       text: `${quests === 1 ? "1 Belohnung" : `${quests} Belohnungen`} abholbereit (${sources})`, jump: { to: "rewards", where: "basis" } })] : []),

@@ -69,7 +69,7 @@ export { gridView, weatherModifiers, missionWeather, battleWeather } from "./wea
 export * from "./bug-report.ts";
 export { appointAdmiral, chooseAdmiralSpec, retrainAdmiral, stationAdmiral, ransomAdmiral, dismissAdmiral, admiralView, admiralSpecIds, type AdmiralInfo } from "./admirals.ts"; // Admirale
 // Erfolge (Abzeichen) und Wochenziele; recordAchievement ist die Erweiterungsstelle für neue Ereignisse.
-export { recordAchievement, flushAchievementNotices, topBadges, type RecordOptions } from "./achievements.ts";
+export { recordAchievement, recordTradeFee, flushAchievementNotices, topBadges, type RecordOptions } from "./achievements.ts";
 export { achievementsView, claimAchievement, weeklyView, claimWeekly } from "./achievements-view.ts";
 export {
   achievementList, drawWeek, nextWeekStartMs, placementScore, tierFor, weekKey, weekStartMs, weeklyBonus, weeklyReward, WEEKLY_KINDS,
@@ -131,3 +131,12 @@ export { contractBandView, contractsView } from "./contracts-view.ts";
 export { voidContracts } from "./contracts-run.ts";
 // Lagezentrum (Basis → Lage): alles Anstehende aller eigenen Häfen gebündelt; brief nur die Zahl fürs Navigationszeichen.
 export { lageView, noLage, type LageJump, type LageRow, type LageUrgent, type LageView } from "./lage.ts";
+// Live-Verbindungen je Spieler (TE-04): Leck beim Trennen während der Prüfung, Neuprüfung der Sitzung, Obergrenze.
+export { LiveHub, type LiveHubOptions, type LiveSocket } from "./live-sockets.ts";
+// AN-06/AN-07: Saisonwechsel-Nachricht, Push-Bündel und Ruhezeit.
+export * from "./season-notice.ts";
+export { BUNDLE_PUSH_KINDS, bundlePayload, PUSH_BUNDLE_MS, pushQuietUntil, queuedPushes, URGENT_PUSH_KINDS } from "./push-bundle.ts";
+export { cleanQuiet, getQuietHours, minuteOfDayIn, QUIET_DEFAULT, quietEndMs, quietHoursView, setQuietHours, type QuietHours } from "./push-quiet.ts";
+// TST-09: „Alle abholen“ in einer Transaktion; TST-15/TX-08/TST-16: Lage-Ergänzungen.
+export { claimAllIn, claimAllRewards, type ClaimAllResult, type ClaimSource } from "./rewards-claim.ts";
+export { allianceRows, beginnerRow, BEGINNER_WARN_MS, rewardSourcesText, type RewardSources } from "./lage-social.ts";

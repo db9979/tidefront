@@ -5,7 +5,7 @@ import { type ResourceMap } from "@tidefront/game-core";
 import { deliverToStorage } from "./guide.ts";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance, GameError, type Engine } from "./context.ts";
-import { runCommand } from "./commands.ts";
+import { runCommand, type Ctx } from "./commands.ts";
 import { baseOfPlayer, lockBase, saveBase } from "./store.ts";
 import { modsOf } from "./modifiers.ts";
 import {
@@ -103,50 +103,52 @@ export async function dailyView(engine: Engine, playerId: number) {
  */
 export function claimChallenge(engine: Engine, playerId: number, key: string, challengeId: number) {
   return runCommand<{ ok: true; reward: ResourceMap; points: number; streak: number | null; bonus: { points: number; reward: ResourceMap } | null; lost: ResourceMap }>(
-    engine, playerId, key, "dailyClaim", async (ctx) => {
-      const own = await baseOfPlayer(ctx.tx, playerId); // Mehrere Häfen: bewusst Heimathafen (Belohnung dorthin)
-      if (!own) fail("no_base");
-      const b = await lockBase(ctx.tx, own.id);
-      if (!b) fail("no_base");
-      const [found] = await ctx.tx.select().from(dc).where(and(eq(dc.id, challengeId), eq(dc.playerId, playerId))).for("update");
-      if (!found) fail("no_challenge");
-      if (found.claimedAt) fail("already_claimed");
-      const [row] = await refreshDerived(ctx.tx, playerId, [found], ctx.nowMs);
-      if (!row.completedAt) fail("not_done");
-      const reward = row.reward as ResourceMap;
-      const mods = await modsOf(ctx.tx, b, ctx.nowMs);
-      const first = deliverToStorage(b.state, reward, ctx.nowMs, mods); // bis zur Lagergrenze (wie Auftragsbuch)
-      let state = first.state;
-      const lost = addLost({}, first.lost);
-      await ctx.tx.update(dc).set({ claimedAt: new Date(ctx.nowMs) }).where(eq(dc.id, row.id));
+    engine, playerId, key, "dailyClaim", (ctx) => claimChallengeIn(ctx, playerId, challengeId));
+}
 
-      // Tagesabschluss: alle drei Befehle des Tages abgeholt.
-      let streak: number | null = null;
-      let bonus: { points: number; reward: ResourceMap } | null = null;
-      const day = await ctx.tx.select({ claimedAt: dc.claimedAt }).from(dc).where(and(eq(dc.playerId, playerId), eq(dc.day, row.day)));
-      if (day.length >= 3 && day.every((r) => r.claimedAt !== null)) {
-        const [s] = await ctx.tx.select().from(tables.dailyStreak).where(eq(tables.dailyStreak.playerId, playerId)).for("update");
-        if (!s || s.lastDay < row.day) {
-          streak = s && s.lastDay === addDays(row.day, -1) ? s.length + 1 : 1;
-          const best = Math.max(streak, s?.best ?? 0);
-          await ctx.tx
-            .insert(tables.dailyStreak)
-            .values({ playerId, lastDay: row.day, length: streak, best })
-            .onConflictDoUpdate({ target: tables.dailyStreak.playerId, set: { lastDay: row.day, length: streak, best, updatedAt: new Date(ctx.nowMs) } });
-          bonus = streakBonus(streak, b.state.buildings.kommandozentrale ?? 0);
-          if (bonus) {
-            const d = deliverToStorage(state, bonus.reward, ctx.nowMs, mods);
-            state = d.state;
-            addLost(lost, d.lost);
-            await ctx.tx.update(dc).set({ bonusPoints: bonus.points }).where(eq(dc.id, row.id));
-          }
-        }
+/** Kern von claimChallenge in einer bestehenden Transaktion (auch für „Alle abholen“, rewards-claim.ts). */
+export async function claimChallengeIn(ctx: Ctx, playerId: number, challengeId: number) {
+  const own = await baseOfPlayer(ctx.tx, playerId); // Mehrere Häfen: bewusst Heimathafen (Belohnung dorthin)
+  if (!own) fail("no_base");
+  const b = await lockBase(ctx.tx, own.id);
+  if (!b) fail("no_base");
+  const [found] = await ctx.tx.select().from(dc).where(and(eq(dc.id, challengeId), eq(dc.playerId, playerId))).for("update");
+  if (!found) fail("no_challenge");
+  if (found.claimedAt) fail("already_claimed");
+  const [row] = await refreshDerived(ctx.tx, playerId, [found], ctx.nowMs);
+  if (!row.completedAt) fail("not_done");
+  const reward = row.reward as ResourceMap;
+  const mods = await modsOf(ctx.tx, b, ctx.nowMs);
+  const first = deliverToStorage(b.state, reward, ctx.nowMs, mods); // bis zur Lagergrenze (wie Auftragsbuch)
+  let state = first.state;
+  const lost = addLost({}, first.lost);
+  await ctx.tx.update(dc).set({ claimedAt: new Date(ctx.nowMs) }).where(eq(dc.id, row.id));
+
+  // Tagesabschluss: alle drei Befehle des Tages abgeholt.
+  let streak: number | null = null;
+  let bonus: { points: number; reward: ResourceMap } | null = null;
+  const day = await ctx.tx.select({ claimedAt: dc.claimedAt }).from(dc).where(and(eq(dc.playerId, playerId), eq(dc.day, row.day)));
+  if (day.length >= 3 && day.every((r) => r.claimedAt !== null)) {
+    const [s] = await ctx.tx.select().from(tables.dailyStreak).where(eq(tables.dailyStreak.playerId, playerId)).for("update");
+    if (!s || s.lastDay < row.day) {
+      streak = s && s.lastDay === addDays(row.day, -1) ? s.length + 1 : 1;
+      const best = Math.max(streak, s?.best ?? 0);
+      await ctx.tx
+        .insert(tables.dailyStreak)
+        .values({ playerId, lastDay: row.day, length: streak, best })
+        .onConflictDoUpdate({ target: tables.dailyStreak.playerId, set: { lastDay: row.day, length: streak, best, updatedAt: new Date(ctx.nowMs) } });
+      bonus = streakBonus(streak, b.state.buildings.kommandozentrale ?? 0);
+      if (bonus) {
+        const d = deliverToStorage(state, bonus.reward, ctx.nowMs, mods);
+        state = d.state;
+        addLost(lost, d.lost);
+        await ctx.tx.update(dc).set({ bonusPoints: bonus.points }).where(eq(dc.id, row.id));
       }
-      await saveBase(ctx.tx, b.id, state);
-      ctx.notify.push([[playerId], "base"]);
-      return { ok: true as const, reward, points: row.points, streak, bonus, lost };
-    },
-  );
+    }
+  }
+  await saveBase(ctx.tx, b.id, state);
+  ctx.notify.push([[playerId], "base"]);
+  return { ok: true as const, reward, points: row.points, streak, bonus, lost };
 }
 
 /**

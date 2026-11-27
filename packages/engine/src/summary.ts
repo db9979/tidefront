@@ -242,7 +242,7 @@ async function deliverSummary(engine: Engine, playerId: number, name: string, ti
   }
   let pushed = 0;
   if (push) {
-    pushed = await pushToPlayer(engine, playerId, { kind: "report", title: "Morgenbericht", body: summaryLine(data), url: "/?tab=basis", tag: "summary" })
+    pushed = await pushToPlayer(engine, playerId, { kind: "report", title: "Morgenbericht", body: summaryLine(data), url: "/?tab=basis", tag: "summary" }, { direct: true }) // selbst gewählte Uhrzeit: keine Ruhezeit
       .catch((err) => { engine.log("summary push", String(err)); return 0; });
   }
   if (mailed === false && pushed === 0) return "failed";

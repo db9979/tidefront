@@ -24,7 +24,7 @@ Teil der Regeln (siehe `docs/REGELN.md`). Werte in `balance.json`, Block `achiev
 | Freibeuter | `ueberfaelle` | 3 / 15 / 50 | gewonnene Überfälle auf Häfen von Mitspielern |
 | Bollwerk | `abwehr_ohne_verluste` | 1 / 5 / 20 | abgewehrte Angriffe (Spieler, Kartell, Weltereignis) ohne eigene Verluste an Einheiten und Anlagen |
 | Prisenmeister | `beute` | 25.000 / 250.000 / 2.000.000 | Summe der Beute aus Überfällen |
-| Kaufmann | `handel` | 10 / 50 / 200 | abgeschlossene Börsengeschäfte |
+| Kaufmann | `handel_gebuehr` | 400 / 2.000 / 8.000 | an der Börse gezahlte Gebühr in Talern (Geschäfte ab 500 Talern; früher die Zahl der Geschäfte, M-07) |
 | Baumeister | `prachtbau` | 1 / 4 / 10 | Gebäude auf Stufe 18 oder höher (Prachtbau), Bestwert |
 | Gelehrter | `forschung_voll` | 1 / 5 / 12 | Techniken auf Höchststufe, Bestwert |
 | Meisterspion | `spionage` | 5 / 25 / 100 | gelungene Aufträge des Nachrichtendienstes |

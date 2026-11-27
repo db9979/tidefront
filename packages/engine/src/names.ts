@@ -1,4 +1,5 @@
 // Deutsche Namen für Benachrichtigungen (Server-Seite; die Oberfläche hat eigene in apps/web/src/lib/names.ts).
+import { gameTimeZone } from "@tidefront/game-core"; // eine Spielzeitzone (TE-07)
 
 const NAMES: Record<string, string> = {
   kommandozentrale: "Kommandozentrale", stahlwerk: "Stahlwerk", raffinerie: "Raffinerie", chipfabrik: "Chipfabrik",
@@ -84,7 +85,7 @@ export function amounts(m: Record<string, number> | null | undefined): string {
 /** Uhrzeit in der Zeitzone des Servers (TZ), z. B. "14:05". */
 export function clock(ms: number): string {
   try {
-    return new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: process.env.TZ || "Europe/Berlin" });
+    return new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: gameTimeZone() });
   } catch {
     return new Date(ms).toISOString().slice(11, 16);
   }

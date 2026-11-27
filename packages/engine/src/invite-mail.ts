@@ -1,6 +1,7 @@
 // Einladungs-Mail an einen Freund (Stil „Seekarte“ über renderMail und MAIL_THEME, hell/dunkel, mit Textversion).
 import type { MailContent } from "./mail-templates.ts";
 import { publicUrl } from "./settings.ts";
+import { gameTimeZone } from "@tidefront/game-core";
 
 export interface InviteMailInput {
   code: string;
@@ -12,7 +13,7 @@ export interface InviteMailInput {
 }
 
 function dateDe(d: Date): string {
-  return d.toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric", timeZone: process.env.TZ || "Europe/Berlin" });
+  return d.toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric", timeZone: gameTimeZone() });
 }
 
 export function inviteMail(i: InviteMailInput): MailContent {

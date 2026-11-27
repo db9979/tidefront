@@ -6,7 +6,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { settle, storageCapacity, type BaseState, type Modifiers, type ResourceMap } from "@tidefront/game-core";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, GameError, type Engine } from "./context.ts";
-import { runCommand } from "./commands.ts";
+import { runCommand, type Ctx } from "./commands.ts";
 import { baseOfPlayer, lockBase, saveBase, scheduleEvent } from "./store.ts";
 import { modsOf } from "./modifiers.ts";
 import { runningSeason } from "./season.ts";
@@ -135,20 +135,23 @@ export async function hafenmeisterIds(db: DbOrTx, seasonId: number | null): Prom
 
 /** Belohnung eines erfüllten Auftrags abholen (genau einmal je Saison). Codes: no_base, no_season, unknown_step, not_done, already_claimed. */
 export function claimGuideStep(engine: Engine, playerId: number, key: string, stepId: string) {
-  return runCommand<{ ok: true; reward: ResourceMap; lost: ResourceMap }>(engine, playerId, key, "guideClaim", async (ctx) => {
-    const step = GUIDE_STEPS.find((s) => s.id === stepId);
-    if (!step) fail("unknown_step");
-    const { b, seasonId } = await lockedOwn(ctx.tx, playerId);
-    const [had] = await ctx.tx.select({ step: gc.step }).from(gc).where(and(eq(gc.playerId, playerId), eq(gc.seasonId, seasonId), eq(gc.step, stepId)));
-    if (had) fail("already_claimed");
-    if (!step.done(b.state, step.id === "nest" ? await wonNestRaid(ctx.tx, playerId) : false)) fail("not_done");
-    await insertClaim(ctx.tx, playerId, seasonId, stepId, ctx.nowMs, null);
-    const reward = guideBalance().steps[stepId] ?? {};
-    const d = deliverToStorage(b.state, reward, ctx.nowMs, await modsOf(ctx.tx, b, ctx.nowMs));
-    await saveBase(ctx.tx, b.id, d.state);
-    ctx.notify.push([[playerId], "base"]);
-    return { ok: true as const, reward, lost: d.lost };
-  });
+  return runCommand<{ ok: true; reward: ResourceMap; lost: ResourceMap }>(engine, playerId, key, "guideClaim", (ctx) => claimGuideStepIn(ctx, playerId, stepId));
+}
+
+/** Kern von claimGuideStep in einer bestehenden Transaktion (auch für „Alle abholen“, rewards-claim.ts). */
+export async function claimGuideStepIn(ctx: Ctx, playerId: number, stepId: string) {
+  const step = GUIDE_STEPS.find((s) => s.id === stepId);
+  if (!step) fail("unknown_step");
+  const { b, seasonId } = await lockedOwn(ctx.tx, playerId);
+  const [had] = await ctx.tx.select({ step: gc.step }).from(gc).where(and(eq(gc.playerId, playerId), eq(gc.seasonId, seasonId), eq(gc.step, stepId)));
+  if (had) fail("already_claimed");
+  if (!step.done(b.state, step.id === "nest" ? await wonNestRaid(ctx.tx, playerId) : false)) fail("not_done");
+  await insertClaim(ctx.tx, playerId, seasonId, stepId, ctx.nowMs, null);
+  const reward = guideBalance().steps[stepId] ?? {};
+  const d = deliverToStorage(b.state, reward, ctx.nowMs, await modsOf(ctx.tx, b, ctx.nowMs));
+  await saveBase(ctx.tx, b.id, d.state);
+  ctx.notify.push([[playerId], "base"]);
+  return { ok: true as const, reward, lost: d.lost };
 }
 
 /**
@@ -156,22 +159,25 @@ export function claimGuideStep(engine: Engine, playerId: number, key: string, st
  * (läuft keiner, für den nächsten). Codes: no_base, no_season, not_done, already_claimed.
  */
 export function claimGuideFinal(engine: Engine, playerId: number, key: string) {
-  return runCommand<{ ok: true; reward: ResourceMap; boostApplied: boolean; lost: ResourceMap }>(engine, playerId, key, "guideClaimFinal", async (ctx) => {
-    const { b, seasonId } = await lockedOwn(ctx.tx, playerId);
-    const claims = await claimsOf(ctx.tx, playerId, seasonId);
-    if (claims.some((c) => c.step === GUIDE_FINAL)) fail("already_claimed");
-    const have = new Set(claims.map((c) => c.step));
-    if (!GUIDE_STEPS.every((s) => have.has(s.id))) fail("not_done");
-    const g = guideBalance();
-    const d = deliverToStorage(b.state, g.final.reward, ctx.nowMs, await modsOf(ctx.tx, b, ctx.nowMs));
-    let state = d.state;
-    const boostApplied = state.buildQueue.length > 0;
-    if (boostApplied) state = await boostQueue(ctx.tx, b.id, state, g.final.buildBoostSeconds * 1000, ctx.nowMs);
-    await insertClaim(ctx.tx, playerId, seasonId, GUIDE_FINAL, ctx.nowMs, boostApplied ? ctx.nowMs : null);
-    await saveBase(ctx.tx, b.id, state);
-    ctx.notify.push([[playerId], "base"], [null, "season"]);
-    return { ok: true as const, reward: g.final.reward, boostApplied, lost: d.lost };
-  });
+  return runCommand<{ ok: true; reward: ResourceMap; boostApplied: boolean; lost: ResourceMap }>(engine, playerId, key, "guideClaimFinal", (ctx) => claimGuideFinalIn(ctx, playerId));
+}
+
+/** Kern von claimGuideFinal in einer bestehenden Transaktion (auch für „Alle abholen“, rewards-claim.ts). */
+export async function claimGuideFinalIn(ctx: Ctx, playerId: number) {
+  const { b, seasonId } = await lockedOwn(ctx.tx, playerId);
+  const claims = await claimsOf(ctx.tx, playerId, seasonId);
+  if (claims.some((c) => c.step === GUIDE_FINAL)) fail("already_claimed");
+  const have = new Set(claims.map((c) => c.step));
+  if (!GUIDE_STEPS.every((s) => have.has(s.id))) fail("not_done");
+  const g = guideBalance();
+  const d = deliverToStorage(b.state, g.final.reward, ctx.nowMs, await modsOf(ctx.tx, b, ctx.nowMs));
+  let state = d.state;
+  const boostApplied = state.buildQueue.length > 0;
+  if (boostApplied) state = await boostQueue(ctx.tx, b.id, state, g.final.buildBoostSeconds * 1000, ctx.nowMs);
+  await insertClaim(ctx.tx, playerId, seasonId, GUIDE_FINAL, ctx.nowMs, boostApplied ? ctx.nowMs : null);
+  await saveBase(ctx.tx, b.id, state);
+  ctx.notify.push([[playerId], "base"], [null, "season"]);
+  return { ok: true as const, reward: g.final.reward, boostApplied, lost: d.lost };
 }
 
 /**

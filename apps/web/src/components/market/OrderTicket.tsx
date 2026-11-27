@@ -107,10 +107,11 @@ export function OrderTicket({ r, cfg, nowMs, ctx, base, initial }: { r: MarketRe
   const blocked = hard.length > 0 || soft.length > 0;
   const why: RemedyDetail = { resource: r.id, qty: valid ? typed : undefined };
 
-  const tenth = Math.floor(ctx.stock * 0.1);
+  // TST-08: Schnellknöpfe nie über „Max“ (Kurswirkung, Tageslimit, Taler …) – sonst wäre die Menge sofort gesperrt.
+  const tenth = Math.min(Math.floor(ctx.stock * 0.1), max);
   const chips: { top: string; sub: string; v: number; aria: string }[] = [
-    { top: "100", sub: "Stück", v: 100, aria: "100" },
-    { top: "1.000", sub: "Stück", v: 1000, aria: "1.000" },
+    { top: "100", sub: max < 100 ? fmtNum(max) : "Stück", v: Math.min(100, max), aria: `100, höchstens ${fmtNum(max)}` },
+    { top: "1.000", sub: max < 1000 ? fmtNum(max) : "Stück", v: Math.min(1000, max), aria: `1.000, höchstens ${fmtNum(max)}` },
     { top: "10 %", sub: fmtNum(tenth), v: tenth, aria: `10 % Bestand, ${fmtNum(tenth)}` },
     { top: "Max", sub: fmtNum(max), v: max, aria: `Maximum ohne Ablehnung, ${fmtNum(max)}` },
   ];
@@ -166,7 +167,7 @@ export function OrderTicket({ r, cfg, nowMs, ctx, base, initial }: { r: MarketRe
       <DailyBar used={daily.used} add={valid ? typed : 0} limit={r.dailyLimit} next={nextFree} nowMs={nowMs} reserved={daily.reserved} />
 
       {q && hard.length === 0 && <Slip q={q} cfg={cfg} nowMs={nowMs} ctx={ctx} label={label(r.id)} />}
-      {buy && base && hard.length === 0 && <OrderEscort base={base} resource={r.id} qty={valid ? typed : 0} value={escort} onChange={setEscort} />}
+      {buy && base && hard.length === 0 && <OrderEscort base={base} resource={r.id} qty={valid && typed <= max ? typed : 0 /* TST-08: Empfehlung nur für kaufbare Mengen */} value={escort} onChange={setEscort} />}
       {fresh && quote.data && !quote.data.ok && <ErrorLine text={errorText(quote.data.code)} code={quote.data.code} detail={why} />}
 
       {(hard.length > 0 || soft.length > 0) && (

@@ -36,6 +36,7 @@ import { LOGIN_ACCOUNT_FAILS, LOGIN_ACCOUNT_WINDOW_SEC, loginAccountBucket } fro
 import { accountRouter, adminRouter, authExtras, pushRouter } from "./routers/ops.ts";
 import { afterRegister, inviteRouter } from "./routers/invite.ts";
 import { dailyRouter } from "./routers/daily.ts";
+import { rewardsRouter } from "./routers/rewards.ts"; // TST-09: „Alle abholen“
 import { adminStatsRouter } from "./routers/adminstats.ts";
 import { comfortRouter } from "./routers/comfort.ts";
 import { allianceRouter } from "./routers/alliance.ts";
@@ -220,6 +221,7 @@ export const appRouter = t.router({
   admiral: admiralRouter, // Admirale
   season: seasonRouter,
   daily: dailyRouter,
+  rewards: rewardsRouter,
   comfort: comfortRouter,
   alliance: allianceRouter,
   playerTrade: playerTradeRouter,

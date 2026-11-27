@@ -16,6 +16,7 @@ import { marketUnlockedFor } from "./player-wide.ts"; // Mehrere Häfen: Freisch
 import { homeBaseOf, lockBases, lockOwnBase, ownBase, readBase, saveBase, scheduleEvent, type BaseRow } from "./store.ts";
 import { fail, membershipOf, systemMessage } from "./alliance-core.ts";
 import { getSetting } from "./settings.ts";
+import { medianPartnerKm } from "./trade-routes.ts"; // TST-02
 import { attachSellerEscort, attachTradeEscort, createConvoy } from "./naval.ts"; // See: Konvoi (Lieferungen reisen als Konvoi, Geleitschutz)
 
 /** Gebühr je empfangener Seite ohne Einstellung (server_setting player_trade_fee, 0 bis 0,2). */
@@ -118,13 +119,14 @@ export function createOffer(engine: Engine, playerId: number, key: string, input
     const state = settle(b.state, ctx.nowMs, balance);
     if (!(await marketUnlockedFor(ctx.tx, playerId, { id: b.id, state }))) fail("locked"); // spielerweit (höchste Hafenkommandantur)
     const escort = offerEscort(input, state.units); // See: Geleit des Anbieters
+    // TE-06: Spieler sperren, bevor die offenen Angebote gezählt werden (zwei Häfen = zwei Basissperren, ein Spieler).
+    const trader = (await lockPlayers(ctx.tx, [playerId])).get(playerId)!;
     const [n] = await ctx.tx
       .select({ n: sql<number>`count(*)::int` })
       .from(tables.playerOffer)
       .where(and(eq(tables.playerOffer.sellerId, playerId), eq(tables.playerOffer.status, "open")));
     if ((n?.n ?? 0) >= MAX_OPEN_OFFERS) fail("too_many_offers");
     if (input.give === "credits") {
-      const trader = (await lockPlayers(ctx.tx, [playerId])).get(playerId)!;
       if (trader.credits < input.giveQty) fail("funds");
       await setCredits(ctx.tx, playerId, trader, trader.credits - input.giveQty);
     } else {
@@ -329,6 +331,8 @@ export async function offersView(engine: Engine, playerId: number, baseId?: numb
     serverNow: nowMs,
     fee: await playerTradeFee(engine.db),
     maxOpen: MAX_OPEN_OFFERS,
+    /** Geleit des Anbieters, Käufer noch offen: Median der Geleitstrecken zu den anderen Häfen, km (TST-02). */
+    partnerKm: own ? await medianPartnerKm(engine.db, playerId, own) : null,
     assets: tradeAssets(),
     open: rows.map((r) => ({
       ...shape(r.o),

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { claimAll } from "../../lib/claim-all.ts";
 import { fmtNum, label } from "../../lib/names.ts";
-import { failText } from "../../lib/names.ts";
+import { errorText, failText } from "../../lib/names.ts";
 import { lostNote } from "../RewardClaim.tsx";
 import { Button } from "../../ui.tsx";
 
@@ -16,9 +16,9 @@ export function ClaimAllButton({ count, className = "" }: { count: number; class
     setNote(null);
     try {
       const r = await claimAll();
-      if (!r.ok) { setNote(r.code === "nothing" ? "Nichts mehr abzuholen." : "Abholen ging nicht."); return; }
+      if (!r.ok) { setNote(r.code === "nothing" ? "Nichts mehr abzuholen." : r.code === "storage_full" ? errorText("storage_full") : "Abholen ging nicht."); return; }
       const got = Object.entries(r.rewards).filter(([k]) => k !== "points").map(([k, v]) => `${fmtNum(Math.round(v))} ${label(k)}`);
-      setNote(`${r.claimed.total} ${r.claimed.total === 1 ? "Belohnung" : "Belohnungen"} abgeholt${got.length ? `: ${got.join(", ")}` : ""}.${lostNote(r.lost)}`);
+      setNote(`${r.claimed.total} ${r.claimed.total === 1 ? "Belohnung" : "Belohnungen"} abgeholt${got.length ? `: ${got.join(", ")}` : ""}.${lostNote(r.lost)}${(r.skipped?.total ?? 0) > 0 ? ` ${r.skipped!.total} ${r.skipped!.total === 1 ? "bleibt" : "bleiben"} liegen – das Lager ist zu voll.` : ""}`);
     } catch (e) {
       setNote(failText(e));
     } finally {

@@ -2,8 +2,9 @@
 // Versand immer außerhalb von Transaktionen; Zustand (letzter Versand, letzter Fehler) in server_setting.
 import { randomBytes } from "node:crypto";
 import nodemailer, { type Transporter } from "nodemailer";
-import { and, eq, gt, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNotNull, isNull, lt, notLike, or, sql } from "drizzle-orm";
 import { tables, type Db } from "@tidefront/db";
+import { gameTimeZone } from "@tidefront/game-core";
 import { type Engine, type Notice, type NoticeKind } from "./context.ts";
 import { renderMail, type MailContent } from "./mail-templates.ts";
 import { defaultNoticeBlocks, digestBlocks, digestSubject } from "./mail-notices.ts";
@@ -246,7 +247,7 @@ export async function flushMailDigests(engine: Engine, nowMs: number): Promise<n
     .from(tables.mailDigest)
     .innerJoin(tables.playerEmail, eq(tables.playerEmail.playerId, tables.mailDigest.playerId))
     .where(and(
-      isNull(tables.mailDigest.sentAt),
+      isNull(tables.mailDigest.sentAt), notLike(tables.mailDigest.kind, "push:%"), // AN-07: Push-Bündel liegen in derselben Tabelle
       isNotNull(tables.playerEmail.verifiedAt),
       or(isNull(tables.playerEmail.lastDigestAt), lt(tables.playerEmail.lastDigestAt, cutoff)),
     ));
@@ -255,7 +256,7 @@ export async function flushMailDigests(engine: Engine, nowMs: number): Promise<n
     const rows = await engine.db
       .select()
       .from(tables.mailDigest)
-      .where(and(eq(tables.mailDigest.playerId, p.playerId), isNull(tables.mailDigest.sentAt)))
+      .where(and(eq(tables.mailDigest.playerId, p.playerId), isNull(tables.mailDigest.sentAt), notLike(tables.mailDigest.kind, "push:%")))
       .orderBy(tables.mailDigest.id);
     if (rows.length === 0) continue;
     // Mehrere Häfen: Sammelbetreff in der Mehrzahl.
@@ -365,7 +366,7 @@ export async function sendTestMail(engine: Engine, playerId: number): Promise<{ 
     subject: "Test-E-Mail",
     heading: "Der E-Mail-Versand funktioniert",
     paragraphs: ["Diese Nachricht kommt aus der Verwaltung von TIDEFRONT."],
-    facts: [["Server", publicUrl()], ["Gesendet", new Date().toLocaleString("de-DE", { timeZone: process.env.TZ || "Europe/Berlin" })]],
+    facts: [["Server", publicUrl()], ["Gesendet", new Date().toLocaleString("de-DE", { timeZone: gameTimeZone() })]],
     button: { label: "Im Spiel öffnen", url: `${publicUrl()}/` },
     unsubscribeUrl: unsubUrl(pe.unsubscribeToken),
   }, { force: true });

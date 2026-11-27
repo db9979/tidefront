@@ -2,7 +2,7 @@
 // Zählungen und Summen rechnet PostgreSQL (eine Abfrage je Bereich); nur Stützpunkt-Zustände (JSON) werden in JS
 // fortgeschrieben (wenige Dutzend Spieler). Ergebnis wird im API-Prozess 60 s zwischengespeichert.
 import { sql } from "drizzle-orm";
-import { productionRates, settle, veteranRank, type BaseState } from "@tidefront/game-core";
+import { gameTimeZone, productionRates, settle, veteranRank, type BaseState } from "@tidefront/game-core";
 import type { Db } from "@tidefront/db";
 import { marketNewsAdmin } from "./market-news.ts";
 import { balance } from "./context.ts";
@@ -136,7 +136,7 @@ function median(xs: number[]): number {
   return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2;
 }
 
-export async function adminStats(db: Db, days: StatsDays, nowMs = Date.now(), tzRaw = process.env.TZ): Promise<AdminStats> {
+export async function adminStats(db: Db, days: StatsDays, nowMs = Date.now(), tzRaw: string = gameTimeZone()): Promise<AdminStats> {
   const tz = validTz(tzRaw);
   const iso = (ms: number) => new Date(ms).toISOString();
   const since = iso(nowMs - days * 86400000);
