@@ -1,6 +1,6 @@
 # Regeln: Lagebild (Kartennebel, Sensoren, Aufklärung)
 
-**Status: Entwurf zur Freigabe.** Teil der Regeln (`docs/REGELN.md`), sobald freigegeben. Alle Zahlen sind Startwerte
+**Status: freigegeben am 27.11.2026** (Entscheidungen in Abschnitt 11). Teil der Regeln (`docs/REGELN.md`). Alle Zahlen sind Startwerte
 für den Balance-Block `intel` und werden vor der Umsetzung per Simulation geprüft.
 
 ## 1. Ziel
@@ -99,12 +99,15 @@ Größenklassen für Verbände: **klein** bis 10 Einheiten, **mittel** bis 40, *
 - Die Vorwarnzeit gilt bei jedem Ziel neu. Wer erkannt wird, bekommt wie heute die Meldung „Aufklärer gesichtet“.
 
 ### 5.6 Satelliten (spät)
-- Neues Gebäude **Startrampe**: Voraussetzung Kommandozentrale 10 und Forschungsamt 6. Neuer Forschungszweig
+- Neues Gebäude **Startrampe**: Voraussetzung Kommandozentrale 8, Forschungsamt 5 und Radarstation 6 (erreichbar
+  etwa ab Tag 28–35, siehe Abschnitt 11). Kosten der Rampe Stufe 1: 3 000 Stahl, 1 000 Treibstoff, 1 000 Elektronik.
+  Neuer Forschungszweig
   **Raumfahrt** mit 2 Techniken:
   - **Optischer Satellit** (Stufe 1): Erkennung, aber nicht durch Wolken. Felder mit Bewölkung über 0,6 bleiben
     verdeckt.
   - **Radarsatellit** (Stufe 2): sieht durch Wolken und Nebel, aber nur Sichtung.
-- **Start** je Satellit: 6 000 Stahl, 3 000 Treibstoff, 8 000 Elektronik. Lebensdauer **7 Tage**, höchstens
+- **Start** je Satellit: optisch 5 000 Stahl, 2 000 Treibstoff, 3 500 Elektronik (≈ 19 100 Stahl-Gegenwert), Radarsatellit
+  6 000 Stahl, 2 500 Treibstoff, 4 500 Elektronik (≈ 24 000). Lebensdauer **7 Tage**, höchstens
   **1 Satellit** je Spieler (2 mit Raumfahrt 2).
 - **Bahn:** Alle **6 h** ein Überflug über einen Nord-Süd-Streifen von **600 km** Breite. Der Streifen wandert bei jedem
   Überflug um 1 400 km nach Westen weiter. Nach etwa einem Tag ist die ganze Karte einmal erfasst. Jeder Überflug
@@ -171,10 +174,19 @@ Größenklassen für Verbände: **klein** bis 10 Einheiten, **mittel** bis 40, *
 
 Jede Stufe wird ein eigenes Release mit Migration, Tests (auch E2E) und Simulation.
 
-## 11. Offene Fragen an den Spielleiter
+## 11. Entscheidungen (27.11.2026)
 
-1. Sollen **Hafenpositionen** wirklich immer sichtbar bleiben (Vorschlag: ja), oder auch sie erst nach Entdeckung?
-2. Sollen **Nest-Positionen** ohne Sicht sichtbar sein (Vorschlag: ja, nur die Stufe verdeckt)?
-3. Ist ein Satellit für 17 000 Rohstoffe und 7 Tage Lebensdauer im richtigen Rahmen? Zum Vergleich: Nest 6 bringt etwa
-   56 600 Beute.
-4. Soll der **Kartennebel abschaltbar** sein, als Server-Einstellung für einen leichteren Modus?
+1. **Hafenpositionen** bleiben immer sichtbar (Name, Besitzer, Verhältnis).
+2. **Nest-Positionen** bleiben immer sichtbar; Stufe und Zustand nur mit Sicht.
+3. **Satellit fair bemessen** (Rechnung zum Börsen-Richtwert: Stahl 1, Treibstoff 1,8, Elektronik 3; Produktion nach
+   `ENTSCHEIDUNGEN-3.md` L8: Tag 28 ≈ 1 130–1 340/h, Tag 35 ≈ 1 170–1 440/h):
+   - Erster Entwurf 6 000 / 3 000 / 8 000 = **35 400** Stahl-Gegenwert ≈ **30 h Produktion** für 7 Tage – zu teuer; dazu
+     Kommandozentrale 10 als Voraussetzung, die laut Simulation in 42 Tagen niemand erreicht.
+   - Ziel: Ein Satellit soll etwa **2–3 h Produktion je Tag Laufzeit** kosten, also eine Woche Rundumsicht etwa so viel
+     wie ein bis zwei gewonnene Überfälle auf ein Nest 6 (Netto +10–18 k je Angriff, Beute 56 600).
+   - Ergebnis: optisch **≈ 19 100** (≈ 16 h Produktion an Tag 35 ≈ 2,3 h je Tag), Radarsatellit **≈ 24 000** (≈ 20 h, sieht
+     durch Wolken, nur Sichtung). Startrampe ab Kommandozentrale 8 / Forschungsamt 5 / Radarstation 6, also ab etwa Tag
+     28–35 für gezielten Ausbau. Vor Stufe 3 per Simulation gegen den Wert des Wissens prüfen (z. B. gewonnene
+     Nest-Angriffe mit vs. ohne Lagebild) und gegebenenfalls nachjustieren.
+4. **Kartennebel abschaltbar:** Server-Einstellung `intel_fog` (Verwaltung, Vorgabe an). Aus = alle sehen alles wie bis
+   0.17; Sensoren und Aufklärung laufen weiter, ihre Daten werden nur nicht mehr gebraucht.
