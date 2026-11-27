@@ -37,6 +37,7 @@ import {
 } from "./naval-common.ts";
 import { fieldEscortLosses, fieldEscortShare } from "./fields-escort.ts"; // Felder: Geleitabteilung
 import { convoyMineTransit } from "./naval-mines.ts"; // Minen: Handelskonvois
+import { balanceNow } from "./politik-core.ts"; // Weltpolitik: Geleitschutz (Kartellchance der Konvois)
 
 export interface ConvoyRow {
   id: number;
@@ -84,7 +85,7 @@ export async function createConvoy(
   const c = convoysOf(balance);
   const dist = v.riskKm ?? distanceKm(hexCenter(v.from.col, v.from.row), hexCenter(v.to.col, v.to.row));
   // Börse und Lieferverträge: geringere Kartellchance (marketChanceFactor/marketMaxChance, docs/REGELN-SEE.md).
-  const roll = c ? cartelRoll(randomSeed(), dist, cargoValue(v.cargo, balance), balance, MARKET_KINDS.has(v.kind)) : null;
+  const roll = c ? cartelRoll(randomSeed(), dist, cargoValue(v.cargo, balance), await balanceNow(tx, v.departMs), MARKET_KINDS.has(v.kind)) : null;
   const cartelAt = roll?.hit ? Math.round(v.departMs + (v.arriveMs - v.departMs) * roll.atShare) : null;
   const [row] = await tx.insert(tables.convoy).values({
     kind: v.kind, deliveryId: v.deliveryId ?? null, missionId: v.missionId ?? null, senderId: v.senderId, recipientId: v.recipientId,

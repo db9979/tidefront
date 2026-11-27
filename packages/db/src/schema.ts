@@ -14,3 +14,4 @@ export * from "./schema/fields.ts"; // Felder: Rohstofffelder
 export * from "./schema/intel.ts"; // Lagebild: gespeichertes Wissen
 export * from "./schema/power.ts"; // Seekabel / Stromverbund (v1.21)
 export * from "./schema/contracts.ts"; // Lieferverträge (v1.31)
+export * from "./schema/politik.ts"; // Weltpolitik (Gezeit, Seerat, Gesuche, Ansehen)

@@ -22,6 +22,7 @@ import { LagebildChapter } from "../components/LagebildChapter.tsx"; // Lagebild
 import { FinaleChapter } from "../components/FinaleChapter.tsx"; // Saisonfinale
 import { CatchUpChapter } from "../components/CatchUpChapter.tsx"; // Aufholhilfe
 import { ContractsChapter } from "../components/ContractsChapter.tsx"; // Lieferverträge (v1.31)
+import { PolitikChapter } from "../components/PolitikChapter.tsx"; // Weltpolitik
 import { requestBugReport } from "../lib/bug-log.ts";
 import { HScroll } from "../components/HScroll.tsx";
 
@@ -86,7 +87,8 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
   const setView = (v: "settings" | "admin" | null) => { setViewState(v); onView?.(v); };
   useBackLayer(!!view, () => setView(null), 2);
   const [news, setNews] = useState(false);
-  const b = meta.data?.balance;
+  // Regeln nennen die Grundwerte, nicht die gerade wirksamen (Weltpolitik: Gezeit, Beschlüsse).
+  const b = meta.data?.baseBalance ?? meta.data?.balance;
   const pct = (v: number | undefined, d: number) => `${Math.round((v ?? d) * 100)} %`;
   const radar = b?.buildings.radarstation;
   const lander = b?.units.landungsschiff;
@@ -223,6 +225,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
       ),
     },
     { id: "vertraege", icon: "credits", title: "Lieferverträge", body: <ContractsChapter b={b} /> }, // Lieferverträge (v1.31)
+    { id: "weltpolitik", icon: "wind", title: "Weltpolitik: Gezeit, Seerat, Ansehen", body: <PolitikChapter b={b} /> }, // Weltpolitik
     {
       id: "forschung", icon: "forschungsamt", title: "Forschung",
       body: (
@@ -251,6 +254,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
           <P>Mögliche Befehle: Ausbauten abschließen, die Bauschlange füllen, Bodentruppen, Schiffe oder Flugzeuge ausbilden, Anlagen errichten, einen Vorrat anlegen, die Produktion steigern, die Kommandozentrale ausbauen, ein Nest besiegen, einen Kartell-Überfall abwehren, eine Forschung abschließen, Aufklärung, Transporte, Börsenhandel, Wrackgut bergen, Beute machen, ohne Verluste siegen oder einem Mitspieler schreiben. Zu Wetter und Strom: Speicherwerk ausbauen, einen Stromüberschuss im Speicher halten, Windpark oder Solarfeld ausbauen, gleichzeitig viel Strom aus Wind und Sonne erzeugen (geprüft alle 10 Minuten, auch wenn du nicht nachsiehst; es zählt der beste Stand des Tages) und eine Mission trotz Sturm auf der Route erfolgreich beenden; mit Nachrichtendienst auch Ziele erkunden.</P>
           <P>Der Balken zeigt den Fortschritt. Ist ein Befehl erfüllt, holst du die Belohnung mit <strong>Abholen</strong> ab: Ressourcen (in den Heimathafen, höchstens bis zur Lagergrenze – ist das Lager zu voll, warnt der Befehl vorher und nennt, was verfiele; das gilt auch für Wochenziele und Erfolge) und Punkte für die Kategorie Befehle – leicht 3, mittel 6, schwer 12. Erfüllte Befehle kannst du auch später noch abholen, bis die Saison endet. Die Zahl an der Basis zeigt, was bereitliegt; „Alle abholen“ in der Lage holt alles auf einmal.</P>
           <P>Einmal am Tag darfst du einen offenen Befehl kostenlos <strong>neu würfeln</strong>; der neue hat dieselbe Schwierigkeit, sein Fortschritt beginnt bei null.</P>
+          <P>Ein angenommenes <strong>Gesuch</strong> eines KI-Spielers belegt einen der drei Plätze (meist den schweren) und ist erfüllt, sobald sein Liefervertrag erfüllt ist; es lässt sich nicht neu würfeln (Kapitel Weltpolitik).</P>
           <P><strong>Serie:</strong> Holst du an aufeinanderfolgenden Tagen alle drei Befehle ab, wächst deine Serie. Am 3. Tag gibt es 10 Punkte Bonus, am 7. Tag 25, an jedem weiteren 7. Tag 10 mehr – jeweils mit Nachschub. Ein ausgelassener Tag beginnt die Serie von vorn. Zum Saisonende verfallen Befehle und Serie.</P>
         </>
       ),

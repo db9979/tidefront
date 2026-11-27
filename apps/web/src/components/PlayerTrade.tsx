@@ -12,6 +12,7 @@ import { Icon } from "../icons.tsx";
 import { DevTag, readerValue, usePrices, ValueLine, type Prices } from "./TradeValue.tsx";
 import { EscortPicker } from "./Naval.tsx"; // See: Konvoi – Geleitschutz
 import { SellerEscortAdvice } from "./EscortAdvice.tsx"; // See: Empfohlenes Geleit je Frachtwert
+import { EffectHint } from "./politik/EffectHint.tsx"; // Weltpolitik: Handelsfrieden
 
 type Offer = Outputs["playerTrade"]["list"]["open"][number];
 type Res = { ok: boolean; code?: string };
@@ -51,6 +52,7 @@ export function PlayerTrade({ base }: { base: BaseData }) {
 
   return (
     <Card title={<><Icon id="transport" size={18} /> Handel mit Spielern</>} right={<span className="text-[11px] text-ink2">Gebühr {fmtNum(fee * 100, 1)} %</span>}>
+      <EffectHint keys={["playerTradeFee"]} className="mb-2" />
       <h3 className="font-display text-[11px] uppercase text-ink2 mb-1.5">Angebot aufgeben</h3>
       <div className="grid grid-cols-[auto_1fr_6.5rem] gap-2 items-center mb-2 rounded-lg bg-inset border border-rule p-2">
         <span className="text-sm text-siegel font-display uppercase text-[11px] w-9">Gebe</span>

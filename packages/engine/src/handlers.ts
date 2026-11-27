@@ -54,6 +54,8 @@ import { FIELD_HANDLERS } from "./fields-run.ts"; // Felder: field_tick, field_d
 import { expansionArrive, isExpansionType } from "./expansion.ts"; // Mehrere Häfen: Gründung/Verlegung
 import { INTEL_HANDLERS, withIntelArrive } from "./intel-ops.ts"; // Lagebild Stufe 2: Patrouille, Kampagne, Radarposten
 import { withPvpStamp } from "./pvp.ts"; // PvP: Rang, Kopfgeld und Mutfaktor beim Kampf festhalten
+import { POLITIK_HANDLERS } from "./politik-run.ts"; // Weltpolitik: Gezeit, Seerat
+import { balanceNow } from "./politik-core.ts"; // Weltpolitik: Überfallintervall (Kartellfehde)
 
 const HOUR_MS = 3600000;
 const none = (): HandlerResult => ({ notify: [] });
@@ -365,7 +367,7 @@ const missionReturn: Handler = async (tx, ev, due) => {
 const raidLaunch: Handler = async (tx, ev, due) => {
   const b = await lockBase(tx, ev.baseId!);
   if (!b) return none();
-  await scheduleEvent(tx, "raid_launch", due + balance.pirates.raidIntervalHours * HOUR_MS, {}, b.id);
+  await scheduleEvent(tx, "raid_launch", due + (await balanceNow(tx, due)).pirates.raidIntervalHours * HOUR_MS, {}, b.id); // Weltpolitik: Kartellfehde
   // Seewege: vom nächsten Nest über Wasser; Vorlauf 1 h auf offener See, länger um Land (kartell-route.ts).
   const sea = cartelRaidPlan(await nestSpots(tx), b);
   const arrive = due + sea.leadMs;
@@ -467,6 +469,7 @@ export const HANDLERS: Record<string, Handler> = {
   ...NAVAL_HANDLERS, // See: Minen/Blockade/Konvoi (blockade_end, convoy_raid)
   ...FIELD_HANDLERS, // Felder
   ...INTEL_HANDLERS, // Lagebild Stufe 2 (patrol_tick, patrol_end, radar_post_tick)
+  ...POLITIK_HANDLERS, // Weltpolitik (politik_start, politik_end, seerat_open, seerat_close)
   pact_expire: (tx, _ev, due) => import("./alliance-core.ts").then(async (m) => {
     const notify: HandlerResult["notify"] = [];
     await m.purgeExpired(tx, due, notify);

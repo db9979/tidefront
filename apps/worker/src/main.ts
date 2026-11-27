@@ -11,6 +11,8 @@ import {
   cleanup,
   purgeIntel,
   ensureWorldEventPlanner,
+  ensurePolitikPlan,
+  runGesuche,
   ensureFieldPlanner,
   flushAchievementNotices,
   flushMailDigests,
@@ -87,6 +89,12 @@ async function maintenance(): Promise<void> {
   });
   // Weltereignisse: nächstes Ereignis planen, falls keines ansteht (auch nach Saisonwechsel).
   await step("world events planner", () => ensureWorldEventPlanner(db, Date.now()));
+  // Weltpolitik: Saisonplan (Gezeit, Seerat) einmal je Saison; Gesuche anbieten, verfallen lassen, abrechnen.
+  await step("politik plan", () => ensurePolitikPlan(db, Date.now()));
+  await step("gesuche", async () => {
+    const n = await runGesuche(engine, Date.now());
+    if (n > 0) log("gesuche", { offered: n });
+  });
   // Felder: aktive Rohstofffelder und Lieferzyklus (auch nach Saisonwechsel).
   await step("fields planner", () => ensureFieldPlanner(db, Date.now()));
   // Marktnachrichten: Lage auswerten (täglich Knappheit), effektiven Richtwert fortschreiben, Push.

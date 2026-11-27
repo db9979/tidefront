@@ -12,7 +12,8 @@ export type LageJump =
   | { to: "contracts" }
   | { to: "report"; id: number }
   | { to: "rewards"; where: "basis" | "erfolge" }
-  | { to: "alliance" }; // TST-15: Allianz → Mitglieder (Beitrittsanfragen, Einladungen)
+  | { to: "alliance" } // TST-15: Allianz → Mitglieder (Beitrittsanfragen, Einladungen)
+  | { to: "politik" }; // Weltpolitik: Abschnitt „Weltpolitik“ auf der Lage (Gezeit, Seerat, Paktangebot)
 
 export interface LageRow {
   /** Stabiler Schlüssel (React, Tests). */

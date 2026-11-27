@@ -135,7 +135,10 @@ export async function pvpStampFor(
   for (const id of new Set([a, ...ids])) if (id !== d && (await colluded(tx, id, d, v.atMs))) { collusion = true; break; }
   const att = snapshotEntry(snap, a);
   const def = snapshotEntry(snap, d);
-  return pvpStamp({ day: snap.day, attackerRank: att.rank, defenderRank: def.rank, attackerPoints: att.points, defenderPoints: def.points, collusion }, cfg);
+  const stamp = pvpStamp({ day: snap.day, attackerRank: att.rank, defenderRank: def.rank, attackerPoints: att.points, defenderPoints: def.points, collusion }, cfg);
+  // Weltpolitik: Kopfgeld-Zuschlag für Angreifer eines Berüchtigten (nicht bei Absprache).
+  const extra = collusion ? 0 : await (await import("./politik-ansehen.ts")).notoriousBounty(tx, d, v.atMs);
+  return extra > 0 ? { ...stamp, bountyFactor: stamp.bountyFactor + extra } : stamp;
 }
 
 /** Bericht mit Stempel (unverändert, wenn kein Spielerkampf). */

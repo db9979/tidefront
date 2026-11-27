@@ -25,6 +25,7 @@ import { garrisonAdmiral } from "./fields-admiral.ts";
 import { admiralsAfterBattle } from "./admirals-battle.ts";
 import { fieldWarning } from "./fields-radar.ts";
 import { recordAchievement } from "./achievements.ts";
+import { balanceNow } from "./politik-core.ts"; // Weltpolitik: Feldertrag (Rohstoffboom), Kartellchance (Kartellfehde)
 
 const none = (): HandlerResult => ({ notify: [] });
 
@@ -52,7 +53,7 @@ export async function settleField(tx: Tx, f: FieldRow, due: number, notify: Note
   const upkeep = fieldUpkeep(f.tier, hours, balance);
   state.resources.proviant = Math.max(0, (state.resources.proviant ?? 0) - upkeep);
   await saveBase(tx, b.id, state);
-  const cargo = fieldYield(f.kind, f.tier, hours, Math.max(0, rank), zone, balance);
+  const cargo = fieldYield(f.kind, f.tier, hours, Math.max(0, rank), zone, await balanceNow(tx, due));
   if (Object.keys(cargo).length > 0) {
     const arrive = due + Math.ceil((seaRoute(f, b).km / r.convoySpeedKmh) * HOUR_MS); // Seewege: Konvoi fährt über Wasser
     // Geleitabteilung der Besatzung fährt mit (missionId = Besatzung; liveEscort liest ihren aktuellen Bestand).
@@ -97,7 +98,7 @@ async function fieldTick(tx: Tx, due: number): Promise<HandlerResult> {
       await settleField(tx, f, due, notify, { rank: i, zone: !!zones.get(f.id)?.bonus });
       const a = am.get(f.ownerId!);
       if (a !== undefined && hours > 0) points.set(a, (points.get(a) ?? 0) + (r.alliancePointsPerFieldDay * hours) / 24);
-      const raid = cartelFieldRaid(f.tier, randomSeed(), balance);
+      const raid = cartelFieldRaid(f.tier, randomSeed(), await balanceNow(tx, due));
       if (raid) {
         const at = due + r.cartelRaidLeadMinutes * 60000;
         await scheduleEvent(tx, "field_raid", at, { fieldId: f.id, ownerId: f.ownerId, units: raid }, null);

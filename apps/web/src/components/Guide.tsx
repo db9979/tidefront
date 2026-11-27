@@ -220,7 +220,7 @@ function FinalCard({ g, busy, onClaim }: { g: GuideData; busy: boolean; onClaim:
               Alle Grundaufträge erledigt. Dein Abzeichen steht diese Saison in der Rangliste neben deinem Namen.
               {g.final.boostPending ? ` Gutschrift: ${boost} für deinen nächsten Ausbau.` : ""}
             </p>
-            <p className="text-sm mt-2">Baue deine Flotte aus, nimm stärkere Nester ins Visier und handle an der Börse.</p>
+            <p className="text-sm mt-2">Baue deine Flotte aus, nimm stärkere Nester ins Visier und handle an der Börse. Die KI-Spieler bitten dich ab jetzt um Lieferungen (Gesuche bei den Tagesbefehlen) – das bringt Lohn und Ansehen; Gezeit und Seerat stehen auf der Lage (Handbuch: Weltpolitik).</p>
           </>
         ) : (
           <>

@@ -544,5 +544,51 @@
     "from": 0.7, "full": 0.3, "cap": 0.5, "resumeBelow": 0.6, "minBaseAgeDays": 3,
     "storeHours": 24, "stopDay": 40, "latePackFromDay": 8, "latePackShare": 0.15,
     "refreshMinutes": 60, "maxCatchUpHours": 2
+  },
+  "politik": {
+    "referenceSeasonDays": 42, "finaleGapHours": 48,
+    "clamp": { "min": 0.5, "max": 1.75, "raidIntervalMax": 2, "bonusMaxDelta": 0.04 },
+    "gezeit": {
+      "windowStartDays": [10, 19, 28], "spreadDays": 0.5, "durationHours": 72,
+      "earliestStartDays": 9.5, "minGapDays": 5, "latestEndDays": 31.5, "announceHours": 24,
+      "kinds": ["handelskrise", "rohstoffboom", "kartellfehde"], "notFirst": ["kartellfehde"],
+      "boomGoods": ["treibstoff", "proviant", "elektronik"]
+    },
+    "effects": {
+      "handelskrise": { "fee": 1.5, "dailyLimit": 0.75, "kiBonus": 0.02 },
+      "rohstoffboom": { "production": 1.2, "fieldYield": 1.2, "pricePct": -0.1 },
+      "kartellfehde": { "raidInterval": 2, "fieldCartelChance": 0.5, "kindWeights": { "grossflotte": 3 } },
+      "handelsfrieden": { "fee": 0.75, "playerTradeFee": 0.5 },
+      "geleitschutz": { "convoyCartelChance": 0.5 },
+      "gebuehrensenkung": { "fee": 0.75, "contractFee": 0.75 },
+      "gemeinsame_aktion": { "worldEventLoot": 1.2 }
+    },
+    "seerat": {
+      "openBeforeHours": 36, "closeBeforeHours": 12,
+      "windowCatalog": ["handelsfrieden", "geleitschutz", "gemeinsame_aktion"],
+      "weeklyDays": [7, 14, 21, 28], "weeklyVoteHours": 24, "weeklyEffectHours": 48, "weeklyMinEffectHours": 12,
+      "weeklyCatalog": ["geleitschutz", "gebuehrensenkung", "gemeinsame_aktion"],
+      "kiTotalWeight": 1, "allianceMaxShare": 0.4, "quorumShare": 0.5, "activeHours": 72,
+      "kiPreference": {
+        "haendler": ["handelsfrieden", "gebuehrensenkung", "plan", "ruhig"],
+        "festung": ["geleitschutz", "ruhig", "plan"],
+        "freibeuter": ["gemeinsame_aktion", "plan", "ruhig"]
+      },
+      "aechtung": false
+    },
+    "ansehen": {
+      "decayPerDay": 0.05, "vertrautFrom": 30, "misstrautTo": -30,
+      "contract": 2, "contractMaxPerDay": 4, "gesuch": 5, "penalty": -10, "raid": -30, "raidBlockHours": 72,
+      "pactBreak": -15, "pactBreakHours": 48,
+      "bonusDelta": { "misstraut": -0.02, "bekannt": 0, "vertraut": 0.02 },
+      "quotaShare": { "misstraut": 0.15, "bekannt": 0.25, "vertraut": 0.35 },
+      "notoriousMean": -30, "notoriousBounty": 0.1, "pactOfferEveryDays": 7
+    },
+    "gesuche": {
+      "kinds": { "liefern": true, "geleit": false, "feld": false },
+      "profiles": ["haendler", "festung"],
+      "rewardHours": 3, "maxRewardHours": 4, "budgetHours": 6, "deadlineHours": 24, "qtyHours": 2,
+      "newbieLimitShare": 0.5, "reserveShare": 0.2, "minRewardShare": 0.5, "lastDay": 34, "slot": 2
+    }
   }
 }

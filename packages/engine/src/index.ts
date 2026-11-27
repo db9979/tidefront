@@ -140,3 +140,11 @@ export { cleanQuiet, getQuietHours, minuteOfDayIn, QUIET_DEFAULT, quietEndMs, qu
 // TST-09: „Alle abholen“ in einer Transaktion; TST-15/TX-08/TST-16: Lage-Ergänzungen.
 export { claimAllIn, claimAllRewards, type ClaimAllResult, type ClaimSource } from "./rewards-claim.ts";
 export { allianceRows, beginnerRow, BEGINNER_WARN_MS, rewardSourcesText, type RewardSources } from "./lage-social.ts";
+// Weltpolitik: wirksame Balance, Plan, Seerat, Ansehen, Gesuche (docs/REGELN-WELTPOLITIK.md)
+export { balanceNow, marketBalanceNow, seasonPlan, planAt, politikOff, invalidatePolitikCache, POLITIK_OFF, type PolitikPart } from "./politik-core.ts";
+export { ensurePolitikPlan, POLITIK_HANDLERS } from "./politik-run.ts";
+export { seeratVote, tallySitzung } from "./politik-seerat.ts";
+export { ansehenAll, kiAccess, notoriousOf, notoriousBounty } from "./politik-ansehen.ts";
+export { runGesuche, offerGesuche, settleGesuche, acceptGesuch, declineGesuch } from "./politik-gesuche.ts";
+export { politikOverview, politikKiView, politikMeta, politikAdminView, setPolitikOff, cancelPolitikWindow, effectLines, type EffectLine } from "./politik-view.ts";
+export { kiPaktOffers, offerKiPacts, isKiOffer } from "./politik-pakt.ts";

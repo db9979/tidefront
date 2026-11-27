@@ -56,6 +56,9 @@ import { botsRouter } from "./routers/bots.ts"; // KI-Spieler (Verwaltung)
 import { powerRouter } from "./routers/power.ts"; // Seekabel (v1.21)
 import { intelRouter } from "./routers/intel.ts"; // Lagebild Stufe 2
 import { lageRouter } from "./routers/lage.ts"; // Lagezentrum (Basis → Lage)
+import { politikRouter } from "./routers/politik.ts"; // Weltpolitik (Gezeit, Seerat, Ansehen, Gesuche)
+import { balanceAt, type Balance } from "@tidefront/game-core";
+import { politikMeta } from "@tidefront/engine";
 
 export type { Ctx };
 
@@ -70,7 +73,13 @@ const navalTarget = { blockadeId: z.number().int().min(1).optional(), convoyId: 
 const tzName = z.string().max(64).optional();
 
 export const appRouter = t.router({
-  meta: t.procedure.query(() => ({ balance, serverNow: Date.now(), version: APP_VERSION, builtAt: BUILD_TIME })),
+  // Weltpolitik: balance ist die wirksame Balance jetzt (Gezeit, Beschlüsse); politik.plan erlaubt balanceAt(baseBalance,
+  // plan, t) für andere Zeitpunkte, politik.validUntilMs sagt, wann meta neu zu laden ist.
+  meta: t.procedure.query(async ({ ctx }) => {
+    const politik = await politikMeta(ctx.engine.db);
+    const now = Date.now();
+    return { balance: balanceAt(balance, politik.plan, now) as Balance, baseBalance: balance, politik, serverNow: now, version: APP_VERSION, builtAt: BUILD_TIME };
+  }),
 
   auth: t.router({
     me: t.procedure.query(({ ctx }) => ({ player: ctx.player })),
@@ -238,6 +247,7 @@ export const appRouter = t.router({
   power: powerRouter, // Seekabel / Stromverbund (v1.21)
   intel: intelRouter, // Lagebild Stufe 2: Patrouille, Kampagne, Radarposten, Übersicht
   lage: lageRouter, // Lagezentrum: alles Anstehende aller Häfen, Zahl am Navigationszeichen
+  politik: politikRouter, // Weltpolitik: Gezeit, Seerat, Ansehen, Gesuche
 });
 
 export type AppRouter = typeof appRouter;

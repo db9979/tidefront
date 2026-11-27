@@ -243,7 +243,17 @@ const ERRORS: Record<string, string> = {
   // Lieferverträge (v1.31)
   no_contracts: "Lieferverträge gibt es in dieser Saison nicht.",
   no_ki: "Diesen KI-Spieler gibt es nicht (mehr) als Vertragspartner.",
-  ki_refuses: "Nach deinem Überfall schließt dieser KI-Spieler 24 Stunden lang nichts mit dir ab.",
+  ki_refuses: "Dieser KI-Spieler schließt gerade nichts mit dir ab (nach deinem Überfall 72 Stunden lang, als Berüchtigter gar nicht).",
+  // Weltpolitik (Gezeit, Seerat, Ansehen, Gesuche)
+  ki_not_trusted: "Einen Nichtangriffspakt schließt dieser KI-Spieler erst, wenn dein Ansehen bei ihm „Vertraut“ ist.",
+  no_gesuch: "Dieses Gesuch gibt es nicht.",
+  gesuch_gone: "Dieses Gesuch ist nicht mehr offen.",
+  no_session: "Diese Sitzung des Seerats gibt es nicht.",
+  session_closed: "Die Abstimmung ist nicht offen.",
+  bad_option: "Diese Wahl steht in der Sitzung nicht zur Abstimmung.",
+  bot: "KI-Spieler stimmen im Seerat nicht einzeln ab.",
+  seerat_off: "Der Seerat ist gerade ausgesetzt.",
+  no_window: "Dieses Fenster gibt es nicht oder es ist schon vorbei.",
   not_offered: "Das bietet dieser KI-Spieler nicht an.",
   no_abo: "Dieser KI-Spieler bietet keine Abos an.",
   bad_term: "Diese Laufzeit geht nicht (Fälligkeit spätestens 24 Stunden vor Saisonende).",

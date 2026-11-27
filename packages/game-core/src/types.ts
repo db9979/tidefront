@@ -247,6 +247,8 @@ export interface Balance {
   pvp?: import("./pvp.ts").PvpBalance;
   /** Aufholhilfe (catch-up.ts): Baugutschrift für Häfen weit unter dem Median; fehlt es, gibt es keine. */
   catchUp?: import("./catch-up.ts").CatchUpBalance;
+  /** Weltpolitik (politik-*.ts): Gezeit, Seerat, Ansehen, Gesuche; fehlt es, gibt es keine Weltpolitik. */
+  politik?: import("./politik-balance.ts").PolitikBalance;
 }
 
 /** Wertung (v1.24). Punkte bewerten Ressourcen zum Börsen-Richtpreis (market.refPrice). */
