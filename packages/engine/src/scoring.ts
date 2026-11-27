@@ -138,8 +138,9 @@ export function pvpFactors(reports: ScoredReport[]): Map<number, PvpFactors> {
  * Kostenwerte eines Kampfberichts für Kampf und Beute. Der Angreifer bekommt die Verluste des Verteidigers als Kampf
  * und die Beute, der Verteidiger die Verluste des Angreifers. v1.24: Kämpfe gegen das Kartell zählen nur
  * × scoring.npcDefenseFactor – Abwehr ohne angreifenden Spieler (Kartell-Überfall, Großflotte, Konvoi, Feld) und
- * Angriffe auf die Weltereignisse in scoring.npcWorldEventKinds (Großflotte, Belagerungsring). Nester, Schatzschiff
- * und Kämpfe zwischen Spielern zählen voll; Beute zählt immer voll.
+ * Angriffe auf die Weltereignisse in scoring.npcWorldEventKinds (seit dem Nutzerentscheid 27.11.2026 leer: Großflotte und
+ * Belagerungsring zählen voll). Saisonfinale × scoring.armadaFactor. Nester, Schatzschiff und Kämpfe zwischen Spielern
+ * zählen voll; Beute zählt immer voll.
  */
 export function reportScore(b: ScoredReport, pvp?: PvpFactors): { attacker: { kampf: number; beute: number } | null; defender: { kampf: number } | null } {
   const sc = balance.scoring;

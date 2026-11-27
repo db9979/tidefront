@@ -59,12 +59,12 @@ const clean = (c: Counts): Counts => Object.fromEntries(Object.entries(c).filter
 const total = (c: Counts) => Object.values(c).reduce((s, n) => s + Math.max(0, n), 0);
 
 /**
- * Taugt der Typ als empfohlenes Geleit? Kriegsschiff: Schiff mit Waffen gegen Schiffe, nicht verdeckt, ohne
- * Truppenraum und Laderaum (Landungs- und Kolonieschiffe dürfen mitfahren, werden aber nicht empfohlen).
+ * Taugt der Typ als empfohlenes Geleit? Kriegsschiff: Schiff mit Waffen gegen Schiffe, nicht verdeckt, nicht getaucht
+ * (U-Boote halten keinen Konvoi, Siegregel „halten“), ohne Truppenraum und Laderaum (Landungs- und Kolonieschiffe dürfen mitfahren, werden aber nicht empfohlen).
  */
 export function escortCapable(id: string, balance: Balance): boolean {
   const d = balance.units[id];
-  return !!d && d.branch === "see" && !d.covert && (d.attack?.see ?? 0) > 0 && !(d.troopSpace ?? 0) && !(d.cargo ?? 0);
+  return !!d && d.branch === "see" && !d.covert && !d.submerged && (d.attack?.see ?? 0) > 0 && !(d.troopSpace ?? 0) && !(d.cargo ?? 0);
 }
 
 /** Kriegsschiffe daheim, die als Geleit taugen. */

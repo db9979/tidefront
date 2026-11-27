@@ -95,7 +95,7 @@ Beide sind gewöhnliche Schiffe (Kommandopunkte, Unterhalt, Treibstoff, Kampf) u
   (2 % + 4 % + 2 %) × 0,5 = 4 % Chance → **1,2 %**; ungünstigster Kauf (weit, sehr wertvoll) 8 % × 30 % = **2,4 %**;
   mit unterlegenem Geleit höchstens 8 % × 25 % = 2 %. Zum Vergleich: Börsengebühr 4 %. Ein Börsenkauf bleibt damit
   deutlich lohnend; Geleit lohnt sich für große Käufe. Die Order zeigt Chance und erwarteten Verlust des Kaufs.
-- **Feste Lieferzeit der Börse** (seit 0.35, Fairness): Jeder Börsenkauf kommt nach genau `market.deliveryHours`
+- **Feste Lieferzeit der Börse** (seit 0.36, Balance v1.34, Fairness): Jeder Börsenkauf kommt nach genau `market.deliveryHours`
   (4 h) an, egal wie weit der nächste Handelshafen entfernt ist. Der Konvoi fährt den Seeweg mit angepasster
   Geschwindigkeit (Strecke / 4 h; Position wie immer Anteil der Fahrzeit). Das Kartellrisiko rechnet nicht mehr mit der
   Entfernung, sondern mit der festen Strecke `deliveryHours × convoySpeedKmh` = 4 × 45 = 180 km (über
@@ -110,6 +110,10 @@ Beide sind gewöhnliche Schiffe (Kommandopunkte, Unterhalt, Treibstoff, Kampf) u
 - **Kampf:** Hat der Konvoi Geleitschutz mit Schiffen, kämpft der Angreifer auf See dagegen (Verluste bleiben). Ladung:
   - Kartell: ohne Geleit verliert der Konvoi `lossShareUnescorted`, unterliegt das Geleit `lossShareEscortBeaten`,
     hält es, nichts.
+  - Siegregel „halten“ (Hotfix 0.38.1, Nutzerentscheid TST-01): Getauchte Einheiten (U-Boote) halten keinen Konvoi.
+    Bleiben nach dem Kampf nur sie übrig, gilt das Geleit als geschlagen; die U-Boote überleben und fahren weiter mit.
+    Dasselbe gilt für die Besatzung eines Rohstofffelds (Feld verloren, U-Boote kehren heim). Das empfohlene Geleit
+    (`escortCapable`) schlägt deshalb keine U-Boote vor.
   - Kriegsgegner: hält das Geleit, nichts. Sonst verliert der Konvoi `plunderShare` der Ladung; davon erbeutet der
     Angreifer, was sein Laderaum fasst (Rückkehrer), der Rest sinkt.
   - Verluste werden je Ressource abgerundet, im Journal (`delivery:<id>` → `kartell` / `beute:<Spieler>` / `versenkt`)

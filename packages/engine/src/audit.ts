@@ -2,6 +2,7 @@
 import { eq, sql } from "drizzle-orm";
 import { tables } from "@tidefront/db";
 import type { Engine } from "./context.ts";
+import { pruneMarketNews } from "./market-news.ts";
 
 export interface AuditResult {
   ok: boolean;
@@ -54,7 +55,7 @@ export async function auditLedger(engine: Engine): Promise<AuditResult> {
   return result;
 }
 
-/** Abgelaufene Wracks und Sitzungen entfernen. */
+/** Abgelaufene Wracks, Sitzungen, erledigte Ereignisse, alte Prüfläufe und ausgeklungene Marktnachrichten entfernen. */
 export async function cleanup(engine: Engine, nowMs: number, wreckHours: number): Promise<void> {
   await engine.db.execute(sql`delete from wreck where created_at < ${new Date(nowMs - wreckHours * 3600000).toISOString()}::timestamptz`);
   await engine.db.execute(sql`delete from session where expires_at < now()`);
@@ -62,5 +63,7 @@ export async function cleanup(engine: Engine, nowMs: number, wreckHours: number)
   await engine.db.execute(sql`delete from game_event where status = 'done' and processed_at < now() - interval '3 days'`);
   // Prüfläufe (alle 10 min eine Zeile): 14 Tage aufheben, den jüngsten immer (Betriebsstatus ops.ts).
   await engine.db.execute(sql`delete from audit_run where created_at < now() - interval '14 days' and id < (select max(id) from audit_run)`);
+  // Marktnachrichten: seit 48 h ausgeklungene Zeilen löschen (Hotfix 0.38.1, AN-02).
+  await pruneMarketNews(engine.db, nowMs);
   void eq;
 }
