@@ -148,8 +148,10 @@ export function buildingEffect(balance: Balance, id: string, level: number): str
   if (!def) return null;
   const g = balance.building.productionGrowth;
   if (def.produces) {
-    if (level < 1) return `+0 ${label(def.produces)}/h`;
-    return `+${fmtNum((def.perHour ?? 0) * g ** (level - 1))} ${label(def.produces)}/h, braucht ${fmtNum((def.powerPerLevel ?? 0) * level)} Strom`;
+    // Grundproduktion des Hafens läuft auch ohne Werk – nennen, sonst wirkt „+0/h“ wie Stillstand.
+    const trickle = balance.baseTricklePerHour?.[def.produces] ?? 0;
+    if (level < 1) return trickle > 0 ? `Werk +0 ${label(def.produces)}/h, Grundproduktion +${fmtNum(trickle)}/h` : `+0 ${label(def.produces)}/h`;
+    return `+${fmtNum((def.perHour ?? 0) * g ** (level - 1))} ${label(def.produces)}/h${trickle > 0 ? ` (dazu Grundproduktion +${fmtNum(trickle)}/h)` : ""}, braucht ${fmtNum((def.powerPerLevel ?? 0) * level)} Strom`;
   }
   if (def.powerSupplyPerLevel) return `${fmtNum(def.powerSupplyPerLevel * level)} Strom, verbraucht ${fmtNum((def.fuelPerHourPerLevel ?? 0) * level)} Treibstoff/h`;
   if (def.windPowerPerLevel) return `bis ${fmtNum(def.windPowerPerLevel * level)} Strom bei vollem Wind`;

@@ -4,12 +4,16 @@
 //               zuletzt heimgekehrt – Bausteine in components/einsatz/
 //   Ausbilden – Werft, Kaserne, Flugfeld, Nachrichtendienst (components/TrainRow.tsx)
 //   Abwehr    – Verteidigungsanlagen
+//   Allianz   – Mitglieder, Chat, Angriffe, Diplomatie (vorher unter Meldungen)
 // Forschung ist ein Knopf im Kopf. Neue Karten: Missionsbezogenes nach „Einsatz“, Einheiten nach „Ausbilden“.
 import { useQuery } from "@tanstack/react-query";
 import { trpc, type BaseData } from "../lib/trpc.ts";
 import { fmtDuration, useNow } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
-import { Loading, Segments, useSegment } from "../ui.tsx";
+import { useState } from "react";
+import { Loading, SegmentPanel, Segments, useSegment } from "../ui.tsx";
+import { AllianceScreen } from "./Alliance.tsx"; // Allianz (aus Meldungen hierher)
+import { ComposeSheet, type Draft } from "./Messages.tsx";
 import { Icon } from "../icons.tsx";
 import { RecentMissions } from "../components/Repeat.tsx";
 import { targetName } from "../components/MissionSheet.tsx";
@@ -22,11 +26,12 @@ import { MissionsCard } from "../components/einsatz/MissionCards.tsx";
 import { TargetsCard } from "../components/einsatz/Targets.tsx";
 import { EinsatzTiles } from "../components/einsatz/Tiles.tsx";
 
-type Seg = "einsatz" | "ausbilden" | "abwehr";
+type Seg = "einsatz" | "ausbilden" | "abwehr" | "allianz";
 const SEGS: { id: Seg; label: string }[] = [
   { id: "einsatz", label: "Einsatz" },
   { id: "ausbilden", label: "Ausbilden" },
   { id: "abwehr", label: "Abwehr" },
+  { id: "allianz", label: "Allianz" },
 ];
 const TRAIN_GROUPS: { builtIn: string; title: string }[] = [
   { builtIn: "werft", title: "Werft" },
@@ -40,7 +45,8 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
   const now = useNow();
   const map = useQuery(trpc.world.map.queryOptions());
   const [seg, setSeg] = useSegment<Seg>("truppen", SEGS.map((x) => x.id), "einsatz");
-  if (!meta.data) return <Loading />;
+  const [compose, setCompose] = useState<Draft | null>(null);
+  if (!meta.data) return <Loading cards={3} />;
   const balance = meta.data.balance;
   const training = (ids: string[]) => base.trainingQueue.filter((o) => ids.includes(o.builtIn)).length;
 
@@ -50,9 +56,10 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
         <h1 className="font-display text-xl font-bold uppercase">Truppen</h1>
         <ResearchButton base={base} now={now} onOpen={onResearch} />
       </div>
-      <Segments label="Truppen" value={seg} onChange={setSeg}
+      <Segments label="Truppen" value={seg} onChange={setSeg} controls
         items={SEGS.map((x) => ({ ...x, badge: x.id === "ausbilden" ? training(TRAIN_GROUPS.map((g) => g.builtIn)) : x.id === "abwehr" ? training(["anlagen"]) : 0 }))} />
 
+      <SegmentPanel label="Truppen" value={seg}>
       {seg === "einsatz" && <>
         <FleetHead base={base} balance={balance} onPlan={onPlan} />
         {base.missions.length > 0 && <MissionsCard base={base} map={map.data} now={now} onShowOnMap={onShowOnMap} />}
@@ -66,6 +73,9 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
 
       {seg === "ausbilden" && TRAIN_GROUPS.map((g) => <TrainGroup key={g.builtIn} builtIn={g.builtIn} title={g.title} base={base} balance={balance} now={now} />)}
       {seg === "abwehr" && <TrainGroup builtIn="anlagen" title="Verteidigungsanlagen" base={base} balance={balance} now={now} />}
+      {seg === "allianz" && <AllianceScreen onCompose={setCompose} />}
+      </SegmentPanel>
+      {compose && <ComposeSheet draft={compose} onClose={() => setCompose(null)} />}
     </div>
   );
 }

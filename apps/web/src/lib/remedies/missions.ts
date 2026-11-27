@@ -94,6 +94,7 @@ export const MISSIONS: RemedyTable = {
   own_base: () => ({ hint: "Wähle ein fremdes Ziel. Ladung in einen anderen eigenen Hafen bringt ein Transport oder eine Verlegung." }),
   transport_needs_base: () => ({ hint: "Wähle als Ziel einen Hafen – einen eigenen oder den eines Mitspielers." }),
   empty_fleet: () => ({ hint: "Wähle unter „Verband“ mindestens eine Einheit." }),
+  no_combat_units: () => ({ hint: "Für einen Überfall brauchst du Kampfschiffe und für die Beute Landungsschiffe mit Truppen daheim. Bilde sie in Werft und Kaserne aus oder warte auf die Heimkehr; aufklären geht schon jetzt.", actions: [training, missions] }), // Lohnende Ziele ohne Kampfeinheiten
   units_unavailable: () => ({ hint: "Ein Teil der gewählten Einheiten ist unterwegs, in Ausbildung oder gefallen. Anzahl verringern oder auf die Heimkehr warten.", actions: [missions, training] }),
   no_carrier: () => ({ hint: "Landtruppen fahren nicht allein: Nimm Schiffe (für Truppen Landungsschiffe) oder Flugzeuge mit.", actions: [training] }),
 

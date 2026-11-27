@@ -103,8 +103,8 @@ export function ResearchScreen({ base, asOf, onClose }: { base: BaseData; asOf: 
                 <div key={tier} className={`relative pl-7 ${ti > 0 ? "pt-2" : ""}`}>
                   {/* Kartenlinie zwischen den Rängen des Zweigs */}
                   <div className="absolute left-2.5 top-0 bottom-0 border-l-2 border-dashed border-rule" aria-hidden="true" />
-                  <div className="absolute left-0 top-3 w-5 h-5 rounded-full bg-paper border border-ink grid place-items-center text-[10px] font-display" title={`ab Forschungsamt Stufe ${tier}`}>{roman(ti + 1)}</div>
-                  <div className="text-[10px] uppercase tracking-wider text-ink2 mb-1">ab Forschungsamt Stufe {tier}</div>
+                  <div className="absolute left-0 top-3 w-5 h-5 rounded-full bg-paper border border-ink grid place-items-center text-[11px] font-display" title={`ab Forschungsamt Stufe ${tier}`}>{roman(ti + 1)}</div>
+                  <div className="text-[11px] uppercase tracking-wider text-ink2 mb-1">ab Forschungsamt Stufe {tier}</div>
                   <div className="grid grid-cols-2 gap-2">
                     {ids.filter((id) => (defs[id].requiresBuildingLevel ?? 1) === tier).map((id) => (
                       <TechTile key={id} id={id} def={defs[id]} row={byId[id]} running={o?.techId === id} res={res} onOpen={() => setOpen(id)} />
@@ -117,8 +117,8 @@ export function ResearchScreen({ base, asOf, onClose }: { base: BaseData; asOf: 
         );
       })}
 
-      <Card title="Wirksame Boni" collapsible storageKey="forschung-boni" defaultOpen={false} summary={bonuses.length === 0 ? "Noch keine." : `${bonuses.length} ${bonuses.length === 1 ? "Bonus" : "Boni"} aktiv`}>
-        {bonuses.length === 0 ? <p className="text-sm text-ink2">Noch keine. Boni gelten bis zum Saisonende.</p> : <StatTable rows={bonuses} />}
+      <Card title="Wirksame Effekte" collapsible storageKey="forschung-boni" defaultOpen={false} summary={bonuses.length === 0 ? "Noch keine." : `${bonuses.length} ${bonuses.length === 1 ? "Wirkung" : "Wirkungen"} aktiv`}>
+        {bonuses.length === 0 ? <p className="text-sm text-ink2">Noch keine. Wirkungen (Boni wie Nachteile) gelten bis zum Saisonende.</p> : <StatTable rows={bonuses} />}
       </Card>
 
       {open && defs[open] && byId[open] && (

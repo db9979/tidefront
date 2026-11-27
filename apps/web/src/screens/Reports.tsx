@@ -90,7 +90,7 @@ export function ReportsScreen() {
               <div className="min-w-0 flex-1">
                 <div className="flex justify-between gap-2">
                   <strong className="min-w-0 truncate font-serif font-semibold text-[15px]">{r.title}</strong>
-                  {r.won !== null && <span className={`font-display text-[10.5px] uppercase ${r.won ? "text-moos" : "text-siegel"}`}>{r.won ? "Sieg" : "Niederlage"}</span>}
+                  {r.won !== null && <span className={`font-display text-[11px] uppercase ${r.won ? "text-moos" : "text-siegel"}`}>{r.won ? "Sieg" : "Niederlage"}</span>}
                 </div>
                 <div className="text-xs text-slate-400">{fmtTime(r.atMs)} · {roleText(r.role, r.kind)}</div>
               </div>

@@ -1,8 +1,10 @@
 // Kopf der Börse: Kreditkonto, Kreditlimit als Balken, Status der Börse, Handelshafen und Lieferzeit.
+// Einklappbar (gemerkt): zugeklappt nur eine Zeile mit Status und Kreditkonto; Sperrgründe bleiben immer sichtbar.
 import { fmtNum } from "../../lib/names.ts";
 import { fmtDuration } from "../../lib/time.ts";
 import { Icon } from "../../icons.tsx";
 import { ReasonLine } from "../Remedy.tsx";
+import { useStoredOpen } from "../../ui.tsx";
 
 /** Sperrgrund mit Ablehnungscode für „Was hilft?“. */
 export type MarketReason = { text: string; code?: string };
@@ -19,18 +21,24 @@ export function MarketHeader({ credits, creditLimit, status, port, travelMs }: {
   const near = share >= 0.9;
   const dot = { open: "bg-moos", partial: "bg-messing", closed: "bg-siegel" }[status.tone];
   const text = { open: "text-moos", partial: "text-messing", closed: "text-siegel" }[status.tone];
+  const [open, setOpen] = useStoredOpen("boerse-kopf", true);
   return (
     <header className="panel rounded-xl mb-3 overflow-hidden">
-      <div className="px-3.5 pt-3 pb-2 flex items-start justify-between gap-3 border-b-[3px] border-double border-ink">
+      <div className={`px-3.5 pt-3 pb-2 flex items-start justify-between gap-3 ${open ? "border-b-[3px] border-double border-ink" : ""}`}>
         <div className="min-w-0">
           <h1 className="font-display text-2xl leading-none">Börse</h1>
-          <div className="text-[11px] text-ink2 font-display uppercase mt-1">Kurse in Krediten je Einheit</div>
+          <div className="text-[11px] text-ink2 font-display uppercase mt-1">
+            {open ? "Kurse in Krediten je Einheit" : <>Kreditkonto <span className="mono normal-case">{fmtNum(credits, 2)} Kr</span></>}
+          </div>
         </div>
         <div className={`flex items-center gap-1.5 font-display uppercase text-[11px] ${text}`} role="status">
           <span className={`w-2.5 h-2.5 rounded-full ${dot}`} aria-hidden="true" />
           {status.title}
+          <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} aria-label={open ? "Kopf einklappen" : "Kopf aufklappen"}
+            className="tap -my-3 -mr-2 text-ink2 text-[13px] leading-none">{open ? "▴" : "▾"}</button>
         </div>
       </div>
+      {open && <>
       <div className="px-3.5 py-3">
         <div className="text-[11px] font-display uppercase text-ink2">Kreditkonto</div>
         <div className="flex items-baseline gap-2">
@@ -59,6 +67,7 @@ export function MarketHeader({ credits, creditLimit, status, port, travelMs }: {
           <dd className="mono flex items-center gap-1"><Icon id="transport" size={16} /> {travelMs === null ? "–" : fmtDuration(travelMs)}</dd>
         </div>
       </dl>
+      </>}
       {status.reasons.length > 0 && (
         <ul className={`px-3.5 py-2 border-t border-rule text-xs space-y-0.5 ${status.tone === "closed" ? "bg-red-950" : "bg-inset"}`}>
           {status.reasons.map((r) => (

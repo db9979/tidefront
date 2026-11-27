@@ -7,21 +7,34 @@ test("Meldungen: alle Unterreiter", async ({ page, player }) => {
   await page.goto("/");
   await page.getByRole("navigation").getByRole("button", { name: /^Meldungen/ }).click();
   const tabs = page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab");
-  await expect(tabs).toHaveCount(7);
-  for (const name of ["Berichte", "Lagebild", "Bilanz", "Erfolge", "Nachrichten", "Rangliste", "Allianz"]) {
+  await expect(tabs).toHaveCount(6);
+  for (const name of ["Berichte", "Lagebild", "Bilanz", "Erfolge", "Nachrichten", "Rangliste"]) {
     await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}`) }).click();
     await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}`) })).toHaveAttribute("aria-selected", "true");
     await expectNoHorizontalOverflow(page, `Meldungen · ${name}`);
   }
-  // Rangliste zeigt den eigenen Spieler.
+  // Rangliste zeigt den eigenen Spieler; Inhalt liegt im zugehörigen Reiterfeld.
   await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Rangliste/ }).click();
-  await expect(page.getByText(player.name).first()).toBeVisible();
+  await expect(page.getByRole("tabpanel").getByText(player.name).first()).toBeVisible();
+  // Pfeiltasten wechseln den Reiter (Tabs-Muster).
+  await page.getByRole("tab", { name: /^Rangliste/ }).focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.getByRole("tab", { name: /^Nachrichten/ })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: /^Nachrichten/ })).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(page.getByRole("tab", { name: /^Berichte/ })).toHaveAttribute("aria-selected", "true");
+  // Allianz liegt unter Truppen.
+  await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
+  await page.getByRole("tablist", { name: "Truppen" }).getByRole("tab", { name: "Allianz" }).click();
+  await expect(page.getByRole("tabpanel")).toContainText(/Allianz/);
+  await expectNoHorizontalOverflow(page, "Truppen · Allianz");
 });
 
 test("Handbuch: Kapitel, Neuigkeiten, Einstellungen, Verwaltung", async ({ page, player, seed }) => {
   await seed.sql`update player set is_admin = true where id = ${player.id}`;
   await page.goto("/");
-  await page.getByRole("button", { name: "Handbuch und Einstellungen" }).click();
+  await page.getByRole("button", { name: "Menü", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /^Handbuch/ }).click();
   await expect(page.getByRole("heading", { name: "Handbuch" })).toBeVisible();
   await expect(page.getByText(`Angemeldet als ${player.name}`)).toBeVisible();
   await expectNoHorizontalOverflow(page, "Handbuch");

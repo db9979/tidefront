@@ -47,16 +47,16 @@ export function PriceChart({ r, nowMs, cfg }: { r: MarketRes; nowMs: number; cfg
 
   const bandTop = clampY(range.hi);
   const bandBot = clampY(range.lo);
-  const desc = `${label(r.id)}, ${span === "1h" ? "letzte Stunde" : "letzte 24 Stunden"}: Kurs ${t.word} von ${fmtNum(vals[0], 3)} auf ${fmtNum(r.price, 3)} Kredite (${signed(pct)}), `
-    + `Tief ${fmtNum(Math.min(...vals), 3)}, Hoch ${fmtNum(Math.max(...vals), 3)}, Richtwert ${fmtNum(r.ref, 2)}. `
-    + `${trades.length} ${trades.length === 1 ? "Geschäft" : "Geschäfte"} im Zeitraum. Erlaubter Kurs nach dem nächsten Handel ${fmtNum(range.lo, 3)} bis ${fmtNum(range.hi, 3)}.`
+  const desc = `${label(r.id)}, ${span === "1h" ? "letzte Stunde" : "letzte 24 Stunden"}: Kurs ${t.word} von ${fmtNum(vals[0], 2)} auf ${fmtNum(r.price, 2)} Kredite (${signed(pct)}), `
+    + `Tief ${fmtNum(Math.min(...vals), 2)}, Hoch ${fmtNum(Math.max(...vals), 2)}, Richtwert ${fmtNum(r.ref, 2)}. `
+    + `${trades.length} ${trades.length === 1 ? "Geschäft" : "Geschäfte"} im Zeitraum. Erlaubter Kurs nach dem nächsten Handel ${fmtNum(range.lo, 2)} bis ${fmtNum(range.hi, 2)}.`
     + (halted ? ` Handelspause bis ${clock(haltEnd)}.` : "");
 
   return (
     <div>
       <div className="flex items-end justify-between gap-2 mb-1">
         <div>
-          <div className="mono text-[28px] leading-none">{fmtNum(r.price, 4)}</div>
+          <div className="mono text-[28px] leading-none">{fmtNum(r.price, 2)} <span className="text-sm text-ink2">Kr</span></div>
           <div className={`mono text-sm font-semibold ${TONE_TEXT[t.tone]}`}>{t.arrow} {signed(pct, 2)} <span className="font-sans font-normal text-ink2 text-xs">in {span === "1h" ? "1 h" : "24 h"}</span></div>
         </div>
         <div className="flex border border-ink rounded-lg overflow-hidden" role="radiogroup" aria-label="Zeitraum">
@@ -84,9 +84,9 @@ export function PriceChart({ r, nowMs, cfg }: { r: MarketRes; nowMs: number; cfg
         {/* Erlaubter Bereich für den nächsten Handel */}
         {bandBot > bandTop && <rect x={L} width={W - L - R} y={bandTop} height={bandBot - bandTop} fill="#2d5b7a" opacity="0.07" />}
         {range.hi < hi ? <BandEdge y={y(range.hi)} text={range.hi >= range.ceil ? "Obergrenze" : "Band oben"} />
-          : <text x={W - R - 3} y={T + 9} fontSize="8.5" fill="#2d5b7a" textAnchor="end" fontFamily="IBM Plex Sans">▲ {range.hi >= range.ceil ? "Obergrenze" : "Band"} {fmtNum(range.hi, 3)}</text>}
+          : <text x={W - R - 3} y={T + 9} fontSize="8.5" fill="#2d5b7a" textAnchor="end" fontFamily="IBM Plex Sans">▲ {range.hi >= range.ceil ? "Obergrenze" : "Band"} {fmtNum(range.hi, 2)}</text>}
         {range.lo > lo ? <BandEdge y={y(range.lo)} text={range.lo <= range.floor ? "Untergrenze" : "Band unten"} />
-          : <text x={W - R - 3} y={H - B - 4} fontSize="8.5" fill="#2d5b7a" textAnchor="end" fontFamily="IBM Plex Sans">▼ {range.lo <= range.floor ? "Untergrenze" : "Band"} {fmtNum(range.lo, 3)}</text>}
+          : <text x={W - R - 3} y={H - B - 4} fontSize="8.5" fill="#2d5b7a" textAnchor="end" fontFamily="IBM Plex Sans">▼ {range.lo <= range.floor ? "Untergrenze" : "Band"} {fmtNum(range.lo, 2)}</text>}
         {/* Handelspause */}
         {showHalt && (
           <g>
@@ -104,16 +104,16 @@ export function PriceChart({ r, nowMs, cfg }: { r: MarketRes; nowMs: number; cfg
         {trades.map((h) => <line key={h.tMs} x1={x(h.tMs)} x2={x(h.tMs)} y1={H - B} y2={H - B - 5} stroke="#18273a" strokeWidth="1" />)}
         <circle cx={x(nowMs)} cy={y(r.price)} r="3.5" fill={color} stroke="#fffdf8" strokeWidth="1.5" />
         {/* Kursachse rechts mit aktuellem Kurs */}
-        {yt.filter((v) => Math.abs(y(v) - y(r.price)) > 12).map((v) => <text key={v} x={W - R + 4} y={y(v) + 3} fontSize="9" fill="#4f5b69" fontFamily="IBM Plex Mono">{fmtNum(v, 3)}</text>)}
+        {yt.filter((v) => Math.abs(y(v) - y(r.price)) > 12).map((v) => <text key={v} x={W - R + 4} y={y(v) + 3} fontSize="9" fill="#4f5b69" fontFamily="IBM Plex Mono">{fmtNum(v, hi - lo < 0.04 ? 3 : 2)}</text>)}
         <rect x={W - R + 1} y={y(r.price) - 8} width={R - 2} height="16" fill={color} />
-        <text x={W - R + 4} y={y(r.price) + 3.5} fontSize="10" fill="#fffdf8" fontFamily="IBM Plex Mono" fontWeight="600">{fmtNum(r.price, 3)}</text>
+        <text x={W - R + 4} y={y(r.price) + 3.5} fontSize="10" fill="#fffdf8" fontFamily="IBM Plex Mono" fontWeight="600">{fmtNum(r.price, 2)}</text>
         {/* Zeitachse */}
         <line x1={L} x2={W - R} y1={H - B} y2={H - B} stroke="#18273a" strokeWidth="1" />
         {xt.map((k) => <text key={k} x={x(k)} y={H - 8} fontSize="9" fill="#4f5b69" textAnchor="middle" fontFamily="IBM Plex Mono">{clock(k)}</text>)}
       </svg>
       <ul className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-ink2 mt-1.5" aria-hidden="true">
         <li className="flex items-center gap-1"><i className="inline-block w-4 border-t border-dashed border-ink2" /> Richtwert</li>
-        <li className="flex items-center gap-1"><i className="inline-block w-3 h-3 bg-see/15 border border-see/40" /> erlaubt <span className="mono">{fmtNum(range.lo, 3)}–{fmtNum(range.hi, 3)}</span></li>
+        <li className="flex items-center gap-1"><i className="inline-block w-3 h-3 bg-see/15 border border-see/40" /> erlaubt <span className="mono">{fmtNum(range.lo, 2)}–{fmtNum(range.hi, 2)}</span></li>
         <li className="flex items-center gap-1"><i className="inline-block w-px h-2.5 bg-ink" /> Handel</li>
         {showHalt && <li className="flex items-center gap-1 text-siegel"><i className="inline-block w-3 h-3 hatch border border-siegel" /> Pause{halted ? ` noch ${fmtDuration(haltEnd - nowMs)}` : ""}</li>}
       </ul>

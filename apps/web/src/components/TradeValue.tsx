@@ -63,7 +63,7 @@ export function PlayerTradeStats() {
         <p className="text-sm text-ink2">Noch keine Geschäfte zwischen Spielern in den letzten 7 Tagen. Sobald Angebote angenommen werden, siehst du hier die gezahlten Kurse.</p>
       ) : (
         <>
-          <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 text-[10.5px] font-display uppercase text-ink2 border-b-[3px] border-double border-ink pb-1" aria-hidden="true">
+          <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 text-[11px] font-display uppercase text-ink2 border-b-[3px] border-double border-ink pb-1" aria-hidden="true">
             <span>Paar</span><span className="text-right">Spieler</span><span className="text-right w-[4.5rem]">Börse</span>
           </div>
           <ul>

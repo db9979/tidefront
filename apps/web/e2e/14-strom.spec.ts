@@ -13,12 +13,12 @@ test("Stromfeld: Bilanz zeigen, Antippen öffnet die Versorgung", async ({ page,
 
   const field = page.getByTestId("strom-feld");
   await expect(field).toBeVisible();
-  await expect(field).toHaveAccessibleName(/^Strom: Bilanz [+−±]\d/);
+  await expect(field).toHaveAccessibleName(/^Strom: (Bilanz [+−±]\d|gedeckt)/);
   await expectNoHorizontalOverflow(page, "Kopfleiste mit Stromfeld");
-  // Feld liegt vollständig in der Kopfleiste, der Handbuch-Knopf bleibt.
+  // Feld liegt vollständig in der Kopfleiste, der Menü-Knopf bleibt.
   const box = (await field.boundingBox())!;
   expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);
-  await expect(page.getByRole("button", { name: "Handbuch und Einstellungen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Menü", exact: true })).toBeVisible();
 
   // Gebäudebilder: Stahlwerk produziert → bewegte Teile vorhanden (reine CSS-Animation).
   await expect(page.locator("main .tf-mv").first()).toBeAttached();

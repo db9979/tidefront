@@ -115,7 +115,7 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
         <button type="button" onClick={() => setInfo(true)} aria-label={`${label(props.id)}: Info, Bestand ${fmtNum(props.have)}`} className="shrink-0 relative">
           <IconTile id={props.id} size={40} tone={unitTone(props.balance, props.id)} />
           <span aria-hidden className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-card border border-see text-see text-[10px] leading-none grid place-items-center">i</span>
-          <span aria-hidden className="absolute -bottom-1.5 -right-2 min-w-5 px-1 rounded-full bg-ink text-paper mono text-[10.5px] leading-4 text-center">{fmtNum(props.have)}</span>
+          <span aria-hidden className="absolute -bottom-1.5 -right-2 min-w-5 px-1 rounded-full bg-ink text-paper mono text-[11px] leading-4 text-center">{fmtNum(props.have)}</span>
         </button>
         <button type="button" className="min-w-0 flex-1 text-left leading-tight pl-1" onClick={() => setInfo(true)}>
           <span className="block font-serif text-[13.5px] [hyphens:manual]" lang="de">{softName(label(props.id))}</span>

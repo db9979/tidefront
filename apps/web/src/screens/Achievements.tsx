@@ -87,7 +87,7 @@ export function AchievementsScreen() {
               <li key={a.id}>
                 <button type="button" className="tap w-full panel rounded-lg p-1.5 flex flex-col items-center text-center" onClick={() => setOpen(a.id)} aria-label={`${a.title} – gesperrt, Details`}>
                   <AchievementBadge id={a.id} tier={0} size={40} title={a.title} />
-                  <span className="text-[10.5px] leading-tight mt-0.5 line-clamp-2 min-h-[2.5em]">{a.title}</span>
+                  <span className="text-[11px] leading-tight mt-0.5 line-clamp-2 min-h-[2.5em]">{a.title}</span>
                   <span className="w-full mt-1"><Bar value={a.share} tone="brass" /></span>
                 </button>
               </li>

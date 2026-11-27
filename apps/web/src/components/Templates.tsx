@@ -75,7 +75,7 @@ export function TemplateBar({ base, units, type, onApply }: {
                 >
                   {t.missionType && <Icon id={t.missionType} size={18} />}
                   <span className="font-serif">{t.name}</span>
-                  {fit.short.length > 0 && !none && <span className="text-[10px] text-messing font-display uppercase">gekürzt</span>}
+                  {fit.short.length > 0 && !none && <span className="text-[11px] text-messing font-display uppercase">gekürzt</span>}
                 </button>
                 {edit && (
                   <button type="button" className="tap ml-1 rounded-lg border border-siegel text-siegel px-2" aria-label={`${t.name} löschen`} onClick={() => void remove(t.id)}>✕</button>

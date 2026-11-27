@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { countLabel, fmtNum, label } from "./lib/names.ts";
+import { countLabel, errorText, failText, fmtNum, label } from "./lib/names.ts";
+import { retryFailed, useThrottled } from "./lib/throttle.ts";
 import { Icon } from "./icons.tsx";
 import { useBackLayer } from "./lib/back.ts";
 import { HScroll } from "./components/HScroll.tsx";
@@ -170,17 +171,17 @@ export function Stepper({ value, onChange, max, limit, compact = false }: { valu
   const clamp = (v: number) => Math.max(0, Math.min(max ?? Infinity, limit ?? Infinity, Math.floor(v || 0)));
   return (
     <div className={`flex items-center ${compact ? "gap-0.5 shrink-0" : "gap-1"}`}>
-      <button type="button" className={`${compact ? "h-11 w-8" : "tap"} rounded-lg btn-secondary text-lg`} onClick={() => onChange(clamp(value - 1))} aria-label="weniger">−</button>
+      <button type="button" className={`${compact ? "h-11 w-11" : "tap"} rounded-lg btn-secondary text-lg`} onClick={() => onChange(clamp(value - 1))} aria-label="weniger">−</button>
       <input
         inputMode="numeric"
         aria-label="Anzahl"
-        className={`${compact ? "w-10" : "w-16"} h-11 rounded-lg field text-center mono`}
+        className={`${compact ? "w-9" : "w-16"} h-11 rounded-lg field text-center mono`}
         maxLength={8}
         value={value}
         // Nur der ganzzahlige Teil zählt: „1.5“ wird 1, nicht 15.
         onChange={(e) => onChange(clamp(Number(e.target.value.split(/[.,]/)[0].replace(/\D/g, ""))))}
       />
-      <button type="button" className={`${compact ? "h-11 w-8" : "tap"} rounded-lg btn-secondary text-lg`} onClick={() => onChange(clamp(value + 1))} aria-label="mehr">+</button>
+      <button type="button" className={`${compact ? "h-11 w-11" : "tap"} rounded-lg btn-secondary text-lg`} onClick={() => onChange(clamp(value + 1))} aria-label="mehr">+</button>
       {max !== undefined && (
         <button type="button" className="tap rounded-lg btn-secondary text-xs px-2" onClick={() => onChange(max)}>alle</button>
       )}
@@ -194,7 +195,39 @@ export function CountsLine({ counts }: { counts: Record<string, number> | null |
   return <span>{parts.map(([id, n]) => `${fmtNum(n)} ${countLabel(id, n)}`).join(", ")}</span>;
 }
 
-export function Loading() {
+/**
+ * Ladezustand. cards: Skelett aus n Kartenumrissen (Inhalte innerhalb einer Ansicht) statt des Ankers.
+ * Drosselt der Server (429) oder liegt ein Fehler vor (error), erscheint ein Hinweis mit „Erneut versuchen“.
+ */
+export function Loading({ cards, error, onRetry }: { cards?: number; error?: unknown; onRetry?: () => void } = {}) {
+  const throttled = useThrottled();
+  const failed = !!error || throttled > 0;
+  if (failed) {
+    const text = error ? failText(error) : errorText("rate");
+    return (
+      <div className="h-full grid place-items-center p-8" data-loading role="status">
+        <div className="flex flex-col items-center gap-3 text-center max-w-xs">
+          <Icon id="anker" size={40} />
+          <span className="font-serif text-base text-ink">{text}</span>
+          <Button kind="secondary" onClick={onRetry ?? retryFailed}>Erneut versuchen</Button>
+        </div>
+      </div>
+    );
+  }
+  if (cards) {
+    return (
+      <div data-loading aria-busy="true" aria-label="Lädt …" role="status">
+        {Array.from({ length: cards }, (_, i) => (
+          <div key={i} className="panel rounded-xl p-3.5 mb-3 animate-pulse" aria-hidden="true">
+            <div className="h-2.5 w-28 bg-rule rounded-full mb-3" />
+            <div className="h-3 w-full bg-inset rounded-full mb-2" />
+            <div className="h-3 w-4/5 bg-inset rounded-full mb-2" />
+            <div className="h-3 w-3/5 bg-inset rounded-full" />
+          </div>
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="h-full grid place-items-center p-8 text-slate-400" data-loading>
       <div className="flex flex-col items-center gap-3">
@@ -297,7 +330,7 @@ export function Badge({ children, tone = "slate" }: { children: ReactNode; tone?
     red: "border-siegel text-siegel",
     sea: "border-see text-see",
   }[tone];
-  return <span className={`inline-flex items-center border bg-card px-1.5 py-0.5 rounded-[2px] text-[10.5px] font-display uppercase tracking-[0.08em] ${c}`}>{children}</span>;
+  return <span className={`inline-flex items-center border bg-card px-1.5 py-0.5 rounded-[2px] text-[11px] font-display uppercase tracking-[0.08em] ${c}`}>{children}</span>;
 }
 
 /** Ressourcen als Symbol und Zahl. */
@@ -326,16 +359,34 @@ export function UnitChips({ counts }: { counts: Record<string, number> | null | 
   );
 }
 
+/** Kennung der Reiterleiste aus ihrem Namen („Meldungen“ → „seg-meldungen“) für aria-controls/tabpanel. */
+function segId(aria: string): string {
+  return `seg-${aria.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-")}`;
+}
+
 /**
  * Segment-Schalter (Unterreiter) im Muster von Meldungen: klebt oben, rote Linie unter dem gewählten.
- * Wahl wird mit storageKey geräteweit gemerkt (useSegment).
+ * Wahl wird mit storageKey geräteweit gemerkt (useSegment). Barrierefrei als Tabs: Pfeiltasten (←/→, Pos1/Ende)
+ * wechseln, nur der gewählte Reiter liegt in der Tab-Reihenfolge; den Inhalt in <SegmentPanel label=…> legen.
  */
-export function Segments<T extends string>({ items, value, onChange, label: aria }: { items: { id: T; label: ReactNode; badge?: number }[]; value: T; onChange: (v: T) => void; label: string }) {
+export function Segments<T extends string>({ items, value, onChange, label: aria, controls = false }: { items: { id: T; label: ReactNode; badge?: number }[]; value: T; onChange: (v: T) => void; label: string; /** Inhalt liegt in <SegmentPanel>. */ controls?: boolean }) {
+  const id = segId(aria);
+  const onKey = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    const i = items.findIndex((t) => t.id === value);
+    const next = e.key === "ArrowRight" ? (i + 1) % items.length : e.key === "ArrowLeft" ? (i - 1 + items.length) % items.length
+      : e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : -1;
+    if (next < 0) return;
+    e.preventDefault();
+    onChange(items[next].id);
+    const bar = e.currentTarget.parentElement;
+    requestAnimationFrame(() => bar?.querySelector<HTMLElement>(`#${id}-${items[next].id}`)?.focus());
+  };
   return (
     <div className="mb-3 sticky -top-3 -mx-3 z-10 bg-paper border-b border-rule">
       <HScroll className="gap-1 px-3 pt-1" role="tablist" label={aria} watch={value}>
         {items.map((t) => (
-          <button key={t.id} type="button" role="tab" aria-selected={value === t.id} onClick={() => onChange(t.id)}
+          <button key={t.id} id={`${id}-${t.id}`} type="button" role="tab" aria-selected={value === t.id} aria-controls={controls ? `${id}-panel` : undefined}
+            tabIndex={value === t.id ? 0 : -1} onClick={() => onChange(t.id)} onKeyDown={onKey}
             className={`tap flex-auto shrink-0 px-3 whitespace-nowrap text-[14px] font-serif flex items-center justify-center gap-1.5 border-b-[3px] -mb-px ${value === t.id ? "border-siegel text-ink" : "border-transparent text-ink2"}`}>
             <span>{t.label}</span>
             {!!t.badge && <span className="shrink-0 min-w-5 h-5 px-1 rounded-full bg-siegel text-white text-[11px] font-sans mono grid place-items-center">{t.badge}</span>}
@@ -344,6 +395,12 @@ export function Segments<T extends string>({ items, value, onChange, label: aria
       </HScroll>
     </div>
   );
+}
+
+/** Inhalt zu einer Reiterleiste (gleicher label wie bei Segments). */
+export function SegmentPanel({ label: aria, value, children }: { label: string; value: string; children: ReactNode }) {
+  const id = segId(aria);
+  return <div role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${value}`}>{children}</div>;
 }
 
 /** Gewählter Unterreiter, in localStorage gemerkt („tf-seg:…“); unbekannte Werte fallen auf fallback zurück. */

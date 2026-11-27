@@ -16,6 +16,7 @@ import { useGuide } from "../Guide.tsx";
 import { TacticalIcon } from "../../map/TacticalIcon.tsx";
 import { Icon } from "../../icons.tsx";
 import { Badge, Bar, Button, Card, SmallButton, UnitChips } from "../../ui.tsx";
+import { ReasonLine } from "../Remedy.tsx"; // ohne Kampfeinheiten: „Angreifen“ erklärt, was hilft
 
 const ROMAN = ["", "I", "II", "III", "IV", "V", "VI"];
 const pct = (v: number) => `${fmtNum(Math.round(v * 100))} %`;
@@ -105,6 +106,8 @@ function TargetRow({ row, plan, base, balance, onShowOnMap }: { row: Row; plan: 
   const empty = Object.keys(full).length === 0;
   const tone = rate === undefined || rate === null ? null : rate >= 0.8 ? "green" : rate >= 0.5 ? "brass" : "red";
   const color = tone ? { green: "text-moos", brass: "text-messing", red: "text-siegel" }[tone] : "text-ink2";
+  const [why, setWhy] = useState(false);
+  const scout = () => requestPlan({ target, type: "aufklaerung", units: suggestScout(base, balance, nest.distanceKm) });
   return (
     <li className="py-2" data-target={`${nest.col}/${nest.row}`}>
       <div className="flex items-start gap-2.5">
@@ -132,9 +135,15 @@ function TargetRow({ row, plan, base, balance, onShowOnMap }: { row: Row; plan: 
         </div>
       </div>
       <div className="flex items-center gap-2 mt-1.5 pl-[46px]">
-        <Button className="flex-1" kind={known && (rate ?? 0) >= 0.5 ? "primary" : "secondary"} onClick={() => requestPlan({ target, type: "ueberfall", units })}>Angreifen</Button>
-        <SmallButton onClick={() => requestPlan({ target, type: "aufklaerung", units: suggestScout(base, balance, nest.distanceKm) })}>Aufklären</SmallButton>
+        {empty ? <>
+          <Button className="flex-1" onClick={scout}>Aufklären</Button>
+          <Button kind="secondary" disabled onBlocked={() => setWhy(!why)}>Angreifen</Button>
+        </> : <>
+          <Button className="flex-1" kind={known && (rate ?? 0) >= 0.5 ? "primary" : "secondary"} onClick={() => requestPlan({ target, type: "ueberfall", units })}>Angreifen</Button>
+          <SmallButton onClick={scout}>Aufklären</SmallButton>
+        </>}
       </div>
+      {empty && why && <div className="pl-[46px]"><ReasonLine code="no_combat_units" open onOpenChange={setWhy} /></div>}
     </li>
   );
 }

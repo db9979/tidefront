@@ -78,6 +78,7 @@ export function defaultNoticeBlocks(n: Notice): MailBlock[] {
 
 const KIND_TEXT: Record<string, string> = {
   attack: "Angriff", report: "Bericht", build: "Ausbau", training: "Ausbildung", fleet: "Verband", delivery: "Lieferung", ops: "Betrieb", market: "Börse", test: "Test",
+  daily: "Tagesbefehle", idle: "Bauschlange", nest: "Nest", comeback: "Rückkehr",
 };
 
 /** Gebündelte Meldungen als Tabelle (Zeit | Art | Meldung), neueste zuletzt; Länge begrenzt die Tabelle selbst. */

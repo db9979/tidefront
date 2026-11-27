@@ -27,7 +27,7 @@
   --color-slate-300: #2b3a4c;
   --color-slate-400: #4f5b69;
   --color-slate-500: #59636f;
-  --color-slate-600: #8b8676;
+  --color-slate-600: #67624f; /* ≥ 4,5:1 auf allen Papiertönen (vorher #8b8676 ≈ 3,2:1) */
   --color-slate-700: #2b3a4c;
   --color-slate-800: #22303f;
   --color-slate-900: #18273a;
@@ -95,6 +95,9 @@ input, select, button, textarea { font: inherit; }
 /* Silbentrennung (lang="de") nur im Fließtext, nicht in Navigation, Knöpfen, Zahlen. */
 main :where(p, li) { hyphens: auto; -webkit-hyphens: auto; }
 main :where(.mono, code, button) { hyphens: manual; -webkit-hyphens: manual; }
+/* Navigation, Reiter, Knöpfe und Titel nie automatisch trennen („Meldun-gen“); lange Wörter tragen bei Bedarf &shy;. */
+nav, button, [role="tab"], h1, h2, h3, .font-display { -webkit-hyphens: manual; hyphens: manual; }
+[role="tab"] { white-space: nowrap; }
 input, select, textarea { color: var(--color-ink); }
 ::placeholder { color: #6b7380; }
 :focus-visible { outline: 2px solid var(--color-see); outline-offset: 2px; }

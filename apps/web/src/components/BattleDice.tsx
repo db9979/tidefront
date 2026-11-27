@@ -26,7 +26,7 @@ export function PhaseDice({ luck, names, factor }: { luck: { attacker: number; d
   };
   return (
     <div className="flex items-center gap-3 text-[11.5px] text-ink2 mt-1.5" aria-label="Kriegsglück">
-      <span className="font-display uppercase tracking-[0.1em] text-[10px]">Kriegsglück</span>
+      <span className="font-display uppercase tracking-[0.1em] text-[11px]">Kriegsglück</span>
       {(["attacker", "defender"] as const).map((side, i) => (
         <span key={side} className="flex items-center gap-1 min-w-0">
           <D20 roll={luck[side]} size={22} />
@@ -49,7 +49,7 @@ export function DamageBars({ damage, names }: { damage: { attacker: Record<strin
   const max = rows[0].d;
   return (
     <div className="mt-1.5" aria-label="Ausgeteilter Schaden je Einheitentyp">
-      <div className="font-display uppercase tracking-[0.1em] text-[10px] text-ink2 mb-0.5">Ausgeteilter Schaden</div>
+      <div className="font-display uppercase tracking-[0.1em] text-[11px] text-ink2 mb-0.5">Ausgeteilter Schaden</div>
       <ul className="space-y-0.5">
         {rows.slice(0, 8).map((r) => (
           <li key={`${r.side}-${r.id}`} className="grid grid-cols-[18px_minmax(0,7.5rem)_1fr_auto] items-center gap-1.5 text-[11px]">

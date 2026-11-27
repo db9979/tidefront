@@ -218,7 +218,7 @@ export function AdmiralReport({ d, names }: { d: ReportData; names: [string, str
       <div className="space-y-2.5 text-sm">
         {sides.map(([who, s]) => (
           <div key={who}>
-            <div className="font-display text-[10px] uppercase tracking-[0.12em] text-see">{who}</div>
+            <div className="font-display text-[11px] uppercase tracking-[0.12em] text-see">{who}</div>
             {!s ? <div className="text-xs text-ink2">ohne Admiral</div> : (
               <>
                 <div><strong className="font-serif">{s.rankName} {s.name}</strong> <span className="text-xs text-ink2">({s.specs.map((x) => x.name).join(", ")})</span></div>

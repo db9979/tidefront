@@ -15,7 +15,11 @@ import {
   flushAchievementNotices,
   flushMailDigests,
   noticeHook,
+  cleanupNudges,
   processDue,
+  recordMilestones,
+  runReminders,
+  runWinback,
   refreshDerivedOpen,
   runMarketNews,
   runMorningSummaries,
@@ -85,6 +89,9 @@ async function maintenance(): Promise<void> {
   await step("market news", () => runMarketNews(engine, Date.now()));
   // Tagesbefehle aus dem Zustand (Ökostrom, Vorrat, Produktion …) auch ohne Abruf durch den Spieler fortschreiben.
   await step("daily derived", () => refreshDerivedOpen(db, Date.now()));
+  // Admin-Kennzahlen: Meilensteine aus den Hafen-Zuständen; Spielerbindung: alte Entprellungs-Einträge löschen.
+  await step("milestones", () => recordMilestones(db, Date.now()));
+  await step("nudge cleanup", () => cleanupNudges(db));
 }
 
 async function loop() {
@@ -112,6 +119,15 @@ async function loop() {
         await step("achievement notices", async () => {
           const badges = await flushAchievementNotices(engine);
           if (badges > 0) log("achievement notices", { sent: badges });
+        });
+        // Spielerbindung: Tagesbefehle bereit / Serie in Gefahr, Nest wieder besetzt, Rückhol-E-Mail.
+        await step("reminders", async () => {
+          const reminders = await runReminders(engine, Date.now());
+          if (reminders > 0) log("reminders", { sent: reminders });
+        });
+        await step("winback mails", async () => {
+          const winback = await runWinback(engine, Date.now());
+          if (winback > 0) log("winback mails", { sent: winback });
         });
         // KI-Spieler: höchstens bots.turnsPerMinute fällige Bots reihum (abschaltbar: Server-Einstellung bots_enabled).
         if (process.env.BOTS_DISABLED !== "1") {

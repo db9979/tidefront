@@ -223,3 +223,71 @@ pauschal anheben** – es würde die Fahrten auf offener See (Mehrheit) beschleu
 Spieler in Binnenmeeren (Ostsee, Adria, Schwarzes Meer) benachteiligt wirken, eher gezielt: Treibstoff je km für
 Fahrten mit Route um 10 % senken oder weitere Passagen (z. B. Nord-Ostsee-Kanal ist im Raster schon offen) prüfen.
 Nicht geändert.
+
+## W. Spielerbindung und Admin-Kennzahlen
+
+1. **Neue Benachrichtigungsarten** (`NOTICE_KINDS`): `daily` (Tagesbefehle bereit / Serie in Gefahr), `idle`
+   (Bauschlange leer), `nest` (Nest wieder besetzt), `comeback` (Rückhol-E-Mail, nur E-Mail). Push-Vorgabe: die drei
+   Erinnerungen an; E-Mail-Vorgabe: aus (Bauschlange und Nest gebündelt wie Ausbau), `comeback` an. Jede Art ist in den
+   Einstellungen einzeln schaltbar; der Abmeldelink schaltet auch `comeback` ab.
+2. **Auslösen und Entprellung:** „Bauschlange leer“ entsteht beim Abschluss des letzten Bauauftrags (event-notices.ts,
+   einmal je Abschluss) mit demselben Push-Tag wie „Ausbau fertig“ – auf dem Gerät ersetzt sie diese Meldung und nennt
+   beides. Die übrigen prüft der Worker jede Minute (retention.ts, winback.ts); Tabelle `player_nudge` (Spieler,
+   Schlüssel) sperrt jede Meldung genau einmal (erst sperren, dann senden). „Tagesbefehle bereit“ 9–18 Uhr Spielzeit,
+   nur wer in den letzten 7 Tagen, aber heute noch nicht da war und heute keinen Morgenbericht als Push bekam.
+   „Serie in Gefahr“ 18–23 Uhr ab 2 Tagen Serie, nicht wenn in den letzten 30 Minuten online. „Nest wieder besetzt“
+   nur an den Sieger des letzten gewonnenen Überfalls auf das Nest, höchstens 3 Std. nach der Wiederbesetzung.
+3. **Morgenbericht für neue Spieler an:** Schema-Vorgaben von `morning_summary.enabled` und `.push` auf `true`; die
+   Registrierung legt die Zeile mit diesen Vorgaben an. Bestehende Spieler bleiben unverändert (ohne Zeile gilt weiter
+   `SUMMARY_DEFAULT` = aus; vorhandene Zeilen behalten ihre Werte).
+4. **Rückhol-E-Mail:** an Menschen mit bestätigter Adresse, 3–7 Tage nicht da, 10–20 Uhr Spielzeit, einmal je Pause
+   (Schlüssel `winback:<last_seen_at in ms>` – last_seen ändert sich erst bei Rückkehr). Inhalt aus vorhandenen Daten:
+   Saison und Saisontag, Rang und Punkte, Angriffe und Plünderung seit dem letzten Besuch, Lagerfüllstand (voll =
+   Produktion verfällt), gerissene Tagesserie, leere Bauschlange. Statt einer Spalte `winback_sent_at` nutzt sie die
+   gemeinsame Entprellungstabelle (gleiche Wirkung, keine Änderung an `player_email`).
+5. **Admin-Kennzahlen** (admin-kpi.ts, tRPC `adminStats.kpi`): Menschen und KI-Spieler getrennt (`bot_profile`).
+   Tages-Aktivität `player_activity_day` (Spieler, Spieltag) – eingetragen von `touchLastSeen` (höchstens alle 5 Min.,
+   idempotent je Tag); Kohorten-Retention Tag 1/7/14 nach Registrierung, nur Menschen, nur erreichte Tage zählen.
+   Erst ab Einführung erfasst – ältere Kohorten sind unvollständig (die Oberfläche nennt „erfasst seit“).
+6. **Meilensteine mit Saisontag** (Tag 1 = Saisonstart, je Meilenstein Anzahl, erster und Median-Tag): erster Sieg je
+   Neststufe aus den Kampfberichten, zweiter Hafen aus `base.created_at` (aufgegebene Kolonien fehlen). Nicht
+   ableitbar sind KZ-Stufe, Missionsplätze und Startrampe: der Worker trägt sie alle 10 Minuten aus den Hafen-Zuständen
+   in `player_milestone` ein (auf ~10 Min. genau; der erste Lauf nach Einführung trägt den Bestand mit „jetzt“ ein).
+   Satellit mit der Startzeit aus dem Zustand.
+7. **Abschlussquoten:** Tagesbefehle (vergeben/erledigt/abgeholt, je Stufe, Spieler-Tage mit allen drei abgeholt) und
+   Wochenziele im gewählten Zeitraum, nur Menschen.
+8. **Laufzeit je tRPC-Aufruf:** Middleware an der Wurzel-Prozedur (apps/api/src/trpc.ts), Ringpuffer der letzten 256
+   Messungen je Prozedur im Speicher des API-Prozesses (rpc-timing.ts), p50/p95 nach Nearest-Rank; nach Neustart leer.
+
+## V. Oberfläche und Bedienung
+
+1. **Allianz unter Truppen statt Meldungen.** Meldungen hatte sieben Reiter; „Allianz“ lag als siebter meist außerhalb
+   der sichtbaren Leiste (Tippen + seitlich wischen + Tippen). Unter Truppen ist sie der vierte Reiter neben Einsatz,
+   Ausbilden, Abwehr – zwei Tipps, ohne Wischen, und dort, wo Stationieren und Sammelangriff ohnehin hingehören.
+   Die Alternative „Meldungen in Post und Rang teilen“ hätte eine sechste Hauptnavigation oder einen zusätzlichen
+   Klick für Berichte bedeutet. Sprungziele „Was hilft? → Allianz“ führen über App.navTo auf Truppen → Allianz; die
+   Hinweistexte der Engine („Annehmen unter Truppen → Allianz“) und das Handbuch sind angepasst.
+2. **Reiterleisten** (ui.tsx `Segments`) sind Tabs im ARIA-Muster: Pfeiltasten/Pos1/Ende, nur der gewählte Reiter in
+   der Tab-Reihenfolge, `aria-controls` auf ein `SegmentPanel` (Meldungen, Truppen, Börse).
+3. **Menü statt „?“** in der Kopfleiste (Symbol + „Menü“): Blatt mit Handbuch, Einstellungen, Verwaltung (nur Admins),
+   Abmelden. Einstellungen/Verwaltung öffnen direkt, ohne Umweg über das Handbuch.
+4. **Missionsplanung:** Die Mini-Karte liegt hinter einer Deckfläche („Karte bedienen“), damit Wischen die Seite rollt
+   (die Karte selbst setzt touch-action none); „Fertig“ sperrt wieder. Neulinge (nur Heimathafen, Kommandozentrale bis
+   Stufe 3) sehen zuerst Überfall und Aufklärung; zielbezogene Arten (Besetzen, Abfangen, Posten angreifen) und die
+   gewählte Art bleiben immer sichtbar. Besetzen bietet nur Schiffe an (Server: field_ships_only).
+5. **Kontrast und Größe:** slate-600 = #67624f (≥ 4,5:1 auf allen Papiertönen), Fließtext und Kleinbeschriftungen
+   mindestens 11 px (Kartenbeschriftungen in map/ ausgenommen). Tippflächen ≥ 44 px auch für „Was hilft?“, die
+   Kapitel-Pillen des Handbuchs (Pille bleibt 32 px, Tippfläche 44 px) und kompakte Stepper.
+6. **Börse:** Kurse mit zwei Nachkommastellen und „Kr“ („1,00 Kr“ statt „1,000“, das wie eine Tausendergruppe las);
+   Unterreiter vor dem einklappbaren Kopf; „Nachrichten“ heißt „Marktlage“ (Schlüssel bleibt `nachrichten`).
+7. **Lagebild:** eigene Sensoren und Sichtungen zuerst, Satelliten unten, eingeklappt solange weder Satellit noch
+   Startrampe da ist; die Voraussetzung der Startrampe kommt aus der Balance (`buildings.startrampe.requires`).
+   „Lohnende Ziele“ ohne Kampfeinheiten: „Aufklären“ ist die Hauptaktion, „Angreifen“ bleibt grau mit „Was hilft?“
+   (neuer Hinweis `no_combat_units`).
+8. **Wetterebene dezenter:** Grunddeckkraft 0,7, Isobaren blasser, Windfahnen der Übersicht erst ab Zoom
+   LOD_OVERVIEW. Bei prefers-reduced-motion keine weichen Überblendungen (harte Stufen); die Schicht bewegt sich sonst
+   nicht (Neuzeichnen je 15-Minuten-Fenster).
+9. **Kleinigkeiten:** Stromfeld zeigt bei ausgeglichener Bilanz „gedeckt“ und ohne Speicher die Kraftwerk-Auslastung
+   („KW 64 %“); Produktionsgebäude nennen die Grundproduktion; Forschungsstatus als Zeile im Bauhof; Ladeanzeigen
+   erkennen Drosselung (429) und Fehler und bieten „Erneut versuchen“; Inhalte laden mit Kartenskelett. Desktop ab
+   1024 px: Inhalt bis max-w-3xl, Karte volle Breite.

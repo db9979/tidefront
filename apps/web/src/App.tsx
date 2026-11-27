@@ -82,6 +82,7 @@ export function App() {
   const me = useQuery(trpc.auth.me.queryOptions());
   const player = me.data?.player;
   if (me.isLoading) return <Loading />;
+  if (me.error && !me.data) return <Loading error={me.error} onRetry={() => void me.refetch()} />;
   if (!player) return <Suspense fallback={<Loading />}><AuthScreen /></Suspense>;
   // Neuer Schlüssel je Spieler: nach Abmelden oder Spielerwechsel beginnen alle Ansichten frisch.
   return <Game key={player.id} playerId={player.id} playerName={player.name} onLoggedOut={() => void me.refetch()} />;
@@ -196,7 +197,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   // Hafenwechsel: eigener Satz Positionen je Hafen (Schlüssel mit Hafen), damit jede Ansicht oben beginnt.
   const mainScroll = useViewScroll(`${switchKey}|${help ? "handbuch" : research ? "forschung" : plan ? "planung" : tab === "berichte" ? `berichte:${sub}` : tab}`);
 
-  if (base.isLoading || !base.data) return <Loading />;
+  if (base.isLoading || !base.data) return <Loading error={base.isLoading ? undefined : base.error} onRetry={() => void base.refetch()} />;
   if (!base.data.base) return <Suspense fallback={<Loading />}><ChooseBase /></Suspense>;
   const b = base.data.base;
   const unread = (reports.data ?? []).filter((r) => r.id > seen).length;
@@ -252,7 +253,10 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
         break;
       case "troops": localStorage.setItem("tf-seg:truppen", t.seg); setSheet(null); go("truppen"); break;
       case "map": setSheet(null); go("karte"); break;
-      case "meldungen": setSheet(null); go("berichte"); setSub(t.sub); break;
+      case "meldungen":
+        setSheet(null);
+        if (t.sub === "allianz") { localStorage.setItem("tf-seg:truppen", "allianz"); go("truppen"); break; } // Allianz liegt unter Truppen
+        go("berichte"); setSub(t.sub); break;
     }
   };
   const fullBleed = tab === "karte" && !plan && !help && !research;
@@ -281,11 +285,18 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
 
   return (
     <NavContext.Provider value={{ go: navTo, base: b }}>
-    <div className="h-full flex flex-col max-w-xl mx-auto">
-      <ResourceBar base={b} asOf={base.data.serverNow} now={now} onSwitchBase={switchBase} onPlanFounding={() => go("karte")} onPower={() => { setSheet(null); go("basis"); openCard("basis-versorgung", "versorgung"); }} onHelp={() => { setHelpView(null); setHelp((h) => !h); }} />
+    {/* Desktop ab 1024 px: breiter (max-w-3xl), die Karte volle Breite; mobil bleibt alles wie gehabt. */}
+    <div className={`h-full flex flex-col w-full max-w-xl mx-auto ${fullBleed ? "lg:max-w-none" : "lg:max-w-3xl"}`}>
+      <ResourceBar base={b} asOf={base.data.serverNow} now={now} onSwitchBase={switchBase} onPlanFounding={() => go("karte")} onPower={() => { setSheet(null); go("basis"); openCard("basis-versorgung", "versorgung"); }} onMenu={(i) => {
+        if (i === "logout") { void logout(); return; }
+        setPlan(null); setResearch(false);
+        setHelpView(i === "handbuch" ? null : i);
+        setHelpKey((k) => k + 1); // Handbuch neu aufbauen, damit die gewählte Ansicht (Einstellungen/Verwaltung) gilt
+        setHelp(true);
+      }} />
       {/* Kurszeile: auf der Börse immer (oben, außer „unten“ gewählt), sonst nach Einstellung. */}
       {(onMarket ? tickerPos !== "unten" : tickerPos === "oben") && <TickerBar onOpen={() => go("boerse")} />}
-      <main ref={mainScroll.ref} onScroll={mainScroll.onScroll} className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto overflow-x-hidden p-3 pb-8 scroll-pb-8"}`}><Suspense fallback={<Loading />}>{content}</Suspense>{!fullBleed && <ActionBarHost />}</main>
+      <main ref={mainScroll.ref} onScroll={mainScroll.onScroll} className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto overflow-x-hidden p-3 pb-8 scroll-pb-8"}`}><Suspense fallback={fullBleed ? <Loading /> : <Loading cards={3} />}>{content}</Suspense>{!fullBleed && <ActionBarHost />}</main>
       {tickerPos === "unten" && <TickerBar onOpen={() => go("boerse")} />}
       <nav className="grid grid-cols-5 bg-paper border-t-[3px] border-double border-ink" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {TABS.map((t) => {
@@ -300,7 +311,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
             >
               {active && <span className="absolute -top-[3px] inset-x-[22%] h-[3px] bg-siegel" />}
               <Icon id={t.icon} size={24} />
-              <span className="mt-0.5">{t.label}</span>
+              <span className="mt-0.5 whitespace-nowrap">{t.label}</span>
               {t.id === "berichte" && unread + unreadMsgs > 0 && (
                 <span className="absolute top-1 right-[18%] min-w-5 h-5 px-1 rounded-full bg-siegel text-white text-[11px] mono grid place-items-center">{unread + unreadMsgs}</span>
               )}

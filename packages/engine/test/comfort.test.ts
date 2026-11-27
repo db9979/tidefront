@@ -211,6 +211,8 @@ test("Morgenbericht: genau einmal je Tag, Inhalt korrekt, Abmelden schaltet ab",
   await recordSummaryEntry(engine, emil.playerId, { kind: "build", title: "Ausbau fertig", body: "Werft ist jetzt auf Stufe 2." });
   await recordSummaryEntry(engine, emil.playerId, { kind: "delivery", title: "Lieferung angekommen", body: "500 Stahl sind eingetroffen." });
   await recordSummaryEntry(engine, emil.playerId, { kind: "attack", title: "Angriff erkannt", body: "zählt nicht" });
+  // Neue Spieler haben den Morgenbericht an (Spielerbindung); Frieda schaltet ihn ab.
+  await db.update(tables.morningSummary).set({ enabled: false }).where(eq(tables.morningSummary.playerId, frieda.playerId));
   await recordSummaryEntry(engine, frieda.playerId, { kind: "build", title: "Ausbau fertig", body: "nicht aktiviert" });
   const entries = await db.select().from(tables.summaryEntry);
   assert.equal(entries.length, 2);

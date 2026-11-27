@@ -1,3 +1,4 @@
+// Titel/Hinweise ohne automatische Silbentrennung; lange Wörter mit weichem Trennstrich an der Wortfuge.
 // Truppen → Einsatz: Kacheln im Stil der Gebäudekacheln (Basis) für Admirale, Rohstofffelder, Vorlagen und den
 // Kampfsimulator. Antippen öffnet die bestehende Ansicht als Blatt; grüne Raute = jetzt möglich (freier Platz).
 import { useState, type ReactNode } from "react";
@@ -20,9 +21,9 @@ function Tile({ icon, title, figure, hint, can, onOpen }: { icon: string; title:
       className="relative rounded-xl p-2 flex items-center gap-2 text-left border border-rule bg-card min-h-[72px] min-w-0 active:scale-[0.97] transition">
       <TileFrame><Icon id={icon} size={44} /></TileFrame>
       <span className="min-w-0 flex-1">
-        <span className="block font-serif text-[14px] leading-tight break-words hyphens-auto" lang="de">{title}</span>
+        <span className="block font-serif text-[14px] leading-tight hyphens-manual">{title}</span>
         {figure !== undefined && <span className="block mono text-[15px] leading-tight mt-0.5">{figure}</span>}
-        <span className="block text-[11px] text-ink2 leading-tight mt-0.5">{hint}</span>
+        <span className="block text-[11px] text-ink2 leading-tight mt-0.5 hyphens-manual">{hint}</span>
       </span>
       {can && <span className="absolute top-1.5 left-1.5 diamond bg-moos" title="jetzt möglich" aria-label="jetzt möglich" />}
     </button>
@@ -43,8 +44,8 @@ export function EinsatzTiles({ base, balance, onShowOnMap }: { base: BaseData; b
       <div className="grid grid-cols-2 gap-2">
         <Tile icon="admiral" title="Admirale" figure={a ? `${a.list.length}/${a.slots}` : "…"} can={!!a && a.list.length < a.slots}
           hint={!a ? "" : a.list.length === 0 ? (a.slots > 0 ? "ernennen möglich" : "noch kein Platz") : a.list.map((x) => x.name).join(", ")} onOpen={() => setOpen("admirale")} />
-        <Tile icon="oelfeld" title="Rohstofffelder" figure={f ? `${f.mine.length}/${f.maxFields}` : "…"} can={!!f && f.maxFields > 0 && f.mine.length < f.maxFields}
-          hint={!f ? "" : f.maxFields === 0 ? "ab Hafenkommandantur" : f.mine.length === 0 ? "besetzen möglich" : "Ertrag per Konvoi"} onOpen={() => setOpen("felder")} />
+        <Tile icon="oelfeld" title={"Rohstoff\u00ADfelder"} figure={f ? `${f.mine.length}/${f.maxFields}` : "…"} can={!!f && f.maxFields > 0 && f.mine.length < f.maxFields}
+          hint={!f ? "" : f.maxFields === 0 ? "ab Hafen\u00ADkommandantur" : f.mine.length === 0 ? "besetzen möglich" : "Ertrag per Konvoi"} onOpen={() => setOpen("felder")} />
         <Tile icon="geleit" title="Vorlagen" figure={tpl.data ? String(tpl.data.length) : "…"} hint="Verband mit einem Tipp" onOpen={() => setOpen("vorlagen")} />
         <Tile icon="wuerfel" title="Kampfsimulator" hint="Kämpfe durchrechnen" onOpen={() => setOpen("simulator")} />
       </div>

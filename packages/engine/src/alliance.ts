@@ -132,7 +132,7 @@ export function invitePlayer(engine: Engine, playerId: number, targetId: number)
     if (prev) fail("already_invited");
     await tx.insert(tables.allianceRequest).values({ allianceId: m.allianceId, playerId: targetId, kind: "einladung", createdBy: playerId });
     await systemMessage(tx, notes, [targetId], "Allianz: Einladung",
-      `${await playerNameOf(tx, playerId)} lädt dich in die Allianz [${m.tag}] ${m.name} ein. Annehmen unter Meldungen → Allianz.`);
+      `${await playerNameOf(tx, playerId)} lädt dich in die Allianz [${m.tag}] ${m.name} ein. Annehmen unter Truppen → Allianz.`);
     notes.push([[targetId], "alliance"], [await officerIds(tx, m.allianceId), "alliance"]);
     return { ok: true as const, joined: false };
   });
@@ -156,7 +156,7 @@ export function requestJoin(engine: Engine, playerId: number, allianceId: number
     await tx.insert(tables.allianceRequest).values({ allianceId, playerId, kind: "anfrage", createdBy: playerId });
     const officers = await officerIds(tx, allianceId);
     await systemMessage(tx, notes, officers, "Allianz: Beitrittsanfrage",
-      `${await playerNameOf(tx, playerId)} möchte [${a.tag}] ${a.name} beitreten. Entscheiden unter Meldungen → Allianz.`);
+      `${await playerNameOf(tx, playerId)} möchte [${a.tag}] ${a.name} beitreten. Entscheiden unter Truppen → Allianz.`);
     notes.push([officers, "alliance"], [[playerId], "alliance"]);
     return { ok: true as const, joined: false };
   });

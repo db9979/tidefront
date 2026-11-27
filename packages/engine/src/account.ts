@@ -6,6 +6,7 @@ import { GameError, type Engine } from "./context.ts";
 import { createSession, hashPassword, verifyPassword } from "./auth.ts";
 import { sendMail } from "./mail.ts";
 import { publicUrl, sha256 } from "./settings.ts";
+import { recordActivity } from "./activity.ts";
 
 const RESET_HOURS = 24;
 const MAIL_RESET_HOURS = 2;
@@ -50,6 +51,8 @@ export async function touchLastSeen(db: Db, playerId: number, nowMs = Date.now()
   if (nowMs - (seenAt.get(playerId) ?? 0) < 5 * 60000) return;
   seenAt.set(playerId, nowMs);
   await db.update(tables.player).set({ lastSeenAt: new Date(nowMs) }).where(eq(tables.player.id, playerId));
+  // Admin-Kennzahlen: Tages-Aktivität für die Kohorten-Retention (idempotent je Tag).
+  await recordActivity(db, playerId, nowMs);
 }
 
 // ---------------------------------------------------------------- Passwort

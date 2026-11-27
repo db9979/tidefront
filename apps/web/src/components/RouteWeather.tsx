@@ -26,7 +26,7 @@ export function RouteWeather({ w, wb, factor }: { w: RouteWeatherData; wb: Weath
     <div className="mt-1.5 rounded-lg border border-rule bg-paper p-2 flex gap-2 items-start">
       <Icon id={icon} size={30} className="shrink-0" />
       <div className="text-xs">
-        <div className="font-display uppercase tracking-wider text-[10.5px] text-ink2">Wetter auf der Route bei Abfahrt</div>
+        <div className="font-display uppercase tracking-wider text-[11px] text-ink2">Wetter auf der Route bei Abfahrt</div>
         <div className="mono">Wind im Mittel {beaufort(w.avgWind)} Bft, höchstens {beaufort(w.maxWind)} Bft ({BEAUFORT_WORDS[beaufort(w.maxWind)]})</div>
         {f > 1.005 ? (
           <div className="text-siegel">Sturm auf der Route: Reisezeit der Schiffe +{Math.round((f - 1) * 100)} %</div>
@@ -36,7 +36,7 @@ export function RouteWeather({ w, wb, factor }: { w: RouteWeatherData; wb: Weath
         {w.stormAtOrigin && <div className="text-siegel">Sturm am Hafen: Reine Luftmissionen starten nicht.</div>}
         {t && (
           <>
-            <div className="font-display uppercase tracking-wider text-[10.5px] text-ink2 mt-1.5">
+            <div className="font-display uppercase tracking-wider text-[11px] text-ink2 mt-1.5">
               {fc ? "Vorhersage am Ziel" : "Am Ziel"} bei Ankunft ({fmtTime(t.atMs)})
             </div>
             {fc ? (
@@ -53,7 +53,7 @@ export function RouteWeather({ w, wb, factor }: { w: RouteWeatherData; wb: Weath
             ) : null}
             {airHi > 0 && <div className={t.storm ? "text-siegel" : "text-ink2"}>Flugzeuge kämpfen schwächer (−{span(airLo, airHi)} %).</div>}
             {strikeHi >= 1 && <div className="text-ink2">Wolken: Luftschlag der Bomber −{span(strikeLo, strikeHi)} %.</div>}
-            {fc && <div className="text-[10.5px] text-ink2">Je weiter voraus, desto unsicherer; bei Ankunft gilt das tatsächliche Wetter.</div>}
+            {fc && <div className="text-[11px] text-ink2">Je weiter voraus, desto unsicherer; bei Ankunft gilt das tatsächliche Wetter.</div>}
           </>
         )}
         {fog >= wb.fogScoutHeavy ? (

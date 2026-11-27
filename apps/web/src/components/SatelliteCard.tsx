@@ -1,9 +1,12 @@
 // Meldungen → Lagebild (Stufe 3): eigene Satelliten mit nächstem Überflug („nächster Überflug in 2 h 10 min über …“),
 // live laufendem Streifen und letzter Zusammenfassung; Start an den eigenen Startrampen (optisch oder Radar).
+// Steht im Lagebild unten und ist eingeklappt, solange es weder Satellit noch Startrampe gibt; zugeklappt nennt die
+// Kopfzeile die Voraussetzung der Startrampe (aus der Balance gelesen).
+import { useQuery } from "@tanstack/react-query";
 import { hexAtXY, ROWS, HEX_SIZE_KM } from "@tidefront/world";
 import { queryClient, trpc, trpcClient } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
-import { errorText, fmtNum } from "../lib/names.ts";
+import { errorText, fmtNum, label } from "../lib/names.ts";
 import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
 import { Icon } from "../icons.tsx";
@@ -37,10 +40,17 @@ export function SatelliteCard({ sats, launch, onShowOnMap }: { sats: SatView[]; 
     (i: { key: string; type: "optisch" | "radar"; baseId: number }) => trpcClient.intel.launchSatellite.mutate(i),
     () => [trpc.intel.pathFilter().queryKey, trpc.base.pathFilter().queryKey, trpc.world.map.pathFilter().queryKey],
   );
+  const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   if (!launch) return null;
   const r = launch.rules;
+  const requires = Object.entries(meta.data?.balance.buildings.startrampe?.requires ?? {}).map(([id, l]) => `${label(id)} ${l}`).join(", ");
+  const nextPass = sats.map((s) => s.next?.atMs).filter((t): t is number => !!t).sort((a, b) => a - b)[0];
+  const summary = sats.length > 0
+    ? `${fmtNum(sats.length)} im Orbit${sats.some((s) => s.live) ? " · Überflug läuft" : nextPass ? ` · nächster Überflug in ${fmtDuration(nextPass - now)}` : ""}`
+    : launch.pads.length > 0 ? "Startrampe bereit" : `Startrampe braucht ${requires || "weitere Gebäude"}`;
   return (
-    <Card title={<><Icon id="satellit" size={18} /> Satelliten ({sats.filter((s) => s.own).length}/{launch.limit})</>}>
+    <Card title={<><Icon id="satellit" size={18} /> Satelliten ({sats.filter((s) => s.own).length}/{launch.limit})</>}
+      collapsible storageKey="lagebild-satelliten" defaultOpen={sats.length > 0 || launch.pads.length > 0} summary={summary}>
       {sats.length === 0 ? (
         <p className="text-sm text-ink2">Kein Satellit in der Umlaufbahn.</p>
       ) : (
@@ -67,7 +77,7 @@ export function SatelliteCard({ sats, launch, onShowOnMap }: { sats: SatView[]; 
         </ul>
       )}
       {launch.pads.length === 0 ? (
-        <p className="text-xs text-ink2 mt-2">Satelliten starten von einer Startrampe (Hafengebäude, braucht Kommandozentrale 7, Forschungsamt 5, Radarstation 6) mit Technik aus dem Zweig Raumfahrt.</p>
+        <p className="text-xs text-ink2 mt-2">Satelliten starten von einer Startrampe (Hafengebäude{requires ? `, braucht ${requires}` : ""}) mit Technik aus dem Zweig Raumfahrt.</p>
       ) : (
         launch.pads.map((pad) => (
           <div key={pad.baseId} className="mt-3 border-t border-rule pt-2" data-testid="sat-launch">

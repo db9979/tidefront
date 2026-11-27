@@ -81,7 +81,7 @@ export function SpyPlan({ base, map, target, setTarget, center, onClose }: { bas
             <button key={k.id} type="button" onClick={() => setKind(k.id)} className={`tap rounded-xl px-1 py-2 text-sm flex flex-col items-center gap-1 border ${kind === k.id ? "border-sea-400 bg-sea-400/10 font-semibold reticle" : "border-navy-600 bg-navy-900"}`}>
               <Icon id={k.icon} size={28} />
               {k.text}
-              {level < minLevel(k.id) && <span className="text-[10px] text-slate-400">ab Stufe {minLevel(k.id)}</span>}
+              {level < minLevel(k.id) && <span className="text-[11px] text-slate-400">ab Stufe {minLevel(k.id)}</span>}
             </button>
           ))}
         </div>
