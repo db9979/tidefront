@@ -39,17 +39,20 @@ test("Elektrolyse: nur Ökostrom-Überschuss wird Treibstoff; das Kraftwerk rege
   assert.ok(approx(dark.surplus.wasted, 0));
   assert.ok(approx(dark.throttle, 10 / 120));
   assert.ok(approx(dark.perHour.treibstoff, 10 - 0.5));
-  // Windpark 2 bei Wind 0,5: 90 Ökostrom. Bedarf 10 aus Ökostrom, 80 in die Elektrolyse → 8 Treibstoff/h.
+  // Windpark 2 bei Wind 0,5: 90 Ökostrom. Bedarf 10 aus Ökostrom, 80 in die Elektrolyse → 80 / 6 Treibstoff/h
+  // (v1.24: electrolysisRatio 6 statt 10).
+  const made = 80 / balance.buildings.elektrolyse.electrolysisRatio!;
+  assert.equal(balance.buildings.elektrolyse.electrolysisRatio, 6);
   const windy = makeBase(balance, { buildings: { kraftwerk: 2, stahlwerk: 1, elektrolyse: 2, windpark: 2 }, resources: full });
   const w = first(windy, breeze);
   assert.ok(approx(w.surplus.fuel, 80));
-  assert.ok(approx(w.fuelMade, 8));
+  assert.ok(approx(w.fuelMade, made));
   assert.ok(approx(w.surplus.wasted, 0), `${w.surplus.wasted}`);
   assert.equal(w.supply.kraftwerk, 0); // Wind deckt den Bedarf, das Kraftwerk ruht
-  assert.ok(approx(w.perHour.treibstoff, 10 + 8));
+  assert.ok(approx(w.perHour.treibstoff, 10 + made));
   const later = integrateGrid(windy, T0 + 2 * HOUR, balance, undefined, undefined, fixed(breeze));
-  assert.ok(approx(later.resources.treibstoff, 1000 + 2 * 18, 1e-6));
-  assert.ok(approx(later.powerLog!.fuelMade, 16, 1e-6));
+  assert.ok(approx(later.resources.treibstoff, 1000 + 2 * (10 + made), 1e-6));
+  assert.ok(approx(later.powerLog!.fuelMade, 2 * made, 1e-6));
 });
 
 test("Elektrolyse kann das Kraftwerk ohne Treibstoff nicht antreiben (keine Endlosschleife)", () => {
@@ -68,7 +71,7 @@ test("Elektrolyse kann das Kraftwerk ohne Treibstoff nicht antreiben (keine Endl
     return x!;
   })();
   assert.ok(s2.perHour.treibstoff >= -1e-6);
-  assert.ok(s2.fuelMade <= 5 * 40 / 10 + 1e-9);
+  assert.ok(s2.fuelMade <= (5 * 40) / balance.buildings.elektrolyse.electrolysisRatio! + 1e-9);
   // Mehr Kraftwerk ändert den Ökostrom-Überschuss nicht nach oben.
   assert.ok(s2.surplus.fuel <= 4 * 90 * 0.5 - 50 + 1e-6, `${s2.surplus.fuel}`);
 });

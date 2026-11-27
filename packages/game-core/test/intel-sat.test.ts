@@ -24,7 +24,7 @@ function base(over: Partial<BaseState> = {}): BaseState {
 
 test("Balance: Satellit und Gegenmittel wie im Regelwerk (5.6, 6)", () => {
   assert.deepEqual(sb.types.optisch.cost, { stahl: 5000, treibstoff: 2000, elektronik: 3500 });
-  assert.deepEqual(sb.types.radar.cost, { stahl: 6000, treibstoff: 2500, elektronik: 4500 });
+  assert.deepEqual(sb.types.radar.cost, { stahl: 5500, treibstoff: 2200, elektronik: 4000 }); // v1.24 (vorher 6000/2500/4500)
   assert.equal(sb.lifetimeHours, 168);
   assert.equal(sb.periodHours, 6);
   assert.equal(sb.stripKm, 600);
@@ -93,8 +93,10 @@ test("Start: Startrampe, Technik, Höchstzahl (2 mit Radarsatellit), Kosten mit 
   const poor = base({ buildings: { startrampe: 1 }, resources: { stahl: 100 } });
   assert.equal((satelliteLaunchCheck(poor, "optisch", techs, 0, balance) as { code: string }).code, "insufficient_resources");
   assert.deepEqual(satelliteCost(sb.types.optisch, 1, sb), sb.types.optisch.cost);
-  assert.equal(satelliteCost(sb.types.optisch, 3, sb).stahl, Math.ceil(5000 * 0.92));
-  assert.equal(satelliteCost(sb.types.optisch, 20, sb).stahl, Math.ceil(5000 * 0.8), "höchstens −20 %");
+  // v1.24: Rampenrabatt −10 % je Stufe über 1 (vorher −4 %), höchstens −30 % (vorher −20 %).
+  assert.equal(satelliteCost(sb.types.optisch, 3, sb).stahl, Math.ceil(5000 * 0.8));
+  assert.equal(satelliteCost(sb.types.optisch, 4, sb).stahl, Math.ceil(5000 * 0.7));
+  assert.equal(satelliteCost(sb.types.optisch, 20, sb).stahl, Math.ceil(5000 * 0.7), "höchstens −30 %");
 });
 
 test("Startrampe: Voraussetzungen über missingRequirement und startUpgrade", () => {

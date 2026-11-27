@@ -450,3 +450,5 @@ Stahl-Gegenwert, Produktion des Militär-Bots (45 % Rüstung) Tag 28 ≈ 1 130/h
    `BOT_SIM_SPACE=1` (Startrampe, Raumfahrt und 20 000 je Ressource ab Tag 0) starten Freibeuter und Festung in jedem
    Lauf je einen Satelliten (4 Läufe). Dabei fiel ein Fehler im Nest-Überfall auf: Mit viel Wissen standen oben
    viele zu starke Nester, die Liste endete nach 12 Einträgen – jetzt Probekampf je Stufe einmal, bis zu 6 Startversuche.
+
+Fortsetzung (Prüfbericht 0.22: Einstieg, Stabilität, Wertung v1.24, Bots, Oberfläche, Seewege) in `ENTSCHEIDUNGEN-4.md`.

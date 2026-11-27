@@ -1,6 +1,7 @@
 // Spielwissen für die Oberfläche: Beschreibungen, Wirkung je Stufe, Rolle der Einheiten.
 import type { Balance } from "./trpc.ts";
 import { fmtNum } from "./names.ts";
+import { commandPointsAt } from "@tidefront/game-core";
 
 export const BUILDING_TEXT: Record<string, { kurz: string; lang: string }> = {
   kommandozentrale: {
@@ -156,7 +157,7 @@ export function buildingEffect(balance: Balance, id: string, level: number): str
   if (def.storagePerLevel) return `${fmtNum(def.storagePerLevel * level)} Speicher, ${fmtNum((def.storageRatePerLevel ?? 0) * level)} Strom/h`;
   if (def.capacityBase) return `${fmtNum(def.capacityBase * (def.capacityGrowth ?? 1) ** level)} je Ressource`;
   if (def.protectedBase) return `${fmtNum(def.protectedBase * (def.protectedGrowth ?? 1) ** level)} je Ressource geschützt`;
-  if (def.commandPointsBase !== undefined) return `${fmtNum(def.commandPointsBase + (def.commandPointsPerLevel ?? 0) * level)} Kommandopunkte`;
+  if (def.commandPointsBase !== undefined) return `${fmtNum(commandPointsAt(level, balance))} Kommandopunkte`; // v1.24: ab KZ 9 mehr je Stufe
   if (balance.espionage?.building === id) {
     if (level < 1) return "noch keine Spione";
     return `bis ${(balance.units[balance.espionage.unit]?.maxPerLevel ?? 0) * level} Spione, Erfolg und Abwehr +${level * balance.espionage.attackPerLevel}`;
@@ -244,7 +245,7 @@ export function unitStats(balance: Balance, id: string): [string, string][] {
   if (u?.cargo) rows.push(["Ladung", fmtNum(u.cargo)]);
   if (u?.troopSpace) rows.push(["Truppenraum", fmtNum(u.troopSpace)]);
   if (u?.size) rows.push(["Platzbedarf", String(u.size)]);
-  if (u?.commandPoints !== undefined) rows.push(["Kommandopunkte", String(u.commandPoints)]);
+  if (u?.commandPoints !== undefined) rows.push(["Kommandopunkte", u.commandPoints.toLocaleString("de-DE")]);
   if (u?.upkeepPerHour) rows.push(["Unterhalt", `${u.upkeepPerHour} Proviant/h`]);
   return rows;
 }

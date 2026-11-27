@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { BaseData } from "../lib/trpc.ts";
 import { Icon } from "../icons.tsx";
 import { Bar, Button, Sheet } from "../ui.tsx";
-import { Guide, STEPS, nextAction, useGuide, type GuideAction } from "./Guide.tsx";
+import { Guide, STEPS, nextAction, runGuideAction, useGuide, useRefreshAtCountdowns, type GuideAction } from "./Guide.tsx";
 import { DailyOrders, useDaily } from "./Daily.tsx";
 import { WeeklyGoals, useWeekly } from "./Weekly.tsx";
 
@@ -21,13 +21,15 @@ export function useQuestSummary() {
   const w = weekly.data;
   const guideOpen = !!g?.hasBase && !g.final.claimed;
   const weeklyClaimable = w?.hasBase ? [...w.goals, ...w.older].filter((x) => x.done && !x.claimed).length : 0;
-  const claimable = (g?.claimable ?? 0) + (g?.final.claimable ? 1 : 0) + (d?.claimable ?? 0) + weeklyClaimable;
+  // g.claimable zählt die Abschlussbelohnung schon mit (guideView) – nicht noch einmal addieren.
+  const claimable = (g?.claimable ?? 0) + (d?.claimable ?? 0) + weeklyClaimable;
   return { guide: g, daily: d, weekly: w, guideOpen, weeklyClaimable, claimable, prominent: guideOpen || claimable > 0 };
 }
 
 export function QuestBar({ base, onAction }: { base: BaseData; onAction: (a: GuideAction) => void }) {
   const q = useQuestSummary();
   const [open, setOpen] = useState<Which | null>(null);
+  useRefreshAtCountdowns(base);
   const { guide: g, daily: d, weekly: w } = q;
   if (!g?.hasBase && !d?.hasBase && !w?.hasBase) return null;
 
@@ -36,7 +38,7 @@ export function QuestBar({ base, onAction }: { base: BaseData; onAction: (a: Gui
   const dailyDone = d ? d.challenges.filter((c) => c.done).length : 0;
   const weeklyDone = w ? w.goals.filter((x) => x.done).length : 0;
   // Aus dem Blatt heraus: erst schließen, dann zum Ziel (Gebäudeblatt oder Reiter).
-  const act = (a: GuideAction) => { setOpen(null); onAction(a); };
+  const act = (a: GuideAction) => { setOpen(null); runGuideAction(a, onAction); };
 
   return (
     <section className={`panel rounded-xl p-3 mb-3 ${q.claimable > 0 ? "border-siegel" : ""}`} aria-label="Aufträge">
@@ -44,7 +46,7 @@ export function QuestBar({ base, onAction }: { base: BaseData; onAction: (a: Gui
       <div className="grid grid-cols-3 gap-2">
         {g?.hasBase && (
           <Tile icon="hafenmeister" title="Auftragsbuch" value={g.doneCount / STEPS.length} count={`${g.doneCount}/${STEPS.length}`}
-            ready={g.claimable + (g.final.claimable ? 1 : 0)} onOpen={() => setOpen("guide")} />
+            ready={g.claimable} onOpen={() => setOpen("guide")} />
         )}
         {d?.hasBase && (
           <Tile icon="uhr" title="Tagesbefehle" value={d.challenges.length ? dailyDone / d.challenges.length : 0} count={`${dailyDone}/${d.challenges.length}`}

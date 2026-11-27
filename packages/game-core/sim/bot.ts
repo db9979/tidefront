@@ -55,6 +55,9 @@ const BUILD_ORDER = [
   "kommandozentrale", "kaserne", "werft", "flugfeld", "hafenkommandantur", "tiefbunker",
 ];
 
+/** Spätspiel-Bot (v1.24): Proviantüberschuss je Stunde, unter dem er zuerst den Versorgungshof ausbaut. */
+const PROVIANT_RESERVE = 15;
+
 /** Losgröße je Ausbildungsauftrag. */
 const BATCH: Record<string, number> = { schuetzen: 10, pioniere: 5 };
 
@@ -130,6 +133,12 @@ export function runBot(
   onStep?: (base: BaseState, t: number) => BaseState,
   /** Strom (v1.6): Lage des Hafens (Wetter), Startzeit und Kraftwerkstypen bei Strommangel (billigster zuerst). */
   power: { site?: GeoPoint; startMs?: number; plants?: string[] } = {},
+  /**
+   * v1.24: Spätspiel-Spieler – sind die Kommandopunkte voll (weniger als ein Zerstörer frei), baut der Bot als Nächstes
+   * die Kommandozentrale (wie die KI-Spieler „mittel“/„stark“, sobald sie andere Gebäude deckelt); reicht der Proviant
+   * nicht für weiteren Unterhalt (unter PROVIANT_RESERVE je Stunde), zuerst den Versorgungshof.
+   */
+  opts: { lateGame?: boolean } = {},
 ): BotSnapshot[] {
   const t0 = power.startMs ?? 0;
   let base: BaseState = createBase(balance, t0, power.site);
@@ -164,6 +173,10 @@ export function runBot(
   }
   return out;
 
+  function allowed(id: string): boolean {
+    return (base.buildings[id] ?? 0) < maxAllowedLevel(base, id, balance);
+  }
+
   function build(): void {
     if (base.buildQueue.length > 0) return;
     const rates = productionRates(base, balance);
@@ -171,7 +184,12 @@ export function runBot(
     let candidates = order.filter((id) => (base.buildings[id] ?? 0) < maxAllowedLevel(base, id, balance));
     // Strommangel in Produktion oder Ausbildung (v1.6): erst ein Kraftwerk (bzw. die gewählten Quellen).
     const plants = (power.plants ?? ["kraftwerk"]).filter((id) => (base.buildings[id] ?? 0) < maxAllowedLevel(base, id, balance));
+    const kz = "kommandozentrale";
+    const cpFree = commandPoints(base, balance) - fleetTotals(armyWithQueue(base), balance).commandPointsUsed;
+    const cpFull = opts.lateGame && militaryShare > 0 && cpFree < (balance.units.zerstoerer.commandPoints ?? 6);
     if ((rates.powerFactor < 1 || rates.grid.served.training < 1) && plants.length > 0) candidates = plants;
+    else if (opts.lateGame && militaryShare > 0 && rates.perHour.proviant < PROVIANT_RESERVE && allowed("versorgungshof")) candidates = ["versorgungshof"];
+    else if (cpFull && allowed(kz)) candidates = [kz];
     // Wer rüsten will, braucht zuerst Kaserne und Werft.
     else if (militaryShare > 0) {
       const missing = ["kaserne", "werft"].filter((id) => (base.buildings[id] ?? 0) === 0);

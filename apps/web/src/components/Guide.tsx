@@ -1,14 +1,27 @@
 // Auftragsbuch: eine Kette von Aufträgen, die durch die ersten Spieltage führt. Erfüllung, Belohnung und
 // Abholstatus kommen vom Server (guide.get); hier stehen nur Texte, Symbole und Wege zum Ziel.
-import { useState } from "react";
+// Einstieg (0.22): 30 Schützen statt 20 (sonst ist Nest Stufe 1 kaum zu schlagen), „Los“ führt zum Ausbilden bzw. zu
+// den lohnenden Zielen, frische Daten bei jedem Bau-/Ausbildungsende, Warnung vor Belohnungen über der Lagergrenze.
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { trpc, trpcClient, type BaseData, type Balance, type Outputs } from "../lib/trpc.ts";
+import { queryClient, trpc, trpcClient, type BaseData, type Balance, type Outputs } from "../lib/trpc.ts";
+import { serverNow } from "../lib/time.ts";
 import { useCommand } from "../lib/command.ts";
 import { countLabel, fmtNum } from "../lib/names.ts";
 import { Icon } from "../icons.tsx";
 import { Badge, Bar, Button, ErrorLine, ResChips } from "../ui.tsx";
 
-export type GuideAction = { kind: "building"; id: string } | { kind: "tab"; tab: "karte" | "truppen" | "boerse" | "berichte" };
+/** seg: Unterreiter, der beim Öffnen des Reiters gewählt sein soll (z. B. Truppen → Ausbilden). */
+export type GuideAction = { kind: "building"; id: string } | { kind: "tab"; tab: "karte" | "truppen" | "boerse" | "berichte"; seg?: string };
+
+/** Unterreiter vormerken (useSegment liest ihn beim Aufbau), dann wie gewohnt navigieren. */
+export function runGuideAction(a: GuideAction, onAction: (a: GuideAction) => void): void {
+  if (a.kind === "tab" && a.seg) localStorage.setItem(`tf-seg:${a.tab}`, a.seg);
+  onAction(a);
+}
+
+/** Ausbildungsziele (wie GUIDE_GOALS im Server, packages/engine/src/guide.ts). */
+export const GOALS = { schuetzen: 30, korvette: 2, landungsschiff: 1 } as const;
 type GuideData = Outputs["guide"]["get"];
 
 interface Step {
@@ -29,13 +42,13 @@ export const STEPS: Step[] = [
   { id: "basis", icon: "versorgungshof", title: "Raffinerie und Versorgungshof", why: "Treibstoff brauchst du für jede Mission, Proviant ernährt deine Truppen.", action: { kind: "building", id: "raffinerie" }, actionText: "Ausbauen" },
   { id: "kz", icon: "kommandozentrale", title: "Kommandozentrale auf Stufe 1", why: "Sie hebt den Deckel für alle anderen Gebäude und gibt mehr Kommandopunkte für größere Verbände.", action: { kind: "building", id: "kommandozentrale" }, actionText: "Zur Kommandozentrale" },
   { id: "kaserne", icon: "kaserne", title: "Kaserne bauen", why: "Nur Bodentruppen können landen, siegen und Beute holen – und deinen Hafen halten.", action: { kind: "building", id: "kaserne" }, actionText: "Zur Kaserne" },
-  { id: "wache", icon: "schuetzen", title: "20 Schützen ausbilden", why: "Nach dem Anfängerschutz greift das Freibeuter-Kartell regelmäßig an. Mit 20 Schützen hältst du etwa jeden zweiten Überfall auf – mehr Truppen, eine Bunkerlinie und Küstenbatterien machen den Hafen sicher.", action: { kind: "tab", tab: "truppen" }, actionText: "Zu den Truppen" },
+  { id: "wache", icon: "schuetzen", title: `${GOALS.schuetzen} Schützen ausbilden`, why: `Schützen halten deinen Hafen und erobern Piratennester. Mit ${GOALS.schuetzen} Schützen gelingt der erste Überfall auf ein Nest der Stufe 1 (mit 20 fast nie) – und nach dem Anfängerschutz hältst du mehr Überfälle des Kartells auf.`, action: { kind: "tab", tab: "truppen", seg: "ausbilden" }, actionText: "Zur Kaserne" },
   { id: "werft", icon: "werft", title: "Werft bauen", why: "Ohne Schiffe kommst du nicht übers Meer – weder zum Plündern noch zum Handeln.", action: { kind: "building", id: "werft" }, actionText: "Zur Werft" },
-  { id: "flotte", icon: "landungsschiff", title: "2 Korvetten und 1 Landungsschiff", why: (bal) => {
+  { id: "flotte", icon: "landungsschiff", title: `${GOALS.korvette} Korvetten und ${GOALS.landungsschiff} Landungsschiff`, why: (bal) => {
     const l = bal?.units.landungsschiff;
-    return `Korvetten versenken die Schnellboote der Piraten, das Landungsschiff bringt ${fmtNum(l?.troopSpace ?? 100)} Plätze Truppen an Land und ${fmtNum(l?.cargo ?? 4000)} Beute heim.`;
-  }, action: { kind: "tab", tab: "truppen" }, actionText: "Schiffe bauen" },
-  { id: "nest", icon: "kartell", title: "Ein Piratennest Stufe 1 überfallen", why: nestWhy, action: { kind: "tab", tab: "karte" }, actionText: "Nest auf der Karte suchen" },
+    return `Das Landungsschiff bringt ${fmtNum(l?.troopSpace ?? 100)} Plätze Truppen an Land und ${fmtNum(l?.cargo ?? 4000)} Beute heim, Korvetten schützen es vor den Schnellbooten stärkerer Nester.`;
+  }, action: { kind: "tab", tab: "truppen", seg: "ausbilden" }, actionText: "Schiffe bauen" },
+  { id: "nest", icon: "kartell", title: "Ein Piratennest Stufe 1 überfallen", why: nestWhy, action: { kind: "tab", tab: "truppen", seg: "einsatz" }, actionText: "Zu den lohnenden Zielen" },
   { id: "hafen", icon: "hafenkommandantur", title: "Hafenkommandantur auf Stufe 3", why: "Öffnet die Börse: Überschüsse verkaufen, Fehlendes kaufen. Jede zweite Stufe bringt einen Missionsplatz.", action: { kind: "building", id: "hafenkommandantur" }, actionText: "Zur Hafenkommandantur" },
   { id: "schutz", icon: "radarstation", title: "Radarstation und Tiefbunker", why: "Das Radar warnt vor Angriffen, der Bunker schützt einen Grundstock vor Plünderung.", action: { kind: "building", id: "radarstation" }, actionText: "Zur Radarstation" },
 ];
@@ -46,7 +59,7 @@ function nestWhy(bal: Balance | undefined): string {
   const crew = n
     ? Object.entries(n).filter(([k, v]) => k !== "loot" && typeof v === "number" && v > 0).map(([k, v]) => `${fmtNum(v as number)} ${countLabel(k, v as number)}`).join(" und ")
     : "einige Schnellboote und Milizionäre";
-  return `Nester liegen an den Küsten. Stufe 1 hat ${crew}. Empfohlen: 2 Korvetten, 1 Landungsschiff und 30–40 Schützen – prüfe es vorher mit dem Probekampf in der Missionsplanung.`;
+  return `Nester liegen an den Küsten; eines der Stufe 1 liegt höchstens 300 km von deinem Hafen. Stufe 1 hat ${crew}. Empfohlen: ein Landungsschiff mit mindestens ${GOALS.schuetzen} Schützen, dazu deine Korvetten. Unter Truppen → Einsatz → „Lohnende Ziele“ steht der passende Verband mit seiner Siegchance aus dem Probekampf.`;
 }
 
 const whyText = (s: Step, bal: Balance | undefined) => (typeof s.why === "function" ? s.why(bal) : s.why);
@@ -61,6 +74,36 @@ export function nextAction(step: Step, b: BaseData): GuideAction {
 /** Auftragsbuch vom Server; auch für den Zähler an der Navigation genutzt. */
 export function useGuide(enabled = true) {
   return useQuery({ ...trpc.guide.get.queryOptions(), enabled, refetchInterval: 60000 });
+}
+
+/** Aufträge frisch holen (Auftragsbuch, Tagesbefehle, Wochenziele, Hafen). */
+export function refreshQuests(): void {
+  for (const f of [trpc.guide.pathFilter(), trpc.base.pathFilter(), trpc.daily.pathFilter(), trpc.achievements.weekly.pathFilter()]) void queryClient.invalidateQueries(f);
+}
+
+/**
+ * Endet ein Bau- oder Ausbildungs-Countdown im Browser, kurz danach die Aufträge neu holen – zusätzlich zur
+ * Live-Meldung, falls diese ausbleibt (Verbindung weg). Sonst zeigt „Nächster Auftrag“ den erledigten Schritt.
+ */
+export function useRefreshAtCountdowns(base: BaseData): void {
+  const next = [...base.buildQueue.map((o) => o.finishesAt), ...base.trainingQueue.map((o) => o.finishesAt)]
+    .filter((t) => t > serverNow()).sort((a, b) => a - b)[0];
+  useEffect(() => {
+    if (next === undefined) return;
+    const t = setTimeout(refreshQuests, Math.min(2 ** 31 - 1, next - serverNow() + 1500));
+    return () => clearTimeout(t);
+  }, [next]);
+}
+
+/** Wie viel einer Belohnung über die Lagergrenze ginge (nur im Heimathafen, wohin sie geliefert wird). */
+export function overflowOf(base: BaseData, reward: Record<string, number> | undefined): number {
+  if (!reward || !base.isHome || !(base.capacity > 0)) return 0;
+  let lost = 0;
+  for (const [r, n] of Object.entries(reward)) {
+    const cur = base.resources[r] ?? 0;
+    lost += Math.max(0, n - Math.max(0, base.capacity - cur));
+  }
+  return Math.round(lost);
 }
 
 const invalidate = () => [trpc.guide.pathFilter().queryKey, trpc.base.pathFilter().queryKey, trpc.social.ranking.pathFilter().queryKey];
@@ -95,11 +138,17 @@ export function Guide({ base, onAction }: { base: BaseData; onAction: (a: GuideA
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold truncate">{s.title}</span>
                 <span className="block text-xs"><ResChips values={byId.get(s.id)!.reward} /></span>
+                {overflowOf(base, byId.get(s.id)!.reward) > 0 && (
+                  <span className="block text-[11px] text-messing">Lager zu voll: {fmtNum(overflowOf(base, byId.get(s.id)!.reward))} verfielen – die Belohnung bleibt die ganze Saison abholbar.</span>
+                )}
               </span>
               <Button className="shrink-0" disabled={busy} onClick={() => void claim.run({ stepId: s.id })}>Abholen</Button>
             </li>
           ))}
         </ul>
+      )}
+      {open.some((s) => overflowOf(base, byId.get(s.id)?.reward) > 0) && (
+        <Button kind="secondary" className="w-full mt-1.5" onClick={() => onAction({ kind: "building", id: "lagerkomplex" })}>Lagerkomplex ausbauen</Button>
       )}
       <ErrorLine text={claim.error ?? claimFinal.error} code={claim.error ? claim.code : claimFinal.code} />
       {current ? (
@@ -118,7 +167,7 @@ export function Guide({ base, onAction }: { base: BaseData; onAction: (a: GuideA
                   {pos === 0 ? "Wird gerade gebaut – gleich geht es weiter." : `In Arbeit: steht auf Platz ${pos + 1} der Bauschlange.`}
                 </p>
               ) : (
-                <Button className="mt-2 w-full" onClick={() => onAction(a)}>{current.actionText}</Button>
+                <Button className="mt-2 w-full" onClick={() => runGuideAction(a, onAction)}>{current.actionText}</Button>
               );
             })()}
           </div>

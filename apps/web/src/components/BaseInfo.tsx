@@ -81,7 +81,7 @@ export function Protection({ base, now }: { base: BaseData; now: number }) {
   const chosen = next ? next.startHour : p.nightShieldStartHour;
   const [hour, setHour] = useState<number | null>(chosen);
   const save = useCommand(
-    (i: { key: string; startHour: number | null; tzOffsetMinutes: number }) => trpcClient.base.nightShield.mutate(i),
+    (i: { key: string; startHour: number | null; tzOffsetMinutes: number; timeZone?: string }) => trpcClient.base.nightShield.mutate(i),
     invalidateBase,
   );
   const changeH = prot?.nightShieldChangeHours ?? 24;
@@ -116,7 +116,7 @@ export function Protection({ base, now }: { base: BaseData; now: number }) {
           <option value="">kein Nachtschild</option>
           {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>um {h}:00 Uhr</option>)}
         </select>
-        <Button kind="secondary" disabled={save.busy || locked || hour === chosen} onClick={() => void save.run({ startHour: hour, tzOffsetMinutes: -new Date().getTimezoneOffset() })}>
+        <Button kind="secondary" disabled={save.busy || locked || hour === chosen} onClick={() => void save.run({ startHour: hour, tzOffsetMinutes: -new Date().getTimezoneOffset(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || undefined })}>
           Speichern
         </Button>
       </div>

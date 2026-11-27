@@ -71,7 +71,7 @@ async function fulfilAll(p: { playerId: number; baseId: number }) {
       kraftwerk: 1, stahlwerk: 1, raffinerie: 1, versorgungshof: 1, kommandozentrale: 1, kaserne: 1, werft: 1,
       hafenkommandantur: 3, radarstation: 1, tiefbunker: 1,
     });
-    s.units = { ...s.units, schuetzen: 20, korvette: 2, landungsschiff: 1 };
+    s.units = { ...s.units, schuetzen: 30, korvette: 2, landungsschiff: 1 };
   });
   await db.insert(tables.battleReport).values({
     kind: "ueberfall", title: "Überfall auf Piratennest", attackerPlayerId: p.playerId, attackerBaseId: p.baseId,

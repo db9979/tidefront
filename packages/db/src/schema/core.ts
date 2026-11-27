@@ -116,6 +116,8 @@ export const gameEvent = pgTable("game_event", {
   baseId: integer("base_id"),
   attempts: integer("attempts").notNull().default(0),
   lastError: text("last_error"),
+  /** Ursprüngliche Fälligkeit (Spielzeit), gesetzt beim ersten Fehlversuch; due_at ist dann nur noch der Wiederholungszeitpunkt. */
+  origDueAt: ts("orig_due_at"),
   createdAt: ts("created_at").notNull().defaultNow(),
   processedAt: ts("processed_at"),
 }, (t) => [

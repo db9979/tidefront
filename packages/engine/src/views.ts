@@ -6,8 +6,6 @@ import {
   bunkerProtection,
   combineModifiers,
   commandPoints,
-  harborCreditLimit,
-  harborMarketUnlocked,
   isNestRespawned,
   maxAllowedLevel,
   missingRequirement,
