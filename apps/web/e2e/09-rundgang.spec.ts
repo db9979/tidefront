@@ -101,9 +101,16 @@ test("Rundgang durch alle Bildschirme", async ({ page, player, seed }) => {
   await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
   await page.getByRole("button", { name: "Mein Hafen" }).click();
   await check(page, "Karte · Mein Hafen");
-  await page.getByRole("button", { name: /^Wetter/ }).click();
+  await page.getByRole("button", { name: /^Wetter am Hafen/ }).click(); // Wetterkärtchen aufklappen
+  await expect(page.getByText(/^Am Hafen:/)).toBeVisible();
+  await check(page, "Karte · Wetter aufgeklappt");
+  await page.getByRole("button", { name: /^Wetter am Hafen/ }).click();
+  await page.getByRole("button", { name: "Wetter ausblenden" }).click();
   await check(page, "Karte · Wetter aus");
-  await page.getByRole("button", { name: /^Wetter/ }).click();
+  await page.getByRole("button", { name: "Wetter einblenden" }).click();
+  await page.getByRole("button", { name: "Legende öffnen" }).click();
+  await check(page, "Karte · Legende");
+  await page.getByRole("button", { name: /Legende schließen/ }).click();
 
   // Börse: jede Ressource
   await page.getByRole("navigation").getByRole("button", { name: "Börse" }).click();

@@ -1,4 +1,5 @@
 // Einklappbare Legende der Kartenzeichen: Häfen nach Verhältnis, Kartell und See, Übersichtspunkte, Wetter mit Fronten.
+import { MAP_BTN } from "./controls.ts";
 import { useState, type ReactNode } from "react";
 import { TacticalIcon } from "./TacticalIcon.tsx";
 import { Icon } from "../icons.tsx"; // Felder
@@ -116,27 +117,33 @@ function Hatch({ d, color }: { d: string; color: string }) {
 
 export function MapLegend() {
   const [open, setOpen] = useState(false);
+  // Zu: kleiner Symbolknopf unten links (verdeckt kaum Felder). Offen: Tafel mit Schließen-Zeile.
+  if (!open) {
+    return (
+      <button type="button" className={`absolute left-1.5 bottom-2 ${MAP_BTN} font-serif italic text-lg`} onClick={() => setOpen(true)} aria-expanded={false} aria-label="Legende öffnen" title="Legende">
+        i
+      </button>
+    );
+  }
   return (
-    <div className="absolute left-2 bottom-2 right-2 pointer-events-none flex justify-start">
-      <div className="pointer-events-auto rounded-[3px] bg-card border border-ink max-w-full">
-        <button type="button" className="tap px-3 text-[11px] font-display uppercase tracking-[0.12em] text-ink w-full text-left" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-          {open ? "▾ Legende" : "▸ Legende"}
+    <div className="absolute left-1.5 bottom-2 right-14 pointer-events-none flex justify-start">
+      <div className="pointer-events-auto rounded-[3px] bg-card border border-ink max-w-full shadow-sm">
+        <button type="button" className="tap px-3 text-[11px] font-display uppercase tracking-[0.12em] text-ink w-full text-left" onClick={() => setOpen(false)} aria-expanded={true}>
+          ▾ Legende schließen
         </button>
-        {open && (
-          <div className="px-3 pb-3 text-xs text-ink max-h-[min(60vh,480px)] overflow-y-auto">
-            {GROUPS.map((g) => (
-              <section key={g.title} className="pt-1.5">
-                <h3 className="font-display text-[10px] uppercase tracking-[0.12em] text-ink2 border-b border-rule pb-0.5 mb-1">{g.title}</h3>
-                <ul className="space-y-1.5">
-                  {g.items.map((i) => (
-                    <li key={i.text} className="flex items-center gap-2"><span className="flex w-12 shrink-0 justify-center">{i.icon}</span><span className="min-w-0">{i.text}</span></li>
-                  ))}
-                </ul>
-              </section>
-            ))}
-            <p className="text-ink2 pt-2">Feld antippen für Details · ziehen zum Schwenken · zwei Finger oder +/− zum Zoomen</p>
-          </div>
-        )}
+        <div className="px-3 pb-3 text-xs text-ink max-h-[min(60vh,480px)] overflow-y-auto">
+          {GROUPS.map((g) => (
+            <section key={g.title} className="pt-1.5">
+              <h3 className="font-display text-[10px] uppercase tracking-[0.12em] text-ink2 border-b border-rule pb-0.5 mb-1">{g.title}</h3>
+              <ul className="space-y-1.5">
+                {g.items.map((i) => (
+                  <li key={i.text} className="flex items-center gap-2"><span className="flex w-12 shrink-0 justify-center">{i.icon}</span><span className="min-w-0">{i.text}</span></li>
+                ))}
+              </ul>
+            </section>
+          ))}
+          <p className="text-ink2 pt-2">Feld antippen für Details · ziehen zum Schwenken · zwei Finger oder +/− zum Zoomen · rechts: Mein Hafen und Wetter an/aus</p>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 // Hexkarte mit PixiJS: Gelände einmal gezeichnet, Beschriftungen und Symbole in fester Bildschirmgröße,
 // Missionen mit Route und Schiff, Schwenken per Ziehen, Zoomen per Zwei-Finger, Mausrad oder Knöpfe.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Application, Container, Graphics, type Ticker } from "pixi.js";
 import {
   HEX_SIZE_KM,
@@ -12,6 +12,7 @@ import {
   inGrid,
 } from "@tidefront/world";
 import type { MapData } from "../lib/trpc.ts";
+import { MAP_BTN } from "../map/controls.ts";
 import { serverNow } from "../lib/time.ts";
 import { registerSnapshotSurface } from "../lib/screenshot.ts";
 import { buildTerrain, hexPoints, xyOf } from "../map/terrain.ts";
@@ -44,6 +45,8 @@ export interface MapMission {
 
 export interface HexMapProps {
   data: MapData;
+  /** Weitere Symbolknöpfe in der Leiste unter +/− (z. B. „Mein Hafen“, Wetter). */
+  controls?: ReactNode;
   selected: { col: number; row: number } | null;
   onSelect: (h: { col: number; row: number }) => void;
   /** Tipp auf einen eigenen Verband (Schiffssymbol): Missions-ID. */
@@ -92,8 +95,6 @@ interface Scene {
 const PRIO = { always: -1, ocean: 0, sea: 1, bigRegion: 2, region: 3, port: 4, base: 5 } as const;
 /** Ab hier Namensschilder von Häfen und fremden Stützpunkten. */
 const LOD_NAMES = 0.4;
-/** Unterkante der Zoomknöpfe (top-6 + zwei 44-px-Knöpfe + Abstand). */
-const BUTTONS_BOTTOM = 24 + 44 * 2 + 6;
 
 /** Sichtbarkeit und Größe aller Zeichen bei Zoomänderung neu bestimmen. */
 function relayout(s: Scene): void {
@@ -252,11 +253,11 @@ export function HexMap(props: HexMapProps) {
           if (pos !== lastPos) {
             lastPos = pos;
             s.graticule.place(world, w, h);
-            // Windrose fest oben rechts unter den Zoomknöpfen, in der Übersicht kleiner; nur wenn Platz ist
-            const cs = sc < LOD_OVERVIEW ? 0.72 : 0.9;
+            // Windrose klein unten rechts (über der Positionsanzeige), damit sie keine Felder unter der Knopfleiste verdeckt
+            const cs = 0.55;
             s.compass.scale.set(cs);
-            s.compass.position.set(w - 36, BUTTONS_BOTTOM + 14 + 38 * cs);
-            s.compass.visible = h > 440 && w > 300;
+            s.compass.position.set(w - 24, h - 58);
+            s.compass.visible = h > 360 && w > 300;
           }
           const now = performance.now();
           if (now - lastMove > 250) {
@@ -420,9 +421,11 @@ export function HexMap(props: HexMapProps) {
   return (
     <div className="w-full h-full relative">
       <div ref={host} className="w-full h-full overflow-hidden select-none" />
-      <div className="absolute right-2 top-6 flex flex-col gap-1.5">
-        <button type="button" className="tap rounded-[3px] bg-card border border-ink text-xl text-ink" onClick={() => zoomBy(1.5)} aria-label="Hineinzoomen">+</button>
-        <button type="button" className="tap rounded-[3px] bg-card border border-ink text-xl text-ink" onClick={() => zoomBy(1 / 1.5)} aria-label="Herauszoomen">−</button>
+      {/* Eine schmale Knopfleiste am rechten Rand (44 px): Zoom und die Knöpfe des Bildschirms. */}
+      <div className="absolute right-1.5 top-3 flex flex-col gap-1">
+        <button type="button" className={MAP_BTN} onClick={() => zoomBy(1.5)} aria-label="Hineinzoomen">+</button>
+        <button type="button" className={MAP_BTN} onClick={() => zoomBy(1 / 1.5)} aria-label="Herauszoomen">−</button>
+        {props.controls}
       </div>
     </div>
   );

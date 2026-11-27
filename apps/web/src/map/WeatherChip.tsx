@@ -1,5 +1,6 @@
 // Wetter auf der Karte: Kärtchen „Am Hafen“ und Zeile im Feld-Infoblatt, jeweils mit der Wirkung nach den Regeln
 // (Schwellen und Stärken aus balance.weather). Startverbot und Radar gelten nur am eigenen Hafen.
+import { useState } from "react";
 import { BEAUFORT_WORDS, beaufort, fogRadarFactor, stormShare, weatherAt, type Weather, type WeatherBalance } from "@tidefront/game-core";
 import { hexCenter } from "@tidefront/world";
 import { Icon } from "../icons.tsx";
@@ -52,18 +53,30 @@ export function WeatherLine({ at, wb, now, home, radar }: { at: Hex; wb: Weather
 
 /** Kärtchen „Am Hafen“ oben auf der Karte. */
 export function WeatherChip({ at, wb, now, radar }: { at: Hex; wb: WeatherBalance; now: number; radar: boolean }) {
+  const [open, setOpen] = useState(false);
   const w = weatherAt(hexCenter(at.col, at.row), now, wb);
   // Auf dem Kärtchen nur, was am Hafen zählt: Startverbot, Radar, Flugzeuge im Sturm (Schiffe zeigt die Route).
   const effects = weatherEffects(w, wb, true, radar).filter((e) => /Radar|Flugzeuge/.test(e.text));
   const fog = fogText(w);
+  // Klein (Symbol + Windstärke), damit es kaum Karte verdeckt; Antippen klappt die Angaben auf.
   return (
-    <div className={`rounded-[3px] bg-card border px-2 py-1 flex items-center gap-2 max-w-[260px] ${w.storm ? "border-siegel border-l-4" : "border-rule"}`}>
-      <Icon id={iconOf(w, wb)} size={24} />
-      <div className="leading-tight min-w-0">
-        <div className="text-[11px] font-display uppercase tracking-wider">Am Hafen: {skyOf(w, wb)}</div>
-        <div className="text-[11px] mono text-ink2">Wind {beaufort(w.wind)} Bft{fog ? ` · ${fog}` : ""}</div>
-        {effects.length > 0 && <div className={`text-[11px] ${w.storm ? "text-siegel" : "text-ink2"}`}>{effects.map((e) => e.text).join(" · ")}</div>}
-      </div>
-    </div>
+    <button
+      type="button"
+      onClick={() => setOpen((o) => !o)}
+      aria-expanded={open}
+      aria-label={`Wetter am Hafen: ${skyOf(w, wb)}, Wind ${beaufort(w.wind)} Beaufort`}
+      className={`rounded-[3px] bg-card/95 border text-left flex items-center gap-1.5 shadow-sm ${open ? "px-2 py-1 max-w-[240px]" : "h-9 px-1.5"} ${w.storm ? "border-siegel border-l-4" : "border-rule"}`}
+    >
+      <Icon id={iconOf(w, wb)} size={open ? 24 : 20} />
+      {open ? (
+        <div className="leading-tight min-w-0">
+          <div className="text-[11px] font-display uppercase tracking-wider">Am Hafen: {skyOf(w, wb)}</div>
+          <div className="text-[11px] mono text-ink2">Wind {beaufort(w.wind)} Bft{fog ? ` · ${fog}` : ""}</div>
+          {effects.length > 0 && <div className={`text-[11px] ${w.storm ? "text-siegel" : "text-ink2"}`}>{effects.map((e) => e.text).join(" · ")}</div>}
+        </div>
+      ) : (
+        <span className={`text-[11px] mono ${w.storm ? "text-siegel" : "text-ink2"}`}>{beaufort(w.wind)} Bft{effects.length > 0 ? " !" : ""}</span>
+      )}
+    </button>
   );
 }

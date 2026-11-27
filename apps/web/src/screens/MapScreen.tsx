@@ -8,6 +8,8 @@ import type { Target } from "../App.tsx";
 import { HexMap } from "./LazyHexMap.tsx";
 import { Button, Loading } from "../ui.tsx";
 import { MapLegend } from "../map/Legend.tsx";
+import { MAP_BTN } from "../map/controls.ts";
+import { Icon } from "../icons.tsx";
 import { RELATION_HEX, TacticalIcon, relationKind } from "../map/TacticalIcon.tsx";
 import { fmtPosition } from "../map/coords.ts";
 import { MissionPanel, missionHex } from "../components/MissionSheet.tsx";
@@ -97,24 +99,25 @@ export function MapScreen({ base, focus, onPlan, onSwitchBase }: { base: BaseDat
           fields={fieldLayer}
           weather={showWeather ? meta.data?.balance.weather : null}
           harbors={harbors}
+          controls={<>
+            <button type="button" className={MAP_BTN} onClick={() => { setCenterOn(home); setRecenter((n) => n + 1); }} aria-label="Mein Hafen" title="Mein Hafen">
+              <TacticalIcon kind="own" size={22} />
+            </button>
+            <button
+              type="button"
+              aria-pressed={showWeather}
+              aria-label={showWeather ? "Wetter ausblenden" : "Wetter einblenden"}
+              title={showWeather ? "Wetter aus" : "Wetter an"}
+              className={`${MAP_BTN} ${showWeather ? "" : "opacity-60 !border-rule"}`}
+              onClick={() => setShowWeather((v) => { localStorage.setItem("tf-wetter", v ? "aus" : "an"); return !v; })}
+            >
+              <Icon id="wolke" size={24} />
+            </button>
+          </>}
         />
-        <div className="absolute left-2 top-6 flex flex-col gap-1.5 items-start">
-          <button
-            type="button"
-            className="tap rounded-[3px] bg-card border border-ink text-ink px-3 text-[11px] font-display uppercase tracking-[0.12em] flex items-center gap-2"
-            onClick={() => { setCenterOn(home); setRecenter((n) => n + 1); }}
-          >
-            <TacticalIcon kind="own" size={20} /> Mein Hafen
-          </button>
-          <button
-            type="button"
-            aria-pressed={showWeather}
-            className={`tap rounded-[3px] bg-card border px-3 text-[11px] font-display uppercase tracking-[0.12em] ${showWeather ? "border-ink text-ink" : "border-rule text-ink2"}`}
-            onClick={() => setShowWeather((v) => { localStorage.setItem("tf-wetter", v ? "aus" : "an"); return !v; })}
-          >
-            Wetter {showWeather ? "an" : "aus"}
-          </button>
-          {showWeather && meta.data?.balance.weather && <WeatherChip at={home} wb={meta.data.balance.weather} now={now} radar={hasRadar} />}
+        {/* Links oben nur noch das kleine Wetterkärtchen (aufklappbar) und die Feindwarnung. */}
+        <div className="absolute left-1.5 top-3 flex flex-col gap-1 items-start pointer-events-none">
+          {showWeather && meta.data?.balance.weather && <div className="pointer-events-auto"><WeatherChip at={home} wb={meta.data.balance.weather} now={now} radar={hasRadar} /></div>}
           {alert && (
             <div className="rounded-[3px] bg-card border border-siegel border-l-4 text-siegel px-2 py-1 text-[11px] font-display uppercase tracking-wider">
               Feindkontakt – Angriff im Anmarsch

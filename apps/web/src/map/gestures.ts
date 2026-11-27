@@ -1,5 +1,5 @@
 // Ziehen, Zwei-Finger-Zoom, Mausrad und Tippen auf der Karte.
-// Zoomgrenzen: kleinste Stufe füllt den Bildschirm vollständig (cover), Schwenken endet am Kartenrand.
+// Zoomgrenzen: kleinste Stufe füllt den Bildschirm vollständig (cover), Schwenken endet kurz hinter dem Kartenrand (edgePad).
 import type { Container } from "pixi.js";
 import { COLS, HEX_SIZE_KM, HEX_W, ROWS, ROW_H } from "@tidefront/world";
 
@@ -18,14 +18,23 @@ export function clampScale(s: number, w: number, h: number): number {
   return Math.max(minScale(w, h), Math.min(MAX_SCALE, s));
 }
 
-/** Verschiebung so begrenzen, dass kein leerer Rand neben der Karte erscheint. */
+/**
+ * Spielraum über den Kartenrand hinaus (Bildschirmpixel): Felder am Rand lassen sich so unter den Knöpfen hervor in
+ * die freie Mitte ziehen. Ein schmaler Papierrand bleibt dabei sichtbar.
+ */
+export function edgePad(w: number, h: number): { x: number; y: number } {
+  return { x: Math.min(110, w * 0.28), y: Math.min(110, h * 0.18) };
+}
+
+/** Verschiebung begrenzen: höchstens edgePad leerer Rand neben der Karte. */
 export function clampView(world: Container, w: number, h: number): void {
   const b = MAP_BOUNDS;
   const s = clampScale(world.scale.x, w, h);
   if (s !== world.scale.x) world.scale.set(s);
+  const pad = edgePad(w, h);
   const lim = (v: number, lo: number, hi: number) => (lo > hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, v)));
-  const x = lim(world.x, w - b.x1 * s, -b.x0 * s);
-  const y = lim(world.y, h - b.y1 * s, -b.y0 * s);
+  const x = lim(world.x, w - b.x1 * s - pad.x, -b.x0 * s + pad.x);
+  const y = lim(world.y, h - b.y1 * s - pad.y, -b.y0 * s + pad.y);
   if (x !== world.x || y !== world.y) world.position.set(x, y);
 }
 
