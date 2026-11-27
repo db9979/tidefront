@@ -219,7 +219,8 @@ export async function fieldArrive(tx: Tx, m: MissionRowLike, plan: Mission, orig
   const prevOwner = field.ownerId;
   let outcome: "captured" | "cleared" | "held" | "limit" = "held";
   if (destroyed) {
-    if (prevOwner !== null) await endGarrison(tx, field.missionId, escort, due); // Geleitabteilung war unterwegs und kehrt heim
+    // Geleitabteilung war unterwegs und kehrt heim; getauchte Überlebende (U-Boote halten nicht, TST-01) ebenso.
+    if (prevOwner !== null) await endGarrison(tx, field.missionId, addCounts(escort, defenderLeft), due);
     const split = splitGarrison(survivors, !!(plan as { stayAll?: boolean }).stayAll, balance);
     const limit = origin ? await maxFieldsOfPlayer(tx, pid, origin) : 0;
     if (split && origin && (await ownedBy(tx, pid)).length < limit) {

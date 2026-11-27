@@ -182,7 +182,7 @@ export function FreeSim({ balance, base, preset, planAt }: { balance: Balance; b
       <section className="rounded-xl bg-paper border border-rule p-3">
         {weather && <p className="text-xs text-ink2 mb-2">Wetter am Kampfort des Berichts: {weatherText(weather)}.</p>}
         <Outcome attacker={attacker} defender={defender} balance={balance} weather={weather} rule={rule} loot={loot} mine={mine} ownTitle={sideTitle(mine)} enemyTitle={sideTitle(mine === "attacker" ? "defender" : "attacker")} />
-        <SimNote attacker={attacker} defender={defender} weather={weather} rule={rule} extra={rule === "vernichtung" ? "Sieg wie im echten Kampf: Gegner vernichtet." : "Beute bei Nestern fest, beim eigenen Hafen aus den Beständen über dem Bunkerschutz."} />
+        <SimNote attacker={attacker} defender={defender} weather={weather} rule={rule} extra={rule === "halten" ? "Sieg wie im echten Kampf: Gegner vernichtet; getauchte U-Boote halten nicht." : rule === "vernichtung" ? "Sieg wie im echten Kampf: Gegner vernichtet." : "Beute bei Nestern fest, beim eigenen Hafen aus den Beständen über dem Bunkerschutz."} />
         {mine === "attacker" && attMode !== "kartell" && Object.keys(attacker.units).length > 0 && (
           <div className="mt-3">
             {win

@@ -421,7 +421,7 @@ export function trade(
   const request = { side: input.side, resource: input.resource, qty: input.qty, expectedPrice: input.expectedPrice };
   return runCommand(engine, playerId, key, "trade", async (ctx) => {
     const b = await ownBaseLocked(ctx, input.baseId);
-    const [p] = await ctx.tx.select().from(tables.player).where(eq(tables.player.id, playerId)).for("update");
+    const [p] = await ctx.tx.select().from(tables.player).where(eq(tables.player.id, playerId)).for("no key update");
     if (!balance.resources.includes(request.resource)) fail("bad_qty");
     // Weltereignis Belagerung: keine Börsenkäufe (Lieferungen) während des Belagerungsrings.
     if (request.side === "buy" && (await siegeEffects(ctx.tx, b.id, ctx.nowMs))?.marketBlocked) fail("siege");

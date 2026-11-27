@@ -3,10 +3,10 @@
 // Ablauf: world-events-spawn.ts (Entstehen), world-events-run.ts (Fahrt, Angriffe, Ende, Handler-Tabelle),
 // world-events-missions.ts (Missionen gegen Ereignisse), world-events-view.ts (Lesemodell).
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { finaleBalance, finaleSchedule, pickKind, worldEventsBalance, type Counts, type ResourceMap, type RoutePoint, type WorldEventKind } from "@tidefront/game-core";
+import { finaleBalance, finaleSchedule, pickKind, worldEventsBalance, WORLD_EVENT_KINDS, type Counts, type ResourceMap, type RoutePoint, type WorldEventKind } from "@tidefront/game-core";
 import { tables, type Db, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, type Notice, type NoticeJob } from "./context.ts";
-import { scheduleEvent } from "./store.ts";
+import { randomSeed, scheduleEvent } from "./store.ts";
 import { worldEventNews } from "./market-news-sources.ts";
 
 const HOUR_MS = 3600000;
@@ -201,8 +201,46 @@ async function runningSeasonRow(db: DbOrTx) {
 export { runningSeasonRow };
 
 /**
+ * Frühester Termin des nächsten Spawns nach dem bisherigen Verlauf der Saison (Hotfix 0.38.1, ST-01/AN-01): letztes
+ * entstandenes Ereignis + spawnIntervalHours[0], letzter Versuch (auch ohne Ereignis) + retryHours. Ohne Verlauf 0.
+ * Erledigte world_event_spawn-Zeilen bleiben drei Tage (cleanup); Versuche liegen höchstens retryHours auseinander.
+ */
+export async function earliestNextSpawn(db: DbOrTx, seasonId: number): Promise<number> {
+  const w = worldEventsBalance(balance);
+  const [ev] = await db
+    .select({ at: sql<string | null>`max(${tables.worldEvent.startsAt})` })
+    .from(tables.worldEvent)
+    .where(and(eq(tables.worldEvent.seasonId, seasonId), inArray(tables.worldEvent.kind, [...WORLD_EVENT_KINDS])));
+  const [tried] = await db
+    .select({ at: sql<string | null>`max(coalesce(${tables.gameEvent.origDueAt}, ${tables.gameEvent.dueAt}))` })
+    .from(tables.gameEvent)
+    .where(and(
+      eq(tables.gameEvent.type, "world_event_spawn"), eq(tables.gameEvent.status, "done"),
+      sql`${tables.gameEvent.payload}->>'seasonId' = ${String(seasonId)}`,
+    ));
+  const ms = (v: string | null | undefined) => (v ? new Date(v).getTime() : null);
+  const lastSpawn = ms(ev?.at);
+  const lastTry = ms(tried?.at);
+  return Math.max(
+    lastSpawn === null ? 0 : lastSpawn + w.spawnIntervalHours[0] * HOUR_MS,
+    lastTry === null ? 0 : lastTry + w.retryHours * HOUR_MS,
+  );
+}
+
+/** Offene gewöhnliche Ereignisse (ohne Saisonfinale) – Deckel worldEvents.maxConcurrent. */
+export async function openOrdinaryCount(db: DbOrTx): Promise<number> {
+  const [r] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(tables.worldEvent)
+    .where(and(inArray(tables.worldEvent.status, ["announced", "active"]), sql`${tables.worldEvent.kind} <> 'finale'`));
+  return r?.n ?? 0;
+}
+
+/**
  * Worker (beim Start und alle 10 Minuten): plant das nächste world_event_spawn, falls keines ansteht.
- * Erstes Ereignis frühestens firstSpawnAfterHours nach Saisonbeginn. Rückgabe: Zeitpunkt oder null.
+ * Erstes Ereignis frühestens firstSpawnAfterHours nach Saisonbeginn, danach frühestens im Abstand zum letzten Spawn
+ * bzw. Versuch (earliestNextSpawn) – sonst entstünde nach einem Spawn ohne Nachfolger (Finale-Ankündigung, Saisonende,
+ * Retry) bei jedem Lauf sofort ein neues Ereignis. Rückgabe: Zeitpunkt oder null.
  */
 export async function ensureWorldEventPlanner(db: Db, nowMs: number): Promise<number | null> {
   return db.transaction(async (tx) => {
@@ -217,10 +255,10 @@ export async function ensureWorldEventPlanner(db: Db, nowMs: number): Promise<nu
       .limit(1);
     if (pending) return null;
     const w = worldEventsBalance(balance);
-    const at = Math.max(nowMs, season.startsAt.getTime() + w.firstSpawnAfterHours * HOUR_MS);
+    const at = Math.max(nowMs, season.startsAt.getTime() + w.firstSpawnAfterHours * HOUR_MS, await earliestNextSpawn(tx, season.id));
     if (at > season.endsAt.getTime() - w.minSeasonHoursLeft * HOUR_MS) return null;
     if (at >= ordinaryEventsUntil(season)) return null; // Saisonfinale: ab der Ankündigung keine gewöhnlichen Ereignisse
-    const kind = pickKind(crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296, balance);
+    const kind = pickKind(randomSeed() / 4294967296, balance);
     await scheduleEvent(tx, "world_event_spawn", at, { seasonId: season.id, kind }, null);
     return at;
   });

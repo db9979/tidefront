@@ -128,7 +128,7 @@ function fromBattle(kind: string, battle: Obj, data: Obj, mine: Side, opp: Side,
   let fixedLoot: ResourceMap | undefined = sides.defender.fixedLoot;
   let fixedLootFinal = false;
   let ownStockNeeded = false;
-  if (rule === "vernichtung") {
+  if (rule !== "landung") {
     lootRule = destroyLoot(data, loot, notes);
   } else if (!fixedLoot) {
     if (hasAny(loot)) {
@@ -168,7 +168,8 @@ function fromBattle(kind: string, battle: Obj, data: Obj, mine: Side, opp: Side,
   if (sides.attacker.versorgungsmangel || sides.defender.versorgungsmangel) {
     notes.push(`Versorgungsmangel eingerechnet (${[sides.attacker.versorgungsmangel ? names[0] : null, sides.defender.versorgungsmangel ? names[1] : null].filter(Boolean).join(", ")}).`);
   }
-  if (rule === "vernichtung") notes.push("Sieg wie im echten Kampf: alle Einheiten des Gegners vernichtet (Truppen ohne Schiffe ertrinken).");
+  if (rule !== "landung") notes.push("Sieg wie im echten Kampf: alle Einheiten des Gegners vernichtet (Truppen ohne Schiffe ertrinken).");
+  if (rule === "halten") notes.push("Getauchte U-Boote halten weder Konvoi noch Feld: bleiben nur sie übrig, ist es verloren.");
   return { source: "kampf", mine, names, attacker, defender, ...(weather ? { weather } : {}), luck: avgLuck(battle.phases), winner, rule, loot: lootRule, ...(ownStockNeeded ? { ownStockNeeded } : {}), notes };
 }
 

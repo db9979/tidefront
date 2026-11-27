@@ -52,7 +52,7 @@ export { startFinaleNow, ensureFinalePlanner } from "./finale-run.ts"; // Saison
 export { finaleParticipants, finaleCenter, finaleVanguards } from "./finale-core.ts";
 export { finaleAim } from "./finale-battle.ts";
 export {
-  clearMarketNews, effectiveMarketRefs, marketNewsAdmin, marketNewsView, marketRefs, pctText, upsertNews, REF_OFFSETS_KEY, SCARCITY_KEY,
+  clearMarketNews, effectiveMarketRefs, marketNewsAdmin, marketNewsView, marketRefs, pctText, pruneMarketNews, upsertNews, REF_OFFSETS_KEY, SCARCITY_KEY,
 } from "./market-news.ts";
 export {
   activePortCount, netBuysByPlayer, runMarketNews, runMarketNewsTx, scarcityInput, warSituation, worldEventNews, worldEventSpecs,

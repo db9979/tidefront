@@ -6,11 +6,12 @@ import assert from "node:assert/strict";
 import { and, eq, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
 import { nestSites, isCoast, hexDistanceKm, COLS, ROWS } from "@tidefront/world";
-import type { BaseState } from "@tidefront/game-core";
+import { mulberry32, type BaseState } from "@tidefront/game-core";
 import {
   chooseBase, ensureFieldPlanner, fieldRecall, fieldsView, launchMission, missionPreview, processDue, register, seed, setFieldEscort,
   weeklyView, type Engine,
 } from "../src/index.ts";
+import { setRandomSeedSource } from "../src/store.ts";
 import { addSecondHarbor } from "./multi-base.ts";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -110,10 +111,12 @@ beforeEach(async () => {
 });
 
 after(async () => {
+  setRandomSeedSource(null);
   await client.end();
 });
 
 test("Felder 2: Geleitabteilung begleitet Ertragskonvois, verteidigt nur gegen das Kartell; Radar-Vorwarnung bei Angriff", async () => {
+  setRandomSeedSource(mulberry32(Number(process.env.TF_TEST_SEED ?? 382001))); // TE-02: Kampf- und Kartellwürfe deterministisch
   const a = await newPlayer("Geleitherr", coastNear(null));
   const b = await newPlayer("Angreifer", coastNear(a));
   assert.ok(await ensureFieldPlanner(db, Date.now()));
@@ -189,6 +192,39 @@ test("Felder 2: Geleitabteilung begleitet Ertragskonvois, verteidigt nur gegen d
   const old = await missionRow(gid);
   assert.equal(old.status, "returning");
   assert.ok(((old.returning as Record<string, number>).korvette ?? 0) >= 2, "Geleitabteilung war unterwegs und kehrt heim");
+});
+
+test("Hotfix TST-01: U-Boote allein halten weder Ertragskonvoi noch Feld gegen das Kartell, überleben aber", async () => {
+  setRandomSeedSource(mulberry32(382003));
+  const a = await newPlayer("Tauchherr", coastNear(null));
+  await patchBase(a.baseId, (s) => { s.units = { ...s.units, uboot: 4 }; s.buildings.werft = Math.max(s.buildings.werft ?? 0, 5); });
+  await ensureFieldPlanner(db, Date.now());
+  const target = await freeField(a);
+  const gid = await capture(a, target, { korvette: 2, uboot: 2 });
+  const esc = await setFieldEscort(engine, a.playerId, key(), target.id, { uboot: 2 });
+  assert.equal(esc.ok, true, JSON.stringify(esc));
+  // Ertragskonvoi nur mit U-Booten als Geleit: das Kartell nimmt Ladung, die U-Boote bleiben.
+  await db.update(tables.resourceField).set({ lastTickAt: new Date(Date.now() - 4 * HOUR) }).where(eq(tables.resourceField.id, target.id));
+  await db.update(tables.gameEvent).set({ dueAt: new Date() }).where(sql`${tables.gameEvent.type} = 'field_tick' and ${tables.gameEvent.status} = 'pending'`);
+  await runUntil(Date.now() + 1000);
+  const [cv] = await db.select().from(tables.convoy).where(and(eq(tables.convoy.kind, "feld"), eq(tables.convoy.recipientId, a.playerId)));
+  assert.ok(cv, "Ertragskonvoi unterwegs");
+  assert.deepEqual(cv.escort, { uboot: 2 });
+  await db.insert(tables.gameEvent).values({ type: "convoy_raid", dueAt: new Date(), payload: { convoyId: cv.id }, baseId: null });
+  await runUntil(Date.now() + 1000);
+  const [rep] = await db.select().from(tables.battleReport).where(and(eq(tables.battleReport.kind, "konvoi"), eq(tables.battleReport.defenderPlayerId, a.playerId)));
+  assert.ok(rep, "Konvoibericht");
+  assert.equal((rep.report as { convoy: { held: boolean } }).convoy.held, false, "U-Boote halten den Konvoi nicht");
+  assert.equal(((await missionRow(gid)).returning as Record<string, number>).uboot, 2, "U-Boote überleben");
+  // Kartell gegen eine Besatzung nur aus U-Booten: das Feld ist verloren, die U-Boote kehren heim.
+  await db.update(tables.mission).set({ returning: { uboot: 2 } }).where(eq(tables.mission.id, gid));
+  await db.update(tables.resourceField).set({ escort: {} }).where(eq(tables.resourceField.id, target.id));
+  await db.insert(tables.gameEvent).values({ type: "field_raid", dueAt: new Date(), payload: { fieldId: target.id, ownerId: a.playerId, units: { schnellboot: 2 } }, baseId: null });
+  await runUntil(Date.now() + 1000);
+  assert.equal((await fieldRow(target.id)).ownerId, null, "Feld an das Kartell verloren");
+  const old = await missionRow(gid);
+  assert.equal(old.status, "returning");
+  assert.equal((old.returning as Record<string, number>).uboot, 2, "U-Boote kehren heim");
 });
 
 test("Felder 2: Verstärkung aus demselben und aus einem anderen Hafen; Wochenziel Gründung", async () => {

@@ -53,7 +53,7 @@ export function fieldProbe(units: Counts, guard: Counts, mods: Modifiers, runs: 
   for (let i = 0; i < runs; i++) {
     const r = resolveBattle({ units, modifiers: mods }, { units: guard, defenses: {} }, balance, Math.imul(i + 1, 0x9e3779b1) >>> 0);
     if (!r.ok) return 0;
-    const s = strandTroops(r.report, balance);
+    const s = strandTroops(r.report, balance, false);
     if (s.destroyed && splitGarrison(s.report.attacker.final, false, balance)) wins++;
   }
   return wins / runs;
@@ -69,7 +69,7 @@ export function holdProbe(garrison: Counts, raid: Counts, runs: number): number 
   for (let i = 0; i < runs; i++) {
     const r = resolveBattle({ units: raid }, { units: garrison, defenses: {} }, balance, Math.imul(i + 1, 0x9e3779b1) >>> 0);
     if (!r.ok) return 0;
-    if (!strandTroops(r.report, balance).destroyed) held++;
+    if (!strandTroops(r.report, balance, false).destroyed) held++;
   }
   return held / runs;
 }

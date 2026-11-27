@@ -204,6 +204,13 @@
       "when": 1795800962157,
       "tag": "0028_liefervertraege",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1795813369101,
+      "tag": "0029_market_news_live",
+      "breakpoints": true
     }
   ]
 }

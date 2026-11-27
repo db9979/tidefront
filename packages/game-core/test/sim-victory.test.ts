@@ -13,8 +13,10 @@ const balance = loadBalance();
 const armada = composeArmada(5000, 0, balance).units; // Großflotte: Schnellboote mit Miliz an Bord
 const fleet = { korvette: 30, zerstoerer: 12 };
 
-test("Siegregel je Kampfart: Weltereignis, Feld, Konvoi, Blockade „Gegner vernichtet“, sonst Landung", () => {
-  for (const k of ["weltereignis", "feld", "konvoi", "blockadekampf"]) assert.equal(victoryRuleOf(k), "vernichtung");
+test("Siegregel je Kampfart: Weltereignis, Blockade „Gegner vernichtet“, Feld und Konvoi „halten“, sonst Landung", () => {
+  for (const k of ["weltereignis", "blockadekampf"]) assert.equal(victoryRuleOf(k), "vernichtung");
+  for (const k of ["feld", "konvoi"]) assert.equal(victoryRuleOf(k), "halten");
+  assert.equal(victoryRuleOf("sammelangriff", { convoy: {} }), "halten");
   for (const k of ["ueberfall", "sammelangriff", "kartell"]) assert.equal(victoryRuleOf(k), "landung");
   assert.equal(victoryRuleOf("sammelangriff", { worldEvent: { kind: "grossflotte" } }), "vernichtung");
 });
@@ -129,4 +131,28 @@ test("Plansuche hält gegen andere Seeds: gemeldete Siegchance aus den Prüf-See
     const other = nestWinRate(p.units, level, balance, { runs: 300, seedOffset: 77777 }) ?? 0;
     assert.ok(other >= RAID_PLAN_TARGET - 0.04, `Stufe ${level} gegen fremde Seeds: ${other}`);
   }
+});
+
+test("Hotfix TST-01: ein U-Boot allein hält weder Konvoi noch Feld gegen das Kartell, überlebt aber", () => {
+  const cartel = { units: { schnellboot: 20 } };
+  const r = resolveBattle(cartel, { units: { uboot: 1 }, defenses: {} }, balance, 777);
+  assert.ok(r.ok);
+  assert.equal(r.report.defender.final.uboot, 1, "Kartell kann das U-Boot nicht treffen");
+  for (const kind of ["konvoi", "feld"]) {
+    const s = settleBattle(r.report, balance, victoryRuleOf(kind));
+    assert.equal(s.destroyed, true, `${kind}: nicht gehalten`);
+    assert.equal(s.report.winner, "attacker");
+    assert.equal(s.report.defender.final.uboot, 1, "U-Boot überlebt");
+  }
+  // Gegen NPC-Verbände sonst unverändert (ENTSCHEIDUNGEN-3): bei „vernichtung“ zählt das U-Boot weiter.
+  assert.equal(settleBattle(r.report, balance, "vernichtung").destroyed, false);
+  // Mit einer Korvette dabei hält der Verband, solange die Korvette überlebt.
+  const mixed = resolveBattle({ units: { schnellboot: 1 } }, { units: { uboot: 1, korvette: 3 }, defenses: {} }, balance, 778);
+  assert.ok(mixed.ok);
+  const sm = settleBattle(mixed.report, balance, "halten");
+  assert.equal(sm.destroyed, (mixed.report.defender.final.korvette ?? 0) <= 0);
+  // Simulator: dieselbe Regel – reines U-Boot-Geleit gewinnt nie.
+  const sim = simulateBattle(cartel, { units: { uboot: 5 }, defenses: {} }, balance, { rule: "halten", mine: "defender" });
+  assert.ok(sim.ok);
+  assert.equal(sim.stats.winRate, 0);
 });
