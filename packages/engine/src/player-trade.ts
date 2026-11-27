@@ -4,11 +4,12 @@
 // werden sofort gutgeschrieben. Gebühr je empfangener Seite. Rückzug erstattet sofort.
 // Sperrreihenfolge: Angebot, Stützpunkte aufsteigend, Spieler aufsteigend.
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
-import { harborMarketUnlocked, settle, deliverCargo, market as marketCore } from "@tidefront/game-core";
+import { settle, deliverCargo, market as marketCore } from "@tidefront/game-core";
 import { hexDistanceKm } from "@tidefront/world";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, type Engine } from "./context.ts";
 import { runCommand, type Ctx } from "./commands.ts";
+import { marketUnlockedFor } from "./player-wide.ts"; // Mehrere Häfen: Freischaltung spielerweit
 import { homeBaseOf, lockBases, lockOwnBase, ownBase, readBase, saveBase, scheduleEvent, type BaseRow } from "./store.ts";
 import { fail, membershipOf, systemMessage } from "./alliance-core.ts";
 import { getSetting } from "./settings.ts";
@@ -88,7 +89,7 @@ export function createOffer(engine: Engine, playerId: number, key: string, input
     if (input.visibility === "alliance" && !m) fail("no_alliance");
     const b = await lockOwnBase(ctx.tx, playerId, input.baseId); // Treuhand aus dem aktiven Hafen
     const state = settle(b.state, ctx.nowMs, balance);
-    if (!harborMarketUnlocked(state, balance)) fail("locked");
+    if (!(await marketUnlockedFor(ctx.tx, playerId, { id: b.id, state }))) fail("locked"); // spielerweit (höchste Hafenkommandantur)
     const [n] = await ctx.tx
       .select({ n: sql<number>`count(*)::int` })
       .from(tables.playerOffer)
@@ -144,7 +145,7 @@ export function acceptOffer(engine: Engine, playerId: number, key: string, offer
     if (!buyerBase || buyerBase.playerId !== playerId) fail("no_base");
     if (!sellerBase || sellerBase.playerId !== o.sellerId) fail("seller_gone");
     const buyerState = settle(buyerBase.state, ctx.nowMs, balance);
-    if (!harborMarketUnlocked(buyerState, balance)) fail("locked");
+    if (!(await marketUnlockedFor(ctx.tx, playerId, { id: buyerBase.id, state: buyerState }))) fail("locked"); // spielerweit
     const traders = o.want === "credits" || o.give === "credits" ? await lockPlayers(ctx.tx, [playerId, o.sellerId]) : new Map<number, Trader>();
     const credit = new Map<number, number>();
     const creditOf = (id: number) => credit.get(id) ?? traders.get(id)!.credits;

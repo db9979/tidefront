@@ -1,5 +1,5 @@
 // Truppen mit Segment-Schalter (Muster wie Meldungen), Wahl geräteweit gemerkt:
-//   Einsatz   – Mission planen, laufende Missionen, Gäste, Admirale (eingeklappt), zuletzt heimgekehrt, Simulator-Link
+//   Einsatz   – Mission planen, laufende Missionen, Eingehend (eigene Verlegungen/Transporte), Gäste, Admirale (eingeklappt), zuletzt heimgekehrt, Simulator-Link
 //   Ausbilden – Werft, Kaserne, Flugfeld, Nachrichtendienst (components/TrainRow.tsx)
 //   Abwehr    – Verteidigungsanlagen
 // Forschung ist ein Knopf im Kopf. Neue Karten: Missionsbezogenes nach „Einsatz“, Einheiten nach „Ausbilden“.
@@ -21,6 +21,7 @@ import { OpsMissionLine, StationedGuestsCard } from "../components/AllianceOps.t
 import { LiftBlockade } from "../components/Naval.tsx"; // See: Blockade aufheben
 import { TrainGroup } from "../components/TrainRow.tsx";
 import { FieldMissionLine, MyFieldsCard } from "../components/Fields.tsx"; // Felder
+import { IncomingCard } from "../components/Incoming.tsx"; // Mehrere Häfen: Eingehend
 
 type Seg = "einsatz" | "ausbilden" | "abwehr";
 const SEGS: { id: Seg; label: string }[] = [
@@ -94,6 +95,7 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
           ))}
         </ul>
       </Card>
+      <IncomingCard base={base} now={now} />{/* Mehrere Häfen: eigene Verlegungen/Transporte */}
       <MyFieldsCard base={base} onShowOnMap={onShowOnMap} />{/* Felder */}
       <StationedGuestsCard base={base} now={now} />
       <AdmiralsCard />

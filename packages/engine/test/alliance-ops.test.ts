@@ -294,11 +294,15 @@ test("Sammelangriff auf ein Weltereignis (Belagerung): ein Sieger, Schaden und B
   const ev = await db.transaction((tx) => spawnWorldEvent(tx, Date.now(), "belagerung", season!.id, 0, C.baseId));
   if (!ev) return; // kein geeignetes Ziel in dieser Welt
   const [row] = await db.select().from(tables.worldEvent).where(eq(tables.worldEvent.id, ev.id));
-  // Der Belagerte selbst darf nicht mitmachen, die anderen schon.
+  // Der Belagerte darf aus dem belagerten Hafen nicht mitmachen, die anderen schon.
   const o = await openRaid(engine, A.playerId, key(), { col: row.col, row: row.row, eventId: ev.id, units: { zerstoerer: 3, korvette: 5 }, joinMinutes: 15, arriveMinutes: 15 });
   assert.equal(o.ok, true, JSON.stringify(o));
   const raidId = (o as { raidId: number }).raidId;
   assert.equal(await code(joinRaid(engine, C.playerId, key(), { raidId, units: { korvette: 1 } })), "own_siege");
+  // Mehrere Häfen: aus einem anderen eigenen Hafen darf der Belagerte mitmachen (danach Rückzug, Rest unverändert).
+  const C2 = await addSecondHarbor(db, C.playerId, { near: C, minKm: 100, maxKm: 600, patch: (s) => { s.units = { korvette: 3 }; s.resources.treibstoff = 1_000_000; s.protection.createdAtMs = 0; s.buildings.hafenkommandantur = 4; } });
+  assert.equal(await code(joinRaid(engine, C.playerId, key(), { raidId, units: { korvette: 1 }, baseId: C2.baseId })), "ok");
+  assert.equal(await code(withdrawRaid(engine, C.playerId, key(), raidId)), "ok");
   assert.equal((await joinRaid(engine, B.playerId, key(), { raidId, units: { zerstoerer: 6, korvette: 10 } })).ok, true);
   const [raid] = await db.select().from(tables.allianceRaid).where(eq(tables.allianceRaid.id, raidId));
   await processDue(engine, raid.joinDeadline.getTime() + 1);

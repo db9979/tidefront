@@ -73,7 +73,7 @@ export async function worldEventsView(engine: Engine, playerId: number, baseId?:
       harbor: e.data.harbor ?? null,
       region: e.data.region ?? null,
       targets: (e.data.targets ?? []).map((t) => ({ name: t.name, col: t.col, row: t.row, status: t.status, own: t.playerId === playerId, winner: t.winner ?? null })),
-      siege: e.kind === "belagerung" ? { baseId: e.targetBaseId, name: e.data.baseName ?? "?", own: e.data.ownerId === playerId, penalty: w.belagerung.productionPenalty } : null,
+      siege: e.kind === "belagerung" ? { baseId: e.targetBaseId, name: e.data.baseName ?? "?", own: e.data.ownerId === playerId, ownHere: e.data.ownerId === playerId && (!own || own.id === e.targetBaseId), penalty: w.belagerung.productionPenalty } : null,
       winner: e.winnerPlayerId !== null ? names.get(e.winnerPlayerId) ?? "?" : null,
       contributors: mine.sort((a, b) => b.hp - a.hp).map((d) => ({ name: d.name, hp: d.hp, attacks: d.attacks, own: d.playerId === playerId })),
       distanceKm: own ? Math.round(hexDistanceKm(own, pos)) : null,

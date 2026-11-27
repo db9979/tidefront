@@ -251,7 +251,7 @@ test("Großflotte: Ankündigung, Schwächung auf See (Verluste bleiben, Beute un
   assert.equal(attackUnits.schnellboot, left);
 });
 
-test("Belagerung: keine Börsenkäufe, Produktion −30 %, Ring brechen nur durch andere", async () => {
+test("Belagerung: keine Börsenkäufe, Produktion −30 %, Ring brechen durch andere (nicht aus dem belagerten Hafen)", async () => {
   const a = await newPlayer("Belagert", 120);
   const b = await newPlayer("Retter", coastNear(a, 0));
   await patchBase(a.baseId, (s) => {
@@ -276,7 +276,7 @@ test("Belagerung: keine Börsenkäufe, Produktion −30 %, Ring brechen nur durc
   const want = expected.resources.stahl - perHour * 0.3 * ((tick - e.startsAt.getTime()) / HOUR);
   assert.ok(perHour > 0);
   assert.ok(Math.abs(afterTick.resources.stahl - want) < 0.01, `${afterTick.resources.stahl} ≈ ${want}`);
-  // Der Belagerte selbst kann den Ring nicht brechen.
+  // Der Belagerte kann den Ring nicht aus dem belagerten Hafen selbst brechen.
   await arm(a.baseId, { zerstoerer: 30 });
   const self = await launchMission(engine, a.playerId, key(), { type: "ueberfall", units: { zerstoerer: 30 }, col: 0, row: 0, eventId: id });
   assert.deepEqual(self, { ok: false, code: "own_siege" });
@@ -314,6 +314,34 @@ test("Mehrere Häfen: Belagerung einer Kolonie wirkt nur dort; Lesemodell je akt
   assert.notEqual((buyHome as { code?: string }).code, "siege");
   const msgs = await db.select().from(tables.message).where(eq(tables.message.toPlayerId, c.playerId));
   assert.ok(msgs.some((x) => (x.subject ?? "").includes(c2.name)), "Text nennt den Hafen");
+});
+
+test("Mehrere Häfen: Ring um den eigenen Hafen aus einem anderen eigenen Hafen brechen, nicht aus dem belagerten", async () => {
+  const d = await newPlayer("Doppelhafen", 160);
+  const d2 = await addSecondHarbor(db, d.playerId, { near: d, minKm: 150, maxKm: 500, patch: (s) => { s.protection.createdAtMs = Date.now() - 30 * DAY; } });
+  await patchBase(d.baseId, (s) => { s.buildings.hafenkommandantur = 6; });
+  const id = await spawn("belagerung", d.baseId);
+  assert.equal((await eventRow(id)).targetBaseId, d.baseId);
+  // Aus dem belagerten Heimathafen: wie bisher gesperrt; Lesemodell kennzeichnet das.
+  await arm(d.baseId, { zerstoerer: 30, landungsschiff: 2 });
+  const self = await launchMission(engine, d.playerId, key(), { type: "ueberfall", units: { zerstoerer: 30 }, col: 0, row: 0, eventId: id });
+  assert.deepEqual(self, { ok: false, code: "own_siege" });
+  const homeView = (await worldEventsView(engine, d.playerId)).events.find((e) => e.id === id)!;
+  assert.deepEqual([homeView.siege?.own, homeView.siege?.ownHere], [true, true]);
+  // Aus der Kolonie: erlaubt.
+  await arm(d2.baseId, { zerstoerer: 30, landungsschiff: 2 });
+  const colView = (await worldEventsView(engine, d.playerId, d2.baseId)).events.find((e) => e.id === id)!;
+  assert.deepEqual([colView.siege?.own, colView.siege?.ownHere], [true, false]);
+  const pv = await missionPreview(engine, d.playerId, { type: "ueberfall", units: { zerstoerer: 30, landungsschiff: 2 }, col: 0, row: 0, eventId: id, baseId: d2.baseId });
+  assert.equal(pv.ok, true, JSON.stringify(pv));
+  const m = await launchMission(engine, d.playerId, key(), { type: "ueberfall", units: { zerstoerer: 30, landungsschiff: 2 }, col: 0, row: 0, eventId: id, baseId: d2.baseId });
+  assert.equal(m.ok, true, JSON.stringify(m));
+  await runUntil((m as { arriveAtMs: number }).arriveAtMs + 1000);
+  const done = await eventRow(id);
+  assert.equal(done.status, "ended");
+  assert.equal(done.outcome, "defeated");
+  assert.equal(done.winnerPlayerId, d.playerId);
+  assert.equal(await siegeEffects(db, d.baseId, Date.now()), null);
 });
 
 test("Saisonende räumt Ereignisse ab, der Planer setzt in der neuen Saison neu an", async () => {

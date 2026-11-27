@@ -76,7 +76,7 @@ const ERRORS: Record<string, string> = {
   no_event: "Dieses Weltereignis gibt es nicht (mehr).",
   event_over: "Dieses Weltereignis ist schon vorbei.",
   event_needs_raid: "Gegen Weltereignisse ist nur ein Überfall möglich.",
-  own_siege: "Den Ring um den eigenen Hafen können nur andere Spieler brechen.",
+  own_siege: "Aus dem belagerten Hafen selbst lässt sich der Ring nicht brechen – greife aus einem anderen deiner Häfen an oder bitte Mitspieler.",
   intercept_impossible: "Der Verband erreicht das Schatzschiff nicht mehr vor dem Hafen – schnellere Schiffe wählen.",
   too_late: "Der Verband käme erst nach dem Ende des Ereignisses an.",
   siege: "Belagerungsring: keine Börsenkäufe, bis die Belagerung endet oder gebrochen ist.",
@@ -139,7 +139,7 @@ const ERRORS: Record<string, string> = {
   unknown_building: "Unbekanntes Gebäude.",
   no_order: "Kein laufender Auftrag.",
   already_finished: "Der Auftrag ist schon fertig.",
-  locked: "Die Börse öffnet ab Hafenkommandantur Stufe 3.",
+  locked: "Börse und Spielerhandel öffnen ab Hafenkommandantur Stufe 3 (in einem deiner Häfen).",
   halted: "Handel mit dieser Ressource ist pausiert.",
   bad_qty: "Ungültige Menge.",
   impact: "Die Menge bewegt den Kurs zu stark. Kleinere Menge wählen.",
@@ -262,6 +262,19 @@ const ERRORS: Record<string, string> = {
   same_base: "Ausgangs- und Zielhafen sind gleich.",
   admiral_elsewhere: "Dieser Admiral gehört zu einem anderen Hafen.",
   admiral_other_base: "Dieser Admiral dient in einem anderen Hafen – erst dorthin verlegen.",
+  // Mehrere Häfen: umbenennen und Kolonie aufgeben
+  bad_base_name: "Hafenname ungültig: 2–32 Zeichen, Buchstaben, Ziffern, Leerzeichen und _ . ' -.",
+  base_name_taken: "Einer deiner Häfen trägt schon diesen Namen.",
+  home_base: "Den Heimathafen kann man nicht aufgeben.",
+  missions_out: "Von diesem Hafen sind noch Verbände unterwegs, gebunden oder stationiert – erst heimholen.",
+  incoming_own: "Eine eigene Verlegung oder ein Transport ist auf dem Weg in diesen Hafen.",
+  attack_incoming: "Ein Angriff auf diesen Hafen ist im Anmarsch.",
+  guests_stationed: "Verbündete Verbände liegen in diesem Hafen oder sind auf dem Weg dorthin.",
+  blockaded: "Der Hafen ist blockiert.",
+  under_siege: "Der Hafen ist belagert.",
+  deliveries_underway: "Lieferungen (Börse, Handel oder Feldertrag) sind auf dem Weg in diesen Hafen.",
+  offers_open: "Aus diesem Hafen stehen noch Handelsangebote offen – erst zurückziehen.",
+  field_held: "Ein Rohstofffeld liefert an diesen Hafen – erst aufgeben.",
 };
 
 export function errorText(code: string): string {

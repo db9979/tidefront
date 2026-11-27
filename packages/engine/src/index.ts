@@ -11,6 +11,8 @@ export * from "./season-alliances.ts";
 export * from "./social.ts";
 export { baseOfPlayer, basesOfPlayer, homeBaseOf, lockOwnBase, ownBase, type BaseRow } from "./store.ts";
 export * from "./expansion.ts"; // Mehrere Häfen
+export { abandonBlockers, abandonColony, abandonInfo, renameBase } from "./harbors.ts"; // Mehrere Häfen: verwalten
+export { BASE_NAME_RE, colonyNameAt, normalizeBaseName } from "./harbor-names.ts";
 export * from "./account.ts";
 export * from "./ops.ts";
 export * from "./push.ts";

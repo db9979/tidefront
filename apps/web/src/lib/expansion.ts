@@ -67,3 +67,11 @@ export function isFreeCoast(t: { col: number; row: number }, map: MapData, field
 export function inFoundingRange(from: { col: number; row: number }, t: { col: number; row: number }, rules: ExpansionRules): boolean {
   return hexDistanceKm(from, t) <= rules.maxRangeKm;
 }
+
+/**
+ * Eingehender Verband, der eine Angriffswarnung verdient: weder Transport noch eigene Verlegung (Mehrere Häfen:
+ * eigene Verlegungen und Transporte aus anderen Häfen stehen ebenfalls unter „Eingehend“, aber ohne Warnung).
+ */
+export function isThreat(i: { type: string; own?: boolean }): boolean {
+  return !i.own && i.type !== "transport" && i.type !== TRANSFER;
+}

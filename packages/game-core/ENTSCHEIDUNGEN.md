@@ -637,5 +637,21 @@ Ziel: Felder sind Entscheidungen und Konflikte, kein passiver Mehrertrag.
    mit Ladung heim.
 6. **Verlegung.** Nur Hinfahrt (Treibstoff einfach), dauerhaft; Veteranen gewichtet gemischt, Admiral wechselt den
    Hafen. Transport in eigene Häfen ist erlaubt.
-7. **Offen:** „Kolonie aufgeben“ (P5); Umbenennen eines Hafens; Ortsname aus der Karte statt „<Name> II“; Auftragsbuch-
-   und Wochenziel-Schritt für Gründungen.
+7. **Verwalten (P5).** *Kolonie aufgeben:* nur Kolonien, nur ohne laufende Bewegungen (eigene Verbände von dort, eigene
+   Verlegungen/Transporte/Lieferungen dorthin, Gäste, Blockade, Belagerung, erkannter Angriff, offene Angebote, Feld).
+   Einheiten und Bestände **verfallen** statt automatisch heimzufahren: eine Zwangsverlegung bräuchte eine Mission
+   ohne Ausgangshafen (die Zeile hängt per Kaskade am Hafen) und wäre ein Sofort-Rückzug aus jeder Lage; so bleibt die
+   Verlegung eine bewusste Fahrt mit Reisezeit. Admirale (Personen) wechseln in den Heimathafen, Minenfelder bleiben
+   (base_id null). Unerkannte Angreifer drehen bei Ankunft um („Ziel existiert nicht mehr“), damit das Aufgeben
+   keinen Hinweis auf verdeckte Verbände gibt. Keine Schemaänderung nötig: mission/admiral/minefield/resource_field
+   hängen per Kaskade am Hafen und werden vorher geprüft bzw. umgehängt; game_event, delivery, convoy, player_offer
+   und world_event haben keinen Fremdschlüssel und werden durch die Sperrgründe abgedeckt (eigene Ereignisse des
+   Hafens werden gelöscht). *Umbenennen:* jeder eigene Hafen, Zeichen wie Allianznamen, Länge wie „Hafen wählen“
+   (2–32), eindeutig unter den eigenen Häfen. *Ortsname:* nächster von gut 170 Küstenorten der Karte
+   (`world/places.ts`, ohne Handelshäfen), gestuft 120/450 km, sonst nach Meer/Region; Doppel bekommen „II“.
+   *Belagerung:* den Ring um einen eigenen Hafen darf man aus einem anderen eigenen Hafen brechen – das ist echte
+   Hilfe von außen; aus dem belagerten Hafen bliebe es ein Ausfall gegen die eigene Blockade, wie bisher gesperrt.
+   *Spielerhandel:* Freischaltung nach der höchsten Hafenkommandantur aller Häfen – dieselbe Regel wie für die Börse
+   (Freischaltung, Kreditlimit) und die Admiral-Plätze, damit eine junge Kolonie nicht erneut Stufe 3 braucht; das
+   Tageslimit der Börse bleibt am Heimathafen, weil es eine Mengen-, keine Freischaltgröße ist.
+8. **Offen:** Auftragsbuch- und Wochenziel-Schritt für Gründungen (eigener Strang).

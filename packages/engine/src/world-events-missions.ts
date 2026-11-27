@@ -38,12 +38,16 @@ export interface EventMissionInput {
   eventId: number;
 }
 
-/** Zielfeld einer Mission gegen ein Ereignis. Codes: no_event, event_over, event_needs_raid, own_siege, no_carrier, intercept_impossible. */
+/**
+ * Zielfeld einer Mission gegen ein Ereignis. Codes: no_event, event_over, event_needs_raid, own_siege (Belagerung des
+ * eigenen Hafens, aus diesem Hafen selbst), no_carrier, intercept_impossible.
+ */
 function aim(ev: WorldEventRow | null, playerId: number, own: BaseRow, input: EventMissionInput, nowMs: number): Hex {
   if (!ev) throw new GameError("no_event");
   if (!isOpen(ev) || nowMs >= ev.endsAt.getTime()) throw new GameError("event_over");
   if (input.type !== "ueberfall") throw new GameError("event_needs_raid");
-  if (ev.kind === "belagerung" && ev.data.ownerId === playerId) throw new GameError("own_siege");
+  // Mehrere Häfen: den Ring um einen eigenen Hafen bricht man nur aus einem anderen eigenen Hafen.
+  if (ev.kind === "belagerung" && ev.data.ownerId === playerId && (ev.targetBaseId === null || ev.targetBaseId === own.id)) throw new GameError("own_siege");
   if (ev.kind !== "schatzschiff" || !ev.data.route) return { col: ev.col, row: ev.row };
   const speed = slowestSpeedKmh(input.units, balance);
   if (speed === null) throw new GameError("no_carrier");

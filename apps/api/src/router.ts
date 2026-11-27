@@ -2,6 +2,8 @@
 import { z } from "zod";
 import { APP_VERSION, BUILD_TIME } from "./version.ts";
 import {
+  abandonColony,
+  abandonInfo,
   balance,
   baseView,
   battleStats,
@@ -18,6 +20,7 @@ import {
   marketView,
   missionPreview,
   register,
+  renameBase,
   reportGet,
   reportList,
   setNightShield,
@@ -136,6 +139,14 @@ export const appRouter = t.router({
     nightShield: authed
       .input(z.object({ key, startHour: z.number().int().min(0).max(23).nullable(), tzOffsetMinutes: z.number().int().min(-840).max(840), ...baseRef }))
       .mutation(({ ctx, input }) => setNightShield(ctx.engine, ctx.player.id, input.key, input.startHour, input.tzOffsetMinutes, input.baseId)),
+    // Mehrere Häfen: umbenennen (eigene Häfen) und Kolonie aufgeben (nie der Heimathafen; baseId Pflicht).
+    rename: authed
+      .input(z.object({ key, name: z.string().trim().min(2).max(32), ...baseRef }))
+      .mutation(({ ctx, input }) => renameBase(ctx.engine, ctx.player.id, input.key, input.baseId, input.name)),
+    abandonInfo: authed.input(baseInput).query(({ ctx, input }) => abandonInfo(ctx.engine, ctx.player.id, input?.baseId)),
+    abandon: authed
+      .input(z.object({ key, baseId: z.number().int().min(1) }))
+      .mutation(({ ctx, input }) => abandonColony(ctx.engine, ctx.player.id, input.key, input.baseId)),
   }),
 
   mission: t.router({

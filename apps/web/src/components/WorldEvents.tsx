@@ -30,7 +30,7 @@ function blurb(e: WorldEventInfo): string {
       ? "Sammelt sich und greift danach nacheinander die Häfen der Region an. Jeder Angriff auf See schwächt sie dauerhaft; Beute anteilig zum Schaden."
       : "Greift die Häfen der Region an. Angriffe auf See schwächen sie weiter; Beute anteilig zum Schaden.";
   }
-  return `Sperrt Börsenkäufe und drosselt die Produktion um ${Math.round((e.siege?.penalty ?? 0.3) * 100)} %. Andere Spieler brechen den Ring mit einem Überfall; Beute anteilig zum Schaden.`;
+  return `Sperrt Börsenkäufe und drosselt die Produktion um ${Math.round((e.siege?.penalty ?? 0.3) * 100)} %. Andere Spieler – oder der Besitzer aus einem anderen eigenen Hafen – brechen den Ring mit einem Überfall; Beute anteilig zum Schaden.`;
 }
 
 /** Info-Blatt (Kartenpanel): Besatzung, Restzeit, Belohnung, Beteiligte, Knopf „Mission planen“. */
@@ -38,6 +38,8 @@ export function WorldEventCard({ e, onPlan }: { e: WorldEventInfo; onPlan: () =>
   const now = useNow();
   const ended = e.status === "ended";
   const ownSiege = e.siege?.own ?? false;
+  // Mehrere Häfen: aus dem belagerten Hafen selbst nicht, aus einem anderen eigenen Hafen schon.
+  const ownHere = e.siege?.ownHere ?? false;
   const time = ended ? null
     : e.status === "announced" ? `läuft aus in ${fmtDuration(e.activeAtMs - now)}`
     : e.kind === "grossflotte" ? "greift an" : `noch ${fmtDuration(e.endsAtMs - now)}`;
@@ -61,8 +63,9 @@ export function WorldEventCard({ e, onPlan }: { e: WorldEventInfo; onPlan: () =>
         )}
         {e.distanceKm !== null && <div className="text-ink2">Entfernung zu deinem Hafen etwa {fmtNum(e.distanceKm)} km</div>}
       </div>
-      {!ended && !ownSiege && <Button className="w-full mt-2" onClick={onPlan}>Mission planen</Button>}
-      {ownSiege && <p className="text-xs text-siegel mt-2">Dein eigener Hafen – nur andere Spieler können den Ring brechen.</p>}
+      {!ended && !ownHere && <Button className="w-full mt-2" onClick={onPlan}>Mission planen</Button>}
+      {!ended && ownHere && <p className="text-xs text-siegel mt-2">Dein eigener Hafen – aus ihm selbst kannst du den Ring nicht brechen. Wechsle in einen anderen deiner Häfen oder bitte Mitspieler um Hilfe.</p>}
+      {!ended && ownSiege && !ownHere && <p className="text-xs text-ink2 mt-2">Dein eigener Hafen – du greifst aus einem anderen deiner Häfen an.</p>}
     </div>
   );
 }
@@ -81,7 +84,7 @@ export function WorldEventBanner({ onMap }: { onMap: () => void }) {
         <div className="rounded-xl bg-red-950 border border-siegel border-l-4 p-3 text-sm" role="alert">
           <strong className="text-siegel uppercase font-display text-xs">Belagerungsring vor deinem Hafen</strong>
           <div className="font-serif text-lg leading-tight">noch <span className="mono">{fmtDuration(ownSiege.endsAtMs - now)}</span></div>
-          <div className="text-xs text-ink2">Keine Börsenkäufe, Produktion −{Math.round((1 - ownSiege.productionFactor) * 100)} %. Bitte Mitspieler, den Ring zu brechen.</div>
+          <div className="text-xs text-ink2">Keine Börsenkäufe, Produktion −{Math.round((1 - ownSiege.productionFactor) * 100)} %. Brich den Ring aus einem anderen deiner Häfen oder bitte Mitspieler um Hilfe.</div>
         </div>
       )}
       {near.map((e) => (

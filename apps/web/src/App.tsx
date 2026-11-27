@@ -32,6 +32,7 @@ const ResearchScreen = lazy(() => import("./screens/Research.tsx").then((m) => (
 import { ResearchRollPopup } from "./components/ResearchDice.tsx";
 import { onBugReportRequest } from "./lib/bug-log.ts";
 import { captureScreen, waitForSettled } from "./lib/screenshot.ts";
+import { isThreat } from "./lib/expansion.ts"; // Mehrere Häfen: eigene Verlegung ist kein Angriff
 import type { BugDraft } from "./components/BugReport.tsx";
 const BugReportSheet = lazy(() => import("./components/BugReport.tsx").then((m) => ({ default: m.BugReportSheet })));
 
@@ -276,7 +277,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
               {t.id === "basis" && claimable > 0 && (
                 <span className="absolute top-1 left-[18%] min-w-5 h-5 px-1 rounded-full bg-moos text-white text-[11px] mono grid place-items-center" title="Belohnung abholbereit">{claimable}</span>
               )}
-              {t.id === "basis" && (b.incoming.some((i) => i.type !== "transport") || b.bases.some((x) => x.underAttack)) && (
+              {t.id === "basis" && (b.incoming.some(isThreat) || b.bases.some((x) => x.underAttack)) && (
                 <span className="absolute top-1.5 right-[24%] w-3 h-3 rotate-45 bg-siegel pulse" />
               )}
             </button>

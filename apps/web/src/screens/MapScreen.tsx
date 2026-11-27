@@ -17,7 +17,7 @@ import { WorldEventCard, useWorldEvents } from "../components/WorldEvents.tsx";
 import { NavalSheet, navalAt, useNaval } from "../components/Naval.tsx"; // See: Minen/Blockade/Konvoi
 import { FieldSheet, fieldAt, fieldsRules, useFields } from "../components/Fields.tsx"; // Felder
 import { FoundingButton, FoundingInfo, OwnHarborActions } from "../components/HarborMapSheet.tsx"; // Mehrere Häfen
-import { expansionRules, isFreeCoast } from "../lib/expansion.ts";
+import { expansionRules, isFreeCoast, isThreat } from "../lib/expansion.ts";
 
 const TERRAIN: Record<string, string> = { sea: "Offene See", coast: "Küste", land: "Binnenland" };
 const RELATION_TEXT: Record<string, string> = {
@@ -54,7 +54,7 @@ export function MapScreen({ base, focus, onPlan, onSwitchBase }: { base: BaseDat
   const hasRadar = base.buildings.some((b) => b.id === "radarstation" && b.level > 0);
   const linkKm = fieldsRules(meta.data?.balance)?.zoneLinkKm ?? 450; // Felder: Zonenlinien
   const fieldLayer = useMemo(() => (fields.data ? { list: fields.data.fields, linkKm } : undefined), [fields.data, linkKm]);
-  const alert = base.incoming.some((i) => i.type !== "transport");
+  const alert = base.incoming.some(isThreat);
   // Mehrere Häfen: freies Küstenfeld (Gründung) – Reichweitenkreis um den aktiven Hafen.
   const freeCoast = !!sel && !!map.data && isFreeCoast(sel, map.data, fields.data?.fields);
   const harbors = useMemo(() => ({ active: home, rangeKm: freeCoast ? expansionRules(meta.data?.balance).maxRangeKm : null }), [home, freeCoast, meta.data]);

@@ -5,7 +5,7 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { and, eq, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
-import { COLS, ROWS, TRADE_PORTS, hexAtLonLat, hexDistanceKm, isCoast, nestSites } from "@tidefront/world";
+import { COLS, ROWS, TRADE_PORTS, hexAtLonLat, hexCenter, hexDistanceKm, isCoast, nestSites, placeNameAt } from "@tidefront/world";
 import { hexSteps, type BaseState } from "@tidefront/game-core";
 import {
   admiralSpecIds, balance, basesOfPlayer, chooseBase, homeBaseOf, launchMission, missionPreview, processDue, register,
@@ -128,7 +128,7 @@ test("Gründung: Vorschau, Ablehnungen, Obergrenze inkl. laufender Gründung, ne
   const col = bases.find((b) => !b.isHome)!;
   colonyId = col.id;
   assert.deepEqual([col.col, col.row], [target.col, target.row]);
-  assert.equal(col.name, "Kolonist II");
+  assert.equal(col.name, placeNameAt(hexCenter(target.col, target.row)), "Ortsname aus der Karte");
   assert.equal(col.state.resources.stahl, E.startResources.stahl + 1500);
   assert.equal(col.state.resources.elektronik, E.startResources.elektronik);
   assert.ok(col.state.colony);
