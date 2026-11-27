@@ -8,7 +8,7 @@ import type { Target } from "../../App.tsx";
 import { fitUnits, isPlanType, requestPlan } from "../../lib/plan-request.ts";
 import { Icon } from "../../icons.tsx";
 import { Button, Sheet, UnitChips } from "../../ui.tsx";
-import { AdmiralsPanel } from "../Admirals.tsx"; // Admirale
+import { AdmiralsPanel, missingText } from "../Admirals.tsx"; // Admirale
 import { MyFieldsPanel, useFields } from "../Fields.tsx"; // Felder
 import { FreeSimSheet } from "../SimLauncher.tsx";
 import { TileFrame } from "./art.tsx";
@@ -30,6 +30,12 @@ function Tile({ icon, title, figure, hint, can, onOpen }: { icon: string; title:
   );
 }
 
+/** Admirale: Platz frei und bezahlbar → „ernennen möglich“, sonst was fehlt; ohne freien Platz die Namen. */
+function admiralTileHint(a: { list: { name: string }[]; slots: number; missing: Record<string, number> }): string {
+  if (a.list.length < a.slots) return Object.keys(a.missing).length === 0 ? "ernennen möglich" : `Platz frei – fehlt: ${missingText(a.missing)}`;
+  return a.list.length === 0 ? "noch kein Platz" : a.list.map((x) => x.name).join(", ");
+}
+
 export function EinsatzTiles({ base, balance, onShowOnMap }: { base: BaseData; balance: Balance; onShowOnMap: (t: Target) => void }) {
   const [open, setOpen] = useState<Open>(null);
   const adm = useQuery(trpc.admiral.get.queryOptions());
@@ -42,8 +48,8 @@ export function EinsatzTiles({ base, balance, onShowOnMap }: { base: BaseData; b
   return (
     <section aria-label="Weitere Werkzeuge" className="mb-3">
       <div className="grid grid-cols-2 gap-2">
-        <Tile icon="admiral" title="Admirale" figure={a ? `${a.list.length}/${a.slots}` : "…"} can={!!a && a.list.length < a.slots}
-          hint={!a ? "" : a.list.length === 0 ? (a.slots > 0 ? "ernennen möglich" : "noch kein Platz") : a.list.map((x) => x.name).join(", ")} onOpen={() => setOpen("admirale")} />
+        <Tile icon="admiral" title="Admirale" figure={a ? `${a.list.length}/${a.slots}` : "…"} can={!!a && a.list.length < a.slots && Object.keys(a.missing).length === 0}
+          hint={!a ? "" : admiralTileHint(a)} onOpen={() => setOpen("admirale")} />
         <Tile icon="oelfeld" title={"Rohstoff\u00ADfelder"} figure={f ? `${f.mine.length}/${f.maxFields}` : "…"} can={!!f && f.maxFields > 0 && f.mine.length < f.maxFields}
           hint={!f ? "" : f.maxFields === 0 ? "ab Hafen\u00ADkommandantur" : f.mine.length === 0 ? "besetzen möglich" : "Ertrag per Konvoi"} onOpen={() => setOpen("felder")} />
         <Tile icon="geleit" title="Vorlagen" figure={tpl.data ? String(tpl.data.length) : "…"} hint="Verband mit einem Tipp" onOpen={() => setOpen("vorlagen")} />

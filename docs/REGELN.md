@@ -193,7 +193,17 @@ Nach dem Kampf:
   höchstens 3; Kosten 2 000 Kredite und 400 Elektronik. Name aus einer festen Liste (oder ausgelost).
 - Ränge nach Erfahrung: Kapitän zur See (0), Konteradmiral (100), Vizeadmiral (300), Admiral (700); Wirkung 50 / 70 /
   85 / 100 % der vollen Boni. Eine Spezialisierung beim Ernennen, eine zweite ab Vizeadmiral: Angriff, Verteidigung,
-  Logistik, Aufklärung, Beutemeister, U-Boot-Taktik (Werte in `admirals.specs`, je Rolle `mission`, `defense`, `harbor`).
+  Landungstrupp, Logistik, Aufklärung, Beutemeister, U-Boot-Taktik (Werte in `admirals.specs`, je Rolle `mission`,
+  `defense`, `harbor`).
+- **Landungstrupp** (docs/VORLAGE-ADMIRALE.md): auf Mission Angriff der Landtruppen +10 % (`attack.land`), deren
+  Lebenspunkte +8 % (`hp.land`), Minenschaden an den eigenen Landungstruppen −30 % (`mineDamage`); als Hafenkommandant
+  (Verteidigung, auch gegen das Kartell) Lebenspunkte der Landtruppen +6 %. Kampfwert voll ausgebildet etwa +10 % bei
+  Landungen und Nestern, im Seegefecht keiner – das Gegenstück zu „Angriff“ zur See.
+- **Beutemeister:** zusätzlich feste Nestbeute +10 % (`nestLoot`), weiter durch den Laderaum begrenzt.
+- **Umschulung:** Admirale, die vor dem Landungstrupp ernannt wurden, dürfen ihre erste Spezialisierung einmal kostenlos
+  wechseln (nicht unterwegs; Rang, Erfahrung und zweite Spezialisierung bleiben). Neu ernannte haben keine Umschulung.
+- **KI-Spieler** ernennen ab Hafenkommandantur 1 einen Admiral zu denselben Kosten: Freibeuter „Landungstrupp“ (führt
+  ihre Überfälle, im Probekampf eingerechnet), Festung „Verteidigung“ als Hafenkommandant; Händler keinen.
 - Ein Admiral führt einen Verband (Auswahl in der Missionsplanung; wirkt nur auf diesen Verband, auch gegen
   Weltereignisse und Rohstofffelder – nach einer Feldeinnahme bleibt er bei der Besatzung, siehe REGELN-FELDER.md) oder ist
   **Hafenkommandant** (höchstens einer): Er führt daheim die Verteidigung, auch gegen das Kartell, und wirkt passiv auf den
@@ -495,7 +505,7 @@ Spielern (Treuhand, Gebühr, Börsenwert, Handelsstatistik) stehen in `docs/REGE
   Vorwarnzeit, die das Ziel gegen eigene Überfälle hat); Forschungsdauer (`researchTime`); Spionage (`spyAttack`,
   `spyDefense`: Faktor, der in Würfelpunkte umgerechnet wird, `round((Faktor − 1) × 10)`).
 - Quelle **Sabotage** (Nachrichtendienst): Eine laufende Sabotage im eigenen Hafen wirkt als Modifikator (siehe dort).
-- **Kombination:** Quellen (Forschung, Veteranen, Wetter, künftig Admirale, Ereignisse) werden je Wert **multipliziert**.
+- **Kombination:** Quellen (Forschung, Veteranen, Wetter, Admirale, künftig Ereignisse) werden je Wert **multipliziert**.
   Innerhalb einer Technik wirken Stufen additiv: Faktor = 1 + Wirkung je Stufe × Stufe.
 - Im Kampf gelten die Modifikatoren jeder Seite nur für ihre eigenen Einheiten und Anlagen (Lebenspunkte, Angriff);
   der Angreifer bringt Minenschaden, Ladung und Beute-Anteil mit, der Verteidiger seinen Bunkerschutz.

@@ -56,6 +56,11 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
   Fehlen Rohstoffe, werden die Kosten des Kolonieschiffs zurückgelegt und die Werft bleibt frei.
 - **Patrouille** (Freibeuter): höchstens alle 24 h, nur wenn in diesem Zug kein Angriff möglich war und mindestens
   zwei Auftragsplätze frei sind.
+- **Admirale** (`bots-admiral.ts`): Freibeuter und Festung ernennen ab Hafenkommandantur 1 im Heimathafen einen Admiral
+  über denselben Befehl wie Menschen (gleiche Kosten, Plätze, Namen). Bis er bezahlbar ist, hält die Börse 2 000 Kredite
+  zurück. Freibeuter: „Landungstrupp“, führt den nächsten Überfall aus dem Heimathafen (Probekampf mit seinen
+  Modifikatoren); Festung: „Verteidigung“, bleibt Hafenkommandant. Der Händler ernennt keinen. Gefangene Admirale
+  werden nicht freigekauft.
 
 ## Angriffe und Schutz
 

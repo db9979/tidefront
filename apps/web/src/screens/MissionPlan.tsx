@@ -21,7 +21,7 @@ import { KIND_TITLE, useWorldEvents } from "../components/WorldEvents.tsx";
 // Nachrichtendienst: Spionageaufträge
 import { SpyPlan } from "../components/SpyPlan.tsx";
 // Admirale: Führung des Verbands
-import { AdmiralPick } from "../components/Admirals.tsx";
+import { AdmiralPick, useAdmiralChoice } from "../components/Admirals.tsx";
 // Allianz-Ops: Stationieren, als Sammelangriff eröffnen
 import { RaidOpenCard } from "../components/AllianceOps.tsx";
 import { HoldHours, MineWarning } from "../components/Naval.tsx"; // See: Minen/Blockade/Konvoi
@@ -95,6 +95,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   const [cargo, setCargo] = useState<Record<string, number>>({});
   const [sent, setSent] = useState<{ arriveAtMs: number; type: string } | null>(null);
   const [admiralId, setAdmiralId] = useState<number | null>(null); // Admirale
+  const admiral = useAdmiralChoice(admiralId); // Admirale: Wirkung im Probekampf
   // Art: nach der Auswahl auf eine Zeile mit „ändern“ eingeklappt (vorbelegt = schon gewählt).
   const [whyOpen, setWhyOpen] = useState(false); // „Was hilft?“ in der Vorschau
   const [barOpen, setBarOpen] = useState(false); // … und über der Aktionsleiste (grauer Knopf)
@@ -253,6 +254,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           balance={balance}
           base={base}
           units={chosen}
+          admiral={admiral}
           target={tInfo.nest && tInfo.nest.level !== null ? { kind: "nest", level: tInfo.nest.level, empty: !!tInfo.nest.empty } : { kind: "base", col: target.col, row: target.row, name: tInfo.base!.name }}
           onScout={() => setType("aufklaerung")}
         />

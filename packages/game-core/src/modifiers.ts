@@ -37,6 +37,8 @@ export interface Modifiers {
   cargo?: number;
   /** Beute-Anteil am ungeschützten Bestand (nicht feste Nestbeute). */
   loot?: number;
+  /** Feste Beute aus Piratennestern (Admiral „Beutemeister“); weiter durch den Laderaum begrenzt. */
+  nestLoot?: number;
   /** Schaden, den die eigenen Landungstruppen durch Minensperren erleiden. */
   mineDamage?: number;
   /** Tarnung: Faktor auf die Vorwarnzeit, die ein Ziel gegen eigene Überfälle hat (< 1 = später erkannt). */
@@ -52,10 +54,10 @@ export interface Modifiers {
 export const NEUTRAL_MODIFIERS: Modifiers = Object.freeze({}) as Modifiers;
 
 type MapKey = "attack" | "attackVs" | "attackUnit" | "hp" | "speed" | "trainingTime" | "production";
-type ScalarKey = "fuel" | "buildTime" | "storage" | "bunker" | "radarWarning" | "cargo" | "loot" | "mineDamage" | "stealth" | "researchTime" | "spyAttack" | "spyDefense";
+type ScalarKey = "fuel" | "buildTime" | "storage" | "bunker" | "radarWarning" | "cargo" | "loot" | "nestLoot" | "mineDamage" | "stealth" | "researchTime" | "spyAttack" | "spyDefense";
 
 export const MAP_KEYS: readonly MapKey[] = ["attack", "attackVs", "attackUnit", "hp", "speed", "trainingTime", "production"];
-export const SCALAR_KEYS: readonly ScalarKey[] = ["fuel", "buildTime", "storage", "bunker", "radarWarning", "cargo", "loot", "mineDamage", "stealth", "researchTime", "spyAttack", "spyDefense"];
+export const SCALAR_KEYS: readonly ScalarKey[] = ["fuel", "buildTime", "storage", "bunker", "radarWarning", "cargo", "loot", "nestLoot", "mineDamage", "stealth", "researchTime", "spyAttack", "spyDefense"];
 
 /** Faktor eines skalaren Schlüssels (1, wenn nicht gesetzt). */
 export function modValue(mods: Modifiers | undefined, key: ScalarKey): number {

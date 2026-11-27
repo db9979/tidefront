@@ -1,6 +1,6 @@
-// Router für Admirale: Ansicht, Ernennen, zweite Spezialisierung, Hafenkommandant, Lösegeld, Entlassen.
+// Router für Admirale: Ansicht, Ernennen, zweite Spezialisierung, Umschulung, Hafenkommandant, Lösegeld, Entlassen.
 import { z } from "zod";
-import { admiralView, appointAdmiral, chooseAdmiralSpec, dismissAdmiral, ransomAdmiral, stationAdmiral } from "@tidefront/engine";
+import { admiralView, appointAdmiral, chooseAdmiralSpec, dismissAdmiral, ransomAdmiral, retrainAdmiral, stationAdmiral } from "@tidefront/engine";
 import { authed, baseInput, baseRef, t } from "../trpc.ts";
 
 const key = z.string().min(8).max(80);
@@ -15,6 +15,9 @@ export const admiralRouter = t.router({
   spec: authed
     .input(z.object({ key, admiralId: id, spec, ...baseRef }))
     .mutation(({ ctx, input }) => chooseAdmiralSpec(ctx.engine, ctx.player.id, input.key, input)),
+  retrain: authed
+    .input(z.object({ key, admiralId: id, spec, ...baseRef }))
+    .mutation(({ ctx, input }) => retrainAdmiral(ctx.engine, ctx.player.id, input.key, input)),
   station: authed
     .input(z.object({ key, admiralId: id.nullable(), ...baseRef }))
     .mutation(({ ctx, input }) => stationAdmiral(ctx.engine, ctx.player.id, input.key, input)),

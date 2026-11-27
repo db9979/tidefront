@@ -370,9 +370,10 @@
     "specs": {
       "angriff": { "name": "Angriff", "text": "Geschütze und Zielführung: mehr Angriff zur See.", "mission": { "attack.see": 0.08 }, "defense": { "attack.see": 0.07, "attack.anlage": 0.07 } },
       "verteidigung": { "name": "Verteidigung", "text": "Schadenskontrolle: mehr Lebenspunkte für den ganzen Verband.", "mission": { "hp.see": 0.06, "hp.land": 0.06, "hp.luft": 0.06 }, "defense": { "hp.see": 0.06, "hp.land": 0.06, "hp.luft": 0.06, "hp.anlage": 0.06 } },
+      "landung": { "name": "Landungstrupp", "text": "Sturmlandung: stärkere und zähere Landtruppen, weniger Minenschaden; daheim zähere Truppen.", "mission": { "attack.land": 0.1, "hp.land": 0.08, "mineDamage": -0.3 }, "defense": { "hp.land": 0.06 } },
       "logistik": { "name": "Logistik", "text": "Marschordnung und Bunkerplan: schneller und sparsamer unterwegs.", "mission": { "speed.see": 0.1, "speed.luft": 0.1, "fuel": -0.15 } },
       "aufklaerung": { "name": "Aufklärung", "text": "Funkdisziplin auf Mission (später erkannt), daheim längere Radar-Vorwarnzeit.", "mission": { "stealth": -0.25 }, "harbor": { "radarWarning": 0.25 } },
-      "beutemeister": { "name": "Beutemeister", "text": "Mehr Laderaum und Beute; daheim besser versteckte Bestände.", "mission": { "cargo": 0.15, "loot": 0.1 }, "harbor": { "bunker": 0.1 } },
+      "beutemeister": { "name": "Beutemeister", "text": "Mehr Laderaum und Beute, auch aus Piratennestern; daheim besser versteckte Bestände.", "mission": { "cargo": 0.15, "loot": 0.1, "nestLoot": 0.1 }, "harbor": { "bunker": 0.1 } },
       "uboot": { "name": "U-Boot-Taktik", "text": "Wolfsrudel und U-Jagd: mehr Angriff der U-Boote und gegen getauchte U-Boote.", "mission": { "attackUnit.uboot": 0.12, "attackVs.uboot": 0.12 }, "defense": { "attackUnit.uboot": 0.12, "attackVs.uboot": 0.12 } }
     },
     "xp": { "hpPerXp": 60, "minWin": 5, "maxPerBattle": 120 },

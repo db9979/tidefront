@@ -96,6 +96,7 @@ const PATH_LABEL: Record<string, string> = {
   radarWarning: "Radar-Vorwarnzeit",
   stealth: "Vorwarnzeit des Gegners",
   loot: "Beute-Anteil",
+  nestLoot: "Beute aus Piratennestern",
   fuel: "Treibstoffverbrauch",
   cargo: "Ladekapazität",
   storage: "Lagerkapazität",
