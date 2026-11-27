@@ -1,5 +1,5 @@
 {
-  "version": "v1.13",
+  "version": "v1.15",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -105,7 +105,8 @@
       "2": { "schnellboot": 9, "piratenmiliz": 60, "flakstellung": 1, "kuestenbatterie": 0, "bunkerlinie": 0, "loot": { "stahl": 3500, "treibstoff": 1400, "elektronik": 500, "proviant": 1000 } },
       "3": { "schnellboot": 14, "piratenmiliz": 110, "flakstellung": 1, "kuestenbatterie": 1, "bunkerlinie": 1, "loot": { "stahl": 6500, "treibstoff": 2600, "elektronik": 1000, "proviant": 1900 } },
       "4": { "schnellboot": 22, "piratenmiliz": 215, "flakstellung": 2, "kuestenbatterie": 1, "bunkerlinie": 1, "loot": { "stahl": 9500, "treibstoff": 3800, "elektronik": 1500, "proviant": 2700 } },
-      "5": { "schnellboot": 26, "piratenmiliz": 250, "flakstellung": 3, "kuestenbatterie": 2, "bunkerlinie": 2, "loot": { "stahl": 14000, "treibstoff": 5600, "elektronik": 2200, "proviant": 4200 } }
+      "5": { "schnellboot": 26, "piratenmiliz": 250, "flakstellung": 3, "kuestenbatterie": 2, "bunkerlinie": 2, "loot": { "stahl": 14000, "treibstoff": 5600, "elektronik": 2200, "proviant": 4200 } },
+      "6": { "schnellboot": 35, "piratenmiliz": 338, "flakstellung": 4, "kuestenbatterie": 3, "bunkerlinie": 3, "respawnHours": 24, "loot": { "stahl": 8000, "treibstoff": 8000, "elektronik": 11000, "proviant": 2000 } }
     },
     "nestRespawnHours": 12,
     "raidIntervalHours": 18,

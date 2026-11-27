@@ -190,6 +190,10 @@ Nach dem Kampf:
   Ausgelegt auf eine Saison von 28 Tagen: Ein bezahlbarer Verband schlägt Stufe 1 ab Tag 1–2, Stufe 2 ab Tag 3–5,
   Stufe 3 um Tag 7–10, Stufe 4 um Tag 14–18 und Stufe 5 um Tag 21–28 mit mindestens 70 %. Die Beute einer Stufe passt
   ungefähr in die Ladung der Landungsschiffe eines solchen Verbands.
+- Stufe 6 (seit v1.15, „Inselfestung“, Spätspiel Woche 5–6): ≈ Stufe 5 × 1,35; ein voller Verband siegt an Tag 28 zu
+  etwa 15 %, ab Tag 35 zu 74 %. Fünf feste Inseln (`LATE_NEST_POINTS`, an `nestSites()` angehängt), eigene Wiederkehr
+  `respawnHours` 24 h, Beute 29 000 Einheiten (viel Elektronik). migrate/Seed trägt fehlende Plätze nach (vorhandene
+  Nester bleiben; Feld mit Hafen erst beim Saisonwechsel). Kein Freischalten nach Saisontag (ENTSCHEIDUNGEN.md M).
 - Überfälle auf Spieler alle `raidIntervalHours` je Stützpunkt. Stärke (seit v1.1):
   - Verteidigungs-Lebenspunkte = Lebenspunkte aller Schiffe (auch U-Boote), Bodentruppen und Anlagen daheim (Flugzeuge zählen nicht).
   - Grundstärke in Booten = `raidStrengthShareOfDefense * Verteidigungs-Lebenspunkte / hp(schnellboot)`, mindestens `raidMinSchnellboote`.

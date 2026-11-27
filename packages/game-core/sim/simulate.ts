@@ -28,6 +28,7 @@ import { runAdmiralSim } from "./admirals.ts"; // Admirale
 import { runNavalSim } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 import { runFieldEscortSim, runFieldsSim } from "./fields.ts"; // Felder
 import { runExpansionSim } from "./expansion.ts"; // Mehrere Häfen
+import { runNest6Sim } from "./nest6.ts"; // v1.15: Nest Stufe 6 (Spätspiel, 42-Tage-Saison)
 
 const balance = JSON.parse(
   readFileSync(new URL("../../balance/v1/balance.json", import.meta.url), "utf8"),
@@ -271,6 +272,7 @@ runNavalSim(balance, snaps);
 runFieldsSim(balance, snaps);
 runFieldEscortSim(balance); // Felder 2: Geleitabteilung
 runExpansionSim(balance, snaps); // Mehrere Häfen
+runNest6Sim(balance); // v1.15: Nest Stufe 6
 
 /** Der Bot schickt alles, was daheim steht (die Doktrin hält ihn innerhalb der Kommandopunkte). */
 function sentFleet(s: BotSnapshot): Counts {

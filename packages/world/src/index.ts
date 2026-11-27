@@ -170,8 +170,21 @@ export interface NestSite extends Hex {
 }
 
 /**
- * Feste Nestplätze: auf Küstenfeldern, mindestens `minGap` Felder voneinander entfernt (Luftlinie in km),
- * Stufen nach Anteilen verteilt. Gleicher Seed, gleiche Liste.
+ * Nest Stufe 6 (Balance v1.15): Spätspiel-Ziele auf abgelegenen Inseln, fest nach Länge/Breite (Name nur zur Doku).
+ * Westatlantik, Atlantik-Mitte, Nordmeer, westliches und östliches Mittelmeer; keine Festlandküste, auf der man startet.
+ */
+export const LATE_NEST_POINTS: readonly (readonly [number, number, string])[] = [
+  [-64.8, 32.3, "Bermuda"], [-25.6, 37.8, "Azoren (São Miguel)"], [-8.5, 71.0, "Jan Mayen"],
+  [3.0, 39.6, "Balearen (Mallorca)"], [28.0, 36.2, "Rhodos"],
+];
+
+/** Stufe der Nester auf LATE_NEST_POINTS. */
+export const LATE_NEST_LEVEL = 6;
+
+/**
+ * Feste Nestplätze: auf Küstenfeldern, mindestens 350 km voneinander entfernt (Luftlinie), Stufen 1–5 nach Anteilen
+ * verteilt (`count` Plätze), danach die Plätze der Stufe 6 aus LATE_NEST_POINTS (v1.15, angehängt: die ersten `count`
+ * Einträge bleiben unverändert). Gleicher Seed, gleiche Liste.
  */
 export function nestSites(seed = 1, count = 70): NestSite[] {
   const coast: Hex[] = [];
@@ -198,6 +211,12 @@ export function nestSites(seed = 1, count = 70): NestSite[] {
     const n = i === shares.length - 1 ? chosen.length - k : Math.round(share * chosen.length);
     for (let m = 0; m < n && k < chosen.length; m++) out.push({ ...chosen[k++], level: i + 1 });
   });
+  for (const [lon, lat] of LATE_NEST_POINTS) {
+    const h = hexAtLonLat(lon, lat);
+    if (!inGrid(h.col, h.row) || t[hexIndex(h.col, h.row)] !== "coast") continue;
+    if (out.some((o) => o.col === h.col && o.row === h.row)) continue;
+    out.push({ ...h, level: LATE_NEST_LEVEL });
+  }
   return out;
 }
 export * from "./labels.ts";

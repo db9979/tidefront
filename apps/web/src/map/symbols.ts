@@ -12,7 +12,7 @@ export const NEUTRAL = SEE;
 export const HOSTILE = SIEGEL;
 const SERIF = "Fraunces, Georgia, 'Times New Roman', serif";
 const SANS = "'IBM Plex Sans', system-ui, sans-serif";
-const ROMAN = ["", "I", "II", "III", "IV", "V"];
+const ROMAN = ["", "I", "II", "III", "IV", "V", "VI"];
 
 function txt(s: string, size: number, fill: number, family = SERIF, weight = "600", spacing = 0): Text {
   const t = new Text({ text: s, style: { fontFamily: family, fontSize: size, fill, fontWeight: weight as "600", letterSpacing: spacing } });
@@ -93,7 +93,7 @@ export function nestSymbol(level: number, empty: boolean): Container {
   const c = new Container();
   const g = new Graphics();
   const r = 12;
-  const roman = ROMAN[Math.max(1, Math.min(5, level))];
+  const roman = ROMAN[Math.max(1, Math.min(ROMAN.length - 1, level))];
   if (empty) {
     const pts = [[0, -r], [r, 0], [0, r], [-r, 0], [0, -r]];
     for (let i = 0; i < 4; i++) {
@@ -105,6 +105,7 @@ export function nestSymbol(level: number, empty: boolean): Container {
     }
     g.stroke({ color: 0x59636f, width: 1.4 });
   } else {
+    if (level >= 6) g.poly([0, -r - 3.5, r + 3.5, 0, 0, r + 3.5, -r - 3.5, 0]).stroke({ color: SIEGEL, width: 1.2 }); // Stufe VI: Außenraute
     g.poly([0, -r, r, 0, 0, r, -r, 0]).fill({ color: SIEGEL });
     g.poly([0, -r + 3.5, r - 3.5, 0, 0, r - 3.5, -r + 3.5, 0]).stroke({ color: PAPER, width: 0.8 });
   }

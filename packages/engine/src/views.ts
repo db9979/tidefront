@@ -9,6 +9,7 @@ import {
   harborCreditLimit,
   harborMarketUnlocked,
   isNestRespawned,
+  nestRespawnHours,
   maxAllowedLevel,
   missionSlots,
   planMission,
@@ -274,8 +275,8 @@ export async function mapView(engine: Engine, playerId: number) {
       col: n.col,
       row: n.row,
       level: n.level,
-      empty: n.defeatedAt !== null && !isNestRespawned(n.defeatedAt.getTime(), nowMs, balance),
-      respawnAtMs: n.defeatedAt ? n.defeatedAt.getTime() + balance.pirates.nestRespawnHours * 3600000 : null,
+      empty: n.defeatedAt !== null && !isNestRespawned(n.defeatedAt.getTime(), nowMs, balance, n.level),
+      respawnAtMs: n.defeatedAt ? n.defeatedAt.getTime() + nestRespawnHours(balance, n.level) * 3600000 : null,
     })),
     wrecks: wrecks
       .map((w) => ({ col: w.col, row: w.row, ...(wreckRemaining({ stahl: w.stahl, elektronik: w.elektronik, createdAtMs: w.createdAt.getTime() }, nowMs, balance) as { stahl: number; elektronik: number }) }))
@@ -308,7 +309,7 @@ export async function missionPreview(
     if (d) return { ok: false as const, code: d, distanceKm };
   }
   if (input.type === "transport" && target.kind !== "base") return { ok: false as const, code: "transport_needs_base", distanceKm };
-  if (input.type === "ueberfall" && target.kind === "nest" && target.defeatedAt && !isNestRespawned(target.defeatedAt.getTime(), nowMs, balance)) {
+  if (input.type === "ueberfall" && target.kind === "nest" && target.defeatedAt && !isNestRespawned(target.defeatedAt.getTime(), nowMs, balance, target.level)) {
     return { ok: false as const, code: "nest_empty", distanceKm };
   }
   const mods = combineModifiers(await modsOf(engine.db, own, nowMs), await admiralPreviewMods(engine.db, playerId, input.admiralId)); // Admirale

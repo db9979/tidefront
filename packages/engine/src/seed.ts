@@ -2,6 +2,7 @@
 import { sql } from "drizzle-orm";
 import { market as marketCore } from "@tidefront/game-core";
 import { nestSites } from "@tidefront/world";
+import { ensureNests } from "./nest-sites.ts";
 import { tables, type Db } from "@tidefront/db";
 import { marketBalance } from "./context.ts";
 import { ensureSeason } from "./season.ts";
@@ -19,11 +20,8 @@ export function parseInviteCodes(raw: string | undefined): { code: string; maxUs
 }
 
 export async function seed(db: Db, inviteCodes: string | undefined): Promise<{ nests: number; invites: number; season: number }> {
-  const sites = nestSites();
-  await db
-    .insert(tables.nest)
-    .values(sites.map((s) => ({ col: s.col, row: s.row, level: s.level })))
-    .onConflictDoNothing();
+  // Nester: fehlende Plätze anlegen (auch neue Stufe-6-Plätze in laufenden Welten), vorhandene bleiben unverändert.
+  await ensureNests(db);
   const m = marketCore.createMarketState(marketBalance, Date.now());
   await db
     .insert(tables.market)
@@ -37,5 +35,5 @@ export async function seed(db: Db, inviteCodes: string | undefined): Promise<{ n
       .onConflictDoUpdate({ target: tables.inviteCode.code, set: { maxUses: sql`greatest(${tables.inviteCode.maxUses}, ${c.maxUses})` } });
   }
   const season = await ensureSeason(db, Date.now());
-  return { nests: sites.length, invites: codes.length, season: season.number };
+  return { nests: nestSites().length, invites: codes.length, season: season.number };
 }

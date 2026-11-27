@@ -75,3 +75,4 @@ export { fieldsView, spawnFields, FIELD_KIND_TEXT } from "./fields-core.ts";
 export { fieldRecall } from "./fields-missions.ts";
 export { setFieldEscort } from "./fields-escort.ts";
 export { ensureFieldPlanner, clearFields } from "./fields-run.ts";
+export { ensureNests } from "./nest-sites.ts"; // Nestplätze nachtragen (Stufe 6, v1.15)

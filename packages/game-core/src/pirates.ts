@@ -23,7 +23,7 @@ export function nestGarrison(level: number, balance: Balance): Result<{ nest: Ne
   const units: Counts = {};
   const defenses: Counts = {};
   for (const [id, value] of Object.entries(def)) {
-    if (typeof value !== "number") continue;
+    if (typeof value !== "number" || id === "respawnHours") continue;
     if (Object.hasOwn(balance.defenses, id)) defenses[id] = value;
     else units[id] = value;
   }
@@ -39,9 +39,15 @@ export function nestDefender(level: number, balance: Balance): Result<{ defender
   return { ok: true, defender: { units: g.nest.units, defenses: g.nest.defenses, fixedLoot: g.nest.loot } };
 }
 
-/** Ist ein besiegtes Nest wieder besetzt? */
-export function isNestRespawned(defeatedAtMs: number, nowMs: number, balance: Balance): boolean {
-  return nowMs >= defeatedAtMs + balance.pirates.nestRespawnHours * HOUR_MS;
+/** Wiederkehr eines Nests in Stunden: eigene der Stufe (respawnHours) oder pirates.nestRespawnHours. */
+export function nestRespawnHours(balance: Balance, level?: number): number {
+  const own = level === undefined ? undefined : balance.pirates.nestLevels[String(level)]?.respawnHours;
+  return typeof own === "number" && own > 0 ? own : balance.pirates.nestRespawnHours;
+}
+
+/** Ist ein besiegtes Nest wieder besetzt? Ohne Stufe gilt die allgemeine Wiederkehr. */
+export function isNestRespawned(defeatedAtMs: number, nowMs: number, balance: Balance, level?: number): boolean {
+  return nowMs >= defeatedAtMs + nestRespawnHours(balance, level) * HOUR_MS;
 }
 
 /** Lebenspunkte der Verteidigung: Schiffe, Bodentruppen und Anlagen des Stützpunkts (ohne Flugzeuge). */

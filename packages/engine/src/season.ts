@@ -10,6 +10,7 @@ import { resetChallenges } from "./challenges.ts";
 import { expireOffers } from "./player-trade.ts";
 import { clearWorldEvents } from "./world-events.ts";
 import { clearMarketNews } from "./market-news.ts";
+import { ensureNests } from "./nest-sites.ts";
 import { allianceResultsFor, allianceStandings, saveAllianceStandings } from "./season-alliances.ts";
 
 const DAY_MS = 86400000;
@@ -165,6 +166,7 @@ export const seasonEnd: Handler = async (tx, ev, due) => {
   // Marktnachrichten verfallen; die Börse steht wieder auf dem Grundrichtwert.
   await clearMarketNews(tx);
   await tx.update(tables.nest).set({ defeatedAt: null });
+  await ensureNests(tx); // Plätze, die ein Hafen belegt hatte (z. B. Stufe 6 nachgetragen), jetzt anlegen
   const market = marketCore.createMarketState(marketBalance, due);
   for (const [resource, state] of Object.entries(market)) {
     await tx
