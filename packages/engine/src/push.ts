@@ -4,6 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { tables, type Db } from "@tidefront/db";
 import { NOTICE_KINDS, type Engine, type NoticeKind } from "./context.ts";
 import { getSettings, publicUrl, setSetting } from "./settings.ts";
+import { isBot } from "./bots-flag.ts";
 
 export interface PushPayload {
   kind: NoticeKind;
@@ -101,6 +102,7 @@ export function cleanPrefs(input: Record<string, unknown>): Prefs {
  * Abgelaufene Abos (404/410) werden entfernt. Rückgabe: Anzahl erfolgreich zugestellter Nachrichten.
  */
 export async function pushToPlayer(engine: Engine, playerId: number, msg: PushPayload): Promise<number> {
+  if (await isBot(engine.db, playerId)) return 0; // KI-Spieler: kein Versand
   const vapid = await loadVapid(engine.db);
   if (!vapid) return 0;
   const subs = await engine.db.select().from(tables.pushSubscription).where(eq(tables.pushSubscription.playerId, playerId));

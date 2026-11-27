@@ -47,6 +47,7 @@ import { achievementsRouter } from "./routers/achievements.ts"; // Erfolge
 import { allianceOpsRouter } from "./routers/alliance-ops.ts"; // Allianz-Ops
 import { navalRouter } from "./routers/naval.ts"; // See: Minen/Blockade/Konvoi
 import { fieldsRouter } from "./routers/fields.ts"; // Felder
+import { botsRouter } from "./routers/bots.ts"; // KI-Spieler (Verwaltung)
 
 export type { Ctx };
 
@@ -100,6 +101,7 @@ export const appRouter = t.router({
   admin: adminRouter,
   invite: inviteRouter,
   adminStats: adminStatsRouter,
+  bots: botsRouter, // KI-Spieler (nur Admins)
 
   world: t.router({
     map: authed.query(({ ctx }) => mapView(ctx.engine, ctx.player.id)),

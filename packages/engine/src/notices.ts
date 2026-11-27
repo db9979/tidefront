@@ -5,8 +5,10 @@ import type { Engine, Notice, NoticeJob } from "./context.ts";
 import { mailNotice } from "./mail.ts";
 import { pushToPlayer } from "./push.ts";
 import { recordSummaryEntry } from "./comfort.ts";
+import { isBot } from "./bots-flag.ts"; // KI-Spieler bekommen weder Push noch E-Mail
 
 export async function deliverNotice(engine: Engine, playerId: number, notice: Notice): Promise<void> {
+  if (await isBot(engine.db, playerId).catch(() => false)) return;
   try {
     await pushToPlayer(engine, playerId, notice);
   } catch (err) {

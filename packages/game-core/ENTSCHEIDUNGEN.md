@@ -683,3 +683,41 @@ Ziel: Felder sind Entscheidungen und Konflikte, kein passiver Mehrertrag.
    (Freischaltung, Kreditlimit) und die Admiral-Plätze, damit eine junge Kolonie nicht erneut Stufe 3 braucht; das
    Tageslimit der Börse bleibt am Heimathafen, weil es eine Mengen-, keine Freischaltgröße ist.
 8. **Gründung als Ziel:** Wochenziel „Gründung“ siehe J.10 (bewusst kein Auftragsbuch-Schritt).
+
+## L. KI-Spieler (Bots, Balance-Block `bots`)
+
+Regeln: `docs/REGELN-KI.md`. Code: `packages/engine/src/bots-*.ts`. Testlauf: `packages/engine/test/bots-sim.test.ts`.
+
+1. **Nur Befehle.** Bots rufen dieselben Befehlsfunktionen wie der Client auf (Idempotenz-Schlüssel, Transaktion,
+   Prüfungen). Vorher prüfen sie mit den reinen Kernfunktionen (`startUpgrade`, `startTraining`, `startResearch`) bzw.
+   `missionPreview`, damit das Befehlsprotokoll nicht mit Ablehnungen volläuft. Keine direkten Schreibzugriffe auf
+   Spielzustand; einzige eigene Spalten sind `player.bot_profile`, `bot_settings`, `bot_state`. Gelesen wird nur, was
+   auch ein Mensch sieht (eigener Zustand, Karte, Nest-Tabelle aus dem Handbuch, Schutzstatus, eigene Berichte).
+2. **Stärke über Entscheidungsqualität und Takt**, nicht über Vorteile: leicht = selten (60–120 Min.), 35 %
+   Zufallsentscheidungen, nur ein Bauauftrag in der Schlange, keine Knappheitsplanung; mittel = 30–60 Min., Probekampf
+   mit 3 Durchläufen; stark = 12–25 Min., drei Bauaufträge, Aufklärung vor jedem Spielerangriff und Probekampf mit
+   12 Durchläufen (≥ 75 % Siege, Beute ≥ 0,5–0,8 × erwartete Verluste). Ziele, die im Probekampf durchfallen,
+   meidet der Bot für 12 h (sonst schickt er im Dauertakt Aufklärer).
+3. **Rüstungsanteil wächst mit der Kommandozentrale** (voll ab Stufe 3). Erste Fassung rüstete ab Minute 1 auf 45–55 %
+   und lag an Tag 1 bei der Hälfte der Punkte der anderen; Wirtschaft zuerst wie bei Menschen. Liegt die Rüstung unter
+   dem Ziel und fehlt Geld für die dringendste Einheit, wird gespart (sonst verhungert die Rüstung am Ausbau – erste
+   Fassung: Militär 9 Punkte nach 6 Tagen).
+4. **Forschung gedeckelt** (10/20/8 % des Gebäudewerts). Ohne Deckel steckte die Festung ab Tag 3 alles in Forschung
+   (Kosten ×2) und stand mit Kommandozentrale 1 still.
+5. **Truppen und Landungsschiffe.** Landungsschiffe in Losen von höchstens 2 nach Truppenbedarf; ist die Werft belegt,
+   wird die Truppe trotzdem ausgebildet. Erste Fassung baute nur Korvetten (Truppe immer durch belegte Werft
+   blockiert) und gewann kein einziges Nest.
+6. **Menschen.** Angriffserlaubnis je Bot, Vorgabe aus. Mit Erlaubnis: Schutzregeln der Befehle plus Sperrfrist 12 h je
+   Bot und Mensch (Bericht oder Überfall unterwegs). Keine Aufklärung und keine Minen gegen Menschen ohne Erlaubnis.
+7. **Takt und Last (Raspberry Pi).** Höchstens 2 Züge je Minute, Budget 8 s, ältester Termin zuerst; mehr Bots
+   strecken sich so über die Zeit statt die Minute zu sprengen. Ein Zug kostet lokal ~10–17 ms (Median).
+8. **Aktivitätszeiten.** Fenster je Spielweise in Europe/Berlin, täglich um ±45 Min. verschoben, dazu ein Nachtschild
+   in der Schlafzeit – Bots wirken nicht wie 24/7-Maschinen und sind nachts so geschützt wie Menschen.
+9. **Entfernen** nutzt die vorhandene Mechanik (Angebot zurückziehen, Feld/Verband zurückrufen, Kolonie aufgeben,
+   Hinderungsgründe von `abandonBlockers`); erst danach werden Heimathafen und Spieler gelöscht (Kaskade). Berichte,
+   Journal und Nachrichten bleiben.
+10. **Testlauf** (`BOT_SIM_DAYS=10`, verstellte Uhr, echte Engine mit Kartell-Überfällen): Punkte an Tag 10
+    Freibeuter 2524 / 2338, Festung 1959 / 1855, Händler 1541 / 1035 (zwei Läufe); Freibeuter 10–13 Überfälle (fast
+    alle gewonnen, Beute 510–534 Punkte), Festung 3–4 Nester, Händler keine; Gebäudestufen 59–70 (Start 0).
+    Offen: Rohstofffelder nimmt im Testlauf noch niemand (alle anfangs bewacht, die Heimwache an Schiffen ist klein),
+    Gründungen erst nach Tag 10 (Kolonieschiff braucht Hafenkommandantur 6).

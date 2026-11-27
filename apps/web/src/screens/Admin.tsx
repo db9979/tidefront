@@ -1,5 +1,5 @@
 // Verwaltung (nur Admins; der Server prüft jede Anfrage): Systemzustand, Fehlermeldungen, Einladungscodes, Spieler, E-Mail-Versand,
-// Sicherungen und Statistik.
+// Sicherungen, Statistik und KI-Spieler.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
@@ -10,6 +10,7 @@ import { AdminInvites } from "./AdminInvites.tsx";
 import { AdminBackups } from "./AdminBackups.tsx";
 import { AdminStats } from "./AdminStats.tsx";
 import { AdminBugReports } from "./AdminBugReports.tsx";
+import { AdminBots } from "./AdminBots.tsx"; // KI-Spieler
 
 function when(v: string | Date | null | undefined): string {
   if (!v) return "–";
@@ -135,6 +136,8 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
 
       <AdminInvites />
 
+      <AdminBots />
+
       <Card title={`Spieler (${players.length})`}>
         {where === "players" && <ErrorLine text={error} />}
         {reset && (
@@ -148,13 +151,13 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
           {players.map((p) => (
             <li key={p.id} className="flex items-center gap-2 py-2">
               <div className="flex-1 min-w-0 text-sm">
-                <div className="font-bold">{p.name} {p.isAdmin && <Badge tone="brass">Admin</Badge>}</div>
+                <div className="font-bold">{p.name} {p.isAdmin && <Badge tone="brass">Admin</Badge>}{p.botProfile && <Badge tone="sea">KI</Badge>}</div>
                 <div className="text-xs text-slate-400">
                   {p.baseName ?? "kein Hafen"}{p.baseCount > 1 ? ` (+${p.baseCount - 1} weitere)` : ""} · seit {when(p.createdAt)} · aktiv {ago(p.lastSeenAt)}
                   {p.email ? ` · E-Mail ${p.emailVerified ? "bestätigt" : "unbestätigt"}` : ""}
                 </div>
               </div>
-              <Button
+              {!p.botProfile && <Button
                 kind="secondary"
                 className="text-xs"
                 disabled={busy}
@@ -163,7 +166,7 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
                   if (r.ok) setReset({ name: r.name, code: r.code, expiresAt: r.expiresAt });
                   return r;
                 }, "players")}
-              >Rücksetzcode</Button>
+              >Rücksetzcode</Button>}
             </li>
           ))}
         </ul>

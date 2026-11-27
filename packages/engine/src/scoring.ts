@@ -75,6 +75,8 @@ export interface Standing extends Score {
   base: { id: number; name: string; col: number; row: number; protection: string | null } | null;
   /** Anzahl der Häfen des Spielers. */
   bases: number;
+  /** KI-Spieler (Kennzeichen „KI“ in Rangliste und Spielerübersicht). */
+  bot: boolean;
 }
 
 /** Wettbewerbsrangfolge: gleiche Gesamtpunkte, gleicher Rang (1, 1, 3). */
@@ -107,8 +109,8 @@ export function awardsFor<T extends Score & { playerId: number; rank: number }>(
  */
 export async function computeStandings(db: DbOrTx, seasonStartMs: number, nowMs: number): Promise<Standing[]> {
   const players = await db.execute<{
-    id: number; name: string; base_id: number | null; base_name: string | null; col: number | null; row: number | null; state: BaseState | null; is_home: boolean | null;
-  }>(sql`select p.id, p.name, b.id as base_id, b.name as base_name, b.col, b.row, b.state, b.is_home
+    id: number; name: string; bot: boolean; base_id: number | null; base_name: string | null; col: number | null; row: number | null; state: BaseState | null; is_home: boolean | null;
+  }>(sql`select p.id, p.name, p.bot_profile is not null as bot, b.id as base_id, b.name as base_name, b.col, b.row, b.state, b.is_home
          from player p left join base b on b.player_id = p.id order by p.id, b.id`);
   const missions = await db.execute<{ player_id: number; status: string; units: Counts | null; returning: Counts | null }>(sql`
     select player_id, status, plan->'units' as units, "returning" as returning from mission
@@ -129,11 +131,11 @@ export async function computeStandings(db: DbOrTx, seasonStartMs: number, nowMs:
     return r;
   };
   // Mehrere Häfen: eine Zeile je Hafen; Spieler einmal (Heimathafen als base), Werte summiert.
-  const people = new Map<number, { playerId: number; name: string; base: Standing["base"]; bases: number }>();
+  const people = new Map<number, { playerId: number; name: string; base: Standing["base"]; bases: number; bot: boolean }>();
   for (const p of players) {
     const r = get(p.id);
     let person = people.get(p.id);
-    if (!person) people.set(p.id, (person = { playerId: p.id, name: p.name, base: null, bases: 0 }));
+    if (!person) people.set(p.id, (person = { playerId: p.id, name: p.name, base: null, bases: 0, bot: !!p.bot }));
     if (!p.state || p.base_id === null) continue;
     person.bases += 1;
     if (p.is_home || !person.base) {
