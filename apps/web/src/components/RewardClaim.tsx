@@ -14,7 +14,7 @@ export type Overflow = { id: string; amount: number; have: number; lost: number 
 
 /**
  * Was beim Abholen verfiele, je Ressource. Mehrere Belohnungen (Ziel + Wochenbonus) werden nacheinander
- * eingelagert wie auf dem Server; Kredite und andere Nicht-Ressourcen zählen nicht.
+ * eingelagert wie auf dem Server; Taler und andere Nicht-Ressourcen zählen nicht.
  */
 export function overflowOf(storage: RewardStorage, rewards: Reward[]): Overflow[] {
   if (!storage || !(storage.capacity > 0)) return [];

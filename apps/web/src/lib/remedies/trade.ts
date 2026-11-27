@@ -45,7 +45,7 @@ export const TRADE: RemedyTable = {
   credit_limit: ({ base, balance }) => {
     const per = balance?.buildings.hafenkommandantur?.creditLimitPerLevel ?? 0;
     return {
-      hint: `Das Kreditkonto fasst höchstens ${fmtNum(base?.market.creditLimit ?? 0)} Kredite (${fmtNum(per)} je Stufe der Hafenkommandantur). Erst Kredite ausgeben (z. B. Rohstoffe kaufen) oder die Hafenkommandantur ausbauen.`,
+      hint: `Kasse voll: höchstens ${fmtNum(base?.market.creditLimit ?? 0)} Taler ${per > 0 ? `bei Hafenkommandantur ${Math.round((base?.market.creditLimit ?? 0) / per)} ` : ""}(${fmtNum(per)} je Stufe). Erst Taler ausgeben (z. B. Rohstoffe kaufen) oder die Hafenkommandantur ausbauen.`,
       actions: [build("hafenkommandantur")],
     };
   },
@@ -69,6 +69,6 @@ export const TRADE: RemedyTable = {
   seller_gone: () => ({ hint: "Wähle ein anderes Angebot.", actions: [tradePlayers] }),
   escort_units: () => ({ hint: "Wähle weniger Geleitschiffe – nur Schiffe, die gerade daheim sind, können mitfahren.", actions: [missions, training] }),
   escort_ships_only: () => ({ hint: "Nimm nur Schiffe ins Geleit; Truppen und Flugzeuge begleiten keine Konvois." }),
-  escort_no_cargo: () => ({ hint: "Kredite werden sofort gutgeschrieben. Geleit nur wählen, wenn Ressourcen per Konvoi reisen." }),
+  escort_no_cargo: () => ({ hint: "Taler werden sofort gutgeschrieben. Geleit nur wählen, wenn Ressourcen per Konvoi reisen." }),
   offer_escorted: () => ({ hint: "Der Anbieter schützt die Ware schon selbst. Nimm das Angebot ohne eigenes Geleit an." }),
 };

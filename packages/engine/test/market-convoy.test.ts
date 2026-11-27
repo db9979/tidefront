@@ -66,7 +66,7 @@ async function newPlayer(name: string, field: { col: number; row: number }) {
   return { playerId: p.playerId, baseId, ...field };
 }
 
-/** Kredite für Käufe: einmal Stahl verkaufen. */
+/** Taler für Käufe: einmal Stahl verkaufen. */
 async function credits(playerId: number) {
   const q = await trade(engine, playerId, key(), { side: "sell", resource: "stahl", qty: 3000, expectedPrice: await price("sell", 3000) });
   assert.equal(q.ok, true, JSON.stringify(q));

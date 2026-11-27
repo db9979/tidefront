@@ -109,7 +109,7 @@ export interface SettleInput {
   sellerPledgeCents: number;
   /** Ware, die der Verkäufer liefern kann (KI: die Treuhandware). */
   goodsAvailable: number;
-  /** Kredite des Käufers auf dem Konto (ohne Anzahlung). */
+  /** Taler des Käufers auf dem Konto (ohne Anzahlung). */
   buyerCreditsCents: number;
   penaltyShare: number;
 }
@@ -117,7 +117,7 @@ export interface SettleInput {
 export interface SettleResult {
   /** Erfüllte Menge. */
   qty: number;
-  /** Nicht erfüllt, weil die Kredite des Käufers nicht reichten. */
+  /** Nicht erfüllt, weil die Taler des Käufers nicht reichten. */
   buyerShort: number;
   /** Nicht erfüllt, weil die Ware des Verkäufers fehlte. */
   sellerShort: number;
@@ -156,7 +156,7 @@ function penaltyCents(units: number, unit: number, share: number, capCents: numb
 }
 
 /**
- * Abwicklung bei Fälligkeit (bzw. nach der Nachfrist): erfüllt wird, so weit Ware und Kredite reichen. Für den nicht
+ * Abwicklung bei Fälligkeit (bzw. nach der Nachfrist): erfüllt wird, so weit Ware und Taler reichen. Für den nicht
  * erfüllten Teil verfällt penaltyShare seines Werts aus Anzahlung bzw. Pfand der säumigen Seite (beide, wenn beide
  * säumig sind); der Rest von Anzahlung und Pfand geht zurück. Alles in ganzen Cent; die Summe geht auf.
  */

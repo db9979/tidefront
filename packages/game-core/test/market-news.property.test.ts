@@ -1,4 +1,4 @@
-// Eigenschaftstests der Börse mit Marktnachrichten: Die Garantie „keine Kredite aus dem Nichts“ gilt auch mit
+// Eigenschaftstests der Börse mit Marktnachrichten: Die Garantie „keine Taler aus dem Nichts“ gilt auch mit
 // verschobenem (effektivem) Richtwert. Gegenstück zu market.property.test.ts, dort ohne Nachrichten.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -103,7 +103,7 @@ function randomQty(rand: () => number, r: ResourceId, b: MarketBalance): number 
 
 /** Kurse bleiben in den festen Grenzen des GRUNDrichtwerts (nicht des effektiven). */
 function assertBounds(p: Portfolio, b: MarketBalance, label: string): void {
-  assert.ok(p.trader.credits >= 0, `${label}: Kredite negativ`);
+  assert.ok(p.trader.credits >= 0, `${label}: Taler negativ`);
   for (const r of RESOURCES) {
     const ref = b.market.refPrice[r];
     const price = p.market[r].price;
@@ -160,7 +160,7 @@ test("Eigenschaft (Nachrichten): dasselbe ohne Kursband, fünffache Kurswirkung;
   assert.ok(stats.bounds > 0, "price_bounds nie ausgelöst");
 });
 
-test("Eigenschaft (Nachrichten): von jedem Kurs und Richtwert aus bringt keine Folge mit wiederhergestelltem Bestand Kredite", () => {
+test("Eigenschaft (Nachrichten): von jedem Kurs und Richtwert aus bringt keine Folge mit wiederhergestelltem Bestand Taler", () => {
   const b = stressBalance(realBalance);
   const m = b.market;
   let checked = 0;
@@ -196,7 +196,7 @@ test("Eigenschaft (Nachrichten): von jedem Kurs und Richtwert aus bringt keine F
     }
     if (!restored) continue;
     checked++;
-    assert.ok(p.trader.credits <= startCredits, `seed ${s}: Kredite von ${startCredits} auf ${p.trader.credits}`);
+    assert.ok(p.trader.credits <= startCredits, `seed ${s}: Taler von ${startCredits} auf ${p.trader.credits}`);
   }
   assert.ok(checked > SEQUENCES * 0.8, `nur ${checked} Folgen abgeschlossen`);
 });

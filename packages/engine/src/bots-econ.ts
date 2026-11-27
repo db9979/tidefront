@@ -58,7 +58,7 @@ export async function marketTurn(c: TurnCtx, base: Base, mods: Modifiers): Promi
   }
 }
 
-/** Ein Börsengeschäft zum aktuellen Kurs; Rückgabe: erhaltene Kredite (Verkauf), sonst 0. */
+/** Ein Börsengeschäft zum aktuellen Kurs; Rückgabe: erhaltene Taler (Verkauf), sonst 0. */
 async function doTrade(c: TurnCtx, base: Base, side: "buy" | "sell", resource: string, qty: number): Promise<number> {
   const q = await marketQuote(c.engine, { side, resource, qty });
   if (!q.ok) return 0;

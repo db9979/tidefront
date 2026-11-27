@@ -48,7 +48,7 @@ Vier Ressourcen: `stahl`, `treibstoff`, `elektronik`, `proviant`. Strom ist eine
   (KZ 8: 300, KZ 9: 360, KZ 10: 420, KZ 12: 540).
 - Tiefbunker: schützt je Ressource `protectedBase * protectedGrowth^L` vor Plünderung.
 - Missionsplätze: `missionSlotsBase + floor(L / 2) * missionSlotsPerTwoLevels` (Hafenkommandantur).
-- Börse ab Hafenkommandantur Stufe `marketFromLevel`; Kreditlimit `creditLimitPerLevel * L`.
+- Börse ab Hafenkommandantur Stufe `marketFromLevel`; Kasse (höchstens so viele Taler) `creditLimitPerLevel * L`.
 
 ## Einheiten
 
@@ -194,7 +194,7 @@ Nach dem Kampf:
 ## Admirale
 
 - Ernennen in der Hafenkommandantur (Truppen → Admirale), Block `admirals`: Plätze 1 + 1 je 5 Stufen Hafenkommandantur,
-  höchstens 3; Kosten 2 000 Kredite und 400 Elektronik. Name aus einer festen Liste (oder ausgelost).
+  höchstens 3; Kosten 2 000 Taler und 400 Elektronik. Name aus einer festen Liste (oder ausgelost).
 - Ränge nach Erfahrung: Kapitän zur See (0), Konteradmiral (100), Vizeadmiral (300), Admiral (700); Wirkung 50 / 70 /
   85 / 100 % der vollen Boni. Eine Spezialisierung beim Ernennen, eine zweite ab Vizeadmiral: Angriff, Verteidigung,
   Landungstrupp, Logistik, Aufklärung, Beutemeister, U-Boot-Taktik (Werte in `admirals.specs`, je Rolle `mission`,
@@ -214,7 +214,7 @@ Nach dem Kampf:
   Hafen (Quelle „Hafenkommandant“). Unterwegs, verwundet oder gefangen fehlt er daheim.
 - Erfahrung nur bei Sieg: zerstörte gegnerische Lebenspunkte / 60, 5 bis 120 je Kampf.
 - Nach einer Niederlage mit über 70 % verlorenen Lebenspunkten W20 aus dem Kampf-Seed: 1 gefallen, 2–5 gefangen (48 h
-  oder Lösegeld 1 500 Kredite), 6–12 verwundet (12 h), sonst unversehrt. Bericht: beide Admirale, Einfluss, Erfahrung, Wurf.
+  oder Lösegeld 1 500 Taler), 6–12 verwundet (12 h), sonst unversehrt. Bericht: eigener Admiral mit Einfluss, Erfahrung, Wurf; der Admiral eines Spieler-Gegners nur mit Name und Rang.
 
 ## Freibeuter-Kartell
 
@@ -391,13 +391,13 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
   wird vor jedem Handel angewendet.
 - Handel über Menge `q`: Kurswirkung `i = q / depth`. Kauf: `p' = p * (1 + i)`. Verkauf: `p' = p / (1 + i)`.
   Ausführungskurs ist das Mittel aus `p` und `p'`.
-- Kauf kostet `q * Ausführungskurs * (1 + fee)`, Verkauf bringt `q * Ausführungskurs * (1 - fee)`; Kredite auf zwei Nachkommastellen, zulasten des Spielers gerundet.
+- Kauf kostet `q * Ausführungskurs * (1 + fee)`, Verkauf bringt `q * Ausführungskurs * (1 - fee)`; Taler auf zwei Nachkommastellen, zulasten des Spielers gerundet.
 - Ablehnungsgründe (Code in Klammern), in dieser Reihenfolge geprüft:
   Börse nicht freigeschaltet (`locked`), Handelspause (`halted`), Menge nicht positiv und ganzzahlig (`bad_qty`),
   Kurswirkung über `maxImpactPerTrade` (`impact`), mehr als `tradesPerMinute` (`rate`),
   Tageslimit `dailyLimitShareOfStorage * Lagerkapazität` je Ressource im gleitenden 24-h-Fenster überschritten (`daily_limit`),
   Verkauf bei erkanntem Angriff auf den Stützpunkt (`under_attack`),
-  Verkauf würde das Kreditlimit überschreiten (`credit_limit`), Bestand oder Kredite reichen nicht (`funds`),
+  Verkauf würde die Kasse überfüllen (`credit_limit`), Bestand oder Taler reichen nicht (`funds`),
   erwarteter Kurs weicht um mehr als `slippageTolerance` ab (`slippage`),
   neuer Kurs außerhalb `[floorFactor, ceilFactor] * ref` (`price_bounds`).
 - **Tageslimit, gleitend (seit v1.30):** Kauf und Verkauf je Ressource zählen zusammen. Jeder Handel wird im Fach seiner
@@ -411,15 +411,15 @@ Kurs `p` je Ressource, Richtwert `ref`, Markttiefe `depth`.
 - Gekaufte Ware wird nicht sofort gutgeschrieben, sondern als Lieferung mit Ankunftszeit zurückgegeben – seit 0.35
   nach fester Lieferzeit `market.deliveryHours` (4 h), unabhängig von der Entfernung, Kartellrisiko mit fester Strecke
   (docs/REGELN-SEE.md); ohne den Wert wie früher:
-  (`Seeweg vom nächsten Handelshafen / convoySpeedKmh`; nächster Hafen und Entfernung über Wasser, Seewege). Verkaufte Ware wird sofort abgezogen, Kredite sofort gutgeschrieben.
+  (`Seeweg vom nächsten Handelshafen / convoySpeedKmh`; nächster Hafen und Entfernung über Wasser, Seewege). Verkaufte Ware wird sofort abgezogen, Taler sofort gutgeschrieben.
   Die Lieferung fährt als **Konvoi** (Art `boerse`) vom Handelshafen über die Seewege zum Käuferhafen: auf der Karte
   sichtbar, vom Kartell (gedämpfte Chance) und von Kriegsgegnern abfangbar, Geleitschutz optional in der Order
   (`escort`); Minenfelder treffen ihn nicht (`docs/REGELN-SEE.md`, Abschnitt Konvois). Lieferungen ohne Konvoi aus älteren
   Ständen kommen unverändert an.
-- Jeder Handel liefert Journalzeilen (doppelte Buchführung): Summe aller Kredit-Buchungen einschließlich Gebührenkonto ist 0,
+- Jeder Handel liefert Journalzeilen (doppelte Buchführung): Summe aller Taler-Buchungen einschließlich Gebührenkonto ist 0,
   ebenso die Summe je Ressource zwischen Spieler, Markt und Lieferung.
 - Garantie, die Tests prüfen: Keine Folge von Käufen und Verkäufen ohne vergangene Zeit, nach der der Spieler von jeder
-  Ressource mindestens so viel hält wie vorher (Bestand plus Lieferungen), erhöht seine Kredite.
+  Ressource mindestens so viel hält wie vorher (Bestand plus Lieferungen), erhöht seine Taler.
   Startet der Kurs am Richtwert, steigt außerdem sein zum Richtwert bewerteter Gesamtwert nicht.
   Ein Kauf unter Richtwert ist erlaubt: Das ist eine Wette auf die Rückkehr des Kurses, kein Gewinn aus dem Nichts.
 - Auslegungen des Börsenkerns stehen in `packages/game-core/src/market/ENTSCHEIDUNGEN.md` und gelten als Teil dieser Regeln.
@@ -479,15 +479,15 @@ und bezahlt wird bei Fälligkeit. Gegenpartei ist ein KI-Spieler oder ein andere
   Bezugskurs` geht in den Gebührentopf (beim Kauf aus dem Preis, beim Verkauf zahlt ihn die KI zusätzlich). Angebote werden
   wie an der Börse mit dem gesehenen Preis bestätigt (`slippage` bei mehr als `slippageTolerance` Abweichung). Keine neuen
   Verträge während der Handelspause der Ressource (`halted`).
-- **Sicherheit:** Käufer `depositShare` (25 %) Anzahlung, Verkäufer 25 % Pfand in Kredite, sofort in Treuhand
+- **Sicherheit:** Käufer `depositShare` (25 %) Anzahlung, Verkäufer 25 % Pfand in Taler, sofort in Treuhand
   (`escrow:mc-<id>`; nicht plünderbar, nicht übertragbar). Eine KI legt als Verkäuferin die ganze Ware, als Käuferin den
-  ganzen Preis in Treuhand. Bei Fälligkeit wird so weit erfüllt, wie Kredite (Anzahlung deckt 25 % je erfüllter Einheit) und
+  ganzen Preis in Treuhand. Bei Fälligkeit wird so weit erfüllt, wie Taler (Anzahlung deckt 25 % je erfüllter Einheit) und
   Ware reichen; sonst `graceHours` (12) Nachfrist, danach anteilig. Für den nicht erfüllten Teil verfallen `penaltyShare`
   (25 %) seines Werts aus der Sicherheit der säumigen Seite (beide, wenn beide säumig sind); der Rest geht zurück.
   **Kündigung** vor Fälligkeit (auch in der Nachfrist, Abo: alle offenen Tranchen): 25 % des gekündigten Werts verfallen.
   Strafen gehen an die KI bzw. bei Spielerverträgen in den Gebührentopf.
 - **Ereignisse:** `contract_due` mit Schritt `remind` (`remindHours` = 6 h vor der Abwicklung; Nachricht und Push „Lieferung“,
-  nur wenn Kredite bzw. Ware fehlen), `settle`, `grace`, `expire` (Angebot an Spieler). Nichts läuft periodisch.
+  nur wenn Taler bzw. Ware fehlen), `settle`, `grace`, `expire` (Angebot an Spieler). Nichts läuft periodisch.
 - **KI-Spieler:** nur aktive KI mit Charakter (`ki.profiles`): Händler (Reederei Albers) alle Ressourcen in beide Richtungen,
   Abos, 1–7 Tage; Festung (Bastion Falkenberg) kauft Stahl und Elektronik, 2–7 Tage, Abschlag 2 Punkte kleiner; Freibeuter
   (Kapitän Rotbart) verkauft Treibstoff und Elektronik, 1–2 Tage, Aufschlag 2 Punkte kleiner, höchstens 2.000 je Vertrag,
@@ -507,7 +507,7 @@ und bezahlt wird bei Fälligkeit. Gegenpartei ist ein KI-Spieler oder ein andere
   Beim Abschluss: Vertragslieferungen einer Ressource in jedem 24-h-Fenster ≤ `limitShare` (50 %) des Tageslimits
   (`daily_limit`). Börse: **freier Rahmen = Tageslimit − Umsatz der letzten 24 h − Vertragslieferungen der nächsten 24 h**
   (`market.get` → `dailyReserved`, Anzeige „davon für Verträge vorgemerkt“).
-- **Kreditlimit:** Käufer: offene Restzahlungen + neue ≤ Kreditlimit; Verkäufer: Kredite + offene Erlöse + neue ≤ Kreditlimit
+- **Kasse (creditLimit):** Käufer: offene Restzahlungen + neue ≤ Kasse; Verkäufer: Taler + offene Erlöse + neue ≤ Kasse
   (`credit_limit`). Bei Lieferung wird voll gutgeschrieben, auch über das Limit.
 - **Handelsbilanz:** Vertragslieferungen an bzw. von Menschen zählen bei Lieferung wie Börsenumsatz (Journal `mc-…`), die KI-Seite
   nicht.
@@ -520,7 +520,7 @@ und bezahlt wird bei Fälligkeit. Gegenpartei ist ein KI-Spieler oder ein andere
   Tagesbefehle. Jede Lieferung eines Spielervertrags verbindet das Paar (`pvp_ties`, 7 Tage: kein Kopfgeld). Angebote an
   einen bestimmten Spieler gehen nicht an KI-Spieler; öffentliche Angebote nimmt ein KI-Händler in seinem Zug an, wenn sie
   ihm mindestens 3 % gegenüber dem Kurs bringen und sein Lager es trägt.
-- **Erfolge und Tagesbefehle „Handel“:** zählen bei Lieferung, je Vertrag bzw. Tranche einmal, ab 500 Kredite.
+- **Erfolge und Tagesbefehle „Handel“:** zählen bei Lieferung, je Vertrag bzw. Tranche einmal, ab 500 Talern.
 - **Saisonende:** Fälligkeit (jeder Tranche) spätestens `seasonEndBufferHours` (24 h) vor Saisonende (`bad_term`). Was beim
   Saisonwechsel noch offen ist, wird rückabgewickelt (Treuhand gegen `season:<n>` ausgebucht, Status `rueckabgewickelt`).
 - **Garantie, die Tests prüfen:** Kauf auf Termin und Verkauf bei Lieferung an der Börse (bzw. Leerverkauf) verliert ohne
@@ -575,7 +575,7 @@ und bezahlt wird bei Fälligkeit. Gegenpartei ist ein KI-Spieler oder ein andere
   (v1.21, mindestens 1000 Strom-Stunden, ohne Punkte; [REGELN-STROM.md](REGELN-STROM.md)). Der Endstand hält alle fünf
   Kategorien fest.
   Jeder Spieler erhält eine Systemnachricht mit Platz und Auszeichnungen.
-- Danach wird die Welt zurückgesetzt: Stützpunkte, Missionen, Lieferungen, Wracks, Kampfberichte und Kredite verfallen,
+- Danach wird die Welt zurückgesetzt: Stützpunkte, Missionen, Lieferungen, Wracks, Kampfberichte und Taler verfallen,
   Nester sind wieder besetzt, die Börse steht auf Richtwert, Tagesbefehle und Serien verfallen. Konten, Nachrichten und die Ruhmeshalle bleiben.
   Jeder Spieler wählt einen neuen Hafen und erhält erneut Anfängerschutz.
 
@@ -631,7 +631,7 @@ Vorlage „Aufholhilfe“ (docs/VORLAGE-AUFHOLHILFE.md) mit Nutzerentscheiden vo
   | Kartell-Überfall abwehren | s | Anfängerschutz vorbei | 1 |
   | Aufklärung durchführen | l/m | Werft oder Flugfeld | 1 / 2 |
   | Transport zu Mitspielern | m/s | Werft, andere Spieler | 1 / 2 (zählt bei Ankunft) |
-  | Börsenhandel | l/m/s | Börse offen | 300 / 1.000 / 3.000 Kredite × (1 + (Hafenkommandantur − 3)/2) |
+  | Börsenhandel | l/m/s | Börse offen | 300 / 1.000 / 3.000 Taler × (1 + (Hafenkommandantur − 3)/2) |
   | Wrackgut bergen | m/s | Werft oder Flugfeld | 300 / 1.000 × (1 + s/5) |
   | Nachricht an Mitspieler | l | andere Spieler | 1 |
   | Beute machen | m/s | Werft und Kaserne | 1.500 / 4.000 × (1 + s/4) |
@@ -646,7 +646,7 @@ Vorlage „Aufholhilfe“ (docs/VORLAGE-AUFHOLHILFE.md) mit Nutzerentscheiden vo
 
 - Fortschritt zählt nur für Geschehen am selben Spieltag (Zeitpunkt des Ereignisses) und nur nach der Vergabe:
   Ausbau, Ausbildung, Anlagen, Kampf, Aufklärung, Transport, Wrack und Beute aus den verarbeiteten Ereignissen,
-  Börsenhandel (Kreditbetrag des Handels) und Bauschlange (höchste Länge) aus den Befehlen. Vorrat, Produktion,
+  Börsenhandel (Talerbetrag des Handels) und Bauschlange (höchste Länge) aus den Befehlen. Vorrat, Produktion,
   Forschung zählt beim Abschluss (Ereignis). Kommandozentrale, Nachrichten und die Strom-Befehle werden aus dem Zustand
   gelesen: beim Abruf und Abholen, nach jedem abgeschlossenen Ausbau des Spielers und alle 10 Minuten im Worker-Takt
   (nur Spieler mit offenen Befehlen dieser Art). Es zählt der beste Stand des Tages – wer erst abends nachsieht, behält

@@ -19,7 +19,7 @@ function useCables() {
 const invalidate = () => [trpc.power.cables.pathFilter().queryKey, trpc.base.pathFilter().queryKey];
 const pct = (x: number) => `${Math.round(x * 100)} %`;
 
-/** Preis-Eingabe (Kredite je Strom-Stunde, Komma oder Punkt). */
+/** Preis-Eingabe (Taler je Strom-Stunde, Komma oder Punkt). */
 function parsePrice(text: string): number {
   const n = Number(text.replace(",", "."));
   return Number.isFinite(n) ? Math.round(n * 100) / 100 : NaN;
@@ -56,7 +56,7 @@ export function PowerCable({ baseId }: { baseId: number }) {
               </p>
               {v.candidates.some((c) => !c.own) && (
                 <label className="flex items-center gap-2 text-xs">
-                  <span className="text-ink2">Preis für Allianzmitglieder (Kredite je Strom-Stunde, 0 = Allianzhilfe)</span>
+                  <span className="text-ink2">Preis für Allianzmitglieder (Taler je Strom-Stunde, 0 = Allianzhilfe)</span>
                   <input aria-label="Preis je Strom-Stunde" inputMode="decimal" className="h-11 w-20 rounded-lg field px-2 mono text-right" value={price} onChange={(e) => setPrice(e.target.value)} />
                 </label>
               )}
@@ -90,7 +90,7 @@ function CableCard({ c, maxPrice, tickMinutes }: { c: Cable; maxPrice: number; t
   const setP = useCommand((i: { key: string; cableId: number; price: number }) => trpcClient.power.price.mutate(i), invalidate);
   const partner = c.partner ? `${c.partner.name}${c.partner.own ? "" : ` (${c.partner.player})`}` : "unbekannter Hafen";
   const p = parsePrice(price);
-  const priceText = c.ownPair ? "eigene Häfen" : c.price > 0 ? `${fmtNum(c.price, 2)} Kredite je Strom-Stunde` : "Allianzhilfe (kostenlos)";
+  const priceText = c.ownPair ? "eigene Häfen" : c.price > 0 ? `${fmtNum(c.price, 2)} Taler je Strom-Stunde` : "Allianzhilfe (kostenlos)";
   return (
     <div className="rounded-lg border border-rule bg-paper p-2 text-xs space-y-1" data-testid="seekabel-kabel">
       <div className="font-semibold">{c.role === "out" ? "Gibt Strom ab an" : "Bezieht Strom von"} {partner}</div>
@@ -109,7 +109,7 @@ function CableCard({ c, maxPrice, tickMinutes }: { c: Cable; maxPrice: number; t
           <div className="grid grid-cols-[1fr_auto] gap-x-3">
             <span className="text-ink2">Angekommen</span><span className="mono text-right">{fmtNum(c.delivered)}</span>
             <span className="text-ink2">Verloren oder verfallen</span><span className="mono text-right">{fmtNum(c.lost)}</span>
-            {!c.ownPair && <><span className="text-ink2">Bezahlt</span><span className="mono text-right">{fmtNum(c.paid, 2)} Kredite</span></>}
+            {!c.ownPair && <><span className="text-ink2">Bezahlt</span><span className="mono text-right">{fmtNum(c.paid, 2)} Taler</span></>}
             {c.role === "in" && <><span className="text-ink2">Kabelpuffer</span><span className="mono text-right">{fmtNum(c.buffer ?? 0)} / {fmtNum(c.bufferCap ?? 0)}</span></>}
             {c.role === "out" && <><span className="text-ink2">Gesendet seit Abrechnung</span><span className="mono text-right">{fmtNum(c.sent ?? 0)}</span></>}
           </div>

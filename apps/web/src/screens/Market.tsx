@@ -1,11 +1,11 @@
-// Börse als Handelsoberfläche: Unterreiter (gemerkt) ganz oben, darunter der einklappbare Kopf mit Kreditkonto und
+// Börse als Handelsoberfläche: Unterreiter (gemerkt) ganz oben, darunter der einklappbare Kopf mit Talerkonto und
 // kompakter Marktlage:
 //   Handel      – Kurstafel, Order direkt darunter (Knopf in der Aktionsleiste), Kursverlauf (eingeklappt), Konvois
 //   Spieler     – Handel mit Spielern (Angebot einstellen in der Aktionsleiste) und Statistik
 //   Verträge    – Lieferverträge (v1.31): Angebote der KI-Spieler, Verträge mit Spielern, eigene Verträge
 //   Marktlage   – Marktnachrichten (Schlüssel bleibt „nachrichten“, damit gemerkte Wahl und Sprungziele gelten)
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { market } from "@tidefront/game-core"; // feste Lieferzeit der Börsenkäufe
 import { trpc, type BaseData } from "../lib/trpc.ts";
@@ -35,8 +35,8 @@ const SEGS: { id: Seg; label: string }[] = [
   { id: "nachrichten", label: "Marktlage" },
 ];
 
-/** initialResource: vorgewählte Ressource (Sprung aus „Was hilft?“). */
-export function MarketScreen({ base, initialResource }: { base: BaseData; initialResource?: string }) {
+/** initialResource/initialOrder: vorgewählte Ressource und Order (Sprung aus „Was hilft?“). */
+export function MarketScreen({ base, initialResource, initialOrder }: { base: BaseData; initialResource?: string; initialOrder?: { side: "buy" | "sell"; qty?: number } }) {
   const m = useQuery({ ...trpc.market.get.queryOptions(), refetchInterval: 30000 });
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const we = useWorldEvents();
@@ -44,6 +44,11 @@ export function MarketScreen({ base, initialResource }: { base: BaseData; initia
   const now = useNow();
   const [resource, setResource] = useState(initialResource ?? "stahl");
   const [seg, setSeg] = useSegment<Seg>("boerse", SEGS.map((x) => x.id), "handel");
+  const ready = !!m.data && !!meta.data;
+  // Vorbelegte Order (z. B. „Proviant verkaufen“): Ordermaske nach dem Laden ins Bild holen.
+  useEffect(() => {
+    if (ready && initialOrder) setTimeout(() => document.getElementById("tf-order")?.scrollIntoView?.({ block: "start", behavior: "smooth" }), 0);
+  }, [ready, initialOrder]);
   if (!m.data || !meta.data) return <Loading cards={3} />;
 
   const cfg = meta.data.balance.market as MarketCfg;
@@ -95,7 +100,8 @@ export function MarketScreen({ base, initialResource }: { base: BaseData; initia
         <Card id="tf-order" title={<><Icon id="credits" size={18} /> Order {label(sel.id)}</>} right={<span className="text-[11px] text-ink2">Gebühr {cfg.fee * 100} %</span>}>
           {unlocked ? (
             <OrderTicket r={sel} cfg={cfg} nowMs={now}
-              ctx={{ credits, creditLimit: base.market.creditLimit, stock: base.resources[sel.id] ?? 0, port, travelMs, siege, attack }} base={base} />
+              ctx={{ credits, creditLimit: base.market.creditLimit, stock: base.resources[sel.id] ?? 0, port, travelMs, siege, attack }} base={base}
+              initial={initialOrder && sel.id === initialResource ? initialOrder : undefined} />
           ) : (
             <div className="flex gap-3 items-center rounded-lg border border-dashed border-ink/50 bg-inset p-3" role="status">
               <Icon id="hafenkommandantur" size={52} />

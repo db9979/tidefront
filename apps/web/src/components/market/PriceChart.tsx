@@ -76,7 +76,7 @@ function DetailChart({ r, nowMs, cfg, span }: { r: MarketRes; nowMs: number; cfg
 
   const bandTop = clampY(range.hi);
   const bandBot = clampY(range.lo);
-  const desc = `${label(r.id)}, ${span === "1h" ? "letzte Stunde" : "letzte 24 Stunden"}: Kurs ${t.word} von ${fmtNum(vals[0], 2)} auf ${fmtNum(r.price, 2)} Kredite (${signed(pct)}), `
+  const desc = `${label(r.id)}, ${span === "1h" ? "letzte Stunde" : "letzte 24 Stunden"}: Kurs ${t.word} von ${fmtNum(vals[0], 2)} auf ${fmtNum(r.price, 2)} Taler (${signed(pct)}), `
     + `Tief ${fmtNum(Math.min(...vals), 2)}, Hoch ${fmtNum(Math.max(...vals), 2)}, Richtwert ${fmtNum(r.ref, 2)}. `
     + `${trades.length} ${trades.length === 1 ? "Geschäft" : "Geschäfte"} im Zeitraum. Erlaubter Kurs nach dem nächsten Handel ${fmtNum(range.lo, 2)} bis ${fmtNum(range.hi, 2)}.`
     + (halted ? ` Handelspause bis ${clock(haltEnd)}.` : "");
@@ -85,7 +85,7 @@ function DetailChart({ r, nowMs, cfg, span }: { r: MarketRes; nowMs: number; cfg
     <div>
       <div className="flex items-end justify-between gap-2 mb-1">
         <div>
-          <div className="mono text-[28px] leading-none">{fmtNum(r.price, 2)} <span className="text-sm text-ink2">Kr</span></div>
+          <div className="mono text-[28px] leading-none">{fmtNum(r.price, 2)} <span className="text-sm text-ink2">T</span></div>
           <div className={`mono text-sm font-semibold ${TONE_TEXT[t.tone]}`}>{t.arrow} {signed(pct, 2)} <span className="font-sans font-normal text-ink2 text-xs">in {span === "1h" ? "1 h" : "24 h"}</span></div>
         </div>
       </div>

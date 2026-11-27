@@ -99,7 +99,7 @@ test("Abwicklung: voll, Nachfrist-Ende mit anteiliger Erfüllung und 25 % Strafe
   assert.equal(full.fromAccountCents, 82_500);
   assert.equal(full.feeCents, 4000);
   assert.equal(full.buyerRefundCents, 0);
-  // Käufer hat nur 412,50 Kredite: deckt mit der Anzahlung (25 % je erfüllter Einheit) genau 500 Einheiten.
+  // Käufer hat nur 412,50 Taler: deckt mit der Anzahlung (25 % je erfüllter Einheit) genau 500 Einheiten.
   const part = settleContract({ qty: 1000, ...unit, buyerDepositCents: D, sellerPledgeCents: 0, goodsAvailable: 1000, buyerCreditsCents: 41_250, penaltyShare: 0.25 });
   assert.equal(part.qty, 500);
   assert.equal(part.buyerShort, 500);

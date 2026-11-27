@@ -1,4 +1,4 @@
-// Börse: Stahl verkaufen (sofort Kredite), Stahl kaufen (Konvoi), Lieferung vorspulen, Unterreiter ansehen.
+// Börse: Stahl verkaufen (sofort Taler), Stahl kaufen (Konvoi), Lieferung vorspulen, Unterreiter ansehen.
 import { expect, expectNoHorizontalOverflow, test, until } from "./fixtures.ts";
 import { readState, setBuildings, setResources } from "./game.ts";
 
@@ -52,11 +52,39 @@ test("Börse: verkaufen und kaufen", async ({ page, player, seed }) => {
   await page.getByRole("tab", { name: "Marktlage" }).click();
   await expect(page.getByRole("heading", { name: "Marktlage" })).toBeVisible();
   await expectNoHorizontalOverflow(page, "Börse · Marktlage");
-  // Kopf einklappen: eine Zeile mit Kreditkonto, Zustand bleibt gemerkt.
+  // Kopf einklappen: eine Zeile mit Talerkonto, Zustand bleibt gemerkt.
   await page.getByRole("button", { name: "Kopf einklappen" }).click();
-  await expect(page.getByText(/^Kreditkonto [\d.,]+ Kr$/)).toBeVisible();
+  await expect(page.getByText(/^Konto [\d.,]+ T$/)).toBeVisible();
   await page.getByRole("button", { name: "Kopf aufklappen" }).click();
   // Kurse mit Dezimalkomma und zwei Stellen.
   await page.getByRole("tab", { name: "Handel" }).click();
-  await expect(page.getByRole("radio", { name: /^Stahl: \d+,\d{2} Kredite/ })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /^Stahl: \d+,\d{2} Taler/ })).toBeVisible();
+});
+
+test("Börse: 0 Taler – Hinweis schaltet auf Verkaufen mit Überschuss-Rohstoff", async ({ page, player, seed }) => {
+  await setBuildings(seed.sql, player.baseId, { hafenkommandantur: 3, lagerkomplex: 3 });
+  await setResources(seed.sql, player.baseId, { stahl: 300, treibstoff: 200, elektronik: 100, proviant: 5000 });
+  await seed.sql`update player set trader = jsonb_set(trader, '{credits}', '0'::jsonb) where id = ${player.id}`;
+
+  await page.goto("/");
+  await page.getByRole("navigation").getByRole("button", { name: "Börse" }).click();
+  await page.getByRole("tab", { name: "Handel" }).click();
+  await expect(page.getByRole("heading", { name: "Order Stahl" })).toBeVisible();
+  const reason = page.getByRole("button", { name: /Du hast 0 Taler\. Verkaufe zuerst Rohstoffe – z\. B\. Proviant \(Überschuss\)\./ });
+  await expect(reason).toBeVisible();
+  await reason.click();
+  // Auf der Börse kein „Zur Börse“ – stattdessen direkt verkaufen.
+  const order = page.locator("#tf-order");
+  await expect(order.getByRole("button", { name: /Proviant verkaufen/ }).first()).toBeVisible();
+  await expect(order.getByRole("button", { name: /Zur Börse/ })).toHaveCount(0);
+  await order.getByRole("button", { name: /Proviant verkaufen/ }).first().click();
+  await expect(page.getByRole("heading", { name: "Order Proviant" })).toBeVisible();
+  await expect(page.getByRole("radio", { name: "Verkaufen", exact: true })).toHaveAttribute("aria-checked", "true");
+  const qty = Number(await page.locator("#tf-qty").inputValue());
+  expect(qty).toBeGreaterThan(0);
+  expect(qty).toBeLessThanOrEqual(5000);
+  const sell = page.getByRole("button", { name: /^Verkaufen · / });
+  await expect(sell).toBeEnabled();
+  await sell.click();
+  await expect(page.getByRole("status").filter({ hasText: `Verkauft: ${qty.toLocaleString("de-DE")} Proviant.` })).toBeVisible();
 });

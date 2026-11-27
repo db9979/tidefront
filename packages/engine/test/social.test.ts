@@ -191,7 +191,7 @@ test("Nachrichten: senden, Posteingang, Gesendet, gelesen, Zähler, Systemnachri
 
 test("Saisonende: Endstand, Auszeichnungen, Nachrichten, Reset, Prüflauf ok, idempotent", async () => {
   const season = (await runningSeason(db))!;
-  // Börse: Verkauf (Kredite) und Kauf (Lieferung unterwegs), damit das Journal offene Salden hat.
+  // Börse: Verkauf (Taler) und Kauf (Lieferung unterwegs), damit das Journal offene Salden hat.
   await patchBase(B.baseId, (s) => { s.buildings.hafenkommandantur = 3; s.buildings.kommandozentrale = 1; s.resources.stahl = 5000; });
   const sold = await trade(engine, B.playerId, key(), { side: "sell", resource: "stahl", qty: 500, expectedPrice: 0.99875 });
   assert.equal(sold.ok, true, JSON.stringify(sold));
@@ -287,7 +287,7 @@ test("Saisonende: Endstand, Auszeichnungen, Nachrichten, Reset, Prüflauf ok, id
   assert.equal(view.rows.find((r) => r.playerId === A.playerId)?.kampf, 0);
 });
 
-test("Mehrere Häfen: Börse spielerweit (Freischaltung und Kreditlimit nach höchster Hafenkommandantur, Tageslimit nach Heimathafen), Forschung des Heimathafens in der Kolonie", async () => {
+test("Mehrere Häfen: Börse spielerweit (Freischaltung und Kasse nach höchster Hafenkommandantur, Tageslimit nach Heimathafen), Forschung des Heimathafens in der Kolonie", async () => {
   const X = await newPlayer("Xaver", 15);
   await patchBase(X.baseId, (s) => {
     s.buildings.hafenkommandantur = 2; s.buildings.forschungsamt = 3; s.buildings.lagerkomplex = 6;

@@ -33,7 +33,7 @@ export function PriceBoard({ resources, selected, onSelect, nowMs, halfLife }: {
               role="radio"
               aria-checked={on}
               onClick={() => onSelect(r.id)}
-              aria-label={`${label(r.id)}: ${fmtNum(r.price, 2)} Kredite, ${t.word} ${signed(pct)} in 24 Stunden, Richtwert ${fmtNum(r.ref, 2)}${halted ? ", Handelspause" : ""}`}
+              aria-label={`${label(r.id)}: ${fmtNum(r.price, 2)} Taler, ${t.word} ${signed(pct)} in 24 Stunden, Richtwert ${fmtNum(r.ref, 2)}${halted ? ", Handelspause" : ""}`}
               className={`tap text-left panel rounded-xl p-2.5 relative transition-shadow ${on ? "!border-ink shadow-[inset_0_0_0_1px_var(--color-ink),0_2px_0_var(--color-ink)]" : ""}`}
             >
               {on && <span className="absolute top-0 left-2.5 right-2.5 h-[3px] bg-siegel" aria-hidden="true" />}
@@ -43,7 +43,7 @@ export function PriceBoard({ resources, selected, onSelect, nowMs, halfLife }: {
                 {halted && <span className="font-display text-[11px] uppercase border border-siegel text-siegel px-1" title={`Pause noch ${fmtDuration(r.haltedUntilMs - nowMs)}`}>Pause</span>}
               </div>
               <div className="flex items-end justify-between gap-1 mt-1">
-                <span className="mono text-[22px] leading-none text-ink whitespace-nowrap">{fmtNum(r.price, 2)}<span className="text-[12px] text-ink2"> Kr</span></span>
+                <span className="mono text-[22px] leading-none text-ink whitespace-nowrap">{fmtNum(r.price, 2)}<span className="text-[12px] text-ink2"> T</span></span>
                 <span className={`mono text-[12.5px] font-semibold ${TONE_TEXT[t.tone]}`} aria-hidden="true">{t.arrow}&#8239;{signed(pct)}</span>
               </div>
               <Spark r={r} nowMs={nowMs} halfLife={halfLife} tone={t.tone} />

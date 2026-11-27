@@ -97,7 +97,7 @@ persönlichen Einladungen mit Einladendem. Eine Belohnung für Einladungen gibt 
 
 Verwaltung → „Statistik“, Zeitraum 7 oder 28 Tage: aktive Spieler (24 Std., 7 Tage, Saison; aus der letzten Aktivität),
 Registrierungen je Tag, Ressourcenfluss (Netto-Produktion je Stunde aller Häfen mit allen Modifikatoren wie im Hafen, Beute von Spielern und Kartell,
-Börsenumsatz in Krediten ohne Gebühr, Handelsmengen, Gebühren), Kampf (Überfälle auf Spieler, Nester und
+Börsenumsatz in Talern ohne Gebühr, Handelsmengen, Gebühren), Kampf (Überfälle auf Spieler, Nester und
 Kartell-Überfälle je Tag mit Siegquoten, vor allem die Kartell-Siegquote gegen Spieler für die Balance),
 höchste besiegte Neststufe je Spieler (Saison), Veteranen (Einheiten je Rang und je Typ mit Ø Erfahrung), Wirtschaft (Ø Kommandozentrale, Verteilung der Gebäudestufen) und
 Auffälligkeiten: Spieler mit mehr als dem Dreifachen des Medians an Ressourcen (ab drei Häfen), fünf oder mehr Überfälle

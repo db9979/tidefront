@@ -1,5 +1,5 @@
 // Mehrere Häfen: spielerweite Werte, die aus mehreren Häfen abgeleitet werden.
-// - Hafenkommandantur für Börse (Freischaltung, Kreditlimit), Spielerhandel (Freischaltung) und Admiral-Plätze:
+// - Hafenkommandantur für Börse (Freischaltung, Kasse), Spielerhandel (Freischaltung) und Admiral-Plätze:
 //   höchste Stufe aller Häfen.
 // - Börsen-Tageslimit: Lagerkapazität des Heimathafens.
 // - Forschung: wird im Heimathafen geführt; Kolonien zeigen dessen Stand.

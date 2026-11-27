@@ -430,6 +430,33 @@ Nutzerentscheid (6 Punkte). Regeln: `docs/REGELN-SEE.md` (Abschnitt Konvois), `d
     „Ausbilden“: `train-request.ts` legt die Mengen 2 min bereit, `TrainRow` übernimmt sie, Sprung über
     `useNav().go({ to: "troops", seg: "ausbilden" })`.
 
+## Währung „Taler“, 0-Taler-Hinweis, gegnerischer Admiral im Bericht (tal)
+
+1. **Name (Nutzerentscheid):** Die Währung heißt für Spieler „Taler“, Kurzform „T“ (statt „Kredite“/„Kr“ – klang nach
+   geliehenem Geld). Taler ist Singular = Plural („1 Taler“, „2.000 Taler“, „Taler fehlen“), Dativ „in Talern“.
+   „Kreditlimit“ heißt „Kasse“ („Kasse voll: höchstens 45.000 Taler bei Hafenkommandantur 9“), „Kreditkonto“ im
+   Börsenkopf „Konto“. Interne Bezeichner (`credits`, `creditLimit`, Spalten, API-Felder, Icon-Id `credits`) bleiben,
+   keine Datenmigration; das Icon ist jetzt eine Talermünze (Rändelung, „T“). Umgestellt: Web, Engine (Mails, Push,
+   Nachrichten, Erfolge/Wochenziele/Tagesbefehle, Fehlertexte), Balance-Texte (nur `kaufmann`, keine Zahlen, Version
+   unverändert), docs/REGELN*.md, Kommentare/Testnamen mit. Historische Einträge (CHANGELOG, ENTSCHEIDUNGEN-1…4,
+   VORLAGE-*, BAUAUFTRAG) bleiben.
+2. **Sprachprüfung (`test/taler-wording.test.ts`):** sucht „Kredit…“ und „Kr“ (als eigenes Wort) in apps/web, apps/api,
+   apps/worker, packages/engine (Quelltext ohne Kommentare; kleiner Lexer, da TypeScript 7 keine JS-API hat), in allen
+   Zeichenketten der balance.json und in docs/REGELN*.md. Bezeichner sind englisch und treffen das Muster nicht.
+3. **0 Taler an der Börse:** Sperrgrund „Du hast 0 Taler. Verkaufe zuerst Rohstoffe – z. B. Proviant (Überschuss).“
+   (`lib/remedies/surplus.ts`). Überschuss = größter Bestand (alle Rohstoffe teilen die Lagergröße, also höchste
+   Lagerfüllung), die gerade gewünschte Ware nur, wenn sonst nichts da ist; Menge = was über halb vollem Lager liegt,
+   sonst ein Viertel, ab 100 auf Zehner abgerundet, in der Order auf „Max“ der Verkaufsseite begrenzt. „Was hilft?“
+   (Code `funds`, auch `admiral_funds`) bietet „N Proviant verkaufen“ an: `NavTarget market` mit `side`/`qty`, App
+   baut die Börse neu auf und belegt die Order vor.
+4. **Sprungziele auf den aktuellen Bildschirm ausblenden:** `NavApi.here(t)` (App.tsx) – Börse (gleicher Unterreiter,
+   ohne Vorwahl), Gebäudeblatt, Basis, Truppen-Unterreiter, Karte, Meldungen-Unterreiter, Forschung. `RemedyPanel`
+   filtert solche Knöpfe allgemein (z. B. kein „Zur Börse“ auf der Börse).
+5. **Gegnerischer Admiral im Spielerkampf:** `report.get` (und damit die Bericht-Mail) liefert vom Admiral eines
+   Spieler-Gegners nur `{ name, rankName, hidden: true }` – keine Spezialisierung, kein Einfluss, keine Erfahrung, kein
+   Wurf (`hideOpponentAdmiral` in report-sim-view.ts, passend zu „Boni geheim“). Eigener Admiral vollständig;
+   Kartell/Nester (kein Spieler-Gegner) unverändert. Web zeigt „Rang Name (Einfluss geheim)“.
+
 ## Lagezentrum (Meldungen → Lage) und feste Lieferzeit der Börse (lag)
 
 - **Lagezentrum, Server statt Client-Zusammenbau.** Erster Reiter „Lage“ in Meldungen (Startseite; `?bericht=` öffnet

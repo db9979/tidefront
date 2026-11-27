@@ -31,7 +31,7 @@ const STATUS: Record<string, { text: string; tone: "slate" | "brass" | "green" |
   rueckabgewickelt: { text: "rückabgewickelt", tone: "slate" },
 };
 
-export const kr = (n: number) => `${fmtNum(n, 2)} Kr`;
+export const kr = (n: number) => `${fmtNum(n, 2)} T`;
 
 export function Contracts({ base }: { base: BaseData }) {
   const q = useQuery({ ...trpc.contracts.list.queryOptions(), refetchInterval: 60000 });

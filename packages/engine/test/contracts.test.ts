@@ -213,7 +213,7 @@ test("KI-Vertrag: Nachfrist 12 h, dann anteilig mit 25 % Strafe an die KI; Abo z
   const kiCredits = await creditsOf(albers);
   await runUntil(grace.graceUntil!.getTime() + 1000);
   const end = await contract(c.id);
-  // Ohne Kredite deckt die Anzahlung 25 % je erfüllter Einheit: erfüllt wird nichts, 25 % des Werts verfallen.
+  // Ohne Taler deckt die Anzahlung 25 % je erfüllter Einheit: erfüllt wird nichts, 25 % des Werts verfallen.
   assert.equal(end.status, "geplatzt");
   assert.equal(end.deliveredQty, 0);
   assert.equal(end.buyerPenaltyCents, c.buyerDepositCents - (c.buyerDepositCents - Math.floor(2000 * c.buyerUnit * 0.25 * 100 + 1e-6)));

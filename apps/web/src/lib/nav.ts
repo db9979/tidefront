@@ -6,6 +6,8 @@ import type { NavTarget } from "./remedies/types.ts";
 export interface NavApi {
   go: (t: NavTarget) => void;
   base: BaseData | null;
+  /** Zeigt das Sprungziel auf den Bildschirm, den der Spieler gerade sieht? (Solche Knöpfe blendet „Was hilft?“ aus.) */
+  here?: (t: NavTarget) => boolean;
 }
 
 export const NavContext = createContext<NavApi>({ go: () => {}, base: null });

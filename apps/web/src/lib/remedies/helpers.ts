@@ -80,12 +80,12 @@ export function missingResources(ctx: RemedyCtx, cost: Record<string, number> | 
   }
   const parts: string[] = [];
   // Wartezeit bei aktueller Förderung (je Stunde, nach Strom und Unterhalt).
-  const goods = missing.filter((m) => m.r !== "credits"); // Kredite fördert kein Gebäude
+  const goods = missing.filter((m) => m.r !== "credits"); // Taler fördert kein Gebäude
   const rateOf = (r: string) => (base.rates as Record<string, number>)[r] ?? 0;
   const waitOf = (m: { r: string; lack: number }) => (rateOf(m.r) > 0 ? (m.lack / rateOf(m.r)) * 3_600_000 : Infinity);
   const wait = Math.max(0, ...goods.map(waitOf));
   if (goods.length > 0 && !Number.isFinite(wait)) parts.push("Ohne Förderung kommt es nicht von selbst – Produktion ausbauen oder zukaufen.");
-  if (goods.length < missing.length) parts.push("Kredite bringen Verkäufe an der Börse oder im Spielerhandel.");
+  if (goods.length < missing.length) parts.push("Taler bringen Verkäufe an der Börse oder im Spielerhandel.");
   const overCap = missing.filter((m) => (cost[m.r] ?? 0) > base.capacity);
   if (overCap.length > 0) parts.push(`Das Lager fasst nur ${fmtNum(Math.floor(base.capacity))} ${label(overCap[0].r)} – erst den Lagerkomplex ausbauen.`);
   const open = base.market.unlocked;

@@ -89,7 +89,7 @@ export function dailyFreeAt(r: MarketRes, nowMs: number, qty: number): number | 
   return market.freeAtMs(w.releases, w.used, r.dailyLimit, qty, nowMs);
 }
 
-/** Kosten eines Kaufs (Kredite, ohne Rundung) – zum Abschätzen der bezahlbaren Menge. */
+/** Kosten eines Kaufs (Taler, ohne Rundung) – zum Abschätzen der bezahlbaren Menge. */
 function buyCost(qty: number, price: number, depth: number, fee: number): number {
   return qty * price * (1 + qty / depth / 2) * (1 + fee);
 }
@@ -101,7 +101,7 @@ export type Limits = {
   daily: number;
   /** Bezahlbar (Kauf) bzw. Bestand (Verkauf). */
   funds: number;
-  /** Platz bis zum Kreditlimit (nur Verkauf). */
+  /** Platz bis zur vollen Kasse (creditLimit) (nur Verkauf). */
   credit: number;
   /** Bis zum Rand des erlaubten Kursbereichs. */
   band: number;
@@ -118,7 +118,7 @@ export function limits(side: "buy" | "sell", r: MarketRes, nowMs: number, cfg: M
   let band: number;
   let credit = Infinity;
   if (side === "buy") {
-    // Größte ganze Menge, deren Kosten in die Kredite passen (Halbierungssuche).
+    // Größte ganze Menge, deren Kosten in die Taler passen (Halbierungssuche).
     let a = 0;
     let b = Math.max(0, Math.floor(o.credits / (p * (1 + cfg.fee))) + 1);
     while (a < b) {

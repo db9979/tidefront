@@ -81,7 +81,7 @@ export function PlayerTrade({ base }: { base: BaseData }) {
       )}
       <p className="text-xs text-ink2 mb-2">
         Bestand {fmtNum(have, give === "credits" ? 2 : 0)} · offene Angebote {ownOpen}/{maxOpen}. Die Ware geht sofort in Treuhand; Rückzug erstattet sie.
-        Ressourcen reisen per Konvoi (das Kartell fängt gelegentlich ab, Kriegsgegner gezielt), Kredite werden sofort gutgeschrieben.
+        Ressourcen reisen per Konvoi (das Kartell fängt gelegentlich ab, Kriegsgegner gezielt), Taler werden sofort gutgeschrieben.
       </p>
       {!unlocked && <ReasonLine code="locked" text="Handel ab Hafenkommandantur Stufe 3 in einem deiner Häfen." className="text-xs text-ink2 mt-2" />}
       {/* Fixierte Aktionsleiste: Kurzfassung des Angebots und „Angebot einstellen“. */}

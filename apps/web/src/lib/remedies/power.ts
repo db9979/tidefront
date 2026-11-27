@@ -23,7 +23,7 @@ export const POWER: RemedyTable = {
     actions: [alliance],
   }),
   cable_price: ({ balance }) => ({
-    hint: `Der Preis liegt zwischen 0 (Allianzhilfe) und ${fmtNum(balance?.power?.cable?.maxPrice ?? 2, 2)} Krediten je Strom-Stunde.`,
+    hint: `Der Preis liegt zwischen 0 (Allianzhilfe) und ${fmtNum(balance?.power?.cable?.maxPrice ?? 2, 2)} Talern je Strom-Stunde.`,
   }),
   cable_self: () => ({ hint: "Wähle als Gegenstelle einen anderen Hafen (eigener Hafen oder Hafen eines Allianzmitglieds)." }),
   cable_sabotage_war: () => ({

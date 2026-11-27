@@ -1,6 +1,6 @@
 // Erfolge und Wochenziele für Spieler: Ansichten und Abholen der Belohnungen (genau einmal, Befehle mit
-// Idempotenz-Schlüssel über runCommand). Kredite laufen über das Journal (Konto „rewards“), damit die
-// Prüfung von Journal und Kreditständen stimmt; Ressourcen gehen in den Heimathafen bis zur Lagergrenze, der Rest
+// Idempotenz-Schlüssel über runCommand). Taler laufen über das Journal (Konto „rewards“), damit die
+// Prüfung von Journal und Talerständen stimmt; Ressourcen gehen in den Heimathafen bis zur Lagergrenze, der Rest
 // verfällt und steht in `lost` der Antwort. Die Ansichten liefern dazu das Lager des Heimathafens (`storage`).
 import { and, asc, desc, eq, isNotNull, isNull, lt } from "drizzle-orm";
 import { deliverToStorage } from "./guide.ts";
@@ -26,7 +26,7 @@ import {
   weeklyText,
 } from "./achievement-defs.ts";
 
-/** Belohnung in fester Reihenfolge: Ressourcen wie in der Balance, dann Kredite (jsonb sortiert Schlüssel um). */
+/** Belohnung in fester Reihenfolge: Ressourcen wie in der Balance, dann Taler (jsonb sortiert Schlüssel um). */
 function ordered(r: Record<string, number> | null | undefined): Record<string, number> {
   const out: Record<string, number> = {};
   for (const k of [...balance.resources, "credits"]) if (r && (r[k] ?? 0) > 0) out[k] = r[k];
@@ -37,7 +37,7 @@ function fail(code: string): never {
   throw new GameError(code);
 }
 
-/** Belohnung gutschreiben: Ressourcen in den Heimathafen (bis zur Lagergrenze), Kredite über das Journal. Gibt den verfallenen Rest zurück. */
+/** Belohnung gutschreiben: Ressourcen in den Heimathafen (bis zur Lagergrenze), Taler über das Journal. Gibt den verfallenen Rest zurück. */
 async function payReward(tx: Tx, playerId: number, reward: Record<string, number>, nowMs: number, tradeId: string): Promise<Record<string, number>> {
   const { credits, resources } = splitReward(reward);
   let lost: Record<string, number> = {};

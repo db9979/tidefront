@@ -49,7 +49,7 @@ test("Verträge: Angebot der Reederei annehmen, Liste mit Status, Kündigung", a
     // Kündigen nennt die genaue Strafe (25 % des Werts), danach steht der Vertrag als gekündigt in der Liste.
     await row.getByRole("button", { name: "Kündigen" }).click();
     const confirm = row.getByRole("group", { name: "Kündigung bestätigen" });
-    await expect(confirm).toContainText(/Kündigen kostet dich \d[\d.]*,\d\d Kr/);
+    await expect(confirm).toContainText(/Kündigen kostet dich \d[\d.]*,\d\d T/);
     await confirm.getByRole("button", { name: "Kündigung bestätigen" }).click();
     await expect(row.getByText("gekündigt", { exact: true })).toBeVisible();
   } finally {

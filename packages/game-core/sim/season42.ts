@@ -140,7 +140,7 @@ export function runSeason42Sim(balance: Balance): void {
   }
   console.log(`\n  Gedachtes Nest 6 = Nest 5 × k (Besatzung, Anlagen, Beute), Sieg des Bot-Verbands: ${cells.join(" | ")}`);
 
-  // Admirale: Erfahrung bei täglichem Angriff auf das höchste Nest mit >= 70 % ab Tag 10 (Börse, Kredite).
+  // Admirale: Erfahrung bei täglichem Angriff auf das höchste Nest mit >= 70 % ab Tag 10 (Börse, Taler).
   const ranks = balance.admirals?.ranks ?? [];
   let xp = 0;
   const reached: Record<string, number> = {};

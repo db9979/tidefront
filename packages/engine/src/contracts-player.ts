@@ -107,7 +107,7 @@ export function proposePlayerContract(engine: Engine, playerId: number, key: str
       const [me2] = await tx.select({ name: tables.player.name }).from(tables.player).where(eq(tables.player.id, playerId));
       await systemMessage(tx, ctx.notify, [targetId], "Liefervertrag angeboten",
         `${me2?.name ?? "?"} bietet dir einen Liefervertrag an: ${input.side === "sell" ? "liefert dir" : "kauft von dir"} ${fmtInt(input.qty)} ${nameOf(input.resource)} ` +
-        `in ${input.days} ${input.days === 1 ? "Tag" : "Tagen"} zu ${input.price.toLocaleString("de-DE", { maximumFractionDigits: 3 })} Kredite je Einheit. Annehmen in der Börse, Reiter „Verträge“.`);
+        `in ${input.days} ${input.days === 1 ? "Tag" : "Tagen"} zu ${input.price.toLocaleString("de-DE", { maximumFractionDigits: 3 })} Taler je Einheit. Annehmen in der Börse, Reiter „Verträge“.`);
     }
     ctx.notify.push([[playerId], "base"], [null, "market"]);
     return { ok: true as const, contractId: row.id };

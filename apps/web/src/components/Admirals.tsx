@@ -57,9 +57,9 @@ export function withAdmiralMods<M extends object>(base: M | undefined, lines: Li
   return out as M;
 }
 
-/** „1.200 Kredite und 150 Elektronik“ (was für die Ernennung fehlt). */
+/** „1.200 Taler und 150 Elektronik“ (was für die Ernennung fehlt). */
 export function missingText(m: Record<string, number>): string {
-  const parts = Object.entries(m).map(([r, n]) => (r === "credits" ? nOf(n, "Kredit", "Kredite") : `${fmtNum(n)} ${label(r)}`));
+  const parts = Object.entries(m).map(([r, n]) => (r === "credits" ? nOf(n, "Taler", "Taler") : `${fmtNum(n)} ${label(r)}`));
   return parts.join(" und ");
 }
 
@@ -197,7 +197,7 @@ function AdmiralItem({ a, v, now }: { a: Admiral; v: View; now: number }) {
           ? <Button kind="secondary" disabled={station.busy} onClick={() => void station.run({ admiralId: null })}>Abberufen</Button>
           : <Button kind="secondary" disabled={station.busy} onClick={() => void station.run({ admiralId: a.id })}>Hafenkommandant</Button>}
         {a.status === "gefangen" && (
-          <Button disabled={ransom.busy} onClick={() => void ransom.run({ admiralId: a.id })}>Lösegeld {fmtNum(v.risk.ransomCredits)} Kredite</Button>
+          <Button disabled={ransom.busy} onClick={() => void ransom.run({ admiralId: a.id })}>Lösegeld {fmtNum(v.risk.ransomCredits)} Taler</Button>
         )}
         {a.status !== "unterwegs" && (confirm
           ? <Button kind="secondary" disabled={dismiss.busy} onClick={() => void dismiss.run({ admiralId: a.id })}>Wirklich entlassen?</Button>
@@ -287,6 +287,8 @@ export function AdmiralPick({ value, onChange }: { value: number | null; onChang
 }
 
 type ReportSide = {
+  /** Gegnerischer Admiral im Spielerkampf: nur Name und Rang (Server blendet den Rest aus). */
+  hidden?: boolean;
   name: string; rankName: string; specs: { id: string; name: string }[]; lines: Line[]; xpGain: number; xp: number;
   promoted: string | null; lossShare: number; roll: number | null; fate: string; until: number | null;
 };
@@ -296,7 +298,7 @@ const FATE: Record<string, string> = {
   unversehrt: "unversehrt", verwundet: "verwundet", gefangen: "in Gefangenschaft geraten", gefallen: "gefallen",
 };
 
-/** Abschnitt „Admirale“ im Kampfbericht: beide Seiten, Einfluss, Erfahrung, Wurf. */
+/** Abschnitt „Admirale“ im Kampfbericht: beide Seiten, Einfluss, Erfahrung, Wurf (gegnerischer Spieler-Admiral: nur Rang und Name). */
 export function AdmiralReport({ d, names }: { d: ReportData; names: [string, string] }) {
   const sides: [string, ReportSide | undefined][] = [[names[0], d.attacker], [names[1], d.defender]];
   const r = d.rule;
@@ -306,7 +308,9 @@ export function AdmiralReport({ d, names }: { d: ReportData; names: [string, str
         {sides.map(([who, s]) => (
           <div key={who}>
             <div className="font-display text-[11px] uppercase tracking-[0.12em] text-see">{who}</div>
-            {!s ? <div className="text-xs text-ink2">ohne Admiral</div> : (
+            {!s ? <div className="text-xs text-ink2">ohne Admiral</div> : s.hidden ? (
+              <div><strong className="font-serif">{s.rankName} {s.name}</strong> <span className="text-xs text-ink2">(Einfluss geheim)</span></div>
+            ) : (
               <>
                 <div><strong className="font-serif">{s.rankName} {s.name}</strong> <span className="text-xs text-ink2">({s.specs.map((x) => x.name).join(", ")})</span></div>
                 <div className="text-[11.5px] text-ink2">Einfluss: {modLineText(s.lines) || "keiner in diesem Kampf"}</div>

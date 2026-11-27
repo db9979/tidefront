@@ -32,7 +32,8 @@ export const ART: Record<string, ReactNode> = {
   treibstoff: (<><rect x="15" y="9" width="34" height="47" rx="4" {...h} /><path d="M15 23 H49 M15 42 H49" {...ln} /><rect x="35" y="5" width="8" height="5" {...p} /></>),
   elektronik: (<><path d="M24 10 V18 M32 10 V18 M40 10 V18 M24 46 V54 M32 46 V54 M40 46 V54 M10 24 H18 M10 32 H18 M10 40 H18 M46 24 H54 M46 32 H54 M46 40 H54" {...ln} /><rect x="18" y="18" width="28" height="28" {...p} /><rect x="26" y="26" width="12" height="12" {...h} /></>),
   proviant: (<><path d="M9 25 H55 V53 H9 Z" {...h} /><path d="M7 15 H57 V25 H7 Z" {...p} /><path d="M26 35 H38" {...ln} strokeWidth={3} /></>),
-  credits: (<><circle cx="32" cy="32" r="22" {...p} /><circle cx="32" cy="32" r="16" fill="none" stroke={MESSING} strokeWidth={1.6} /><path d="M27 22 V42 M27 32 L37 22 M30 30 L38 42" fill="none" stroke={MESSING} strokeWidth={3} strokeLinecap="round" /></>),
+  // Taler (Id bleibt „credits“): Münze mit Rändelung und großem T.
+  credits: (<><circle cx="32" cy="32" r="22" {...p} /><circle cx="32" cy="32" r="19.5" fill="none" stroke={MESSING} strokeWidth={2} strokeDasharray="1.4 2.2" /><circle cx="32" cy="32" r="15" fill="none" stroke={MESSING} strokeWidth={1.6} /><path d="M24.5 24 H39.5 M32 24 V41" fill="none" stroke={MESSING} strokeWidth={3.2} strokeLinecap="round" /></>),
   strom: <path d="M37 5 L16 36 H30 L25 59 L48 25 H34 Z" {...h} />,
 
   // ---------------------------------------------------------------- Gebäude (Aufriss)

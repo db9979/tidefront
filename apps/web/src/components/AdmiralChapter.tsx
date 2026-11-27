@@ -15,7 +15,7 @@ export function AdmiralChapter({ b }: { b: Balance | undefined }) {
   const second = a.ranks[a.secondSpecFromRank - 1];
   return (
     <>
-      <P>In der <strong>Hafenkommandantur</strong> ernennst du Admirale (Truppen → Admirale): {a.slots.base} Platz, je {a.slots.perHarborLevels} Stufen Hafenkommandantur einer mehr, höchstens {a.slots.max}. Ein Admiral kostet {fmtNum(a.cost.credits)} Kredite und {fmtNum(a.cost.elektronik)} Elektronik. Den Namen wählst du aus einer Liste oder lässt ihn auslosen.</P>
+      <P>In der <strong>Hafenkommandantur</strong> ernennst du Admirale (Truppen → Admirale): {a.slots.base} Platz, je {a.slots.perHarborLevels} Stufen Hafenkommandantur einer mehr, höchstens {a.slots.max}. Ein Admiral kostet {fmtNum(a.cost.credits)} Taler und {fmtNum(a.cost.elektronik)} Elektronik. Den Namen wählst du aus einer Liste oder lässt ihn auslosen.</P>
       <P><strong>Ränge:</strong> {a.ranks.map((x) => `${x.name} (ab ${fmtNum(x.minXp)} Erfahrung, ${Math.round(x.factor * 100)} % Wirkung)`).join(" → ")}. Beim Ernennen wählst du eine Spezialisierung, ab {second?.name ?? `Rang ${a.secondSpecFromRank}`} eine zweite.</P>
       <ul className="text-sm text-slate-200 mb-2 list-disc ml-5 space-y-1">
         {Object.entries(a.specs).map(([id, s]) => (
@@ -31,7 +31,7 @@ export function AdmiralChapter({ b }: { b: Balance | undefined }) {
       <P><strong>Umschulung:</strong> Admirale, die vor Einführung des Landungstrupps ernannt wurden, dürfen ihre erste Spezialisierung einmal kostenlos wechseln (Admiral → „Umschulen …“, mit Bestätigung). Rang, Erfahrung und eine zweite Spezialisierung bleiben. Neu ernannte Admirale wählen beim Ernennen.</P>
       <P><strong>KI-Spieler</strong> ernennen ab Hafenkommandantur Stufe 1 ebenfalls einen Admiral, zu denselben Kosten: Freibeuter einen Landungstrupp für ihre Überfälle, die Festung „Verteidigung“ als Hafenkommandant.</P>
       <P><strong>Erfahrung</strong> gibt es nur für Siege: zerstörte gegnerische Lebenspunkte / {a.xp.hpPerXp}, mindestens {a.xp.minWin}, höchstens {a.xp.maxPerBattle} je Kampf. Beförderungen erfolgen von selbst.</P>
-      <P><strong>Risiko:</strong> Verliert sein Verband einen Kampf mit mehr als {Math.round(r.lossShare * 100)} % Verlusten, wird ein W{r.die} gewürfelt (aus dem Kampf-Seed, der Wurf steht im Bericht): {r.fallenMax} – gefallen; bis {r.capturedMax} – gefangen ({r.captiveHours} Stunden oder Lösegeld {fmtNum(r.ransomCredits)} Kredite; der Sieger bekommt ihn nicht); bis {r.woundedMax} – verwundet ({r.woundedHours} Stunden); darüber unversehrt.</P>
+      <P><strong>Risiko:</strong> Verliert sein Verband einen Kampf mit mehr als {Math.round(r.lossShare * 100)} % Verlusten, wird ein W{r.die} gewürfelt (aus dem Kampf-Seed, der Wurf steht im Bericht): {r.fallenMax} – gefallen; bis {r.capturedMax} – gefangen ({r.captiveHours} Stunden oder Lösegeld {fmtNum(r.ransomCredits)} Taler; der Sieger bekommt ihn nicht); bis {r.woundedMax} – verwundet ({r.woundedHours} Stunden); darüber unversehrt. Vom Admiral eines gegnerischen Spielers zeigt der Kampfbericht nur Rang und Namen, nicht seinen Einfluss.</P>
     </>
   );
 }

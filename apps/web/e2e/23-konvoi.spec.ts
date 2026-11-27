@@ -16,7 +16,7 @@ test("Börsenkauf als Konvoi: Risiko in der Order, Konvoi auf der Karte antippen
   await page.getByRole("tab", { name: "Handel" }).click();
   await expect(page.getByRole("heading", { name: "Order Stahl" })).toBeVisible();
 
-  // Erst Kredite: verkaufen.
+  // Erst Taler: verkaufen.
   await page.getByRole("radio", { name: "Verkaufen", exact: true }).click();
   await page.locator("#tf-qty").fill("500");
   await page.getByRole("button", { name: /^Verkaufen · / }).click();

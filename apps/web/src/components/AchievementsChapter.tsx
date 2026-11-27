@@ -30,7 +30,7 @@ export function AchievementsChapter({ b }: { b: Balance | undefined }) {
         ))}
       </ul>
       <P><strong>Wochenziele:</strong> Jeden <strong>Montag um 0:00 Uhr</strong> (deutsche Zeit) bekommst du auf der Basis drei Wochenziele, die bis Sonntagnacht laufen – größer als Tagesbefehle und passend zu deinem Ausbaustand: zum Beispiel Piratennester ab einer Stufe ausheben, Beute machen, Gebäudestufen abschließen, Missionen erfolgreich beenden, Aufträge des Nachrichtendienstes, Transporte an Allianzmitglieder, Forschungen, Börsengeschäfte, Angriffe abwehren, Wrackgut bergen, Anlagen errichten oder Tagesbefehle abholen.</P>
-      <P>Jedes erfüllte Ziel bringt ein Ressourcenpaket und Kredite (wachsend mit der Kommandozentrale, ab {fmtNum(a.weekly.goalCredits)} Kredite). Holst du alle drei einer Woche ab, gibt es einmal den <strong>Wochenbonus</strong> (ab {fmtNum(a.weekly.bonusCredits)} Kredite und ein großes Paket). Erfüllte Ziele der Vorwoche kannst du noch abholen. Fortschritt zählt immer in der Woche, in der das Geschehen stattfand.</P>
+      <P>Jedes erfüllte Ziel bringt ein Ressourcenpaket und Taler (wachsend mit der Kommandozentrale, ab {fmtNum(a.weekly.goalCredits)} Taler). Holst du alle drei einer Woche ab, gibt es einmal den <strong>Wochenbonus</strong> (ab {fmtNum(a.weekly.bonusCredits)} Taler und ein großes Paket). Erfüllte Ziele der Vorwoche kannst du noch abholen. Fortschritt zählt immer in der Woche, in der das Geschehen stattfand.</P>
     </>
   );
 }

@@ -38,7 +38,7 @@ async function patchBase(baseId: number, patch: (s: BaseState) => void) {
   await db.update(tables.base).set({ state: s }).where(eq(tables.base.id, baseId));
 }
 
-/** Kredite gutschreiben, mit Gegenbuchung im Journal. */
+/** Taler gutschreiben, mit Gegenbuchung im Journal. */
 async function grantCredits(playerId: number, amount: number) {
   const [p] = await db.select({ trader: tables.player.trader }).from(tables.player).where(eq(tables.player.id, playerId));
   const t = p.trader as { credits: number };
@@ -76,7 +76,7 @@ test("Umschulung: genau einmal kostenlos, nur für Admirale von vor dem Update, 
   assert.equal(r.ok, true, JSON.stringify(r));
   const baseId = (r as { baseId: number }).baseId;
   await patchBase(baseId, (s) => { s.buildings.hafenkommandantur = 5; s.buildings.lagerkomplex = 8; s.resources = { stahl: 9000, treibstoff: 9000, elektronik: 9000, proviant: 9000 }; });
-  // Bezahlbarkeit in der Ansicht: ohne Kredite fehlt genau der Preis.
+  // Bezahlbarkeit in der Ansicht: ohne Taler fehlt genau der Preis.
   const v0 = (await admiralView(engine, p.playerId))!;
   assert.deepEqual(v0.missing, { credits: cfg.cost.credits - Math.ceil(v0.have.credits) });
   await grantCredits(p.playerId, 10000);
@@ -140,14 +140,14 @@ test("KI-Spieler ernennen einen Admiral: Freibeuter Landungstrupp auf Mission, F
   await admiralTurn(c, await home("freibeuter"));
   assert.equal(await count(ids.freibeuter), 0);
   assert.equal(c.creditReserve, undefined);
-  // Hafenkommandantur 1, aber keine Kredite: Rücklage an der Börse, noch kein Admiral.
+  // Hafenkommandantur 1, aber keine Taler: Rücklage an der Börse, noch kein Admiral.
   for (const h of Object.values(homes)) await patchBase(h.id, (s) => { s.buildings.hafenkommandantur = 1; });
   c = ctxFor((await loadBot(db, ids.freibeuter))!);
   await admiralTurn(c, await home("freibeuter"));
   assert.equal(await count(ids.freibeuter), 0);
   assert.equal(c.creditReserve, cfg.cost.credits);
 
-  // Mit Krediten: Ernennung zu denselben Kosten wie für Menschen.
+  // Mit Talern: Ernennung zu denselben Kosten wie für Menschen.
   for (const id of Object.values(ids)) await setCredits(id, 2500);
   c = ctxFor((await loadBot(db, ids.freibeuter))!);
   await admiralTurn(c, await home("freibeuter"));

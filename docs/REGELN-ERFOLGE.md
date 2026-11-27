@@ -12,9 +12,9 @@ Teil der Regeln (siehe `docs/REGELN.md`). Werte in `balance.json`, Block `achiev
   (je Spieler, Erfolg und Stufe höchstens eine Zeile in `achievement_tier`).
 - Bei der Freischaltung erhält der Spieler eine **Nachricht** (Systemnachricht) und – über den Worker, höchstens etwa
   eine Minute später – einen **Push** der Art „Berichte“.
-- Jede Stufe hat eine kleine einmalige **Belohnung** (`achievements.rewards` je Stufe, Kredite und Ressourcen; ein Erfolg
+- Jede Stufe hat eine kleine einmalige **Belohnung** (`achievements.rewards` je Stufe, Taler und Ressourcen; ein Erfolg
   kann eigene `rewards` haben). Sie wird bei der Freischaltung festgeschrieben und per **Abholen** genau einmal
-  gutgeschrieben: Ressourcen in den Hafen (auch über die Lagerkapazität), Kredite über das Journal (Konto `rewards`).
+  gutgeschrieben: Ressourcen in den Hafen (auch über die Lagerkapazität), Taler über das Journal (Konto `rewards`).
 - Die **drei höchsten Abzeichen** (höchste Stufe zuerst, dann Reihenfolge der Balance) stehen in der Rangliste und in
   der Spielerübersicht neben dem Namen.
 
@@ -33,8 +33,8 @@ Teil der Regeln (siehe `docs/REGELN.md`). Werte in `balance.json`, Block `achiev
 | Ruhmreich | `saison` | Platz 1–10 / Platz 1–3 / Saisonsieg | beste Platzierung am Saisonende (mit mehr als 0 Punkten) |
 | Wochenwerk | `wochenziele` | 3 / 15 / 50 | abgeholte Wochenziele |
 
-Belohnungen (gemeinsam): Bronze 100 Kredite, 800 Stahl, 500 Treibstoff, 300 Elektronik, 400 Proviant; Silber das
-Dreifache, Gold das Achtfache (1.000 Kredite).
+Belohnungen (gemeinsam): Bronze 100 Taler, 800 Stahl, 500 Treibstoff, 300 Elektronik, 400 Proviant; Silber das
+Dreifache, Gold das Achtfache (1.000 Taler).
 
 **Auswertung:** Kampf-, Missions- und Spionageberichte, die ein Ereignis erzeugt, werden nach dem Ereignis genau einmal
 ausgewertet (Markierung im Bericht). Ein **erfolgreicher Einsatz** (Zähler `missionen`) ist ein gewonnener Überfall oder
@@ -69,7 +69,7 @@ fortgeschrieben.
   (KZ = Stufe der Kommandozentrale bei der Vergabe.)
 - Fortschritt zählt in der Woche, in der das Geschehen stattfand. Erfüllte Ziele der Vorwochen bleiben abholbar.
 - **Belohnung je Ziel:** Ressourcenpaket im Wert `weekly.goalValue` × (1 + KZ × `stageGrowth`) und
-  `goalCredits` × (1 + KZ/10) Kredite (auf 10 gerundet). **Wochenbonus**, einmal je Woche, wenn alle drei Ziele der
+  `goalCredits` × (1 + KZ/10) Taler (auf 10 gerundet). **Wochenbonus**, einmal je Woche, wenn alle drei Ziele der
   Woche abgeholt sind: `bonusValue` bzw. `bonusCredits` mit demselben Wachstum. Jedes abgeholte Ziel zählt für den
   Erfolg „Wochenwerk“.
 

@@ -90,7 +90,7 @@ export interface ContractsBalance {
   /** Verfall je nicht erfülltem bzw. gekündigtem Teil als Anteil seines Werts. */
   penaltyShare: number;
   graceHours: number;
-  /** Erinnerung so viele Stunden vor Fälligkeit, wenn Kredite bzw. Ware nicht reichen. */
+  /** Erinnerung so viele Stunden vor Fälligkeit, wenn Taler bzw. Ware nicht reichen. */
   remindHours: number;
   /** Vertragslieferungen einer Ressource je 24-h-Fenster höchstens dieser Anteil des Tageslimits. */
   limitShare: number;

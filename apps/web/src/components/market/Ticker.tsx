@@ -9,7 +9,7 @@ export function Ticker({ resources, nowMs, halfLife, bar = false }: { resources:
     const pct = hasDay ? changePct(r, nowMs, DAY, halfLife) : refPct(r);
     return { r, pct, basis: hasDay ? "24 h" : "Richtwert", halted: r.haltedUntilMs > nowMs };
   });
-  const summary = items.map((i) => `${label(i.r.id)} ${fmtNum(i.r.price, 2)} Kredite, ${trend(i.pct).word} ${signed(i.pct)} gegen ${i.basis}${i.halted ? ", Handelspause" : ""}`).join("; ");
+  const summary = items.map((i) => `${label(i.r.id)} ${fmtNum(i.r.price, 2)} Taler, ${trend(i.pct).word} ${signed(i.pct)} gegen ${i.basis}${i.halted ? ", Handelspause" : ""}`).join("; ");
   const row = (hidden: boolean) => (
     <ul className="flex shrink-0" aria-hidden={hidden || undefined}>
       {items.map(({ r, pct, basis, halted }) => {

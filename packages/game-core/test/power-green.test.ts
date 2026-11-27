@@ -139,7 +139,7 @@ test("Seekabel: Abgebender schickt nur Ökostrom-Rest nach Elektrolyse bis zur S
   assert.ok(approx(s2.cable!.sent!, 30, 1e-6), `${s2.cable!.sent}`);
 });
 
-test("Seekabel: Verlust je 100 km, Puffer, Kredite, Sabotage; Empfänger zieht bei Mangel", () => {
+test("Seekabel: Verlust je 100 km, Puffer, Taler, Sabotage; Empfänger zieht bei Mangel", () => {
   assert.ok(approx(cableDelivered(300, balance), 0.7));
   assert.ok(approx(cableDelivered(600, balance), 0.4));
   const out = makeBase(balance, { buildings: { seekabel: 1 }, cable: { id: 1, role: "out", sent: 50 } });
@@ -152,7 +152,7 @@ test("Seekabel: Verlust je 100 km, Puffer, Kredite, Sabotage; Empfänger zieht b
   // Puffer: 30 je Stufe · 2 h = 60.
   const big = transferCable({ ...out, cable: { id: 1, role: "out", sent: 200 } }, inn, 0, 0, 0, T0, balance);
   assert.ok(approx(big.delivered, 60));
-  // Preis 0,5: Empfänger mit 10 Krediten bekommt 20.
+  // Preis 0,5: Empfänger mit 10 Talern bekommt 20.
   const paid = transferCable(out, inn, 0, 0.5, 10, T0, balance);
   assert.ok(approx(paid.delivered, 20));
   assert.ok(approx(paid.cost, 10));

@@ -21,15 +21,15 @@ export function readerValue(prices: Prices | null, giveAsset: string, giveQty: n
   return prices ? market.tradeValue(giveAsset, giveQty, getAsset, getQty, prices) : null;
 }
 
-/** „du gibst 1.240 Kr, bekommst 1.180 Kr – 5 % unter Börse“, bei über 20 % Abweichung mit deutlichem Hinweis. */
+/** „du gibst 1.240 T, bekommst 1.180 T – 5 % unter Börse“, bei über 20 % Abweichung mit deutlichem Hinweis. */
 export function ValueLine({ v, you = "du" }: { v: market.TradeValue | null; you?: string }) {
   if (!v) return null;
   const pct = Math.round(Math.abs(v.pct));
   const dir = v.pct < 0 ? "unter" : "über";
-  const rel = pct === 0 ? "etwa Börsenwert" : `${fmtNum(pct)} % ${dir} Börse (${v.diff >= 0 ? "+" : "−"}${fmtNum(Math.abs(v.diff))} Kredite)`;
+  const rel = pct === 0 ? "etwa Börsenwert" : `${fmtNum(pct)} % ${dir} Börse (${v.diff >= 0 ? "+" : "−"}${fmtNum(Math.abs(v.diff))} Taler)`;
   return (
     <div className="text-xs mt-1">
-      <span className="text-ink2">Börsenwert: {you} gibst <span className="mono">{fmtNum(v.give)} Kredite</span>, bekommst <span className="mono">{fmtNum(v.get)} Kredite</span> – {rel}</span>
+      <span className="text-ink2">Börsenwert: {you} gibst <span className="mono">{fmtNum(v.give)} Taler</span>, bekommst <span className="mono">{fmtNum(v.get)} Taler</span> – {rel}</span>
       {v.strong && (
         <div className={`font-semibold ${v.pct < 0 ? "text-siegel" : "text-messing"}`} role="note">
           {v.pct < 0 ? "Deutlich unter Börsenwert: du bekommst viel weniger, als du gibst." : "Deutlich über Börsenwert: du bekommst viel mehr, als du gibst."}
@@ -53,7 +53,7 @@ export function DevTag({ v }: { v: market.TradeValue | null }) {
   );
 }
 
-/** Abschnitt „Spielerhandel (7 Tage)“: mittleres Tauschverhältnis je Paar in Krediten je Einheit neben dem Börsenkurs. */
+/** Abschnitt „Spielerhandel (7 Tage)“: mittleres Tauschverhältnis je Paar in Talern je Einheit neben dem Börsenkurs. */
 export function PlayerTradeStats() {
   const s = useQuery({ ...trpc.playerTrade.stats.queryOptions(), refetchInterval: 120000 });
   const prices = usePrices();
@@ -92,7 +92,7 @@ export function PlayerTradeStats() {
             })}
           </ul>
           <p className="text-xs text-ink2 mt-2">
-            Kredite je Einheit aus dem mittleren Tauschverhältnis; die Gegenseite zählt zum aktuellen Börsenkurs. Spielerhandel verändert die Börsenkurse nicht.
+            Taler je Einheit aus dem mittleren Tauschverhältnis; die Gegenseite zählt zum aktuellen Börsenkurs. Spielerhandel verändert die Börsenkurse nicht.
           </p>
         </>
       )}

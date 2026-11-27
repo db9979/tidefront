@@ -23,7 +23,7 @@ interface Battle {
   weather?: { air: number; strike: number; wind: number; clouds: number; storm: boolean };
   phases?: { phase: string; skipped: boolean }[];
 }
-interface AdmiralSide { name?: string; rankName?: string; xpGain?: number; xp?: number; promoted?: string | null; lossShare?: number; roll?: number | null; fate?: string; until?: number | null }
+interface AdmiralSide { hidden?: boolean; name?: string; rankName?: string; xpGain?: number; xp?: number; promoted?: string | null; lossShare?: number; roll?: number | null; fate?: string; until?: number | null }
 
 const FATE: Record<string, string> = { unversehrt: "unversehrt", verwundet: "verwundet", gefangen: "in Gefangenschaft geraten", gefallen: "gefallen" };
 
@@ -65,6 +65,7 @@ const weatherText = (w: Battle["weather"]) =>
 function admiralLines(who: string, a: AdmiralSide | undefined): string[] {
   if (!a) return [];
   const parts = [`${who}: ${str(a.rankName)} ${str(a.name)}`.trim()];
+  if (a.hidden) return [parts[0]]; // gegnerischer Admiral im Spielerkampf: nur Rang und Name
   parts.push((a.xpGain ?? 0) > 0 ? `Erfahrung +${int(a.xpGain!)} (jetzt ${int(a.xp ?? 0)})` : "keine Erfahrung");
   if (a.promoted) parts.push(`befördert zum ${a.promoted}`);
   if (a.roll !== null && a.roll !== undefined) parts.push(`Schicksal: ${FATE[a.fate ?? ""] ?? str(a.fate, "?")}${a.until ? ` bis ${dateTime(a.until)}` : ""}`);

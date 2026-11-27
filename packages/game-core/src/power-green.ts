@@ -37,7 +37,7 @@ export interface CableBalance {
   bufferHours: number;
   /** Abrechnung alle … Minuten. */
   tickMinutes: number;
-  /** Höchstpreis in Krediten je Strom-Stunde. */
+  /** Höchstpreis in Talern je Strom-Stunde. */
   maxPrice: number;
 }
 
@@ -190,9 +190,9 @@ export interface CableTransfer {
   in: BaseState;
   /** Im Kabelpuffer angekommen (Strom-Stunden). */
   delivered: number;
-  /** Unterwegs verloren oder verfallen (Puffer voll, Sabotage, Kredite reichen nicht). */
+  /** Unterwegs verloren oder verfallen (Puffer voll, Sabotage, Taler reichen nicht). */
   lost: number;
-  /** Preis der Lieferung in Krediten (auf Cent abgerundet). */
+  /** Preis der Lieferung in Talern (auf Cent abgerundet). */
   cost: number;
 }
 

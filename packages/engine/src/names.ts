@@ -8,7 +8,7 @@ const NAMES: Record<string, string> = {
   kampfpanzer: "Kampfpanzer", abfangjaeger: "Abfangjäger", jagdbomber: "Jagdbomber", aufklaerungsdrohne: "Aufklärungsdrohne",
   schnellboot: "Schnellboot", piratenmiliz: "Piratenmiliz", flaggschiff: "Leviathan-Sektion", kuestenbatterie: "Küstenbatterie", flakstellung: "Flakstellung",
   bunkerlinie: "Bunkerlinie", minensperre: "Minensperre",
-  stahl: "Stahl", treibstoff: "Treibstoff", elektronik: "Elektronik", proviant: "Proviant", credits: "Kredite",
+  stahl: "Stahl", treibstoff: "Treibstoff", elektronik: "Elektronik", proviant: "Proviant", credits: "Taler",
   // Für ausführliche E-Mails (wie apps/web/src/lib/names.ts)
   windpark: "Windpark", solarfeld: "Solarfeld", speicherwerk: "Speicherwerk", forschungsamt: "Forschungsamt",
   minenleger: "Minenleger", minenraeumer: "Minenräumer", kolonieschiff: "Kolonieschiff", spion: "Spion", anlagen: "Anlagen",

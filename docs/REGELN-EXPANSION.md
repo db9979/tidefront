@@ -8,7 +8,7 @@ Begründung und Simulation: `packages/game-core/ENTSCHEIDUNGEN-2.md`, Abschnitt 
 - Der erste Hafen (Saisonbeginn, „Hafen wählen“) ist der **Heimathafen**; weitere Häfen sind **Kolonien**.
 - Erlaubt sind `1 + Anzahl der Stufen in unlockCommandLevels (5, 8), die die Kommandozentrale des Heimathafens
   erreicht hat`, höchstens `maxBases` (3). Laufende Gründungen zählen mit.
-- Spielerweit bleiben Forschung (im Heimathafen geführt; Kolonien nutzen deren Stufen), Kredite, Erfolge, Allianz,
+- Spielerweit bleiben Forschung (im Heimathafen geführt; Kolonien nutzen deren Stufen), Taler, Erfolge, Allianz,
   Rangliste (Summe aller Häfen) und die Nachtschild-Einstellung. Je Hafen: Ressourcen, Gebäude, Bauschlange,
   Ausbildung, Einheiten, Veteranen, Missionsplätze, Schutzzustand.
 - Gebäude aus `homeOnlyBuildings` (Forschungsamt) gibt es nur im Heimathafen (Kolonie: Fehler `home_only`).

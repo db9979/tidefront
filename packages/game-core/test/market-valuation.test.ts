@@ -4,7 +4,7 @@ import { assetValue, creditsPerUnit, STRONG_DEVIATION_PCT, tradeValue } from "..
 
 const prices = { stahl: 2, elektronik: 8 };
 
-test("Börsenwert: Ressourcen zum Kurs, Kredite 1:1, unbekannt ergibt null", () => {
+test("Börsenwert: Ressourcen zum Kurs, Taler 1:1, unbekannt ergibt null", () => {
   assert.equal(assetValue("stahl", 100, prices), 200);
   assert.equal(assetValue("credits", 55.5, prices), 55.5);
   assert.equal(assetValue("proviant", 10, prices), null);
@@ -26,7 +26,7 @@ test("Tauschwert aus Sicht des Lesers mit Differenz und Prozent", () => {
   assert.equal(tradeValue("proviant", 1, "credits", 5, prices), null);
 });
 
-test("Kredite je Einheit aus einem Tauschverhältnis", () => {
+test("Taler je Einheit aus einem Tauschverhältnis", () => {
   assert.equal(creditsPerUnit(100, "credits", 250, prices), 2.5);
   assert.equal(creditsPerUnit(400, "elektronik", 100, prices), 2);
   assert.equal(creditsPerUnit(0, "credits", 5, prices), null);
