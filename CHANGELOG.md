@@ -2,6 +2,11 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.38.0 – 27.11.2026
+- **Empfohlenes Geleit:** Börsen-Order, Spielerhandel und Lieferverträge zeigen einen Kasten „Geleitschutz“: welche Kartellgruppe die Ladung anlockt, wie wahrscheinlich ein Überfall ist, welches kleinste Geleit aus deinen Schiffen sie zu mindestens 90 % abwehrt – und ob es sich lohnt (erwarteter Verlust ohne Geleit gegen Treibstoff, Unterhalt und Zeit, in der die Schiffe fehlen). „Empfehlung übernehmen“ setzt das Geleit mit einem Tipp. Reichen die Schiffe nicht, steht dort, was fehlt.
+- **Probekampf gegen das Kartell** im Konvoi-Blatt für deine eigenen Konvois.
+- KI-Spieler schicken bei großen Börsenkäufen jetzt selbst Geleit mit.
+
 ## 0.37.0 – 27.11.2026
 - **Alle Zeiten und Bestände laufen live:** Countdowns, Ankunftszeiten, „in ca.“-Angaben, Rohstoffstände, rot markierte Kosten und „Was hilft?“-Hinweise rechnen sich ständig neu – ohne erneutes Öffnen. Reichen die Rohstoffe, verschwindet der Hinweis und der Ausbau-Knopf wird von selbst aktiv. Ist ein Bau fertig oder eine Mission angekommen, holt die App die neuen Daten selbst.
 - **Lesbare Zeiten überall gleich:** „45 s“, „56 min“, „1 h 05 min“, „2 T 3 h“, „vor 12 min“, „morgen 06:00 Uhr“ – nie mehr „55:59 min“.
