@@ -141,7 +141,7 @@ export function buildingEffect(balance: Balance, id: string, level: number): str
   if (def.missionSlotsBase !== undefined) {
     const slots = def.missionSlotsBase + Math.floor(level / 2) * (def.missionSlotsPerTwoLevels ?? 0);
     const market = level >= (def.marketFromLevel ?? 99) ? `, Kreditlimit ${fmtNum((def.creditLimitPerLevel ?? 0) * level)}` : "";
-    return `${slots} Missionsplätze${market}`;
+    return `${slots} ${slots === 1 ? "Missionsplatz" : "Missionsplätze"}${market}`;
   }
   return null;
 }

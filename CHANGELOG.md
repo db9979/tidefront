@@ -2,6 +2,13 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.18.0 – 27.11.2026
+- **„Was hilft?“** unter Sperr- und Fehlermeldungen in allen Bereichen: Ein Tipp zeigt, was fehlt und wie viel – mit Zahlen aus deinem Hafen (welches Gebäude auf welche Stufe muss, Fehlmengen mit Wartezeit, Treibstoff, Kommandopunkte, Reichweite, nächste Rückkehr einer Mission).
+- **Sprungknöpfe** führen direkt dorthin: zum Gebäude-Blatt, zur Börse mit vorgewählter Ressource, zur Forschung, zu Truppen → Einsatz/Ausbilden, zur Karte oder zur Allianz.
+- **Graue Knöpfe** wie „Auslaufen“, „Ausbau“, „Forschen“, „Bauen“ oder die Börsen-Order zeigen beim Antippen, was sie freigibt, statt nichts zu tun.
+- Truppen → Einsatz weist darauf hin, wenn alle Missionsplätze belegt sind; auch die Admiralsplätze haben „Was hilft?“.
+- Handbuch: neuer Absatz „Was hilft?“ im Kapitel „Planen ohne Rätselraten“. Kleinigkeit: „1 Missionsplatz“ statt „1 Missionsplätze“.
+
 ## 0.17.4 – 27.11.2026
 - **Wettervorhersage mit Unsicherheit:** Je weiter eine Vorhersage vorausschaut, desto ungenauer ist sie – Wind bis ±5 % je 3 Stunden (höchstens ±30 %), Bewölkung und Nebel entsprechend, Wettersysteme bis zu 3 Stunden früher oder später. Alle 3 Stunden wird die Vorhersage neu ausgegeben. Das tatsächliche Wetter ändert sich nicht und gilt für Reise, Kampf und Strom.
 - Die **Stromkurve** zeigt ein Band als Spannbreite („reicht voraussichtlich“), die Wettervorhersage am Hafen Wind von–bis, Sturm „ab etwa … (±x h)“ und neu „Sturm möglich“. Die **Missionsplanung** zeigt die Vorhersage am Ziel mit Spannbreite.

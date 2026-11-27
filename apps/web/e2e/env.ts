@@ -1,5 +1,8 @@
 // Feste Ports und Zugangsdaten des End-to-End-Stacks (eigene Container, unabhängig von einer laufenden Instanz).
-const n = (v: string | undefined, d: number) => (v ? Number(v) : d);
+// E2E_SLOT (0, 1, 2 …) trennt parallele Läufe (z. B. mehrere Agenten): eigene Containernamen, alle Ports um 10 je Slot
+// versetzt. Einzelne Ports lassen sich weiter mit E2E_*_PORT setzen.
+const slot = Math.max(0, Math.floor(Number(process.env.E2E_SLOT ?? 0) || 0));
+const n = (v: string | undefined, d: number) => (v ? Number(v) : d + slot * 10);
 
 const pgPort = n(process.env.E2E_PG_PORT, 55452);
 const pgPassword = "e2e";
@@ -7,8 +10,8 @@ const valkeyPort = n(process.env.E2E_VALKEY_PORT, 56392);
 const webPort = n(process.env.E2E_WEB_PORT, 5380);
 
 export const E2E = {
-  pgContainer: "tf-e2e-pg",
-  valkeyContainer: "tf-e2e-valkey",
+  pgContainer: slot ? `tf-e2e-pg-${slot}` : "tf-e2e-pg",
+  valkeyContainer: slot ? `tf-e2e-valkey-${slot}` : "tf-e2e-valkey",
   pgPort,
   pgPassword,
   valkeyPort,
