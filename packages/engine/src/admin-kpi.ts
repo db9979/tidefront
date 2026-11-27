@@ -15,8 +15,20 @@ const DAY_MS = 86400000;
 
 export interface PlayerGroup { total: number; withBase: number; active24h: number; active7d: number }
 export interface Cohort { day: string; size: number; /** Anteil 0–1 je Versatz; null = Tag noch nicht erreicht. */ d1: number | null; d7: number | null; d14: number | null }
-export interface MilestoneGroup { count: number; firstDay: number | null; medianDay: number | null }
-export interface MilestoneRow { id: string; label: string; humans: MilestoneGroup; bots: MilestoneGroup }
+/** count: erreicht; of: Nenner (Spieler der Gruppe mit Hafen); onTime: erreicht bis zum Soll-Tag (null ohne Soll). */
+export interface MilestoneGroup { count: number; of: number; onTime: number | null; firstDay: number | null; medianDay: number | null }
+/** target: Soll-Saisontag aus der Modellkurve (MILESTONE_TARGETS), null = kein Soll festgelegt. */
+export interface MilestoneRow { id: string; label: string; target: number | null; humans: MilestoneGroup; bots: MilestoneGroup }
+
+/**
+ * Soll je Meilenstein (Welle 2, AN-13): spätester Saisontag laut Modell. KZ nach dem Referenz-Bot mit 45 % Rüstung
+ * (npm run sim, „Saison 42 Tage“: KZ 2/5/6/7/8/9 an Tag 7/14/21/28/35/42), Nester nach dem Ende der Zielfenster
+ * (REGELN.md: Stufe 3 Tag 7–10, 4 Tag 14–18, 5 Tag 21–28, 6 Tag 35–38).
+ */
+export const MILESTONE_TARGETS: Record<string, number> = {
+  "kz:2": 7, "kz:5": 14, "kz:6": 21, "kz:7": 28, "kz:8": 35, "kz:9": 42,
+  "nest:3": 10, "nest:4": 18, "nest:5": 28, "nest:6": 38,
+};
 export interface Completion { assigned: number; completed: number; claimed: number }
 
 export interface AdminKpi {
@@ -83,18 +95,24 @@ function milestoneSort(a: string, b: string): number {
 }
 
 /** Meilensteine (Spieler, Schlüssel, Zeitpunkt) zu Zeilen mit Saisontag (Tag 1 = Saisonstart). */
-export function milestoneRows(rows: { key: string; bot: boolean; t: number }[], seasonStartMs: number): MilestoneRow[] {
+export function milestoneRows(rows: { key: string; bot: boolean; t: number }[], seasonStartMs: number, of: { humans: number; bots: number } = { humans: 0, bots: 0 }): MilestoneRow[] {
   const groups = new Map<string, { humans: number[]; bots: number[] }>();
   for (const r of rows) {
     const g = groups.get(r.key) ?? { humans: [], bots: [] };
     (r.bot ? g.bots : g.humans).push(Math.max(1, Math.floor((r.t - seasonStartMs) / DAY_MS) + 1));
     groups.set(r.key, g);
   }
-  const sum = (xs: number[]): MilestoneGroup => {
+  const sum = (xs: number[], n: number, target: number | null): MilestoneGroup => {
     const s = [...xs].sort((a, b) => a - b);
-    return { count: s.length, firstDay: s[0] ?? null, medianDay: s.length ? s[Math.floor((s.length - 1) / 2)] : null };
+    return {
+      count: s.length, of: Math.max(n, s.length), onTime: target === null ? null : s.filter((d) => d <= target).length,
+      firstDay: s[0] ?? null, medianDay: s.length ? s[Math.floor((s.length - 1) / 2)] : null,
+    };
   };
-  return [...groups.keys()].sort(milestoneSort).map((id) => ({ id, label: milestoneLabel(id), humans: sum(groups.get(id)!.humans), bots: sum(groups.get(id)!.bots) }));
+  return [...groups.keys()].sort(milestoneSort).map((id) => {
+    const target = MILESTONE_TARGETS[id] ?? null;
+    return { id, label: milestoneLabel(id), target, humans: sum(groups.get(id)!.humans, of.humans, target), bots: sum(groups.get(id)!.bots, of.bots, target) };
+  });
 }
 
 export async function adminKpi(db: DbOrTx, days: StatsDays, nowMs = Date.now()): Promise<AdminKpi> {
@@ -154,7 +172,7 @@ export async function adminKpi(db: DbOrTx, days: StatsDays, nowMs = Date.now()):
         select b.created_at, p.bot_profile is not null as bot, row_number() over (partition by b.player_id order by b.created_at, b.id) as rn
         from base b join player p on p.id = b.player_id) y
       where y.rn = 2`);
-    milestones = milestoneRows(ms, seasonStartMs);
+    milestones = milestoneRows(ms, seasonStartMs, { humans: group(false).withBase, bots: group(true).withBase });
   }
 
   // ---------------------------------------------------------------- Abschlussquoten (Menschen)

@@ -1,36 +1,19 @@
 // Worker: verarbeitet fällige Ereignisse, Prüflauf der Börse, Marktnachrichten, Aufräumen, Betriebsalarm, gebündelte E-Mails, KI-Spieler.
+// Die Schritte selbst stehen in engine/src/worker-steps.ts (dieselbe Liste nutzt der Saisonlauf npm run sim:saison).
 import { createServer } from "node:http";
 import Valkey from "iovalkey";
 import { createDb } from "@tidefront/db";
 import {
   AlertMemory,
-  auditLedger,
   backlogHealthy,
-  balance,
-  checkOps,
-  cleanup,
-  purgeIntel,
-  ensureWorldEventPlanner,
-  ensurePolitikPlan,
-  runGesuche,
-  ensureFieldPlanner,
-  flushAchievementNotices,
-  flushMailDigests,
+  maintenanceSteps,
+  minuteSteps,
   noticeHook,
-  cleanupNudges,
   processDue,
-  recordMilestones,
-  runReminders,
-  runWinback,
-  runSeasonNotice,
-  flushPushes,
-  refreshDerivedOpen,
-  runMarketNews,
-  runMorningSummaries,
   runBotsDue,
-  runCatchUp,
-  runEventWatchdog,
-  rankSnapshot,
+  runStep,
+  runSteps,
+  StepStats,
   type Engine,
   type OpsStatus,
 } from "@tidefront/engine";
@@ -63,108 +46,31 @@ let nextOps = 0;
 let ops: OpsStatus | null = null;
 const alerts = new AlertMemory();
 
-/** Ein Wartungsschritt: Fehler werden geloggt, die folgenden Schritte laufen trotzdem. */
-async function step(name: string, fn: () => Promise<unknown>): Promise<void> {
-  try {
-    await fn();
-  } catch (err) {
-    log(`maintenance ${name} failed`, String((err as Error)?.stack ?? err));
-  }
-}
-
-/** Alle 10 Minuten: Prüflauf, Aufräumen, Wächter der Ereignis-Queue, Planer. Jeder Schritt einzeln abgesichert. */
-async function maintenance(): Promise<void> {
-  await step("audit", async () => {
-    const audit = await auditLedger(engine);
-    if (!audit.ok) log("AUDIT FAILED", audit);
-  });
-  // Wracks, Sitzungen, Befehlsprotokoll, erledigte Ereignisse, alte Prüfläufe (audit_run).
-  await step("cleanup", () => cleanup(engine, Date.now(), balance.combat.wreckHours));
-  // Lagebild: Wissen älter als forgetHours (72 h) löschen.
-  await step("intel purge", () => purgeIntel(db, Date.now()));
-  // Wächter: hängende Missionen und abgerissene Ketten (nach endgültig gescheiterten Ereignissen) neu einplanen.
-  await step("event watchdog", async () => {
-    const r = await runEventWatchdog(engine, Date.now());
-    if (r.missions + r.sentHome + Object.keys(r.chains).length > 0) log("event watchdog", r);
-  });
-  // Weltereignisse: nächstes Ereignis planen, falls keines ansteht (auch nach Saisonwechsel).
-  await step("world events planner", () => ensureWorldEventPlanner(db, Date.now()));
-  // Weltpolitik: Saisonplan (Gezeit, Seerat) einmal je Saison; Gesuche anbieten, verfallen lassen, abrechnen.
-  await step("politik plan", () => ensurePolitikPlan(db, Date.now()));
-  await step("gesuche", async () => {
-    const n = await runGesuche(engine, Date.now());
-    if (n > 0) log("gesuche", { offered: n });
-  });
-  // Felder: aktive Rohstofffelder und Lieferzyklus (auch nach Saisonwechsel).
-  await step("fields planner", () => ensureFieldPlanner(db, Date.now()));
-  // Marktnachrichten: Lage auswerten (täglich Knappheit), effektiven Richtwert fortschreiben, Push.
-  await step("market news", () => runMarketNews(engine, Date.now()));
-  // Tagesbefehle aus dem Zustand (Ökostrom, Vorrat, Produktion …) auch ohne Abruf durch den Spieler fortschreiben.
-  await step("daily derived", () => refreshDerivedOpen(db, Date.now()));
-  // Admin-Kennzahlen: Meilensteine aus den Hafen-Zuständen; Spielerbindung: alte Entprellungs-Einträge löschen.
-  await step("milestones", () => recordMilestones(db, Date.now()));
-  await step("nudge cleanup", () => cleanupNudges(db));
-  // PvP: Rang-Momentaufnahme des Spieltags (Kopfgeld, Mutfaktor) bald nach Mitternacht festhalten.
-  await step("pvp rank snapshot", () => rankSnapshot(db, Date.now()));
-  // Aufholhilfe: einmal je Stunde Median der Ausbaupunkte, Rückstand und Zufluss der Baugutschrift.
-  await step("catch up", async () => {
-    const n = await runCatchUp(engine, Date.now());
-    if (n > 0) log("catch up", { bases: n });
-  });
-}
+/** Schrittdauer je Tag (worker_step_day, Verwaltung → Welt & Worker); geschrieben nach jeder Wartungsrunde. */
+const stats = new StepStats();
+const maintenance = maintenanceSteps(engine);
+const minutely = minuteSteps(engine, alerts, (o) => { ops = o; });
+/** Zwischen den Wartungsschritten fällige Ereignisse abarbeiten (TE-05: Kämpfe warten nicht auf die ganze Wartung). */
+const dueBetween = () => processDue(engine, Date.now(), 50);
 
 async function loop() {
   while (!stopping) {
     try {
-      const n = await processDue(engine, Date.now(), 200);
+      const n = (await runStep(engine, stats, "events", Date.now(), () => processDue(engine, Date.now(), 200))) ?? 0;
       if (n > 0) log("events", { processed: n });
       if (Date.now() >= nextAudit) {
         nextAudit = Date.now() + 10 * 60000;
-        await maintenance();
+        await runSteps(engine, stats, maintenance, Date.now, dueBetween);
+        await stats.flush(db).catch((err) => log("worker stats failed", String(err)));
       }
       if (Date.now() >= nextOps) {
         // Jede Minute: Kennzahlen, Alarm an Admins, gebündelte E-Mails.
         nextOps = Date.now() + 60000;
-        await step("ops check", async () => { ops = await checkOps(engine, alerts); });
-        await step("digest mails", async () => {
-          const mails = await flushMailDigests(engine, Date.now());
-          if (mails > 0) log("digest mails", { sent: mails });
-        });
-        await step("morning summaries", async () => {
-          const summaries = await runMorningSummaries(engine, Date.now());
-          if (summaries > 0) log("morning summaries", { sent: summaries });
-        });
-        // Erfolge: Push für frisch freigeschaltete Abzeichen.
-        await step("achievement notices", async () => {
-          const badges = await flushAchievementNotices(engine);
-          if (badges > 0) log("achievement notices", { sent: badges });
-        });
-        // Spielerbindung: Tagesbefehle bereit / Serie in Gefahr, Nest wieder besetzt, Rückhol-E-Mail.
-        await step("reminders", async () => {
-          const reminders = await runReminders(engine, Date.now());
-          if (reminders > 0) log("reminders", { sent: reminders });
-        });
-        await step("winback mails", async () => {
-          const winback = await runWinback(engine, Date.now());
-          if (winback > 0) log("winback mails", { sent: winback });
-        });
-        // AN-06/AN-07: Saisonwechsel-Nachricht (Mail + Push), gesammelte Pushes (15-min-Bündel, nach der Ruhezeit).
-        await step("season notice", async () => {
-          const n = await runSeasonNotice(engine, Date.now());
-          if (n > 0) log("season notice", { sent: n });
-        });
-        await step("push bundles", async () => {
-          const n = await flushPushes(engine, Date.now());
-          if (n > 0) log("push bundles", { sent: n });
-        });
+        await runSteps(engine, stats, minutely, Date.now);
         // KI-Spieler: höchstens bots.turnsPerMinute fällige Bots reihum (abschaltbar: Server-Einstellung bots_enabled).
         if (process.env.BOTS_DISABLED !== "1") {
-          try {
-            const bots = await runBotsDue(engine, Date.now());
-            if (bots.turns > 0) log("bot turns", bots);
-          } catch (err) {
-            log("bot tick failed", String(err));
-          }
+          const bots = await runStep(engine, stats, "bot turns", Date.now(), () => runBotsDue(engine, Date.now()));
+          if (bots && bots.turns > 0) log("bot turns", bots);
         }
       }
       lastLoop = Date.now();

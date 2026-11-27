@@ -6,6 +6,7 @@ import {
   commandPoints,
   harborMarketUnlocked,
   market as marketCore,
+  productionRates,
   recommendEscort,
   startTraining,
   storageCapacity,
@@ -20,6 +21,7 @@ import { balance, marketBalance } from "./context.ts";
 import { train, trade } from "./commands.ts";
 import { marketQuote, marketView, missionPreview } from "./views.ts";
 import { acceptOffer, createOffer, offersView } from "./player-trade.ts";
+import { botMarketPlan, maxLots, nextBuildNeed } from "./bots-market.ts"; // Welle 2: Börse nach Stunden Produktion
 import { contractsTurn } from "./bots-contracts.ts"; // Lieferverträge: günstige Vertragsangebote von Spielern
 import { launchMission } from "./commands.ts";
 import { FOUNDING_TYPE } from "./expansion.ts";
@@ -32,33 +34,24 @@ type Base = BaseRow & { state: BaseState };
 
 const ref = (r: string) => balance.market.refPrice[r] ?? 1;
 
-/** Börse: Überschuss verkaufen (alle), knappe Ware zukaufen (Händler). Ein Geschäft je Richtung und Zug. */
+/**
+ * Börse (Welle 2): Überschuss über HOLD_HOURS Produktion und den Bedarf der nächsten Ausbauten verkaufen, knappe Ware
+ * (unter BUY_BELOW_HOURS Produktion) zukaufen – Regeln in bots-market.ts. Ein Geschäft je Richtung und Zug.
+ */
 export async function marketTurn(c: TurnCtx, base: Base, mods: Modifiers): Promise<void> {
   if (!harborMarketUnlocked(base.state, balance)) return;
-  const cap = storageCapacity(base.state, balance, mods);
   const view = await marketView(c.engine, c.bot.id);
-  const room = (r: string) => {
-    const x = view.resources.find((y) => y.id === r);
-    return x ? Math.max(0, x.dailyLimit - x.dailyUsed - (x.dailyReserved ?? 0)) : 0;
-  };
-  const fill = (r: string) => (base.state.resources[r] ?? 0) / cap;
-  const byFill = [...balance.resources].sort((a, b) => fill(a) - fill(b));
-  const short = fill(byFill[0]) < (c.cfg.trade ? 0.25 : 0.12) ? byFill[0] : null;
-  // Verkaufen: Händler früh, die anderen bei vollem Lager oder wenn eine Ressource knapp ist.
-  const sellFrom = c.cfg.trade ? 0.5 : short ? 0.5 : 0.85;
-  const over = [...byFill].reverse().find((r) => fill(r) > sellFrom && r !== short);
-  let credits = view.credits;
-  if (over) {
-    const qty = Math.floor(Math.min((base.state.resources[over] ?? 0) * 0.3, room(over)));
-    if (qty >= 100) credits += await doTrade(c, base, "sell", over, qty);
+  const room: ResourceMap = {}, price: ResourceMap = {};
+  for (const x of view.resources) {
+    room[x.id] = Math.max(0, x.dailyLimit - x.dailyUsed - (x.dailyReserved ?? 0));
+    price[x.id] = x.price ?? ref(x.id);
   }
-  if (!short || (c.cfg.trade && c.rand() < c.cfg.noise)) return;
-  credits -= c.creditReserve ?? 0; // Admirale: Rücklage für die Ernennung
-  if (credits > 500) {
-    const price = view.resources.find((y) => y.id === short)?.price ?? ref(short);
-    const qty = Math.floor(Math.min((credits * (c.cfg.trade ? 0.6 : 0.4)) / price, 0.25 * cap, room(short)));
-    if (qty >= 100) await doTrade(c, base, "buy", short, qty, mods);
-  }
+  const plan = botMarketPlan({
+    stock: base.state.resources, perHour: productionRates(base.state, balance, mods, c.nowMs).perHour, need: nextBuildNeed(base.state),
+    room, price, maxLot: maxLots(), credits: view.credits - (c.creditReserve ?? 0), trader: c.cfg.trade,
+  });
+  for (const x of plan.sell) await doTrade(c, base, "sell", x.resource, x.qty);
+  if (plan.buy) await doTrade(c, base, "buy", plan.buy.resource, plan.buy.qty, mods);
 }
 
 /** Ab diesem Warenwert (Richtpreis) nehmen KI-Spieler bei Börsenkäufen das empfohlene Geleit, wenn Schiffe daheim sind. */

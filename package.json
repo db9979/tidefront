@@ -15,6 +15,7 @@
     "test:server": "node --test --test-concurrency=1 \"packages/engine/test/**/*.test.ts\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "sim": "node packages/game-core/sim/simulate.ts",
+    "sim:saison": "node packages/engine/sim/saison.ts",
     "db:generate": "drizzle-kit generate --config packages/db/drizzle.config.ts",
     "build:web": "npm run build -w @tidefront/web",
     "build:server": "node scripts/build-server.mjs",

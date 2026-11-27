@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { Balance, BaseState, Counts, NestLevelDef } from "../src/index.ts";
 import { fuelCost, nestDefender, productionRates, resolveBattle, trainingCost } from "../src/index.ts";
 import { runBot, value, type BotSnapshot } from "./bot.ts";
+import { nestCargo } from "./messung.ts";
 
 const SEEDS = 400;
 const DAYS = 42;
@@ -78,9 +79,11 @@ export function runNest6Sim(balance: Balance, snaps?: BotSnapshot[]): void {
     const n5 = nestRun(fleetOf(s.base), 5, balance);
     const n6 = nestRun(fleetOf(s.base), 6, balance);
     const n6m = nestRun(fleet(d, "KP"), 6, balance); // wer auf Nest 6 zielt, nimmt Laderaum mit
+    // Welle 2 (M-02): Beute nach Laderaum – computeLoot kürzt anteilig, der Wert schrumpft also im selben Verhältnis.
+    const cargo = nestCargo(fleetOf(s.base), 6, balance, 1, 100).share;
     console.log(
       `  Tag ${d} (Produktion ${Math.round(p)}/h): Nest 5 Netto ${Math.round(n5.net)} = ${(n5.net / p).toFixed(1)} h | ` +
-        `Nest 6 Beute ${(loot6 / p).toFixed(1)} h, Verluste ${Math.round(n6.loss)}, Netto ${Math.round(n6.net)} = ${(n6.net / p).toFixed(1)} h | ` +
+        `Nest 6 Beute ${(loot6 / p).toFixed(1)} h, nach Laderaum ${((loot6 * cargo) / p).toFixed(1)} h (${Math.round(cargo * 100)} %), Verluste ${Math.round(n6.loss)}, Netto ${Math.round(n6.net)} = ${(n6.net / p).toFixed(1)} h | ` +
         `+2 Landungsschiffe (gleiche KP): Sieg ${Math.round(n6m.win * 100)} %, Netto ${Math.round(n6m.net)} = ${(n6m.net / p).toFixed(1)} h`,
     );
   }

@@ -414,3 +414,64 @@ Grundlage `docs/VORLAGE-WELTPOLITIK.md` mit den Nutzerentscheidungen; Regelwerk 
   Nur für Menschen ohne Allianz – in einer Allianz verhandelt die Führung für alle, das Ansehen gilt aber je Mensch.
   Annehmen/Ablehnen über `politik.acceptPakt/declinePakt` (prüft, dass es ein KI-Angebot an diesen Menschen ist) bzw.
   die vorhandene Diplomatie.
+
+## Welle 2 – Messbarkeit und KI aus der Abschlussprüfung 0.38 (w2)
+
+Balance-Werte und -Version unverändert; nur Werkzeuge, Kennzahlen und KI-Verhalten.
+
+- **Saisonlauf als Wächter (`npm run sim:saison`, Analyst-/Technik-Zusatz):** `packages/engine/sim/saison.ts` spielt
+  42 Tage gegen die echte Engine mit denselben Worker-Schritten wie der Worker (`worker-steps.ts`: Wartung alle 10 min
+  mit fälligen Ereignissen zwischen den Schritten, Minutenschritte, KI-Züge über `runBotsDue`), 3 KI-Spieler und 4
+  passive Menschen, fester Zufall (`setRandomSeedSource`, SEED). Wächter in `sim/saison-guards.ts` (Grenzen an einer
+  Stelle, Unit-Test): **Fehler** (Exit-Code 1) sind Weltereignisse > 3 je Tag (die Flut 0.38 hatte 91), > 60 neue
+  market_news-Zeilen je Tag, > 40 Nachrichten je Spieler und Tag, gescheiterte Ereignisse, Prüflauf der Börse.
+  **Warnungen** sind die Balance- und KI-Ziele der Nutzerentscheidungen (Kartellverlust ≤ 10 % der Tagesproduktion,
+  Kampf + Beute ≤ 50 % und Befehle ≤ 5 % der Punkte, Nest-6-Beute ≥ 80 % mitgenommen, ≥ 1 Börsengeschäft je KI und Tag,
+  KI-Lager ≤ 48 h Produktion, Freibeuter Nest 4 bis Tag 18, Angriffe auf Weltereignisse, kein Schritt ≥ 2 s); sie
+  scheitern erst mit `--strict`, weil die Balance (Welle 3) sie heute bewusst noch verfehlt. Nur gegen localhost
+  (löscht das Schema), `SIM_OUT` schreibt den JSON-Bericht.
+- **Sim-Abschnitte (`sim/messung.ts`, M-01/M-02/M-03):** „Kartellkosten je Tag“ (0,83 Überfälle/Tag × Beute +
+  bleibender Verlust in % der Tagesproduktion; Tag 7–42: 23–40 %), „Nest-6-Beute nach Laderaum“ (Verband des Tages:
+  64 % bis Tag 35, 86 % ab Tag 38; bei Beutewachstum 130 % 49–66 %), „Punkteanteil je Quelle“ (Modell-Spieler mit
+  Nestplan nach Zielfenster: Kampf + Beute 54–69 % bei 1 Überfall/Tag, 70–82 % bei 2). nest6.ts weist die Beute
+  zusätzlich nach Laderaum aus. Punkte- und NPC-Werte sind dort als Kopie der Engine-Konstanten vermerkt.
+- **Tagesschnappschuss je Hafen (AN-03):** neue Tabelle `base_day` (Tag, Hafen, Spieler, KI, Bestand, Netto-Produktion,
+  Kapazität, Stufen, KZ, Militärwert, Taler im Heimathafen). Der Worker schreibt ihn in der ersten Wartungsrunde des
+  Kalendertags (Spielzeitzone) – Stand zu Tagesbeginn, ohne Zusatzlast im Spiel. Keine Fremdschlüssel: die Zeitreihe
+  überlebt Saisonwechsel und aufgegebene Häfen; Größe ~ Häfen × Tage (unkritisch).
+- **Schrittdauer im Worker (TE-05/AN-12):** jeder Schritt (Wartung, Minutenschritte, KI-Züge, Ereignisse) wird
+  gemessen, ab 2 s als `slow step` geloggt und je Tag aufaddiert in `worker_step_day` geschrieben (Läufe, Summe, Max,
+  langsam, Fehler) – auch über Neustarts sichtbar. Zwischen den Wartungsschritten arbeitet der Worker fällige
+  Ereignisse ab (`processDue` mit 50), damit Kämpfe und Lieferungen nicht hinter der ganzen Wartung warten; eine
+  eigene zweite Schleife mit eigener Verbindung bewusst nicht (Pi, eine Verbindung genügt).
+- **Nutzungszähler je System (leicht):** `usage_day` (Tag, System, Menschen/KI, Befehle) verdichtet der Worker einmal
+  je abgeschlossenem Tag aus dem Befehlsprotokoll (hält 7 Tage) – kein zusätzlicher Schreibzugriff je Befehl.
+  Zuordnung Befehl → System in `metrics.ts SYSTEMS`. Spieler = höchste Zahl verschiedener Spieler an einem Tag.
+- **Admin-Karten:** „Rohstoffbilanz“ (Median/Max Bestand, Füllgrad, Stunden Produktion je Rohstoff, Menschen und KI
+  getrennt; Füllgrad je Tag), „Zuflüsse“ (Produktion aus dem Schnappschuss, Belohnungen aus Tagesbefehlen und
+  Wochenzielen, Beute, an das Kartell, Börse netto; in % der Produktion), „Welt & Worker“ (Weltereignisse je Tag und
+  Art, neue Marktnachrichten je Tag, Schrittdauer), „Nutzung je System“. Meilensteine mit **Soll** (spätester
+  Saisontag laut Modell: KZ nach dem Referenz-Bot 45 % Rüstung, Nester Ende der Zielfenster) und **Nenner** (Spieler
+  der Gruppe mit Hafen), Median nach dem Soll rot.
+- **KI an der Börse (AN-05, Nutzerentscheid 5 A „KI-Lager klein“):** Schwellen in Stunden Produktion statt Füllgrad:
+  Überschuss über 24 h (Händler 12 h) und über dem Bedarf der drei billigsten nächsten Ausbauten wird verkauft (höchstens
+  drei Rohstoffe je Zug, Lose unter der Preiswirkungsgrenze), knappe Ware unter 6 h bis 12 h zugekauft (mit dem Erlös
+  desselben Zugs). Jeder Hafen mit Börse handelt (Tageslimit gilt spielerweit).
+- **Probekampf gegen Nester (M-11/ST-06):** ohne genaues Lagebild im Mittel über die Würfe ≥ 90 % und gegen den
+  ungünstigsten Wurf ≥ 50 % (statt ungünstig ≥ 70–100 %); mit Lagebild wie bisher gegen die hochgerechnete Besatzung.
+  Nestwahl nach dem ganzen Verband (daheim + unterwegs, alle 6 h neu): überfallen werden nur Nester ab der höchsten
+  machbaren Stufe − 1, damit Reste des Verbands nicht Kleinkram anfahren.
+- **Heimwache inklusive Truppen (ST-06):** die Heimwache gilt jetzt auch für Landtruppen (Landungsschiffe fahren ganz
+  mit, Laderaum); die Festung hält mindestens 50 % jeder Kampfeinheit daheim.
+- **Tagesbefehle (AN-08):** KI-Spieler sehen an etwa 60 % der Tage (fest je Bot und Tag) in die Tagesbefehle, höchstens
+  alle 3 h: vergeben, Fortschritt fortschreiben, Erledigtes und Wochenziele abholen – wie ein Mensch, der nicht jeden
+  Tag hineinsieht. Die Bot-Kurve unterschätzt aktive Menschen damit nicht mehr um die Belohnungen.
+- **Leerfahrten (ST-18):** kein zweiter eigener Verband zum selben Nest bzw. Weltereignis (aus keinem Hafen).
+- **Weltereignisse (ST-06):** Freibeuter und Festung greifen Schatzschiff, Großflotte und Belagerungsring an, wenn der
+  Probekampf (Siegregel „vernichtet“, Truppen bleiben daheim) ≥ 90 % gewinnt und der erwartete Verlust ≤ 35 % des
+  Verbands ist; Händler nicht (Profil). Ein Missionsplatz bleibt frei.
+- **Spiel nach Profil (ST-17):** andere KI überfällt nur der Freibeuter, höchstens alle 48–72 h (Menschen zuerst,
+  sonst die KI mit dem vollsten Lager laut Aufklärung).
+- **Migration:** keine erzeugt. Neue Tabellen `base_day`, `worker_step_day`, `usage_day` (packages/db/src/schema/
+  metrics.ts) brauchen eine Migration des Integrators; ohne sie loggt der Worker „step base snapshot failed“ und die
+  Admin-Karten melden „nicht verfügbar“, das Spiel läuft weiter.

@@ -90,6 +90,12 @@ export interface BotState {
   fieldTarget?: { fieldId: number; baseId: number; units: Record<string, number>; untilMs: number };
   /** Wirtschaftsphase je Hafen-ID (bots-run.ts): erst Rüstung bis zum Zielanteil, dann Ausbau. */
   phase?: Record<string, "mil" | "build">;
+  /** Tagesbefehle (bots-daily.ts): letzter Blick hinein. */
+  dailyAtMs?: number;
+  /** Nestwahl (bots-nest-top.ts): höchste Neststufe, die der ganze Verband des Hafens schafft, je Hafen-ID. */
+  nestTop?: Record<string, { level: number; atMs: number }>;
+  /** Freibeuter (bots-war.ts): letzter Überfall auf eine andere KI. */
+  botRaidAtMs?: number;
 }
 
 export interface BotRow { id: number; name: string; profile: BotProfile; settings: BotSettings; state: BotState }

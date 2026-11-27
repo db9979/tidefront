@@ -122,10 +122,17 @@ test("Meilensteine: Schlüssel aus Hafen-Zuständen und Saisontag", () => {
     { key: "nest:2", bot: false, t: start + 5 * DAY },
     { key: "nest:2", bot: false, t: start + 9 * DAY },
     { key: "kz:3", bot: true, t: start + H },
-  ], start);
-  assert.deepEqual(rows.map((r) => r.id), ["kz:3", "nest:2"], "KZ vor Nestern");
-  assert.deepEqual(rows[1].humans, { count: 3, firstDay: 3, medianDay: 6 });
-  assert.deepEqual(rows[0].bots, { count: 1, firstDay: 1, medianDay: 1 });
+    { key: "nest:3", bot: false, t: start + 8 * DAY },
+    { key: "nest:3", bot: false, t: start + 12 * DAY },
+  ], start, { humans: 4, bots: 3 });
+  assert.deepEqual(rows.map((r) => r.id), ["kz:3", "nest:2", "nest:3"], "KZ vor Nestern");
+  assert.deepEqual(rows[1].humans, { count: 3, of: 4, onTime: null, firstDay: 3, medianDay: 6 });
+  assert.deepEqual(rows[0].bots, { count: 1, of: 3, onTime: null, firstDay: 1, medianDay: 1 });
+  // Welle 2: Soll (Ende des Zielfensters Nest 3 = Tag 10) und Nenner
+  assert.equal(rows[2].target, 10);
+  assert.deepEqual(rows[2].humans, { count: 2, of: 4, onTime: 1, firstDay: 9, medianDay: 9 });
+  assert.equal(rows[2].bots.count, 0);
+  assert.equal(rows[2].bots.of, 3);
 });
 
 test("Rückhol-E-Mail: Inhalt, Art „comeback“ per Vorgabe an, Abmelden schaltet ab", () => {
