@@ -10,6 +10,10 @@ import { serverNow } from "../lib/time.ts";
 import { Icon } from "../icons.tsx";
 import { INK, MESSING, MOOS, SEE, SIEGEL } from "../icons-art.tsx";
 import { Bar } from "../ui.tsx";
+import { useQuery } from "@tanstack/react-query";
+import { trpc } from "../lib/trpc.ts";
+import { BuildingArt } from "../building-art/index.tsx";
+import { buildingLive } from "../lib/live-art.ts"; // Bewegte Gebäude: dieselben Zeichnungen wie auf der Basis
 
 type Grid = BaseData["grid"];
 type Hour = Grid["curve"][number];
@@ -49,7 +53,33 @@ function clockOf(ms: number): string {
 const sum = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a + b, 0);
 const pct = (x: number) => `${Math.round(x * 100)} %`;
 
+/** Gebäude-Zeichnung je Stromquelle (bewegt nach Zustand), sonst das Symbol. */
+const SOURCE_ART: Record<string, string> = { kraftwerk: "kraftwerk", wind: "windpark", solar: "solarfeld", storage: "speicherwerk", cable: "seekabel" };
+
+function SourceArt({ base, k, icon, windCut }: { base: BaseData; k: string; icon: string; windCut?: number }) {
+  const id = SOURCE_ART[k];
+  const level = id ? base.buildings.find((b) => b.id === id)?.level ?? 0 : 0;
+  if (!id || level <= 0) return <Icon id={icon} size={26} />;
+  // Fester Rahmen: alle Zeichnungen stehen auf derselben Grundlinie, gleich welches Seitenverhältnis.
+  return (
+    <span className="flex h-11 items-end justify-center overflow-hidden">
+      <BuildingArt id={id} level={level} size={62} live={buildingLive(base, id, level, serverNow(), windCut)} />
+    </span>
+  );
+}
+
+/** Wetter-Symbol mit leiser Bewegung je Lage (Sonne dreht, Wolken ziehen, Mond glimmt, Sturm rüttelt). */
+function WeatherGlyph({ id, i }: { id: string; i: number }) {
+  return (
+    <span className={`inline-block tf-mv tf-wx-${id}`} style={{ animationDelay: `${-(i * 0.7).toFixed(1)}s` }}>
+      <Icon id={id} size={22} />
+    </span>
+  );
+}
+
 export function PowerGrid({ base }: { base: BaseData }) {
+  const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
+  const windCut = (meta.data?.balance as { buildings?: { windpark?: { stormCutoff?: number } } } | undefined)?.buildings?.windpark?.stormCutoff;
   const g = base.grid;
   const supply = sum(g.now.supply);
   const demand = sum(g.now.demand);
@@ -65,7 +95,7 @@ export function PowerGrid({ base }: { base: BaseData }) {
       <div className={`grid ${sources.length > 4 ? "grid-cols-5" : "grid-cols-4"} gap-1 text-center`}>
         {sources.map((s) => (
           <div key={s.key} className="rounded-lg border border-rule bg-paper py-1">
-            <Icon id={s.icon} size={26} />
+            <SourceArt base={base} k={s.key} icon={s.icon} windCut={windCut} />
             <div className="text-[10px] text-ink2 leading-tight">{s.label}</div>
             <div className="mono text-xs">{fmtNum(g.now.supply[s.key])}</div>
           </div>
@@ -282,10 +312,10 @@ function Forecast({ g }: { g: Grid }) {
         <p className="text-xs text-ink2 mb-1">Sturm möglich ab etwa {hourOf(possible)} Uhr (oberer Rand der Vorhersage).</p>
       )}
       <div className="grid grid-cols-8 gap-0.5 text-center text-[10px]">
-        {slots.map((h) => (
+        {slots.map((h, i) => (
           <div key={h.atMs} className="rounded border border-rule bg-paper py-0.5">
             <div className="mono">{hourOf(h.atMs)}h</div>
-            <Icon id={weatherIcon(h, g)} size={22} />
+            <WeatherGlyph id={weatherIcon(h, g)} i={i} />
             <div className="mono whitespace-nowrap" title={`Wind: ${BEAUFORT_WORDS[beaufort(h.wind)]}`}>{bftRange(h.windRange[0], h.windRange[1])}</div>
             <div className="mono text-ink2" title="Bewölkung">{Math.round(h.clouds * 100)}</div>
           </div>

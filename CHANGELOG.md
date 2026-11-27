@@ -2,6 +2,10 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.20.1 – 27.11.2026
+- **Versorgung bewegt sich:** Die Quellen Kraftwerk, Wind, Sonne, Speicher (und Seekabel) zeigen die bewegten Gebäudebilder – Dampf, Windräder nach echtem Wind, Glanz bei Sonne, Füllstand.
+- **Wetter-Symbole** in der Vorhersage und im Wetterkärtchen der Karte bewegen sich leise: Sonne dreht, Wolken und Nebel ziehen, Mond glimmt, Wind weht, Sturm rüttelt. Bei „Bewegung reduzieren“ bleibt alles still.
+
 ## 0.20.0 – 27.11.2026
 - **Elektrolyse** (neues Gebäude): wandelt Überschuss aus Wind und Sonne in Treibstoff (10 Strom-Stunden → 1 Treibstoff); Kraftwerksstrom nie. Gasblasen steigen, solange sie arbeitet.
 - **Seekabel** (neues Gebäude): Ökostrom-Überschuss an einen eigenen Hafen oder ein Allianzmitglied abgeben – bis 600 km, 10 % Verlust je 100 km, Preis frei oder als Allianzhilfe, Abrechnung alle 10 Minuten. Kriegsgegner können die Station sabotieren. Verwaltung in der Versorgung: anbieten, annehmen, Preis ändern, trennen.

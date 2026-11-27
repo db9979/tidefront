@@ -178,6 +178,15 @@ input, select, textarea { color: var(--color-ink); }
 @keyframes tf-glint { 0%, 72%, 100% { opacity: 0; } 82% { opacity: 0.85; } }
 .tf-glint { animation: tf-glint 6s ease-in-out infinite; }
 /* Unsichtbar (außerhalb des Bildschirms) oder Tab verborgen: anhalten. */
+/* Wetter-Symbole (Vorhersage, Kärtchen): leise und versetzt. */
+@keyframes tf-drift { 0%, 100% { transform: translateX(-1.5px); } 50% { transform: translateX(1.5px); } }
+@keyframes tf-glow { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+@keyframes tf-shake { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+.tf-wx-sonne { animation: tf-spin 28s linear infinite; transform-origin: 50% 50%; }
+.tf-wx-wolke, .tf-wx-nebel { animation: tf-drift 7s ease-in-out infinite; }
+.tf-wx-wind { animation: tf-drift 2.6s ease-in-out infinite; }
+.tf-wx-mond { animation: tf-glow 5s ease-in-out infinite; }
+.tf-wx-sturm { animation: tf-shake 0.7s ease-in-out infinite; transform-origin: 50% 80%; }
 [data-tf-off] .tf-mv, html.tf-hidden .tf-mv { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .tf-grow, .tf-mv { animation: none !important; } }
 

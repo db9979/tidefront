@@ -67,7 +67,7 @@ export function WeatherChip({ at, wb, now, radar }: { at: Hex; wb: WeatherBalanc
       aria-label={`Wetter am Hafen: ${skyOf(w, wb)}, Wind ${beaufort(w.wind)} Beaufort`}
       className={`rounded-[3px] bg-card/95 border text-left flex items-center gap-1.5 shadow-sm ${open ? "px-2 py-1 max-w-[240px]" : "h-9 px-1.5"} ${w.storm ? "border-siegel border-l-4" : "border-rule"}`}
     >
-      <Icon id={iconOf(w, wb)} size={open ? 24 : 20} />
+      <span className={`inline-block tf-mv tf-wx-${iconOf(w, wb)}`}><Icon id={iconOf(w, wb)} size={open ? 24 : 20} /></span>
       {open ? (
         <div className="leading-tight min-w-0">
           <div className="text-[11px] font-display uppercase tracking-wider">Am Hafen: {skyOf(w, wb)}</div>
