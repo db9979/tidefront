@@ -2,6 +2,10 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.28.2 – 27.11.2026
+- **Flugzeuge statt Schiffe:** Reine Flugzeug- und Drohnenverbände erscheinen auf der Karte mit einem Flugzeug-Symbol statt eines Schiffs. Missionsleiste und Einsatz-Karten sagen „Hinflug“ und „Rückflug“.
+- „Zurückrufen“ bricht auf schmalen Bildschirmen sauber um.
+
 ## 0.28.1 – 27.11.2026
 - **Passende Wortwahl in der Missionsplanung:** Reine Flugzeug- und Drohnenverbände „starten“ statt „auslaufen“, die Kurzzeile nennt den „Flug“, und das Wetterkästchen zeigt das Startwetter am Hafen statt eines Zeitzuschlags für Schiffe. Spione werden „losgeschickt“. Verbände mit Schiffen laufen weiter aus.
 

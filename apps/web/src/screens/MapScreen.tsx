@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { departureKind } from "../lib/departure.ts";
 import { useQuery } from "@tanstack/react-query";
 import { hexCenter, hexDistanceKm, nearestTradePortBySea, terrainAt } from "@tidefront/world";
 import { trpc, type BaseData } from "../lib/trpc.ts";
@@ -71,6 +72,8 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [missionId]);
   const home = useMemo(() => ({ col: base.col, row: base.row }), [base.col, base.row]);
+  // Reine Luftverbände als Flugzeug auf der Karte (sonst Schiff).
+  const mapMissions = useMemo(() => base.missions.map((m) => ({ ...m, air: departureKind(m.units ?? {}, meta.data?.balance) === "luft" })), [base.missions, meta.data]);
   const hasRadar = base.buildings.some((b) => b.id === "radarstation" && b.level > 0);
   const linkKm = fieldsRules(meta.data?.balance)?.zoneLinkKm ?? 450; // Felder: Zonenlinien
   const fieldLayer = useMemo(() => (fields.data ? { list: fields.data.fields, linkKm } : undefined), [fields.data, linkKm]);
@@ -111,7 +114,7 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { 
           center={centerOn}
           recenter={recenter}
           home={home}
-          missions={base.missions}
+          missions={mapMissions}
           alert={alert}
           events={worldEvents.data?.events}
           naval={naval.data}

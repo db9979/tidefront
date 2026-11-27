@@ -182,6 +182,19 @@ export function shipSymbol(color: number): Container {
   return c;
 }
 
+/** Reiner Luftverband (Flugzeuge, Drohnen): Flugzeug im Kreis statt Schiff. */
+export function planeSymbol(color: number): Container {
+  const c = new Container();
+  const g = new Graphics();
+  g.circle(0, 0, 10).fill({ color: PAPER }).stroke({ color, width: 1.4 });
+  // Rumpf senkrecht, Tragfläche quer, Leitwerk unten
+  g.poly([0, -7, 1.2, -5, 1.2, 5, 0, 6.5, -1.2, 5, -1.2, -5]).fill({ color: INK });
+  g.poly([-7, 0.5, -1.2, -1.5, 1.2, -1.5, 7, 0.5, 7, 1.8, 1.2, 1, -1.2, 1, -7, 1.8]).fill({ color: INK });
+  g.poly([-3, 5, -1, 4, 1, 4, 3, 5, 3, 6, -3, 6]).fill({ color: INK });
+  c.addChild(g);
+  return c;
+}
+
 /** Erkannter Angriff: rote Raute und Ring um den eigenen Hafen. */
 export function alertRing(): Graphics {
   return new Graphics()

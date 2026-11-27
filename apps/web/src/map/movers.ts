@@ -5,7 +5,7 @@ import { Container, Graphics } from "pixi.js";
 import { hexCenterXY, routePointsXY } from "@tidefront/world";
 import { fleetPosition, patrolPoints, type MissionRoute, type PatrolPlan, type RoutedPlan } from "@tidefront/game-core";
 import { serverNow } from "../lib/time.ts";
-import { INK, SIEGEL, alertRing, shipSymbol } from "./symbols.ts";
+import { INK, SIEGEL, alertRing, planeSymbol, shipSymbol } from "./symbols.ts";
 import { sensorRing } from "./sensor-ring.ts";
 import { pinScale } from "./lod.ts";
 import type { Scene } from "../screens/HexMap.tsx";
@@ -21,6 +21,8 @@ export interface MapMission {
   departAtMs?: number;
   /** Lagebild Stufe 2: Bordsicht (km) und Patrouille (Runde auf Station). */
   sightKm?: number;
+  /** Reiner Luftverband (Flugzeuge/Drohnen): Flugzeug-Symbol statt Schiff. */
+  air?: boolean;
   patrol?: {
     waypoints: { col: number; row: number }[]; startMs: number | null; endMs: number | null; speedKmh: number;
     loop?: [number, number][] | null; homePath?: XY[] | null; endAt?: XY | null;
@@ -119,7 +121,7 @@ export function drawMovers(s: Scene, live: { home?: { col: number; row: number }
         if (m.sightKm) { sensorRing(s.routes, at.x, at.y, m.sightKm, sc, SIGHT); sights.push({ ...at, km: m.sightKm }); }
         const key = m.id * 2;
         let ship = s.ships.get(key);
-        if (!ship) { ship = shipSymbol(SIEGEL); s.ships.set(key, ship); s.world.addChild(ship); }
+        if (!ship) { ship = m.air ? planeSymbol(SIEGEL) : shipSymbol(SIEGEL); s.ships.set(key, ship); s.world.addChild(ship); }
         ship.position.set(at.x, at.y);
         ship.scale.set(pinScale(sc) * (live.focus === m.id ? 1.35 : 1));
         seen.add(key);
@@ -145,7 +147,7 @@ export function drawMovers(s: Scene, live: { home?: { col: number; row: number }
       const key = m.id * 2 + (outbound ? 0 : 1);
       let ship = s.ships.get(key);
       if (!ship) {
-        ship = shipSymbol(color);
+        ship = m.air ? planeSymbol(color) : shipSymbol(color);
         s.ships.set(key, ship);
         s.world.addChild(ship);
       }

@@ -1,4 +1,5 @@
 // Missionen im Detail: Infoblatt für einen Verband (Tipp auf der Karte) und Rückruf-Bestätigung.
+import { departureKind } from "../lib/departure.ts";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, type BaseData, type MapData } from "../lib/trpc.ts";
@@ -76,13 +77,15 @@ export function MissionPanel({ mission, now, home, onClose, onShowTarget }: {
   onShowTarget?: (t: { col: number; row: number }) => void;
 }) {
   const map = useQuery(trpc.world.map.queryOptions());
+  const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const [recall, setRecall] = useState(false);
   const [more, setMore] = useState(false);
   const m = mission;
   const ph = missionPhase(m, now);
   const name = m.target.kind === "kartell" ? "Kartell-Informanten" : targetName(map.data, m.target.col, m.target.row);
   const kind = m.spy ? spyKindText(m.spy.kind) : label(m.type);
-  const phase = ph.outbound ? "Hinfahrt" : m.recalled ? "zurückgerufen, auf dem Heimweg" : "Rückfahrt";
+  const air = departureKind(m.units ?? {}, meta.data?.balance) === "luft"; // Flug statt Fahrt
+  const phase = ph.outbound ? (air ? "Hinflug" : "Hinfahrt") : m.recalled ? "zurückgerufen, auf dem Heimweg" : air ? "Rückflug" : "Rückfahrt";
   const units = ph.outbound ? m.units : m.returning ?? m.units;
   const lost = !ph.outbound && m.returning
     ? Object.fromEntries(Object.entries(m.units).map(([k, v]) => [k, v - (m.returning?.[k] ?? 0)]).filter(([, v]) => (v as number) > 0))
@@ -130,7 +133,7 @@ export function MissionPanel({ mission, now, home, onClose, onShowTarget }: {
       <div className="shrink-0 flex flex-wrap gap-2 px-3 pb-3 pt-2 border-t border-rule">
         <Button kind="secondary" className="flex-1" onClick={() => setMore((v) => !v)}>{more ? "Weniger" : "Zeiten"}</Button>
         {onShowTarget && m.target.kind !== "kartell" && <Button kind="secondary" className="flex-1" onClick={() => onShowTarget({ col: m.target.col, row: m.target.row })}>Ziel zeigen</Button>}
-        {ph.outbound && m.arriveAtMs > now && <Button kind="secondary" className="flex-1" onClick={() => setRecall(true)}>Zurückrufen</Button>}
+        {ph.outbound && m.arriveAtMs > now && <Button kind="secondary" className="flex-1" onClick={() => setRecall(true)}>{"Zurück\u00ADrufen"}</Button>}
       </div>
       {recall && ph.outbound && <RecallSheet mission={m} name={name} now={now} onClose={() => setRecall(false)} />}
     </div>

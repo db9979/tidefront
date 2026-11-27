@@ -1,7 +1,9 @@
 // Truppen → Einsatz, „Unterwegs“: laufende Missionen als Karten (Art, Ziel, Fortschritt Hin-/Rückfahrt, Restzeit,
 // Verband, Zurückrufen). Leer: ruhiger Hafen als Zeichnung, ein Satz und ein Knopf.
 import { useState } from "react";
-import type { BaseData, MapData } from "../../lib/trpc.ts";
+import { useQuery } from "@tanstack/react-query";
+import { trpc, type BaseData, type MapData } from "../../lib/trpc.ts";
+import { departureKind } from "../../lib/departure.ts";
 import type { Target } from "../../App.tsx";
 import { label } from "../../lib/names.ts";
 import { fmtDuration } from "../../lib/time.ts";
@@ -21,9 +23,9 @@ function title(m: MissionData): string {
   return m.spy ? spyKindText(m.spy.kind) : m.allianceRaidId ? label("sammelangriff") : label(m.type);
 }
 
-function phaseBadge(m: MissionData) {
-  if (m.status === "outbound") return <Badge tone="sea">Hinfahrt</Badge>;
-  if (m.status === "returning") return <Badge tone={m.recalled ? "brass" : "slate"}>{m.recalled ? "zurückgerufen" : "Rückfahrt"}</Badge>;
+function phaseBadge(m: MissionData, air: boolean) {
+  if (m.status === "outbound") return <Badge tone="sea">{air ? "Hinflug" : "Hinfahrt"}</Badge>;
+  if (m.status === "returning") return <Badge tone={m.recalled ? "brass" : "slate"}>{m.recalled ? "zurückgerufen" : air ? "Rückflug" : "Rückfahrt"}</Badge>;
   if (m.status === "holding" && m.patrol) return <Badge tone="sea">auf Station</Badge>; // Lagebild Stufe 2
   if (m.status === "holding") return <Badge tone="red">Blockade</Badge>;
   if (m.status === "stationed") return <Badge tone="green">vor Ort</Badge>;
@@ -57,6 +59,7 @@ export function MissionsCard({ base, map, now, onShowOnMap }: { base: BaseData; 
 }
 
 function MissionItem({ m, base, map, now, onShowOnMap, onRecall }: { m: MissionData; base: BaseData; map: MapData | undefined; now: number; onShowOnMap: (t: Target) => void; onRecall: () => void }) {
+  const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const moving = m.status === "outbound" || m.status === "returning";
   const ph = missionPhase(m, now);
   const left = (m.status === "outbound" ? m.arriveAtMs : m.returnAtMs) - now;
@@ -69,7 +72,7 @@ function MissionItem({ m, base, map, now, onShowOnMap, onRecall }: { m: MissionD
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <strong className="font-serif text-[15px] leading-tight truncate">{title(m)}</strong>
-            {phaseBadge(m)}
+            {phaseBadge(m, departureKind(m.units ?? {}, meta.data?.balance) === "luft")}
           </div>
           <div className="text-xs text-ink2 truncate">→ {where}</div>
         </div>
