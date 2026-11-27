@@ -1,7 +1,7 @@
 # Mehrere Häfen (Welle 3 „Expansion“, Teil 2)
 
 Teil der Regeln (`docs/REGELN.md`). Werte im Balance-Block `expansion`; fehlt er, gibt es keine Außenposten.
-Begründung und Simulation: `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt K, und `sim/expansion.ts`.
+Begründung und Simulation: `packages/game-core/ENTSCHEIDUNGEN-2.md`, Abschnitt K, und `sim/expansion.ts`.
 
 ## Häfen je Spieler
 

@@ -1,7 +1,7 @@
 # Rohstofffelder (Welle 3 „Expansion“, Teil 1)
 
 Teil der Regeln (`docs/REGELN.md`). Werte im Balance-Block `fields`; fehlt er, gibt es keine Felder.
-Begründung und Simulation: `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt J, und `sim/fields.ts`.
+Begründung und Simulation: `packages/game-core/ENTSCHEIDUNGEN-2.md`, Abschnitt J, und `sim/fields.ts`.
 
 ## Felder
 

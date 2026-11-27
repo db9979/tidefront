@@ -196,7 +196,7 @@ Nach dem Kampf:
 - Stufe 6 (seit v1.15, „Inselfestung“, Spätspiel Woche 5–6): ≈ Stufe 5 × 1,35; ein voller Verband siegt an Tag 28 zu
   etwa 15 %, ab Tag 35 zu 74 %. Fünf feste Inseln (`LATE_NEST_POINTS`, an `nestSites()` angehängt), eigene Wiederkehr
   `respawnHours` 24 h, Beute 29 000 Einheiten (viel Elektronik). migrate/Seed trägt fehlende Plätze nach (vorhandene
-  Nester bleiben; Feld mit Hafen erst beim Saisonwechsel). Kein Freischalten nach Saisontag (ENTSCHEIDUNGEN.md N).
+  Nester bleiben; Feld mit Hafen erst beim Saisonwechsel). Kein Freischalten nach Saisontag (ENTSCHEIDUNGEN-3.md N).
 - Überfälle auf Spieler alle `raidIntervalHours` je Stützpunkt. Stärke (seit v1.1):
   - Verteidigungs-Lebenspunkte = Lebenspunkte aller Schiffe (auch U-Boote), Bodentruppen und Anlagen daheim (Flugzeuge zählen nicht).
     Seit v1.13 gewichtet mit `raidHpWeights` (je ID, sonst je Gattung, sonst 1): Schiffe kämpfen nicht am Boden und zählen
@@ -214,7 +214,7 @@ Nach dem Kampf:
   dreht der Verband bei Ankunft ohne Kampf ab; der Verteidiger erhält dazu einen Bericht (`abgewiesen`).
 - Kartell und Nester haben keine U-Boote und keine U-Jagd (v1.2): U-Boote sind für sie unverwundbar. In v1.13 per
   Simulation geprüft und so belassen (U-Boot-Verbände sind gegen Nester nicht besser als Zerstörer;
-  `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt L).
+  `packages/game-core/ENTSCHEIDUNGEN-3.md`, Abschnitt L).
 
 ## Weltereignisse des Kartells
 

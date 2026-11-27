@@ -4,7 +4,7 @@ Teil von `docs/REGELN.md` (dort aus Platzgründen ausgelagert). Verbindlich für
 Regeln in `packages/game-core/src/naval.ts`, Server in `packages/engine/src/naval*.ts`, Tabellen in
 `packages/db/src/schema/naval.ts`. Alle Zahlen stehen in `packages/balance/v1/balance.json` in den Blöcken `mines`,
 `blockade` und `convoys` sowie bei den Einheiten `minenleger` und `minenraeumer`. Fehlt ein Block, ist das System aus.
-Simulation: `npm run sim` (Abschnitt „See“), Ergebnisse in `packages/game-core/ENTSCHEIDUNGEN.md`, Abschnitt H.
+Simulation: `npm run sim` (Abschnitt „See“), Ergebnisse in `packages/game-core/ENTSCHEIDUNGEN-2.md`, Abschnitt I.
 
 ## Einheiten
 

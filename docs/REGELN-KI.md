@@ -1,6 +1,6 @@
 # KI-Spieler (Bots)
 
-Teil der Regeln (`docs/REGELN.md`). Werte im Balance-Block `bots`; Begründung: `packages/game-core/ENTSCHEIDUNGEN.md`,
+Teil der Regeln (`docs/REGELN.md`). Werte im Balance-Block `bots`; Begründung: `packages/game-core/ENTSCHEIDUNGEN-3.md`,
 Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker/src/main.ts`).
 
 ## Wer sie sind
