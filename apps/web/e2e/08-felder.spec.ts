@@ -8,11 +8,13 @@ test.use({ spawnNear: "field" });
 test("Rohstofffeld besetzen", async ({ page, player, seed }) => {
   await setBuildings(seed.sql, player.baseId, { werft: 3, hafenkommandantur: 4, kommandozentrale: 4 });
   await setUnits(seed.sql, player.baseId, { korvette: 8, zerstoerer: 4 });
-  const fields = await seed.sql`select id, col, row, kind from resource_field where tier = 1 and player_id is null`;
+  const fields = await seed.sql`select id, col, row, kind from resource_field where tier = 1 and player_id is null and not exists (select 1 from mission m where m.target_col = resource_field.col and m.target_row = resource_field.row and m.status in ('outbound', 'holding', 'e2e-reserviert'))`;
   const field = fields
     .map((f) => ({ id: f.id as number, col: f.col as number, row: f.row as number, d: hexDistanceKm(player, { col: f.col as number, row: f.row as number }) }))
     .filter(awayFromEdge)
     .sort((a, b) => a.d - b.d)[0];
+  // Feld für diesen Test reservieren (parallele Tests meiden es; Zeile ohne Spieler, kein Ereignis).
+  await seed.sql`insert into mission (player_id, base_id, type, target_kind, target_col, target_row, plan, status, arrive_at) values (null, null, 'e2e', 'field', ${field.col}, ${field.row}, '{}'::jsonb, 'e2e-reserviert', now() + interval '1 day')`;
 
   await page.goto("/");
   await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
