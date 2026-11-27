@@ -3,27 +3,22 @@ import { shy } from "../lib/research.ts";
 import { trpc, trpcClient, type Balance, type BaseData } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
-import { isThreat } from "../lib/expansion.ts"; // Mehrere Häfen: eigene Verlegung ist kein Angriff
 import { HarborManageButton } from "../components/HarborManage.tsx";
 import { fmtDuration, fmtSeconds, fmtTime, useNow } from "../lib/time.ts";
 import { liveResources } from "../lib/live.res.ts";
 import { buildingEffect, buildingText, cancelLoss, cancelQuestion } from "../lib/info.ts";
 import { Icon, IconTile } from "../icons.tsx";
 import { BuildingArt, BuildingArtTile, nextStageLevel, stageOf, type Live } from "../building-art/index.tsx";
-import { Badge, Bar, Button, Card, Cost, CountsLine, ErrorLine, Sheet } from "../ui.tsx";
+import { Badge, Bar, Button, Card, Cost, ErrorLine, Sheet } from "../ui.tsx";
 import { ReasonLine, useWhatHelps } from "../components/Remedy.tsx"; // „Was hilft?“
-import type { GuideAction } from "../components/Guide.tsx";
-import { QuestBar, useQuestSummary } from "../components/QuestBar.tsx"; // Auftragsbuch, Tagesbefehle, Wochenziele
 import { Supply, Protection } from "../components/BaseInfo.tsx"; // Versorgung (inkl. PowerGrid), Schutz
 import { HarborVignette, fmtDeg } from "../components/Vignette.tsx";
 import { hexCenter } from "@tidefront/world";
 import { Timeline } from "../components/Timeline.tsx";
-import { WorldEventBanner } from "../components/WorldEvents.tsx";
 import { researchNote, roman, techName } from "../lib/research.ts";
 import { buildingBreakdown } from "../lib/breakdown.ts";
 import { Breakdown } from "../components/Breakdown.tsx";
-import { IntelPanel, SabotageBanner, sabotagedUntil } from "../components/Intel.tsx"; // Nachrichtendienst
-import { BlockadeBanner } from "../components/Naval.tsx"; // See: Blockade („blockiert bis …“)
+import { IntelPanel, sabotagedUntil } from "../components/Intel.tsx"; // Nachrichtendienst
 import { buildingLive, harborWeather } from "../lib/live-art.ts"; // Bewegte Gebäude
 import { CatchUpLine, CreditCost, buildCostSplit, useBuildCost } from "../components/CatchUp.tsx"; // Aufholhilfe: Baugutschrift
 import { upgradeCost, type Balance as CoreBalance } from "@tidefront/game-core";
@@ -45,7 +40,6 @@ export function BaseScreen(props: {
   asOf: number;
   sheet: string | null;
   setSheet: (id: string | null) => void;
-  onGuide: (a: GuideAction) => void;
   onTroops: () => void;
   onResearch: () => void;
 }) {
@@ -59,10 +53,8 @@ export function BaseScreen(props: {
   const windCut = meta.data?.balance.buildings.windpark?.stormCutoff;
   const live = (b: Building) => buildingLive(base, b.id, b.level, now, windCut);
 
-  const quests = useQuestSummary();
-  const questBar = <QuestBar base={base} onAction={props.onGuide} />;
-
-  // Reihenfolge „Hafen zuerst“: Kopf → Banner → (Aufträge, solange wichtig) → Bauhof → Gebäude → Meta → Versorgung/Schutz.
+  // Basis → Hafen (screens/Basis.tsx legt Banner und Unterreiter darüber; Aufträge stehen seit dem Umbau in der Lage):
+  // Kopf → Bauhof → Gebäude → Zeitleiste → Versorgung/Schutz.
   // Neue Karten: Bau-/Gebäudebezogenes zu den Gebäudegruppen, Übersichten in „Meta“, Zustandswerte zu Versorgung/Schutz.
   return (
     <div>
@@ -82,24 +74,6 @@ export function BaseScreen(props: {
         </div>
       </section>
 
-      {/* Angriffs- und Ereignisbanner */}
-      {base.incoming.filter(isThreat).map((i) => (
-        <div key={i.id} className="rounded-xl bg-red-950 border border-siegel border-l-4 p-3 mb-3 flex gap-3 items-center" role="alert">
-          <Icon id={i.type === "kartell" ? "kartell" : "ueberfall"} size={40} />
-          <div className="text-sm">
-            <strong className="text-siegel uppercase font-display text-xs">{label(i.type)} im Anmarsch</strong>
-            <div className="font-serif text-lg leading-tight">Ankunft in <span className="mono">{fmtDuration(i.arriveAtMs - now)}</span></div>
-            {i.units && <div className="text-xs text-ink2"><CountsLine counts={i.units} /></div>}
-          </div>
-        </div>
-      ))}
-      <SabotageBanner base={base} now={now} />
-      <WorldEventBanner onMap={() => props.onGuide({ kind: "tab", tab: "karte" })} />
-      <BlockadeBanner />
-
-      {/* Neue Spieler / Abholbares: Aufträge oben, damit das Auftragsbuch nicht untergeht. */}
-      {quests.prominent && questBar}
-
       {/* Bauhof (Bauschlange) */}
       <BuildYard base={base} now={now} onResearch={props.onResearch} />
 
@@ -112,8 +86,7 @@ export function BaseScreen(props: {
         </Card>
       ))}
 
-      {/* Meta: Aufträge (wenn nicht schon oben), Zeitleiste */}
-      {!quests.prominent && questBar}
+      {/* Zeitleiste (die volle Liste steht in Basis → Lage) */}
       <Timeline base={base} limit={2} />
 
       {/* Versorgung (inkl. Strom) und Schutz – einklappbar */}

@@ -1,4 +1,4 @@
-// Router für das Lagezentrum (Meldungen → Lage): get = ganze Lage aller eigenen Häfen, badge = nur die Zahl am
+// Router für das Lagezentrum (Basis → Lage): get = ganze Lage aller eigenen Häfen, badge = nur die Zahl am
 // Navigationszeichen „Meldungen“ (Angriffe, Nachfristen, leere Bauschlangen, abholbare Erfolge/Wochenziele).
 import { lageView } from "@tidefront/engine";
 import { authed, t } from "../trpc.ts";

@@ -31,11 +31,17 @@ test("Probekampf: „Was fehlt zum Sieg?“ nennt, was fehlt; „Ausbilden“ w�
   await page.goto("/");
   await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
   await page.getByRole("tab", { name: /^Einsatz/ }).click();
-  const targets = page.locator("section").filter({ has: page.getByRole("heading", { name: "Lohnende Ziele" }) });
+  const targets = page.locator("section").filter({ has: page.getByRole("heading", { name: "Nester in der Nähe" }) });
   const first = targets.locator("li[data-target]").first();
   await expect(first.getByText(/^\d+ %$/)).toBeVisible({ timeout: 20000 }); // Vorschläge aus dem Worker
+  // Schwacher Verband: „zu stark“/„aussichtslos“, Angreifen nur als Zweitknopf; unter 10 % mit Rückfrage (TST-05).
+  const rate = Number((await first.getByText(/^\d+ %$/).textContent())!.replace(/\D/g, ""));
+  let asked = "";
+  page.once("dialog", (d) => { asked = d.message(); void d.accept(); });
+  if (rate < 50) await expect(first.getByText(/^(zu stark|aussichtslos)$/)).toBeVisible();
   await first.getByRole("button", { name: "Angreifen" }).click();
   await expect(page.getByRole("heading", { name: "Mission planen" })).toBeVisible();
+  if (rate < 10) expect(asked).toContain("aussichtslos");
 
   // Einschätzung und Probekampf nennen dieselbe Siegchance.
   await expect(page.getByTestId("einschaetzung")).toContainText(/Probekampf: \d+ % Sieg|Ohne Landungsschiff/, { timeout: 15000 });

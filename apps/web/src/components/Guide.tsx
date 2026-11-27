@@ -49,7 +49,7 @@ export const STEPS: Step[] = [
     const l = bal?.units.landungsschiff;
     return `Das Landungsschiff bringt ${fmtNum(l?.troopSpace ?? 100)} Plätze Truppen an Land und ${fmtNum(l?.cargo ?? 4000)} Beute heim, Korvetten schützen es vor den Schnellbooten stärkerer Nester.`;
   }, action: { kind: "tab", tab: "truppen", seg: "ausbilden" }, actionText: "Schiffe bauen" },
-  { id: "nest", icon: "kartell", title: "Ein Piratennest Stufe 1 überfallen", why: nestWhy, action: { kind: "tab", tab: "truppen", seg: "einsatz" }, actionText: "Zu den lohnenden Zielen" },
+  { id: "nest", icon: "kartell", title: "Ein Piratennest Stufe 1 überfallen", why: nestWhy, action: { kind: "tab", tab: "truppen", seg: "einsatz" }, actionText: "Zu den Nestern in der Nähe" },
   { id: "hafen", icon: "hafenkommandantur", title: "Hafenkommandantur auf Stufe 3", why: "Öffnet die Börse: Überschüsse verkaufen, Fehlendes kaufen. Jede zweite Stufe bringt einen Missionsplatz.", action: { kind: "building", id: "hafenkommandantur" }, actionText: "Zur Hafenkommandantur" },
   { id: "schutz", icon: "radarstation", title: "Radarstation und Tiefbunker", why: "Das Radar warnt vor Angriffen, der Bunker schützt einen Grundstock vor Plünderung.", action: { kind: "building", id: "radarstation" }, actionText: "Zur Radarstation" },
 ];
@@ -60,7 +60,7 @@ function nestWhy(bal: Balance | undefined): string {
   const crew = n
     ? Object.entries(n).filter(([k, v]) => k !== "loot" && typeof v === "number" && v > 0).map(([k, v]) => `${fmtNum(v as number)} ${countLabel(k, v as number)}`).join(" und ")
     : "einige Schnellboote und Milizionäre";
-  return `Nester liegen an den Küsten; eines der Stufe 1 liegt höchstens 300 km von deinem Hafen entfernt. Stufe 1 hat ${crew}. Empfohlen: ein Landungsschiff mit mindestens ${GOALS.schuetzen} Schützen, dazu deine Korvetten. Unter Truppen → Einsatz → „Lohnende Ziele“ steht der passende Verband mit seiner Siegchance aus dem Probekampf.`;
+  return `Nester liegen an den Küsten; eines der Stufe 1 liegt höchstens 300 km von deinem Hafen entfernt. Stufe 1 hat ${crew}. Empfohlen: ein Landungsschiff mit mindestens ${GOALS.schuetzen} Schützen, dazu deine Korvetten. Unter Truppen → Einsatz → „Nester in der Nähe“ steht der passende Verband mit seiner Siegchance aus dem Probekampf.`;
 }
 
 const whyText = (s: Step, bal: Balance | undefined) => (typeof s.why === "function" ? s.why(bal) : s.why);

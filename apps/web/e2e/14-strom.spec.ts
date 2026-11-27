@@ -8,13 +8,15 @@ test("Stromfeld: Bilanz zeigen, Antippen öffnet die Versorgung", async ({ page,
   await setResources(seed.sql, player.baseId, { treibstoff: 4000 });
   // Versorgung gemerkt zugeklappt: das Feld muss sie selbst aufklappen.
   await page.addInitScript(() => localStorage.setItem("tf-open:basis-versorgung", "0"));
-  await page.goto("/");
+  await page.goto("/?sub=hafen"); // Bauhof unter Basis → Hafen
   await expect(page.getByRole("heading", { name: "Bauhof" })).toBeVisible();
 
   const field = page.getByTestId("strom-feld");
   await expect(field).toBeVisible();
   await expect(field).toHaveAccessibleName(/^Strom: (Bilanz [+−±]\d|gedeckt)/);
   await expectNoHorizontalOverflow(page, "Kopfleiste mit Stromfeld");
+  // UI-09: keine abgeschnittene Zeile im Stromfeld („KW 41…“).
+  expect(await field.evaluate((el) => [...el.querySelectorAll("div")].every((d) => d.scrollWidth <= d.clientWidth + 1))).toBe(true);
   // Feld liegt vollständig in der Kopfleiste, der Menü-Knopf bleibt.
   const box = (await field.boundingBox())!;
   expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);

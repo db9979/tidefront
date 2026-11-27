@@ -216,3 +216,49 @@ aktiv; Bauhof-Countdown läuft ohne Neuladen.
 - **KI-Spieler:** Börsenkäufe ab 10.000 Warenwert (`BOT_ESCORT_MIN_VALUE`) mit der Empfehlung, wenn sie `ok` ist und
   der Treibstoff reicht; scheitert das Geleit beim Kauf, kaufen sie ohne. Kleinere Käufe weiter ohne Geleit.
 - Keine Balance-Änderung, keine Schemaänderung.
+
+## Navigationsumbau und Welle-1-Oberfläche (nav, nach 0.38.0)
+
+Nutzerentscheid: voller Umbau jetzt (Option B der Abschlussprüfung), nicht nur die kleinen Schritte. Plan mit
+Vorher/Nachher: `.claude/review-0.22/NAVI-PLAN.md`.
+
+- **Basis** hat zwei Unterreiter: **Lage** (Startseite der App, „Was steht an?“ – Wartet auf dich mit „Alle
+  abholen“, Aufträge, Gleich/heute, Unterwegs, Zuletzt passiert) und **Hafen** (Kopf, Bauhof, Gebäude, Zeitleiste,
+  Versorgung, Schutz). Angriffs-, Sabotage-, Weltereignis-, Blockade- und Saisonende-Banner stehen über beiden. Die
+  Navigation behält den zuletzt gewählten Unterreiter in der Sitzung; Gebäude-Sprünge („Los“, „Was hilft?“, Lage)
+  öffnen den Hafen. `?sub=hafen` in der Adresse hält den Hafen beim Neuladen.
+- **Karte**: Knopf **Sichtungen** öffnet als Blatt das frühere Lagebild (Sensoren, Sichtungen, fremde Patrouillen,
+  Radarposten, Satelliten); „Karte“ im Blatt zentriert direkt. Der Fachbegriff „Lagebild“ (Wissensstufe) bleibt.
+  Wetter-Ebene standardmäßig aus (`tf-wetter` muss „an“ sein), Legende mit „?“-Raute (Nest, Stufe unbekannt).
+- **Truppen**: Einsatz · Ausbilden · Abwehr. **Meldungen**: Berichte · Nachrichten · Allianz · Rangliste (vier Reiter,
+  kein Scrollpfeil); die Rangliste hat innen Wertung · Bilanz · Erfolge. Meldungen öffnet bei Ungelesenem dort
+  (Berichte vor Nachrichten), sonst im zuletzt gewählten Reiter.
+- **Eine Zahl je Reiter**: Basis = neue dringende Lage-Einträge inkl. abholbereiter Belohnungen (Messing, bei Angriff
+  Siegel pulsierend, ohne Zahl nur die Raute), Meldungen = ungelesene Berichte + Nachrichten. Bedeutung im
+  `aria-label` des Knopfs („Basis, 3 Einträge warten in der Lage“). Karte, Truppen, Börse ohne Zahl.
+- **Desktop ab 1024 px** (`useDesktop`): Navigationsleiste links, Karte immer sichtbar (bleibt beim Reiterwechsel
+  geladen), rechts Seitenleiste (≈ 540 px) mit dem Reiter, Planung, Handbuch oder Forschung. Im Reiter „Karte“ wird
+  das Feld-/Missionsblatt zur rechten Seitenleiste; Antippen der Karte aus einem anderen Reiter wechselt zu „Karte“.
+  Blätter (`Sheet`) sind am Desktop eine rechte Schublade. Mobil unverändert.
+- **Deep-Links**: `?tab=` wie bisher, dazu `&sub=`; Aliase `meldungen`, `allianz`, `nachrichten`, `rangliste`,
+  `erfolge`, `lage`, `hafen`, `sichtungen`/`lagebild` (die Server-Benachrichtigungen mit `?tab=allianz` und
+  `?tab=meldungen` liefen vorher ins Leere). Erfolgs-Benachrichtigung: `?tab=berichte&sub=erfolge`.
+  `NavTarget` neu: `lage`, `sichtungen`; `meldungen.sub` zusätzlich `bilanz`, „lagebild“ führt zu den Sichtungen.
+- **Alle abholen** (TST-09): schmale Schnittstelle `claimAll()` (`apps/web/src/lib/claim-all.ts`). Der Endpunkt
+  `rewards.claimAll` kommt von Welle 1 (w1); bis dahin `SERVER_CLAIM_ALL = false` → Einzelabholungen nacheinander
+  (Auftragsbuch samt Abschluss, Tagesbefehle, Wochenziele, Erfolge), danach **eine** gebündelte Folgeabfrage statt
+  acht je Abholung. Knopf ab zwei Belohnungen in „Wartet auf dich“. Integrator: Schalter auf `true`, sobald der
+  Server-Endpunkt liegt (kein Probieren per 404, das wäre ein Konsolenfehler).
+- **Zielzeilen** (TST-05/UI-13/M-16): „Nester in der Nähe“ statt „Lohnende Ziele“. Stufe unbekannt oder Siegchance
+  unter 50 % → „Aufklären“ als Hauptknopf, „Angreifen“ nur als Zweitknopf mit Kennzeichen „zu stark“/„aussichtslos“;
+  unter 10 % fragt „Angreifen“ (Liste) und „Auslaufen“ (Planung) nach. Netto nennt den abgezogenen Treibstoff.
+- Kleinere Punkte: UI-01 (Ausbilden: Name ≥ 112 px, sonst Stepper in zweiter Zeile), UI-09 (Stromfeld ≥ 58 px,
+  Kraftwerk-Symbol statt „KW“), UI-10 (Hafenwechsler 44 px), TST-04 (`avgLuck` nur über nicht entfallene Phasen),
+  TST-07 (Weltereignis-/Finale-Banner zentriert die Karte auf das Ereignis und öffnet sein Blatt), TST-11 (Satelliten
+  nennen nur fehlende Voraussetzungen, sonst „Startrampe bauen“), TST-13 (Wind in Bericht, Simulator und Mail in Bft),
+  TST-16 (Belohnungszeile nennt nur Quellen mit Anzahl), TST-17 („Ruhige See“ bei aktivem Finale clientseitig
+  ausgeblendet – die Servertexte ändert der Hotfix an market-news), TST-19 (Finale-Banner ohne Kleinschreibung nach
+  Punkt, keine Wirkung „bis +0 %“).
+- Server: nur Texte („Truppen → Allianz“ → „Meldungen → Allianz“, „Meldungen → Lagebild“ → „Karte → Sichtungen“,
+  „Meldungen → Erfolge“ → „Meldungen → Rangliste → Erfolge“), Wind in Bft in der Kampfbericht-Mail. Keine Schema-,
+  keine Balance-Änderung.

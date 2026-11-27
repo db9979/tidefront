@@ -78,9 +78,9 @@ const SENT_TEXT: Record<string, string> = {
   besetzen: "Nach dem Sieg hält deine Besatzung das Feld; den Ertrag und den Rückruf findest du unter „Truppen“ → Meine Felder.", // Felder
   gruendung: "Bei Ankunft entsteht dein Außenposten; wechsle dann oben in der Kopfleiste dorthin.",
   verlegung: "Bei Ankunft gehören die Einheiten zum Zielhafen; die Bestätigung erscheint unter „Meldungen“.",
-  patrouille: "Ab dem ersten Wegpunkt fährt der Verband seine Runde; was er sieht, steht auf der Karte und unter „Meldungen“ → Lagebild.",
+  patrouille: "Ab dem ersten Wegpunkt fährt der Verband seine Runde; was er sieht, steht auf der Karte und unter „Karte“ → Sichtungen.",
   kampagne: "Je Ziel kommt ein Lagebild unter „Meldungen“; der Verband fährt danach zum nächsten Ziel.",
-  radarposten: "Bei Ankunft steht der Posten; verwalten unter „Meldungen“ → Lagebild.",
+  radarposten: "Bei Ankunft steht der Posten; verwalten unter „Karte“ → Sichtungen.",
   postenangriff: "Den Kampfbericht findest du nach der Ankunft unter „Meldungen“.",
 };
 
@@ -99,6 +99,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   const [note, setNote] = useState<string | null>(shortText(first.short));
   const [cargo, setCargo] = useState<Record<string, number>>({});
   const [sent, setSent] = useState<{ arriveAtMs: number; type: string } | null>(null);
+  const [probeRate, setProbeRate] = useState<number | null>(null); // Probekampf gegen ein Nest (unter 10 %: Rückfrage)
   const [admiralId, setAdmiralId] = useState<number | null>(null); // Admirale
   const admiral = useAdmiralChoice(admiralId); // Admirale: Wirkung im Probekampf
   // Art: nach der Auswahl auf eine Zeile mit „ändern“ eingeklappt (vorbelegt = schon gewählt).
@@ -257,7 +258,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
 
       {/* Lagebild: ohne Erkennung keine Stärke und kein Probekampf */}
       {type === "ueberfall" && tInfo?.nest && tInfo.nest.level !== null && !tInfo.nest.empty && Object.keys(chosen).length > 0 && (
-        <Strength balance={balance} units={chosen} level={tInfo.nest.level} lagebild={tInfo.nest.lagebild} weather={probeWeather} modifiers={withAdmiralMods(base.modifiers, admiral?.lines ?? [])} versorgungsmangel={base.versorgungsmangel} />
+        <Strength balance={balance} units={chosen} level={tInfo.nest.level} lagebild={tInfo.nest.lagebild} weather={probeWeather} modifiers={withAdmiralMods(base.modifiers, admiral?.lines ?? [])} versorgungsmangel={base.versorgungsmangel} onRate={setProbeRate} />
       )}
       {type === "ueberfall" && target && Object.keys(chosen).length > 0 && ((tInfo?.nest && tInfo.nest.level !== null) || (tInfo?.base && tInfo.base.id !== base.id)) && (
         <ProbeCard
@@ -320,6 +321,9 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
             onBlocked={p && !p.ok && hasRemedy(p.code) ? () => setBarOpen(!barOpen) : undefined}
             onClick={async () => {
               if (!input) return;
+              // TST-05: aussichtsloser Überfall (Probekampf unter 10 %) nur nach Rückfrage.
+              if (type === "ueberfall" && tInfo?.nest && probeRate !== null && probeRate < 0.1
+                && !window.confirm(`Probekampf: ${fmtNum(Math.round(probeRate * 100))} % Sieg – aussichtslos. Trotzdem ${dep.verb.toLowerCase()}?`)) return;
               const r = await launch.run(input);
               if (r && r.ok) setSent({ arriveAtMs: r.arriveAtMs, type });
             }}
@@ -366,8 +370,9 @@ function useProbeRate(units: Record<string, number>, level: number, lagebild: un
  * Einschätzung gegen ein Nest: Feuerkraft zur See und an Land im Vergleich, das Urteil aus derselben Rechnung wie der
  * Probekampf (Siegchance mit Wetter, Modifikatoren und Admiral) – kein Widerspruch zwischen beiden.
  */
-function Strength({ balance, units, level, lagebild, weather, modifiers, versorgungsmangel }: { balance: Balance; units: Record<string, number>; level: number; lagebild?: unknown; weather?: CombatWeather; modifiers?: unknown; versorgungsmangel: boolean }) {
+function Strength({ balance, units, level, lagebild, weather, modifiers, versorgungsmangel, onRate }: { balance: Balance; units: Record<string, number>; level: number; lagebild?: unknown; weather?: CombatWeather; modifiers?: unknown; versorgungsmangel: boolean; onRate?: (r: number | null) => void }) {
   const rate = useProbeRate(units, level, lagebild ?? null, modifiers ?? null, versorgungsmangel, weather, balance);
+  useEffect(() => { onRate?.(rate); return () => onRate?.(null); }, [rate]); // eslint-disable-line react-hooks/exhaustive-deps
   const nest = balance.pirates.nestLevels[String(level)] as Record<string, unknown> | undefined;
   if (!nest) return null;
   const all = { ...balance.units, ...balance.npcUnits } as Balance["units"];
@@ -396,7 +401,7 @@ function Strength({ balance, units, level, lagebild, weather, modifiers, versorg
   const probe = rate === null ? "" : ` (Probekampf: ${fmtNum(Math.round(rate * 100))} % Sieg)`;
   const verdict = noLanding ? ["Ohne Landungsschiff und Truppen kein Sieg und keine Beute.", "text-red-300"]
     : rate === null ? ["Einschätzung rechnet …", "text-slate-400"]
-    : rate >= 0.8 ? [`Gute Aussichten${probe}.`, "text-emerald-300"] : rate >= 0.5 ? [`Knapp – mit Verlusten rechnen${probe}.`, "text-brass-300"] : [`Riskant – der Verband ist wohl zu schwach${probe}.`, "text-red-300"];
+    : rate >= 0.8 ? [`Gute Aussichten${probe}.`, "text-emerald-300"] : rate >= 0.5 ? [`Knapp – mit Verlusten rechnen${probe}.`, "text-brass-300"] : rate >= 0.1 ? [`Riskant – der Verband ist wohl zu schwach${probe}.`, "text-red-300"] : [`Aussichtslos – der Verband ist zu schwach${probe}.`, "text-red-300"];
   return (
     <Card title="Einschätzung">
       <div className="space-y-2 text-sm">

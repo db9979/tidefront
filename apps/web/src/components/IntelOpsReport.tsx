@@ -18,7 +18,7 @@ export function IntelOpsReport({ d }: { d: D }) {
   return (
     <Card>
       {sat && (sat.event === "end" ? (
-        <div className="text-sm space-y-1" data-testid="sat-report"><p>{sat.name} aus {sat.baseName} ist verglüht: {fmtNum(sat.passes ?? 0)} von {fmtNum(sat.plannedPasses ?? 0)} Überflügen, {nOf(sat.seen ?? 0, "Sichtung", "Sichtungen")}{(sat.clouded ?? 0) > 0 ? `, ${nOf(sat.clouded ?? 0, "Ziel", "Ziele")} unter Wolken` : ""}.</p><p className="text-xs text-ink2">Das Wissen bleibt wie jede Sichtung bis zu 72 Stunden erhalten. Ein neuer Start unter Meldungen → Lagebild.</p></div>
+        <div className="text-sm space-y-1" data-testid="sat-report"><p>{sat.name} aus {sat.baseName} ist verglüht: {fmtNum(sat.passes ?? 0)} von {fmtNum(sat.plannedPasses ?? 0)} Überflügen, {nOf(sat.seen ?? 0, "Sichtung", "Sichtungen")}{(sat.clouded ?? 0) > 0 ? `, ${nOf(sat.clouded ?? 0, "Ziel", "Ziele")} unter Wolken` : ""}.</p><p className="text-xs text-ink2">Das Wissen bleibt wie jede Sichtung bis zu 72 Stunden erhalten. Ein neuer Start unter Karte → Sichtungen.</p></div>
       ) : (
         <div className="text-sm space-y-1" data-testid="sat-report">
           <p>{sat.name} von der Startrampe {sat.baseName}: alle {sat.periodHours} h ein Überflug, {fmtNum(sat.stripKm ?? 600)} km breit, je {sat.liveMinutes} min live. {sat.level === "sichtung" ? "Sieht durch Wolken und Nebel, nur Sichtung." : "Erkennung, aber nicht unter Wolken."}</p>
@@ -29,7 +29,7 @@ export function IntelOpsReport({ d }: { d: D }) {
       ))}
       {post && (post.refused ? <p>Nicht errichtet: {errorText(post.refused)} Die Baustoffe kommen mit zurück.</p>
         : post.destroyed !== undefined ? <p>{post.destroyed ? "Die Besatzung ist geschlagen, der Posten zerstört." : "Die Besatzung hat den Posten gehalten."} (Feld {post.col}/{post.row})</p>
-        : <div className="text-sm space-y-1"><p>Der Radarposten auf Feld {post.col}/{post.row} ist in Betrieb: {fmtNum(post.rangeKm ?? 0)} km Reichweite, {fmtNum(post.fuelPerHour ?? 0)} Treibstoff je Stunde aus dem Hafen.</p><div className="text-xs">Besatzung: <UnitChips counts={post.crew} /></div><p className="text-xs text-ink2">Abbauen unter Meldungen → Lagebild (die Hälfte der Kosten kommt zurück).</p></div>)}
+        : <div className="text-sm space-y-1"><p>Der Radarposten auf Feld {post.col}/{post.row} ist in Betrieb: {fmtNum(post.rangeKm ?? 0)} km Reichweite, {fmtNum(post.fuelPerHour ?? 0)} Treibstoff je Stunde aus dem Hafen.</p><div className="text-xs">Besatzung: <UnitChips counts={post.crew} /></div><p className="text-xs text-ink2">Abbauen unter Karte → Sichtungen (die Hälfte der Kosten kommt zurück).</p></div>)}
       {intercept && <p>Abfangjäger aus {intercept.baseName} ({fmtNum(intercept.fighters)} Jäger, {Math.round(intercept.chance * 100)} % je Drohne) haben {fmtNum(intercept.shot)} von {fmtNum(intercept.drones)} Drohnen abgeschossen.</p>}
       {sighting && <p>{sighting.scout ? `Ein Aufklärer von ${sighting.owner ?? "?"} hat ${sighting.baseName ?? "deinen Hafen"} erkundet. Dein Radar hat ihn erfasst.` : `${sighting.owner ?? "Ein fremder Spieler"} patrouilliert in Sichtweite von ${sighting.baseName ?? "deinem Hafen"}. Die Patrouille sieht deinen Hafen.`}</p>}
     </Card>

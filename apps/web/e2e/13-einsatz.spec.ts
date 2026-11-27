@@ -43,7 +43,7 @@ test("Einsatz: Flotte, Ziele, laufende Mission, Kacheln", async ({ page, player,
 
   // Leerer Zustand und lohnende Ziele mit Siegchance
   await expect(page.getByText("Alle Schiffe liegen im Hafen.")).toBeVisible();
-  const targets = page.locator("section").filter({ has: page.getByRole("heading", { name: "Lohnende Ziele" }) });
+  const targets = page.locator("section").filter({ has: page.getByRole("heading", { name: "Nester in der Nähe" }) });
   const first = targets.locator("li[data-target]").first();
   await expect(first.getByText(/^Nest Stufe [IV]+$/)).toBeVisible();
   await expect(first.getByText(/^\d+ %$/)).toBeVisible({ timeout: 15000 });

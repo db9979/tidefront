@@ -129,5 +129,5 @@ export { acceptPlayerContract, proposePlayerContract, withdrawPlayerContract } f
 export { cancelContract } from "./contracts-cancel.ts";
 export { contractBandView, contractsView } from "./contracts-view.ts";
 export { voidContracts } from "./contracts-run.ts";
-// Lagezentrum (Meldungen → Lage): alles Anstehende aller eigenen Häfen gebündelt; brief nur die Zahl fürs Navigationszeichen.
+// Lagezentrum (Basis → Lage): alles Anstehende aller eigenen Häfen gebündelt; brief nur die Zahl fürs Navigationszeichen.
 export { lageView, noLage, type LageJump, type LageRow, type LageUrgent, type LageView } from "./lage.ts";

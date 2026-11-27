@@ -55,7 +55,7 @@ test("Überfall auf ein Nest planen, starten und auswerten", async ({ page, play
   // Kampfbericht in den Meldungen öffnen.
   await page.reload();
   const nav = page.getByRole("navigation").getByRole("button", { name: /^Meldungen/ });
-  await expect(nav).toHaveAccessibleName(/Meldungen\s*\d+/);
+  await expect(nav).toHaveAccessibleName(/^Meldungen, \d+ ungelesen$/);
   await nav.click();
   await page.getByRole("tab", { name: /^Berichte/ }).click(); // Meldungen öffnen im Lagezentrum
   const report = page.getByRole("button", { name: /Nest|Piraten/ }).first();

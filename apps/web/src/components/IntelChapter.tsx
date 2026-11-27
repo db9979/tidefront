@@ -14,7 +14,7 @@ export function IntelChapter({ b }: { b: Balance | undefined }) {
   const k = e.kinds;
   return (
     <>
-      <P>Der <strong>Nachrichtendienst</strong> (Basis → Führung und Schutz) bildet <strong>Spione</strong> aus: {fmtNum(spy?.maxPerLevel ?? 2)} je Stufe, teuer ({fmtNum(spy?.cost?.elektronik ?? 0)} Elektronik und mehr) und mit {spy?.upkeepPerHour ?? 1} Proviant Unterhalt je Stunde. Spione kämpfen nicht, fahren in keinem Verband mit und werden bei Überfällen nicht getroffen.</P>
+      <P>Der <strong>Nachrichtendienst</strong> (Basis → Hafen → Führung und Schutz) bildet <strong>Spione</strong> aus: {fmtNum(spy?.maxPerLevel ?? 2)} je Stufe, teuer ({fmtNum(spy?.cost?.elektronik ?? 0)} Elektronik und mehr) und mit {spy?.upkeepPerHour ?? 1} Proviant Unterhalt je Stunde. Spione kämpfen nicht, fahren in keinem Verband mit und werden bei Überfällen nicht getroffen.</P>
       <P>Spionageaufträge startest du über <strong>Mission planen → Spionage</strong>. Sie belegen einen Missionsplatz, reisen unauffällig mit {e.speedKmh} km/h und ohne Treibstoff und tauchen bei keinem Radar auf.</P>
       <ul className="text-sm text-slate-200 mb-2 list-disc ml-5 space-y-1">
         <li><strong>Erkunden</strong> (ab Stufe {k.erkunden.minLevel}, {k.erkunden.spies} Spion): Lagebild wie eine Aufklärung, dazu laufende Forschung, Bauschlange, Ausbildung und Veteranenränge; ab Stufe {e.missionsFromLevel} auch die Missionen des Ziels. Erlaubt auch bei Verbündeten und Paktpartnern.</li>

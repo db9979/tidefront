@@ -1,4 +1,4 @@
-// Meldungen → Lagebild (Stufe 2, Regelwerk 8), Reihenfolge: eigene Sensoren (Häfen, Radarposten, Patrouillen, Verbände)
+// Karte → Sichtungen (Stufe 2, Regelwerk 8), Reihenfolge: eigene Sensoren (Häfen, Radarposten, Patrouillen, Verbände)
 // mit Reichweite, letzte Sichtungen mit Stand, fremde Patrouillen (gemeldet und gesichtet), eigene Radarposten (abbauen),
 // zuletzt Stufe 3: Satelliten (SatelliteCard.tsx, eingeklappt ohne Satellit/Startrampe).
 import { useState } from "react";

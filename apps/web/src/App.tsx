@@ -5,17 +5,17 @@ import { trpc, trpcClient, queryClient } from "./lib/trpc.ts";
 import { useLive } from "./lib/live.ts";
 import { useDueRefresh } from "./lib/due.ts"; // Bau fertig, Mission angekommen: Daten nachholen
 import { ActionBarHost, Loading, openCard } from "./ui.tsx";
-import { Icon } from "./icons.tsx";
+import { NavBar, TABS, type Tab } from "./components/NavBar.tsx"; // Hauptnavigation, eine Zahl je Reiter
+import { useDesktop } from "./lib/media.ts"; // Desktop ab 1024 px: Leiste links, Karte + Seitenleiste
 // Anmeldung und Hafenwahl nur bei Bedarf laden: angemeldete Spieler mit Hafen brauchen sie nicht.
 const AuthScreen = lazy(() => import("./screens/Auth.tsx").then((m) => ({ default: m.AuthScreen })));
 const ChooseBase = lazy(() => import("./screens/ChooseBase.tsx").then((m) => ({ default: m.ChooseBase })));
-import { BaseScreen } from "./screens/Base.tsx";
+import { BasisScreen, type BasisTab } from "./screens/Basis.tsx"; // Basis: Lage (Startseite) · Hafen
 const MapScreen = lazy(() => import("./screens/MapScreen.tsx").then((m) => ({ default: m.MapScreen })));
 const TroopsScreen = lazy(() => import("./screens/Troops.tsx").then((m) => ({ default: m.TroopsScreen })));
 const MissionPlan = lazy(() => import("./screens/MissionPlan.tsx").then((m) => ({ default: m.MissionPlan })));
-import type { MeldungenTab } from "./screens/Meldungen.tsx";
+import { outerOf, type MeldungenTab } from "./screens/Meldungen.tsx";
 const MeldungenScreen = lazy(() => import("./screens/Meldungen.tsx").then((m) => ({ default: m.MeldungenScreen })));
-import { SeasonEndBanner } from "./components/Season.tsx";
 const MarketScreen = lazy(() => import("./screens/Market.tsx").then((m) => ({ default: m.MarketScreen })));
 const Handbook = lazy(() => import("./screens/Handbook.tsx").then((m) => ({ default: m.Handbook })));
 import { ResourceBar } from "./components/ResourceBar.tsx";
@@ -25,7 +25,7 @@ import { UpdateNotices } from "./components/Changelog.tsx";
 import { TickerBar, useTickerPos } from "./components/market/TickerBar.tsx";
 import { useGuide, type GuideAction } from "./components/Guide.tsx";
 import { useDaily } from "./components/Daily.tsx";
-import { useLageBadge } from "./components/lage/LageTab.tsx"; // Lagezentrum: Zahl Dringendes an „Meldungen“
+import { useLageBadge } from "./components/lage/LageTab.tsx"; // Lagezentrum: Zahl Dringendes an „Basis“
 import { parseOpenUrl, type OpenTarget } from "./lib/push.ts";
 import { usePlanRequests, type PlanPreset } from "./lib/plan-request.ts";
 import { initActiveBase, isBaseQueryKey, isNoBase, resetActiveBase, setActiveBase, useActiveBaseId } from "./lib/active-base.ts";
@@ -34,35 +34,28 @@ import { ResearchRollPopup } from "./components/ResearchDice.tsx";
 import { onBugReportRequest } from "./lib/bug-log.ts";
 import { captureScreen, waitForSettled } from "./lib/screenshot.ts";
 import { isThreat } from "./lib/expansion.ts"; // Mehrere Häfen: eigene Verlegung ist kein Angriff
+export type { Tab };
 import { NavContext } from "./lib/nav.ts"; // „Was hilft?“: Sprünge aus Hinweisen
 import type { NavTarget } from "./lib/remedies/types.ts";
 import type { BugDraft } from "./components/BugReport.tsx";
 const BugReportSheet = lazy(() => import("./components/BugReport.tsx").then((m) => ({ default: m.BugReportSheet })));
 
-export type Tab = "basis" | "karte" | "truppen" | "berichte" | "boerse";
-/** Missionsziel; eventId: Weltereignis (Schatzschiff, Großflotte, Belagerung). */
 export interface Target { col: number; row: number; eventId?: number; /** Karte: dieses Missionsblatt öffnen. */ missionId?: number }
 export interface Target { col: number; row: number; eventId?: number; blockadeId?: number; convoyId?: number; naval?: "minen" | "raeumen" | "blockade" } // See: Seeziele
 export interface Target { fieldId?: number; fieldMission?: "besetzen" | "aufklaerung" } // Felder
 export interface Target { expansion?: "gruendung" | "verlegung" | "transport" } // Mehrere Häfen: Art vorbelegen
 export interface Target { postId?: number; intelOp?: "patrouille" | "kampagne" | "radarposten" } // Lagebild Stufe 2
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: "basis", label: "Basis", icon: "nav-basis" },
-  { id: "karte", label: "Karte", icon: "nav-karte" },
-  { id: "truppen", label: "Truppen", icon: "nav-truppen" },
-  { id: "berichte", label: "Meldungen", icon: "nav-bericht" },
-  { id: "boerse", label: "Börse", icon: "nav-boerse" },
-];
-
 /** Gelesen-Merker der Berichte je Spieler (höchste gesehene Berichts-ID). */
 const seenKey = (playerId: number) => `tf-reports-seen:${playerId}`;
 const LEGACY_SEEN_KEY = "tf-reports-seen";
 
-/** Adresse mit dem aktuellen Reiter und der offenen Einstellungs-/Verwaltungsansicht, damit Neuladen dort bleibt. */
-function appUrl(tab: Tab, view: "settings" | "admin" | null): string {
+/** Adresse mit Reiter, Unterreiter (Basis → Hafen, Meldungen außer Berichte) und offener Einstellungs-/Verwaltungs-
+ *  ansicht, damit Neuladen dort bleibt. */
+function appUrl(tab: Tab, view: "settings" | "admin" | null, sub: string | null): string {
   const q = new URLSearchParams();
   if (tab !== "basis") q.set("tab", tab);
+  if (sub) q.set("sub", sub);
   if (view) q.set("view", view);
   const s = q.toString();
   return s ? `${location.pathname}?${s}` : location.pathname;
@@ -125,6 +118,10 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const [mapFocus, setMapFocus] = useState<Target | null>(null);
   const [mapSeq, setMapSeq] = useState(0);
   const showOnMap = (t: Target) => { setMapFocus(t); setMapSeq((n) => n + 1); go("karte"); };
+  // Sichtungen (früher Karte → Sichtungen): Blatt der Karte; wie mapFocus einmal beim Öffnen verbraucht.
+  const [mapSichtungen, setMapSichtungen] = useState(opened.tab === "karte" && opened.sub === "sichtungen");
+  const openSichtungen = () => { setMapSichtungen(true); setMapSeq((n) => n + 1); go("karte"); };
+  const desktop = useDesktop();
   const [help, setHelp] = useState(!!opened.view);
   const [helpView, setHelpView] = useState(opened.view ?? null);
   const onMarket = tab === "boerse" && !plan && !help;
@@ -132,7 +129,10 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const [helpKey, setHelpKey] = useState(0);
   const [sheet, setSheet] = useState<string | null>(null);
   const [seen, setSeen] = useState(() => initialSeen(playerId));
-  const [sub, setSub] = useState<MeldungenTab>(() => (opened.report !== undefined ? "berichte" : "lage")); // Lagezentrum ist die Startseite; ?bericht= öffnet den Bericht
+  // Meldungen: ?bericht= öffnet den Bericht, ?sub= einen Unterreiter; sonst Berichte.
+  const [sub, setSub] = useState<MeldungenTab>(() => (opened.report === undefined && opened.tab === "berichte" && opened.sub && ["nachrichten", "allianz", "rangliste", "bilanz", "erfolge"].includes(opened.sub) ? opened.sub as MeldungenTab : "berichte"));
+  // Basis: Startseite ist die Lage („Was steht an?“); ?sub=hafen (Neuladen auf dem Hafen) öffnet den Hafen.
+  const [basisSub, setBasisSub] = useState<BasisTab>(() => ((opened.tab ?? "basis") === "basis" && opened.sub === "hafen" ? "hafen" : "lage"));
   // „Was hilft?“: Zähler je Sprung (baut Truppen/Börse mit dem gewählten Unterreiter neu auf), Ressource für die Börse.
   const [navSeq, setNavSeq] = useState(0);
   const [marketRes, setMarketRes] = useState<string | undefined>(undefined);
@@ -169,8 +169,9 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
 
   // Nach der Zurück-Ebene, damit der neue Verlaufseintrag die neue Adresse trägt.
   useEffect(() => {
-    history.replaceState(history.state, "", appUrl(tab, help ? helpView : null));
-  }, [tab, help, helpView]);
+    const urlSub = tab === "basis" ? (basisSub === "hafen" ? "hafen" : null) : tab === "berichte" && sub !== "berichte" ? sub : null;
+    history.replaceState(history.state, "", appUrl(tab, help ? helpView : null, urlSub));
+  }, [tab, help, helpView, basisSub, sub]);
 
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
@@ -181,6 +182,9 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       setHelpKey((k) => k + 1);
       setHelp(!!t.view);
       if (t.tab) setTab(t.tab);
+      if (t.tab === "basis") setBasisSub(t.sub === "hafen" ? "hafen" : "lage");
+      if (t.tab === "berichte" && t.sub) setSub(t.sub as MeldungenTab);
+      if (t.tab === "karte" && t.sub === "sichtungen") { setMapSichtungen(true); setMapSeq((n) => n + 1); }
       if (t.base) setActiveBase(t.base);
     };
     navigator.serviceWorker?.addEventListener("message", onMsg);
@@ -198,7 +202,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
 
   // Scrollposition je Ansicht (Reiter + Unterreiter); Planung, Handbuch, Forschung öffnen immer oben.
   // Hafenwechsel: eigener Satz Positionen je Hafen (Schlüssel mit Hafen), damit jede Ansicht oben beginnt.
-  const mainScroll = useViewScroll(`${switchKey}|${help ? "handbuch" : research ? "forschung" : plan ? "planung" : tab === "berichte" ? `berichte:${sub}` : tab}`);
+  const mainScroll = useViewScroll(`${switchKey}|${desktop ? "d" : "m"}|${help ? "handbuch" : research ? "forschung" : plan ? "planung" : tab === "berichte" ? `berichte:${sub}` : tab === "basis" ? `basis:${basisSub}` : tab}`);
 
   if (base.isLoading || !base.data) return <Loading error={base.isLoading ? undefined : base.error} onRetry={() => void base.refetch()} />;
   if (!base.data.base) return <Suspense fallback={<Loading />}><ChooseBase /></Suspense>;
@@ -213,8 +217,11 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
     onLoggedOut();
   };
   const go = (t: Tab) => {
-    // Meldungen öffnen im Lagezentrum (dort stehen auch neue Berichte und Nachrichten).
-    if (t === "berichte" && tab !== "berichte") setSub("lage");
+    // Meldungen öffnen dort, wo etwas Neues liegt (Berichte vor Nachrichten), sonst im zuletzt gewählten Reiter.
+    if (t === "berichte" && tab !== "berichte") {
+      if (unread > 0) setSub("berichte");
+      else if (unreadMsgs > 0) setSub("nachrichten");
+    }
     setPlan(null);
     setHelp(false);
     setHelpView(null);
@@ -226,6 +233,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const onGuide = (a: GuideAction) => {
     if (a.kind === "building") {
       go("basis");
+      setBasisSub("hafen");
       setSheet(a.id);
     } else go(a.tab);
   };
@@ -246,8 +254,10 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const navTo = (t: NavTarget) => {
     setNavSeq((n) => n + 1);
     switch (t.to) {
-      case "building": go("basis"); setSheet(t.id); break;
-      case "base": go("basis"); setSheet(null); break;
+      case "building": go("basis"); setBasisSub("hafen"); setSheet(t.id); break;
+      case "base": go("basis"); setBasisSub("hafen"); setSheet(null); break;
+      case "lage": setSheet(null); go("basis"); setBasisSub("lage"); break;
+      case "sichtungen": setSheet(null); openSichtungen(); break;
       case "research": setSheet(null); openResearch(); break;
       case "market":
         if (t.seg) localStorage.setItem("tf-seg:boerse", t.seg); // useSegment liest den Unterreiter beim Aufbau
@@ -260,7 +270,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       case "map": setSheet(null); go("karte"); break;
       case "meldungen":
         setSheet(null);
-        if (t.sub === "allianz") { localStorage.setItem("tf-seg:truppen", "allianz"); go("truppen"); break; } // Allianz liegt unter Truppen
+        if (t.sub === "lagebild") { openSichtungen(); break; } // alter Name der Sichtungen (Karte)
         go("berichte"); setSub(t.sub); break;
     }
   };
@@ -270,17 +280,28 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
     if (t.to === "research") return research;
     if (research) return false;
     switch (t.to) {
-      case "building": return tab === "basis" && sheet === t.id;
-      case "base": return tab === "basis" && !sheet;
+      case "building": return tab === "basis" && basisSub === "hafen" && sheet === t.id;
+      case "base": return tab === "basis" && basisSub === "hafen" && !sheet;
+      case "lage": return tab === "basis" && basisSub === "lage";
+      case "sichtungen": return false;
       case "market": return tab === "boerse" && !t.resource && !t.side && (localStorage.getItem("tf-seg:boerse") ?? "handel") === (t.seg ?? "handel");
       case "troops": return tab === "truppen" && localStorage.getItem("tf-seg:truppen") === t.seg;
       case "map": return tab === "karte";
-      case "meldungen": return t.sub === "allianz" ? tab === "truppen" && localStorage.getItem("tf-seg:truppen") === "allianz" : tab === "berichte" && sub === t.sub;
+      case "meldungen": return t.sub !== "lagebild" && tab === "berichte" && (sub === t.sub || (t.sub === "rangliste" && outerOf(sub) === "rangliste" && sub === "rangliste"));
     }
   };
-  const fullBleed = tab === "karte" && !plan && !help && !research;
+  const mapActive = tab === "karte" && !plan && !help && !research;
+  const fullBleed = mapActive && !desktop;
   screenRef.current = help ? "Handbuch" : research ? "Forschung" : plan ? "Missionsplanung"
-    : `${TABS.find((x) => x.id === tab)?.label ?? tab}${tab === "berichte" ? ` · ${sub}` : ""}${tab === "basis" && sheet ? ` · Blatt ${sheet}` : ""}`;
+    : `${TABS.find((x) => x.id === tab)?.label ?? tab}${tab === "berichte" ? ` · ${sub}` : ""}${tab === "basis" ? ` · ${basisSub}` : ""}${tab === "basis" && sheet ? ` · Blatt ${sheet}` : ""}`;
+  const attack = lageBadge.attack || b.incoming.some(isThreat) || b.bases.some((x) => x.underAttack);
+  // Karte: mobil ganzflächig im Reiter „Karte“; am Desktop immer links sichtbar (side = Feldblatt rechts daneben,
+  // embedded = ohne Blatt, Antippen eines Feldes wechselt zum Reiter „Karte“).
+  const map = (
+    <MapScreen key={`${b.id}:${mapSeq}`} base={b} focus={mapFocus} onFocusUsed={() => setMapFocus(null)} onPlan={openPlan} onSwitchBase={switchBase}
+      layout={desktop ? (mapActive ? "side" : "embedded") : "mobile"} onActivate={() => go("karte")}
+      sichtungen={mapSichtungen} onSichtungenUsed={() => setMapSichtungen(false)} />
+  );
   const content = help ? (
     <Handbook key={helpKey} onClose={() => { setHelp(false); setHelpView(null); }} onLogout={logout} playerName={playerName} initialView={helpView} onView={setHelpView} />
   ) : research ? (
@@ -288,69 +309,78 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   ) : plan ? (
     <MissionPlan key={`${b.id}:${plan.seq ?? 0}`} base={b} initialTarget={plan.target} preset={plan.preset} onClose={() => setPlan(null)} onPickOnMap={() => go("karte")} />
   ) : tab === "basis" ? (
-    <>
-      <SeasonEndBanner onOpen={() => { go("berichte"); setSub("rangliste"); }} />
-      <BaseScreen key={b.id} base={b} asOf={base.data.serverNow} sheet={sheet} setSheet={setSheet} onGuide={onGuide} onTroops={() => go("truppen")} onResearch={openResearch} />
-    </>
+    <BasisScreen base={b} asOf={base.data.serverNow} sub={basisSub} setSub={setBasisSub} lageCount={lageBadge.count} sheet={sheet} setSheet={setSheet}
+      onGuide={onGuide} onTroops={() => go("truppen")} onResearch={openResearch} onShowOnMap={showOnMap}
+      onSeasonEnd={() => { go("berichte"); setSub("rangliste"); }} unreadMsgs={unreadMsgs} seenReport={seen} />
   ) : tab === "karte" ? (
-    <MapScreen key={`${b.id}:${mapSeq}`} base={b} focus={mapFocus} onFocusUsed={() => setMapFocus(null)} onPlan={openPlan} onSwitchBase={switchBase} />
+    desktop ? null : map
   ) : tab === "truppen" ? (
     <TroopsScreen key={`${b.id}:${navSeq}`} base={b} onResearch={openResearch} onPlan={() => openPlan(null)} onShowOnMap={showOnMap} />
   ) : tab === "berichte" ? (
-    <MeldungenScreen sub={sub} setSub={setSub} unread={{ berichte: unread, nachrichten: unreadMsgs }} urgent={lageBadge.count} seenReport={seen} onShowOnMap={showOnMap} />
+    <MeldungenScreen sub={sub} setSub={setSub} unread={{ berichte: unread, nachrichten: unreadMsgs }} onShowOnMap={showOnMap} />
   ) : (
     <MarketScreen key={`${b.id}:${navSeq}`} base={b} initialResource={marketRes} initialOrder={marketOrder} />
   );
-
-  return (
-    <NavContext.Provider value={{ go: navTo, base: b, here }}>
-    {/* Desktop ab 1024 px: breiter (max-w-3xl), die Karte volle Breite; mobil bleibt alles wie gehabt. */}
-    <div className={`h-full flex flex-col w-full max-w-xl mx-auto ${fullBleed ? "lg:max-w-none" : "lg:max-w-3xl"}`}>
-      <ResourceBar base={b} asOf={base.data.serverNow} onSwitchBase={switchBase} onPlanFounding={() => go("karte")} onPower={() => { setSheet(null); go("basis"); openCard("basis-versorgung", "versorgung"); }} onMenu={(i) => {
-        if (i === "logout") { void logout(); return; }
-        setPlan(null); setResearch(false);
-        setHelpView(i === "handbuch" ? null : i);
-        setHelpKey((k) => k + 1); // Handbuch neu aufbauen, damit die gewählte Ansicht (Einstellungen/Verwaltung) gilt
-        setHelp(true);
-      }} />
-      {/* Kurszeile: auf der Börse immer (oben, außer „unten“ gewählt), sonst nach Einstellung. */}
-      {(onMarket ? tickerPos !== "unten" : tickerPos === "oben") && <TickerBar onOpen={() => go("boerse")} />}
-      <main ref={mainScroll.ref} onScroll={mainScroll.onScroll} className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto overflow-x-hidden p-3 pb-8 scroll-pb-8"}`}><Suspense fallback={fullBleed ? <Loading /> : <Loading cards={3} />}>{content}</Suspense>{!fullBleed && <ActionBarHost />}</main>
-      {tickerPos === "unten" && <TickerBar onOpen={() => go("boerse")} />}
-      <nav className="grid grid-cols-5 bg-paper border-t-[3px] border-double border-ink" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {TABS.map((t) => {
-          const active = tab === t.id && !plan && !help;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => { if (t.id === "karte" && tab === "karte" && !plan && !help && !research) setMapSeq((n) => n + 1); go(t.id); }} // erneut „Karte“: Blatt zu, frisch
-              className={`tap relative flex flex-col items-center justify-center pt-1.5 pb-1 text-[11px] leading-tight ${active ? "text-ink font-semibold" : "text-ink2"}`}
-              aria-current={active ? "page" : undefined}
-            >
-              {active && <span className="absolute -top-[3px] inset-x-[22%] h-[3px] bg-siegel" />}
-              <Icon id={t.icon} size={24} />
-              <span className="mt-0.5 whitespace-nowrap">{t.label}</span>
-              {t.id === "berichte" && unread + unreadMsgs > 0 && (
-                <span className="absolute top-1 right-[18%] min-w-5 h-5 px-1 rounded-full bg-siegel text-white text-[11px] mono grid place-items-center">{unread + unreadMsgs}</span>
-              )}
-              {t.id === "berichte" && lageBadge.count > 0 && (
-                <span data-testid="lage-badge" className={`absolute top-1 left-[18%] min-w-5 h-5 px-1 rounded-full ${lageBadge.attack ? "bg-siegel pulse" : "bg-messing"} text-white text-[11px] mono grid place-items-center`} title="Dringend in der Lage">{lageBadge.count}</span>
-              )}
-              {t.id === "basis" && claimable > 0 && (
-                <span className="absolute top-1 left-[18%] min-w-5 h-5 px-1 rounded-full bg-moos text-white text-[11px] mono grid place-items-center" title="Belohnung abholbereit">{claimable}</span>
-              )}
-              {t.id === "basis" && (b.incoming.some(isThreat) || b.bases.some((x) => x.underAttack)) && (
-                <span className="absolute top-1.5 right-[24%] w-3 h-3 rotate-45 bg-siegel pulse" />
-              )}
-            </button>
-          );
-        })}
-      </nav>
+  const pickTab = (t: Tab) => { if (t === "karte" && tab === "karte" && !plan && !help && !research) setMapSeq((n) => n + 1); go(t); }; // erneut „Karte“: Blatt zu, frisch
+  const nav = <NavBar tab={tab} active={!plan && !help} rail={desktop} badges={{ lage: lageBadge.count, attack, unread: unread + unreadMsgs }} onPick={pickTab} />;
+  const resourceBar = (
+    <ResourceBar base={b} asOf={base.data.serverNow} onSwitchBase={switchBase} onPlanFounding={() => go("karte")} onPower={() => { setSheet(null); go("basis"); setBasisSub("hafen"); openCard("basis-versorgung", "versorgung"); }} onMenu={(i) => {
+      if (i === "logout") { void logout(); return; }
+      setPlan(null); setResearch(false);
+      setHelpView(i === "handbuch" ? null : i);
+      setHelpKey((k) => k + 1); // Handbuch neu aufbauen, damit die gewählte Ansicht (Einstellungen/Verwaltung) gilt
+      setHelp(true);
+    }} />
+  );
+  // Kurszeile: auf der Börse immer (oben, außer „unten“ gewählt), sonst nach Einstellung.
+  const tickerTop = (onMarket ? tickerPos !== "unten" : tickerPos === "oben") && <TickerBar onOpen={() => go("boerse")} />;
+  const tickerBottom = tickerPos === "unten" && <TickerBar onOpen={() => go("boerse")} />;
+  const overlays = (
+    <>
       {welcome && <Welcome playerId={playerId} onDone={() => setWelcome(false)} />}
       <ResearchRollPopup key={b.id} base={b} />
       <UpdateNotices playerId={playerId} paused={welcome} />
       {bug && <Suspense fallback={null}><BugReportSheet draft={bug} playerName={playerName} onClose={() => setBug(null)} /></Suspense>}
+    </>
+  );
+
+  if (desktop) {
+    // Desktop: Navigationsleiste links, Karte in der Mitte (immer geladen), rechts die Seitenleiste mit dem Reiter.
+    return (
+      <NavContext.Provider value={{ go: navTo, base: b, here }}>
+      <div className="h-full flex w-full" data-layout="desktop">
+        {nav}
+        <div className="flex-1 min-w-0 flex flex-col">
+          {resourceBar}
+          {tickerTop}
+          <div className="flex-1 min-h-0 flex">
+            <section className="flex-1 min-w-0 relative" aria-label="Karte" data-testid="desktop-map">
+              <Suspense fallback={<Loading />}>{map}</Suspense>
+            </section>
+            {!mapActive && (
+              <main ref={mainScroll.ref} onScroll={mainScroll.onScroll} data-testid="desktop-side"
+                className="w-[min(540px,44vw)] shrink-0 border-l-[3px] border-double border-ink bg-paper overflow-y-auto overflow-x-hidden p-3 pb-8 scroll-pb-8">
+                <Suspense fallback={<Loading cards={3} />}>{content}</Suspense><ActionBarHost />
+              </main>
+            )}
+          </div>
+          {tickerBottom}
+        </div>
+        {overlays}
+      </div>
+      </NavContext.Provider>
+    );
+  }
+
+  return (
+    <NavContext.Provider value={{ go: navTo, base: b, here }}>
+    <div className="h-full flex flex-col w-full max-w-xl mx-auto" data-layout="mobile">
+      {resourceBar}
+      {tickerTop}
+      <main ref={mainScroll.ref} onScroll={mainScroll.onScroll} className={`flex-1 min-h-0 ${fullBleed ? "" : "overflow-y-auto overflow-x-hidden p-3 pb-8 scroll-pb-8"}`}><Suspense fallback={fullBleed ? <Loading /> : <Loading cards={3} />}>{content}</Suspense>{!fullBleed && <ActionBarHost />}</main>
+      {tickerBottom}
+      {nav}
+      {overlays}
     </div>
     </NavContext.Provider>
   );

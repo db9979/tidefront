@@ -9,7 +9,7 @@ test("Baugutschrift: sichtbar in Leiste und Bauhof, verrechnet in den Baukosten,
     s.resUpdatedAt = Date.now();
     s.catchUp = { credit: 5000, bonus: 0.5, ratio: 0.2, active: true, lastAtMs: Date.now(), earned: 0, pack: 5000 };
   });
-  await page.goto("/");
+  await page.goto("/?sub=hafen"); // Bauhof unter Basis → Hafen
 
   // Ressourcenleiste: schmale Zeile mit Betrag und Herkunft.
   const strip = page.getByTestId("gutschrift-leiste");

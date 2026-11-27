@@ -1,4 +1,4 @@
-// Erfolge (Meldungen → Erfolge): Abzeichen-Raster im Kupferstich-Stil, gesperrt grau, Stufen Bronze/Silber/Gold,
+// Erfolge (Meldungen → Rangliste → Erfolge): Abzeichen-Raster im Kupferstich-Stil, gesperrt grau, Stufen Bronze/Silber/Gold,
 // Fortschrittsbalken zur nächsten Stufe, Abholen der Belohnungen. Antippen zeigt alle drei Stufen.
 // Errungene (ab Bronze oder mit Abholbarem) oben als große Kacheln, gesperrte darunter als kleines 4-Spalten-Raster.
 import { useState } from "react";

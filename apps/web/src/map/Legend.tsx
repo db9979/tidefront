@@ -22,6 +22,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     items: [
       { icon: <TacticalIcon kind="nest" level={3} />, text: "Piratennest (Kartell), Stufe I–V" },
       { icon: <TacticalIcon kind="nest" level={6} />, text: "Inselfestung des Kartells, Stufe VI (Spätspiel)" },
+      { icon: <UnknownNestMark />, text: "Piratennest, Stufe unbekannt (keine Sicht) – erst aufklären" },
       { icon: <TacticalIcon kind="nestEmpty" level={2} />, text: "Nest verlassen, wird neu besetzt" },
       { icon: <TacticalIcon kind="wreck" />, text: "Wrackfeld, bergbar" },
       { icon: <TacticalIcon kind="port" />, text: "Handelshafen der Börse" },
@@ -155,6 +156,16 @@ function FleetArrow() {
       <circle r="10" fill="#fbf8f0" stroke="#18273a" strokeWidth={1.2} />
       <polygon points="0,-8 5,5 0,2 -5,5" fill="#18273a" transform="rotate(45)" />
       <text x="0" y="13" textAnchor="middle" fontSize="7" fontWeight="600" fill="#18273a" fontFamily="'IBM Plex Mono', monospace">M</text>
+    </svg>
+  );
+}
+
+/** Wie map/symbols.ts nestSymbol(null): hohle Tintenraute mit „?“ (UI-06). */
+export function UnknownNestMark({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="-13 -13 26 26" aria-hidden="true">
+      <path d="M0 -12 L12 0 L0 12 L-12 0 Z" fill="#fbf8f0" fillOpacity={0.85} stroke="#18273a" strokeOpacity={0.7} strokeWidth={1.2} />
+      <text x="0" y="4" textAnchor="middle" fontSize="11" fontFamily="Fraunces, serif" fontWeight="600" fill="#18273a">?</text>
     </svg>
   );
 }

@@ -1,5 +1,6 @@
-// Meldungen → Lage (Lagezentrum): alles, was ansteht, über alle eigenen Häfen, nach Zeit sortiert – Gleich/heute,
-// Unterwegs, Wartet auf dich, Zuletzt passiert. Server: lage.get (eine schlanke Abfrage, engine/lage.ts); Tagesbefehle,
+// Basis → Lage (Lagezentrum, Startseite „Was steht an?“; bis 0.38 unter Meldungen): alles, was ansteht, über alle
+// eigenen Häfen, nach Zeit sortiert – Wartet auf dich (mit „Alle abholen“), Aufträge, Gleich/heute, Unterwegs,
+// Zuletzt passiert. Server: lage.get (eine schlanke Abfrage, engine/lage.ts); Tagesbefehle,
 // Auftragsbuch, ungelesene Nachrichten und die letzten Berichte kommen aus den ohnehin geladenen Abfragen.
 // Live: lib/live.ts invalidiert lage.* mit Hafen-, Missions-, Berichts- und Marktmeldungen; Countdown je Sekunde.
 import { useQuery } from "@tanstack/react-query";
@@ -13,7 +14,10 @@ import { useGuide } from "../Guide.tsx";
 import { Icon } from "../../icons.tsx";
 import { Loading } from "../../ui.tsx";
 import type { Target } from "../../App.tsx";
-import type { MeldungenTab } from "../../screens/Meldungen.tsx";
+import type { ReactNode } from "react";
+import { useAchievements } from "../../screens/Achievements.tsx";
+import { useWeekly } from "../Weekly.tsx";
+import { ClaimAllButton } from "./ClaimAll.tsx";
 import { LageGroup, LageLine, type LageJump, type LageRow } from "./LageList.tsx";
 import { useEffect, useState } from "react";
 import { readLageSeen, useLageSeen, writeLageSeen } from "../../lib/lage-seen.ts";
@@ -24,11 +28,12 @@ const REPORT_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "
 const local = (r: Partial<LageRow> & Pick<LageRow, "key" | "kind" | "icon" | "text">): LageRow =>
   ({ atMs: null, sub: null, tone: null, urgent: false, progress: null, jump: null, ...r });
 
-export function LageTab({ onShowOnMap, onSub, unreadMsgs, seenReport }: {
+export function LageTab({ onShowOnMap, unreadMsgs, seenReport, quests: questBar }: {
   onShowOnMap: (t: Target) => void;
-  onSub: (t: MeldungenTab) => void;
   unreadMsgs: number;
   seenReport: number;
+  /** Aufträge (Auftragsbuch, Tagesbefehle, Wochenziele) – stehen unter „Wartet auf dich“. */
+  quests?: ReactNode;
 }) {
   const now = useNow();
   const nav = useNav();
@@ -37,6 +42,8 @@ export function LageTab({ onShowOnMap, onSub, unreadMsgs, seenReport }: {
   const reports = useQuery({ ...trpc.report.list.queryOptions(), refetchInterval: 60000 });
   const daily = useDaily();
   const guide = useGuide();
+  const weekly = useWeekly();
+  const ach = useAchievements();
   // Stand beim letzten Öffnen: Einträge, die seitdem dazugekommen sind, tragen „neu“ (erster Besuch: keine Markierung).
   const [before] = useState(() => readLageSeen());
   const quests0 = (daily.data?.claimable ?? 0) + (guide.data?.claimable ?? 0);
@@ -66,16 +73,24 @@ export function LageTab({ onShowOnMap, onSub, unreadMsgs, seenReport }: {
       case "research": nav.go({ to: "research" }); break;
       case "troops": pickBase(j.baseId); nav.go({ to: "troops", seg: j.seg }); break;
       case "contracts": nav.go({ to: "market", seg: "vertraege" }); break;
-      case "report": setOpenReport(j.id); onSub("berichte"); break;
-      case "rewards": if (j.where === "erfolge") onSub("erfolge"); else nav.go({ to: "base" }); break;
+      case "report": setOpenReport(j.id); nav.go({ to: "meldungen", sub: "berichte" }); break;
+      case "rewards": if (j.where === "erfolge") nav.go({ to: "meldungen", sub: "erfolge" }); // Aufträge stehen hier auf der Lage
+        else document.querySelector('[aria-label="Aufträge"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
+        break;
     }
   };
 
   const { soon, underway } = lage.data;
-  const quests = (daily.data?.claimable ?? 0) + (guide.data?.claimable ?? 0);
+  const dq = daily.data?.claimable ?? 0;
+  const gq = guide.data?.claimable ?? 0;
+  const quests = dq + gq;
+  const weeklyReady = weekly.data?.hasBase ? [...weekly.data.goals, ...weekly.data.older].filter((x) => x.done && !x.claimed).length : 0;
+  const allReady = quests + weeklyReady + (ach.data?.claimable ?? 0);
+  // TST-16: nur die Quellen nennen, die wirklich etwas abholbereit haben.
+  const sources = [gq > 0 ? `${gq} im Auftragsbuch` : "", dq > 0 ? `${dq} aus Tagesbefehlen` : ""].filter(Boolean).join(", ");
   const waiting: LageRow[] = [
     ...(quests > 0 ? [local({ key: "belohnung:quests", kind: "belohnung", icon: "hafenmeister", tone: "gut", urgent: true,
-      text: quests === 1 ? "1 Belohnung abholbereit (Tagesbefehle, Auftragsbuch)" : `${quests} Belohnungen abholbereit (Tagesbefehle, Auftragsbuch)`, jump: { to: "rewards", where: "basis" } })] : []),
+      text: `${quests === 1 ? "1 Belohnung" : `${quests} Belohnungen`} abholbereit (${sources})`, jump: { to: "rewards", where: "basis" } })] : []),
     ...(unreadMsgs > 0 ? [local({ key: "nachrichten", kind: "nachrichten", icon: "nav-bericht", text: unreadMsgs === 1 ? "1 neue Nachricht" : `${unreadMsgs} neue Nachrichten` })] : []),
     ...lage.data.waiting,
   ];
@@ -101,9 +116,11 @@ export function LageTab({ onShowOnMap, onSub, unreadMsgs, seenReport }: {
       )}
       {waiting.length > 0 && (
         <LageGroup title="Wartet auf dich" count={waiting.length} testId="lage-waiting">
-          {waiting.map((r) => <LageLine key={r.key} row={r} nowMs={now} onJump={jump} unread={isNew(r.key)} onTap={r.kind === "nachrichten" ? () => onSub("nachrichten") : undefined} />)}
+          {waiting.map((r) => <LageLine key={r.key} row={r} nowMs={now} onJump={jump} unread={isNew(r.key)} onTap={r.kind === "nachrichten" ? () => nav.go({ to: "meldungen", sub: "nachrichten" }) : undefined} />)}
+          <li className="empty:hidden"><ClaimAllButton count={allReady} className="pt-2" /></li>
         </LageGroup>
       )}
+      {questBar}
       {recent.length > 0 && (
         <LageGroup title="Zuletzt passiert" testId="lage-recent">
           {recent.map((r) => (

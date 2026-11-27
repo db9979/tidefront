@@ -12,10 +12,11 @@ export function weatherEffects(w: Weather, wb: WeatherBalance, home: boolean, ra
   const out: { text: string; bad: boolean }[] = [];
   const share = stormShare(w.wind, wb);
   if (home && w.storm) out.push({ text: "Flugzeuge bleiben am Boden", bad: true });
-  if (share > 0) {
-    out.push({ text: `Schiffe langsamer (bis +${Math.round(wb.shipSlowMax * share * 100)} %)`, bad: w.storm });
-    out.push({ text: `Flugzeuge −${Math.round(wb.airStormPenalty * share * 100)} %`, bad: w.storm });
-  }
+  // Gerundet 0 % nicht nennen („bis +0 %“ widerspricht sich, TST-19).
+  const slow = Math.round(wb.shipSlowMax * share * 100);
+  const air = Math.round(wb.airStormPenalty * share * 100);
+  if (slow >= 1) out.push({ text: `Schiffe langsamer (bis +${slow} %)`, bad: w.storm });
+  if (air >= 1) out.push({ text: `Flugzeuge −${air} %`, bad: w.storm });
   if (home && radar) {
     const cut = 100 - Math.round(fogRadarFactor(w.fog, wb) * 100);
     if (cut >= 1) out.push({ text: `Radar −${cut} %`, bad: false });

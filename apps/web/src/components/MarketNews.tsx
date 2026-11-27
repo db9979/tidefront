@@ -5,13 +5,22 @@ import { trpc, type Outputs } from "../lib/trpc.ts";
 import { label } from "../lib/names.ts";
 import { fmtDuration, useNow } from "../lib/time.ts";
 import { Icon } from "../icons.tsx";
+import { useWorldEvents } from "./WorldEvents.tsx";
 
 export type MarketNewsData = Outputs["market"]["news"];
 export type MarketNewsItem = MarketNewsData["news"][number];
 
-/** Marktnachrichten; aktualisiert sich mit jeder Börsenmeldung (WebSocket „market“) und spätestens jede Minute. */
+/**
+ * Marktnachrichten; aktualisiert sich mit jeder Börsenmeldung (WebSocket „market“) und spätestens jede Minute.
+ * TST-17: Solange die Kartell-Armada (Saisonfinale) vor der Küste liegt, entfällt „Ruhige See – kaum Kämpfe“.
+ */
 export function useMarketNews(enabled = true) {
-  return useQuery({ ...trpc.market.news.queryOptions(), enabled, refetchInterval: 60000 });
+  const we = useWorldEvents();
+  const finale = !!we.data?.events.some((e) => e.finale && e.status === "active");
+  return useQuery({
+    ...trpc.market.news.queryOptions(), enabled, refetchInterval: 60000,
+    select: (d) => (finale ? { ...d, news: d.news.filter((n) => !/^Ruhige See/.test(n.reason)) } : d),
+  });
 }
 
 const SOURCE: Record<string, string> = { weltereignis: "Weltereignis", kriegslage: "Kriegslage", knappheit: "Knappheit", saison: "Saison", handelsbilanz: "Handelsbilanz" };

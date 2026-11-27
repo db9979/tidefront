@@ -22,7 +22,7 @@ test("Gebäudeblatt offen: Bestand steigt, Wartezeit sinkt, Blocker verschwindet
   await page.routeWebSocket(/\/ws$/, () => {});
   await page.clock.install({ time: new Date() });
 
-  await page.goto("/");
+  await page.goto("/?sub=hafen");
   await page.getByRole("button", { name: /^Stahlwerk 4/ }).click();
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByText("Noch nicht genug Ressourcen.")).toBeVisible();

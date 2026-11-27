@@ -116,15 +116,17 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
   const [help, setHelp] = useWhatHelps();
   return (
     <li ref={row} className="py-2.5" data-train={props.id}>
-      <div className="flex items-center gap-2">
+      {/* UI-01: Name mindestens 112 px breit; reicht die Zeile nicht, rücken Stepper und „Bauen“ in eine zweite Zeile
+          (rechtsbündig) statt den Namen mitten im Wort zu brechen („Zerstöre/r“). */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
         {/* Symbol mit ⓘ (oben) und Bestand (unten) als Marken: die Namensspalte bleibt frei für den Namen. */}
         <button type="button" onClick={() => setInfo(true)} aria-label={`${label(props.id)}: Info, Bestand ${fmtNum(props.have)}`} className="shrink-0 relative">
           <IconTile id={props.id} size={40} tone={unitTone(props.balance, props.id)} />
           <span aria-hidden className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-card border border-see text-see text-[10px] leading-none grid place-items-center">i</span>
           <span aria-hidden className="absolute -bottom-1.5 -right-2 min-w-5 px-1 rounded-full bg-ink text-paper mono text-[11px] leading-4 text-center">{fmtNum(props.have)}</span>
         </button>
-        <button type="button" className="min-w-0 flex-1 text-left leading-tight pl-1" onClick={() => setInfo(true)}>
-          <span className="block font-serif text-[13.5px] [hyphens:manual]" lang="de">{softName(label(props.id))}</span>
+        <button type="button" className="min-w-[112px] flex-1 text-left leading-tight pl-1" onClick={() => setInfo(true)}>
+          <span className="block font-serif text-[13.5px] [hyphens:manual] [overflow-wrap:normal]" lang="de">{softName(label(props.id))}</span>
           {(props.away > 0 || (vet && vet.rank !== "rekrut")) && (
             <span className="block text-[11px] tabular-nums text-ink2">{props.away > 0 ? `+${fmtNum(props.away)} unterwegs ` : ""}{vet && vet.rank !== "rekrut" && <RankBadge vet={vet} />}</span>
           )}
@@ -134,14 +136,14 @@ function TrainRow(props: { id: string; have: number; away: number; base: BaseDat
             Bau ab {label(props.balance.units[props.id]?.builtIn ?? "")} Stufe {props.needLevel} <span className="text-ink2">▾</span>
           </button>
         ) : (
-          <>
+          <div className="flex items-center gap-2 ml-auto">
             <Stepper compact value={n} onChange={setN} limit={Math.max(1, afford)} />
             {/* Gesperrt mit Grund (ab Menge 1): Antippen klappt „Was hilft?“ auf. */}
             <button type="button" className={`tap shrink-0 rounded-lg btn-secondary px-2 font-display uppercase text-[12px] tracking-[0.06em] disabled:opacity-45 ${why && n >= 1 ? "opacity-45" : ""}`} disabled={cmd.busy || n < 1} aria-disabled={!!why || undefined}
               onClick={async () => { if (why) return setHelp(!help); const r = await cmd.run({ id: props.id, count: n }); if (r) setN(0); }}>
               Bauen
             </button>
-          </>
+          </div>
         )}
       </div>
       {n >= 1 && !props.needLevel && (

@@ -2,6 +2,7 @@
 // Je Phase seit v1.4 die W20-Würfe beider Seiten (Kriegsglück) und Balken des ausgeteilten Schadens.
 import { fmtNum, label } from "../lib/names.ts";
 import { Icon } from "../icons.tsx";
+import { beaufort } from "@tidefront/game-core";
 import { UnitChips } from "../ui.tsx";
 import { DamageBars, PhaseDice } from "./BattleDice.tsx";
 
@@ -147,7 +148,7 @@ export function BattleLog({ b, names, role, protectedPerResource = null, salvage
         </div>
         {b.weather && (b.weather.air < 0.995 || b.weather.strike < 0.995) && (
           <div className="text-[11.5px] text-ink2">
-            Wetter: {b.weather.storm ? "Sturm" : `Wind ${Math.round(b.weather.wind * 100)} %`}, Wolken {Math.round(b.weather.clouds * 100)} % – Flugzeuge ×{fmtNum(b.weather.air, 2)}, Luftschlag ×{fmtNum(b.weather.air * b.weather.strike, 2)}
+            Wetter: {b.weather.storm ? "Sturm" : `Wind ${beaufort(b.weather.wind)} Bft`}, Wolken {Math.round(b.weather.clouds * 100)} % – Flugzeuge ×{fmtNum(b.weather.air, 2)}, Luftschlag ×{fmtNum(b.weather.air * b.weather.strike, 2)}
           </div>
         )}
       </section>

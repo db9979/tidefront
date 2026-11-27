@@ -54,7 +54,7 @@ import { fieldsRouter } from "./routers/fields.ts"; // Felder
 import { botsRouter } from "./routers/bots.ts"; // KI-Spieler (Verwaltung)
 import { powerRouter } from "./routers/power.ts"; // Seekabel (v1.21)
 import { intelRouter } from "./routers/intel.ts"; // Lagebild Stufe 2
-import { lageRouter } from "./routers/lage.ts"; // Lagezentrum (Meldungen → Lage)
+import { lageRouter } from "./routers/lage.ts"; // Lagezentrum (Basis → Lage)
 
 export type { Ctx };
 
