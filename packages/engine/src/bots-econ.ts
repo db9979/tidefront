@@ -17,6 +17,7 @@ import { balance } from "./context.ts";
 import { train, trade } from "./commands.ts";
 import { marketQuote, marketView, missionPreview } from "./views.ts";
 import { acceptOffer, createOffer, offersView } from "./player-trade.ts";
+import { contractsTurn } from "./bots-contracts.ts"; // Lieferverträge: günstige Vertragsangebote von Spielern
 import { launchMission } from "./commands.ts";
 import { FOUNDING_TYPE } from "./expansion.ts";
 import { coastFields } from "./bots-core.ts";
@@ -35,7 +36,7 @@ export async function marketTurn(c: TurnCtx, base: Base, mods: Modifiers): Promi
   const view = await marketView(c.engine, c.bot.id);
   const room = (r: string) => {
     const x = view.resources.find((y) => y.id === r);
-    return x ? Math.max(0, x.dailyLimit - x.dailyUsed) : 0;
+    return x ? Math.max(0, x.dailyLimit - x.dailyUsed - (x.dailyReserved ?? 0)) : 0;
   };
   const fill = (r: string) => (base.state.resources[r] ?? 0) / cap;
   const byFill = [...balance.resources].sort((a, b) => fill(a) - fill(b));
@@ -70,6 +71,7 @@ async function doTrade(c: TurnCtx, base: Base, side: "buy" | "sell", resource: s
 /** Spielerhandel (Händler): faire fremde Angebote annehmen, eigene Angebote für Überschuss einstellen. */
 export async function offersTurn(c: TurnCtx, base: Base, mods: Modifiers): Promise<void> {
   if (!c.cfg.trade || !harborMarketUnlocked(base.state, balance)) return;
+  await contractsTurn(c, base, mods);
   const cap = storageCapacity(base.state, balance, mods);
   const stock = (r: string) => base.state.resources[r] ?? 0;
   const view = await offersView(c.engine, c.bot.id, base.id);

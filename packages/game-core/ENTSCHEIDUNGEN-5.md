@@ -279,3 +279,59 @@ Vom Nutzer freigegeben (Runde 3–10 Menschen + 3 KI). Rechnung des Analysten: `
     +0,5 ms je Abruf (Nest-Wissen, Hochrechnung). KI-Zug Median 35–43 ms (bots-sim, drei Startzeiten).
 13. **Schema** (Migration erzeugt der Integrator): `nest.roll jsonb`, `nest.garrison jsonb`, `nest.garrison_at
     timestamptz`, `nest.loot_at timestamptz`, alle nullable.
+## Lieferverträge mit KI und zwischen Spielern (Balance v1.31)
+
+Umsetzung von `docs/VORLAGE-LIEFERVERTRAEGE.md`, Nutzerentscheid: Fragen 1–8 und 10 jeweils Empfehlung a, Frage 9
+abweichend: **Verträge zwischen Spielern sofort**, mit Schutz. Regeln: `docs/REGELN.md`, Abschnitt Lieferverträge.
+
+1. **Datenmodell:** eine Tabelle `market_contract`, eine Zeile je Vertrag bzw. Abo-Tranche (`abo_id` = id der ersten
+   Tranche). Beide Parteien sind Spielerzeilen (KI-Spieler sind Spieler); `kind` ki|spieler. Beträge in ganzen Cent,
+   Treuhand im Journal auf `escrow:mc-<id>` (Anzahlung des Käufers bzw. voller Preis der KI-Käuferin, Pfand des Verkäufers,
+   Ware der KI-Verkäuferin). Preis als `buyer_unit`/`seller_unit` (Differenz = Gebührentopf); so rechnen KI- und
+   Spielerverträge mit derselben Abwicklung (`settleContract`, rein, Summe in Cent geht auf).
+2. **Gebühr:** Kauf bei der KI: Käufer zahlt max(K,E)·(1+a), die KI bekommt das abzüglich 4 % des Bezugskurses. Verkauf
+   an die KI: der Spieler bekommt min(K,E)·(1−a), die KI zahlt 4 % des Bezugskurses zusätzlich (sonst wäre der Grundaufschlag
+   beim Verkauf kein Abschlag). Spielerverträge: Verkäufer bekommt den Preis minus 4 %.
+3. **Anteilige Erfüllung:** Die Anzahlung deckt 25 % je erfüllter Einheit; bezahlbar ist die größte Menge q mit
+   Preis(q) ≤ Anzahlung − Strafe(Menge − q) + Konto. Sind beide Seiten säumig (Spielervertrag), zahlt jede ihre Strafe auf
+   ihren Fehlteil (auch wenn er sich überschneidet) – beide haben ihre Pflicht verletzt, die Strafen gehen in den Topf.
+4. **Konvoi:** Abwicklung (Zahlung, Abbuchung, Abfahrt) zur Fälligkeit minus Fahrzeit, damit der Konvoi zur Fälligkeit
+   ankommt. Ist der Seeweg länger als die Laufzeit (ferner Rotbart), fährt er nach einer Minute und kommt später; das
+   Angebot nennt die Fahrzeit. Geleit: der Käufer gibt es beim Abschluss an, es läuft bei Abfahrt aus (best effort,
+   eigener Savepoint; scheitert es, fährt die Ware ohne Geleit und die Nachricht sagt es).
+5. **Erfolge bei Lieferung:** „bei Lieferung“ heißt bei der Abwicklung (Abbuchung beim Verkäufer, Abfahrt des Konvois) –
+   dann ist das Geschäft vollzogen; ein abgefangener Konvoi ändert daran nichts (wie beim Spielerhandel).
+6. **Abo und Kündigung:** Kündigen beendet das ganze Abo (alle offenen Tranchen), die Strafe steht zusammengezählt am
+   Knopf. Offene Verträge zählen Abo als einen; Angebote an Spieler zählen mit (sie binden eine Sicherheit).
+7. **Tageslimit:** Vertragslieferungen werden zum Abwicklungszeitpunkt ins Fenster gebucht und vorher als „nächste 24 h“
+   vorgemerkt (`TradeContext.reservedQty`, `market.get dailyReserved`; die Order zieht die Vormerkung vom freien Rahmen ab).
+   Das 50-%-Fenster prüft jedes 24-h-Fenster, das eine neue Lieferung enthält (`maxWindowLoad`); Abo-Tranchen liegen genau
+   24 h auseinander und teilen sich nie ein Fenster. KI-Spieler bekommen keine Vormerkung (sie sind Gegenpartei).
+8. **Handelsbilanz:** zählt die Journalzeilen `mc-…` der Menschen (Ware an bzw. von `player:<id>`), KI-Spieler nicht –
+   sonst höben sich Kauf beim und Verkauf an den Menschen im selben Vertrag auf. Börse und Verträge je Spieler werden vor
+   dem ⅓-Deckel addiert.
+9. **R_T:** nur die angekündigte, tageweise steigende Saisonend-Nachricht (bekannt bis zum Saisonende). Eine
+   Kartell-Armada-Nachricht gibt es noch nicht als Marktnachricht; kommt sie, gehört sie in `priceInputs.rAt`.
+10. **Spielerverträge – Absprache-Schutz (Frage 9b, Entscheidung):** Verträge zwischen **verbundenen** Spielern sind
+    **erlaubt**, zählen aber nicht für Erfolge und Tagesbefehle (`counts = false`, Hinweis beim Annehmen). Gründe: Mitglieder
+    einer Allianz sind immer verbunden – eine Sperre verböte gerade die natürlichste Nutzung (Verbündete beliefern sich);
+    Werte verschieben geht auch heute schon mit Allianz-Angeboten im Spielerhandel. Der eigentliche Missbrauch (Rohstoffe
+    schieben, Kopfgeld umgehen) ist anders begrenzt: Preisband ±20 % (höchstens 20 % des Werts als Geschenk), Paarbremse
+    20.000 Kredite Börsenwert je Paar und 7 Tage (also ≤ 4.000 Kredite Wertverschiebung je Woche), 4 % und alle Strafen in
+    den Gebührentopf, Lieferung abfangbar; Rohstoffe und Kredite geben keine Wertungspunkte. Jede Lieferung eines
+    Spielervertrags trägt das Paar in `pvp_ties` ein (7 Tage verbunden: kein Kopfgeld untereinander) – genau wie die
+    Vorlage für 9b verlangt; `pvp.ts` musste dafür nicht geändert werden.
+11. **Ohne KI-Spieler** zeigt der Reiter, dass es keine KI-Verträge gibt; abgeschaltete oder gerade entfernte KI bieten
+    nichts an. Angebote an einen bestimmten Spieler dürfen nicht an KI-Spieler gehen (`bad_target`).
+12. **Saisonende:** außerplanmäßig noch offene Verträge: Treuhand gegen `season:<n>` ausgebucht (wie offene Angebote im
+    Spielerhandel); Kredite und Häfen werden ohnehin zurückgesetzt, eine echte Rückbuchung wäre wirkungslos.
+13. **Pi-Last:** keine periodischen Läufe; je Vertrag höchstens drei Ereignisse (Erinnerung, Abwicklung, Nachfrist). Die
+    KI-Kontingente rechnet erst der Abruf des Reiters (je KI ein Lagerabgleich), die Handelsbilanz-Abfrage bekommt einen
+    zweiten Zweig über denselben Zeitindex.
+14. **KI-Spieler im Wirtschaftszug** (`bots-econ.ts`): sehen Treuhandware und -kredite nicht mehr im Lager bzw. Konto und
+    planen damit automatisch ohne sie; der freie Börsenrahmen berücksichtigt `dailyReserved` (für KI 0). Sie bedienen
+    KI-Verträge ohne eigenen Zug (Abwicklung als Ereignis). **Nutzen:** der Händler nimmt im Zug (`bots-contracts.ts`,
+    aus `offersTurn`) höchstens ein öffentliches Vertragsangebot eines Spielers an, wenn es ihm mindestens 3 % gegenüber dem
+    Kurs bringt und sein Lager es trägt (liefern ab 40 % Füllung und doppeltem Bestand, kaufen bis 60 %) – wie faire Angebote
+    im Spielerhandel. Das ist ein Spielervertrag (Band, Konvoi, Strafen in den Topf); KI-Spieler bieten selbst keine an und
+    schließen keine Verträge untereinander (Vorlage, Abgrenzung).

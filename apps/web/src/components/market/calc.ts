@@ -72,11 +72,13 @@ export function series(r: MarketRes, nowMs: number, spanMs: number, halfLife: nu
  * Handelslimit im gleitenden 24-h-Fenster zum Zeitpunkt nowMs: Verbrauch und kommende Freigaben (bereits fällige, seit
  * dem letzten Laden der Börse, sind abgezogen).
  */
-export function dailyWindow(r: MarketRes, nowMs: number): { used: number; left: number; releases: { atMs: number; qty: number }[] } {
+export function dailyWindow(r: MarketRes, nowMs: number): { used: number; left: number; reserved: number; releases: { atMs: number; qty: number }[] } {
   const all = r.dailyReleases ?? [];
   const gone = all.filter((x) => x.atMs <= nowMs).reduce((a, x) => a + x.qty, 0);
-  const used = Math.max(0, r.dailyUsed - gone);
-  return { used, left: Math.max(0, r.dailyLimit - used), releases: all.filter((x) => x.atMs > nowMs) };
+  // Lieferverträge (v1.31): Lieferungen der nächsten 24 h sind im Limit vorgemerkt und zählen hier als verbraucht.
+  const reserved = Math.max(0, r.dailyReserved ?? 0);
+  const used = Math.max(0, r.dailyUsed - gone) + reserved;
+  return { used, left: Math.max(0, r.dailyLimit - used), reserved, releases: all.filter((x) => x.atMs > nowMs) };
 }
 
 /** Ab wann `qty` ins Handelslimit passt (jetzt, eine Freigabezeit oder null, wenn das Limit dafür nie reicht). */

@@ -158,7 +158,7 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
       </p>
       {!valid && <p className="text-sm text-messing mb-2">{typed > MAX_QTY ? `Menge zu groß (höchstens ${fmtNum(MAX_QTY)}).` : "Menge eingeben (ganze Zahl ab 1)."}</p>}
 
-      <DailyBar used={daily.used} add={valid ? typed : 0} limit={r.dailyLimit} next={nextFree} nowMs={nowMs} />
+      <DailyBar used={daily.used} add={valid ? typed : 0} limit={r.dailyLimit} next={nextFree} nowMs={nowMs} reserved={daily.reserved} />
 
       {q && hard.length === 0 && <Slip q={q} cfg={cfg} nowMs={nowMs} ctx={ctx} label={label(r.id)} />}
       {fresh && quote.data && !quote.data.ok && <ErrorLine text={errorText(quote.data.code)} code={quote.data.code} detail={why} />}
@@ -198,7 +198,7 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
 }
 
 /** Tageslimit als gleitendes 24-h-Fenster: Verbrauch, diese Order und die nächste Freigabe. */
-function DailyBar({ used, add, limit, next, nowMs }: { used: number; add: number; limit: number; next?: { atMs: number; qty: number }; nowMs: number }) {
+function DailyBar({ used, add, limit, next, nowMs, reserved = 0 }: { used: number; add: number; limit: number; next?: { atMs: number; qty: number }; nowMs: number; reserved?: number }) {
   const u = limit > 0 ? Math.min(1, used / limit) : 1;
   const a = limit > 0 ? Math.min(1 - u, add / limit) : 0;
   const over = used + add > limit;
@@ -213,6 +213,7 @@ function DailyBar({ used, add, limit, next, nowMs }: { used: number; add: number
         <div className={`h-full ${over ? "bg-siegel" : "bg-see/60"} stripes`} style={{ width: `${a * 100}%` }} />
       </div>
       {next && <p className="text-[11px] text-ink2 mt-0.5">Gleitend: {fmtNum(next.qty)} wieder frei ab <span className="mono">{when(next.atMs, nowMs)}</span> Uhr.</p>}
+      {reserved > 0 && <p className="text-[11px] text-ink2 mt-0.5">davon für Verträge vorgemerkt: <span className="mono">{fmtNum(reserved)}</span> (Lieferungen der nächsten 24 h).</p>}
     </div>
   );
 }

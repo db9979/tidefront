@@ -40,6 +40,7 @@ import { adminStatsRouter } from "./routers/adminstats.ts";
 import { comfortRouter } from "./routers/comfort.ts";
 import { allianceRouter } from "./routers/alliance.ts";
 import { playerTradeRouter } from "./routers/trade.ts";
+import { contractsRouter } from "./routers/contracts.ts"; // Lieferverträge (v1.31)
 import { worldEventsRouter } from "./routers/world-events.ts";
 import { researchRouter } from "./routers/research.ts";
 import { guideRouter } from "./routers/guide.ts";
@@ -220,6 +221,7 @@ export const appRouter = t.router({
   comfort: comfortRouter,
   alliance: allianceRouter,
   playerTrade: playerTradeRouter,
+  contracts: contractsRouter, // Lieferverträge (v1.31)
   worldEvents: worldEventsRouter,
   research: researchRouter,
   guide: guideRouter,

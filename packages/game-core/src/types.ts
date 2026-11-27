@@ -1,6 +1,6 @@
 // Gemeinsame Typen des Regelkerns. Nur löschbare Typ-Syntax (kein enum, kein namespace).
 import type { AdmiralBalance } from "./admirals.ts"; // Admirale
-import type { MarketNewsBalance } from "./market/types.ts";
+import type { ContractsBalance, MarketNewsBalance } from "./market/types.ts";
 import type { EspionageBalance, IntelState } from "./espionage.ts";
 import type { RouteWeather, WeatherBalance } from "./weather.ts";
 import type { PowerBalance, PowerSnapshot } from "./power.ts";
@@ -145,6 +145,8 @@ export interface MarketBalance {
   convoySpeedKmh: number;
   /** Marktnachrichten (seit v1.5). */
   news?: MarketNewsBalance;
+  /** Lieferverträge (seit v1.31, market/contracts.ts). */
+  contracts?: ContractsBalance;
 }
 
 export interface Balance {

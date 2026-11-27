@@ -1,0 +1,40 @@
+CREATE TABLE "market_contract" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"kind" text NOT NULL,
+	"status" text NOT NULL,
+	"abo_id" integer,
+	"tranche" integer DEFAULT 1 NOT NULL,
+	"tranches" integer DEFAULT 1 NOT NULL,
+	"seller_id" integer,
+	"buyer_id" integer,
+	"seller_base_id" integer,
+	"buyer_base_id" integer,
+	"proposer_id" integer NOT NULL,
+	"target_id" integer,
+	"resource" text NOT NULL,
+	"qty" integer NOT NULL,
+	"buyer_unit" double precision NOT NULL,
+	"seller_unit" double precision NOT NULL,
+	"course" double precision NOT NULL,
+	"buyer_deposit_cents" bigint DEFAULT 0 NOT NULL,
+	"seller_pledge_cents" bigint DEFAULT 0 NOT NULL,
+	"escrow_qty" integer DEFAULT 0 NOT NULL,
+	"delivery" text NOT NULL,
+	"due_at" timestamp with time zone NOT NULL,
+	"settle_at" timestamp with time zone NOT NULL,
+	"grace_until" timestamp with time zone,
+	"offer_until" timestamp with time zone,
+	"escort" jsonb,
+	"counts" boolean DEFAULT true NOT NULL,
+	"delivered_qty" integer,
+	"buyer_penalty_cents" bigint DEFAULT 0 NOT NULL,
+	"seller_penalty_cents" bigint DEFAULT 0 NOT NULL,
+	"delivery_id" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"signed_at" timestamp with time zone,
+	"closed_at" timestamp with time zone
+);
+--> statement-breakpoint
+CREATE INDEX "market_contract_seller" ON "market_contract" USING btree ("seller_id","status");--> statement-breakpoint
+CREATE INDEX "market_contract_buyer" ON "market_contract" USING btree ("buyer_id","status");--> statement-breakpoint
+CREATE INDEX "market_contract_status" ON "market_contract" USING btree ("status","settle_at");
