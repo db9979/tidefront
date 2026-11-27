@@ -17,9 +17,20 @@ export function HarborVignette({ size = 96, levels = 0, daylight }: { size?: num
           <pattern id="vg-sky" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill={PAPER} /><path d="M0 2 H4" stroke={INK} strokeWidth="0.35" opacity="0.6" /></pattern>
         </defs>
         <rect width="96" height="72" fill="url(#vg-sky)" />
+        {/* Immer etwas Leben: tagsüber zieht eine Möwe, nachts funkeln Sterne. */}
+        {night ? (
+          <g fill={INK}>
+            <circle cx={14} cy={10} r={0.7} className="tf-mv tf-star" />
+            <circle cx={34} cy={6} r={0.6} className="tf-mv tf-star" style={{ animationDelay: "-1.3s" }} />
+            <circle cx={47} cy={14} r={0.55} className="tf-mv tf-star" style={{ animationDelay: "-2.4s" }} />
+          </g>
+        ) : (
+          <g className="tf-mv tf-gull"><path d="M0 12 q1.6 -1.6 3.2 0 q1.6 -1.6 3.2 0" fill="none" stroke={INK} strokeWidth={0.7} strokeLinecap="round" /></g>
+        )}
         <path d="M0 52 C20 49 40 54 60 51 C75 49 86 52 96 50 V72 H0 Z" fill={PAPER} stroke={INK} strokeWidth="0.8" />
-        <path d="M8 58 H28 M40 62 H66 M70 57 H88" stroke={INK} strokeWidth="0.6" />
-        {at(120) && <><path d="M4 51 L5 28 H9 L10 51 Z" {...pp} /><path d="M7 26 c-1 -3 2 -4 1 -7 c-1 -2 2 -3 4 -4" {...ln} strokeWidth={0.6} strokeDasharray="1.2 1.6" /></>}
+        {/* Wellenstriche ziehen langsam */}
+        <g className="tf-mv tf-wave"><path d="M8 58 H28 M40 62 H66 M70 57 H88" stroke={INK} strokeWidth="0.6" /></g>
+        {at(120) && <><path d="M4 51 L5 28 H9 L10 51 Z" {...pp} /><g className="tf-mv tf-puff"><path d="M7 26 c-1 -3 2 -4 1 -7 c-1 -2 2 -3 4 -4" {...ln} strokeWidth={0.6} strokeDasharray="1.2 1.6" /></g></>}
         {at(15) && <path d="M2 51 V44 L7 40 L12 44 V51 Z" {...pp} />}
         {at(40) && <path d="M40 51 V22 M36 22 H54 M40 18 L54 22 M40 18 L36 22 M52 22 V30" {...ln} />}
         <path d="M58 51 L60 22 H66 L68 51 Z" fill={PAPER} stroke={INK} />
@@ -32,14 +43,14 @@ export function HarborVignette({ size = 96, levels = 0, daylight }: { size?: num
             <circle cx={63} cy={19.6} r={2.3} fill={LIGHT} stroke={INK} strokeWidth={0.4} />
           </g>
         )}
-        <path d="M69 19 L92 13 M69 20 L92 26" stroke={INK} strokeWidth="0.5" strokeDasharray="2 2" />
+        <g className={night ? undefined : "tf-mv tf-beam"}><path d="M69 19 L92 13 M69 20 L92 26" stroke={INK} strokeWidth="0.5" strokeDasharray="2 2" /></g>
         <path d="M12 51 L14 40 H44 L46 51" fill={PAPER} stroke={INK} />
         <path d="M20 40 V32 H30 V40" fill={PAPER} stroke={INK} />
         <path d="M25 32 V24" stroke={INK} />
         {at(180) && <path d="M18 44 h2.4 v2.4 h-2.4 Z M28 44 h2.4 v2.4 h-2.4 Z M38 44 h2.4 v2.4 h-2.4 Z M23.5 35 h3 v2.4 h-3 Z" fill={LIGHT} stroke={INK} strokeWidth="0.4" />}
-        {at(240) && <path d="M25 24 L31 25.5 L25 27 Z" fill={SIEGEL} stroke={INK} strokeWidth="0.4" />}
-        {at(80) && <><path d="M70 60 H92 L89 65 H73 Z" fill="url(#tf-h)" stroke={INK} strokeWidth="0.8" /><path d="M78 60 V56 H85 V60 M81 56 V50" {...ln} /></>}
-        {at(180) && <path d="M18 66 H32 L30 69 H20 Z M23 66 V61" {...ln} fill={PAPER} />}
+        {at(240) && <g className="tf-mv tf-vflag"><path d="M25 24 L31 25.5 L25 27 Z" fill={SIEGEL} stroke={INK} strokeWidth="0.4" /></g>}
+        {at(80) && <g className="tf-mv tf-float"><path d="M70 60 H92 L89 65 H73 Z" fill="url(#tf-h)" stroke={INK} strokeWidth="0.8" /><path d="M78 60 V56 H85 V60 M81 56 V50" {...ln} /></g>}
+        {at(180) && <g className="tf-mv tf-float" style={{ animationDelay: "-1.7s" }}><path d="M18 66 H32 L30 69 H20 Z M23 66 V61" {...ln} fill={PAPER} /></g>}
       </svg>
     </div>
   );

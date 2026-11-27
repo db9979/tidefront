@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.21.1 – 27.11.2026
+- **Mehr Bewegung:** Im Hafenbild ziehen die Wellen, tagsüber fliegt eine Möwe vorbei, nachts funkeln Sterne; Boote schaukeln, Rauch und Flagge bewegen sich (je nach Ausbau), der Lichtkegel des Leuchtturms pulsiert. Die Uhr bei Tagesbefehlen und Bauhof dreht ihren Zeiger, die Medaille des Auftragsbuchs pendelt leise.
+
 ## 0.21.0 – 27.11.2026
 - **Lagebild Stufe 2 – Patrouille:** Schiffe oder Drohnen fahren 2–4 Wegpunkte auf See ab (4/8/12 h); Schiffe sehen 100 km, Drohnen 200 km. Abfangjäger fremder Häfen schießen Drohnen ab. Wer erfasst wird, erhält „Fremde Patrouille gesichtet“.
 - **Aufklärungskampagne:** bis zu 4 Ziele in einer Fahrt, je Ziel ein Lagebild, Erkennung 150 km um die Route; das Ziel erfährt „Aufklärer gesichtet“.

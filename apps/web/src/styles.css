@@ -178,6 +178,19 @@ input, select, textarea { color: var(--color-ink); }
 @keyframes tf-glint { 0%, 72%, 100% { opacity: 0; } 82% { opacity: 0.85; } }
 .tf-glint { animation: tf-glint 6s ease-in-out infinite; }
 /* Unsichtbar (außerhalb des Bildschirms) oder Tab verborgen: anhalten. */
+/* Uhr (Minutenzeiger), Medaille, Hafenbild: leise Grundbewegung in SVG-Einheiten (transform-box: view-box). */
+.tf-clock { animation: tf-spin 20s linear infinite; transform-box: view-box; transform-origin: 32px 32px; }
+@keyframes tf-sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+.tf-medal { animation: tf-sway 4.5s ease-in-out infinite; transform-box: view-box; transform-origin: 32px 4px; }
+.tf-wave { animation: tf-drift 6s ease-in-out infinite; }
+@keyframes tf-floaty { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(0.8px) rotate(-1deg); } }
+.tf-float { animation: tf-floaty 4s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+.tf-puff { animation: tf-glow 3s ease-in-out infinite; }
+.tf-vflag { animation: tf-flutter 1.8s ease-in-out infinite; transform-box: view-box; transform-origin: 25px 25.5px; }
+.tf-beam { animation: tf-glow 4s ease-in-out infinite; }
+@keyframes tf-gullfly { 0% { transform: translate(-8px, 6px); } 50% { transform: translate(44px, 0); } 100% { transform: translate(100px, 5px); } }
+.tf-gull { animation: tf-gullfly 22s linear infinite; }
+.tf-star { animation: tf-glow 2.8s ease-in-out infinite; }
 /* Wetter-Symbole (Vorhersage, Kärtchen): leise und versetzt. */
 @keyframes tf-drift { 0%, 100% { transform: translateX(-1.5px); } 50% { transform: translateX(1.5px); } }
 @keyframes tf-glow { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
