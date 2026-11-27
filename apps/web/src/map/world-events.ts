@@ -1,5 +1,6 @@
 // Weltereignisse auf der Karte im Kupferstich-Stil der übrigen Kartenzeichen: Schatzschiff mit Route,
-// Großflotte mit Ankündigungs-Countdown, Zielregion und Kurslinien, Belagerungsring um den Hafen.
+// Großflotte mit Ankündigungs-Countdown, Zielregion und Kurslinien, Belagerungsring um den Hafen, Saisonfinale (Leviathan
+// mit Lebensbalken aus Geschwadern und Flaggschiff-Sektionen, Vorhuten).
 // Linien in Weltkoordinaten (1 px über pixelLine), Zeichen in Bildschirmgröße (Gegenskalierung durch HexMap).
 import { Container, Graphics, Text } from "pixi.js";
 import { hexCenterXY } from "@tidefront/world";
@@ -21,6 +22,8 @@ export interface MapWorldEvent {
   harbor: { col: number; row: number } | null;
   region: { col: number; row: number; radiusKm: number } | null;
   targets: { col: number; row: number; status: string }[];
+  /** Saisonfinale: Lebensbalken und Vorhuten. */
+  finale?: { remainingHp: number; initialHp: number; boats: number; initialBoats: number; sections: number; initialSections: number; vanguards: { col: number; row: number; name: string }[] } | null;
 }
 
 const SERIF = "Fraunces, Georgia, 'Times New Roman', serif";
@@ -86,6 +89,42 @@ export function siegeRing(): Container {
   return c;
 }
 
+/** Saisonfinale: großes Siegel mit Seeungeheuer-Krone (Leviathan) über drei Rümpfen. */
+export function leviathanSymbol(gone = false): Container {
+  const c = new Container();
+  const g = new Graphics();
+  const ink = gone ? 0x59636f : INK;
+  g.circle(0, 0, 19).fill({ color: gone ? PAPER : SIEGEL }).stroke({ color: ink, width: 1.4 });
+  g.circle(0, 0, 15.5).stroke({ color: PAPER, width: 0.8 });
+  // Krone aus fünf Zacken (Kartell) und ein langer Rumpf mit Aufbauten (Flaggschiff).
+  g.poly([-9, -4, -9, -11, -5, -7, 0, -13, 5, -7, 9, -11, 9, -4]).fill({ color: gone ? ink : GOLD });
+  g.poly([-13, 2, 13, 2, 9, 8, -9, 8]).fill({ color: gone ? ink : PAPER });
+  g.rect(-6, -2, 4, 4).rect(1, -3, 5, 5).fill({ color: gone ? ink : PAPER });
+  if (gone) g.moveTo(-13, -13).lineTo(13, 13).stroke({ color: SIEGEL, width: 1.6 });
+  c.addChild(g);
+  return c;
+}
+
+/** Lebensbalken unter dem Leviathan: oben Geschwader, unten Sektionen des Flaggschiffs (Segmente). */
+function lifeBar(f: NonNullable<MapWorldEvent["finale"]>, y: number): Container {
+  const c = new Container();
+  const g = new Graphics();
+  const w = 46;
+  g.position.set(0, y);
+  g.rect(-w / 2, 0, w, 4).fill({ color: PAPER }).stroke({ color: INK, width: 0.8 });
+  const boats = f.initialBoats > 0 ? f.boats / f.initialBoats : 0;
+  if (boats > 0) g.rect(-w / 2 + 0.5, 0.5, (w - 1) * boats, 3).fill({ color: SIEGEL });
+  const n = Math.max(1, Math.min(f.initialSections, 12));
+  const seg = w / n;
+  const per = f.initialSections / n;
+  for (let i = 0; i < n; i++) {
+    const x = -w / 2 + i * seg;
+    g.rect(x + 0.5, 6, seg - 1, 3).fill({ color: i * per < f.sections ? GOLD : PAPER }).stroke({ color: INK, width: 0.5 });
+  }
+  c.addChild(g);
+  return c;
+}
+
 function hours(ms: number): string {
   const h = Math.max(0, ms) / 3600000;
   return h >= 1 ? `${Math.floor(h)} h ${Math.floor((h % 1) * 60)} min` : `${Math.max(1, Math.round(h * 60))} min`;
@@ -142,6 +181,23 @@ export function buildWorldEventLayer(events: MapWorldEvent[], now: number): { ro
       const text = ended ? (e.outcome === "defeated" ? "zerschlagen" : "abgezogen")
         : e.status === "announced" ? `Großflotte läuft aus in ${hours(e.activeAtMs - now)}` : "Großflotte greift an";
       pin(label(text, ended ? INK : SIEGEL, 19), at.x, at.y, 0.1);
+    } else if (e.kind === "finale") {
+      const at = hexCenterXY(e.col, e.row);
+      if (!ended) {
+        for (const v of e.finale?.vanguards ?? []) {
+          if (e.status === "active" && (e.finale?.boats ?? 0) <= 0) continue; // Vorhuten aufgelöst
+          const p = hexCenterXY(v.col, v.row);
+          dashedPath(lines, [p, at], 7);
+          lines.stroke({ color: SIEGEL, width: 1, pixelLine: true, alpha: 0.6 });
+          pin(armadaSymbol(), p.x, p.y);
+          pin(label("Vorhut", SIEGEL, 19), p.x, p.y, 0.12);
+        }
+      }
+      pin(leviathanSymbol(ended), at.x, at.y);
+      if (!ended && e.status === "active" && e.finale) pin(lifeBar(e.finale, 23), at.x, at.y);
+      const text = ended ? (e.outcome === "defeated" ? "Leviathan versenkt" : "Armada entkommen")
+        : e.status === "announced" ? `Saisonfinale · erscheint in ${hours(e.activeAtMs - now)}` : `Kartell-Armada · ${hours(e.endsAtMs - now)}`;
+      pin(label(text, ended ? INK : SIEGEL, e.status === "active" && !ended ? 34 : 23), at.x, at.y, 0.08);
     } else if (e.kind === "belagerung") {
       const at = hexCenterXY(e.col, e.row);
       if (!ended) {

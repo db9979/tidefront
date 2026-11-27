@@ -2,6 +2,13 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.26.0 – 27.11.2026
+- **Kopfgeld auf die Spitze:** Wer die Plätze 1, 2 oder 3 der Rangliste angreift, bekommt +50 / +35 / +20 % Kampfpunkte (wenn er selbst schlechter platziert ist). Die Abwehr der Spitze zählt dabei halb. In der Rangliste steht das Kopfgeld neben dem Namen.
+- **Mutfaktor:** Angriffe auf stärkere Spieler bringen bis zu 50 % mehr Kampf- und Beutepunkte, auf schwächere bis zu 50 % weniger.
+- **Paarbremse:** Mehrere Kämpfe zwischen denselben zwei Spielern innerhalb von 72 Stunden zählen immer weniger (voll, halb, ein Viertel, nichts). Nach Handel, Transporten, Stationierung oder gemeinsamer Allianz bzw. Pakt gibt es 7 Tage lang kein Kopfgeld – das verhindert Punkteschieben unter Freunden.
+- **Anfängerschutz** endet, sobald du selbst einen Spielerhafen überfällst; die Missionsplanung weist vorher darauf hin.
+- **Aufholhilfe:** Häfen, deren Ausbau deutlich unter dem Mittel aller Spieler liegt, bekommen eine Baugutschrift bis +50 % ihrer Gebäudeproduktion – nur für Gebäude, nicht plünder- oder handelbar. Wer ab dem 8. Saisontag einsteigt, bekommt ein Startpaket. Die Gutschrift steht unter der Ressourcenleiste und im Bauhof.
+
 ## 0.25.0 – 27.11.2026
 - **Admirale aufgewertet – neue Spezialisierung „Landungstrupp“:** Landtruppen greifen 10 % stärker an und haben 8 % mehr Lebenspunkte, Minensperren richten 30 % weniger Schaden an. Als Hafenkommandant stärkt er die eigenen Landtruppen um 6 %. In knappen Nest-Kämpfen hebt das die Siegchance deutlich.
 - **Beutemeister** bringt jetzt auch 10 % mehr feste Nestbeute (im Rahmen des Laderaums).

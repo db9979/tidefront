@@ -16,7 +16,7 @@ export const POINT_DIVISOR = 100;
  * Fester Kostenwert der NPC-Einheiten des Kartells (sie haben keine Baukosten). Angelehnt an vergleichbare
  * Spielereinheiten: Schnellboot ~ 0,45 Korvette (Lebenspunkte und Angriff), Piratenmiliz ~ 0,8 Schützen.
  */
-export const NPC_UNIT_VALUE: Record<string, number> = { schnellboot: 250, piratenmiliz: 40 };
+export const NPC_UNIT_VALUE: Record<string, number> = { schnellboot: 250, piratenmiliz: 40, flaggschiff: 2375 }; // Flaggschiff-Sektion (Saisonfinale): gleicher Wert je LP wie Schnellboot mit 8 Miliz
 
 export type Category = "ausbau" | "militaer" | "kampf" | "beute" | "befehle";
 export const CATEGORIES: Category[] = ["ausbau", "militaer", "kampf", "beute", "befehle"];
@@ -146,8 +146,10 @@ export function reportScore(b: ScoredReport, pvp?: PvpFactors): { attacker: { ka
   const f = sc?.npcDefenseFactor ?? 1;
   const npcEvent = b.kind === "weltereignis" && !!b.weKind && (sc?.npcWorldEventKinds ?? []).includes(b.weKind);
   const p = pvp ?? { kampf: 1, beute: 1, defense: 1 }; // PvP: Kopfgeld, Mutfaktor, Paarbremse (pvpFactors)
+  // Saisonfinale: Kampfpunkte aus Armada-Kämpfen × scoring.armadaFactor (Beute voll; kein Spielerkampf, PvP-Faktoren 1).
+  const armada = b.kind === "weltereignis" && b.weKind === "finale" ? (sc?.armadaFactor ?? 1) : null;
   return {
-    attacker: b.attackerPlayerId === null ? null : { kampf: countsValue(b.dl) * (npcEvent ? f : 1) * p.kampf, beute: resValue(b.loot) * p.beute },
+    attacker: b.attackerPlayerId === null ? null : { kampf: countsValue(b.dl) * (armada ?? (npcEvent ? f : 1)) * p.kampf, beute: resValue(b.loot) * p.beute },
     defender: b.defenderPlayerId === null ? null : { kampf: countsValue(b.al) * (b.attackerPlayerId === null ? f : 1) * p.defense },
   };
 }

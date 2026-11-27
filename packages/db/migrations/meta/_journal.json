@@ -176,6 +176,13 @@
       "when": 1795791992039,
       "tag": "0024_admiral_umschulung",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1795793471222,
+      "tag": "0025_saisonfinale",
+      "breakpoints": true
     }
   ]
 }

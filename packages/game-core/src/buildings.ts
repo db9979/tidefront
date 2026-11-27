@@ -15,7 +15,7 @@ export function missingRequirement(base: BaseState, buildingId: string, balance:
 
 /**
  * Kosten für den Ausbau von Stufe `level` auf `level + 1`, je Ressource aufgerundet: cost × costFactor^level, dann
- * (v1.28, building.costShift) der Anteil min(max, perLevel × level) des Stahls wertgleich zum Richtpreis auf die
+ * (v1.29, building.costShift) der Anteil min(max, perLevel × level) des Stahls wertgleich zum Richtpreis auf die
  * Zielmischung umgelegt.
  */
 export function upgradeCost(buildingId: string, level: number, balance: Balance): ResourceMap {

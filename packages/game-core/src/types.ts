@@ -26,7 +26,7 @@ export interface AttackValues {
 }
 
 /**
- * Stufenabhängige Kostenmischung (v1.28): Beim Ausbau von Stufe L auf L+1 wird der Anteil min(max, perLevel × L) der
+ * Stufenabhängige Kostenmischung (v1.29): Beim Ausbau von Stufe L auf L+1 wird der Anteil min(max, perLevel × L) der
  * Stahlkosten zum Börsen-Richtpreis (market.refPrice) wertgleich auf andere Rohstoffe umgelegt, gewichtet nach `to`
  * (bzw. BuildingDef.costShiftTo). Höhere Stufen verlagern also mehr; der Gesamtwert bleibt (bis auf Rundung) gleich.
  */
@@ -38,7 +38,7 @@ export interface CostShift {
 
 export interface BuildingDef {
   cost: ResourceMap;
-  /** Kostenverschiebung (v1.28): Zielmischung des von Stahl verlagerten Werts; ohne Angabe building.costShift.to. */
+  /** Kostenverschiebung (v1.29): Zielmischung des von Stahl verlagerten Werts; ohne Angabe building.costShift.to. */
   costShiftTo?: ResourceMap;
   seconds: number;
   produces?: string;
@@ -161,7 +161,7 @@ export interface Balance {
     productionGrowth: number;
     /** Höchstzahl der Aufträge in der Bauschlange eines Stützpunkts. */
     queueSlots: number;
-    /** Stufenabhängige Kostenmischung (v1.28), siehe upgradeCost. */
+    /** Stufenabhängige Kostenmischung (v1.29), siehe upgradeCost. */
     costShift?: CostShift;
   };
   buildings: Record<string, BuildingDef>;
@@ -254,6 +254,8 @@ export interface ScoringBalance {
   npcDefenseFactor: number;
   /** Weltereignisse, deren Bekämpfung als Abwehr zählt (Großflotte, Belagerungsring). */
   npcWorldEventKinds?: string[];
+  /** Saisonfinale: Faktor auf Kampfpunkte aus Kämpfen gegen die Armada (Weltereignis finale). */
+  armadaFactor?: number;
 }
 // ---------------------------------------------------------------- Ergebnis
 

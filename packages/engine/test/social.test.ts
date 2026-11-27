@@ -133,7 +133,7 @@ test("Rangliste: Punkte je Kategorie nach Formel", async () => {
   const rows = await computeStandings(db, season.startsAt.getTime(), Date.now());
   const a = rows.find((r) => r.playerId === A.playerId)!;
   const b = rows.find((r) => r.playerId === B.playerId)!;
-  // Stahlwerk: 120 + 30 × 1,8 = 174, Stufe 2: 180 + 45 × 1,8 = 261 – ab v1.28 mit Kostenmischung (3 % des Stahls zu
+  // Stahlwerk: 120 + 30 × 1,8 = 174, Stufe 2: 180 + 45 × 1,8 = 261 – ab v1.29 mit Kostenmischung (3 % des Stahls zu
   // Elektronik/Proviant, je Ressource aufgerundet): 175 + 45 × 1,8 + 2 × 3 + 3 × 0,6 = 263,8.
   assert.ok(Math.abs(buildingValue({ stahlwerk: 2 }) - (174 + 263.8)) < 1e-9);
   // A: Ausbau 435, Militär 2 Korvetten 1460, Kampf 1530 + 1400, Beute 1990 + 900. B: Bunkerlinie 460, Kampf 420 + 125.

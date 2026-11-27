@@ -56,7 +56,39 @@ Wirtschaftsspieler 25 % Rüstung; Ausbauwert / Median nach 14 Tagen bzw. am Sais
   Median-Ausbau gegen Saisonende abflacht (ohne Hilfe 96 %).
 - Wer von Anfang an mitspielt, bekommt nichts (Σ 0).
 
-## Baukosten umverteilen: stufenabhängige Kostenmischung (Balance v1.28)
+## AE. Saisonfinale „Leviathan“
+
+Umsetzung von docs/VORLAGE-SAISONFINALE.md mit den Nutzerentscheidungen (1a Abzug ohne Strafe, Restbeute verfällt,
+Ruhmeshalle „entkommen“; 2b Kampfpunkte × 0,5; 3 zentraler Ort, Vorhuten bei weit verteilten Häfen; 4b KI tragen bei,
+Titel/Ruhmeshalle nur Menschen; 5a Tag 36 Ankündigung, Tag 38 12:00 + 72 h; 6a Beute ohne Laderaumgrenze).
+
+1. **Ereignisart `finale`** in der Tabelle `world_event` (Weltereignis wie die anderen, aber nicht in `WORLD_EVENT_KINDS`:
+   nie zufällig geplant). Eigene game_event-Typen `finale_announce`, `finale_appear`, `finale_end`; der Planer hängt an
+   `ensureWorldEventPlanner` (eine Ankündigung je Saison). Gewöhnliche Weltereignisse enden ab der Ankündigung
+   (`ordinaryEventsUntil`).
+2. **Zeiten** als Tage nach Saisonbeginn (35,5 / 37,5) plus 72 h, bezogen auf 42 Tage; andere Saisonlängen
+   proportional (auch die Dauer), Ende immer vor dem Saisonende.
+3. **Flaggschiff** als NPC-Einheit `flaggschiff` (eine Sektion, 1 000 LP) in `balance.npcUnits`; Teilschaden bleibt so
+   über mehrere Angriffe erhalten. Wert in der Wertung 2 375 je Sektion (gleicher Wert je LP wie Schnellboot + 8 Miliz).
+4. **Abschnitt** = 0,5 × K / hp(Schnellboot) Boote – genau wie in der Rechnung der Vorlage (K in LP der Kriegsschiffe
+   und Flugzeuge, die Boote kommen mit ihrer Miliz, Schaden ≈ 1,5 × K). Mindestens 4 Boote.
+5. **Vorhuten** (Frage 3b als Automatik): Spannweite der Teilnehmerhäfen > 1 500 km → je ferner Hafen (> 400 km vom
+   Sammelpunkt) eine Vorhut höchstens 400 km vor ihm, nahe Häfen teilen sich eine. Vorhuten sind nur weitere
+   Kampforte derselben Geschwader (gemeinsamer Bestand), keine eigenen Verbände; eine Mission fährt zum nächsten
+   Kampfort. Nach dem Versenken der Geschwader bleibt nur der Sammelpunkt (Ankunft an einer Vorhut: Bericht ohne Kampf).
+6. **Aktiv** heißt: `player.last_seen_at` (oder Anmeldung) in den letzten 72 h; KI-Spieler zählen immer.
+7. **Allianz-Schaden** nur von menschlichen Mitgliedern zum Kampfzeitpunkt, mitgeschrieben in `world_event.data.finale`
+   (Entscheidung 4b gilt auch für den Titel „Leviathan-Flotte“). Der Gesamtschaden (Anteile, Erfolg) enthält die KI.
+8. **Ruhmeshalle:** neue Tabelle `season_finale_result` (eine Zeile je Saison; bleibt über das Saisonende, anders als
+   `world_event`). Sie erscheint in der Ruhmeshalle der beendeten Saison; bis dahin stehen Ergebnis und Titel in der
+   Systemnachricht an alle und im Kartenblatt. **Migration erzeugt der Integrator** (`drizzle-kit generate`).
+9. **Erfolg „Armada-Jäger“** (Zähler `armada`, Modus max, keine Wochenziele): Anteil am Gesamtschaden in ganzen Prozent.
+10. **Vor dem Erscheinen** werden Missionen abgelehnt, die vorher ankämen (`finale_not_yet`); ein Sammelangriff, der zu
+    früh ankommt, findet keinen Gegner (Bericht ohne Kampf).
+11. **Verwaltung:** „Saisonfinale vorziehen“ (`admin.startFinale`, Engine `startFinaleNow`) kündigt sofort an; ein
+    beendetes Finale der Saison wird ersetzt (Ergebnis gelöscht), ein laufendes nicht.
+12. **Wertung:** eine abgegrenzte Stelle in `scoring.ts` (`armada` in `reportScore`) mit `scoring.armadaFactor`; sie ersetzt nur den NPC-Faktor. Armada-Kämpfe sind keine Spielerkämpfe, die PvP-Faktoren bleiben dort 1.
+## Baukosten umverteilen: stufenabhängige Kostenmischung (Balance v1.29)
 
 **Anlass:** Wirtschaftsprüfung 0.24.2 – Stahl ist die ganze Saison einziger Engpass (≈ 1 % ungenutzt), Treibstoff 57 %,
 Elektronik 66 %, Proviant 43 % bleiben liegen, weil Bauen fast nur Stahl kostet. Nutzerentscheid: Baukosten umverteilen.

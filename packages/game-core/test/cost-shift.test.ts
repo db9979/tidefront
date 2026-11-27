@@ -1,4 +1,4 @@
-// Stufenabhängige Kostenmischung (building.costShift, v1.28): höhere Stufen verlagern einen wachsenden Anteil des Stahls
+// Stufenabhängige Kostenmischung (building.costShift, v1.29): höhere Stufen verlagern einen wachsenden Anteil des Stahls
 // wertgleich zum Börsen-Richtpreis auf andere Rohstoffe.
 import { test } from "node:test";
 import assert from "node:assert/strict";

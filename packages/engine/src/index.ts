@@ -48,6 +48,9 @@ export { dailySummarySection } from "./daily-summary.ts";
 export { ensureWorldEventPlanner, siegeEffects, clearWorldEvents } from "./world-events.ts";
 export { spawnWorldEvent } from "./world-events-spawn.ts";
 export { worldEventsView } from "./world-events-view.ts";
+export { startFinaleNow, ensureFinalePlanner } from "./finale-run.ts"; // Saisonfinale
+export { finaleParticipants, finaleCenter, finaleVanguards } from "./finale-core.ts";
+export { finaleAim } from "./finale-battle.ts";
 export {
   clearMarketNews, effectiveMarketRefs, marketNewsAdmin, marketNewsView, marketRefs, pctText, upsertNews, REF_OFFSETS_KEY, SCARCITY_KEY,
 } from "./market-news.ts";

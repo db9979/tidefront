@@ -3,6 +3,7 @@
 import { index, integer, jsonb, pgTable, serial, text, uniqueIndex } from "drizzle-orm/pg-core";
 import { ts } from "./columns.ts";
 import { player } from "./core.ts";
+import { season } from "./social.ts";
 
 // ================================================================ Weltereignisse des Freibeuter-Kartells
 // Schatzschiff, Großflotte und Belagerung (REGELN.md, Abschnitt Weltereignisse). Ablauf über game_event-Typen
@@ -45,3 +46,29 @@ export const worldEventDamage = pgTable("world_event_damage", {
   loot: jsonb("loot").notNull().default({}),
   attacks: integer("attacks").notNull().default(0),
 }, (t) => [uniqueIndex("world_event_damage_pk").on(t.eventId, t.playerId)]);
+
+/**
+ * Saisonfinale „Leviathan“: Ergebnis für die Ruhmeshalle (bleibt über das Saisonende, anders als world_event). Eine Zeile
+ * je Saison. players: nur Menschen, absteigend nach Schaden ({ playerId, name, hp, share }); alliances: Schaden der
+ * menschlichen Mitglieder zum Kampfzeitpunkt ({ name, tag, hp }), absteigend.
+ */
+export const seasonFinaleResult = pgTable("season_finale_result", {
+  id: serial("id").primaryKey(),
+  seasonId: integer("season_id").notNull().references(() => season.id, { onDelete: "cascade" }),
+  /** sunk (versenkt) | escaped (entkommen) */
+  outcome: text("outcome").notNull(),
+  /** Versenkt bzw. abgezogen um. */
+  endedAt: ts("ended_at").notNull(),
+  /** Stärke H der Armada und insgesamt vernichtete Lebenspunkte (alle Teilnehmer, KI eingeschlossen). */
+  totalHp: integer("total_hp").notNull(),
+  destroyedHp: integer("destroyed_hp").notNull(),
+  players: jsonb("players").notNull().default([]),
+  alliances: jsonb("alliances").notNull().default([]),
+  /** Titel „Bezwinger des Leviathan“ (meister Schaden, nur Menschen); Name zum Finale. */
+  championPlayerId: integer("champion_player_id").references(() => player.id, { onDelete: "set null" }),
+  championName: text("champion_name"),
+  /** Titel „Leviathan-Flotte“: Allianz mit dem meisten Schaden (Name und Kürzel zum Finale). */
+  fleetName: text("fleet_name"),
+  fleetTag: text("fleet_tag"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [uniqueIndex("season_finale_result_season").on(t.seasonId)]);

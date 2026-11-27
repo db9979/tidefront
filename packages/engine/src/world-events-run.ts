@@ -26,6 +26,7 @@ import {
   type WorldEventRow,
 } from "./world-events.ts";
 import { worldEventSpawn } from "./world-events-spawn.ts";
+import { FINALE_HANDLERS } from "./finale-run.ts";
 import { modsOf } from "./modifiers.ts";
 import { battleWeather } from "./weather.ts"; // Wetter am Kampfort wie bei normalen Kämpfen (v1.6)
 
@@ -170,6 +171,7 @@ export const WORLD_EVENT_HANDLERS: Record<string, Handler> = {
   world_event_move: worldEventMove,
   world_event_attack: worldEventAttack,
   world_event_end: worldEventEnd,
+  ...FINALE_HANDLERS, // Saisonfinale: finale_announce, finale_appear, finale_end
 };
 
 export { siegeTick };

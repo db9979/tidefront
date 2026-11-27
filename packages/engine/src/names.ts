@@ -6,7 +6,7 @@ const NAMES: Record<string, string> = {
   werft: "Werft", kaserne: "Kaserne", flugfeld: "Flugfeld", radarstation: "Radarstation", hafenkommandantur: "Hafenkommandantur",
   korvette: "Korvette", zerstoerer: "Zerstörer", landungsschiff: "Landungsschiff", uboot: "U-Boot", schuetzen: "Schützen", pioniere: "Pioniere",
   kampfpanzer: "Kampfpanzer", abfangjaeger: "Abfangjäger", jagdbomber: "Jagdbomber", aufklaerungsdrohne: "Aufklärungsdrohne",
-  schnellboot: "Schnellboot", piratenmiliz: "Piratenmiliz", kuestenbatterie: "Küstenbatterie", flakstellung: "Flakstellung",
+  schnellboot: "Schnellboot", piratenmiliz: "Piratenmiliz", flaggschiff: "Leviathan-Sektion", kuestenbatterie: "Küstenbatterie", flakstellung: "Flakstellung",
   bunkerlinie: "Bunkerlinie", minensperre: "Minensperre",
   stahl: "Stahl", treibstoff: "Treibstoff", elektronik: "Elektronik", proviant: "Proviant", credits: "Kredite",
   // Für ausführliche E-Mails (wie apps/web/src/lib/names.ts)
@@ -17,7 +17,7 @@ const NAMES: Record<string, string> = {
   startrampe: "Startrampe", stoersender: "Störsender", // Lagebild Stufe 3
   bauschlange: "Bauschlange", oelfeld: "Ölfeld", erzbucht: "Erzbucht", fischgrund: "Fischgrund", elektronikwrack: "Elektronik-Wrack",
   nachrichtendienst: "Nachrichtendienst", elektrolyse: "Elektrolyse", seekabel: "Seekabel",
-  schatzschiff: "Schatzschiff", grossflotte: "Großflotte", belagerung: "Belagerung", // Weltereignisse
+  schatzschiff: "Schatzschiff", grossflotte: "Großflotte", belagerung: "Belagerung", finale: "Kartell-Armada", // Weltereignisse
   ueberfall: "Überfall", aufklaerung: "Aufklärung", transport: "Transport", minen: "Minen legen", raeumen: "Minen räumen",
   blockade: "Blockade", abfangen: "Konvoi abfangen", geleit: "Geleitschutz", besetzen: "Besetzen", gruendung: "Gründung",
   verlegung: "Verlegung", patrouille: "Patrouille", radarposten: "Radarposten", // Missionsarten
@@ -38,7 +38,7 @@ export const TECH_NAMES: Record<string, string> = {
 const PLURAL: Record<string, string> = {
   korvette: "Korvetten", zerstoerer: "Zerstörer", landungsschiff: "Landungsschiffe", uboot: "U-Boote", schuetzen: "Schützen", pioniere: "Pioniere",
   kampfpanzer: "Kampfpanzer", abfangjaeger: "Abfangjäger", jagdbomber: "Jagdbomber", aufklaerungsdrohne: "Aufklärungsdrohnen",
-  schnellboot: "Schnellboote", piratenmiliz: "Piratenmilizionäre", kuestenbatterie: "Küstenbatterien", flakstellung: "Flakstellungen",
+  schnellboot: "Schnellboote", piratenmiliz: "Piratenmilizionäre", flaggschiff: "Leviathan-Sektionen", kuestenbatterie: "Küstenbatterien", flakstellung: "Flakstellungen",
   bunkerlinie: "Bunkerlinien", minensperre: "Minensperren", spion: "Spione", minenleger: "Minenleger", minenraeumer: "Minenräumer",
   kolonieschiff: "Kolonieschiffe",
 };

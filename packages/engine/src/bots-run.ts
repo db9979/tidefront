@@ -17,6 +17,7 @@ import { layMines, raidNest, raidPlayer, type TurnCtx } from "./bots-war.ts";
 import { botPatrol, botSatellite } from "./bots-intel.ts";
 import { expansionTurn, marketTurn, offersTurn } from "./bots-econ.ts";
 import { fieldTurn, wantsField } from "./bots-fields.ts";
+import { raidFinale } from "./bots-finale.ts";
 import { admiralTurn } from "./bots-admiral.ts"; // Admirale
 
 /** Zusatzanteile der Doktrin, solange ein Feldverband fehlt (bots-fields.ts). */
@@ -131,6 +132,7 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
     const m = mods.get(b.id)!;
     await botSatellite(c, b); // Lagebild Stufe 3: Satellit, wenn viele Nester ohne Lagebild sind
     if (await fieldTurn(c, b, m)) continue;
+    if (await raidFinale(c, b, m)) continue; // Saisonfinale: Abschnitt der Armada, wenn sicher gewonnen
     if (await layMines(c, b)) continue;
     // Admirale: der Probekampf rechnet den bereiten Admiral dieses Hafens ein; tryLaunch nimmt ihn mit.
     const raid = c.admiral?.baseId === b.id ? combineModifiers(m, c.admiral.mods) : m;

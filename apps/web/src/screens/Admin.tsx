@@ -12,6 +12,7 @@ import { AdminStats } from "./AdminStats.tsx";
 import { AdminBugReports } from "./AdminBugReports.tsx";
 import { AdminEvents } from "./AdminEvents.tsx"; // Ereignis-Queue: fehlgeschlagene Ereignisse
 import { AdminCartel } from "./AdminCartel.tsx";
+import { AdminFinale } from "./AdminFinale.tsx"; // Saisonfinale vorziehen
 import { AdminIntel } from "./AdminIntel.tsx"; // Lagebild: Kartennebel an/aus
 import { AdminBots } from "./AdminBots.tsx"; // KI-Spieler
 import { AdminPvp } from "./AdminPvp.tsx"; // Spieler gegen Spieler: Auffällige Paare
@@ -181,6 +182,7 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
       <AdminMail />
       <AdminBackups />
       <AdminCartel />
+      <AdminFinale />
       <AdminIntel />
       <AdminPvp />
       <AdminStats />

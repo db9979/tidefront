@@ -20,7 +20,7 @@ const TYPE_TEXT: Record<string, string> = {
   spy_arrive: "Spionageauftrag", spy_sabotage_end: "Ende einer Sabotage", pact_expire: "Pakt läuft aus",
   alliance_raid_launch: "Sammelangriff läuft aus", alliance_raid_arrive: "Sammelangriff kommt an",
   world_event_spawn: "Weltereignis beginnt", world_event_move: "Weltereignis bewegt sich", world_event_attack: "Angriff eines Weltereignisses",
-  world_event_end: "Weltereignis endet", blockade_end: "Blockade endet", convoy_raid: "Konvoi abfangen",
+  world_event_end: "Weltereignis endet", finale_announce: "Saisonfinale: Ankündigung", finale_appear: "Saisonfinale: Armada erscheint", finale_end: "Saisonfinale: Abzug", blockade_end: "Blockade endet", convoy_raid: "Konvoi abfangen",
   field_tick: "Felder: Ertrag", field_delivery: "Felder: Lieferung", field_raid: "Felder: Kartell-Angriff", field_warning: "Felder: Warnung",
   patrol_tick: "Patrouille", patrol_end: "Patrouille endet", radar_post_tick: "Radarposten",
   satellite_pass: "Satellit: Überflug", satellite_end: "Satellit verglüht",

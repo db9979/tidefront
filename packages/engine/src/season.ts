@@ -13,6 +13,7 @@ import { clearWorldEvents } from "./world-events.ts";
 import { clearMarketNews } from "./market-news.ts";
 import { ensureNests } from "./nest-sites.ts";
 import { allianceResultsFor, allianceStandings, saveAllianceStandings } from "./season-alliances.ts";
+import { finaleResultsFor } from "./finale-core.ts"; // Saisonfinale
 
 const DAY_MS = 86400000;
 
@@ -241,6 +242,7 @@ export async function hallOfFame(db: DbOrTx, playerId: number) {
     .limit(50);
   if (seasons.length === 0) return [];
   const allianceResults = await allianceResultsFor(db, seasons.map((s) => s.id), playerId);
+  const finales = await finaleResultsFor(db, seasons.map((s) => s.id), playerId); // Saisonfinale
   const results = await db
     .select()
     .from(tables.seasonResult)
@@ -266,6 +268,8 @@ export async function hallOfFame(db: DbOrTx, playerId: number) {
       ) as Record<string, { name: string; value: number | null } | null>,
       /** Allianzwertung zum Saisonende (Summe der Mitgliederpunkte), nach Rang. */
       alliances: allianceResults.get(s.id) ?? [],
+      /** Saisonfinale „Leviathan“: versenkt/entkommen, Titel, Rangliste (nur Menschen). */
+      finale: finales.get(s.id) ?? null,
       own: own ? { ...pick(own), ausbau: own.ausbau, militaer: own.militaer, kampf: own.kampf, beute: own.beute, befehle: own.befehle } : null,
     };
   });

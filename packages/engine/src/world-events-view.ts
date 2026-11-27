@@ -6,6 +6,7 @@ import { tables } from "@tidefront/db";
 import { balance, type Engine } from "./context.ts";
 import { ownBase } from "./store.ts";
 import { openWorldEvents, siegeEffects, type WorldEventRow } from "./world-events.ts";
+import { finaleView } from "./finale-core.ts";
 
 const HOUR_MS = 3600000;
 
@@ -77,11 +78,12 @@ export async function worldEventsView(engine: Engine, playerId: number, baseId?:
       winner: e.winnerPlayerId !== null ? names.get(e.winnerPlayerId) ?? "?" : null,
       contributors: mine.sort((a, b) => b.hp - a.hp).map((d) => ({ name: d.name, hp: d.hp, attacks: d.attacks, own: d.playerId === playerId })),
       distanceKm: own ? Math.round(hexDistanceKm(own, pos)) : null,
+      finale: e.kind === "finale" ? finaleView(e) : null, // Saisonfinale: Lebensbalken, Abschnitte, Vorhuten
     };
   });
   const siege = own ? await siegeEffects(engine.db, own.id, nowMs) : null;
   const nearby = events
-    .filter((e) => e.status !== "ended" && e.distanceKm !== null && (e.distanceKm <= w.nearbyKm || e.targets.some((t) => t.own)))
+    .filter((e) => e.status !== "ended" && e.distanceKm !== null && (e.distanceKm <= w.nearbyKm || e.targets.some((t) => t.own) || e.kind === "finale"))
     .map((e) => e.id);
   return { serverNow: nowMs, events, ownSiege: siege, nearby };
 }
