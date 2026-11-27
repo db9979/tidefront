@@ -9,11 +9,11 @@ import type { HandlerResult } from "./events.ts";
 import { homeBaseOf, lockBase, lockBases, saveBase, scheduleEvent } from "./store.ts";
 import { modsOf } from "./modifiers.ts";
 import { recordAchievement } from "./achievements.ts";
-import { activeCounts, playerName, pushNotice, sendHome, storeNavalReport, type MissionRowLike, type Notes } from "./naval-common.ts";
+import { activeCounts, pushNotice, sendHome, storeNavalReport, type MissionRowLike, type Notes } from "./naval-common.ts";
 import { FOUNDING_TYPE, foundingCheck } from "./expansion.ts";
+import { colonyNameAt } from "./harbor-names.ts";
 
 const HOUR_MS = 3600000;
-const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
 /** Gründe einer gescheiterten Gründung als Text für den Bericht. */
 const FOUNDING_FAIL_TEXT: Record<string, string> = {
@@ -22,12 +22,6 @@ const FOUNDING_FAIL_TEXT: Record<string, string> = {
   command_level: "Kommandozentrale zu niedrig", base_limit: "Höchstzahl Häfen erreicht", colony_ship: "kein Kolonieschiff",
   expansion_off: "Gründungen abgeschaltet", no_base: "kein Heimathafen",
 };
-
-/** Name des neuen Hafens: „<Spielername> II“, „… III“ nach Zahl der eigenen Häfen. */
-async function colonyName(tx: Tx, playerId: number): Promise<string> {
-  const n = (await tx.select({ id: tables.base.id }).from(tables.base).where(eq(tables.base.playerId, playerId))).length + 1;
-  return `${await playerName(tx, playerId)} ${ROMAN[n] ?? n}`;
-}
 
 /** Ankunft einer Gründung/Verlegung (mission_arrive, Weiche in handlers.ts). */
 export async function expansionArrive(tx: Tx, m: MissionRowLike & { plan: unknown }, dueMs: number): Promise<HandlerResult> {
@@ -48,7 +42,7 @@ async function foundingArrive(tx: Tx, m: MissionRowLike, plan: Mission, due: num
   let name = "";
   if (!blocker) {
     const home = (await homeBaseOf(tx, pid))!;
-    name = await colonyName(tx, pid);
+    name = await colonyNameAt(tx, pid, at.col, at.row); // Ortsname aus der Karte
     const state = createColony(balance, due, hexCenter(at.col, at.row), home.state.protection, plan.cargo);
     // Wettlauf: base_field ist eindeutig; der Verlierer bekommt „Feld besetzt“.
     const ins = await tx.insert(tables.base).values({ playerId: pid, name, col: at.col, row: at.row, state, isHome: false })

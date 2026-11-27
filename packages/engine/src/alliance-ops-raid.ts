@@ -66,8 +66,10 @@ async function resolveTarget(db: DbOrTx, input: { col: number; row: number; even
 /**
  * Darf dieser Spieler das Ziel (noch) angreifen? Überfall-Schutzregeln wie beim einzelnen Überfall.
  * Codes: no_target, own_base, ally, pact, target_protected, nest_empty, event_over, own_siege. Liefert den Zielzustand.
+ * fromBaseId: Ausgangshafen des Verbands – die Belagerung eines eigenen Hafens darf man aus einem anderen eigenen
+ * Hafen brechen (ohne fromBaseId gilt sie als eigene: own_siege).
  */
-export async function targetProblem(db: DbOrTx, playerId: number, t: { targetKind: string; targetId: number }, nowMs: number): Promise<{ code: string | null; state?: BaseState }> {
+export async function targetProblem(db: DbOrTx, playerId: number, t: { targetKind: string; targetId: number }, nowMs: number, fromBaseId?: number): Promise<{ code: string | null; state?: BaseState }> {
   if (t.targetKind === "base") {
     const [b] = await db.select().from(tables.base).where(eq(tables.base.id, t.targetId));
     if (!b) return { code: "no_target" };
@@ -86,7 +88,7 @@ export async function targetProblem(db: DbOrTx, playerId: number, t: { targetKin
   }
   const ev = await readWorldEvent(db, t.targetId);
   if (!ev || !isOpen(ev) || nowMs >= ev.endsAt.getTime()) return { code: "event_over" };
-  if (ev.kind === "belagerung" && ev.data.ownerId === playerId) return { code: "own_siege" };
+  if (ev.kind === "belagerung" && ev.data.ownerId === playerId && (fromBaseId === undefined || ev.targetBaseId === null || ev.targetBaseId === fromBaseId)) return { code: "own_siege" };
   return { code: null };
 }
 
@@ -109,7 +111,7 @@ async function joinWith(ctx: Ctx, raid: RaidRow, units: Counts, baseId?: number)
   const { tx, playerId, nowMs } = ctx;
   const own = await lockOwnBase(tx, playerId, baseId); // mehrere Häfen: Verband aus dem aktiven Hafen
 
-  const p = await targetProblem(tx, playerId, raid, nowMs);
+  const p = await targetProblem(tx, playerId, raid, nowMs, own.id);
   if (p.code) fail(p.code);
   const members = await raidMembers(tx, raid.id);
   if (members.some((m) => m.playerId === playerId)) fail("raid_joined");
@@ -313,8 +315,8 @@ export const raidLaunch: Handler = async (tx, ev, due) => {
   }
   const keep: { playerId: number; mission: typeof tables.mission.$inferSelect; travelMs: number; stealth: number }[] = [];
   for (const m of members) {
-    const p = await targetProblem(tx, m.playerId, raid, due);
     const [mission] = await tx.select().from(tables.mission).where(eq(tables.mission.id, m.missionId)).for("update");
+    const p = await targetProblem(tx, m.playerId, raid, due, mission?.baseId ?? undefined);
     const origin = mission?.baseId ? await readBase(tx, mission.baseId) : null;
     if (p.code || !mission || mission.status !== "staged" || !origin) {
       await releaseStaged(tx, m.missionId, due);

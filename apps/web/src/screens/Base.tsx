@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, type Balance, type BaseData } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
+import { isThreat } from "../lib/expansion.ts"; // Mehrere Häfen: eigene Verlegung ist kein Angriff
+import { HarborManageButton } from "../components/HarborManage.tsx";
 import { fmtDuration, fmtSeconds, fmtTime, useNow } from "../lib/time.ts";
 import { liveResources } from "../lib/live.res.ts";
 import { buildingEffect, buildingText, cancelLoss, cancelQuestion } from "../lib/info.ts";
@@ -64,12 +66,13 @@ export function BaseScreen(props: {
           <div className="flex flex-wrap gap-1 mt-1">
             {base.protection.status ? <Badge tone="green">{label(base.protection.status)}</Badge> : <Badge tone="red">ungeschützt</Badge>}
             <Badge>{base.market.port.name} {fmtNum(base.market.port.distanceKm)} km</Badge>
+            <HarborManageButton base={base} className="ml-auto" />{/* Mehrere Häfen: umbenennen, Kolonie aufgeben */}
           </div>
         </div>
       </section>
 
       {/* Angriffs- und Ereignisbanner */}
-      {base.incoming.filter((i) => i.type !== "transport").map((i) => (
+      {base.incoming.filter(isThreat).map((i) => (
         <div key={i.id} className="rounded-xl bg-red-950 border border-siegel border-l-4 p-3 mb-3 flex gap-3 items-center" role="alert">
           <Icon id={i.type === "kartell" ? "kartell" : "ueberfall"} size={40} />
           <div className="text-sm">

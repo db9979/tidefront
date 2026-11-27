@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, type BaseData } from "../lib/trpc.ts";
 import { fmtNum, label } from "../lib/names.ts";
+import { isThreat, TRANSFER } from "../lib/expansion.ts"; // Mehrere Häfen
 import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
 import { Icon } from "../icons.tsx";
 import { Card } from "../ui.tsx";
@@ -32,10 +33,12 @@ export function timelineItems(base: BaseData, nowMs: number, opts: { seasonEndMs
     out.push({ key: `mr:${m.id}`, atMs: m.returnAtMs, icon: m.type, text: m.type === "spionage" ? "Spione zurück" : `${label(m.type)}: Verband zurück` });
   }
   for (const i of base.incoming) {
-    const attack = i.type !== "transport";
+    const attack = isThreat(i);
+    // Mehrere Häfen: eigene Verlegung/eigener Transport aus einem anderen Hafen (keine Warnung).
+    const own = i.own ? (i.type === TRANSFER ? "Eigene Verlegung" : "Eigener Transport") : "Transport";
     out.push({
-      key: `i:${i.id}`, atMs: i.arriveAtMs, icon: i.type === "kartell" ? "kartell" : attack ? "ueberfall" : "transport",
-      text: attack ? `${label(i.type)}: Angriff trifft ein` : i.from ? `Transport von ${i.from} trifft ein` : "Transport trifft ein", alert: attack,
+      key: `i:${i.id}`, atMs: i.arriveAtMs, icon: i.type === "kartell" ? "kartell" : attack ? "ueberfall" : i.type === TRANSFER ? TRANSFER : "transport",
+      text: attack ? `${label(i.type)}: Angriff trifft ein` : i.from ? `${own} von ${i.from} trifft ein` : `${own} trifft ein`, alert: attack,
     });
   }
   for (const d of base.deliveries) {

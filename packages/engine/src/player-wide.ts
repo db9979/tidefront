@@ -1,5 +1,6 @@
 // Mehrere Häfen: spielerweite Werte, die aus mehreren Häfen abgeleitet werden.
-// - Hafenkommandantur für Börse (Freischaltung, Kreditlimit) und Admiral-Plätze: höchste Stufe aller Häfen.
+// - Hafenkommandantur für Börse (Freischaltung, Kreditlimit), Spielerhandel (Freischaltung) und Admiral-Plätze:
+//   höchste Stufe aller Häfen.
 // - Börsen-Tageslimit: Lagerkapazität des Heimathafens.
 // - Forschung: wird im Heimathafen geführt; Kolonien zeigen dessen Stand.
 import { buildingLevel, settle, storageCapacity, type BaseState } from "@tidefront/game-core";
@@ -16,6 +17,11 @@ export function maxHarborLevelOf(bases: BaseRow[], known?: { id: number; state: 
 /** Wie maxHarborLevelOf, liest die Häfen des Spielers. */
 export async function maxHarborLevel(db: DbOrTx, playerId: number, known?: { id: number; state: BaseState }): Promise<number> {
   return maxHarborLevelOf(await basesOfPlayer(db, playerId), known);
+}
+
+/** Börse und Spielerhandel freigeschaltet: höchste Hafenkommandantur aller Häfen ab marketFromLevel. */
+export async function marketUnlockedFor(db: DbOrTx, playerId: number, known?: { id: number; state: BaseState }): Promise<boolean> {
+  return (await maxHarborLevel(db, playerId, known)) >= (balance.buildings.hafenkommandantur.marketFromLevel ?? Infinity);
 }
 
 /** Lagerkapazität des Heimathafens (Börsen-Tageslimit); `known` ersetzt den Heimathafen, wenn er schon geladen ist. */

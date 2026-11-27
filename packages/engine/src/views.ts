@@ -53,7 +53,7 @@ import { STATION_TYPE, stationPreview, stationedView } from "./alliance-ops-stat
 import { sharedReportIds } from "./alliance-ops-view.ts";
 import { isNavalInput, previewNaval } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 import { previewField } from "./fields-missions.ts"; // Felder
-import { isExpansionType, previewExpansion } from "./expansion.ts"; // Mehrere Häfen
+import { isExpansionType, OWN_BASE_TARGET, previewExpansion } from "./expansion.ts"; // Mehrere Häfen
 import { homeStorageCapacity, maxHarborLevelOf, settledHome } from "./player-wide.ts"; // Mehrere Häfen: spielerweit
 
 /**
@@ -127,32 +127,40 @@ export async function baseView(engine: Engine, playerId: number, baseId?: number
     .from(tables.mission)
     .where(and(eq(tables.mission.baseId, own.id), inArray(tables.mission.status, ["outbound", "returning", "staged", "stationed", "holding"]))) // Allianz-Ops
     .orderBy(tables.mission.arriveAt);
+  // Mehrere Häfen: eigene Verlegungen (Zielart own_base) erscheinen hier ebenfalls, gekennzeichnet als eigen.
   const incomingRows = await engine.db
     .select()
     .from(tables.mission)
     .where(and(
-      eq(tables.mission.targetKind, "base"),
+      or(eq(tables.mission.targetKind, "base"), and(eq(tables.mission.targetKind, OWN_BASE_TARGET), eq(tables.mission.playerId, playerId))),
       eq(tables.mission.targetId, own.id),
       eq(tables.mission.status, "outbound"),
     ));
   const warn = radarWarningMinutes(s, balance, mods);
-  // Absender nur bei Transporten (Angreifer bleiben bis zum Kampf unbekannt).
-  const senderIds = incomingRows.filter((m) => m.type === "transport" && m.baseId !== null).map((m) => m.baseId!);
+  // Absender nur bei Transporten und eigenen Verlegungen (Angreifer bleiben bis zum Kampf unbekannt).
+  const friendly = (m: (typeof incomingRows)[number]) => m.type === "transport" || m.targetKind === OWN_BASE_TARGET;
+  const senderIds = incomingRows.filter((m) => friendly(m) && m.baseId !== null).map((m) => m.baseId!);
   const senders = senderIds.length
     ? new Map((await engine.db.select({ id: tables.base.id, name: tables.base.name }).from(tables.base).where(inArray(tables.base.id, senderIds))).map((r) => [r.id, r.name]))
     : new Map<number, string>();
   // Spionageaufträge bleiben unsichtbar (kein Radar); Angriffe ab Erkennung (einmal erkannt bleibt erkannt).
-  const attacks = incomingRows.filter((m) => m.type !== "spionage" && m.type !== "transport");
+  const attacks = incomingRows.filter((m) => m.type !== "spionage" && !friendly(m));
   const seen = new Set((await detectIncoming(engine.db, attacks, nowMs, warn)).map((m) => m.id));
   const incoming = incomingRows
-    .filter((m) => m.type === "transport" || seen.has(m.id))
-    .map((m) => ({
-      id: m.id,
-      type: m.type,
-      arriveAtMs: m.arriveAt.getTime(),
-      units: m.type === "kartell" ? ((m.plan as { units: Counts }).units) : null,
-      from: m.type === "transport" && m.baseId !== null ? senders.get(m.baseId) ?? null : null,
-    }));
+    .filter((m) => friendly(m) || seen.has(m.id))
+    .map((m) => {
+      /** Eigene Verlegung oder eigener Transport aus einem anderen Hafen (keine Angriffswarnung). */
+      const mine = m.playerId === playerId;
+      return {
+        id: m.id,
+        type: m.type,
+        arriveAtMs: m.arriveAt.getTime(),
+        units: m.type === "kartell" || mine ? ((m.plan as { units: Counts }).units) : null,
+        from: friendly(m) && m.baseId !== null ? senders.get(m.baseId) ?? null : null,
+        own: mine,
+        cargo: mine ? ((m.plan as Mission).cargo ?? null) : null,
+      };
+    });
   const deliveries = await engine.db
     .select()
     .from(tables.delivery)
