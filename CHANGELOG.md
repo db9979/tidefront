@@ -2,6 +2,11 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.19.2 – 27.11.2026
+- **Bewegte Gebäude**, dezent und nach Spielzustand: Windräder drehen mit dem Wind am Hafen (Flaute oder Sturmabschaltung: still), Rauch steigt und die Fackel flackert nur bei laufender Produktion (bei Strommangel stockend), die Radarschüssel dreht sich, der Leuchtturm blinkt nachts, Chipfabrik-LEDs blinken, das Solarfeld glänzt bei Sonne, das Speicherwerk zeigt seinen Füllstand. Werft, Kaserne und Flugfeld bewegen sich, solange ausgebildet wird; bei laufendem Ausbau steht ein kleiner Baukran am Gebäude.
+- Animationen pausieren außerhalb des Bildschirms und im Hintergrund; bei „Bewegung reduzieren“ (iPhone-Einstellung) bleibt alles still.
+- **Stromfeld in der Kopfleiste:** Strombilanz (grün/rot), Speicherstand und Warnpunkt bei drohendem Mangel; Antippen öffnet die Versorgung.
+
 ## 0.19.1 – 27.11.2026
 - **Hinweis-Karten statt Textzeile:** Sperrgründe erscheinen als Karte mit Kurzfassung im Kopf (z. B. „Fehlt 48 Elektronik · ca. 9 h 36 min“ oder „1 von 1 belegt“). Aufgeklappt zeigt sie fehlende Mengen als Fortschrittszeile (Bestand / Bedarf mit Wartezeit), eine kurze Erklärung und die Sprungziele als Kacheln mit Symbol. Gilt überall, wo es „Was hilft“ gibt.
 - Ist die Börse noch gesperrt, führt der Hinweis zur Hafenkommandantur statt zur Börse.
