@@ -30,7 +30,7 @@ import { balance, GameError, type Engine } from "./context.ts";
 import { runCommand, targetAt, type MissionTarget } from "./commands.ts";
 import { activeMissionCount, lockOwnBase, ownBase, randomSeed, saveBase, scheduleEvent, type BaseRow } from "./store.ts";
 import { modsOf } from "./modifiers.ts";
-import { diplomacyBlock } from "./alliance-core.ts";
+import { atWar, diplomacyBlock } from "./alliance-core.ts";
 import { processDueForBase } from "./events.ts";
 
 export interface SpyInput {
@@ -80,6 +80,8 @@ async function prepare(db: DbOrTx, playerId: number, own: BaseRow, input: SpyInp
     if (kind === "sabotage") {
       const d = await diplomacyBlock(db, playerId, target.playerId, nowMs);
       if (d) fail(d);
+      // Seekabel (v1.21): Kabel unterbrechen nur Kriegsgegner.
+      if (input.building && balance.buildings[input.building]?.cablePerLevel && !(await atWar(db, playerId, target.playerId, nowMs))) fail("cable_sabotage_war");
       cooldownUntilMs = sabotageCooldownUntil(target.state!, balance);
       if (cooldownUntilMs > nowMs) fail("sabotage_cooldown");
     }

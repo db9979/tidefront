@@ -453,6 +453,7 @@ export const HANDLERS: Record<string, Handler> = {
   raid_arrive: raidArrive,
   delivery_arrive: deliveryArrive,
   season_end: (tx, ev, due) => import("./season.ts").then((m) => m.seasonEnd(tx, ev, due)),
+  cable_tick: (tx, ev, due) => import("./power-cable.ts").then((m) => m.cableTick(tx, ev, due)), // Seekabel (v1.21)
   attack_warning: attackWarning,
   ...WORLD_EVENT_HANDLERS,
   ...NAVAL_HANDLERS, // See: Minen/Blockade/Konvoi (blockade_end, convoy_raid)

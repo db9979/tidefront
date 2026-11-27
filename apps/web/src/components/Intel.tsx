@@ -16,6 +16,7 @@ const SABOTAGE_EFFECT: Record<string, string> = {
   kaserne: "Ausbildung steht still, neue Aufträge dauern doppelt so lang",
   flugfeld: "Ausbildung steht still, neue Aufträge dauern doppelt so lang",
   forschungsamt: "Forschung steht still, neue dauert doppelt so lang",
+  seekabel: "Seekabel unterbrochen",
   bauschlange: "Ausbau verzögert",
 };
 

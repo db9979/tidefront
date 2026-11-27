@@ -207,6 +207,7 @@ export function activeSabotage(base: BaseState | null | undefined, nowMs: number
  * Wirkung einer laufenden Sabotage als Modifikatoren: Kraftwerk → Gebäudeproduktion mal productionFactor,
  * Radarstation → keine Vorwarnung, Werft/Kaserne/Flugfeld → neue Ausbildung dort mal trainingFactor,
  * Forschungsamt → neue Forschung mal researchFactor. Bauschlange: keine Dauerwirkung (nur Verzögerung).
+ * Seekabel: Kabel unterbrochen (in der Fortschreibung, power-green.ts).
  */
 export function sabotageModifiers(base: BaseState | null | undefined, nowMs: number, balance: Balance): Modifiers {
   const e = espionageOf(balance);
@@ -217,6 +218,8 @@ export function sabotageModifiers(base: BaseState | null | undefined, nowMs: num
   if (s.target === "radarstation") return { radarWarning: 0 };
   if (s.target === "forschungsamt") return { researchTime: t.researchFactor };
   if (s.target === SABOTAGE_QUEUE) return {};
+  // Seekabel (v1.21): Die Station liefert und bezieht nichts (power-green.ts cableSabotaged), keine Modifikatoren.
+  if (balance.buildings[s.target]?.cablePerLevel) return {};
   return { trainingTime: { [s.target]: t.trainingFactor } };
 }
 

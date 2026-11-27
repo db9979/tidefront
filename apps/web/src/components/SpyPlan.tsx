@@ -30,6 +30,7 @@ const SABOTAGE_TARGETS: { id: string; text: string }[] = [
   { id: "flugfeld", text: "Flugfeld – Ausbildung steht still, neue dauern doppelt" },
   { id: "forschungsamt", text: "Forschungsamt – Forschung steht still, neue dauert doppelt" },
   { id: "bauschlange", text: "Bauschlange – Ausbau verzögert sich" },
+  { id: "seekabel", text: "Seekabel – Kabel unterbrochen (nur Kriegsgegner)" },
 ];
 
 const PART: Record<string, string> = {

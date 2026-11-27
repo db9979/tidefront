@@ -90,3 +90,6 @@ export { intelFogOn, setIntelFog, sightOf, clearSightCache, INTEL_FOG_SETTING, t
 export { purgeIntel, knownFor, recordSightings, clearPersistThrottle, type IntelTag } from "./intel-store.ts";
 export { mapViewFor, fleetPosition } from "./intel-map.ts";
 export { nestKnown } from "./intel-query.ts";
+// Seekabel / Stromverbund (v1.21)
+export { cableOffer, cableAccept, cableSetPrice, cableCut, CABLE_TICK } from "./power-cable.ts";
+export { cablesView } from "./power-cable-view.ts";

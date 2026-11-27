@@ -66,6 +66,9 @@ Im Sommer gibt es im Nordatlantik praktisch keine Stürme; Mittelmeer-Stürme si
 - **Speicherwerk:** Kapazität `storagePerLevel * L` (200), Lade- und Entladeleistung `storageRatePerLevel * L` (40) je
   Stunde. Überschuss lädt bis zur Kapazität, bei Mangel wird bis zur Leistung entladen. Der Ladezustand steht im
   Stützpunkt (`powerStored`).
+- **Elektrolyse, Seekabel, Grüner Hafen (v1.21):** Was nach Bedarf und Speicher an Ökostrom übrig ist, wandelt die
+  Elektrolyse in Treibstoff oder ein Seekabel gibt es an einen anderen Hafen ab; ab 60 % Ökostrom-Anteil in 24 h
+  produziert der Hafen 3 % mehr. Regeln: [REGELN-STROM.md](REGELN-STROM.md).
 
 ## Verbraucher und Rangfolge bei Mangel
 
@@ -82,7 +85,8 @@ Das Angebot (Erzeugung plus Entladung) wird in dieser Reihenfolge verteilt; jede
 
 `settle` integriert in Schritten von `power.stepMinutes` (30) Minuten, an der Uhr ausgerichtet; das
 Wetter am Hafen gilt je Schritt. Ein Schritt wird geteilt, wenn der Speicher voll oder leer wird, der Treibstoff 0 erreicht
-oder ein Ausbildungs- bzw. Forschungsauftrag endet; dazwischen sind alle Raten konstant. Zweimal fortschreiben ergibt
+oder ein Ausbildungs- bzw. Forschungsauftrag endet (v1.21 außerdem: Treibstoff erreicht durch Elektrolyse die
+Lagergrenze, Kabelpuffer leer, Sabotage an der Kabelstation endet); dazwischen sind alle Raten konstant. Zweimal fortschreiben ergibt
 dasselbe wie einmal. Der Hafen kennt seine Lage (`site`, aus dem Feld).
 
 ## Ausbildung und Forschung

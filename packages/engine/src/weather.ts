@@ -10,6 +10,10 @@ import {
   forecastSkill,
   forecastSpread,
   forecastWeatherAt,
+  greenBalance,
+  greenModifiers,
+  greenShare,
+  isGreenHarbor,
   renewableSupply,
   powerAt,
   powerBalance,
@@ -39,6 +43,8 @@ export function weatherModifiers(state: BaseState | null, nowMs: number): Modifi
 }
 
 registerModifierSource((_db, _playerId, ctx) => weatherModifiers(ctx.state, ctx.nowMs), "wetter", "Wetter");
+// Grüner Hafen (v1.21): Ökostrom-Anteil der letzten 24 h ≥ 60 % → Gebäudeproduktion +3 % (power-green.ts).
+registerModifierSource((_db, _playerId, ctx) => greenModifiers(ctx.state, ctx.nowMs, balance), "oekostrom", "Ökostrom");
 
 /** Wetter entlang der Route bei Abfahrt (Planung und Vorschau); undefined ohne Wetter in der Balance. */
 export function missionWeather(fromCol: number, fromRow: number, toCol: number, toRow: number, nowMs: number): RouteWeather | undefined {
@@ -106,14 +112,14 @@ export function gridView(state: BaseState, nowMs: number, mods?: Modifiers) {
   let warning: { atMs: number; missing: number; rank: PowerRankKey; text: string } | null = null;
   const nowRank = POWER_RANKS.find((k) => now.served[k] < 0.999);
   if (nowRank) {
-    const supply = now.supply.kraftwerk + now.supply.wind + now.supply.solar + now.supply.storage;
+    const supply = now.supply.kraftwerk + now.supply.wind + now.supply.solar + now.supply.storage + now.supply.cable;
     const demand = POWER_RANKS.reduce((a, k) => a + now.demand[k], 0);
     warning = { atMs: nowMs, missing: Math.max(1, Math.round(demand - supply)), rank: nowRank, text: RANK_TEXT[nowRank] };
   }
   for (const h of warning ? [] : curve) {
     const rank = POWER_RANKS.find((k) => h.served[k] < 0.999);
     if (!rank) continue;
-    const supply = h.supply.kraftwerk + h.supply.wind + h.supply.solar + h.supply.storage;
+    const supply = h.supply.kraftwerk + h.supply.wind + h.supply.solar + h.supply.storage + h.supply.cable;
     const demand = POWER_RANKS.reduce((a, k) => a + h.demand[k], 0);
     warning = { atMs: h.atMs, missing: Math.max(1, Math.round(demand - supply)), rank, text: RANK_TEXT[rank] };
     break;
@@ -122,6 +128,8 @@ export function gridView(state: BaseState, nowMs: number, mods?: Modifiers) {
   return {
     now: {
       supply: now.supply,
+      surplus: now.surplus,
+      fuelMade: now.fuelMade,
       demand: now.demand,
       served: now.served,
       stored: now.stored,
@@ -133,7 +141,10 @@ export function gridView(state: BaseState, nowMs: number, mods?: Modifiers) {
     },
     curve: curve.map((h) => ({
       atMs: h.atMs,
-      supply: { kraftwerk: r1(h.supply.kraftwerk), wind: r1(h.supply.wind), solar: r1(h.supply.solar), storage: r1(h.supply.storage) },
+      supply: { kraftwerk: r1(h.supply.kraftwerk), wind: r1(h.supply.wind), solar: r1(h.supply.solar), storage: r1(h.supply.storage), cable: r1(h.supply.cable) },
+      surplus: { fuel: r1(h.surplus.fuel), cable: r1(h.surplus.cable), wasted: r1(h.surplus.wasted) },
+      greenWasted: r1(h.greenWasted),
+      greenShare: Math.round(h.greenShare * 100) / 100,
       demand: { radar: r1(h.demand.radar), production: r1(h.demand.production), training: r1(h.demand.training), research: r1(h.demand.research) },
       served: h.served,
       stored: r1(h.stored),
@@ -152,6 +163,29 @@ export function gridView(state: BaseState, nowMs: number, mods?: Modifiers) {
     // Sturm möglich (oberer Rand der Spannbreite), obwohl die Vorhersage keinen zeigt: erste solche Stunde.
     stormPossibleAt: wb ? (curve.find((h) => forecastRange(state.site ?? DEFAULT_SITE, h.atMs + HOUR_MS / 2, nowMs, wb, skill).stormPossible)?.atMs ?? null) : null,
     forecast: wb?.forecast ? { skill, issuedEveryHours: wb.forecast.issueEveryHours } : null,
+    green: greenView(state, nowMs),
+  };
+}
+
+/** Ökostrom am Hafen (v1.21): Anteil der letzten 24 h, Grüner Hafen, Saisonsummen (Elektrolyse, Kabel, verfallen). */
+function greenView(state: BaseState, nowMs: number) {
+  const g = greenBalance(balance);
+  if (!g) return null;
+  const s = greenShare(state, nowMs, balance);
+  const log = state.powerLog;
+  return {
+    share: Math.round(s.share * 1000) / 1000,
+    total: Math.round(s.total),
+    active: isGreenHarbor(state, nowMs, balance),
+    shareMin: g.shareMin,
+    bonus: g.bonus,
+    windowHours: g.windowHours,
+    greenUsed: Math.round(log?.greenUsed ?? 0),
+    fuelMade: Math.round(log?.fuelMade ?? 0),
+    sent: Math.round(log?.sent ?? 0),
+    drawn: Math.round(log?.drawn ?? 0),
+    wasted: Math.round(log?.wasted ?? 0),
+    cable: state.cable ? { role: state.cable.role, buffer: Math.round(state.cable.buffer ?? 0) } : null,
   };
 }
 
@@ -170,12 +204,12 @@ function stormStart(site: { lat: number; lon: number }, fromMs: number, untilMs:
  * Spannbreite einer Stunde der Stromkurve: Wind und Bewölkung (forecastRange in der Stundenmitte) und daraus das
  * Angebot aus Wind und Sonne von schlecht bis gut; Kraftwerk und Speicher wie in der Vorhersage.
  */
-function band(state: BaseState, h: { atMs: number; supply: Record<"kraftwerk" | "wind" | "solar" | "storage", number>; daylight: number; wind: number; clouds: number }, nowMs: number) {
+function band(state: BaseState, h: { atMs: number; supply: Record<"kraftwerk" | "wind" | "solar" | "storage", number> & { cable?: number }; daylight: number; wind: number; clouds: number }, nowMs: number) {
   const wb = balance.weather;
   const r = wb
     ? forecastRange(state.site ?? DEFAULT_SITE, h.atMs + HOUR_MS / 2, nowMs, wb, forecastSkill(state, wb))
     : { wind: [h.wind, h.wind], clouds: [h.clouds, h.clouds] };
-  const fixed = h.supply.kraftwerk + h.supply.storage;
+  const fixed = h.supply.kraftwerk + h.supply.storage + (h.supply.cable ?? 0);
   // Das Band enthält immer die Vorhersage selbst.
   let lo = h.supply.wind + h.supply.solar;
   let hi = lo;

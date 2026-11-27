@@ -1,4 +1,4 @@
-# game-core – Entscheidungen, Teil 3 (Abschnitte L–N)
+# game-core – Entscheidungen, Teil 3 (Abschnitte L–O)
 
 Fortsetzung von `ENTSCHEIDUNGEN.md` (dort Übersicht und Teil 1). Verbindlich bleibt `docs/REGELN.md`.
 
@@ -294,3 +294,59 @@ Simulation `sim/nest6.ts` (in `npm run sim`, einzeln `node packages/game-core/si
    Ankunft und Allianz-Ops (fünf Stellen) und eine eigene Anzeige. Die Stärke ist die Schwelle (Tag 21: 3 %, Tag 28:
    15 %), Aufklärung und Probekampf zeigen das vorher. Tagesbefehle und Wochenziele verlangen weiter höchstens Stufe 5
    (`nestCap`), weil es nur fünf Plätze gibt; Erfolge zählen Nest 6 wie jedes Nest.
+
+## O. Ökostrom, Elektrolyse, Seekabel (Balance v1.21)
+
+Anlass: Überschuss über Bedarf und Speicher verfiel bisher; einziger Anreiz für Wind und Sonne waren Tagesbefehle.
+Regeln: [docs/REGELN-STROM.md](../../docs/REGELN-STROM.md). Simulation `sim/power-green.ts` (in `npm run sim`, einzeln
+`node packages/game-core/sim/power-green.ts`): mittlerer Hafen (Stahlwerk 8, Raffinerie 8, Chipfabrik 6,
+Versorgungshof 6 = Bedarf 302 Strom), 28 Tage stündlich mit echtem Wetter, Grün-Bonus angewandt.
+
+1. **Ökostrom zuerst an den Bedarf.** Nur so ist die Elektrolyse ohne Schleife möglich: Würde Kraftwerksstrom den
+   Bedarf decken und Ökostrom frei machen, wäre 3 Treibstoff → 60 Strom → 6 Treibstoff ein Gewinn. Mit dieser
+   Reihenfolge kann mehr Kraftwerk den Ökostrom-Überschuss nur senken; die Treibstoff-Rate fällt monoton mit der
+   Kraftwerk-Auslastung, die Bisektion bei Treibstoff 0 bleibt eindeutig (Test „keine Endlosschleife“).
+2. **Elektrolyse 40 Strom/h je Stufe, 10 : 1.** Treibstoff aus Elektrolyse je Tag gegen die Raffinerie Stufe 8
+   (3830–3945/Tag):
+
+   | Lage, Start | Ausbau | Bonus-Std. | Anteil | versorgt | Elektrolyse/Tag | Anteil an Raffinerie |
+   |---|---|---|---|---|---|---|
+   | Nordsee März | Kraftwerk 6 | 0 % | 0 % | 100 % | – | – |
+   | Nordsee März | KW 3 + Wind 4 + Sonne 2 + Speicher 2 (+ Elektr. 3) | 78 % | 98 % | 100 % | 6 | 0,2 % |
+   | Nordsee März | KW 1 + Wind 7 + Sonne 4 + Speicher 4 + Elektr. 5 | 100 % | 100 % | 100 % | 242 | 6,1 % |
+   | Nordsee Nov. | dasselbe | 100 % | 100 % | 100 % | 133 | 3,4 % |
+   | Biskaya März / Nov. | KW 3 + Wind 4 + Sonne 2 + Speicher 2 | 51 / 26 % | 61 / 40 % | 100 % | 0–2 | 0 % |
+   | Biskaya März / Nov. | KW 1 + Wind 7 + Sonne 4 + Speicher 4 + Elektr. 5 | 100 % | 92 / 73 % | 100 / 98 % | 122 / 60 | 3,1 / 1,6 % |
+   | Mittelmeer März / Nov. | KW 3 + Wind 4 + Sonne 2 + Speicher 2 | 1 / 3 % | 51 / 46 % | 100 / 99 % | 0 | 0 % |
+   | Mittelmeer März / Nov. | KW 1 + Wind 7 + Sonne 4 + Speicher 4 + Elektr. 5 | 100 % | 87 / 81 % | 97 / 94 % | 63 / 19 | 1,6 / 0,5 % |
+
+   Die Elektrolyse liefert höchstens rund 6 % der Raffinerie-Menge desselben Hafens – sie flutet die Börse nicht.
+   Lohnend ist sie nur bei viel Wind und Sonne (Nordsee, großer Ausbau: 242 Treibstoff/Tag = 435 zum Richtwert,
+   Elektrolyse 5 kostet ~5700, amortisiert in ~13 Tagen); bei kleinem Ausbau deckt der Ökostrom fast nur den Bedarf.
+3. **Bonus 3 % ab 60 %.** Ökostrom ist kein Muss: Ein Kraftwerkshafen bleibt zu 100 % versorgt und verliert nur die
+   3 % (hier 637 von 21 217 Produktionswert/Tag). Im wind- und sonnenarmen Mittelmeer-Winter reicht selbst der große
+   Ökostrom-Ausbau mit Kraftwerk 1 nicht (94 % versorgt) – das Kraftwerk bleibt dort nötig. Wind und Sonne lohnten
+   an der Nordsee schon vor v1.21 (Kraftwerk 6 kostet 432 Treibstoff/Tag); der Bonus verstärkt das um ~500/Tag. 60 %
+   ist im Norden mit gemischtem Ausbau meist erreicht (78 % der Stunden), in der Biskaya teilweise, im Mittelmeer nur
+   mit großem Ausbau – Absicht: Grün ist eine Entscheidung, keine Pflicht. Höhere Boni (5 %) machten den Ausbau ohne
+   Kraftwerk zur Pflicht im Norden; 2 % wäre kaum spürbar.
+4. **Seekabel ohne Verdopplung.** Nordsee-Windhafen (Wind 8, Sonne 2) → Hafen ohne Kraftwerk in 300 km, Station 3,
+   14 Tage, Abrechnung alle 10 min: gesendet 30 240, angekommen 21 168 (genau 70 %), genutzt 21 158, Empfänger zu
+   100 % versorgt. Mit Elektrolyse beim Abgebenden geht sie vor (4032 Treibstoff), das Kabel bekommt den Rest. Geprüft:
+   genutzt ≤ angekommen ≤ gesendet × (1 − Verlust). Kabelstrom wird nicht gespeichert, nicht elektrolysiert, nicht
+   weitergeleitet, und jeder Hafen hat nur ein Kabel – keine Ketten, keine Kreise.
+5. **Abrechnung in Paketen statt gekoppelter Fortschreibung.** Eine echte Live-Kopplung müsste zwei Häfen gemeinsam
+   fortschreiben; `settle` wird aber an Dutzenden Stellen für einen Hafen allein aufgerufen. Darum schreibt jeder Hafen
+   für sich fort (Abgebender zählt `cable.sent`, Empfänger zieht aus `cable.buffer`), und `cable_tick` bucht alle
+   10 Minuten mit Verlust und Preis um. Deterministisch, unabhängig davon, wann ein Hafen sonst fortgeschrieben wird;
+   die Verzögerung von höchstens 10 Minuten fängt der Puffer (2 Stunden) auf.
+6. **Preis je angekommener Strom-Stunde, vorab bezahlt.** Geliefert wird nur, was der Empfänger bezahlen kann; keine
+   Schulden, keine Mahnung. Höchstpreis 2 Kredite (1 Strom-Stunde ist als Elektrolyse-Treibstoff ~0,18 wert, als
+   ersetzter Kraftwerksstrom ~0,09) – Raum für Allianzhandel, aber kein Wucher.
+7. **Sabotage nur durch Kriegsgegner.** Die übrigen Sabotageziele gelten gegen alle außer Verbündete und Paktpartner;
+   ein Kabel betrifft aber meist zwei Spieler einer Allianz, deshalb nur im Krieg (Code `cable_sabotage_war`). Minen
+   auf der Kabelstrecke gibt es nicht (Kabel haben keine Strecke auf der Karte).
+8. **Wochenziel und Erfolg.** Genutzter Ökostrom je Woche: 35–55 × Höchstwert aus Wind und Sonne (Nordsee 53, Mittelmeer
+   35). Ziel = Höchstwert × 30 → 119–181 % erreichbar bei gemischtem Ausbau. Erfolg: Saison (42 Tage) 150 000–400 000
+   bei mittlerem Ausbau ab Tag ~10; Bronze 10 000 (ein bis zwei Tage), Silber 75 000, Gold 300 000 (nur grüne Häfen
+   im Norden über die ganze Saison).

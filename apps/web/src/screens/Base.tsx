@@ -29,7 +29,7 @@ const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 
 const GROUPS: { title: string; ids: string[] }[] = [
   { title: "Wirtschaft", ids: ["stahlwerk", "raffinerie", "chipfabrik", "versorgungshof", "lagerkomplex"] },
-  { title: "Strom", ids: ["kraftwerk", "windpark", "solarfeld", "speicherwerk"] },
+  { title: "Strom", ids: ["kraftwerk", "windpark", "solarfeld", "speicherwerk", "elektrolyse", "seekabel"] },
   { title: "Militär", ids: ["werft", "kaserne", "flugfeld"] },
   { title: "Führung und Schutz", ids: ["kommandozentrale", "hafenkommandantur", "radarstation", "tiefbunker", "forschungsamt", "nachrichtendienst"] },
 ];

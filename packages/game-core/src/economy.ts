@@ -3,6 +3,7 @@ import { createProtection } from "./protection.ts";
 import type { Modifiers } from "./modifiers.ts";
 import { modValue } from "./modifiers.ts";
 import { integrateGrid, powerAt } from "./power.ts";
+import { clonePowerLog } from "./power-green.ts";
 
 /** Angriffswert-Faktor bei Versorgungsmangel (REGELN.md, Abschnitt Ressourcen; nicht in balance.json). */
 export const SUPPLY_SHORTAGE_ATTACK_FACTOR = 0.8;
@@ -35,6 +36,8 @@ export function cloneBase(base: BaseState): BaseState {
     ...(base.intel ? { intel: structuredClone(base.intel) } : {}),
     ...(base.site ? { site: { ...base.site } } : {}),
     ...(base.powerStored !== undefined ? { powerStored: base.powerStored } : {}),
+    ...(base.powerLog ? { powerLog: clonePowerLog(base.powerLog) } : {}),
+    ...(base.cable ? { cable: { ...base.cable } } : {}),
   };
 }
 

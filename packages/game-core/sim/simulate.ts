@@ -23,6 +23,7 @@ import { runResearchSim } from "./research.ts";
 import { runGuideSim } from "./guide.ts";
 import { runLuckSim } from "./luck.ts";
 import { runPowerSim } from "./power.ts";
+import { runPowerGreenSim } from "./power-green.ts"; // v1.21: Ökostrom, Elektrolyse, Seekabel
 import { runEspionageSim } from "./espionage.ts";
 import { runAdmiralSim } from "./admirals.ts"; // Admirale
 import { runNavalSim } from "./naval.ts"; // See: Minen/Blockade/Konvoi
@@ -267,6 +268,7 @@ runGuideSim(balance);
 // Kriegsglück (v1.4): Würfel gegen Überlegenheit.
 runLuckSim(balance);
 runPowerSim(balance);
+runPowerGreenSim(balance);
 // Nachrichtendienst (v1.7): Chancen über typische Spielverläufe, Sabotage, Desinformation.
 runEspionageSim(balance, snaps);
 // Admirale (Welle 2): Kampfwert-Bonus eines Admirals.

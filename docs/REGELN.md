@@ -340,7 +340,9 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
     siehe Abschnitt Tagesbefehle).
 - Rang nach Gesamtpunkten; Punktgleiche teilen den Rang.
 - Am Saisonende: Gold, Silber und Bronze für Rang 1 bis 3 (mit Punkten), je Kategorie eine Auszeichnung für den Besten
-  (für Befehle: „Pflichtbewusstester Kapitän“). Der Endstand hält alle fünf Kategorien fest.
+  (für Befehle: „Pflichtbewusstester Kapitän“), dazu „Grünster Hafen“ für den meisten genutzten Ökostrom in einem Hafen
+  (v1.21, mindestens 1000 Strom-Stunden, ohne Punkte; [REGELN-STROM.md](REGELN-STROM.md)). Der Endstand hält alle fünf
+  Kategorien fest.
   Jeder Spieler erhält eine Systemnachricht mit Platz und Auszeichnungen.
 - Danach wird die Welt zurückgesetzt: Stützpunkte, Missionen, Lieferungen, Wracks, Kampfberichte und Kredite verfallen,
   Nester sind wieder besetzt, die Börse steht auf Richtwert, Tagesbefehle und Serien verfallen. Konten, Nachrichten und die Ruhmeshalle bleiben.

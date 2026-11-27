@@ -8,6 +8,10 @@ import type { Modifiers } from "./modifiers.ts";
 import { modEntry } from "./modifiers.ts";
 import { buildingLevel, cloneBase, storageCapacity, upkeepPerHour } from "./economy.ts";
 import { sunshine, weatherAt, type Weather } from "./weather.ts";
+import {
+  cableBuilding, cableCapacity, clonePowerLog, electrolysisSpecs, greenBalance, logHours, DEFAULT_GREEN,
+  type CableBalance, type GreenBalance,
+} from "./power-green.ts";
 
 const HOUR_MS = 3600000;
 const EPS = 1e-9;
@@ -22,6 +26,10 @@ export interface PowerBalance {
   forecastHours: number;
   /** So weit rechnet die Prognose der Fertigstellung voraus; danach gilt das letzte Tempo. */
   horizonHours: number;
+  /** Grüner Hafen (v1.21): Ökostrom-Anteil und Produktionsbonus. */
+  green?: GreenBalance;
+  /** Seekabel (v1.21): Reichweite, Verlust, Puffer, Abrechnung. */
+  cable?: CableBalance;
 }
 
 export const DEFAULT_POWER: PowerBalance = { stepMinutes: 30, minSpeed: 0.25, forecastHours: 24, horizonHours: 336 };
@@ -34,8 +42,23 @@ export const POWER_RANKS: readonly PowerRankKey[] = ["radar", "production", "tra
 export interface PowerSnapshot {
   atMs: number;
   weather: Weather | null;
-  /** Angebot je Quelle (Strom); storage = Entladung des Speicherwerks. */
-  supply: { kraftwerk: number; wind: number; solar: number; storage: number };
+  /** Angebot je Quelle (Strom); storage = Entladung des Speicherwerks, cable = Bezug aus dem Kabelpuffer. */
+  supply: { kraftwerk: number; wind: number; solar: number; storage: number; cable: number };
+  /**
+   * Überschuss nach Bedarf und Speicher (Strom je Stunde): fuel → Elektrolyse, cable → ins Seekabel,
+   * wasted → verfällt (Kraftwerksstrom immer, Ökostrom ohne Abnehmer).
+   */
+  surplus: { fuel: number; cable: number; wasted: number };
+  /** Davon verfallender Ökostrom (Wind/Sonne ohne Abnehmer; Kraftwerksüberschuss nicht). */
+  greenWasted: number;
+  /** Treibstoff je Stunde aus der Elektrolyse (in perHour enthalten). */
+  fuelMade: number;
+  /** Gedeckter Bedarf je Stunde und Anteil daraus aus Ökostrom (Wind, Sonne, grüner Speicheranteil, Kabel). */
+  green: { used: number; total: number };
+  /** Änderung des Ökostrom-Anteils im Speicher je Stunde. */
+  greenCharge: number;
+  /** Kabelpuffer (Empfänger) zu Beginn des Stücks. */
+  buffer: number;
   /** Bedarf je Rang (Ausbildung und Forschung nur, solange ein Auftrag läuft). */
   demand: Record<PowerRankKey, number>;
   /** Versorgter Anteil je Rang (1 ohne Bedarf). */
@@ -94,12 +117,23 @@ function activeAt(base: BaseState, id: string, rank: number, t: number, balance:
 
 const RANK_KEY: Record<number, PowerRankKey> = { 1: "radar", 2: "production", 3: "training", 4: "research" };
 
+/** Zustand des Netzes, der sich innerhalb der Fortschreibung ändert. */
+interface GridState {
+  stored: number;
+  storedGreen: number;
+  /** Kabelpuffer des Empfängers. */
+  buffer: number;
+  /** Treibstoff liegt an der Lagergrenze (Elektrolyse nur, soweit Verbrauch sie aufnimmt). */
+  fuelFull: boolean;
+}
+
 /**
- * Netz in einem Augenblick mit Kraftwerk-Auslastung `throttle`. Bestand `stored` des Speichers,
- * Wetter `w`. Reine Rechnung, keine Fortschreibung.
+ * Netz in einem Augenblick mit Kraftwerk-Auslastung `throttle`, Speicher- und Pufferstand `st`, Wetter `w`.
+ * Reine Rechnung, keine Fortschreibung. Ökostrom deckt den Bedarf zuerst, dann lädt er den Speicher; der Rest
+ * (nur Ökostrom) geht in die Elektrolyse, danach ins Seekabel. Kraftwerksüberschuss verfällt immer.
  */
-function piece(base: BaseState, t: number, w: Weather | null, stored: number, throttle: number, balance: Balance, mods?: Modifiers): PowerSnapshot {
-  const supply = { kraftwerk: 0, wind: 0, solar: 0, storage: 0 };
+function piece(base: BaseState, t: number, w: Weather | null, st: GridState, throttle: number, balance: Balance, mods?: Modifiers): PowerSnapshot {
+  const supply = { kraftwerk: 0, wind: 0, solar: 0, storage: 0, cable: 0 };
   const demand: Record<PowerRankKey, number> = { radar: 0, production: 0, training: 0, research: 0 };
   let fuelPerHour = 0;
   for (const [id, def] of Object.entries(balance.buildings)) {
@@ -115,16 +149,34 @@ function piece(base: BaseState, t: number, w: Weather | null, stored: number, th
     if (rank > 0 && activeAt(base, id, rank, t, balance)) demand[RANK_KEY[rank]] += (def.powerPerLevel ?? 0) * l;
   }
   const spec = storageSpecs(base, balance);
-  const gen = supply.kraftwerk + supply.wind + supply.solar;
+  const green = supply.wind + supply.solar;
+  const gen = supply.kraftwerk + green;
   const need = demand.radar + demand.production + demand.training + demand.research;
+  const greenToDemand = Math.min(green, need);
+  const frac = st.stored > EPS ? Math.min(1, Math.max(0, st.storedGreen / st.stored)) : 0;
   let charge = 0;
+  let greenCharge = 0;
+  let greenSurplus = 0;
+  let surplus = 0;
   if (gen >= need) {
-    if (stored < spec.capacity - EPS) charge = Math.min(spec.rate, gen - need);
-  } else if (stored > EPS) {
-    supply.storage = Math.min(spec.rate, need - gen);
-    charge = -supply.storage;
+    if (st.stored < spec.capacity - EPS) charge = Math.min(spec.rate, gen - need);
+    greenCharge = Math.min(green - greenToDemand, charge);
+    greenSurplus = green - greenToDemand - greenCharge;
+    surplus = gen - need - charge;
+  } else {
+    let deficit = need - gen;
+    if (base.cable?.role === "in" && st.buffer > EPS) {
+      supply.cable = Math.min(cableCapacity(base, t, balance), deficit);
+      deficit -= supply.cable;
+    }
+    if (st.stored > EPS && deficit > 0) {
+      supply.storage = Math.min(spec.rate, deficit);
+      charge = -supply.storage;
+      greenCharge = -supply.storage * frac;
+    }
   }
-  let avail = gen + supply.storage;
+  let avail = gen + supply.storage + supply.cable;
+  const consumed = Math.min(need, avail);
   const served = { radar: 1, production: 1, training: 1, research: 1 };
   for (const k of POWER_RANKS) {
     if (demand[k] <= 0) continue;
@@ -144,33 +196,58 @@ function piece(base: BaseState, t: number, w: Weather | null, stored: number, th
   for (const r of balance.resources) perHour[r] = (balance.baseTricklePerHour[r] ?? 0) + buildingPerHour[r];
   if ("proviant" in perHour) perHour.proviant -= upkeepPerHour(base, balance);
   if ("treibstoff" in perHour) perHour.treibstoff -= fuelPerHour;
+  // Elektrolyse aus Ökostrom-Überschuss; an der Lagergrenze nur so viel, wie der Verbrauch aufnimmt.
+  const elec = electrolysisSpecs(base, balance);
+  let toFuel = "treibstoff" in perHour ? Math.min(greenSurplus, elec.rate) : 0;
+  if (st.fuelFull && toFuel > 0) toFuel = Math.min(toFuel, Math.max(0, -perHour.treibstoff) * elec.ratio);
+  const fuelMade = toFuel > 0 ? toFuel / elec.ratio : 0;
+  if (fuelMade > 0) {
+    perHour.treibstoff += fuelMade;
+    buildingPerHour.treibstoff = (buildingPerHour.treibstoff ?? 0) + fuelMade;
+  }
+  const toCable = base.cable?.role === "out" ? Math.min(Math.max(0, greenSurplus - toFuel), cableCapacity(base, t, balance)) : 0;
+  const used = greenToDemand + supply.cable + supply.storage * frac;
   return {
-    atMs: t, weather: w, supply, demand, served, charge, stored, storageCapacity: spec.capacity,
+    atMs: t, weather: w, supply, demand, served, charge, stored: st.stored, storageCapacity: spec.capacity,
     throttle, fuelPerHour, perHour, buildingPerHour,
+    surplus: { fuel: Math.max(0, toFuel), cable: toCable, wasted: Math.max(0, surplus - Math.max(0, toFuel) - toCable) },
+    greenWasted: Math.max(0, greenSurplus - Math.max(0, toFuel) - toCable),
+    fuelMade, green: { used: Math.min(used, consumed), total: consumed }, greenCharge, buffer: st.buffer,
   };
 }
 
 /**
  * Netz bei gegebenem Bestand: Bei Treibstoff 0 läuft das Kraftwerk nur so weit, wie Treibstoff nachkommt
- * (Grundrate und Raffinerie), sonst voll. Die Auslastung wird per Bisektion bestimmt (Treibstoff-Rate ≥ 0).
+ * (Grundrate, Raffinerie, Elektrolyse), sonst voll. Die Auslastung wird per Bisektion bestimmt (Treibstoff-Rate ≥ 0;
+ * die Rate fällt mit der Auslastung, weil Kraftwerksstrom nie in die Elektrolyse geht).
  */
-function solvePiece(base: BaseState, t: number, w: Weather | null, stored: number, fuel: number, balance: Balance, mods?: Modifiers): PowerSnapshot {
-  const full = piece(base, t, w, stored, 1, balance, mods);
+function solvePiece(base: BaseState, t: number, w: Weather | null, st: GridState, fuel: number, balance: Balance, mods?: Modifiers): PowerSnapshot {
+  const full = piece(base, t, w, st, 1, balance, mods);
   if (fuel > EPS || full.fuelPerHour <= 0 || (full.perHour.treibstoff ?? 0) >= 0) return full;
   let lo = 0;
   let hi = 1;
   for (let i = 0; i < 24; i++) {
     const mid = (lo + hi) / 2;
-    if ((piece(base, t, w, stored, mid, balance, mods).perHour.treibstoff ?? 0) >= 0) lo = mid;
+    if ((piece(base, t, w, st, mid, balance, mods).perHour.treibstoff ?? 0) >= 0) lo = mid;
     else hi = mid;
   }
-  return piece(base, t, w, stored, lo, balance, mods);
+  return piece(base, t, w, st, lo, balance, mods);
+}
+
+/** Anfangszustand des Netzes aus dem Stützpunkt. */
+function gridState(base: BaseState, balance: Balance, mods?: Modifiers): GridState {
+  const stored = Math.min(Math.max(0, base.powerStored ?? 0), storageSpecs(base, balance).capacity);
+  return {
+    stored,
+    storedGreen: Math.min(stored, Math.max(0, base.powerLog?.storedGreen ?? 0)),
+    buffer: base.cable?.role === "in" ? Math.max(0, base.cable.buffer ?? 0) : 0,
+    fuelFull: (base.resources.treibstoff ?? 0) >= storageCapacity(base, balance, mods) - EPS,
+  };
 }
 
 /** Netz zum Zeitpunkt `atMs` mit dem aktuellen Bestand (der Stützpunkt sollte bis atMs fortgeschrieben sein). */
 export function powerAt(base: BaseState, atMs: number, balance: Balance, mods?: Modifiers): PowerSnapshot {
-  const stored = Math.min(base.powerStored ?? 0, storageSpecs(base, balance).capacity);
-  return solvePiece(base, atMs, siteWeather(base, atMs, balance), stored, base.resources.treibstoff ?? 0, balance, mods);
+  return solvePiece(base, atMs, siteWeather(base, atMs, balance), gridState(base, balance, mods), base.resources.treibstoff ?? 0, balance, mods);
 }
 
 /** Wetterquelle der Fortschreibung: Ort und Zeit → Wetter. Ohne Angabe das tatsächliche Wetter (weatherAt). */
@@ -179,21 +256,30 @@ export type WeatherSource = (site: GeoPoint, ms: number) => Weather;
 /** Rückruf je Stück der Integration [from, to); true beendet die Integration vorzeitig. */
 export type PieceCallback = (snap: PowerSnapshot, from: number, to: number) => boolean | void;
 
+type Hit = "full" | "empty" | "fuel" | "buffer" | "fuelcap" | null;
+
 /**
- * Schreibt Bestände und Speicher von resUpdatedAt bis toMs fort (Kern von settle). Produktion füllt nur bis zur
- * Lagerkapazität, der Bestand fällt nie unter 0; Bestand 0 bei negativer Proviant-Rate setzt versorgungsmangel.
+ * Schreibt Bestände, Speicher, Kabelpuffer und Zähler (powerLog) von resUpdatedAt bis toMs fort (Kern von settle).
+ * Produktion füllt nur bis zur Lagerkapazität, der Bestand fällt nie unter 0; Bestand 0 bei negativer
+ * Proviant-Rate setzt versorgungsmangel. Stücke enden an Ereignissen (Speicher voll/leer, Treibstoff 0 oder an
+ * der Lagergrenze, Kabelpuffer leer, Ende eines Auftrags, Ende einer Sabotage an der Kabelstation).
  */
 export function integrateGrid(base: BaseState, toMs: number, balance: Balance, mods?: Modifiers, onPiece?: PieceCallback, wx?: WeatherSource): BaseState {
   const next = cloneBase(base);
   const capacity = storageCapacity(base, balance, mods);
   const spec = storageSpecs(base, balance);
   const step = powerBalance(balance).stepMinutes * 60000;
-  let stored = Math.min(Math.max(0, base.powerStored ?? 0), spec.capacity);
+  const windowHours = (greenBalance(balance) ?? DEFAULT_GREEN).windowHours;
+  const st = gridState(base, balance, mods);
+  const log = clonePowerLog(base.powerLog);
+  let sent = 0;
   let t = base.resUpdatedAt;
   const ends: number[] = [];
   for (const o of base.trainingQueue) if (o.finishesAt > t && o.finishesAt < toMs) ends.push(o.finishesAt);
   const ro = base.research?.order;
   if (ro && ro.finishesAt > t && ro.finishesAt < toMs) ends.push(ro.finishesAt);
+  const sab = base.intel?.sabotage;
+  if (sab && sab.target === cableBuilding(balance) && sab.untilMs > t && sab.untilMs < toMs) ends.push(sab.untilMs);
   ends.sort((a, b) => a - b);
   let last: PowerSnapshot | null = null;
   let stop = false;
@@ -205,22 +291,21 @@ export function integrateGrid(base: BaseState, toMs: number, balance: Balance, m
     const w = balance.weather ? (wx ? wx(site, stepStart) : weatherAt(site, stepStart, balance.weather)) : null;
     for (let guard = 0; t < stepEnd && guard < 8; guard++) {
       const fuel = next.resources.treibstoff ?? 0;
-      const snap = solvePiece(next, t, w, stored, fuel, balance, mods);
+      st.fuelFull = fuel >= capacity - EPS;
+      const snap = solvePiece(next, t, w, st, fuel, balance, mods);
       last = snap;
       let t2 = stepEnd;
-      let hit: "full" | "empty" | "fuel" | null = null;
-      if (snap.charge > EPS) {
-        const tf = t + ((spec.capacity - stored) / snap.charge) * HOUR_MS;
-        if (tf < t2) { t2 = tf; hit = "full"; }
-      } else if (snap.charge < -EPS) {
-        const te = t + (stored / -snap.charge) * HOUR_MS;
-        if (te < t2) { t2 = te; hit = "empty"; }
-      }
+      let hit: Hit = null;
+      const at = (dt: number, h: Hit) => {
+        const x = t + dt * HOUR_MS;
+        if (x < t2) { t2 = x; hit = h; }
+      };
+      if (snap.charge > EPS) at((spec.capacity - st.stored) / snap.charge, "full");
+      else if (snap.charge < -EPS) at(st.stored / -snap.charge, "empty");
       const fuelRate = snap.perHour.treibstoff ?? 0;
-      if (fuelRate < -EPS && fuel > EPS && snap.fuelPerHour > 0) {
-        const tz = t + (fuel / -fuelRate) * HOUR_MS;
-        if (tz < t2) { t2 = tz; hit = "fuel"; }
-      }
+      if (fuelRate < -EPS && fuel > EPS && snap.fuelPerHour > 0) at(fuel / -fuelRate, "fuel");
+      if (fuelRate > EPS && snap.fuelMade > 0 && fuel < capacity) at((capacity - fuel) / fuelRate, "fuelcap");
+      if (snap.supply.cable > EPS) at(st.buffer / snap.supply.cable, "buffer");
       if (!(t2 > t) || guard === 7) { t2 = stepEnd; hit = null; }
       const hours = (t2 - t) / HOUR_MS;
       for (const r of balance.resources) {
@@ -232,18 +317,35 @@ export function integrateGrid(base: BaseState, toMs: number, balance: Balance, m
         } else value = Math.max(0, stock + rate * hours);
         next.resources[r] = value;
       }
-      stored = Math.min(spec.capacity, Math.max(0, stored + snap.charge * hours));
-      if (hit === "full") stored = spec.capacity;
-      if (hit === "empty") stored = 0;
+      st.stored = Math.min(spec.capacity, Math.max(0, st.stored + snap.charge * hours));
+      st.storedGreen = Math.min(st.stored, Math.max(0, st.storedGreen + snap.greenCharge * hours));
+      st.buffer = Math.max(0, st.buffer - snap.supply.cable * hours);
+      if (hit === "full") st.stored = spec.capacity;
+      if (hit === "empty") st.stored = st.storedGreen = 0;
       if (hit === "fuel") next.resources.treibstoff = 0;
+      if (hit === "fuelcap") next.resources.treibstoff = capacity;
+      if (hit === "buffer") st.buffer = 0;
+      if (t2 > t) {
+        logHours(log, t, t2, snap.green.used, snap.green.total, windowHours);
+        log.greenUsed += (snap.green.used + snap.surplus.fuel + snap.surplus.cable) * hours;
+        log.fuelMade += snap.fuelMade * hours;
+        log.sent += snap.surplus.cable * hours;
+        log.drawn += snap.supply.cable * hours;
+        log.wasted += snap.surplus.wasted * hours;
+        sent += snap.surplus.cable * hours;
+      }
       if (onPiece && onPiece(snap, t, t2)) { stop = true; t = t2; break; }
       t = t2;
     }
   }
-  const final = last ?? solvePiece(next, base.resUpdatedAt, siteWeather(base, base.resUpdatedAt, balance), stored, next.resources.treibstoff ?? 0, balance, mods);
+  const final = last ?? solvePiece(next, base.resUpdatedAt, siteWeather(base, base.resUpdatedAt, balance), st, next.resources.treibstoff ?? 0, balance, mods);
   next.versorgungsmangel = (next.resources.proviant ?? 0) <= 0 && (final.perHour.proviant ?? 0) < 0;
   next.resUpdatedAt = Math.max(base.resUpdatedAt, stop ? t : toMs);
-  if (spec.capacity > 0 || base.powerStored !== undefined) next.powerStored = stored;
+  if (spec.capacity > 0 || base.powerStored !== undefined) next.powerStored = st.stored;
+  // Zähler nur, wenn es etwas zu zählen gibt (alte Stände ohne Strom bleiben unverändert).
+  if (base.powerLog || log.hours.length > 0 || st.storedGreen > 0) next.powerLog = { ...log, storedGreen: st.storedGreen };
+  if (next.cable?.role === "in") next.cable = { ...next.cable, buffer: st.buffer };
+  if (next.cable?.role === "out") next.cable = { ...next.cable, sent: (next.cable.sent ?? 0) + sent };
   return next;
 }
 
@@ -282,6 +384,11 @@ export interface PowerHour {
   /** Niedrigster versorgter Anteil je Rang in der Stunde. */
   served: Record<PowerRankKey, number>;
   stored: number;
+  /** Verwendung des Überschusses im Mittel (Elektrolyse, Kabel, verfällt). */
+  surplus: PowerSnapshot["surplus"];
+  greenWasted: number;
+  /** Ökostrom-Anteil am gedeckten Bedarf in der Stunde (0–1; 0 ohne Bedarf). */
+  greenShare: number;
   wind: number;
   clouds: number;
   fog: number;
@@ -299,12 +406,16 @@ export function powerForecast(base: BaseState, fromMs: number, hours: number, ba
   for (let i = 0; i < hours; i++) {
     out.push({
       atMs: fromMs + i * HOUR_MS,
-      supply: { kraftwerk: 0, wind: 0, solar: 0, storage: 0 },
+      supply: { kraftwerk: 0, wind: 0, solar: 0, storage: 0, cable: 0 },
       demand: { radar: 0, production: 0, training: 0, research: 0 },
       served: { radar: 1, production: 1, training: 1, research: 1 },
+      surplus: { fuel: 0, cable: 0, wasted: 0 },
+      greenWasted: 0,
+      greenShare: 0,
       stored: 0, wind: 0, clouds: 0, fog: 0, daylight: 0, storm: false,
     });
   }
+  const green = out.map(() => ({ used: 0, total: 0 }));
   integrateGrid(start, fromMs + hours * HOUR_MS, balance, mods, (snap, a, b) => {
     // Ein Stück kann über eine Stundengrenze reichen: anteilig verteilen.
     let x = a;
@@ -314,7 +425,11 @@ export function powerForecast(base: BaseState, fromMs: number, hours: number, ba
       const end = Math.min(b, fromMs + (i + 1) * HOUR_MS);
       const share = (end - x) / HOUR_MS;
       const h = out[i];
-      for (const k of ["kraftwerk", "wind", "solar", "storage"] as const) h.supply[k] += snap.supply[k] * share;
+      for (const k of ["kraftwerk", "wind", "solar", "storage", "cable"] as const) h.supply[k] += snap.supply[k] * share;
+      for (const k of ["fuel", "cable", "wasted"] as const) h.surplus[k] += snap.surplus[k] * share;
+      h.greenWasted += snap.greenWasted * share;
+      green[i].used += snap.green.used * share;
+      green[i].total += snap.green.total * share;
       for (const k of POWER_RANKS) {
         h.demand[k] += snap.demand[k] * share;
         h.served[k] = Math.min(h.served[k], snap.served[k]);
@@ -330,6 +445,7 @@ export function powerForecast(base: BaseState, fromMs: number, hours: number, ba
       x = end;
     }
   }, wx);
+  out.forEach((h, i) => (h.greenShare = green[i].total > EPS ? Math.min(1, green[i].used / green[i].total) : 0));
   return out;
 }
 

@@ -8,7 +8,7 @@ import { balance, GameError, type Engine } from "./context.ts";
 import { runCommand } from "./commands.ts";
 import { baseOfPlayer, lockBase, saveBase } from "./store.ts";
 import { modsOf } from "./modifiers.ts";
-import { recordAchievement, refreshAchievementState, topBadges } from "./achievements.ts";
+import { recordAchievement, refreshAchievementState, refreshGreenCounter, topBadges } from "./achievements.ts";
 import { ensureWeekly, refreshWeeklyDerived, weeklyContextFor, type WeeklyRow } from "./weekly.ts";
 import {
   achievementById,
@@ -151,6 +151,7 @@ export async function weeklyView(engine: Engine, playerId: number) {
   const nowMs = Date.now();
   const week = weekKey(nowMs);
   return engine.db.transaction(async (tx) => {
+    await refreshGreenCounter(tx, playerId, nowMs); // Ökostrom (v1.21): Wochenziel vor dem Lesen fortschreiben
     const rows = await refreshWeeklyDerived(tx, playerId, await ensureWeekly(tx, playerId, week, nowMs), nowMs);
     const wg = tables.weeklyGoal;
     const older = await tx.select().from(wg)
@@ -182,6 +183,7 @@ export function claimWeekly(engine: Engine, playerId: number, key: string, goalI
   return runCommand<{ ok: true; reward: Record<string, number>; bonus: Record<string, number> | null }>(
     engine, playerId, key, "weeklyClaim", async (ctx) => {
       const wg = tables.weeklyGoal;
+      await refreshGreenCounter(ctx.tx, playerId, ctx.nowMs); // Ökostrom (v1.21)
       const [found] = await ctx.tx.select().from(wg).where(and(eq(wg.id, goalId), eq(wg.playerId, playerId))).for("update");
       if (!found) fail("no_goal");
       if (found.claimedAt) fail("already_claimed");

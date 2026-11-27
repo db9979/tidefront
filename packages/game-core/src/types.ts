@@ -5,6 +5,7 @@ import type { MarketNewsBalance } from "./market/types.ts";
 import type { EspionageBalance, IntelState } from "./espionage.ts";
 import type { CombatWeather, RouteWeather, WeatherBalance } from "./weather.ts";
 import type { PowerBalance, PowerSnapshot } from "./power.ts";
+import type { CableLink, PowerLog } from "./power-green.ts";
 import type { BlockadeBalance, ConvoysBalance, MinesBalance } from "./naval.ts"; // See: Minen/Blockade/Konvoi
 import type { ExpansionDef } from "./expansion.ts"; // Mehrere Häfen
 
@@ -52,6 +53,11 @@ export interface BuildingDef {
   cloudLoss?: number;
   storagePerLevel?: number;
   storageRatePerLevel?: number;
+  /** Elektrolyse (v1.21): Aufnahme an Ökostrom-Überschuss je Stufe (Strom/h) und Strom je Treibstoff. */
+  electrolysisPerLevel?: number;
+  electrolysisRatio?: number;
+  /** Seekabel-Station (v1.21): Kabelleistung je Stufe (Strom/h). */
+  cablePerLevel?: number;
 }
 
 export type Branch = "see" | "land" | "luft";
@@ -418,6 +424,10 @@ export interface BaseState {
   /** Lage des Hafens für das Wetter (v1.6; fehlt sie, gilt power.ts DEFAULT_SITE) und Ladung des Speicherwerks. */
   site?: GeoPoint;
   powerStored?: number;
+  /** Ökostrom, Elektrolyse, Seekabel (v1.21, power-green.ts): Zähler und Stundenwerte des Netzes. */
+  powerLog?: PowerLog;
+  /** Seekabel (v1.21): höchstens ein Kabel je Hafen (abgebend oder empfangend). */
+  cable?: CableLink | null;
   /** Mehrere Häfen: nur bei Kolonien (gegründet per Kolonieschiff); fehlt im Heimathafen. */
   colony?: { foundedAtMs: number };
 }
