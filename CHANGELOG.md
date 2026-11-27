@@ -2,6 +2,14 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.41.0 – 27.11.2026
+
+- Neu: Weltpolitik (Handbuch-Kapitel „Weltpolitik“).
+- Gezeit: Dreimal je Saison (um Tag 10, 19 und 28) ändern sich für 72 Stunden die Regeln – Handelskrise, Rohstoffboom oder Kartellfehde. Sie wird 24 Stunden vorher in der Lage angekündigt; wo eine Regel gerade anders ist, steht es direkt dabei.
+- Seerat: Vor jeder Gezeit und an Tag 7, 14, 21 und 28 stimmt die Runde geheim ab (Basis → Lage). Eine Stimme je Mensch, die KI-Spieler zusammen eine, eine Allianz höchstens 40 %.
+- Ansehen bei jedem KI-Spieler (Börse → Verträge): steigt durch erfüllte Verträge und Gesuche, sinkt durch Überfälle und Paktbruch; es bestimmt Vertragsbonus und Kontingent. Nach einem Überfall verweigert der KI-Spieler 72 Stunden lang Verträge. Bei „Vertraut“ bietet er einen Nichtangriffspakt an.
+- Gesuche: KI-Spieler bitten um Lieferungen. Ein Gesuch belegt einen Tagesbefehl-Platz; Lohn sind Waren im Wert von 3 Stunden deiner Produktion.
+
 ## 0.40.0 – 27.11.2026
 
 - „Alle abholen“ holt alle Belohnungen in einem Schritt. Passt etwas nicht mehr ins Lager, bleibt es liegen, statt zu verfallen.
