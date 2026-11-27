@@ -186,6 +186,7 @@ function BuildYard({ base, now }: { base: BaseData; now: number }) {
       )}
       {queue.length > 1 && <p className="text-xs text-slate-400 mt-1">Abbruch: der laufende Auftrag nach Restzeit, wartende voll erstattet. Spätere Stufen desselben Gebäudes fallen mit weg.</p>}
       <ErrorLine text={cancel.error} />
+      <p className="text-xs text-ink2 flex items-center gap-1.5 mt-2"><span className="diamond bg-moos shrink-0" aria-hidden="true" /> = jetzt ausbaubar (Rohstoffe reichen, Platz in der Schlange frei)</p>
     </Card>
   );
 }
@@ -204,7 +205,7 @@ function BuildingTile({ b, res, queueFull, running, queued, onOpen, sabotaged }:
         <span className={`w-[22px] h-[22px] rounded-full grid place-items-center text-[11px] mono border ${b.level > 0 ? "border-ink text-ink" : "border-rule text-ink2"}`}>{b.level}</span>
         {sabotaged ? <Badge tone="red">sabotiert</Badge> : running ? <Badge tone="red">Ausbau</Badge> : queued ? <Badge tone="sea">→ {b.planned}</Badge> : null}
       </span>
-      {can && <span className="absolute top-1.5 left-1.5 diamond bg-moos" title="Ausbau möglich" />}
+      {can && <span className="absolute top-1.5 left-1.5 diamond bg-moos" title="Ausbau möglich" aria-label="Ausbau jetzt möglich" />}
     </button>
   );
 }

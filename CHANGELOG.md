@@ -2,6 +2,12 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.17.4 – 27.11.2026
+- **Wettervorhersage mit Unsicherheit:** Je weiter eine Vorhersage vorausschaut, desto ungenauer ist sie – Wind bis ±5 % je 3 Stunden (höchstens ±30 %), Bewölkung und Nebel entsprechend, Wettersysteme bis zu 3 Stunden früher oder später. Alle 3 Stunden wird die Vorhersage neu ausgegeben. Das tatsächliche Wetter ändert sich nicht und gilt für Reise, Kampf und Strom.
+- Die **Stromkurve** zeigt ein Band als Spannbreite („reicht voraussichtlich“), die Wettervorhersage am Hafen Wind von–bis, Sturm „ab etwa … (±x h)“ und neu „Sturm möglich“. Die **Missionsplanung** zeigt die Vorhersage am Ziel mit Spannbreite.
+- **Funkmesstechnik** macht die Vorhersage um 15 % je Stufe genauer, eine **Radarstation** um weitere 10 % (Balance v1.18).
+- **Basis:** Unter dem Bauhof steht jetzt, was die grüne Raute an Gebäuden bedeutet: Ausbau jetzt möglich.
+
 ## 0.17.3 – 27.11.2026
 - **Einheitliche Knöpfe:** Nebenaktionen wie „Kampfsimulator öffnen“, „Alle zeigen“, „Ändern“, „Mehr“, „Einteilen“ und „Räumen“ sind jetzt umrandete Knöpfe im Stil der übrigen statt unterstrichener Textlinks. Unterstrichen bleiben nur Verweise im Text (z. B. ein Feld auf der Karte zeigen).
 
