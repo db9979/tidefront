@@ -1,5 +1,5 @@
 {
-  "version": "v1.27",
+  "version": "v1.28",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -10,14 +10,15 @@
     "maxBuildSeconds": 432000,
     "levelCapAboveCommand": 3,
     "productionGrowth": 1.15,
-    "queueSlots": 3
+    "queueSlots": 3,
+    "costShift": { "perLevel": 0.03, "max": 0.35, "to": { "elektronik": 0.75, "proviant": 0.25 } }
   },
   "buildings": {
     "kommandozentrale": { "cost": { "stahl": 400, "treibstoff": 100, "elektronik": 100 }, "seconds": 120, "commandPointsBase": 60, "commandPointsPerLevel": 30, "commandPointsLateFromLevel": 9, "commandPointsLatePerLevel": 60 },
     "stahlwerk": { "cost": { "stahl": 120, "treibstoff": 30, "elektronik": 0 }, "seconds": 20, "produces": "stahl", "perHour": 120, "powerPerLevel": 10 },
     "raffinerie": { "cost": { "stahl": 150, "treibstoff": 20, "elektronik": 10 }, "seconds": 25, "produces": "treibstoff", "perHour": 60, "powerPerLevel": 12 },
     "chipfabrik": { "cost": { "stahl": 200, "treibstoff": 60, "elektronik": 20 }, "seconds": 40, "produces": "elektronik", "perHour": 45, "powerPerLevel": 15 },
-    "versorgungshof": { "cost": { "stahl": 100, "treibstoff": 20, "elektronik": 0 }, "seconds": 20, "produces": "proviant", "perHour": 80, "powerPerLevel": 6 },
+    "versorgungshof": { "cost": { "stahl": 100, "treibstoff": 20, "elektronik": 0 }, "costShiftTo": { "proviant": 0.5, "elektronik": 0.5 }, "seconds": 20, "produces": "proviant", "perHour": 80, "powerPerLevel": 6 },
     "kraftwerk": { "cost": { "stahl": 140, "treibstoff": 40, "elektronik": 10 }, "seconds": 25, "powerSupplyPerLevel": 60, "fuelPerHourPerLevel": 3 },
     "windpark": { "cost": { "stahl": 180, "treibstoff": 10, "elektronik": 40 }, "seconds": 30, "windPowerPerLevel": 90, "stormCutoff": 0.95 },
     "solarfeld": { "cost": { "stahl": 120, "treibstoff": 0, "elektronik": 70 }, "seconds": 30, "solarPowerPerLevel": 180, "cloudLoss": 0.7 },
@@ -27,7 +28,7 @@
     "lagerkomplex": { "cost": { "stahl": 250, "treibstoff": 0, "elektronik": 0 }, "seconds": 30, "capacityBase": 5000, "capacityGrowth": 1.5 },
     "tiefbunker": { "cost": { "stahl": 300, "treibstoff": 0, "elektronik": 50 }, "seconds": 45, "protectedBase": 300, "protectedGrowth": 1.4 },
     "werft": { "cost": { "stahl": 400, "treibstoff": 100, "elektronik": 50 }, "seconds": 90, "buildSpeedPerLevel": 0.1, "powerPerLevel": 3, "powerRank": 3 },
-    "kaserne": { "cost": { "stahl": 200, "treibstoff": 20, "elektronik": 10 }, "seconds": 45, "buildSpeedPerLevel": 0.1, "powerPerLevel": 3, "powerRank": 3 },
+    "kaserne": { "cost": { "stahl": 200, "treibstoff": 20, "elektronik": 10 }, "costShiftTo": { "proviant": 0.5, "elektronik": 0.5 }, "seconds": 45, "buildSpeedPerLevel": 0.1, "powerPerLevel": 3, "powerRank": 3 },
     "flugfeld": { "cost": { "stahl": 350, "treibstoff": 120, "elektronik": 120 }, "seconds": 90, "buildSpeedPerLevel": 0.1, "slotsPerLevel": 6, "powerPerLevel": 3, "powerRank": 3 },
     "radarstation": { "cost": { "stahl": 200, "treibstoff": 40, "elektronik": 150 }, "seconds": 60, "warningMinutesBase": 10, "warningMinutesPerLevel": 5, "powerPerLevel": 5, "powerRank": 1 },
     "hafenkommandantur": { "cost": { "stahl": 300, "treibstoff": 80, "elektronik": 60 }, "seconds": 60, "missionSlotsBase": 1, "missionSlotsPerTwoLevels": 1, "marketFromLevel": 3, "creditLimitPerLevel": 5000 },

@@ -26,7 +26,7 @@ import { IntelPanel, SabotageBanner, sabotagedUntil } from "../components/Intel.
 import { BlockadeBanner } from "../components/Naval.tsx"; // See: Blockade („blockiert bis …“)
 import { buildingLive, harborWeather } from "../lib/live-art.ts"; // Bewegte Gebäude
 import { CatchUpLine, CreditCost, buildCostSplit, useBuildCost } from "../components/CatchUp.tsx"; // Aufholhilfe: Baugutschrift
-import type { Balance as CoreBalance } from "@tidefront/game-core";
+import { upgradeCost, type Balance as CoreBalance } from "@tidefront/game-core";
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 
@@ -136,11 +136,10 @@ function affordable(cost: Record<string, number> | null, res: Record<string, num
   return !!cost && Object.entries(cost).every(([r, v]) => (res[r] ?? 0) >= v);
 }
 
-/** Kosten des Ausbaus von Stufe L auf L+1 (wie im Regelkern: cost × costFactor^L, aufgerundet). */
+/** Kosten des Ausbaus von Stufe L auf L+1 – derselbe Regelkern wie der Server (inkl. stufenabhängiger Kostenmischung). */
 function levelCost(balance: Balance, id: string, level: number): Record<string, number> {
-  const out: Record<string, number> = {};
-  for (const [r, v] of Object.entries(balance.buildings[id]?.cost ?? {})) out[r] = Math.ceil(v * balance.building.costFactor ** level);
-  return out;
+  if (!balance.buildings[id]) return {};
+  return upgradeCost(id, level, balance as unknown as CoreBalance);
 }
 
 function BuildYard({ base, now, onResearch }: { base: BaseData; now: number; onResearch: () => void }) {
