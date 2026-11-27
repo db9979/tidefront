@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.21.2 – 27.11.2026
+- **Behoben:** Nach „Auf der Karte zeigen“ (aus Truppen oder Meldungen) öffnete sich die Missionsleiste unten bei jeder Rückkehr zur Karte erneut. Jetzt springt die Karte nur einmal zum Ziel; danach bleibt sie frei.
+
 ## 0.21.1 – 27.11.2026
 - **Mehr Bewegung:** Im Hafenbild ziehen die Wellen, tagsüber fliegt eine Möwe vorbei, nachts funkeln Sterne; Boote schaukeln, Rauch und Flagge bewegen sich (je nach Ausbau), der Lichtkegel des Leuchtturms pulsiert. Die Uhr bei Tagesbefehlen und Bauhof dreht ihren Zeiger, die Medaille des Auftragsbuchs pendelt leise.
 

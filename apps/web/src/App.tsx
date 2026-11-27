@@ -117,7 +117,11 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const [research, setResearch] = useState(false);
   // „Wiederholen“ aus Berichten und Truppen öffnet die Planung mit Ziel und Zusammensetzung.
   usePlanRequests((r) => { setHelp(false); setResearch(false); setPlan({ target: r.target, preset: { type: r.type, units: r.units }, seq: Date.now() }); });
+  // Sprungziel für die Karte (z. B. „auf der Karte zeigen“). Die Karte verbraucht es beim Öffnen einmal; mapSeq erzwingt
+  // dafür ein neues Kartenbild. Danach bleibt die Karte bei späterer Rückkehr ohne geöffnetes Missions-/Feldblatt.
   const [mapFocus, setMapFocus] = useState<Target | null>(null);
+  const [mapSeq, setMapSeq] = useState(0);
+  const showOnMap = (t: Target) => { setMapFocus(t); setMapSeq((n) => n + 1); go("karte"); };
   const [help, setHelp] = useState(!!opened.view);
   const [helpView, setHelpView] = useState(opened.view ?? null);
   const onMarket = tab === "boerse" && !plan && !help;
@@ -266,11 +270,11 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       <BaseScreen key={b.id} base={b} asOf={base.data.serverNow} sheet={sheet} setSheet={setSheet} onGuide={onGuide} onTroops={() => go("truppen")} onResearch={openResearch} />
     </>
   ) : tab === "karte" ? (
-    <MapScreen key={`${b.id}:${mapFocus?.missionId ?? "karte"}`} base={b} focus={mapFocus} onPlan={openPlan} onSwitchBase={switchBase} />
+    <MapScreen key={`${b.id}:${mapSeq}`} base={b} focus={mapFocus} onFocusUsed={() => setMapFocus(null)} onPlan={openPlan} onSwitchBase={switchBase} />
   ) : tab === "truppen" ? (
-    <TroopsScreen key={`${b.id}:${navSeq}`} base={b} onResearch={openResearch} onPlan={() => openPlan(null)} onShowOnMap={(t) => { setMapFocus(t); go("karte"); }} />
+    <TroopsScreen key={`${b.id}:${navSeq}`} base={b} onResearch={openResearch} onPlan={() => openPlan(null)} onShowOnMap={showOnMap} />
   ) : tab === "berichte" ? (
-    <MeldungenScreen sub={sub} setSub={setSub} unread={{ berichte: unread, nachrichten: unreadMsgs }} onShowOnMap={(t) => { setMapFocus(t); go("karte"); }} />
+    <MeldungenScreen sub={sub} setSub={setSub} unread={{ berichte: unread, nachrichten: unreadMsgs }} onShowOnMap={showOnMap} />
   ) : (
     <MarketScreen key={`${b.id}:${navSeq}`} base={b} initialResource={marketRes} />
   );

@@ -30,6 +30,9 @@ test("Elektrolyse ausbauen: Gebäudeblatt, Stufe 1, Versorgung mit Ökostrom-Ant
   await expectNoHorizontalOverflow(page, "Versorgung mit Elektrolyse");
 });
 
+test.describe("mit freiem Gründungsfeld", () => {
+  test.use({ spawnNear: "founding" });
+
 test("Seekabel zwischen eigenen Häfen legen, ansehen und trennen", async ({ page, player, seed }) => {
   // Zweiter eigener Hafen in Reichweite (Kopie des Heimathafens als Außenposten).
   const spot = await foundingSpot(seed.sql, player);
@@ -62,4 +65,5 @@ test("Seekabel zwischen eigenen Häfen legen, ansehen und trennen", async ({ pag
   await expect(cable.getByRole("button", { name: "Kabel legen" })).toBeVisible();
   expect((await seed.sql`select id from power_cable where id = ${c.id as number}`).length).toBe(0);
   expect((await readState(seed.sql, player.baseId)).cable ?? null).toBeNull();
+});
 });

@@ -71,6 +71,15 @@ test("Einsatz: Flotte, Ziele, laufende Mission, Kacheln", async ({ page, player,
   await expectNoHorizontalOverflow(page, "Einsatz mit Mission");
   await shot(page, "einsatz-2-mission");
 
+  // „Auf der Karte“ öffnet die Missionsleiste einmal; bei späterer Rückkehr zur Karte bleibt sie zu.
+  await card.getByRole("button", { name: "Auf der Karte" }).click();
+  await expect(page.getByRole("button", { name: "Zeiten" })).toBeVisible();
+  await page.getByRole("navigation").getByRole("button", { name: "Basis" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
+  await expect(page.getByRole("button", { name: "Hineinzoomen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Zeiten" })).toHaveCount(0);
+  await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
+
   // Zurückrufen über die Karte der Mission
   await card.getByRole("button", { name: "Zurückrufen" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Zurückrufen" }).click();

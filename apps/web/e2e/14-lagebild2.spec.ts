@@ -93,6 +93,9 @@ test("Patrouille: Wegpunkte auf der Karte antippen, auslaufen, Nest am Wegpunkt 
   }
 });
 
+test.describe("mit freiem Gründungsfeld", () => {
+  test.use({ spawnNear: "founding" });
+
 test("Radarposten: auf freier Küste errichten, im Lagebild verwalten", async ({ page, player, seed }) => {
   await setBuildings(seed.sql, player.baseId, { radarstation: 3, werft: 3, kaserne: 3, kommandozentrale: 4, hafenkommandantur: 4 });
   await setUnits(seed.sql, player.baseId, { pioniere: 6, landungsschiff: 1 });
@@ -118,6 +121,7 @@ test("Radarposten: auf freier Küste errichten, im Lagebild verwalten", async ({
   await expect(row).toContainText("in Betrieb");
   await expect(page.getByTestId("lagebild-tab").getByRole("listitem").filter({ hasText: "Radarposten" }).filter({ hasText: "bis 250 km" })).toBeVisible();
   await expectNoHorizontalOverflow(page, "Meldungen → Lagebild");
+});
 });
 
 test("Aufklärungskampagne: zwei Nester nacheinander, je ein Lagebild", async ({ page, player, seed }) => {

@@ -33,7 +33,7 @@ const RELATION_TEXT: Record<string, string> = {
 };
 const LEVEL_TEXT =["", "schwach besetzt", "kleine Bande", "befestigt", "Festung", "Hauptquartier", "Inselfestung – Spätspiel"];
 
-export function MapScreen({ base, focus, onPlan, onSwitchBase }: { base: BaseData; focus: Target | null; onPlan: (t: Target) => void; onSwitchBase: (id: number) => void }) {
+export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { base: BaseData; focus: Target | null; onFocusUsed?: () => void; onPlan: (t: Target) => void; onSwitchBase: (id: number) => void }) {
   const map = useQuery({ ...trpc.world.map.queryOptions(), refetchInterval: 60000 });
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const worldEvents = useWorldEvents();
@@ -43,6 +43,8 @@ export function MapScreen({ base, focus, onPlan, onSwitchBase }: { base: BaseDat
   const [missionId, setMissionId] = useState<number | null>(focus?.missionId ?? null);
   const [recenter, setRecenter] = useState(0);
   const [centerOn, setCenterOn] = useState<Target>(focus ?? { col: base.col, row: base.row });
+  // Sprungziel nur einmal verwenden: sonst öffnet sich das Blatt bei jeder Rückkehr zur Karte erneut.
+  useEffect(() => { if (focus) onFocusUsed?.(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // Wetterschicht (v1.6): abschaltbar, Wahl bleibt im Gerät.
   const [showWeather, setShowWeather] = useState(() => localStorage.getItem("tf-wetter") !== "aus");
   // Lagebild: Schicht „Sensoren“ (gestrichelte Reichweiten) an/aus, Wahl bleibt im Gerät.

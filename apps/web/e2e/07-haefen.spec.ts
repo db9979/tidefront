@@ -20,6 +20,9 @@ test("Hafen verwalten: Heimathafen umbenennen", async ({ page, player, seed }) =
   expect(b.name).toBe("Neue Werft am Meer");
 });
 
+test.describe("mit freiem Gründungsfeld", () => {
+  test.use({ spawnNear: "founding" });
+
 test("Kolonieschiff bauen, Außenposten gründen, Hafen wechseln und umbenennen", async ({ page, player, seed }) => {
   test.slow();
   await setBuildings(seed.sql, player.baseId, { kommandozentrale: 5, werft: 6, hafenkommandantur: 6, lagerkomplex: 6, kraftwerk: 5 });
@@ -90,4 +93,5 @@ test("Kolonieschiff bauen, Außenposten gründen, Hafen wechseln und umbenennen"
   await page.getByRole("button", { name: /– Hafen wechseln$/ }).click();
   await page.getByRole("dialog").getByRole("listitem").filter({ hasText: "Heimathafen" }).getByRole("button", { name: "Hierhin wechseln" }).click();
   await expect(page.getByRole("button", { name: /– Hafen wechseln$/ })).toContainText("Heimathafen");
+});
 });

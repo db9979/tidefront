@@ -8,6 +8,7 @@ import { createDb } from "@tidefront/db";
 import { chooseBase, register, type Engine } from "@tidefront/engine";
 import { COLS, ROWS, hexAtLonLat, hexCenter, hexCenterXY, hexDistanceKm, hexIndex, nearestTradePort, terrainMap } from "@tidefront/world";
 import { E2E } from "./env.ts";
+import { foundingSpot } from "./game.ts";
 
 export { expect };
 
@@ -63,7 +64,8 @@ const SPOTS: [number, number][] = [
 ];
 let spot = 0;
 
-export type SpawnNear = "spot" | "nest" | "field";
+/** "founding": wie "spot", aber nur Hafenlagen, neben denen noch ein freies Gründungsfeld liegt (Außenposten, Radarposten, Seekabel). */
+export type SpawnNear = "spot" | "nest" | "field" | "founding";
 
 /** Abseits des Kartenrands (dort lässt sich die Karte nicht weit genug verschieben, um ein Feld frei anzutippen). */
 export function awayFromEdge(h: { col: number; row: number }): boolean {
@@ -120,13 +122,16 @@ export const test = base.extend<{ player: Player; consoleErrors: string[]; spawn
     const name = uniqueName("Kpt");
     const password = "e2e-geheim-123";
     const r = await register(seed.engine.db, { inviteCode: E2E.invite, name, password });
-    const [lon, lat] = await spawnPoint(seed.sql, spawnNear);
     let chosen: { col: number; row: number } | null = null;
+    for (let attempt = 0; attempt < (spawnNear === "founding" ? 8 : 1) && !chosen; attempt++) {
+    const [lon, lat] = await spawnPoint(seed.sql, spawnNear === "founding" ? "spot" : spawnNear);
     for (const h of (await freeCoastNear(seed.sql, lon, lat)).slice(0, 40)) {
+      if (spawnNear === "founding" && !(await foundingSpot(seed.sql, h).then(() => true, () => false))) continue;
       const res = await chooseBase(seed.engine, r.playerId, `e2e-${name}-${h.col}-${h.row}`, {
         col: h.col, row: h.row, name: `Hafen ${name.slice(4)}`, nightShieldStartHour: null, tzOffsetMinutes: 60,
       });
       if (res.ok) { chosen = h; break; }
+    }
     }
     if (!chosen) throw new Error("kein freies Küstenfeld gefunden");
     const [b] = await seed.sql`select id from base where player_id = ${r.playerId} and is_home`;
