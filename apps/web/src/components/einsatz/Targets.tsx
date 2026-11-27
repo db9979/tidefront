@@ -4,7 +4,11 @@
 // Kartennebel (Lagebild): Die Stufe eines Nests kann fehlen – dann „Stufe unbekannt – erst aufklären“. Ausnahme: das
 // Ziel des Nest-Auftrags (Auftragsbuch, nestTarget) ist immer mit Stufe bekannt und steht immer in der Liste, ebenso
 // alle bekannten Nester der Stufe 1 in 300 km.
+// Lebendige Nester: Erkannte Nester zeigen Besatzung, Anlagen und Beute (Spanne bzw. mit Lagebild genau und
+// hochgerechnet, Alter des Lagebilds) und eine Bewertung „lohnend?“ (Netto zum Richtpreis: Beute bei Sieg gegen
+// Treibstoff hin und zurück und erwartete Verluste). Sortierung: lohnend und erreichbar zuerst.
 import { useEffect, useMemo, useState } from "react";
+import { seaRoute } from "@tidefront/world";
 import type { Balance, BaseData, MapData } from "../../lib/trpc.ts";
 import type { Target } from "../../App.tsx";
 import { countLabel, fmtNum } from "../../lib/names.ts";
@@ -17,6 +21,8 @@ import { TacticalIcon } from "../../map/TacticalIcon.tsx";
 import { Icon } from "../../icons.tsx";
 import { Badge, Bar, Button, Card, SmallButton, UnitChips } from "../../ui.tsx";
 import { ReasonLine } from "../Remedy.tsx"; // ohne Kampfeinheiten: „Angreifen“ erklärt, was hilft
+import { NestIntel } from "../NestIntel.tsx"; // Lebendige Nester: Besatzung, Anlagen, Beute
+import { agoText } from "../IntelStand.tsx";
 
 const ROMAN = ["", "I", "II", "III", "IV", "V", "VI"];
 const pct = (v: number) => `${fmtNum(Math.round(v * 100))} %`;
@@ -32,13 +38,15 @@ export function pickNests(all: NestInfo[], mission: { id: number; level: number 
   const pick = new Map<number, (typeof withLevel)[number]>();
   for (const n of withLevel.slice(0, 3)) pick.set(n.id, n);
   for (const n of withLevel) if (n.mission || (n.level === 1 && n.distanceKm <= LEVEL1_KM)) pick.set(n.id, n);
+  // Lebendige Nester: aufgeklärte Nester (genaues Lagebild) in der Nähe gehören dazu.
+  for (const n of withLevel.filter((x) => x.lagebild).slice(0, 2)) pick.set(n.id, n);
   return [...pick.values()].sort((a, b) => Number(b.mission) - Number(a.mission) || a.distanceKm - b.distanceKm).slice(0, MAX_ROWS).sort((a, b) => a.distanceKm - b.distanceKm);
 }
 
 /** Vorschläge je Nest aus dem Probekampf (nachgeladen; rechnet nach dem Zeichnen). */
 function usePlans(rows: Row[], base: BaseData, balance: Balance): Record<string, NestPlan | null> {
   const [out, setOut] = useState<Record<string, NestPlan | null>>({});
-  const sig = JSON.stringify(rows.map((r) => [r.key, r.nest.level, r.full])) + JSON.stringify(base.modifiers ?? {}) + String(base.versorgungsmangel);
+  const sig = JSON.stringify(rows.map((r) => [r.key, r.nest.level, r.full, r.nest.lagebild?.atMs ?? null])) + JSON.stringify(base.modifiers ?? {}) + String(base.versorgungsmangel);
   useEffect(() => {
     let off = false;
     const t = setTimeout(() => {
@@ -47,7 +55,7 @@ function usePlans(rows: Row[], base: BaseData, balance: Balance): Record<string,
         const next: Record<string, NestPlan | null> = {};
         for (const r of rows) {
           if (r.nest.level === null || Object.keys(r.full).length === 0) continue;
-          next[r.key] = planNestRaid(r.full, r.nest.level, balance, { versorgungsmangel: base.versorgungsmangel, modifiers: base.modifiers });
+          next[r.key] = planNestRaid(r.full, r.nest.level, balance, { versorgungsmangel: base.versorgungsmangel, modifiers: base.modifiers, lagebild: r.nest.lagebild, travelKm: travelKmOf(base, r.nest, r.full, balance) });
         }
         setOut(next);
       });
@@ -56,6 +64,15 @@ function usePlans(rows: Row[], base: BaseData, balance: Balance): Record<string,
   }, [sig, balance]);
   return out;
 }
+
+/** Fahrstrecke: mit Schiffen der Seeweg, sonst Luftlinie. */
+function travelKmOf(base: { col: number; row: number }, nest: { col: number; row: number; distanceKm: number }, units: Counts, balance: Balance): number {
+  const ships = Object.entries(units).some(([id, n]) => n > 0 && balance.units[id]?.branch === "see");
+  return ships ? Math.max(nest.distanceKm, seaRoute(base, nest).km) : nest.distanceKm;
+}
+
+/** Lohnend und erreichbar: Vorschlag reicht (≥ 90 %) und netto im Plus. */
+const worthwhile = (p: NestPlan | null | undefined) => !!p && p.enough && !!p.worth && p.worth.net[0] > 0;
 
 function NestMark({ level }: { level: number | null }) {
   if (level !== null) return <TacticalIcon kind="nest" level={level} size={38} />;
@@ -87,9 +104,9 @@ export function TargetsCard({ base, balance, map, onShowOnMap }: { base: BaseDat
         <>
           {noFleet && <p className="text-xs text-messing mb-1">Keine Kampfeinheiten daheim.</p>}
           <ul className="divide-y divide-rule">
-            {rows.map((r) => <TargetRow key={r.key} row={r} plan={plans[r.key]} base={base} balance={balance} onShowOnMap={onShowOnMap} />)}
+            {[...rows].sort((a, b) => Number(worthwhile(plans[b.key])) - Number(worthwhile(plans[a.key])) || Number(b.mission) - Number(a.mission) || a.nest.distanceKm - b.nest.distanceKm).map((r) => <TargetRow key={r.key} row={r} plan={plans[r.key]} base={base} balance={balance} onShowOnMap={onShowOnMap} />)}
           </ul>
-          {!noFleet && <p className="text-[11px] text-ink2 mt-1">Vorschlag: kleinster Verband aus deinem Bestand, der im Probekampf (ohne Wetter) mindestens 9 von 10 Kämpfen gewinnt. Raute antippen zeigt das Nest auf der Karte.</p>}
+          {!noFleet && <p className="text-[11px] text-ink2 mt-1">Vorschlag: kleinster Verband aus deinem Bestand, der im Probekampf (ohne Wetter) mindestens 9 von 10 Kämpfen gewinnt – mit Lagebild genau, sonst im Mittel über die Spanne der Besatzung. Netto: Beute bei Sieg zum Richtpreis minus Treibstoff hin und zurück und erwartete Verluste. Raute antippen zeigt das Nest auf der Karte.</p>}
         </>
       )}
     </Card>
@@ -130,6 +147,14 @@ function TargetRow({ row, plan, base, balance, onShowOnMap }: { row: Row; plan: 
           </div>
           {!known && <p className="text-xs text-messing mt-0.5">Stufe unbekannt – erst aufklären.</p>}
           {known && !empty && tone && <div className="mt-1"><Bar value={rate ?? 0} tone={tone as "green" | "brass" | "red"} /></div>}
+          {known && <WorthLine nest={nest} plan={plan} />}
+          {known && (
+            <details className="mt-0.5 text-xs" data-testid="ziel-details">
+              <summary className="cursor-pointer text-ink2">Details</summary>
+              <NestIntel level={nest.level!} lagebild={nest.lagebild} now={Date.now()} balance={balance} compact />
+              {plan?.worth && <p className="text-[11px] text-ink2 mt-0.5">Beute bei Sieg ≈ {fmtNum(Math.round(plan.worth.loot[0]))}{plan.worth.loot[1] > plan.worth.loot[0] + 1 ? `–${fmtNum(Math.round(plan.worth.loot[1]))}` : ""} · Verluste ≈ {fmtNum(Math.round(plan.worth.loss))} · Treibstoff ≈ {fmtNum(Math.round(plan.worth.fuel))} (Richtpreis)</p>}
+            </details>
+          )}
           {!empty && <div className="text-xs mt-1" aria-label="Vorgeschlagener Verband"><UnitChips counts={units} /></div>}
           {plan && !plan.enough && <p className="text-xs text-messing mt-0.5">{shortfall(plan)}</p>}
         </div>
@@ -145,6 +170,23 @@ function TargetRow({ row, plan, base, balance, onShowOnMap }: { row: Row; plan: 
       </div>
       {empty && why && <div className="pl-[46px]"><ReasonLine code="no_combat_units" open onOpenChange={setWhy} /></div>}
     </li>
+  );
+}
+
+/** Kurzzeile: Lagebild-Alter, Spanne der Siegchance, Netto. */
+function WorthLine({ nest, plan }: { nest: NestInfo; plan: NestPlan | null | undefined }) {
+  const parts: string[] = [];
+  if (nest.lagebild) parts.push(`Lagebild ${agoText(nest.lagebild.atMs, Date.now())}`);
+  else parts.push("nur Erkennung");
+  if (plan?.range) parts.push(`Sieg ${pct(plan.range.min)}–${pct(plan.range.max)}, Ø ${pct(plan.range.mean)}`);
+  const w = plan?.worth;
+  const signed = (v: number) => `${v >= 0 ? "+" : "−"}${fmtNum(Math.abs(Math.round(v / 100) * 100))}`;
+  const net = w ? (Math.abs(w.net[1] - w.net[0]) < 100 ? `Netto etwa ${signed(w.net[0])}` : `Netto etwa ${signed(w.net[0])} bis ${signed(w.net[1])}`) : null;
+  return (
+    <div className="text-[11px] mt-0.5 flex flex-wrap gap-x-2" data-testid="ziel-wert">
+      <span className="text-ink2">{parts.join(" · ")}</span>
+      {net && <span className={w!.net[0] > 0 ? "text-moos" : "text-siegel"}>{net}</span>}
+    </div>
   );
 }
 

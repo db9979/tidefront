@@ -175,6 +175,7 @@ export const seasonEnd: Handler = async (tx, ev, due) => {
   await clearMarketNews(tx);
   await tx.update(tables.nest).set({ defeatedAt: null });
   await ensureNests(tx, { dropStartNests: true }); // Plätze, die ein Hafen belegt hatte (z. B. Stufe 6 nachgetragen), jetzt anlegen; Start-Nester weg
+  await (await import("./nest-live.ts")).resetNestLife(tx, due); // Lebendige Nester: neuer Wurf, Beute ab Saisonbeginn
   const market = marketCore.createMarketState(marketBalance, due);
   for (const [resource, state] of Object.entries(market)) {
     await tx

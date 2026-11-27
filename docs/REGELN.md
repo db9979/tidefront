@@ -228,6 +228,29 @@ Nach dem Kampf:
   etwa 15 %, ab Tag 35 zu 74 %. Fünf feste Inseln (`LATE_NEST_POINTS`, an `nestSites()` angehängt), eigene Wiederkehr
   `respawnHours` 24 h, Beute 29 000 Einheiten (viel Elektronik). migrate/Seed trägt fehlende Plätze nach (vorhandene
   Nester bleiben; Feld mit Hafen erst beim Saisonwechsel). Kein Freischalten nach Saisontag (ENTSCHEIDUNGEN-3.md N).
+- **Lebendige Nester** (Block `pirates.living`, Vorlage docs/VORLAGE-NESTER.md 3, umgesetzt 27.11.2026):
+  - **Wurf je Besetzung** (Saisonbeginn und jede Wiederbesetzung; Stufen 2–6): Besatzungsfaktor gleichverteilt in
+    5-%-Schritten 80 … 120 % (ein Faktor für Schnellboote und Miliz, gerundet, mindestens 1); jede vorhandene
+    Anlagenart −1/0/+1 mit 25/50/25 %. **Stufe 1 schwankt nicht.** Der Wurf wird gespeichert (`nest.roll`), nie
+    abgeleitet; bei der Eroberung wird der Wurf der Wiederbesetzung sofort gezogen (geheim, bis das Nest besetzt ist).
+  - **Erholung:** Gewinnt das Nest, behält es seine Überlebenden, füllt sofort auf mindestens 70 % des Wurfs auf und
+    dann +5 % des Wurfs je Stunde (voll nach ≤ 6 h); zerstörte Anlagen kommen 12 h nach dem Kampf vollständig zurück.
+    Neuer Wurf nur nach Eroberung (kein Neu-Würfeln durch verlorene Überfälle).
+  - **Beute:** 100 % der Stufenbeute bei Besetzung, +1 %/h, höchstens 130 % (nach 30 h); der Laderaum begrenzt, der
+    Beutemeister (+10 %) wirkt darauf (höchstens 143 %). Ein abgewehrter Überfall setzt nichts zurück.
+  - Gerechnet beim Abruf aus Zeitstempeln (`garrison`, `garrison_at`, `loot_at`), ohne Takt; ein Schreibzugriff je Kampf.
+    Sammelangriffe kämpfen gegen die aktuelle Besatzung und schreiben Eroberung bzw. Schwächung genauso. Der
+    Saisonwechsel setzt Wurf, Besatzung und Beute zurück. Felder sind nicht betroffen.
+  - **Was man sieht:** Erkennung = Stufe, Besatzung als Spanne (Stufe 4: 18–26 Schnellboote, 172–258 Miliz), Anlagen
+    „unbekannt“, Beute 100–130 %. Lagebild (Aufklärung, Kampfbericht – auch ein verlorener Überfall) = Wurf, aktuelle
+    Besatzung, Anlagen, Beute; die Karte rechnet Erholung und Beute hoch. Genau ist ein Lagebild 24 h (`staleHours`) und
+    nur ohne Wiederbesetzung dazwischen.
+  - **Probekampf:** mit Lagebild genau; ohne Lagebild über die Spanne (100 Würfe aus der Verteilung, je ein Seed),
+    Anzeige „Siegchance 22–100 %, im Mittel 90 %“ (unterer Wert: ungünstigster Wurf). Vorschlag ohne Lagebild: kleinster
+    Verband mit im Mittel ≥ 90 % und Hinweis „Aufklärung schicken“. KI: ohne Lagebild gegen den ungünstigsten Wurf,
+    höchstens 6 Nester je Zug; sie klärt erkannte Nester ohne Lagebild auf.
+  - Zielfenster mit dem Bot-Verband (`node packages/game-core/sim/nest-living.ts`, erster Prüftag ≥ 70 %, Zufallsnest):
+    Stufe 1 T1, 2 T3, 3 T7, 4 T14, 5 T21, 6 T38 – unverändert gegenüber den festen Nestern (Stufe 6 fest T31).
 - Überfälle auf Spieler alle `raidIntervalHours` je Stützpunkt. Der Verband läuft vom Nest mit dem kürzesten Seeweg
   (unter den drei nächsten nach Luftlinie) über Wasser zum Hafen (Seewege, Entscheidung U): Vorlauf 1 h auf offener
   See, mal Umwegfaktor (Seeweg / Luftlinie), höchstens 3 h. Karte, Radar und Position folgen der Route.

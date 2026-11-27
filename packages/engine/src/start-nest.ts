@@ -7,7 +7,8 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { hexDistanceKm, isTradePortHex, neighbors, terrainAt, type Hex } from "@tidefront/world";
 import { tables, type DbOrTx } from "@tidefront/db";
-import { nestData, recordSightings } from "./intel-store.ts";
+import { nestData, nestIntelData, recordSightings } from "./intel-store.ts";
+import { ensureNestRolls } from "./nest-live.ts"; // Lebendige Nester
 import { partyOf } from "./intel-sight.ts";
 import { rules as fieldRules, sitesOf } from "./fields-core.ts";
 
@@ -91,8 +92,10 @@ export async function ensureStartNest(db: DbOrTx, home: Hex, nowMs: number): Pro
 
 /** Das Start-Nest ist dem Spieler bekannt (Lagebild: Stufe und Zustand wie nach einer Aufklärung). */
 export async function revealStartNest(db: DbOrTx, playerId: number, nestId: number, nowMs: number): Promise<void> {
-  const [n] = await db.select().from(tables.nest).where(and(eq(tables.nest.id, nestId)));
-  if (!n) return;
+  const [row] = await db.select().from(tables.nest).where(and(eq(tables.nest.id, nestId)));
+  if (!row) return;
+  // Lebendige Nester: Wurf (Stufe 1 fest) und Besetzung festhalten, damit das Lagebild genau bleibt.
+  if (await ensureNestRolls(db, nowMs, [row])) return revealStartNest(db, playerId, nestId, nowMs);
   const { party } = await partyOf(db, playerId);
-  await recordSightings(db, party, [{ kind: "nest", objectId: n.id, level: "lagebild", source: "Hafenamt", data: nestData(n, nowMs) }], nowMs);
+  await recordSightings(db, party, [{ kind: "nest", objectId: row.id, level: "lagebild", source: "Hafenamt", data: nestIntelData(row, nowMs) }], nowMs);
 }

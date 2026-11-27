@@ -170,6 +170,8 @@ test("Angriffssperre gegen Menschen, Sperrfrist und Schutzregeln", async () => {
   assert.equal(await humanCooldownActive(ctxFor(await loadBot(db, fb.id)), p.playerId), false);
 
   // 5. Nachtschild des Menschen (läuft gerade): kein Ziel, der Befehl lehnt ab.
+  // Lebendige Nester: der Freibeuter kann inzwischen mit seinem Verband ein aufgeklärtes Nest überfallen haben.
+  await patchBase(fbHome.id, (s) => { s.units.korvette = Math.max(s.units.korvette ?? 0, 5); });
   await patchBase(humanBase, (s) => {
     s.protection.nightShieldStartHour = new Date().getUTCHours();
     s.protection.tzOffsetMinutes = 0;

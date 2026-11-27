@@ -214,6 +214,8 @@ export interface Balance {
      * (v1.13; fehlt ein Eintrag: 1). Schiffe kämpfen nicht am Boden und zählen deshalb geringer.
      */
     raidHpWeights?: Record<string, number>;
+    /** Lebendige Nester (nest-living.ts): Wurf je Besetzung, Erholung, Beutewachstum; fehlt er, sind Nester fest. */
+    living?: import("./nest-living.ts").LivingBalance;
   };
   market: MarketBalance;
   /** Wertung (seit v1.24, engine/scoring.ts); fehlt es, zählt jeder Kampf voll. */

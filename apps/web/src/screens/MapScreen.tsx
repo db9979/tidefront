@@ -24,6 +24,7 @@ import { FleetLines, IntelStand, UnknownLine } from "../components/IntelStand.ts
 import { expansionRules, isFreeCoast, isThreat } from "../lib/expansion.ts";
 import { PostSheet } from "../components/PostSheet.tsx"; // Lagebild Stufe 2
 import { PvpTargetHint } from "../components/Pvp.tsx"; // Spieler gegen Spieler
+import { NestIntel } from "../components/NestIntel.tsx"; // Lebendige Nester
 
 const TERRAIN: Record<string, string> = { sea: "Offene See", coast: "Küste", land: "Binnenland" };
 const RELATION_TEXT: Record<string, string> = {
@@ -220,17 +221,12 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { 
                   </div>
                   {info.nest.empty ? (
                     <div className="text-xs text-slate-400">Verlassen – neu besetzt in {fmtDuration((info.nest.respawnAtMs ?? now) - now)}</div>
-                  ) : garrison ? (
-                    <div className="text-xs text-slate-300 mt-0.5">
-                      <div>
-                        Besatzung:{" "}
-                        {Object.entries(garrison).filter(([k, v]) => k !== "loot" && k !== "respawnHours" && typeof v === "number" && v > 0).map(([k, v]) => `${fmtNum(v as number)} ${countLabel(k, v as number)}`).join(", ")}
-                      </div>
-                      <div className="text-emerald-300">
-                        Beute: {Object.entries(garrison.loot as Record<string, number>).map(([r, v]) => `${fmtNum(v)} ${label(r)}`).join(", ")}
-                      </div>
-                      {typeof garrison.respawnHours === "number" && <div>Nach einem Sieg erst nach {garrison.respawnHours} Stunden wieder besetzt.</div>}
-                    </div>
+                  ) : garrison && meta.data ? (
+                    <>
+                      {/* Lebendige Nester: Spanne (Erkennung) oder genau und hochgerechnet (Lagebild) */}
+                      <NestIntel level={info.nest.level} lagebild={info.nest.lagebild} now={now} balance={meta.data.balance} />
+                      {typeof garrison.respawnHours === "number" && <div className="text-xs text-slate-300">Nach einem Sieg erst nach {garrison.respawnHours} Stunden wieder besetzt.</div>}
+                    </>
                   ) : null}
                   <IntelStand tag={info.nest.intel} now={now} />
                 </div>

@@ -11,10 +11,10 @@ import {
   defenderFromBase,
   deliverCargo,
   fleetTotals,
-  isNestRespawned,
   isWeakTarget,
-  nestDefender,
+  liveNestDefender,
   nestGarrison,
+  nestLootTimes,
   raidBlocked,
   resolveBattle,
   returnMission,
@@ -29,6 +29,7 @@ import {
 } from "@tidefront/game-core";
 import { tables, type Tx } from "@tidefront/db";
 import { recordReportIntel } from "./intel-store.ts"; // Lagebild
+import { nestConquered, nestDefended, nestEmpty, nestNow, nestState } from "./nest-live.ts"; // Lebendige Nester
 import { balance } from "./context.ts";
 import { cartelRaidPlan, nestSpots } from "./kartell-route.ts"; // Seewege: Kartell fährt über Wasser
 import type { EventRow, Handler, HandlerResult } from "./events.ts";
@@ -262,28 +263,29 @@ const missionArrive: Handler = async (tx, ev, due) => {
     }
   } else if (m.targetKind === "nest") {
     const [nest] = await tx.select().from(tables.nest).where(eq(tables.nest.id, m.targetId!)).for("update");
-    const empty = nest.defeatedAt !== null && !isNestRespawned(nest.defeatedAt.getTime(), due, balance, nest.level);
+    const empty = nestEmpty(nest, due);
     if (m.type === "aufklaerung") {
+      // Lebendige Nester: aktuelle Besatzung (Erholung) und Beute (Wachstum) zum Zeitpunkt der Aufklärung.
       const g = nestGarrison(nest.level, balance);
+      const now = nestNow(nest, due);
       reportId = await storeReport(tx, {
         kind: "aufklaerung", title: `Aufklärung: Piratennest Stufe ${nest.level}`, attackerPlayerId: m.playerId,
         defenderPlayerId: null, attackerBaseId: m.baseId, defenderBaseId: null, nestId: nest.id, winner: null,
         seed: null, atMs: due,
-        report: { nest: { level: nest.level, empty, garrison: g.ok && !empty ? g.nest : null } },
+        report: { nest: { level: nest.level, empty, garrison: g.ok && !empty ? { ...g.nest, units: now.units, defenses: now.defenses, loot: nestLootTimes(nest.level, now.lootFactor, balance), lootFactor: now.lootFactor } : null } },
       });
     } else if (m.type === "ueberfall" && !empty) {
-      const def = nestDefender(nest.level, balance);
-      if (!def.ok) throw new Error(def.code);
+      const defender = liveNestDefender(nest.level, nestState(nest), due, balance); // Lebendige Nester
       const attacker: AttackerInput = { units: plan.units, versorgungsmangel: origin?.state.versorgungsmangel ?? false, modifiers: attackerMods };
       const seed = randomSeed();
-      const res = resolveBattle(attacker, def.defender, balance, seed, battleWeather(nest.col, nest.row, due));
+      const res = resolveBattle(attacker, defender, balance, seed, battleWeather(nest.col, nest.row, due));
       if (!res.ok) throw new Error(`battle: ${res.code}`);
       const report = res.report;
       const admirals = await admiralsAfterBattle(tx, report, seed, admA, null, due); // Admirale
       if (report.winner === "attacker") {
-        await tx.update(tables.nest).set({ defeatedAt: new Date(due) }).where(eq(tables.nest.id, nest.id));
+        await nestConquered(tx, nest, due); // neuer Wurf für die Wiederbesetzung
         notify.push([null, "map"]);
-      }
+      } else await nestDefended(tx, nest, report.defender.final, due); // Schwächung, Erholung ab jetzt
       await dropWreck(tx, m.targetCol, m.targetRow, report.wreck, due);
       returning = attackerReturning(report);
       cargoHome = report.loot;

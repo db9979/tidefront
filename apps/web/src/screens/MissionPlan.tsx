@@ -260,7 +260,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           base={base}
           units={chosen}
           admiral={admiral}
-          target={tInfo.nest && tInfo.nest.level !== null ? { kind: "nest", level: tInfo.nest.level, empty: !!tInfo.nest.empty } : { kind: "base", col: target.col, row: target.row, name: tInfo.base!.name }}
+          target={tInfo.nest && tInfo.nest.level !== null ? { kind: "nest", level: tInfo.nest.level, empty: !!tInfo.nest.empty, lagebild: tInfo.nest.lagebild } : { kind: "base", col: target.col, row: target.row, name: tInfo.base!.name }}
           onScout={() => setType("aufklaerung")}
         />
       )}

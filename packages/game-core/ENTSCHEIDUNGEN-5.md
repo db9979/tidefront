@@ -214,3 +214,38 @@ Vom Nutzer freigegeben (Runde 3–10 Menschen + 3 KI). Rechnung des Analysten: `
    Mindestfahrzeit nur für den ersten Abschnitt („beim Auslaufen“).
 4. **„Aufklärer gesichtet“** prüft Ausguck und Radar des Zielhafens am Wendepunkt mit `liveLevelAt` und den
    Gegenmitteln aus `fleetMods` (Funkdisziplin, Tarnanstrich); vorher zählte nur „Hafen hat Radar“.
+
+### Teil 2: Lebendige Nester
+5. **Wurf bei der Eroberung ziehen, nicht bei der Wiederbesetzung.** `nestConquered` speichert sofort den Wurf der
+   nächsten Besetzung und `loot_at` = Wiederbesetzung; so gibt es keinen Schreibzugriff „lazy beim Abruf“ und keine
+   Wettläufe. Der Wurf bleibt geheim: Lagebild-Daten werden für leere Nester nicht geschrieben (`nestLagebild` → null).
+   Neue Nester und alte Zeilen ohne Wurf würfelt `ensureNestRolls` (einmalig, beim ersten Kartenabruf bzw. Hafenamt;
+   `update … where roll is null`, also ohne Überschreiben); ohne Wurf rechnet alles mit der Mitte (Stand bis v1.30).
+6. **Erholung je Einheitenart** mit `round(max(Überlebende, 70 % × Wurf) + 5 % × Wurf × h)`, gedeckelt auf den Wurf.
+   Überlebende = `report.defender.final` (inkl. Lazarett/Reparatur). Anlagen: bis 12 h nach dem Kampf die überlebenden,
+   danach der volle Wurf. Ein zweiter verlorener Überfall setzt Überlebende und Zeitpunkt neu (keine Summen).
+7. **Lagebild unter `intel_sighting.data.lagebild`** mit eigenem `atMs`. Der Upsert der Live-Erkennung behält
+   `data.lagebild` per SQL (`case … jsonb_build_object`), damit Ausguck/Radar ein frisches Lagebild nicht löschen.
+   „Genau“ prüft der Server (`lagebildExact`: ≤ `staleHours`, gleiche Besetzung `lootAtMs`); `world.map` liefert sonst
+   `lagebild: null`. Ohne Kartennebel lädt die Karte das Wissen nur für Nester (Wurf bleibt Lagebild-Sache).
+8. **Probekampf über die Spanne:** `nestWinRate` nimmt `defenders` (Lauf i gegen `defenders[i mod n]`, Seed i); Spanne =
+   100 Würfe aus `sampleRolls` (fester Seed je Stufe), „ungünstig“ = Faktor 120 % und jede vorhandene Anlage +1,
+   „günstig“ = 80 % und −1. Vorschlag ohne Lagebild = `smallestWinningRaid` mit diesen 100 Verteidigern (Mittel ≥ 90 %).
+9. **KI:** `botNestDefender` – Lagebild hochgerechnet, sonst ungünstigster Wurf; Probekämpfe je Nest (ohne Lagebild je
+   Stufe zusammengefasst), höchstens `botMaxNests` (6) je Zug. Freibeuter und Festung nehmen erkannte Nester ohne
+   Lagebild (schwankende Stufen) in ihre Aufklärungsziele, der Händler nicht. Der bots-Test „Angriffssperre“ setzt vor
+   Schritt 5 wieder Korvetten (der Freibeuter kann inzwischen ein aufgeklärtes Nest überfallen haben).
+10. **„Lohnende Ziele“** (Wunsch des Nutzers): Werte je erkanntem Nest (Besatzung mit Symbolen, Anlagen, Beute, Alter
+    des Lagebilds) unter „Details“, Kurzzeile mit Spanne der Siegchance und „Netto etwa …“ = Siegchance × Beutewert
+    (Richtpreis, Laderaum des Vorschlags) − erwartete Verluste (Probekampf, Ausbildungskosten zum Richtpreis) −
+    Treibstoff hin und zurück (Seeweg). Ohne Lagebild als Bereich (Beute 100 … 130 %). Sortierung: lohnend und
+    erreichbar (Vorschlag ≥ 90 %, Netto > 0) zuerst. Aufgeklärte Nester in der Nähe stehen zusätzlich in der Liste.
+11. **Zielfenster bestätigt** mit der echten Umsetzung (`sim/nest-living.ts`, auch in `npm run sim`; Bot-Verband,
+    erster Prüftag ≥ 70 %): Zufallsnest S1 T1, S2 T3, S3 T7, S4 T14, S5 T21, **S6 T38** (Ziel 35–38; fest T31);
+    ungünstigster Wurf S2 T5, S3 T10, S4 T21, S5 T28, S6 T38. Einstieg: Stufe 1 fest, Vorschlag 1 Landungsschiff +
+    28 Schützen (Probe 95 %), Auftrags-Verband 100 %.
+12. **Pi-Last** (Kartenabruf, 10 Spieler, ~75 Nester, Mac): vorher erster Abruf Ø 6,9 ms / zwischengespeichert Ø 5,0 ms,
+    nachher Ø 11,3 ms / Ø 5,6 ms. Der erste Abruf enthält das einmalige Würfeln aller Nester (≈ 75 Updates); danach
+    +0,5 ms je Abruf (Nest-Wissen, Hochrechnung). KI-Zug Median 35–43 ms (bots-sim, drei Startzeiten).
+13. **Schema** (Migration erzeugt der Integrator): `nest.roll jsonb`, `nest.garrison jsonb`, `nest.garrison_at
+    timestamptz`, `nest.loot_at timestamptz`, alle nullable.

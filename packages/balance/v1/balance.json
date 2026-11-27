@@ -121,7 +121,12 @@
     "raidMiliPerBoot": 8,
     "raidStrengthSpread": 0.3,
     "raidResearchWeight": 0.5,
-    "raidHpWeights": { "see": 0.5, "minenraeumer": 0.1, "minenleger": 0, "landungsschiff": 0, "kolonieschiff": 0 }
+    "raidHpWeights": { "see": 0.5, "minenraeumer": 0.1, "minenleger": 0, "landungsschiff": 0, "kolonieschiff": 0 },
+    "living": {
+      "spread": 0.2, "step": 0.05, "defenseShift": [0.25, 0.5, 0.25], "fixedLevels": [1],
+      "recoverMin": 0.7, "recoverPerHour": 0.05, "defenseReturnHours": 12,
+      "lootPerHour": 0.01, "lootMax": 1.3, "rangeSamples": 100, "botMaxNests": 6
+    }
   },
   "scoring": { "npcDefenseFactor": 0.25, "npcWorldEventKinds": [], "armadaFactor": 0.5 },
   "pvp": {

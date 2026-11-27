@@ -33,6 +33,7 @@ import { runRaidSim } from "./raids.ts"; // v1.13: Bunkerlinie, Flotte daheim
 import { runArmadaSim } from "./armada.ts"; // L7: Großflotte gewichtet wie das Kartell?
 import { runVeteranSim } from "./veterans.ts"; // v1.13: Veteranen über eine Saison
 import { runUbootNpcSim } from "./uboot-npc.ts"; // v1.13: U-Jagd für Kartell und Nester?
+import { runNestLiving } from "./nest-living.ts"; // Lebendige Nester
 import { runSeason42Sim } from "./season42.ts"; // Saison 42 Tage: Stillstand, KZ 9, Felder, Weltereignisse
 import { runNest6Sim } from "./nest6.ts"; // v1.15: Nest Stufe 6
 import { runIntelSim } from "./intel.ts"; // v1.20: Lagebild Stufe 2 (Spätspiel, 42-Tage-Saison)
@@ -289,6 +290,7 @@ runVeteranSim(balance, 42); // Saison 42 Tage (SEASON_DAYS)
 runSeason42Sim(balance);
 runUbootNpcSim(balance);
 runNest6Sim(balance); // v1.15: Nest Stufe 6
+console.log("\n" + runNestLiving(balance).join("\n")); // Lebendige Nester: Zielfenster mit Wurf
 runIntelSim(balance, snaps); // v1.20: Lagebild Stufe 2 (Patrouille, Kampagne, Radarposten, Bordsicht)
 runSatelliteSim(balance); // v1.23: Lagebild Stufe 3 (Tag 28 und 35)
 runV124Sim(balance); // v1.24: Kartellstärke, Kommandopunkte über KZ 8, Lagerwachstum, Vorhersage

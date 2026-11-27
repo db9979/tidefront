@@ -358,3 +358,17 @@ Abweichungen (begründet):
 - Umgesetzt in `packages/game-core/src/recon-sight.ts` (Wendepunkt, Reichweite), `mission.ts` (`sightRecon`),
   `route-position.ts` (Position), `engine/src/intel-campaign.ts` (Abschnitte, „Aufklärer gesichtet“).
 
+## 5.10 Lebendige Nester im Lagebild (umgesetzt 27.11.2026, Vorlage docs/VORLAGE-NESTER.md 3.4)
+
+| Kenntnis | Nest zeigt |
+|---|---|
+| Sichtung (Radarsatellit, Tarnnetz-Fall) | nur Position |
+| Erkennung (Bordsicht, Ausguck, Radar, Patrouille, Kampagne unterwegs, optischer Satellit) | Stufe, besetzt/leer, Wiederkehr; Besatzung als Spanne, Anlagen „unbekannt“ (mögliche Spanne im Tipp), Beute 100–130 % |
+| Lagebild (Aufklärung, Kampfbericht, auch verlorener Überfall; Hafenamt beim Start-Nest) | Wurf, aktuelle Besatzung, Anlagen, Beute – mit Stand; die Karte rechnet Erholung und Beute hoch |
+
+- Gespeichert in `intel_sighting.data.lagebild` (`atMs`, `roll`, `garrison`, `garrisonAtMs`, `lootAtMs`). Eine spätere
+  Erkennung überschreibt Stufe und Zustand, behält aber `data.lagebild` mit dessen eigenem Stand (SQL beim Upsert).
+- Genau, solange jünger als `staleHours` (24 h) und ohne Wiederbesetzung seither (gleiche Besetzung `lootAtMs`); sonst
+  zeigt `world.map` kein Lagebild (`lagebild: null`) und Karte, Planung und KI rechnen mit der Spanne.
+- Ohne Kartennebel (`intel_fog` aus) sieht jeder Stufe und Zustand; Wurf und Besatzung weiter nur mit Lagebild.
+
