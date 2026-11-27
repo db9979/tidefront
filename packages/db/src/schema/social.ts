@@ -47,7 +47,7 @@ export const seasonResult = pgTable("season_result", {
   /** Punkte aus Tagesbefehlen (siehe Abschnitt Tagesbefehle). */
   befehle: integer("befehle").notNull().default(0),
   total: integer("total").notNull(),
-  /** Auszeichnungen: gold, silber, bronze, best_ausbau, best_militaer, best_kampf, best_beute, best_befehle. */
+  /** Auszeichnungen: gold, silber, bronze, best_ausbau, best_militaer, best_kampf, best_beute, best_befehle, best_oekostrom (v1.21). */
   awards: jsonb("awards").notNull(),
 }, (t) => [
   uniqueIndex("season_result_player").on(t.seasonId, t.playerId),

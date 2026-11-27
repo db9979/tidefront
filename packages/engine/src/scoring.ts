@@ -27,7 +27,12 @@ export interface Score {
   /** Punkte aus Tagesbefehlen (schon Punkte, kein Kostenwert). */
   befehle: number;
   total: number;
+  /** Ökostrom (v1.21): genutzter Ökostrom des grünsten eigenen Hafens (Strom-Stunden); zählt nicht zu den Punkten. */
+  oekostrom?: number;
 }
+
+/** Mindestmenge Ökostrom (Strom-Stunden) für die Auszeichnung „Grünster Hafen“. */
+export const GREENEST_MIN = 1000;
 
 function sumRes(m: ResourceMap | null | undefined): number {
   let s = 0;
@@ -89,7 +94,7 @@ export function rankStandings<T extends { total: number; name: string }>(rows: T
   });
 }
 
-/** Auszeichnungen: Platz 1 bis 3 der Gesamtwertung, je Kategorie ein Bester (nur mit Punkten). */
+/** Auszeichnungen: Platz 1 bis 3 der Gesamtwertung, je Kategorie ein Bester (nur mit Punkten), Grünster Hafen. */
 export function awardsFor<T extends Score & { playerId: number; rank: number }>(ranked: T[]): Map<number, string[]> {
   const out = new Map<number, string[]>();
   const add = (id: number, a: string) => out.set(id, [...(out.get(id) ?? []), a]);
@@ -100,6 +105,10 @@ export function awardsFor<T extends Score & { playerId: number; rank: number }>(
     for (const r of ranked) if (r[c] > 0 && (!best || r[c] > best[c])) best = r;
     if (best) add(best.playerId, `best_${c}`);
   }
+  // Grünster Hafen (v1.21): meister genutzter Ökostrom in einem Hafen, ab GREENEST_MIN.
+  let green: T | null = null;
+  for (const r of ranked) if ((r.oekostrom ?? 0) >= GREENEST_MIN && (!green || r.oekostrom! > green.oekostrom!)) green = r;
+  if (green) add(green.playerId, "best_oekostrom");
   return out;
 }
 
@@ -130,6 +139,7 @@ export async function computeStandings(db: DbOrTx, seasonStartMs: number, nowMs:
     if (!r) raw.set(id, (r = { ausbau: 0, militaer: 0, kampf: 0, beute: 0 }));
     return r;
   };
+  const green = new Map<number, number>(); // Ökostrom: bester Hafen je Spieler
   // Mehrere Häfen: eine Zeile je Hafen; Spieler einmal (Heimathafen als base), Werte summiert.
   const people = new Map<number, { playerId: number; name: string; base: Standing["base"]; bases: number; bot: boolean }>();
   for (const p of players) {
@@ -142,6 +152,7 @@ export async function computeStandings(db: DbOrTx, seasonStartMs: number, nowMs:
       person.base = { id: p.base_id, name: p.base_name!, col: p.col!, row: p.row!, protection: protectionStatus(p.state.protection, nowMs, balance).reason };
     }
     r.ausbau += buildingValue(p.state.buildings ?? {});
+    green.set(p.id, Math.max(green.get(p.id) ?? 0, Math.floor(p.state.powerLog?.greenUsed ?? 0)));
     r.militaer += countsValue(p.state.units) + countsValue(p.state.defenses);
   }
   for (const m of missions) get(m.player_id).militaer += countsValue(m.status === "returning" || m.status === "stationed" ? m.returning : m.units); // Allianz-Ops: stationed
@@ -153,6 +164,6 @@ export async function computeStandings(db: DbOrTx, seasonStartMs: number, nowMs:
     }
     if (b.defender_player_id !== null) get(b.defender_player_id).kampf += countsValue(b.al);
   }
-  const rows = [...people.values()].map((p) => ({ ...p, ...makeScore(get(p.playerId), orders.get(p.playerId) ?? 0) }));
+  const rows = [...people.values()].map((p) => ({ ...p, ...makeScore(get(p.playerId), orders.get(p.playerId) ?? 0), oekostrom: green.get(p.playerId) ?? 0 }));
   return rankStandings(rows);
 }

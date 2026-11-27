@@ -1,5 +1,5 @@
 {
-  "version": "v1.19",
+  "version": "v1.21",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -22,6 +22,8 @@
     "windpark": { "cost": { "stahl": 180, "treibstoff": 10, "elektronik": 40 }, "seconds": 30, "windPowerPerLevel": 90, "stormCutoff": 0.95 },
     "solarfeld": { "cost": { "stahl": 120, "treibstoff": 0, "elektronik": 70 }, "seconds": 30, "solarPowerPerLevel": 180, "cloudLoss": 0.7 },
     "speicherwerk": { "cost": { "stahl": 220, "treibstoff": 20, "elektronik": 90 }, "seconds": 40, "storagePerLevel": 200, "storageRatePerLevel": 40 },
+    "elektrolyse": { "cost": { "stahl": 160, "treibstoff": 0, "elektronik": 90 }, "seconds": 35, "electrolysisPerLevel": 40, "electrolysisRatio": 10 },
+    "seekabel": { "cost": { "stahl": 300, "treibstoff": 60, "elektronik": 120 }, "seconds": 60, "cablePerLevel": 30 },
     "lagerkomplex": { "cost": { "stahl": 250, "treibstoff": 0, "elektronik": 0 }, "seconds": 30, "capacityBase": 5000, "capacityGrowth": 1.5 },
     "tiefbunker": { "cost": { "stahl": 300, "treibstoff": 0, "elektronik": 50 }, "seconds": 45, "protectedBase": 300, "protectedGrowth": 1.4 },
     "werft": { "cost": { "stahl": 400, "treibstoff": 100, "elektronik": 50 }, "seconds": 90, "buildSpeedPerLevel": 0.1, "powerPerLevel": 3, "powerRank": 3 },
@@ -189,7 +191,11 @@
       "lootPool": { "stahl": 2500, "treibstoff": 1200, "elektronik": 600, "proviant": 900 }
     }
   },
-  "power": { "stepMinutes": 30, "minSpeed": 0.25, "forecastHours": 24, "horizonHours": 336 },
+  "power": {
+    "stepMinutes": 30, "minSpeed": 0.25, "forecastHours": 24, "horizonHours": 336,
+    "green": { "shareMin": 0.6, "bonus": 0.03, "windowHours": 24, "minTotal": 24 },
+    "cable": { "maxKm": 600, "lossPer100Km": 0.1, "bufferHours": 2, "tickMinutes": 10, "maxPrice": 2 }
+  },
   "mines": {
     "layRadiusKm": 300, "fieldRadiusKm": 35, "maxStrength": 150, "lifetimeHours": 72, "maxFieldsPerPlayer": 3,
     "costPerStrength": { "stahl": 8, "elektronik": 3 },
@@ -309,7 +315,7 @@
       "hours": 6,
       "delayHours": 3,
       "cooldownHours": 24,
-      "targets": ["kraftwerk", "radarstation", "werft", "kaserne", "flugfeld", "forschungsamt", "bauschlange"],
+      "targets": ["kraftwerk", "radarstation", "werft", "kaserne", "flugfeld", "forschungsamt", "bauschlange", "seekabel"],
       "productionFactor": 0.5,
       "trainingFactor": 2,
       "researchFactor": 2
@@ -357,7 +363,8 @@
       "ruhmreich": { "title": "Ruhmreich", "description": "Beste Platzierung am Ende einer Saison", "counter": "saison", "thresholds": [1, 2, 3], "tierTexts": ["Platz 1 bis 10", "Platz 1 bis 3", "Saisonsieg"] },
       "wochenwerk": { "title": "Wochenwerk", "description": "Wochenziele erfüllt", "counter": "wochenziele", "thresholds": [3, 15, 50] },
       "landnahme": { "title": "Landnahme", "description": "Rohstofffelder eingenommen", "counter": "felder", "thresholds": [1, 5, 20] },
-      "kolonist": { "title": "Kolonist", "description": "Außenposten gegründet", "counter": "kolonien", "thresholds": [1, 3, 6] }
+      "kolonist": { "title": "Kolonist", "description": "Außenposten gegründet", "counter": "kolonien", "thresholds": [1, 3, 6] },
+      "gruenerhafen": { "title": "Grüner Hafen", "description": "Strom-Stunden Ökostrom genutzt (Bedarf, Elektrolyse, Seekabel)", "counter": "oekostrom", "thresholds": [10000, 75000, 300000] }
     },
     "weekly": { "goalValue": 5000, "goalCredits": 150, "bonusValue": 9000, "bonusCredits": 400, "stageGrowth": 0.3 }
   },

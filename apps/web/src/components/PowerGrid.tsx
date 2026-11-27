@@ -1,6 +1,8 @@
 // Versorgung mit Strom (v1.6): Augenblick nach Quelle, Rangfolge der Verbraucher, Speicher, Stromkurve über 24 h
 // und Wettervorhersage am Hafen. Kupferstich-Stil: Tinte, Schraffur, wenige Kennfarben.
 // v1.18: Kurve und Wetter sind eine Vorhersage mit Spannbreite (Band um das Angebot, Wind von–bis).
+// v1.21: Seekabel als Quelle, Verwendung des Überschusses (→ Treibstoff, → Partner, verfällt), Ökostrom-Anteil.
+import type React from "react";
 import { BEAUFORT_WORDS, beaufort } from "@tidefront/game-core";
 import type { BaseData } from "../lib/trpc.ts";
 import { fmtNum } from "../lib/names.ts";
@@ -17,6 +19,14 @@ const SOURCES = [
   { key: "wind", label: "Wind", icon: "windpark", fill: SEE },
   { key: "solar", label: "Sonne", icon: "solarfeld", fill: MESSING },
   { key: "storage", label: "Speicher", icon: "speicherwerk", fill: MOOS },
+  { key: "cable", label: "Kabel", icon: "seekabel", fill: "url(#tf-h)" },
+] as const;
+
+/** Verwendung des Überschusses (v1.21). */
+const SURPLUS = [
+  { key: "fuel", label: "→ Treibstoff", fill: SIEGEL, opacity: 0.55 },
+  { key: "cable", label: "→ Partner", fill: SEE, opacity: 0.55 },
+  { key: "wasted", label: "verfällt", fill: INK, opacity: 0.2 },
 ] as const;
 
 const RANKS = [
@@ -44,14 +54,16 @@ export function PowerGrid({ base }: { base: BaseData }) {
   const supply = sum(g.now.supply);
   const demand = sum(g.now.demand);
   const short = g.now.served.radar < 1 || g.now.served.production < 1;
+  // Kabel-Kachel nur, wenn der Hafen Strom aus einem Kabel bezieht (sonst bleibt es bei vier Quellen).
+  const sources = SOURCES.filter((x) => x.key !== "cable" || g.green?.cable?.role === "in" || g.now.supply.cable > 0);
   return (
     <div className="space-y-2">
       <div className="flex justify-between items-baseline">
         <span className="flex items-center gap-1"><Icon id="strom" size={16} /> Strom jetzt</span>
         <span className={`mono ${short ? "text-red-300" : ""}`}>Bedarf {fmtNum(demand)} / Angebot {fmtNum(supply)}</span>
       </div>
-      <div className="grid grid-cols-4 gap-1 text-center">
-        {SOURCES.map((s) => (
+      <div className={`grid ${sources.length > 4 ? "grid-cols-5" : "grid-cols-4"} gap-1 text-center`}>
+        {sources.map((s) => (
           <div key={s.key} className="rounded-lg border border-rule bg-paper py-1">
             <Icon id={s.icon} size={26} />
             <div className="text-[10px] text-ink2 leading-tight">{s.label}</div>
@@ -68,6 +80,8 @@ export function PowerGrid({ base }: { base: BaseData }) {
           <Bar value={g.now.stored / g.now.capacity} tone="green" />
         </div>
       )}
+      <SurplusNow g={g} />
+      <GreenLine g={g} />
       {g.now.throttle < 0.999 && (
         <p className="text-xs text-red-300">Kein Treibstoff: Das Kraftwerk läuft nur mit {pct(g.now.throttle)} (verbrennt, was nachkommt).</p>
       )}
@@ -89,7 +103,8 @@ export function PowerGrid({ base }: { base: BaseData }) {
       ) : (
         <p className="text-xs text-moos">Die nächsten {g.curve.length} Stunden reicht der Strom voraussichtlich.</p>
       )}
-      <Curve curve={g.curve} />
+      <Curve curve={g.curve} sources={sources} />
+      <SurplusAhead curve={g.curve} />
       {g.forecast && (
         <p className="text-[10.5px] text-ink2">
           Vorhersage: je weiter voraus, desto unsicherer (alle {g.forecast.issuedEveryHours} h neu).
@@ -102,7 +117,7 @@ export function PowerGrid({ base }: { base: BaseData }) {
 }
 
 /** Stromkurve: Angebot gestapelt nach Quelle (Balken je Stunde), Bedarf als Treppenlinie, Speicherstand gestrichelt. */
-function Curve({ curve }: { curve: Hour[] }) {
+function Curve({ curve, sources }: { curve: Hour[]; sources: readonly (typeof SOURCES)[number][] }) {
   const W = 340;
   const H = 120;
   const n = curve.length;
@@ -122,12 +137,12 @@ function Curve({ curve }: { curve: Hour[] }) {
   const storePath = curve.map((h, i) => `${i === 0 ? "M" : "L"}${(i + 0.5) * bw} ${H - (h.stored / maxStore) * (H - 8) * 0.9}`).join(" ");
   return (
     <figure className="m-0">
-      <svg viewBox={`0 -2 ${W} ${H + 16}`} className="w-full h-auto" role="img" aria-label="Stromkurve der nächsten 24 Stunden (Vorhersage mit Spannbreite)">
+      <svg viewBox={`0 -2 ${W} ${H + 19}`} className="w-full h-auto" role="img" aria-label="Stromkurve der nächsten 24 Stunden (Vorhersage mit Spannbreite)">
         {curve.map((h, i) => {
           let acc = 0;
           return (
             <g key={h.atMs}>
-              {SOURCES.map((s) => {
+              {sources.map((s) => {
                 const v = h.supply[s.key];
                 if (v <= 0) return null;
                 const top = y(acc + v);
@@ -143,10 +158,23 @@ function Curve({ curve }: { curve: Hour[] }) {
         <path d={demandPath} fill="none" stroke={SIEGEL} strokeWidth={1.6} />
         <path d={storePath} fill="none" stroke={MOOS} strokeWidth={1.2} strokeDasharray="3 2" />
         <path d={`M0 ${H} H${W}`} stroke={INK} strokeWidth={0.8} />
-        {curve.map((h, i) => (i % 6 === 0 ? <text key={h.atMs} x={i * bw + 1} y={H + 11} fontSize={9} fill={INK} className="mono">{hourOf(h.atMs)} Uhr</text> : null))}
+        {/* Überschuss je Stunde als Streifen unter der Achse (Elektrolyse, Kabel, verfällt). */}
+        {curve.map((h, i) => {
+          let acc = 0;
+          const tot = sum(h.surplus);
+          if (tot <= 0.5) return null;
+          return SURPLUS.map((k) => {
+            const v = h.surplus[k.key];
+            if (v <= 0) return null;
+            const r = <rect key={`${h.atMs}-${k.key}`} x={i * bw + 0.6 + (acc / tot) * (bw - 1.2)} y={H + 1} width={(v / tot) * (bw - 1.2)} height={4} fill={k.fill} fillOpacity={k.opacity} />;
+            acc += v;
+            return r;
+          });
+        })}
+        {curve.map((h, i) => (i % 6 === 0 ? <text key={h.atMs} x={i * bw + 1} y={H + 14} fontSize={9} fill={INK} className="mono">{hourOf(h.atMs)} Uhr</text> : null))}
       </svg>
       <figcaption className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10.5px] text-ink2">
-        {SOURCES.map((s) => (
+        {sources.map((s) => (
           <span key={s.key} className="flex items-center gap-1">
             <svg width="10" height="10" aria-hidden="true"><rect width="10" height="10" fill={s.fill} stroke={INK} strokeWidth={0.6} /></svg>{s.label}
           </span>
@@ -156,6 +184,60 @@ function Curve({ curve }: { curve: Hour[] }) {
         <span className="flex items-center gap-1"><svg width="10" height="10" aria-hidden="true"><rect width="10" height="10" fill={INK} fillOpacity={0.13} stroke={INK} strokeWidth={0.6} strokeDasharray="1.5 1.5" /></svg>Spannbreite (Vorhersage)</span>
       </figcaption>
     </figure>
+  );
+}
+
+const SURPLUS_TEXT = { fuel: "in die Elektrolyse", cable: "ins Seekabel", wasted: "verfällt" } as const;
+
+/** Überschuss jetzt: wohin er geht (Elektrolyse → Treibstoff, Kabel → Partner, sonst verfällt er). */
+function SurplusNow({ g }: { g: Grid }) {
+  const s = g.now.surplus;
+  const total = sum(s);
+  if (total < 0.5) return null;
+  const parts = SURPLUS.filter((k) => s[k.key] >= 0.5).map((k) => (
+    <span key={k.key} className="whitespace-nowrap">{fmtNum(s[k.key])} {SURPLUS_TEXT[k.key]}{k.key === "fuel" ? ` (+${fmtNum(g.now.fuelMade, 1)} Treibstoff/h)` : ""}</span>
+  ));
+  return (
+    <p className="text-xs text-ink2" data-testid="strom-ueberschuss">
+      Überschuss {fmtNum(total)}/h: {parts.reduce<React.ReactNode[]>((a, x, i) => (i === 0 ? [x] : [...a, " · ", x]), [])}
+    </p>
+  );
+}
+
+/** Ökostrom-Anteil der letzten 24 h und Grüner Hafen (+3 % Produktion ab 60 %). */
+function GreenLine({ g }: { g: Grid }) {
+  const x = g.green;
+  if (!x || x.total <= 0) return null;
+  const pctShare = Math.round(x.share * 100);
+  return (
+    <p className={`text-xs ${x.active ? "text-moos font-semibold" : "text-ink2"}`} data-testid="oekostrom-anteil">
+      Ökostrom {x.windowHours} h: {pctShare} %
+      {x.active ? ` – Grüner Hafen: Produktion +${Math.round(x.bonus * 100)} %` : ` (ab ${Math.round(x.shareMin * 100)} % gibt es +${Math.round(x.bonus * 100)} % Produktion)`}
+    </p>
+  );
+}
+
+/** Summe des Überschusses der Kurve (nächste 24 h) mit Hinweis, was ihn nutzen würde. */
+function SurplusAhead({ curve }: { curve: Hour[] }) {
+  const t = { fuel: 0, cable: 0, wasted: 0 };
+  let greenWasted = 0;
+  for (const h of curve) {
+    for (const k of SURPLUS) t[k.key] += h.surplus[k.key];
+    greenWasted += h.greenWasted;
+  }
+  if (t.fuel + t.cable + t.wasted < 1) return null;
+  return (
+    <div className="text-[10.5px] text-ink2">
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+        <span>Überschuss {curve.length} h (Streifen unter der Kurve):</span>
+        {SURPLUS.map((k) => t[k.key] >= 1 && (
+          <span key={k.key} className="flex items-center gap-1 whitespace-nowrap">
+            <svg width="10" height="6" aria-hidden="true"><rect width="10" height="6" fill={k.fill} fillOpacity={k.opacity} /></svg>{k.label} {fmtNum(t[k.key])}
+          </span>
+        ))}
+      </div>
+      {greenWasted >= 50 && <p>Davon Ökostrom ohne Abnehmer: {fmtNum(greenWasted)} – Elektrolyse (mehr Stufen) oder ein Seekabel könnten ihn nutzen. Kraftwerksüberschuss verfällt immer.</p>}
+    </div>
   );
 }
 

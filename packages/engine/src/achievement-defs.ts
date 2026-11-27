@@ -191,6 +191,13 @@ export const WEEKLY_KINDS: Record<string, WeeklyKind> = {
     spec: (c) => (canHoldField(c) ? { param: null, target: round(5000 * (1 + c.stage / 5), 1000) } : null),
     text: (n) => `Fahre Erträge von Rohstofffeldern im Wert von ${fmt(n)} ein (Richtpreis, Stahl = 1)`,
   },
+  // Ökostrom (v1.21): Zähler „oekostrom“ (genutzter Ökostrom aller Häfen, achievements.ts refreshGreenCounter).
+  // Ziel nach dem Höchstwert aus Wind und Sonne des Heimathafens (sim/power-green.ts: Wochenertrag ≈ 35–55 × Höchstwert).
+  oekostrom: {
+    icon: "windpark",
+    spec: (c) => (c.renewable && c.renewable.peak >= 90 ? { param: null, target: round(c.renewable.peak * 30, 500) } : null),
+    text: (n) => `Nutze ${fmt(n)} Strom-Stunden Ökostrom aus Wind und Sonne (Bedarf, Elektrolyse, Seekabel)`,
+  },
   // Mehrere Häfen: neuer Hafen in der Woche gegründet (aus den Häfen gelesen, weekly.ts).
   gruendung: {
     icon: "kolonieschiff",

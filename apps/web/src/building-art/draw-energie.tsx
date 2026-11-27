@@ -1,6 +1,7 @@
-// Stufenbilder der Strom- und Geheimdienstbauten (Windpark, Solarfeld, Speicherwerk, Nachrichtendienst). s = 1 … 5.
-import { G, Hall, Windows, Lattice, Flag, Lamp, Fence, Dish, Ground, Tank, h, hd, p, ln, fine, type Draw } from "./parts.tsx";
-import { INK, MOOS } from "../icons-art.tsx";
+// Stufenbilder der Strom- und Geheimdienstbauten (Windpark, Solarfeld, Speicherwerk, Elektrolyse, Seekabel,
+// Nachrichtendienst). s = 1 … 5.
+import { G, Hall, Windows, Lattice, Flag, Lamp, Fence, Dish, Ground, Tank, Sphere, WATER, h, hd, p, ln, fine, red, type Draw } from "./parts.tsx";
+import { INK, MOOS, SEE } from "../icons-art.tsx";
 import { Glint, Rotor, useLive } from "./motion.tsx";
 
 const lamps = (...xs: number[]) => xs.map((x) => <Lamp key={x} x={x} />);
@@ -105,6 +106,54 @@ const speicherwerk: Draw = (s) => {
   );
 };
 
+/** Elektrolyse (v1.21): Zellenhalle mit Stromschiene, Gasblasen in den Zellen, Kugeltank und Fasstank für den Treibstoff. */
+const elektrolyse: Draw = (s) => {
+  const cells = Math.min(5, 2 + Math.floor(s / 1.5));
+  const w = 8 + cells * 7;
+  return (
+    <>
+      <Hall x={6} w={w} ht={12 + s} roof="saw" />
+      {Array.from({ length: cells }, (_, i) => (
+        <g key={i}>
+          <path d={`M${10 + i * 7} ${G} V${G - 7} H${15 + i * 7} V${G} Z`} {...h} strokeWidth={0.9} />
+          <circle cx={12.5 + i * 7} cy={G - 9 - (i % 2) * 2} r={0.9} {...fine} strokeWidth={0.6} />
+        </g>
+      ))}
+      <path d={`M8 ${G - 13 - s} H${6 + w - 2} M${8 + w / 2} ${G - 13 - s} l2 -4 h-2 l2 -4`} {...ln} strokeWidth={1.1} />
+      <Tank x={w + 12} w={11} ht={14 + 2 * s} fill="p" />
+      <path d={`M${6 + w} ${G - 6} H${w + 12}`} {...ln} strokeWidth={1.2} />
+      {s >= 3 && <Sphere cx={w + 36} r={6 + s / 2} />}
+      {s >= 3 && <path d={`M${w + 23} ${G - 8} H${w + 30}`} {...ln} strokeWidth={1.1} />}
+      {s >= 4 && <Fence x1={2} x2={5} />}
+      {s >= 5 && lamps(w + 26, 90)}
+      <path d={`M${w + 15} ${G - 16 - 2 * s} c-2 -3 2 -4 1 -7`} {...fine} strokeWidth={0.7} strokeDasharray="1.5 1.5" />
+      <Ground x1={2} x2={94} />
+    </>
+  );
+};
+
+/** Seekabel (v1.21): Kabelhaus an der Kaimauer, Kabeltrommel, Kabel läuft ins Wasser; später Umspannmast und Boje. */
+const seekabel: Draw = (s) => {
+  const drum = 6 + s;
+  return (
+    <>
+      <Hall x={8} w={24 + 2 * s} ht={12 + s} roof="gable" />
+      <Windows x={12} y={G - 6 - s} cols={3 + Math.floor(s / 2)} gap={5} lit={s >= 5} />
+      <circle cx={46} cy={G - drum} r={drum} {...h} strokeWidth={1.1} />
+      <circle cx={46} cy={G - drum} r={drum / 3} {...p} strokeWidth={0.9} />
+      <path d={`M${46 + drum} ${G - drum} C${60} ${G - drum} ${64} ${G - 2} ${70} ${G + 1} S ${84} ${G + 4} ${94} ${G + 4}`} fill="none" stroke={INK} strokeWidth={1.6} />
+      <path d={`M68 ${G} V${G - 4} H94 V${G}`} {...p} strokeWidth={1} />
+      {s >= 2 && <Lattice x={36} ht={20 + 3 * s} w={5} />}
+      {s >= 3 && <path d={`M${36 + 2.5} ${G - 20 - 3 * s} Q30 ${G - 14 - 2 * s} 20 ${G - 12 - s}`} {...fine} strokeWidth={0.7} />}
+      {s >= 4 && <><path d={`M86 ${G + 3} l2 -7 l2 7 Z`} {...red} strokeWidth={0.8} /><path d={`M88 ${G - 4} v-2`} {...ln} strokeWidth={0.8} /></>}
+      {s >= 5 && <Flag x={20} y={G - 12 - s - 8} ht={8} wide={5} />}
+      {WATER}
+      <path d={`M70 ${G + 6} q3 -1.5 6 0 t6 0 t6 0`} fill="none" stroke={SEE} strokeWidth={0.9} />
+      <Ground x1={2} x2={68} />
+    </>
+  );
+};
+
 const nachrichtendienst: Draw = (s) => {
   const w = 34 + 4 * s;
   const ht = 14 + 3 * s;
@@ -124,4 +173,4 @@ const nachrichtendienst: Draw = (s) => {
   );
 };
 
-export const ENERGIE: Record<string, Draw> = { windpark, solarfeld, speicherwerk, nachrichtendienst };
+export const ENERGIE: Record<string, Draw> = { windpark, solarfeld, speicherwerk, elektrolyse, seekabel, nachrichtendienst };

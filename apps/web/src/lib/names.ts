@@ -23,6 +23,8 @@ const NAMES: Record<string, string> = {
   besetzen: "Besetzen", admiral_heimkehr: "Admiral auf Heimfahrt", feld: "Rohstofffeld", oelfeld: "Ölfeld", erzbucht: "Erzbucht", fischgrund: "Fischgrund", elektronikwrack: "Elektronik-Wrack",
   // Mehrere Häfen
   kolonieschiff: "Kolonieschiff", gruendung: "Gründung", verlegung: "Verlegung", heimathafen: "Heimathafen", aussenposten: "Außenposten",
+  // Ökostrom, Elektrolyse, Seekabel (v1.21)
+  elektrolyse: "Elektrolyse", seekabel: "Seekabel",
 };
 
 const PLURAL: Record<string, string> = {
@@ -226,6 +228,17 @@ const ERRORS: Record<string, string> = {
   target_beginner: "Das Ziel steht unter Anfängerschutz – keine Spionage.",
   spy_target: "Spione arbeiten nur gegen Spielerhäfen.",
   sabotage_cooldown: "Dieser Hafen wurde vor Kurzem sabotiert und ist noch in Alarmbereitschaft (höchstens eine Sabotage je 24 Stunden).",
+  // Seekabel (v1.21)
+  cable_sabotage_war: "Ein Seekabel sabotierst du nur bei einem Kriegsgegner.",
+  no_cable: "Seekabel sind nicht verfügbar.",
+  cable_self: "Ein Seekabel verbindet zwei verschiedene Häfen.",
+  cable_station_required: "Beide Häfen brauchen eine Seekabel-Station (Stufe 1).",
+  cable_busy: "Einer der Häfen hat schon ein Seekabel (oder eine offene Anfrage).",
+  cable_too_far: "Die Häfen liegen zu weit auseinander für ein Seekabel.",
+  cable_not_ally: "Seekabel zu fremden Häfen nur innerhalb der eigenen Allianz.",
+  cable_price: "Ungültiger Preis für den Kabelstrom.",
+  cable_gone: "Dieses Seekabel gibt es nicht mehr.",
+  cable_not_party: "Das darf bei diesem Seekabel nur die andere Seite.",
   no_espionage: "Spionage ist nicht verfügbar.",
   bad_spy_kind: "Unbekannte Auftragsart.",
   // See: Minen/Blockade/Konvoi

@@ -86,7 +86,7 @@ async function apply(tx: DbOrTx, playerId: number, counter: string, amount: numb
  * Erweiterungsstelle: zählt `amount` auf den Erfolgszähler `counter` des Spielers (und auf passende
  * Wochenziele). Läuft in einem Savepoint und wirft nie. Bekannte Zähler: nester, ueberfaelle, abwehr,
  * abwehr_ohne_verluste, beute, handel, gebaeudestufen, forschung, anlagen, wrack, spionage, missionen,
- * weltereignisse, allianz_hilfe, wochenziele, prachtbau/forschung_voll/serie/saison (mode max).
+ * weltereignisse, allianz_hilfe, wochenziele, oekostrom (refreshGreenCounter), prachtbau/forschung_voll/serie/saison (mode max).
  */
 export async function recordAchievement(tx: DbOrTx, playerId: number, counter: string, amount: number, o: RecordOptions = {}): Promise<void> {
   if (!balance.achievements || !(amount > 0) || !Number.isFinite(amount)) return;
@@ -112,9 +112,27 @@ export async function achievementsFromDaily(tx: DbOrTx, playerId: number, kind: 
 
 // ---------------------------------------------------------------- Zustand (Bestwerte)
 
-/** Bestwerte aus dem Zustand fortschreiben: Prachtbauten, vollständige Forschung, Serie, Saisonplatzierung. */
+/**
+ * Ökostrom (v1.21): genutzter Ökostrom aller Häfen (state.powerLog.greenUsed, Saisonsumme) als Zuwachs auf den Zähler
+ * oekostrom (Erfolg „Grüner Hafen“, Wochenziel). Der zuletzt gezählte Stand steht im Zähler oekostrom_stand; sinkt die
+ * Summe (Saisonwechsel, Hafen aufgegeben), wird nur der Stand nachgeführt.
+ */
+export async function refreshGreenCounter(tx: DbOrTx, playerId: number, nowMs: number): Promise<void> {
+  if (!balance.achievements || !balance.power?.green) return;
+  const rows = await tx.select({ state: tables.base.state }).from(tables.base).where(eq(tables.base.playerId, playerId));
+  const sum = Math.floor(rows.reduce((a, r) => a + ((r.state as { powerLog?: { greenUsed?: number } }).powerLog?.greenUsed ?? 0), 0));
+  const [row] = await tx.select({ value: ac.value }).from(ac).where(and(eq(ac.playerId, playerId), eq(ac.counter, "oekostrom_stand"))).for("update");
+  const before = Number(row?.value ?? 0);
+  if (sum === before) return;
+  await tx.insert(ac).values({ playerId, counter: "oekostrom_stand", value: sum, updatedAt: new Date(nowMs) })
+    .onConflictDoUpdate({ target: [ac.playerId, ac.counter], set: { value: sum, updatedAt: new Date(nowMs) } });
+  if (sum > before) await recordAchievement(tx, playerId, "oekostrom", sum - before, { atMs: nowMs });
+}
+
+/** Bestwerte aus dem Zustand fortschreiben: Prachtbauten, vollständige Forschung, Serie, Saisonplatzierung, Ökostrom. */
 export async function refreshAchievementState(tx: DbOrTx, playerId: number, nowMs: number): Promise<void> {
   if (!balance.achievements) return;
+  await refreshGreenCounter(tx, playerId, nowMs);
   // Mehrere Häfen: Prachtbauten als Maximum über alle Häfen, Forschung aus dem Heimathafen.
   const rows = await tx.select({ state: tables.base.state, isHome: tables.base.isHome }).from(tables.base).where(eq(tables.base.playerId, playerId));
   if (rows.length > 0) {

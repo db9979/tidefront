@@ -74,7 +74,7 @@ export function useActiveBaseId(): number | null {
  * der Heimathafen. base.choose (Erstwahl) und spielerweite Abfragen der Teilrouter bleiben außen vor.
  */
 const BASE_ROUTERS = ["base.", "mission.", "market.", "espionage.", "research.", "admiral.", "allianceOps.", "naval.", "playerTrade.", "fields.", "worldEvents."];
-const BASE_PATHS = new Set(["comfort.repeat", "comfort.recentMissions"]);
+const BASE_PATHS = new Set(["comfort.repeat", "comfort.recentMissions", "power.cables"]); // Seekabel (v1.21): Ansicht je Hafen
 const NOT_BASE = new Set(["base.choose", "market.quote", "market.news"]);
 
 export function isBasePath(path: string): boolean {

@@ -5,7 +5,7 @@ import { fmtNum } from "../lib/names.ts";
 import { Card } from "../ui.tsx";
 import { AWARD_LABEL, AWARD_MARK, awardTone } from "../components/Season.tsx";
 
-const BEST = ["best_ausbau", "best_militaer", "best_kampf", "best_beute", "best_befehle"] as const;
+const BEST = ["best_ausbau", "best_militaer", "best_kampf", "best_beute", "best_befehle", "best_oekostrom"] as const;
 
 export function HallOfFame() {
   const q = useQuery({ ...trpc.season.hall.queryOptions(), staleTime: 300000 });
@@ -44,7 +44,7 @@ export function HallOfFame() {
                 {BEST.map((b) => (
                   <div key={b} className="contents">
                     <dt className="text-slate-400">{AWARD_LABEL[b]}</dt>
-                    <dd className="text-right truncate">{s.best[b] ? `${s.best[b]!.name} (${fmtNum(s.best[b]!.value)})` : "–"}</dd>
+                    <dd className="text-right truncate">{s.best[b] ? (s.best[b]!.value === null ? s.best[b]!.name : `${s.best[b]!.name} (${fmtNum(s.best[b]!.value!)})`) : "–"}</dd>
                   </div>
                 ))}
               </dl>

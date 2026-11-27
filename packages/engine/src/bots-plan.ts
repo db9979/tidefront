@@ -47,6 +47,18 @@ const BUILD_WEIGHTS: Record<BotProfile, Record<string, number>> = {
   },
 };
 
+/**
+ * Ökostrom (v1.21), nur der Händler: Windpark im Norden, Solarfeld im Süden, Elektrolyse erst bei genug Wind- und
+ * Sonnenstufen (sie nimmt nur Überschuss auf). Kraftwerk bleibt die Antwort auf akuten Strommangel.
+ */
+function greenWeights(s: BaseState): Record<string, number> {
+  const lat = s.site?.lat ?? 50;
+  const renew = (s.buildings.windpark ?? 0) + (s.buildings.solarfeld ?? 0);
+  const out: Record<string, number> = { windpark: lat >= 47 ? 1.1 : 0.4, solarfeld: lat < 47 ? 1.1 : 0.4 };
+  if (renew >= 3 && (s.buildings.elektrolyse ?? 0) < Math.floor(renew / 2)) out.elektrolyse = 1.2;
+  return out;
+}
+
 /** Erzeuger je Ressource (Knappheit in der Bauordnung). */
 const PRODUCERS: Record<string, string> = { stahlwerk: "stahl", raffinerie: "treibstoff", chipfabrik: "elektronik", versorgungshof: "proviant" };
 
@@ -118,7 +130,7 @@ function resourcesValue(state: BaseState): number {
 export function chooseBuild(c: PlanCtx): string | null {
   const s = c.state;
   if (s.buildQueue.length >= Math.min(c.cfg.buildQueue, balance.building.queueSlots)) return null;
-  const weights = { ...BUILD_WEIGHTS[c.profile] };
+  const weights = { ...BUILD_WEIGHTS[c.profile], ...(c.profile === "haendler" ? greenWeights(s) : {}) };
   const rates = productionRates(s, balance, c.mods, c.nowMs);
   const cap = storageCapacity(s, balance, c.mods);
   if (balance.resources.some((r) => (s.resources[r] ?? 0) > 0.85 * cap)) weights.lagerkomplex = (weights.lagerkomplex ?? 1) * 3;

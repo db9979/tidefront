@@ -69,6 +69,7 @@ const AWARD_TEXT: Record<string, string> = {
   best_kampf: "Bester Kämpfer",
   best_beute: "Größte Beute",
   best_befehle: "Pflichtbewusstester Kapitän",
+  best_oekostrom: "Grünster Hafen",
 };
 
 export function awardText(a: string): string {
@@ -164,6 +165,7 @@ export const seasonEnd: Handler = async (tx, ev, due) => {
   await clearWorldEvents(tx);
   await (await import("./naval.ts")).clearNaval(tx); // See: Minen/Blockade/Konvoi verfallen
   await (await import("./fields-run.ts")).clearFields(tx); // Felder: Besitz und Feldpunkte verfallen
+  await (await import("./power-cable.ts")).clearCables(tx); // Seekabel (v1.21)
   // Marktnachrichten verfallen; die Börse steht wieder auf dem Grundrichtwert.
   await clearMarketNews(tx);
   await tx.update(tables.nest).set({ defeatedAt: null });
@@ -252,11 +254,12 @@ export async function hallOfFame(db: DbOrTx, playerId: number) {
       players: rows.length,
       podium: rows.filter((r) => r.rank <= 3 && r.total > 0).map(pick),
       best: Object.fromEntries(
-        ["best_ausbau", "best_militaer", "best_kampf", "best_beute", "best_befehle"].map((a) => {
+        ["best_ausbau", "best_militaer", "best_kampf", "best_beute", "best_befehle", "best_oekostrom"].map((a) => {
           const r = best(a);
-          return [a, r ? { name: r.playerName, value: r[a.slice(5) as "ausbau"] } : null];
+          // Grünster Hafen (v1.21): ohne gespeicherten Wert (season_result hat keine Spalte dafür).
+          return [a, r ? { name: r.playerName, value: a === "best_oekostrom" ? null : r[a.slice(5) as "ausbau"] } : null];
         }),
-      ) as Record<string, { name: string; value: number } | null>,
+      ) as Record<string, { name: string; value: number | null } | null>,
       /** Allianzwertung zum Saisonende (Summe der Mitgliederpunkte), nach Rang. */
       alliances: allianceResults.get(s.id) ?? [],
       own: own ? { ...pick(own), ausbau: own.ausbau, militaer: own.militaer, kampf: own.kampf, beute: own.beute, befehle: own.befehle } : null,

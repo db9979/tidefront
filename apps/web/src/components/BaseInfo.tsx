@@ -11,6 +11,7 @@ import { researchNote } from "../lib/research.ts";
 import { Icon } from "../icons.tsx";
 import { Button, Card, ErrorLine } from "../ui.tsx";
 import { PowerGrid } from "./PowerGrid.tsx";
+import { PowerCable } from "./PowerCable.tsx"; // Seekabel (v1.21)
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 const sum = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a + b, 0);
@@ -20,6 +21,7 @@ export function Supply({ base }: { base: BaseData }) {
     <Card id="versorgung" title="Versorgung" collapsible storageKey="basis-versorgung" defaultOpen={false} summary={<SupplySummary base={base} />}>
       <div className="space-y-2 text-sm">
         <PowerGrid base={base} />
+        <PowerCable baseId={base.id} />
         <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-slate-300 [&>span:nth-child(even)]:mono">
           <span>Lager je Ressource</span><span className="text-right">{fmtNum(base.capacity)}<Note text={researchNote(base.modifiers, "storage")} /></span>
           <span>Bunkerschutz</span><span className="text-right">{fmtNum(base.bunkerProtection)}<Note text={researchNote(base.modifiers, "bunker")} /></span>

@@ -48,6 +48,7 @@ import { allianceOpsRouter } from "./routers/alliance-ops.ts"; // Allianz-Ops
 import { navalRouter } from "./routers/naval.ts"; // See: Minen/Blockade/Konvoi
 import { fieldsRouter } from "./routers/fields.ts"; // Felder
 import { botsRouter } from "./routers/bots.ts"; // KI-Spieler (Verwaltung)
+import { powerRouter } from "./routers/power.ts"; // Seekabel (v1.21)
 
 export type { Ctx };
 
@@ -207,6 +208,7 @@ export const appRouter = t.router({
   allianceOps: allianceOpsRouter, // Allianz-Ops: Sammelangriff, Stationierung
   naval: navalRouter, // See: Minen/Blockade/Konvoi
   fields: fieldsRouter, // Felder
+  power: powerRouter, // Seekabel / Stromverbund (v1.21)
 });
 
 export type AppRouter = typeof appRouter;

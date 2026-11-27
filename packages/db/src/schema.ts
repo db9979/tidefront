@@ -12,3 +12,4 @@ export * from "./schema/alliance-ops.ts"; // Allianz-Ops (Sammelangriff, Station
 export * from "./schema/naval.ts"; // See: Minen/Blockade/Konvoi
 export * from "./schema/fields.ts"; // Felder: Rohstofffelder
 export * from "./schema/intel.ts"; // Lagebild: gespeichertes Wissen
+export * from "./schema/power.ts"; // Seekabel / Stromverbund (v1.21)

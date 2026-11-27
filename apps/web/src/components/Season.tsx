@@ -9,7 +9,7 @@ const DAY = 86400000;
 export const AWARD_LABEL: Record<string, string> = {
   gold: "Gold", silber: "Silber", bronze: "Bronze",
   best_ausbau: "Bester Ausbau", best_militaer: "Stärkstes Militär", best_kampf: "Bester Kämpfer", best_beute: "Größte Beute",
-  best_befehle: "Pflichtbewusstester Kapitän",
+  best_befehle: "Pflichtbewusstester Kapitän", best_oekostrom: "Grünster Hafen",
 };
 export const AWARD_MARK: Record<string, string> = { gold: "①", silber: "②", bronze: "③" };
 

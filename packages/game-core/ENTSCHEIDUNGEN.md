@@ -19,6 +19,7 @@ Die Börse hat ihre eigene Liste in `src/market/ENTSCHEIDUNGEN.md`.
 - L. Offene Balance-Fragen per Simulation entschieden (Balance v1.13) → `ENTSCHEIDUNGEN-3.md`
 - M. KI-Spieler (Bots, Balance-Block `bots`) → `ENTSCHEIDUNGEN-3.md`
 - N. Nest Stufe 6 als Spätspiel-Ziel (Balance v1.15) → `ENTSCHEIDUNGEN-3.md`
+- O. Ökostrom, Elektrolyse, Seekabel (Balance v1.21) → `ENTSCHEIDUNGEN-3.md`
 
 ## A. Auslegungen, die das Spielgefühl berühren (bitte gegenlesen)
 
