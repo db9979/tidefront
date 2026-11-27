@@ -11,13 +11,19 @@ import { Button, CountsLine, ErrorLine, Sheet } from "../ui.tsx";
 
 const NAME_RE = /^[\p{L}\p{N} _.'’-]{2,32}$/u;
 
-/** Knopf „Hafen verwalten“ mit Blatt (Umbenennen, Aufgeben). */
+/** Zahnrad-Knopf „Hafen verwalten“ im Hafen-Kopf (wie der „?“-Knopf) mit Blatt (Umbenennen, Aufgeben). */
 export function HarborManageButton({ base, className = "" }: { base: BaseData; className?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={`tap text-xs text-see underline ${className}`} aria-label={`Hafen ${base.name} verwalten`}>
-        Hafen verwalten
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={`tap shrink-0 w-9 h-9 grid place-items-center rounded-lg border border-ink text-ink bg-card ${className}`}
+        aria-label={`Hafen ${base.name} verwalten`}
+        title="Hafen verwalten"
+      >
+        <Icon id="zahnrad" size={20} />
       </button>
       <Sheet open={open} onClose={() => setOpen(false)} title={`Hafen ${base.name}`} icon={<Icon id={base.isHome ? "heimathafen" : "gruendung"} size={28} />}>
         {open && <HarborManage base={base} onDone={() => setOpen(false)} />}

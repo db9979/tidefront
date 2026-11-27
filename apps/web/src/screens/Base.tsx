@@ -61,12 +61,14 @@ export function BaseScreen(props: {
       <section className="mb-3 pb-2.5 flex items-center gap-3 border-b border-rule">
         <HarborVignette size={72} levels={base.buildings.reduce((a, b) => a + b.level, 0)} />
         <div className="min-w-0 flex-1">
-          <h1 className="font-serif text-[26px] leading-none truncate">{base.name}</h1>
+          <div className="flex items-start gap-2">
+            <h1 className="font-serif text-[26px] leading-none truncate flex-1 min-w-0 pt-1">{base.name}</h1>
+            <HarborManageButton base={base} className="-mb-2" />{/* Mehrere Häfen: umbenennen, Kolonie aufgeben */}
+          </div>
           <div className="mono text-[10.5px] text-ink2 mt-1 truncate">{coords(base.col, base.row)} · Feld {base.col}/{base.row}</div>
           <div className="flex flex-wrap gap-1 mt-1">
             {base.protection.status ? <Badge tone="green">{label(base.protection.status)}</Badge> : <Badge tone="red">ungeschützt</Badge>}
             <Badge>{base.market.port.name} {fmtNum(base.market.port.distanceKm)} km</Badge>
-            <HarborManageButton base={base} className="ml-auto" />{/* Mehrere Häfen: umbenennen, Kolonie aufgeben */}
           </div>
         </div>
       </section>
