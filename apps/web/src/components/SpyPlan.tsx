@@ -75,7 +75,7 @@ export function SpyPlan({ base, map, target, setTarget, center, onClose }: { bas
   return (
     <>
       <Card title="Auftrag" right={<span className="text-xs text-slate-400">Nachrichtendienst Stufe {level} · {fmtNum(intel?.spies.home ?? 0)} Spione daheim</span>}>
-        {level < 1 && <p className="text-sm text-brass-300 mb-2">Erst einen Nachrichtendienst bauen und Spione ausbilden (Basis → Führung und Schutz).</p>}
+        {level < 1 && <p className="text-sm text-brass-300 mb-2">Erst einen Nachrichtendienst bauen und Spione ausbilden (Basis → Hafen → Führung und Schutz).</p>}
         <div className="grid grid-cols-2 gap-2">
           {SPY_KINDS.map((k) => (
             <button key={k.id} type="button" onClick={() => setKind(k.id)} className={`tap rounded-xl px-1 py-2 text-sm flex flex-col items-center gap-1 border ${kind === k.id ? "border-sea-400 bg-sea-400/10 font-semibold reticle" : "border-navy-600 bg-navy-900"}`}>

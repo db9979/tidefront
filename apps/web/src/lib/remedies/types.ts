@@ -11,7 +11,10 @@ export type NavTarget =
   | { to: "market"; resource?: string; seg?: "handel" | "spieler" | "vertraege"; /* vertraege: Lagezentrum */ side?: "buy" | "sell"; qty?: number }
   | { to: "troops"; seg: "einsatz" | "ausbilden" | "abwehr" }
   | { to: "map" }
-  | { to: "meldungen"; sub: "berichte" | "erfolge" | "nachrichten" | "rangliste" | "allianz" | "lagebild" };
+  | { to: "lage" } // Basis → Lage (Startseite „Was steht an?“)
+  | { to: "sichtungen" } // Karte mit offenem Blatt „Sichtungen“ (früher Karte → Sichtungen)
+  // Meldungen: Berichte · Nachrichten · Allianz · Rangliste (darin Bilanz und Erfolge); „lagebild“ = alter Name der Sichtungen.
+  | { to: "meldungen"; sub: "berichte" | "erfolge" | "bilanz" | "nachrichten" | "rangliste" | "allianz" | "lagebild" };
 
 export interface RemedyAction { label: string; go: NavTarget }
 

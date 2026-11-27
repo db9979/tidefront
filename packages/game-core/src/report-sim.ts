@@ -54,9 +54,10 @@ export function splitForces(all: Counts, balance: Pick<Balance, "defenses">): { 
   return { units, defenses };
 }
 
-function avgLuck(phases: unknown): { attacker: number; defender: number } | null {
+/** Mittleres Kriegsglück nur über Phasen, in denen gekämpft wurde (TST-04: entfallene Phasen würfeln zwar, wirken aber nicht). */
+export function avgLuck(phases: unknown): { attacker: number; defender: number } | null {
   if (!Array.isArray(phases)) return null;
-  const f = phases.map((p) => obj(obj(p)?.luckFactor)).filter((x): x is Obj => !!x && typeof x.attacker === "number" && typeof x.defender === "number");
+  const f = phases.filter((p) => obj(p)?.skipped !== true).map((p) => obj(obj(p)?.luckFactor)).filter((x): x is Obj => !!x && typeof x.attacker === "number" && typeof x.defender === "number");
   if (!f.length) return null;
   const mean = (k: "attacker" | "defender") => f.reduce((s, x) => s + (x[k] as number), 0) / f.length;
   return { attacker: mean("attacker"), defender: mean("defender") };

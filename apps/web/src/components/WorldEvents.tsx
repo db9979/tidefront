@@ -77,7 +77,8 @@ function EventCard({ e, onPlan }: { e: WorldEventInfo; onPlan: () => void }) {
 }
 
 /** Banner auf der Basis: eigener Hafen belagert oder Ereignis in der Nähe. */
-export function WorldEventBanner({ onMap }: { onMap: () => void }) {
+/** onMap: Karte auf das Ereignis zentrieren und sein Blatt öffnen (TST-07). */
+export function WorldEventBanner({ onMap }: { onMap: (t: { col: number; row: number; eventId: number }) => void }) {
   const q = useWorldEvents();
   const now = useNow();
   if (!q.data) return null;
@@ -94,9 +95,9 @@ export function WorldEventBanner({ onMap }: { onMap: () => void }) {
           <div className="text-xs text-ink2">Keine Börsenkäufe, Produktion −{Math.round((1 - ownSiege.productionFactor) * 100)} %. Brich den Ring aus einem anderen deiner Häfen oder bitte Mitspieler um Hilfe.</div>
         </div>
       )}
-      {finale && <FinaleBanner e={finale} onMap={onMap} />}
+      {finale && <FinaleBanner e={finale} onMap={() => onMap({ col: finale.col, row: finale.row, eventId: finale.id })} />}
       {near.map((e) => (
-        <button key={e.id} type="button" onClick={onMap} className="tap w-full text-left rounded-xl bg-card border border-siegel border-l-4 p-3 text-sm">
+        <button key={e.id} type="button" onClick={() => onMap({ col: e.col, row: e.row, eventId: e.id })} className="tap w-full text-left rounded-xl bg-card border border-siegel border-l-4 p-3 text-sm">
           <strong className="text-siegel uppercase font-display text-xs">Weltereignis in der Nähe: {KIND_TITLE[e.kind]}</strong>
           <div className="text-xs text-ink2">
             {e.targets.some((t) => t.own) ? "Dein Hafen ist ein Ziel der Großflotte. " : ""}

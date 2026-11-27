@@ -33,7 +33,7 @@ function renderSatellite(r: ReportView) {
         { label: "Sichtungen", value: int(num(s.seen) ?? 0) },
         { label: "unter Wolken", value: int(num(s.clouded) ?? 0) },
       ] },
-      { type: "text", text: "Das gespeicherte Wissen bleibt wie jede Sichtung bis zu 72 Stunden erhalten. Ein neuer Satellit startet an der Startrampe (Meldungen → Lagebild)." },
+      { type: "text", text: "Das gespeicherte Wissen bleibt wie jede Sichtung bis zu 72 Stunden erhalten. Ein neuer Satellit startet an der Startrampe (Karte → Sichtungen)." },
     ];
     if (s.last) blocks.push({ type: "text", tone: "muted", text: `Letzter Überflug ${dateTime(s.last.atMs)}${s.last.where ? ` über ${s.last.where}` : ""}: ${nOf(s.last.nests, "Nest", "Nester")}, ${nOf(s.last.bases, "Hafen", "Häfen")}, ${nOf(s.last.fleets, "Verband", "Verbände")}.` });
     return { subject: `${name} verglüht – ${nOf(num(s.passes) ?? 0, "Überflug", "Überflüge")}, ${nOf(num(s.seen) ?? 0, "Sichtung", "Sichtungen")}`, lead: `${name} hat seine Lebensdauer erreicht.`, blocks };

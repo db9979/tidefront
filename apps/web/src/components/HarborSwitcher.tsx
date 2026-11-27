@@ -25,7 +25,7 @@ export function HarborSwitcher({ base, now, onSwitch, onPlanFounding }: { base: 
   const otherAttack = base.bases.some((b) => b.id !== base.id && b.underAttack);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="w-full flex items-center gap-1.5 px-2 pt-1 -mb-0.5 text-left min-h-[26px]" aria-label={`Hafen ${base.name} – Hafen wechseln`}>
+      <button type="button" onClick={() => setOpen(true)} className="tap w-full flex items-center gap-1.5 px-2 text-left min-h-[44px]" aria-label={`Hafen ${base.name} – Hafen wechseln`}>
         <Icon id={base.isHome ? "heimathafen" : "gruendung"} size={16} className="shrink-0" />
         <span className="font-serif text-[15px] leading-tight truncate">{base.name}</span>
         <span className="text-[11px] font-display uppercase tracking-[0.12em] text-ink2 shrink-0">{base.isHome ? "Heimathafen" : "Außenposten"}</span>

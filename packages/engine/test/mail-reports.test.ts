@@ -222,7 +222,7 @@ test("Bündelung und Erfolg: Tabelle mit Zeiten, Kennzahlen als Kacheln", async 
   assert.match(d.subject, /3 Meldungen aus deinem Hafen: Ausbau fertig \(2\), Ausbildung fertig/, d.subject);
 
   assert.equal(await mailNotice(engine, B.playerId, {
-    kind: "report", title: "Erfolg: Seebär (Silber)", body: "10 Kämpfe gewonnen. Belohnung abholen unter Meldungen → Erfolge.",
+    kind: "report", title: "Erfolg: Seebär (Silber)", body: "10 Kämpfe gewonnen. Belohnung abholen unter Meldungen → Rangliste → Erfolge.",
     facts: [["Erfolg", "Seebär"], ["Stufe", "Silber"], ["Erreicht", "10 Siege"]], mail: { subject: "Erfolg freigeschaltet: Seebär (Silber)" },
   }), "sent");
   const e = check("erfolg", lastTo(B.email), ["Seebär", "Silber"]);

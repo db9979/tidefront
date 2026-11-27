@@ -1,7 +1,7 @@
 // Ergebnis des Kampfsimulators (Simulator-Chunk): Siegchance der eigenen Seite, Verteilung, Phasen, Verluste, Beute.
 // Alles aus Sicht der eigenen Seite (stats.mine): bei der Kartell-Abwehr ist „Sieg“ die gehaltene Verteidigung.
 import { useMemo } from "react";
-import { simNotConsidered, type AttackerInput, type CombatWeather, type DefenderInput, type LootRule, type Side, type VictoryRule } from "@tidefront/game-core";
+import { beaufort, simNotConsidered, type AttackerInput, type CombatWeather, type DefenderInput, type LootRule, type Side, type VictoryRule } from "@tidefront/game-core";
 import type { Balance } from "../lib/trpc.ts";
 import { errorText, fmtNum, label } from "../lib/names.ts";
 import { simulate, type PhaseStat, type Range, type SimStats } from "../lib/sim.ts";
@@ -110,7 +110,7 @@ export function SimNote({ attacker, defender, weather, rule, extra }: { attacker
 
 /** Wetter als kurzer Text: „Wolken 60 %, Sturm“. */
 export function weatherText(w: CombatWeather): string {
-  return `${w.storm ? "Sturm" : `Wind ${Math.round(w.wind * 100)} %`}, Wolken ${Math.round(w.clouds * 100)} % – Flugzeuge ×${fmtNum(w.air, 2)}, Luftschlag ×${fmtNum(w.air * w.strike, 2)}`;
+  return `${w.storm ? "Sturm" : `Wind ${beaufort(w.wind)} Bft`}, Wolken ${Math.round(w.clouds * 100)} % – Flugzeuge ×${fmtNum(w.air, 2)}, Luftschlag ×${fmtNum(w.air * w.strike, 2)}`;
 }
 
 export function Outcome({ attacker, defender, balance, ownTitle, enemyTitle, weather, rule, loot, mine }: {

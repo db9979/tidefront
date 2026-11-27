@@ -278,9 +278,10 @@ export function Sheet({ open, onClose, title, icon, children }: { open: boolean;
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" role="dialog" aria-modal="true">
-      <button type="button" aria-label="Schließen" className="absolute inset-0 bg-ink/45" onClick={onClose} />
-      <div ref={panel} className="sheet-in relative w-full max-w-xl max-h-[88vh] overflow-y-auto rounded-t-[10px] bg-card border border-ink border-b-0 shadow-[0_-10px_30px_rgba(24,39,58,0.18)] px-4 pb-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
+    // Desktop (ab 1024 px, Navigationsumbau): rechte Schublade über der Seitenleiste statt mittig unten.
+    <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-stretch lg:justify-end" role="dialog" aria-modal="true">
+      <button type="button" aria-label="Schließen" className="absolute inset-0 bg-ink/45 lg:bg-ink/25" onClick={onClose} />
+      <div ref={panel} className="sheet-in relative w-full max-w-xl max-h-[88vh] overflow-y-auto rounded-t-[10px] bg-card border border-ink border-b-0 shadow-[0_-10px_30px_rgba(24,39,58,0.18)] px-4 pb-4 lg:max-w-[540px] lg:max-h-none lg:h-full lg:rounded-none lg:border-y-0 lg:border-r-0 lg:border-l-[3px] lg:border-double" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
         <div className="sticky top-0 z-10 bg-card -mx-4 px-4 touch-none select-none" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
           {/* Zeigertippen erledigt onUp (Zeiger ist eingefangen); onClick nur für Tastatur (detail 0). */}
           <button type="button" data-grip aria-label="Blatt schließen (oder nach unten ziehen)" onClick={(e) => e.detail === 0 && onClose()} className="flex items-center justify-center mx-auto h-11 w-28 cursor-grab">

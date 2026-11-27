@@ -1,4 +1,4 @@
-// Lagezentrum (Meldungen → Lage): alles, was für den Spieler zeitlich ansteht, über alle eigenen Häfen gebündelt.
+// Lagezentrum (Basis → Lage): alles, was für den Spieler zeitlich ansteht, über alle eigenen Häfen gebündelt.
 // Eine schlanke Abfrage statt vieler: liest nur gespeicherte Zeilen (Häfen, Missionen, Konvois, Lieferungen,
 // Verträge, Weltereignisse) und rechnet nichts neu, was nicht billig ist (kein processDue, kein Kampf, keine Karte).
 // brief: nur die Zahl fürs Navigationszeichen (Angriffe, Nachfristen, leere Bauschlangen, abholbare Belohnungen).

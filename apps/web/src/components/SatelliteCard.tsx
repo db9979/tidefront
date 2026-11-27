@@ -1,4 +1,4 @@
-// Meldungen → Lagebild (Stufe 3): eigene Satelliten mit nächstem Überflug („nächster Überflug in 2 h 10 min über …“),
+// Karte → Sichtungen (Stufe 3): eigene Satelliten mit nächstem Überflug („nächster Überflug in 2 h 10 min über …“),
 // live laufendem Streifen und letzter Zusammenfassung; Start an den eigenen Startrampen (optisch oder Radar).
 // Steht im Lagebild unten und ist eingeklappt, solange es weder Satellit noch Startrampe gibt; zugeklappt nennt die
 // Kopfzeile die Voraussetzung der Startrampe (aus der Balance gelesen).
@@ -12,6 +12,7 @@ import type { Target } from "../App.tsx";
 import { Icon } from "../icons.tsx";
 import { Badge, Card, Cost, ErrorLine, SmallButton } from "../ui.tsx";
 import { ReasonLine } from "./Remedy.tsx";
+import { useNav } from "../lib/nav.ts";
 
 interface Strip { x0: number; x1: number; where: string }
 export interface SatView {
@@ -41,13 +42,19 @@ export function SatelliteCard({ sats, launch, onShowOnMap }: { sats: SatView[]; 
     () => [trpc.intel.pathFilter().queryKey, trpc.base.pathFilter().queryKey, trpc.world.map.pathFilter().queryKey],
   );
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
+  const nav = useNav();
   if (!launch) return null;
   const r = launch.rules;
-  const requires = Object.entries(meta.data?.balance.buildings.startrampe?.requires ?? {}).map(([id, l]) => `${label(id)} ${l}`).join(", ");
+  const reqs = Object.entries(meta.data?.balance.buildings.startrampe?.requires ?? {}) as [string, number][];
+  const requires = reqs.map(([id, l]) => `${label(id)} ${l}`).join(", ");
+  // TST-11: nur nennen, was im aktiven Hafen noch fehlt; alles erfüllt → „Startrampe bauen“ mit Sprung zum Gebäude.
+  const lvl = (id: string) => nav.base?.buildings.find((b) => b.id === id)?.level ?? 0;
+  const missing = reqs.filter(([id, l]) => lvl(id) < l).map(([id, l]) => `${label(id)} ${l}`).join(", ");
+  const ready = !!nav.base && reqs.length > 0 && missing === "";
   const nextPass = sats.map((s) => s.next?.atMs).filter((t): t is number => !!t).sort((a, b) => a - b)[0];
   const summary = sats.length > 0
     ? `${fmtNum(sats.length)} im Orbit${sats.some((s) => s.live) ? " · Überflug läuft" : nextPass ? ` · nächster Überflug in ${fmtDuration(nextPass - now)}` : ""}`
-    : launch.pads.length > 0 ? "Startrampe bereit" : `Startrampe braucht ${requires || "weitere Gebäude"}`;
+    : launch.pads.length > 0 ? "Startrampe bereit" : ready ? "Startrampe bauen (Voraussetzungen erfüllt)" : `Startrampe braucht noch ${missing || requires || "weitere Gebäude"}`;
   return (
     <Card title={<><Icon id="satellit" size={18} /> Satelliten ({sats.filter((s) => s.own).length}/{launch.limit})</>}
       collapsible storageKey="lagebild-satelliten" defaultOpen={sats.length > 0 || launch.pads.length > 0} summary={summary}>
@@ -76,8 +83,13 @@ export function SatelliteCard({ sats, launch, onShowOnMap }: { sats: SatView[]; 
           ))}
         </ul>
       )}
-      {launch.pads.length === 0 ? (
-        <p className="text-xs text-ink2 mt-2">Satelliten starten von einer Startrampe (Hafengebäude{requires ? `, braucht ${requires}` : ""}) mit Technik aus dem Zweig Raumfahrt.</p>
+      {launch.pads.length === 0 ? (<>
+        <p className="text-xs text-ink2 mt-2">
+          Satelliten starten von einer Startrampe (Hafengebäude{requires ? `, braucht ${requires}` : ""}) mit Technik aus dem Zweig Raumfahrt.
+          {ready ? " Voraussetzungen erfüllt." : missing ? ` Es fehlt noch: ${missing}.` : ""}
+        </p>
+        {ready && <SmallButton onClick={() => nav.go({ to: "building", id: "startrampe" })}>Startrampe bauen</SmallButton>}
+      </>
       ) : (
         launch.pads.map((pad) => (
           <div key={pad.baseId} className="mt-3 border-t border-rule pt-2" data-testid="sat-launch">

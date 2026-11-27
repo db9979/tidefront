@@ -27,6 +27,8 @@ test.describe("Missionsplätze", () => {
     await page.goto("/");
     await planAtNest();
     await unitRow("Korvette").getByRole("button", { name: "alle" }).click();
+    // Nur Korvetten, keine Landung: Probekampf unter 10 % → Rückfrage „aussichtslos“ (TST-05), hier bewusst bestätigen.
+    page.once("dialog", (d) => { expect(d.message()).toContain("aussichtslos"); void d.accept(); });
     await page.getByRole("button", { name: "Auslaufen" }).click();
     await expect(page.getByRole("heading", { name: "Mission gestartet" })).toBeVisible();
     await page.getByRole("button", { name: "Fertig" }).click();
@@ -65,7 +67,7 @@ test("Fehlende Ressourcen beim Ausbau → Was hilft? → Börse mit Elektronik",
   await setBuildings(seed.sql, player.baseId, { hafenkommandantur: 3 });
   await setResources(seed.sql, player.baseId, { stahl: 3000, treibstoff: 1000, elektronik: 0 });
 
-  await page.goto("/");
+  await page.goto("/?sub=hafen");
   await page.getByRole("button", { name: /^Kraftwerk 0/ }).click();
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByText("Noch nicht genug Ressourcen.")).toBeVisible();

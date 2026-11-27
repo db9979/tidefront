@@ -1,5 +1,5 @@
 // Lagebild Stufe 2: Patrouille auf der Karte planen (Wegpunkte antippen) und Sicht erhalten, Radarposten auf einer
-// Küste errichten (Meldungen → Lagebild), Aufklärungskampagne mit zwei Zielen.
+// Küste errichten (Karte → Sichtungen), Aufklärungskampagne mit zwei Zielen.
 import type { Page } from "@playwright/test";
 import { COLS, hexCenterXY, hexDistanceKm, terrainAt } from "@tidefront/world";
 import { awayFromEdge, expect, expectNoHorizontalOverflow, tapHex, test, until } from "./fixtures.ts";
@@ -82,8 +82,7 @@ test("Patrouille: Wegpunkte auf der Karte antippen, auslaufen, Nest am Wegpunkt 
     await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
     // Das Schiff liegt auf dem Nest (Antippen öffnete den Verband): Die Karte speichert die Sichtung, das Lagebild zeigt sie.
     await page.waitForTimeout(800);
-    await page.getByRole("navigation").getByRole("button", { name: "Meldungen" }).click();
-    await page.getByRole("tab", { name: "Lagebild" }).click();
+    await page.getByTestId("map-sichtungen").click(); // Sichtungen (früher Meldungen → Lagebild)
     const seen = page.getByTestId("lagebild-tab").getByRole("listitem").filter({ hasText: "Piratennest Stufe 3" });
     await expect(seen.first()).toBeVisible(); // die Runde kann mehrere Nester der Stufe 3 erfassen
     await expect(seen.first()).toContainText("Patrouille aus");
@@ -115,13 +114,13 @@ test("Radarposten: auf freier Küste errichten, im Lagebild verwalten", async ({
   await forward(seed.sql, m.id as number);
   await until(async () => (await seed.sql`select id from radar_post where player_id = ${player.id}`)[0], "Radarposten steht");
   await page.goto("/");
-  await page.getByRole("navigation").getByRole("button", { name: "Meldungen" }).click();
-  await page.getByRole("tab", { name: "Lagebild" }).click();
+  await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
+  await page.getByTestId("map-sichtungen").click(); // Sichtungen (früher Meldungen → Lagebild)
   const row = page.getByTestId("lagebild-tab").locator("[data-post]");
   await expect(row).toContainText(`Feld ${site.col}/${site.row}`);
   await expect(row).toContainText("in Betrieb");
   await expect(page.getByTestId("lagebild-tab").getByRole("listitem").filter({ hasText: "Radarposten" }).filter({ hasText: "bis 250 km" })).toBeVisible();
-  await expectNoHorizontalOverflow(page, "Meldungen → Lagebild");
+  await expectNoHorizontalOverflow(page, "Karte → Sichtungen");
 });
 });
 
@@ -160,7 +159,7 @@ test("Aufklärungskampagne: zwei Nester nacheinander, je ein Lagebild", async ({
       await until(async () => (await seed.sql`select id from battle_report where attacker_player_id = ${player.id} and kind = 'aufklaerung' and nest_id = ${nestId}`)[0], `Lagebild Nest ${nestId}`);
     }
     await page.getByRole("navigation").getByRole("button", { name: "Meldungen" }).click();
-    await page.getByRole("tab", { name: /^Berichte/ }).click(); // Meldungen öffnen im Lagezentrum
+    await page.getByRole("tab", { name: /^Berichte/ }).click(); 
     await expect(page.getByText(/^Aufklärung: Piratennest Stufe 2/)).toHaveCount(2);
   } finally {
     await seed.sql`delete from intel_sighting where kind = 'nest' and object_id in ${seed.sql(ids)}`;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { departureKind } from "../lib/departure.ts";
 import { useQuery } from "@tanstack/react-query";
 import { hexCenter, hexDistanceKm, nearestTradePortBySea, terrainAt } from "@tidefront/world";
@@ -7,7 +7,8 @@ import { fmtDuration, fmtSeconds, useNow } from "../lib/time.ts";
 import { countLabel, fmtNum, label } from "../lib/names.ts";
 import type { Target } from "../App.tsx";
 import { HexMap } from "./LazyHexMap.tsx";
-import { Button, Loading } from "../ui.tsx";
+import { Button, Loading, Sheet } from "../ui.tsx";
+import { LagebildTab } from "../components/LagebildTab.tsx"; // Sichtungen (früher Karte → Sichtungen)
 import { MapLegend } from "../map/Legend.tsx";
 import { MAP_BTN } from "../map/controls.ts";
 import { Icon } from "../icons.tsx";
@@ -36,7 +37,15 @@ const RELATION_TEXT: Record<string, string> = {
 };
 const LEVEL_TEXT =["", "schwach besetzt", "kleine Bande", "befestigt", "Festung", "Hauptquartier", "Inselfestung – Spätspiel"];
 
-export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { base: BaseData; focus: Target | null; onFocusUsed?: () => void; onPlan: (t: Target) => void; onSwitchBase: (id: number) => void }) {
+/**
+ * layout: mobile = ganzflächig, Blätter unten; side = Desktop-Reiter „Karte“, Blätter als rechte Seitenleiste;
+ * embedded = Desktop neben einem anderen Reiter, ohne Blatt – Antippen ruft onActivate (Wechsel zu „Karte“).
+ * sichtungen: Blatt „Sichtungen“ (früher Karte → Sichtungen) beim Öffnen zeigen; onSichtungenUsed verbraucht es.
+ */
+export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase, layout = "mobile", onActivate, sichtungen: openSicht, onSichtungenUsed }: {
+  base: BaseData; focus: Target | null; onFocusUsed?: () => void; onPlan: (t: Target) => void; onSwitchBase: (id: number) => void;
+  layout?: "mobile" | "side" | "embedded"; onActivate?: () => void; sichtungen?: boolean; onSichtungenUsed?: () => void;
+}) {
   const map = useQuery({ ...trpc.world.map.queryOptions(), refetchInterval: 60000 });
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const worldEvents = useWorldEvents();
@@ -47,7 +56,12 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { 
   const [recenter, setRecenter] = useState(0);
   const [centerOn, setCenterOn] = useState<Target>(focus ?? { col: base.col, row: base.row });
   // Sprungziel nur einmal verwenden: sonst öffnet sich das Blatt bei jeder Rückkehr zur Karte erneut.
-  useEffect(() => { if (focus) onFocusUsed?.(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (focus) onFocusUsed?.(); if (openSicht) onSichtungenUsed?.(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [sicht, setSicht] = useState(!!openSicht);
+  const embedded = layout === "embedded";
+  const side = layout === "side";
+  /** Feld wählen; neben einem anderen Reiter (Desktop) wechselt das zuerst zur Karte. */
+  const select = (t: Target | null) => { setSel(t); if (t && embedded) onActivate?.(); };
   // App aus dem Hintergrund (Startbildschirm-App, Tab-Wechsel) nach mehr als 30 s: offenes Blatt schließen.
   useEffect(() => {
     let hiddenAt = 0;
@@ -59,8 +73,8 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { 
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
-  // Wetterschicht (v1.6): abschaltbar, Wahl bleibt im Gerät.
-  const [showWeather, setShowWeather] = useState(() => localStorage.getItem("tf-wetter") !== "aus");
+  // Wetterschicht (v1.6): abschaltbar, Wahl bleibt im Gerät; standardmäßig aus (UI-05: Karte sonst überladen).
+  const [showWeather, setShowWeather] = useState(() => localStorage.getItem("tf-wetter") === "an");
   // Lagebild: Schicht „Sensoren“ (gestrichelte Reichweiten) an/aus, Wahl bleibt im Gerät.
   const [showSensors, setShowSensors] = useState(() => localStorage.getItem("tf-sensoren") !== "aus");
   const now = useNow();
@@ -104,13 +118,13 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { 
   const otherOwn = info?.base?.own && !isHome ? info.base : null; // eigener, nicht aktiver Hafen
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex-1 min-h-0 relative">
+    <div className={`h-full flex ${side ? "flex-row" : "flex-col"}`} data-map-layout={layout}>
+      <div className="flex-1 min-h-0 min-w-0 relative">
         <HexMap
           data={map.data}
           selected={sel}
-          onSelect={setSel}
-          onMissionTap={(id) => { setSel(null); setMissionId(id); }}
+          onSelect={select}
+          onMissionTap={(id) => { setSel(null); setMissionId(id); if (embedded) onActivate?.(); }}
           focusMission={missionId}
           center={centerOn}
           recenter={recenter}
@@ -136,6 +150,9 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { 
               onClick={() => setShowWeather((v) => { localStorage.setItem("tf-wetter", v ? "aus" : "an"); return !v; })}
             >
               <Icon id="wolke" size={24} />
+            </button>
+            <button type="button" className={MAP_BTN} onClick={() => setSicht(true)} aria-label="Sichtungen" title="Sichtungen: Sensoren, fremde Verbände, Satelliten, Radarposten" data-testid="map-sichtungen">
+              <Icon id="sichtung" size={24} />
             </button>
             {map.data.intel.sensors.length > 0 && (
               <button
@@ -167,6 +184,7 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { 
         )}
         {!sel && <MapLegend />}
       </div>
+      {!embedded && <MapPanels side={side}>
       {(() => {
         const m = missionId !== null ? base.missions.find((x) => x.id === missionId) : undefined;
         return m ? (
@@ -268,6 +286,21 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase }: { 
           )}
         </div>
       )}
+      </MapPanels>}
+      <Sheet open={sicht} onClose={() => setSicht(false)} title="Sichtungen" icon={<Icon id="sichtung" size={36} />}>
+        <LagebildTab onShowOnMap={(t) => { setSicht(false); setMissionId(null); select(t); setCenterOn(t); setRecenter((n) => n + 1); }} />
+      </Sheet>
     </div>
+  );
+}
+
+/** Feld- und Missionsblatt: mobil unten (höchstens 45 % der Höhe), am Desktop als rechte Seitenleiste. */
+function MapPanels({ side, children }: { side: boolean; children: ReactNode }) {
+  if (!side) return <>{children}</>;
+  return (
+    <aside aria-label="Feldblatt" data-testid="map-side"
+      className="w-[min(420px,40vw)] shrink-0 h-full min-h-0 flex flex-col bg-card border-l-[3px] border-double border-ink empty:hidden [&>div]:max-h-none [&>div]:flex-1 [&>div]:border-t-0 [&>div]:shadow-none">
+      {children}
+    </aside>
   );
 }

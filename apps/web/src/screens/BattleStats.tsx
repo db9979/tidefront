@@ -1,4 +1,4 @@
-// Meldungen → Bilanz: persönliche Kampfbilanz der Saison (Server: report.stats, kurz zwischengespeichert).
+// Meldungen → Rangliste → Bilanz: persönliche Kampfbilanz der Saison (Server: report.stats, kurz zwischengespeichert).
 import { useQuery } from "@tanstack/react-query";
 import { trpc, type Outputs } from "../lib/trpc.ts";
 import { fmtNum, label, nOf } from "../lib/names.ts";

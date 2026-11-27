@@ -37,6 +37,8 @@ test("Missionsplanung zeigt den Seeweg und zeichnet die Route; die Karte zeichne
     await expect(page.getByText(/Seeweg [\d.]+ km/)).toBeVisible();
     await expect.poll(async () => Number(await page.locator("[data-planned-route]").first().getAttribute("data-planned-route"))).toBeGreaterThanOrEqual(3);
     await expectNoHorizontalOverflow(page, "Missionsplanung mit Seeweg");
+    // Nur Korvetten, keine Landung: Probekampf unter 10 % → Rückfrage „aussichtslos“ (TST-05), hier bewusst bestätigen.
+    page.once("dialog", (d) => { expect(d.message()).toContain("aussichtslos"); void d.accept(); });
     await page.getByRole("button", { name: "Auslaufen" }).click();
     await expect(page.getByRole("heading", { name: "Mission gestartet" })).toBeVisible();
     await page.getByRole("button", { name: "Fertig" }).click();

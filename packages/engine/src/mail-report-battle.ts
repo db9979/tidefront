@@ -7,6 +7,7 @@ import {
   type Counts, type ReportCtx, type ReportView,
 } from "./mail-report-kit.ts";
 import { nameOf } from "./names.ts";
+import { beaufort } from "@tidefront/game-core";
 
 /** Faktor mit zwei Nachkommastellen und Dezimalkomma, z. B. „0,85“. */
 const dec2 = (n: number) => n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -60,7 +61,7 @@ function forceTable(title: string, o: Outcome | undefined, vets: Record<string, 
 }
 
 const weatherText = (w: Battle["weather"]) =>
-  !w ? null : `${w.storm ? "Sturm" : `Wind ${Math.round(w.wind * 100)} %`}, Wolken ${Math.round(w.clouds * 100)} %${w.air < 0.995 || w.strike < 0.995 ? ` – Flugzeuge ×${dec2(w.air)}, Luftschlag ×${dec2(w.air * w.strike)}` : " – ohne Einfluss"}`;
+  !w ? null : `${w.storm ? "Sturm" : `Wind ${beaufort(w.wind)} Bft`}, Wolken ${Math.round(w.clouds * 100)} %${w.air < 0.995 || w.strike < 0.995 ? ` – Flugzeuge ×${dec2(w.air)}, Luftschlag ×${dec2(w.air * w.strike)}` : " – ohne Einfluss"}`;
 
 function admiralLines(who: string, a: AdmiralSide | undefined): string[] {
   if (!a) return [];

@@ -3,7 +3,7 @@ import { expect, expectNoHorizontalOverflow, test } from "./fixtures.ts";
 import { finishBuilds, readState } from "./game.ts";
 
 test("Bauschlange: ausbauen, einreihen, abbrechen, fertigstellen", async ({ page, player, seed }) => {
-  await page.goto("/");
+  await page.goto("/?sub=hafen"); // Gebäude liegen unter Basis → Hafen
   await expect(page.getByRole("heading", { name: "Bauhof" })).toBeVisible();
   await expect(page.getByText("Der Bauhof ist frei.")).toBeVisible();
   await expectNoHorizontalOverflow(page, "Basis");
@@ -40,6 +40,8 @@ test("Bauschlange: ausbauen, einreihen, abbrechen, fertigstellen", async ({ page
   await expect(page.getByText("Der Bauhof ist frei.")).toBeVisible();
   expect((await readState(seed.sql, player.baseId)).buildings.kraftwerk).toBe(1);
 
-  // Auftragsbuch rückt weiter (nächster Auftrag ist nicht mehr „Kraftwerk bauen“).
+  // Auftragsbuch rückt weiter (nächster Auftrag ist nicht mehr „Kraftwerk bauen“; Aufträge stehen in der Lage).
+  await page.getByRole("tablist", { name: "Basis" }).getByRole("tab", { name: /^Lage/ }).click();
+  await expect(page.getByRole("region", { name: "Aufträge" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Nächster Auftrag Kraftwerk bauen" })).toHaveCount(0);
 });

@@ -12,6 +12,10 @@ test("Truppen: Korvetten und Schützen ausbilden", async ({ page, player, seed }
   await expectNoHorizontalOverflow(page, "Truppen · Einsatz");
   await page.getByRole("tab", { name: "Ausbilden" }).click();
   await expectNoHorizontalOverflow(page, "Truppen · Ausbilden");
+  // UI-01: Namensspalte mindestens 112 px (sonst brachen „Zerstörer“, „Landungsschiff“ mitten im Wort).
+  const widths = await page.locator("li[data-train] span.font-serif").evaluateAll((els) => els.map((e) => [e.textContent, e.getBoundingClientRect().width] as const));
+  expect(widths.length).toBeGreaterThan(3);
+  for (const [name, w] of widths) expect(w, `Namensspalte ${name}`).toBeGreaterThanOrEqual(104);
 
   const row = (name: string) => page.getByRole("listitem").filter({ has: page.getByRole("button", { name: new RegExp(`^${name}: Info`) }) });
 

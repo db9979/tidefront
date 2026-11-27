@@ -1,6 +1,6 @@
 // Registrieren mit Einladungscode, Hafenwahl (Schnellwahl), Begrüßung, Abmelden und erneut Anmelden.
 import { E2E } from "./env.ts";
-import { expect, expectNoHorizontalOverflow, resetRateLimits, test, uniqueName } from "./fixtures.ts";
+import { expect, expectNoHorizontalOverflow, openHafen, resetRateLimits, test, uniqueName } from "./fixtures.ts";
 
 test("Registrieren, Heimathafen wählen, abmelden, anmelden", async ({ page, seed }, testInfo) => {
   await resetRateLimits();
@@ -46,6 +46,9 @@ test("Registrieren, Heimathafen wählen, abmelden, anmelden", async ({ page, see
   await dialog.getByRole("button", { name: "Los geht’s" }).click();
   await expect(dialog).toHaveCount(0);
 
+  // Startseite Basis → Lage; Hafen-Kopf und Bauhof unter Basis → Hafen.
+  await expect(page.getByTestId("lage-tab")).toBeVisible();
+  await openHafen(page);
   await expect(page.getByRole("heading", { level: 1, name: harbor })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Bauhof" })).toBeVisible();
   await expectNoHorizontalOverflow(page, "Basis");
@@ -63,6 +66,8 @@ test("Registrieren, Heimathafen wählen, abmelden, anmelden", async ({ page, see
   await page.getByLabel(/^Passwort/).fill(password);
   await page.getByRole("button", { name: "Anmelden" }).last().click();
   // Begrüßung erscheint nicht erneut (je Spieler und Gerät gemerkt).
+  await expect(page.getByTestId("lage-tab")).toBeVisible();
+  await openHafen(page);
   await expect(page.getByRole("heading", { level: 1, name: harbor })).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
