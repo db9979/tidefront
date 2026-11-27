@@ -98,7 +98,7 @@ test("migrate legt genau eine laufende Saison an und plant ihr Ende", async () =
   const s = await runningSeason(db);
   assert.ok(s);
   assert.equal(s.number, 1);
-  assert.equal(s.endsAt.getTime() - s.startsAt.getTime(), 28 * 86400000);
+  assert.equal(s.endsAt.getTime() - s.startsAt.getTime(), 42 * 86400000);
   const again = await ensureSeason(db, Date.now());
   assert.equal(again.id, s.id);
   const ev = await db.select().from(tables.gameEvent).where(eq(tables.gameEvent.type, "season_end"));
