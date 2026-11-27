@@ -2,6 +2,14 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.42.0 – 28.11.2026
+
+- KI-Spieler handeln an der Börse: Sie verkaufen Überschüsse und kaufen Fehlendes nach Stunden Produktion, ihre Lager bleiben dadurch klein.
+- KI-Spieler kämpfen vorsichtiger und nach Profil: Ein Überfall startet nur bei klar günstigem Probekampf. Die Festung hält mindestens die Hälfte daheim. Der Freibeuter greift auch Weltereignisse an. Kein zweiter Verband fährt zum selben Ziel.
+- Verwaltung: neue Karten „Rohstoffbilanz“, „Zuflüsse“, „Welt & Worker“ (Dauer der Server-Schritte) und „Nutzung je System“; Meilensteine mit Soll und Bezugsgröße.
+- Server: fällige Kämpfe und Lieferungen warten nicht mehr auf die ganze Wartungsrunde; langsame Schritte werden erkannt.
+- Für die Entwicklung: Saisonlauf über 42 Tage mit Wächtern (Weltereignisse, Nachrichten, Kartell, Punkteanteile).
+
 ## 0.41.0 – 27.11.2026
 
 - Neu: Weltpolitik (Handbuch-Kapitel „Weltpolitik“).
