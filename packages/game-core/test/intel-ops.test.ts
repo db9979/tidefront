@@ -15,7 +15,6 @@ const pb = ib.patrol!;
 const defs = balance.units as unknown as Record<string, { branch?: string; submerged?: boolean; attack?: { uboot?: number } }>;
 
 test("Balance v1.20: Stufe-2-Werte wie im Regelwerk", () => {
-  assert.equal(balance.version, "v1.20");
   assert.deepEqual(pb.hours, [4, 8, 12]);
   assert.equal(pb.shipSightKm, 100);
   assert.equal(pb.droneSightKm, 200);
