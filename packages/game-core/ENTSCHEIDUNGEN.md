@@ -244,9 +244,11 @@ Kartell-Konter (2 U-Boote, 30 Schützen: 0 %).
 
 ### C5. Offene Punkte
 
-- **Seed für die Überfallstärke:** Der Server (`packages/engine`, `raidLaunch`) ruft `composeRaid` noch ohne Seed
-  auf. Dann ist der Faktor 1, und die Wache (20 Schützen) trifft immer auf 32 Miliz: Das Kartell siegt dort zu
-  rund 80 % statt 51 %. Der Server sollte beim Auslaufen einen eigenen Seed ziehen und mitgeben.
+- **Seed für die Überfallstärke (erledigt):** Der Server zieht beim Auslaufen einen eigenen Seed, unabhängig vom
+  Kampf-Seed, und gibt ihn mit (`packages/engine/src/handlers.ts`, `raidLaunch`:
+  `composeRaid(state.units, state.defenses, balance, randomSeed(), mods)`). Die Stärke-Schwankung wirkt damit wie in
+  der Simulation; ohne Seed wäre der Faktor 1 gewesen und das Kartell hätte gegen die Wache (20 Schützen, immer
+  32 Miliz) zu rund 80 % statt 51 % gesiegt.
 - ~~**Bunkerlinie:** Die Miliz (`anlage` 1) kann eine Bunkerlinie praktisch nicht zerstören.~~ **Erledigt (v1.13,
   L1):** Miliz `anlage` 1 → 5; eine Bunkerlinie bleibt starker Schutz, hält aber nicht mehr jeden Überfall auf.
 - ~~**Flotte daheim lockt größere Überfälle an.**~~ **Erledigt (v1.13, L2):** Schiffe zählen in der Überfallstärke

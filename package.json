@@ -21,7 +21,10 @@
     "build": "npm run build:web && npm run build:server",
     "dev:api": "node --watch apps/api/src/main.ts",
     "dev:worker": "node --watch apps/worker/src/main.ts",
-    "dev:web": "npm run dev -w @tidefront/web"
+    "dev:web": "npm run dev -w @tidefront/web",
+    "e2e": "playwright test -c apps/web/e2e/playwright.config.ts",
+    "e2e:stack": "node apps/web/e2e/stack.ts",
+    "typecheck:e2e": "tsc -p apps/web/e2e/tsconfig.json --noEmit"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.5",
@@ -37,6 +40,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@types/node": "^26.6.11",
     "@types/nodemailer": "^8.0.2",
     "@types/web-push": "^3.6.4",
