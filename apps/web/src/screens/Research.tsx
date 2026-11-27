@@ -8,9 +8,9 @@ import { useCommand } from "../lib/command.ts";
 import { fmtNum } from "../lib/names.ts";
 import { fmtDuration, fmtSeconds, useNow } from "../lib/time.ts";
 import { liveResources } from "../lib/live.res.ts";
-import { BRANCHES, TECH, modRows, pctText, roman, techEffectText, techName } from "../lib/research.ts";
+import { BRANCHES, TECH, modRows, pctText, roman, shy, techEffectText, techName } from "../lib/research.ts";
 import { Icon, IconTile } from "../icons.tsx";
-import { Badge, Bar, Button, Card, Cost, ErrorLine, Loading, Segments, Sheet, StatTable, useSegment } from "../ui.tsx";
+import { Badge, Bar, Button, Card, Cost, ErrorLine, Loading, Segments, Sheet, StatTable, useSegment, BackButton } from "../ui.tsx";
 import { ReasonLine, hasRemedy, useWhatHelps } from "../components/Remedy.tsx"; // „Was hilft?“
 import { BreakthroughChoice, DiceRoll } from "../components/ResearchDice.tsx";
 
@@ -57,7 +57,7 @@ export function ResearchScreen({ base, asOf, onClose }: { base: BaseData; asOf: 
             </div>
           </div>
         </div>
-        <Button kind="secondary" onClick={onClose}>Zurück</Button>
+        <BackButton onClick={onClose} />
       </div>
 
       {!base.isHome && (
@@ -151,7 +151,7 @@ function TechTile({ id, def, row, running, res, onOpen }: { id: string; def: Tec
     >
       <Icon id={TECH[id]?.icon ?? "forschungsamt"} size={38} />
       <span className="min-w-0 flex-1">
-        <span className="block font-serif text-[13.5px] leading-tight">{techName(id)}</span>
+        <span className="block font-serif text-[13.5px] leading-tight">{shy(techName(id))}</span>
         <span className="mt-1 flex items-center gap-1.5">
           <Pips level={row.level} max={def.maxLevel} />
           {running ? <Badge tone="red">läuft</Badge> : row.level >= def.maxLevel ? <Badge tone="green">fertig</Badge> : null}

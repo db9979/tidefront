@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
 import { errorText, failText } from "../lib/names.ts";
 import { currentEndpoint, DENIED_HINT, disablePush, enablePush, isIos, isStandalone, KIND_LABEL, pushDenied, pushSupported } from "../lib/push.ts";
-import { Badge, Button, Card, ErrorLine } from "../ui.tsx";
+import { Badge, Button, Card, ErrorLine, BackButton } from "../ui.tsx";
 import { AdminScreen } from "./Admin.tsx";
 import { useBackLayer } from "../lib/back.ts";
 import { Switch } from "../components/Switch.tsx";
@@ -219,7 +219,7 @@ export function SettingsScreen({ onClose, initialAdmin = false, onAdmin }: { onC
     <div>
       <div className="flex items-center justify-between mb-3">
         <h1 className="font-display text-2xl font-bold uppercase">Einstellungen</h1>
-        <Button kind="secondary" onClick={onClose}>Zurück</Button>
+        <BackButton onClick={onClose} />
       </div>
       <Card title="Börsen-Kurszeile">
         <p className="text-sm text-slate-300 mb-2">Die laufende Kurszeile der Börse auf allen Bildschirmen zeigen – fest oben unter den Ressourcen oder ganz unten über der Navigation. Antippen öffnet die Börse.</p>

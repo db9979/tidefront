@@ -7,7 +7,7 @@ import { trpc } from "../lib/trpc.ts";
 import { label, fmtNum } from "../lib/names.ts";
 import { buildingText, unitText, unitTone } from "../lib/info.ts";
 import { Icon, IconTile } from "../icons.tsx";
-import { Button } from "../ui.tsx";
+import { Button, BackButton } from "../ui.tsx";
 import { SettingsScreen } from "./Settings.tsx";
 import { IntelChapter } from "../components/IntelChapter.tsx";
 import { AdmiralChapter } from "../components/AdmiralChapter.tsx"; // Admirale
@@ -304,7 +304,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
     <div>
       <div className="flex items-center justify-between mb-3">
         <h1 className="font-display text-xl font-bold uppercase">Handbuch</h1>
-        <Button kind="secondary" onClick={onClose}>Zurück</Button>
+        <BackButton onClick={onClose} />
       </div>
       {/* Schnellzugriff: Fehler melden gut sichtbar ganz oben */}
       <div className="grid grid-cols-3 gap-2 mb-3">

@@ -2,6 +2,10 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.18.1 – 27.11.2026
+- **„Zurück“** ist überall ein schmaler Knopf mit Pfeil („‹ Zurück“), der nicht mehr mitten im Wort umbricht (Forschung, Einstellungen, Verwaltung, Handbuch, Berichte).
+- **Silbentrennung:** Lange Wörter werden deutsch getrennt statt ohne Trennstrich mitten in der Silbe umbrochen; Technik-, Gebäude- und Einheitennamen trennen an der Wortfuge („Schiffs-panzerung“, „Torpedoleit-systeme“).
+
 ## 0.18.0 – 27.11.2026
 - **„Was hilft?“** unter Sperr- und Fehlermeldungen in allen Bereichen: Ein Tipp zeigt, was fehlt und wie viel – mit Zahlen aus deinem Hafen (welches Gebäude auf welche Stufe muss, Fehlmengen mit Wartezeit, Treibstoff, Kommandopunkte, Reichweite, nächste Rückkehr einer Mission).
 - **Sprungknöpfe** führen direkt dorthin: zum Gebäude-Blatt, zur Börse mit vorgewählter Ressource, zur Forschung, zu Truppen → Einsatz/Ausbilden, zur Karte oder zur Allianz.

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { trpc } from "../lib/trpc.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { fmtTime } from "../lib/time.ts";
-import { Button, Card, CountsLine, Loading } from "../ui.tsx";
+import { Button, Card, CountsLine, Loading, BackButton } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 import { BattleLog, type Battle } from "../components/BattleLog.tsx";
 import { RepeatButton } from "../components/Repeat.tsx";
@@ -113,7 +113,7 @@ function ReportDetail({ id, onBack }: { id: number; onBack: () => void }) {
     <div>
       <div className="flex items-center justify-between mb-3 gap-2">
         <h1 className="font-serif text-xl leading-tight min-w-0">{r.title}</h1>
-        <Button kind="secondary" onClick={onBack}>Zurück</Button>
+        <BackButton onClick={onBack} />
       </div>
       <p className="text-xs mono text-slate-400 mb-3">{fmtTime(r.atMs)}</p>
       {r.role === "attacker" && r.kind !== "kartell" && r.kind !== "spionage" && r.kind !== "sammelangriff" && !d.allianceRaid && !r.kind.startsWith("weltereignis") && !NAVAL_KINDS.includes(r.kind) && r.kind !== "feld" && <RepeatButton reportId={r.id} />}

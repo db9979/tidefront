@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
 import { errorText, failText } from "../lib/names.ts";
-import { Badge, Button, Card, ErrorLine, Loading, StatTable, Stepper } from "../ui.tsx";
+import { Badge, Button, Card, ErrorLine, Loading, StatTable, Stepper, BackButton } from "../ui.tsx";
 import { AdminMail } from "./AdminMail.tsx";
 import { AdminInvites } from "./AdminInvites.tsx";
 import { AdminBackups } from "./AdminBackups.tsx";
@@ -61,7 +61,7 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
     <div>
       <div className="flex items-center justify-between mb-3">
         <h1 className="font-display text-2xl font-bold uppercase">Verwaltung</h1>
-        <Button kind="secondary" onClick={onClose}>Zurück</Button>
+        <BackButton onClick={onClose} />
       </div>
 
       <Card

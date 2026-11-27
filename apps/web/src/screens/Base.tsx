@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { shy } from "../lib/research.ts";
 import { trpc, trpcClient, type Balance, type BaseData } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
@@ -201,7 +202,7 @@ function BuildingTile({ b, res, queueFull, running, queued, onOpen, sabotaged }:
       className={`relative rounded-xl px-1.5 pt-2 pb-2 flex flex-col items-center text-center border bg-card transition ${queued ? "reticle" : "border-rule"} active:scale-[0.97]`}
     >
       <BuildingArt id={b.id} level={b.level} size={68} />
-      <span className="w-full font-serif text-[12.5px] mt-1 leading-tight break-words hyphens-auto" lang="de">{label(b.id).replace("kommandantur", "\u00ADkommandantur").replace("zentrale", "\u00ADzentrale")}</span>
+      <span className="w-full font-serif text-[12.5px] mt-1 leading-tight break-words hyphens-auto" lang="de">{shy(label(b.id))}</span>
       <span className="mt-1 flex items-center gap-1">
         <span className={`w-[22px] h-[22px] rounded-full grid place-items-center text-[11px] mono border ${b.level > 0 ? "border-ink text-ink" : "border-rule text-ink2"}`}>{b.level}</span>
         {sabotaged ? <Badge tone="red">sabotiert</Badge> : running ? <Badge tone="red">Ausbau</Badge> : queued ? <Badge tone="sea">→ {b.planned}</Badge> : null}

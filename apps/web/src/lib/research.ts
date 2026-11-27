@@ -37,6 +37,25 @@ export const TECH: Record<string, { name: string; icon: string; text: string }> 
   agentenschulung: { name: "Agentenschulung", icon: "spion", text: "Tarnidentitäten und Ausbildung: +1 auf den Erfolgswert eigener Spione je Stufe." },
 };
 
+/**
+ * Weiche Trennstellen (U+00AD) an den Wortfugen langer Namen: Safari trennt deutsch nach lang="de", andere Browser
+ * nicht immer – so wird nie mitten in einer Silbe ohne Trennstrich umbrochen. Nur für die Anzeige.
+ */
+const FUGEN = [
+  "Dampf|turbinen", "Schiffs|panzerung", "Prisen|recht", "Torpedo|leit|systeme", "Infanterie|waffen", "Drill|ausbildung",
+  "Verbund|panzerung", "Pionier|technik", "Festungs|bau", "Funkmess|technik", "Strahl|triebwerke", "Luftkampf|taktik",
+  "Tarn|anstrich", "Präzisions|bomben", "Lager|technik", "Stahlbeton|bunker", "Ver|schlüsselung", "Agenten|schulung",
+  "Hafen|kommandantur", "Kommando|zentrale", "Nachrichten|dienst", "Versorgungs|hof", "Lager|komplex", "Speicher|werk",
+  "Radar|station", "Forschungs|amt", "Aufklärungs|drohne", "Landungs|schiff", "Kolonie|schiff", "Minen|räumer",
+  "Minen|leger", "Abfang|jäger", "Jagd|bomber", "Kampf|panzer", "Küsten|batterie", "Flak|stellung", "Bunker|linie",
+];
+const FUGE = new Map(FUGEN.map((f) => [f.replaceAll("|", ""), f.replaceAll("|", "\u00AD")]));
+
+/** Name mit weichen Trennstellen für enge Kacheln. */
+export function shy(text: string): string {
+  return FUGE.get(text) ?? text;
+}
+
 export function techName(id: string): string {
   return TECH[id]?.name ?? id;
 }

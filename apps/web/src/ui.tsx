@@ -61,6 +61,15 @@ const KIND: Record<BtnKind, string> = {
   ghost: "btn-quiet",
 };
 
+/** Zurück-Knopf der Kopfzeilen: bricht nie um, mit Pfeil. */
+export function BackButton({ onClick, label = "Zurück" }: { onClick: () => void; label?: string }) {
+  return (
+    <button type="button" onClick={onClick} className="tap shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 rounded-lg px-3 btn-secondary font-display uppercase text-[12px] tracking-[0.1em]">
+      <span aria-hidden="true" className="text-base leading-none -mt-px">‹</span>{label}
+    </button>
+  );
+}
+
 /** Kleiner leiser Knopf für Kartenköpfe und Nebenaktionen in einer Zeile (44 px Tippfläche, schmal). */
 export function SmallButton(props: { children: ReactNode; onClick?: () => void; disabled?: boolean; className?: string; expanded?: boolean }) {
   return (
