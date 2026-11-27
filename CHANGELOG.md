@@ -2,6 +2,12 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.32.0 – 27.11.2026
+- **Lieferverträge (Börse → Verträge, Balance v1.32):** Rohstoffe heute zu festem Preis kaufen oder verkaufen, geliefert in 1–7 Tagen oder als Abo („täglich X für 3–7 Tage“). 25 % Anzahlung bzw. Pfand, Rest bei Fälligkeit; wer nicht zahlen oder liefern kann, hat 12 Stunden Nachfrist.
+- **KI-Spieler als Vertragspartner:** Reederei Albers handelt alles und bietet Abos, Bastion Falkenberg kauft Stahl und Elektronik, Kapitän Rotbart verkauft Treibstoff und Elektronik günstig – liefert aber per Konvoi über See, der abgefangen werden kann (Geleit möglich).
+- **Verträge zwischen Spielern:** Angebot an alle oder an einen Mitspieler, Preis höchstens ±20 % vom Kurs, Lieferung per Konvoi. Zwischen eng verbundenen Spielern (Allianz, Handel in den letzten 7 Tagen) erlaubt, aber ohne Erfolgs- und Tagesbefehl-Wertung.
+- Vertragslieferungen zählen ins Handelslimit; die Order zeigt, wie viel für Verträge vorgemerkt ist. Erinnerungen 6 Stunden vor Fälligkeit.
+
 ## 0.31.0 – 27.11.2026
 - **Aufklärung auf Sicht:** Eine Aufklärung dreht um, sobald das Ziel in Bordsicht liegt (Drohne 200 km, Kriegsschiff 105 km, Transporter 40 km) – mit vollem Lagebild, aber kürzerer Fahrt und weniger Treibstoff. Die Karte zeigt den Wendepunkt.
 - **Lebendige Piratennester (Balance v1.31):** Jede Neubesetzung würfelt die Besatzung (80–120 % der Stufe) und die Anlagen neu – Stufe 1 bleibt fest. Nach einer abgewehrten Attacke erholt sich ein Nest (sofort auf 70 %, dann +5 % je Stunde); die Beute wächst, solange niemand angreift (+1 % je Stunde bis 130 %).
