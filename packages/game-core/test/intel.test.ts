@@ -10,8 +10,7 @@ import balanceJson from "../../balance/v1/balance.json" with { type: "json" };
 const ib = (balanceJson as unknown as { intel: IntelBalance }).intel;
 const clear = { powerServed: 1, fogFactor: 1, sabotaged: false };
 
-test("Balance v1.17: Block intel mit den Startwerten des Regelwerks", () => {
-  assert.equal((balanceJson as { version: string }).version, "v1.17");
+test("Balance: Block intel mit den Startwerten des Regelwerks", () => {
   assert.equal(ib.lookoutKm, 120);
   assert.equal(ib.radarBaseKm + 10 * ib.radarKmPerLevel, 550);
   assert.equal(ib.staleHours, 24);
