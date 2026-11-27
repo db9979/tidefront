@@ -218,6 +218,13 @@
       "when": 1795817203679,
       "tag": "0030_weltpolitik",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1795817792388,
+      "tag": "0031_messbarkeit",
+      "breakpoints": true
     }
   ]
 }
