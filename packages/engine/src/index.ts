@@ -102,3 +102,7 @@ export { dismantlePost } from "./intel-post.ts";
 export { intelOverview } from "./intel-overview.ts";
 export { launchSatellite, MAP_WIDTH_KM, stripPlace } from "./intel-sat.ts"; // Lagebild Stufe 3: Satelliten
 export { counterWorld, clearCounterCache } from "./intel-counter.ts"; // Lagebild Stufe 3: Gegenmittel
+export { runEventWatchdog, REPAIR_GIVE_UP, type WatchdogResult } from "./event-watchdog.ts"; // Wächter der Ereignis-Queue
+export { listFailedEvents, requeueEvent, type FailedEvent } from "./event-admin.ts"; // Verwaltung → Ereignisse
+export { lockPlayerWide, worldLockExclusive, worldLockShared } from "./world-lock.ts";
+export { bumpMapGeneration, enableMapCache } from "./map-cache.ts"; // world.map: geteilte Weltdaten zwischenspeichern

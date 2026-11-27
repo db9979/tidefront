@@ -28,6 +28,7 @@ import { scheduleAttackWarning } from "./event-notices.ts";
 import { KIND_TEXT, isOpen, readWorldEvent } from "./world-events.ts";
 import { nestKnown } from "./intel-query.ts"; // Lagebild Stufe 2
 import type { Handler, HandlerResult } from "./events.ts";
+import { gameTimeZone } from "./challenge-pool.ts"; // einheitliche Zeitzone des Spiels
 
 const MIN = 60000;
 export type RaidRow = typeof tables.allianceRaid.$inferSelect;
@@ -39,7 +40,7 @@ export async function lockRaid(tx: Tx, id: number): Promise<RaidRow | null> {
 }
 
 export function clock(ms: number): string {
-  return new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
+  return new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: gameTimeZone() });
 }
 
 function fail(code: string): never {

@@ -130,6 +130,7 @@ export function colonyProtection(home: ProtectionState, nowMs: number, balance: 
     createdAtMs: home.createdAtMs,
     nightShieldStartHour: s.nightShieldStartHour,
     tzOffsetMinutes: s.tzOffsetMinutes,
+    ...(s.timeZone ? { timeZone: s.timeZone } : {}),
     nightShieldSuspendedUntilMs: 0,
     defeatShieldUntilMs: 0,
     foundingShieldUntilMs: nowMs + hours * HOUR_MS,
