@@ -1,5 +1,6 @@
 // Meldungen → Lagebild (Stufe 2, Regelwerk 8): fremde Patrouillen (gemeldet und gesichtet), letzte Sichtungen mit Stand,
 // eigene Sensoren (Häfen, Radarposten, Patrouillen, Verbände) mit Reichweite und die eigenen Radarposten (abbauen).
+// Stufe 3: Satelliten mit nächstem Überflug und Start an der Startrampe (SatelliteCard.tsx).
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient, trpc, trpcClient } from "../lib/trpc.ts";
@@ -9,9 +10,11 @@ import { fmtTime } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
 import { Icon } from "../icons.tsx";
 import { Badge, Card, ErrorLine, Loading, SmallButton, UnitChips } from "../ui.tsx";
+import { SatelliteCard } from "./SatelliteCard.tsx";
 
 const SENSOR_TEXT: Record<string, string> = {
   ausguck: "Ausguck", radar: "Radar", posten: "Radarposten", patrouille: "Patrouille", aufklaerer: "Aufklärer", verband: "Bordsicht", flug: "Flugzeuge (Sichtung)", sonar: "Sonar",
+  satellit: "Optischer Satellit (Streifen)", radarsatellit: "Radarsatellit (Streifen)",
 };
 const LEVEL_TEXT: Record<string, string> = { sichtung: "Sichtung", erkennung: "Erkennung", lagebild: "Lagebild" };
 
@@ -39,6 +42,8 @@ export function LagebildTab({ onShowOnMap }: { onShowOnMap: (t: Target) => void 
   return (
     <div className="space-y-3" data-testid="lagebild-tab">
       {!d.fog && <p className="text-xs text-ink2">Der Kartennebel ist auf diesem Server aus; Sensoren laufen trotzdem.</p>}
+
+      <SatelliteCard sats={d.satellites} launch={d.launch} onShowOnMap={onShowOnMap} />
 
       <Card title={<><Icon id="patrouille" size={18} /> Fremde Patrouillen</>}>
         {d.reported.length === 0 && d.patrols.length === 0 ? <p className="text-sm text-ink2">Keine fremden Patrouillen oder Aufklärer in den letzten 24 Stunden.</p> : (
@@ -78,7 +83,7 @@ export function LagebildTab({ onShowOnMap }: { onShowOnMap: (t: Target) => void 
       <Card title="Eigene Sensoren">
         <ul className="text-sm space-y-1">
           {sensors.map(([kind, v]) => (
-            <li key={kind} className="flex justify-between gap-2"><span>{SENSOR_TEXT[kind] ?? kind}{v.n > 1 ? ` × ${v.n}` : ""}</span><span className="mono text-ink2">bis {fmtNum(v.km)} km</span></li>
+            <li key={kind} className="flex justify-between gap-2"><span>{SENSOR_TEXT[kind] ?? kind}{v.n > 1 ? ` × ${v.n}` : ""}</span><span className="mono text-ink2">{kind === "satellit" || kind === "radarsatellit" ? "Streifen live" : `bis ${fmtNum(v.km)} km`}</span></li>
           ))}
         </ul>
         <p className="text-xs text-ink2 mt-2">Die gestrichelten Kreise auf der Karte zeigen jeden Sensor (Knopf „Sensoren“).</p>

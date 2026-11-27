@@ -163,6 +163,10 @@ export const ART: Record<string, ReactNode> = {
   radarposten: (<><path d="M4 52 L22 44 H60 V56 H4 Z" {...h} /><path d="M32 44 V22" {...ln} /><path d="M20 22 Q32 34 44 22 Z" {...p} /><path d="M46 12 Q52 18 46 24 M50 8 Q60 18 50 28" {...ln} strokeWidth={1.8} stroke={SIEGEL} /></>),
   posten: (<><path d="M4 52 L22 44 H60 V56 H4 Z" {...h} /><path d="M32 44 V22" {...ln} /><path d="M20 22 Q32 34 44 22 Z" {...p} /></>),
   postenangriff: (<><path d="M4 52 L22 44 H60 V56 H4 Z" {...h} /><path d="M32 44 V22" {...ln} /><path d="M20 22 Q32 34 44 22 Z" {...p} /><path d="M44 6 L58 20 M58 6 L44 20" {...ln} stroke={SIEGEL} strokeWidth={3} /></>),
+  // Lagebild Stufe 3 (v1.23): Startrampe, Störsender, Satellit
+  startrampe: (<><path d="M24 50 V22 L29 12 L34 22 V50 Z" {...p} /><path d="M24 40 L18 50 H24 M34 40 L40 50 H34" {...h} strokeWidth={1.8} /><path d="M44 56 V14 M44 18 L34 24 M44 30 L34 32 M40 14 H50" {...ln} strokeWidth={1.8} /><circle cx="50" cy="14" r="2.2" {...red} /><path d="M12 56 V48 H52 V56" {...hd} strokeWidth={1.6} />{GROUND}</>),
+  stoersender: (<><path d="M14 56 V38 H34 V56 Z" {...h} /><path d="M24 38 V14" {...ln} /><path d="M18 20 H30 M20 26 H28" {...ln} strokeWidth={1.6} /><path d="M38 16 l4 4 l-4 4 l4 4 l-4 4 M46 12 l5 6 l-5 6 l5 6 l-5 6" fill="none" stroke={SIEGEL} strokeWidth={1.8} strokeLinejoin="round" />{GROUND}</>),
+  satellit: (<><path d="M26 26 L38 26 L38 38 L26 38 Z" {...p} /><path d="M4 22 H22 V42 H4 Z M42 22 H60 V42 H42 Z" {...h} strokeWidth={1.8} /><path d="M22 32 H26 M38 32 H42 M10 22 V42 M16 22 V42 M48 22 V42 M54 22 V42" {...ln} strokeWidth={1.2} /><path d="M32 38 V46 M26 50 Q32 44 38 50" {...ln} strokeWidth={1.8} /><circle cx="32" cy="32" r="2.4" {...red} /></>),
   sichtung: (<><circle cx="26" cy="28" r="14" {...p} /><path d="M36 38 L54 56" {...ln} strokeWidth={4} /><path d="M20 28 Q26 20 32 28 Q26 36 20 28 Z" {...h} strokeWidth={1.6} /></>),
   // ---------------------------------------------------------------- Mehrere Häfen: Kolonieschiff, Gründung, Verlegung
   // Kolonieschiff: bauchiger Frachter mit Kisten und zwei Hausgiebeln an Deck (Siedler), Wimpel am Mast.

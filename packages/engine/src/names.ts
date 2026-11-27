@@ -14,6 +14,7 @@ const NAMES: Record<string, string> = {
   minenleger: "Minenleger", minenraeumer: "Minenräumer", kolonieschiff: "Kolonieschiff", spion: "Spion", anlagen: "Anlagen",
   luftkampf: "Luftkampf", luftschlag: "Luftschlag", ubootangriff: "U-Boot-Angriff", seegefecht: "Seegefecht", landung: "Landung",
   nachtschild: "Nachtschild", anfaengerschutz: "Anfängerschutz", niederlage: "Schutz nach Niederlage", gruendungsschutz: "Gründungsschutz",
+  startrampe: "Startrampe", stoersender: "Störsender", // Lagebild Stufe 3
   bauschlange: "Bauschlange", oelfeld: "Ölfeld", erzbucht: "Erzbucht", fischgrund: "Fischgrund", elektronikwrack: "Elektronik-Wrack",
 };
 

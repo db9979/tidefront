@@ -18,14 +18,14 @@ export interface MapPost {
   intel: IntelTag | null;
 }
 
-export async function postsInSight(db: DbOrTx, playerId: number, sight: Sight | null, nowMs: number, rows: SightingInput[]): Promise<MapPost[]> {
+export async function postsInSight(db: DbOrTx, playerId: number, sight: Sight | null, nowMs: number, rows: SightingInput[], skipKnown = false): Promise<MapPost[]> {
   const pb = postRules();
   if (!pb) return [];
   const posts = await db.select().from(tables.radarPost);
   if (posts.length === 0 && !sight) return [];
   const names = new Map((await db.select({ id: tables.player.id, name: tables.player.name }).from(tables.player)).map((p) => [p.id, p.name]));
   const mates = new Set(sight?.members ?? [playerId]);
-  const known = sight ? await knownFor(db, sight, nowMs, ["post"]) : new Map();
+  const known = sight && !skipKnown ? await knownFor(db, sight, nowMs, ["post"]) : new Map();
   const out: MapPost[] = [];
   const seen = new Set<number>();
   for (const p of posts) {
@@ -35,7 +35,7 @@ export async function postsInSight(db: DbOrTx, playerId: number, sight: Sight | 
       seen.add(p.id);
       continue;
     }
-    const lvl = liveAt(sight, p.col, p.row);
+    const lvl = liveAt(sight, p.col, p.row, "object", { ownerId: p.playerId, kind: "post" }); // Stufe 3: Tarnnetz 2
     if (!lvl) continue;
     const xy = hexCenterXY(p.col, p.row);
     const source = sourceAt(sight, xy.x, xy.y);

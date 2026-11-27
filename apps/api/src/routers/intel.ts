@@ -1,7 +1,7 @@
-// Lagebild Stufe 2: Patrouille, Aufklärungskampagne, Radarposten (errichten, angreifen, abbauen) und der Reiter
+// Lagebild Stufe 2/3: Patrouille, Aufklärungskampagne, Radarposten (errichten, angreifen, abbauen) und der Reiter
 // „Lagebild“ unter Meldungen. Eingehängt in router.ts als `intel`.
 import { z } from "zod";
-import { dismantlePost, endPatrol, intelOverview, launchIntelOp, previewIntelOp } from "@tidefront/engine";
+import { dismantlePost, endPatrol, intelOverview, launchIntelOp, launchSatellite, previewIntelOp } from "@tidefront/engine";
 import { authed, baseRef, t } from "../trpc.ts";
 
 const key = z.string().min(8).max(80);
@@ -29,4 +29,8 @@ export const intelRouter = t.router({
   dismantlePost: authed
     .input(z.object({ key, postId: z.number().int().min(1) }))
     .mutation(({ ctx, input }) => dismantlePost(ctx.engine, ctx.player.id, input.key, input.postId)),
+  /** Stufe 3: Satellit von der Startrampe des Hafens starten (optisch oder Radar). */
+  launchSatellite: authed
+    .input(z.object({ key, type: z.enum(["optisch", "radar"]), ...baseRef }))
+    .mutation(({ ctx, input }) => launchSatellite(ctx.engine, ctx.player.id, input.key, { type: input.type, baseId: input.baseId })),
 });

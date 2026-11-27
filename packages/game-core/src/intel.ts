@@ -32,6 +32,9 @@ export interface IntelBalance {
   sonar?: import("./intel-ops.ts").SonarBalance;
   /** Bordsicht (Entscheidung 27.11.2026): jeder eigene Verband auf See sieht um seine Position. */
   fleetSight?: import("./intel-ops.ts").FleetSightBalance;
+  /** Stufe 3 (seit v1.23, intel-sat.ts): Satelliten und Gegenmittel; fehlt ein Teil, gibt es ihn nicht. */
+  satellite?: import("./intel-sat.ts").SatelliteBalance;
+  counter?: import("./intel-sat.ts").CounterBalance;
 }
 
 export type IntelLevel = "sichtung" | "erkennung" | "lagebild";
@@ -39,7 +42,9 @@ export type IntelLevel = "sichtung" | "erkennung" | "lagebild";
  * Sensorarten: Ausguck und Radar (Häfen), Posten (mobile Radarstation, wie Radar), Patrouille und Aufklärer (Verbände
  * auf See, Erkennung), Sonar (sieht nur getauchte U-Boote, sonst nichts).
  */
-export type SensorKind = "ausguck" | "radar" | "posten" | "patrouille" | "aufklaerer" | "sonar" | "verband" | "flug";
+export type SensorKind = "ausguck" | "radar" | "posten" | "patrouille" | "aufklaerer" | "sonar" | "verband" | "flug"
+  // Stufe 3: Satellitenstreifen (optisch: Erkennung, nicht durch Wolken; Radar: Sichtung, durch Wolken und Nebel).
+  | "satellit" | "radarsatellit";
 export type FleetSize = "klein" | "mittel" | "gross";
 /** Alter einer Angabe: live (jetzt im Sensorbereich), bekannt (< staleHours), veraltet (< forgetHours). */
 export type IntelAge = "live" | "bekannt" | "veraltet";
@@ -75,12 +80,35 @@ export function radarRangeKm(level: number, ib: IntelBalance, c: RadarCondition)
   return (ib.radarBaseKm + ib.radarKmPerLevel * level) * power * Math.max(0, Math.min(1, c.fogFactor));
 }
 
-/** Ein Sensorkreis (Mittelpunkt in Projektions-km). */
+/** Ein Sensorkreis (Mittelpunkt in Projektions-km) oder ein Satellitenstreifen (strip; x/y/km dann ohne Bedeutung). */
 export interface SensorCircle {
   kind: SensorKind;
   x: number;
   y: number;
   km: number;
+  /** Stufe 3: Nord-Süd-Streifen eines Satelliten (x0 … x1 über die ganze Kartenhöhe); blocked: Punkt unter Wolken. */
+  strip?: { x0: number; x1: number; blocked?: (x: number, y: number) => boolean };
+}
+
+/** Radarartige Sensoren (Störsender und Funkdisziplin mindern ihre Reichweite). */
+export const RADAR_KINDS: ReadonlySet<SensorKind> = new Set<SensorKind>(["radar", "posten", "radarsatellit"]);
+
+/**
+ * Stufe 3: Gegenmittel am Ziel. camouflaged: Tarnnetz – Ausguck und optischer Satellit erkennen nur Sichtung.
+ * radarFactor: Faktor auf radarartige Sensoren (Störsender in der Nähe, Admiral mit Funkdisziplin).
+ * sightFactor: Faktor auf alle Sensoren (Tarnanstrich bei Verbänden nur aus Flugzeugen).
+ */
+export interface TargetMods {
+  camouflaged?: boolean;
+  radarFactor?: number;
+  sightFactor?: number;
+}
+
+/** Liegt der Punkt im (um `factor` um die Mitte verschmälerten) Streifen? */
+function inStrip(st: NonNullable<SensorCircle["strip"]>, x: number, factor: number): boolean {
+  const mid = (st.x0 + st.x1) / 2;
+  const half = ((st.x1 - st.x0) / 2) * factor;
+  return x >= mid - half && x <= mid + half;
 }
 
 /**
@@ -89,16 +117,30 @@ export interface SensorCircle {
  * Wracks), Sichtung für Verbände. Getauchte U-Boote („submarine“) erfasst nur das Sonar (Erkennung); das Sonar
  * erfasst sonst nichts. Bordsicht: „verband“ (Schiffe, Drohnen) Erkennung, „flug“ (Jäger, Bomber) nur Sichtung von
  * Verbänden – Objekte erfasst ein Flug nicht (ihre Position ist ohnehin bekannt).
+ * Stufe 3: Optischer Satellit Erkennung im Streifen außer unter Wolken (strip.blocked), Radarsatellit nur Sichtung.
+ * Gegenmittel (mods): Tarnnetz senkt Ausguck und optischen Satelliten auf Sichtung; Faktoren verkürzen Reichweiten
+ * (beim Streifen die Breite um die Mitte).
  */
-export function liveLevelAt(sensors: readonly SensorCircle[], x: number, y: number, target: "object" | "fleet" | "submarine"): IntelLevel | null {
+export function liveLevelAt(sensors: readonly SensorCircle[], x: number, y: number, target: "object" | "fleet" | "submarine", mods?: TargetMods): IntelLevel | null {
   let best: IntelLevel | null = null;
+  const radarF = mods?.radarFactor ?? 1;
+  const sightF = mods?.sightFactor ?? 1;
   for (const s of sensors) {
     if ((s.kind === "sonar") !== (target === "submarine")) continue;
     if (s.kind === "flug" && target !== "fleet") continue;
-    const dx = s.x - x;
-    const dy = s.y - y;
-    if (dx * dx + dy * dy > s.km * s.km) continue;
-    const lvl: IntelLevel = (s.kind === "radar" || s.kind === "posten" || s.kind === "flug") && target === "fleet" ? "sichtung" : "erkennung";
+    const f = sightF * (RADAR_KINDS.has(s.kind) ? radarF : 1);
+    if (s.strip) {
+      if (!inStrip(s.strip, x, f)) continue;
+      if (s.kind === "satellit" && s.strip.blocked?.(x, y)) continue;
+    } else {
+      const km = s.km * f;
+      const dx = s.x - x;
+      const dy = s.y - y;
+      if (dx * dx + dy * dy > km * km) continue;
+    }
+    let lvl: IntelLevel = (s.kind === "radar" || s.kind === "posten" || s.kind === "flug") && target === "fleet" ? "sichtung" : "erkennung";
+    if (s.kind === "radarsatellit") lvl = "sichtung";
+    if (mods?.camouflaged && (s.kind === "ausguck" || s.kind === "satellit")) lvl = "sichtung";
     best = maxLevel(best, lvl);
     if (best === "erkennung") return best;
   }

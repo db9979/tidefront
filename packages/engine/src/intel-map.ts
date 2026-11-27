@@ -25,6 +25,8 @@ import { intelFogOn, intelRules, liveAt, sightOf, sourceAt, type Sight } from ".
 import { knownFor, knownGet, nestData, persistLive, protectionOf, type IntelTag, type SightingInput } from "./intel-store.ts";
 import { fleetPosition } from "./intel-route.ts";
 import { postsInSight } from "./intel-post-view.ts"; // Lagebild Stufe 2: Radarposten auf der Karte
+import { fleetMods, revealedJammers } from "./intel-counter.ts"; // Stufe 3: Gegenmittel
+import { satelliteView, stripCells } from "./intel-sat.ts"; // Stufe 3: Satelliten
 
 type XY = { x: number; y: number };
 export type FleetRelation = Relation | "kartell";
@@ -48,29 +50,46 @@ const live = (nowMs: number, source: string, level: IntelLevel): IntelTag => ({ 
 
 export { fleetPosition } from "./intel-route.ts";
 
-/** Kartenansicht für einen Spieler (world.map). */
-export async function mapViewFor(db: DbOrTx, playerId: number, nowMs: number) {
-  const bases = await db
+async function allBases(db: DbOrTx) {
+  return db
     .select({ id: tables.base.id, name: tables.base.name, col: tables.base.col, row: tables.base.row, playerId: tables.base.playerId, owner: tables.player.name, state: tables.base.state })
     .from(tables.base)
     .innerJoin(tables.player, eq(tables.player.id, tables.base.playerId));
-  return mapViewFrom(db, playerId, nowMs, bases);
+}
+
+/** Kartenansicht für einen Spieler (world.map). */
+export async function mapViewFor(db: DbOrTx, playerId: number, nowMs: number) {
+  return (await mapViewFrom(db, playerId, nowMs, await allBases(db))).view;
+}
+
+/**
+ * Stufe 3: Was eine vorgegebene Sicht (z. B. nur der Streifen eines Satelliten zum Überflug) jetzt erfasst – als
+ * Sichtungen zum Speichern (Häfen, Nester, Wracks, Posten, Verbände; gleiche Regeln wie die Karte). Speichert nichts.
+ */
+export async function sightingsIn(db: DbOrTx, playerId: number, sight: Sight, atMs: number): Promise<SightingInput[]> {
+  return (await mapViewFrom(db, playerId, atMs, await allBases(db), sight)).rows;
 }
 
 type BaseIn = { id: number; name: string; col: number; row: number; playerId: number; owner: string; state: unknown };
 
-async function mapViewFrom(db: DbOrTx, playerId: number, nowMs: number, bases: BaseIn[]) {
+async function mapViewFrom(db: DbOrTx, playerId: number, nowMs: number, bases: BaseIn[], only?: Sight) {
   const nests = await db.select().from(tables.nest);
   const wrecks = await db.select().from(tables.wreck);
   // Freund/Feind aus Sicht des Betrachters (nur eigene Allianz, eigene Pakte und Kriege).
   const relations = await relationsOf(db, playerId, nowMs);
-  const fog = await intelFogOn(db, nowMs);
+  const fog = only ? true : await intelFogOn(db, nowMs);
   const ib = intelRules();
-  const sight = ib ? await sightOf(db, playerId, nowMs) : null;
-  const known = fog && sight ? await knownFor(db, sight, nowMs, ["base", "nest", "wreck", "fleet"]) : new Map();
+  const sight = only ?? (ib ? await sightOf(db, playerId, nowMs) : null);
+  const known = fog && sight && !only ? await knownFor(db, sight, nowMs, ["base", "nest", "wreck", "fleet"]) : new Map();
   const mates = new Set(sight?.members ?? [playerId]);
   const rows: SightingInput[] = [];
-  const seeObject = (col: number, row: number) => (fog && sight ? liveAt(sight, col, row) : null);
+  // Häfen und Nester: nur Erkennung zeigt mehr als die Position (Sichtung, z. B. Radarsatellit oder Tarnnetz, nicht).
+  const seeObject = (col: number, row: number, ownerId: number | null = null, kind: "base" | "other" = "other") => {
+    const lvl = fog && sight ? liveAt(sight, col, row, "object", { ownerId, kind }) : null;
+    return lvl && atLeast(lvl, "erkennung") ? lvl : null;
+  };
+  const seeAny = (col: number, row: number) => (fog && sight ? liveAt(sight, col, row) : null);
+  const jammed = fog && sight ? revealedJammers(sight.counter, mates, sight.sensors) : new Set<number>();
   const srcAt = (col: number, row: number) => { const p = hexCenterXY(col, row); return sight ? sourceAt(sight, p.x, p.y) : "Sensor"; };
 
   const outBases = bases.map((b) => {
@@ -80,16 +99,17 @@ async function mapViewFrom(db: DbOrTx, playerId: number, nowMs: number, bases: B
       relation: own ? ("own" as const) : relations.get(b.playerId) ?? ("neutral" as const),
     };
     const current = protectionOf(b.state, nowMs);
-    if (!fog || mates.has(b.playerId)) return { ...base, protection: current, known: true, intel: null as IntelTag | null };
-    const lvl = seeObject(b.col, b.row);
+    if (!fog || mates.has(b.playerId)) return { ...base, protection: current, known: true, intel: null as IntelTag | null, jammer: false };
+    const withJammer = { ...base, jammer: jammed.has(b.id) }; // Stufe 3: fremder Störsender, vom eigenen Radar erkannt
+    const lvl = seeObject(b.col, b.row, b.playerId, "base");
     if (lvl) {
       const source = srcAt(b.col, b.row);
       rows.push({ kind: "base", objectId: b.id, level: lvl, source, data: { protection: current } });
-      return { ...base, protection: current, known: true, intel: live(nowMs, source, lvl) };
+      return { ...withJammer, protection: current, known: true, intel: live(nowMs, source, lvl) };
     }
     const k = knownGet(known, "base", b.id);
-    if (!k) return { ...base, protection: null, known: false, intel: null };
-    return { ...base, protection: (k.data.protection as string | null) ?? null, known: true, intel: { age: k.age, atMs: k.seenAtMs, source: k.source, level: k.level } as IntelTag };
+    if (!k) return { ...withJammer, protection: null, known: false, intel: null };
+    return { ...withJammer, protection: (k.data.protection as string | null) ?? null, known: true, intel: { age: k.age, atMs: k.seenAtMs, source: k.source, level: k.level } as IntelTag };
   });
 
   const outNests = nests.map((n) => {
@@ -117,7 +137,7 @@ async function mapViewFrom(db: DbOrTx, playerId: number, nowMs: number, bases: B
     const raw = { stahl: w.stahl, elektronik: w.elektronik, createdAtMs: w.createdAt.getTime() };
     const r = remaining(raw);
     if (r.stahl + r.elektronik <= 0) continue;
-    const lvl = seeObject(w.col, w.row);
+    const lvl = seeAny(w.col, w.row);
     if (fog && !lvl) continue;
     seenWrecks.add(w.id);
     const source = fog ? srcAt(w.col, w.row) : "";
@@ -129,7 +149,7 @@ async function mapViewFrom(db: DbOrTx, playerId: number, nowMs: number, bases: B
       if (k.kind !== "wreck" || seenWrecks.has(k.objectId)) continue;
       const d = k.data as { col: number; row: number; stahl: number; elektronik: number; createdAtMs: number };
       // Im Sensorbereich und nicht mehr da: geborgen oder verfallen – das sieht man.
-      if (seeObject(d.col, d.row)) continue;
+      if (seeAny(d.col, d.row)) continue;
       const r = remaining(d);
       if (r.stahl + r.elektronik <= 0) continue;
       outWrecks.push({ id: k.objectId, col: d.col, row: d.row, ...r, intel: { age: k.age, atMs: k.seenAtMs, source: k.source, level: k.level } });
@@ -137,9 +157,10 @@ async function mapViewFrom(db: DbOrTx, playerId: number, nowMs: number, bases: B
   }
 
   const fleets = fog && sight ? await fleetsInSight(db, sight, nowMs, bases, nests, relations, known, rows) : [];
-  const posts = await postsInSight(db, playerId, fog ? sight : null, nowMs, rows); // Stufe 2: Radarposten
+  const posts = await postsInSight(db, playerId, fog ? sight : null, nowMs, rows, !!only); // Stufe 2: Radarposten
+  if (only) return { rows, view: null as never };
   if (fog && sight) await persistLive(db, sight, "map", nowMs, () => rows);
-  return {
+  const view = {
     serverNow: nowMs,
     bases: outBases,
     nests: outNests,
@@ -149,12 +170,19 @@ async function mapViewFrom(db: DbOrTx, playerId: number, nowMs: number, bases: B
     /** Lagebild: Kartennebel an/aus und die eigenen Sensoren (Allianz eingeschlossen) für Nebel und Sensorgrenzen. */
     intel: {
       fog,
-      sensors: (sight?.sensors ?? []).map((s) => ({ col: s.col, row: s.row, km: s.km, kind: s.kind, label: s.label, own: s.playerId === playerId })),
+      sensors: (sight?.sensors ?? []).map((s) => ({
+        col: s.col, row: s.row, km: s.km, kind: s.kind, label: s.label, own: s.playerId === playerId,
+        // Stufe 3: Satellitenstreifen (x0 … x1) und die unter Wolken verdeckten Felder (optisch).
+        ...(s.strip ? { strip: { x0: s.strip.x0, x1: s.strip.x1, hidden: stripCells(s) } } : {}),
+      })),
+      /** Stufe 3: Satelliten der Partei (live, nächster Überflug mit Ort, Lebensdauer). */
+      satellites: satelliteView(sight?.satBases ?? [], playerId, nowMs),
       /** Stufe 2: Regeln für Planung und Anzeige (Patrouille, Kampagne, Radarposten). */
       ops: ib ? { patrol: ib.patrol ?? null, campaign: ib.campaign ?? null, post: ib.post ?? null } : null,
       staleHours: ib?.staleHours ?? 24,
     },
   };
+  return { rows, view };
 }
 
 /** Fremde Verbände auf See in Sicht der Partei (live) und ihre letzten Sichtungen. */
@@ -190,7 +218,7 @@ async function fleetsInSight(
     const n = visibleUnitCount(units, defs) + (sonar ? subs : 0);
     if (n <= 0) continue; // nur U-Boote ohne Sonar: für Radar und Ausguck unsichtbar
     const h = hexAtXY(pos.at.x, pos.at.y);
-    let level = liveAt(sight, h.col, h.row, "fleet");
+    let level = liveAt(sight, h.col, h.row, "fleet", fleetMods(sight.counter, mates, pos.at.x, pos.at.y, m, units, defs));
     if (sonar && (!level || visibleUnitCount(units, defs) === 0)) level = sonar;
     // Vom Radar des Ziels erkannter Angriff (Vorwarnzeit): erscheint als Verband, auch außerhalb der Reichweite.
     const detected = (m.plan as Partial<Mission>).detectedAtMs;

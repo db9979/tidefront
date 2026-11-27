@@ -41,6 +41,18 @@ test(`Testlauf über ${DAYS} Spieltage: alle Bots wachsen, Freibeuter stärker a
   await ensureStartBots(engine, fake);
   await ensureFieldPlanner(db, fake);
   const bots = await loadBots(db);
+  // Lagebild Stufe 3 (BOT_SIM_SPACE=1): Freibeuter und Festung mit Startrampe und Raumfahrt (sonst erst ab etwa Tag 28).
+  if (process.env.BOT_SIM_SPACE) {
+    for (const b of bots.filter((x) => x.profile !== "haendler")) {
+      for (const base of (await basesOfPlayer(db, b.id)).filter((x) => x.isHome)) {
+        const s = base.state;
+        Object.assign(s.buildings, { kommandozentrale: Math.max(8, s.buildings.kommandozentrale ?? 0), forschungsamt: 5, radarstation: 6, startrampe: 1 });
+        s.research = { ...(s.research ?? { order: null }), levels: { ...(s.research?.levels ?? {}), optischer_satellit: 1 } };
+        for (const r of Object.keys(s.resources)) s.resources[r] = Math.max(s.resources[r], 20000);
+        await db.update(tables.base).set({ state: s }).where(sql`id = ${base.id}`);
+      }
+    }
+  }
   const turns = new Map<number, number>(bots.map((b) => [b.id, 0]));
   const turnMs: number[] = [];
   const daily: string[] = [];
@@ -73,6 +85,7 @@ test(`Testlauf über ${DAYS} Spieltage: alle Bots wachsen, Freibeuter stärker a
   const fieldsHeld = new Map<string, number>();
   const raidsWon = new Map<string, number>();
   const nestScouts = new Map<string, number>();
+  const satsLaunched = new Map<string, number>();
   let fieldActivity = 0;
   const checks: (() => void)[] = [];
   for (const b of await loadBots(db)) {
@@ -90,12 +103,15 @@ test(`Testlauf über ${DAYS} Spieltage: alle Bots wachsen, Freibeuter stärker a
     const [scouts] = await db.execute<{ n: number; nest: number; field: number }>(sql`select count(*)::int as n, count(*) filter (where nest_id is not null)::int as nest,
       count(*) filter (where report ? 'field')::int as field from battle_report where attacker_player_id = ${b.id} and kind = 'aufklaerung'`);
     nestScouts.set(b.profile, scouts.nest);
+    const [sats] = await db.execute<{ n: number }>(sql`select count(*)::int as n from battle_report where attacker_player_id = ${b.id} and kind = 'satellit' and title like '%gestartet'`);
+    satsLaunched.set(b.profile, sats.n);
     fieldActivity += fields.n + taken.n + scouts.field;
     lines.push(`${b.name} (${b.profile}): Züge ${turns.get(b.id)}, Häfen ${bases.length}, Gebäudestufen ${levels}, ` +
       `Punkte ${s.total} (Ausbau ${s.ausbau}, Militär ${s.militaer}, Kampf ${s.kampf}, Beute ${s.beute}), ` +
       `Überfälle ${raids.n} (gewonnen ${raids.won}), Felder ${fields.n} (Feldkämpfe gewonnen ${taken.n}), Handel ${trades.n}, ` +
-      `Aufklärungen ${scouts.n} (Nester ${scouts.nest}, Felder ${scouts.field})`);
-    checks.push(() => {
+      `Aufklärungen ${scouts.n} (Nester ${scouts.nest}, Felder ${scouts.field}), Satelliten ${sats.n}`);
+    // BOT_SIM_SPACE: künstlicher Start mit Startrampe und Vorräten; die Wachstumsschwellen gelten für den normalen Start.
+    if (!process.env.BOT_SIM_SPACE) checks.push(() => {
       assert.ok(levels >= 40, `${b.name} baut aus (${levels} Stufen)`);
       assert.ok(s.ausbau > 100, `${b.name} wächst`);
       assert.ok(s.militaer > 10, `${b.name} rüstet`);
@@ -110,7 +126,9 @@ test(`Testlauf über ${DAYS} Spieltage: alle Bots wachsen, Freibeuter stärker a
   assert.ok(byProfile.get("freibeuter")!.total > byProfile.get("haendler")!.total, "Freibeuter stärker als Händler");
   assert.ok((raidsWon.get("freibeuter") ?? 0) >= 1, "Freibeuter gewinnt Überfälle");
   // Felder (M.10): Bots befassen sich mit Feldern – aufklären, angreifen oder halten (unabhängig vom Kampfglück).
-  if (process.env.BOT_SIM_FOG !== "0") {
+  // Lagebild Stufe 3 (BOT_SIM_SPACE=1): Satelliten liefern das Lagebild – Aufklärungsfahrten werden dann seltener.
+  if (process.env.BOT_SIM_SPACE) assert.ok((satsLaunched.get("freibeuter") ?? 0) >= 1, "Freibeuter startet einen Satelliten");
+  else if (process.env.BOT_SIM_FOG !== "0") {
     assert.ok(fieldActivity >= 1, "Bots klären Felder auf oder nehmen sie");
     // Lagebild Stufe 2: ohne Aufklärung sähen Festung und Freibeuter keine Nester (früher: Festung 0 Überfälle).
     assert.ok((nestScouts.get("festung") ?? 0) >= 1, "Festung klärt Nester auf");

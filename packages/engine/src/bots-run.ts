@@ -13,7 +13,7 @@ import {
 } from "./bots-core.ts";
 import { buildingsValue, chooseBuild, chooseResearch, chooseTraining, militaryTarget, militaryValue, type PlanCtx } from "./bots-plan.ts";
 import { layMines, raidNest, raidPlayer, type TurnCtx } from "./bots-war.ts";
-import { botPatrol } from "./bots-intel.ts";
+import { botPatrol, botSatellite } from "./bots-intel.ts";
 import { expansionTurn, marketTurn, offersTurn } from "./bots-econ.ts";
 import { fieldTurn, wantsField } from "./bots-fields.ts";
 
@@ -112,6 +112,7 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
   for (const b of bases) {
     const m = mods.get(b.id)!;
     await botPatrol(c, b); // Lagebild Stufe 2: Freibeuter patrouilliert vor seinen Angriffen (eigene Art, zählt nicht als Auslaufen)
+    await botSatellite(c, b); // Lagebild Stufe 3: Satellit, wenn viele Nester ohne Lagebild sind
     if (await fieldTurn(c, b, m)) continue;
     if (await layMines(c, b)) continue;
     if (await raidPlayer(c, b, m)) continue;

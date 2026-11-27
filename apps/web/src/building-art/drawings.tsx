@@ -3,11 +3,12 @@ import { G, Ground, hd, red, ln, type Draw } from "./parts.tsx";
 import { WIRTSCHAFT } from "./draw-wirtschaft.tsx";
 import { MILITAER } from "./draw-militaer.tsx";
 import { ENERGIE } from "./draw-energie.tsx";
+import { RAUMFAHRT } from "./draw-raumfahrt.tsx"; // Lagebild Stufe 3
 import { ART, INK } from "../icons-art.tsx";
 import { BuildCrane, LiveScope, type Live } from "./motion.tsx";
 
 /** Zeichnungen je Gebäude; neue Gebäude ergänzen hier ihre Funktion, sonst gilt das normale Symbol. */
-export const DRAWINGS: Record<string, Draw> = { ...WIRTSCHAFT, ...MILITAER, ...ENERGIE };
+export const DRAWINGS: Record<string, Draw> = { ...WIRTSCHAFT, ...MILITAER, ...ENERGIE, ...RAUMFAHRT };
 
 /** Stufe 0: Bauplan (Umriss von Abschnitt 1 als Blaupause), Baugrube und Absteckpfähle. */
 function Plan({ draw }: { draw: Draw }) {

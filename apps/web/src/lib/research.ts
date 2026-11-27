@@ -10,6 +10,7 @@ export const BRANCHES: { id: string; name: string; icon: string }[] = [
   { id: "luftfahrt", name: "Luftfahrt", icon: "abfangjaeger" },
   { id: "wirtschaft", name: "Wirtschaft", icon: "stahlwerk" },
   { id: "nachrichtendienst", name: "Nachrichtendienst", icon: "nachrichtendienst" },
+  { id: "raumfahrt", name: "Raumfahrt", icon: "startrampe" }, // Lagebild Stufe 3
 ];
 
 export const TECH: Record<string, { name: string; icon: string; text: string }> = {
@@ -23,10 +24,11 @@ export const TECH: Record<string, { name: string; icon: string; text: string }> 
   verbundpanzerung: { name: "Verbundpanzerung", icon: "kampfpanzer", text: "Schutzwesten und Verbundpanzer: Bodentruppen halten mehr aus." },
   pioniertechnik: { name: "Pioniertechnik", icon: "pioniere", text: "Minensucher und Räumgerät: Minensperren richten weniger Schaden an." },
   festungsbau: { name: "Festungsbau", icon: "bunkerlinie", text: "Stahlbeton und Erdwälle: Verteidigungsanlagen halten mehr aus." },
+  tarnnetze: { name: "Tarnnetze", icon: "tarnnetz", text: "Ausguck und optische Satelliten erkennen deinen Hafen nur als Sichtung; Stufe 2 tarnt auch Felder und Radarposten." },
   funkmesstechnik: { name: "Funkmesstechnik", icon: "radarstation", text: "Empfindlichere Antennen: das Radar warnt früher vor Angriffen." },
   strahltriebwerke: { name: "Strahltriebwerke", icon: "abfangjaeger", text: "Schnellere Flugzeuge: Verbände nur aus Flugzeugen sind früher am Ziel." },
   luftkampftaktik: { name: "Luftkampftaktik", icon: "flakstellung", text: "Rotten und Sperrfeuer: Angriff gegen Luftziele steigt (Jäger, Flak, Bordflak)." },
-  tarnanstrich: { name: "Tarnanstrich", icon: "tarnnetz", text: "Funkstille und Tarnung: das Ziel deiner Überfälle bemerkt dich später." },
+  tarnanstrich: { name: "Tarnanstrich", icon: "tarnnetz", text: "Funkstille und Tarnung: das Ziel deiner Überfälle bemerkt dich später; fremde Sensoren sehen deine Flugzeuge 20 % je Stufe später." },
   praezisionsbomben: { name: "Präzisionsbomben", icon: "jagdbomber", text: "Bessere Zielgeräte: Jagdbomber treffen härter." },
   hochofen: { name: "Hochofen", icon: "stahlwerk", text: "Moderne Hochöfen: das Stahlwerk produziert mehr." },
   logistik: { name: "Logistik", icon: "zahnrad", text: "Bessere Stauung und Routen: weniger Treibstoff, mehr Ladung je Verband." },
@@ -35,6 +37,8 @@ export const TECH: Record<string, { name: string; icon: string; text: string }> 
   stahlbetonbunker: { name: "Stahlbetonbunker", icon: "tiefbunker", text: "Tiefere Bunker: mehr Ressourcen sind vor Plünderung geschützt." },
   verschluesselung: { name: "Verschlüsselung", icon: "nachrichtendienst", text: "Chiffren und Funkdisziplin: +1 Abwehr je Stufe gegen fremde Spione." },
   agentenschulung: { name: "Agentenschulung", icon: "spion", text: "Tarnidentitäten und Ausbildung: +1 auf den Erfolgswert eigener Spione je Stufe." },
+  optischer_satellit: { name: "Optischer Satellit", icon: "satellit", text: "Start von der Startrampe: Erkennung in einem 600 km breiten Streifen alle 6 h, nicht unter Wolken. Ein Satellit gleichzeitig." },
+  radarsatellit: { name: "Radarsatellit", icon: "satellit", text: "Sieht durch Wolken und Nebel, aber nur Sichtung (Verbände, Wracks). Erlaubt zwei Satelliten gleichzeitig." },
 };
 
 /**
@@ -48,6 +52,7 @@ const FUGEN = [
   "Hafen|kommandantur", "Kommando|zentrale", "Nachrichten|dienst", "Versorgungs|hof", "Lager|komplex", "Speicher|werk",
   "Radar|station", "Forschungs|amt", "Aufklärungs|drohne", "Landungs|schiff", "Kolonie|schiff", "Minen|räumer",
   "Minen|leger", "Abfang|jäger", "Jagd|bomber", "Kampf|panzer", "Küsten|batterie", "Flak|stellung", "Bunker|linie",
+  "Start|rampe", "Stör|sender", "Radar|satellit", "Tarn|netze",
 ];
 const FUGE = new Map(FUGEN.map((f) => [f.replaceAll("|", ""), f.replaceAll("|", "\u00AD")]));
 

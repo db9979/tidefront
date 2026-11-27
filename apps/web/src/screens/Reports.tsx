@@ -14,11 +14,11 @@ import { SabotageReport, SpyReport } from "../components/Intel.tsx";
 import { AdmiralReport } from "../components/Admirals.tsx"; // Admirale
 import { AllianceOpsReport } from "../components/AllianceOps.tsx"; // Allianz-Ops
 
-const KIND_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "kartell", aufklaerung: "aufklaerung", transport: "transport", leer: "kartell", abgewiesen: "schild", weltereignis: "kartell", weltereignis_leer: "kartell", spionage: "spionage", sabotage: "sabotage", sammelangriff: "sammelangriff", minen: "mine", blockade: "blockade", blockadekampf: "blockade", konvoi: "konvoi", posten: "radarposten", patrouille: "patrouille", sichtung: "sichtung" };
+const KIND_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "kartell", aufklaerung: "aufklaerung", transport: "transport", leer: "kartell", abgewiesen: "schild", weltereignis: "kartell", weltereignis_leer: "kartell", spionage: "spionage", sabotage: "sabotage", sammelangriff: "sammelangriff", minen: "mine", blockade: "blockade", blockadekampf: "blockade", konvoi: "konvoi", posten: "radarposten", patrouille: "patrouille", sichtung: "sichtung", satellit: "satellit" };
 import { NavalReport } from "../components/Naval.tsx"; // See: Minen/Blockade/Konvoi
 import { FieldReport } from "../components/Fields.tsx"; // Felder
 import { HScroll } from "../components/HScroll.tsx";
-const NAVAL_KINDS = ["minen", "blockade", "blockadekampf", "konvoi", "posten", "patrouille", "sichtung"]; // See und Lagebild Stufe 2: kein „Wiederholen“
+const NAVAL_KINDS = ["minen", "blockade", "blockadekampf", "konvoi", "posten", "patrouille", "sichtung", "satellit"]; // See und Lagebild Stufe 2/3: kein „Wiederholen“
 import { IntelOpsReport } from "../components/IntelOpsReport.tsx"; // Lagebild Stufe 2
 
 type Counts = Record<string, number>;
@@ -35,7 +35,7 @@ const FILTERS: { id: Filter; label: string }[] = [
 const KIND_FILTER: Record<string, Filter> = {
   ueberfall: "kampf", kartell: "kampf", leer: "kampf", abgewiesen: "kampf", weltereignis: "kampf", weltereignis_leer: "kampf",
   sammelangriff: "kampf", blockadekampf: "kampf", konvoi: "kampf",
-  aufklaerung: "aufklaerung", spionage: "aufklaerung", sabotage: "aufklaerung", patrouille: "aufklaerung", sichtung: "aufklaerung", posten: "aufklaerung",
+  aufklaerung: "aufklaerung", spionage: "aufklaerung", sabotage: "aufklaerung", patrouille: "aufklaerung", sichtung: "aufklaerung", posten: "aufklaerung", satellit: "aufklaerung",
   transport: "handel",
 };
 const filterOf = (kind: string): Filter => KIND_FILTER[kind] ?? "sonstiges";
@@ -120,8 +120,8 @@ function ReportDetail({ id, onBack }: { id: number; onBack: () => void }) {
       <p className="text-xs mono text-slate-400 mb-3">{fmtTime(r.atMs)}</p>
       {r.role === "attacker" && r.kind !== "kartell" && r.kind !== "spionage" && r.kind !== "sammelangriff" && !d.allianceRaid && !r.kind.startsWith("weltereignis") && !NAVAL_KINDS.includes(r.kind) && r.kind !== "feld" && <RepeatButton reportId={r.id} />}
       {d.field ? <FieldReport d={d.field as Parameters<typeof FieldReport>[0]["d"]} /> : null}{/* Felder */}
-      {NAVAL_KINDS.includes(r.kind) && !["posten", "patrouille", "sichtung"].includes(r.kind) && <NavalReport kind={r.kind} d={d} />}
-      {["posten", "patrouille", "sichtung"].includes(r.kind) && <IntelOpsReport d={d} />}
+      {NAVAL_KINDS.includes(r.kind) && !["posten", "patrouille", "sichtung", "satellit"].includes(r.kind) && <NavalReport kind={r.kind} d={d} />}
+      {["posten", "patrouille", "sichtung", "satellit"].includes(r.kind) && <IntelOpsReport d={d} />}
       {r.kind.startsWith("weltereignis") && <WorldEventReportNote kind={r.kind} data={d} />}
       {r.kind === "spionage" && d.spy ? <SpyReport d={d} role={r.role} /> : null}
       {r.kind === "sabotage" && d.sabotage ? <SabotageReport d={d} /> : null}

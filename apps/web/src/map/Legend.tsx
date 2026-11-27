@@ -52,6 +52,9 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { icon: <Icon id="patrouille" size={22} />, text: "Rote gestrichelte Runde: deine Patrouille auf Station; nummerierte Ringe: Wegpunkte bzw. Ziele beim Planen" },
       { icon: <PostMark />, text: "Mast im Kreis: Radarposten (blau eigener, rot fremder; blass: ohne Treibstoff oder nicht live)" },
       { icon: <SonarRing />, text: "Grüner Kreis: Sonar – nur U-Boote werden darin sichtbar" },
+      // Lagebild Stufe 3
+      { icon: <StripMark />, text: "Zwei senkrechte Strichlinien: Streifen deines Satelliten – kurz gestrichelt live (20 min), lang gestrichelt mit Uhrzeit: nächster Überflug" },
+      { icon: <Icon id="stoersender" size={22} />, text: "Blitz am fremden Hafen: Störsender, von deinem Radar erkannt – dein Radar sieht dort bis zu 50 % weniger weit" },
     ],
   },
   {
@@ -199,6 +202,10 @@ function PostMark() {
       <path d="M0 5 V-3 M-4 -6 Q0 -1 4 -6" fill="none" stroke="#2d5b7a" strokeWidth={1.5} />
     </svg>
   );
+}
+
+function StripMark() {
+  return <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M5 1 V21 M17 1 V21" stroke="#18273a" strokeWidth={1.3} strokeDasharray="3 2" /><rect x="5" y="1" width="12" height="20" fill="#18273a" fillOpacity={0.06} /></svg>;
 }
 
 function SonarRing() {

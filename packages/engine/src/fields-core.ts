@@ -214,7 +214,7 @@ export async function fieldsView(engine: Engine, playerId: number, _baseId?: num
     let relation: ReturnType<typeof relationFor> | "unbekannt" = current;
     let ownerId = r.ownerId;
     if (fs.fog && !open) {
-      const lv = fs.live(r.col, r.row);
+      const lv = fs.live(r.col, r.row, r.ownerId);
       const k = lv ? undefined : fs.known(r.id);
       if (lv) {
         seen = lv;

@@ -38,6 +38,14 @@ export function buildingLive(base: BaseData, id: string, level: number, now: num
     live.producing = (g.surplus?.fuel ?? 0) >= 0.5; // Ökostrom-Überschuss fließt in die Elektrolyse
   } else if (id === "seekabel") {
     live.producing = (g.surplus?.cable ?? 0) >= 0.5 || (base.grid.now.supply?.cable ?? 0) >= 0.5; // sendet oder empfängt
+  } else if (id === "startrampe") {
+    // Lagebild Stufe 3: Warnlicht, solange ein eigener Satellit fliegt; Dampf bis 30 min nach dem Start.
+    const sats = base.satellites ?? [];
+    live.producing = sats.some((x) => x.expiresAtMs > now);
+    live.launch = sats.some((x) => now - x.launchedAtMs >= 0 && now - x.launchedAtMs < 30 * 60000);
+  } else if (id === "stoersender") {
+    live.producing = g.served.radar >= 0.999; // Störsender teilt den Rang des Radars
+    live.powerShort = g.served.radar < 0.999;
   } else if (id === "speicherwerk") {
     live.fill = g.capacity > 0 ? g.stored / g.capacity : 0;
   }

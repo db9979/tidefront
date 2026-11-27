@@ -4,6 +4,14 @@ import type { Modifiers } from "./modifiers.ts";
 import { modValue } from "./modifiers.ts";
 import { homeOnlyBlocked } from "./expansion.ts";
 
+/** Erstes fehlendes Voraussetzungsgebäude (id, nötige Stufe) für den Bau von `buildingId`, sonst null. */
+export function missingRequirement(base: BaseState, buildingId: string, balance: Balance): { id: string; level: number } | null {
+  for (const [id, level] of Object.entries(balance.buildings[buildingId]?.requires ?? {})) {
+    if (buildingLevel(base, id) < level) return { id, level };
+  }
+  return null;
+}
+
 /** Kosten für den Ausbau von Stufe `level` auf `level + 1`, je Ressource aufgerundet. */
 export function upgradeCost(buildingId: string, level: number, balance: Balance): ResourceMap {
   const def = balance.buildings[buildingId];
@@ -72,7 +80,7 @@ export function upgradeDurationMs(buildingId: string, targetLevel: number, balan
  * berücksichtigt bereits eingereihte Aufträge desselben Gebäudes; die Kosten werden sofort bezahlt.
  * Der Auftrag beginnt, wenn der vorige fertig ist (frühestens jetzt).
  * Codes: unknown_building, home_only (nur im Heimathafen, z. B. Forschungsamt in einer Kolonie), queue_full, max_level,
- * command_cap, insufficient_resources.
+ * command_cap, building_requires (Voraussetzung fehlt, z. B. Startrampe), insufficient_resources.
  */
 export function startUpgrade(
   base: BaseState,
@@ -83,6 +91,7 @@ export function startUpgrade(
 ): Result<{ base: BaseState; order: BuildOrder }> {
   if (!Object.hasOwn(balance.buildings, buildingId)) return { ok: false, code: "unknown_building" };
   if (homeOnlyBlocked(base, buildingId, balance)) return { ok: false, code: "home_only" };
+  if (missingRequirement(base, buildingId, balance)) return { ok: false, code: "building_requires" };
   if (base.buildQueue.length >= balance.building.queueSlots) return { ok: false, code: "queue_full" };
   const level = plannedLevel(base, buildingId);
   if (level + 1 > balance.building.maxLevel) return { ok: false, code: "max_level" };

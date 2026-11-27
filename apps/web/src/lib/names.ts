@@ -26,6 +26,9 @@ const NAMES: Record<string, string> = {
   kolonieschiff: "Kolonieschiff", gruendung: "Gründung", verlegung: "Verlegung", heimathafen: "Heimathafen", aussenposten: "Außenposten",
   // Ökostrom, Elektrolyse, Seekabel (v1.21)
   elektrolyse: "Elektrolyse", seekabel: "Seekabel",
+  // Lagebild Stufe 3 (v1.23): Satelliten und Gegenmittel
+  startrampe: "Startrampe", stoersender: "Störsender", satellit: "Satellit", optisch: "Optischer Satellit", radar: "Radarsatellit",
+  raumfahrt: "Raumfahrt", tarnnetze: "Tarnnetze", optischer_satellit: "Optischer Satellit", radarsatellit: "Radarsatellit",
 };
 
 const PLURAL: Record<string, string> = {
@@ -320,6 +323,13 @@ const ERRORS: Record<string, string> = {
   post_too_close: "Zu nah an einem eigenen Radarposten (mindestens 300 km Abstand).",
   no_post: "Diesen Radarposten gibt es nicht mehr.",
   own_post: "Das ist dein eigener Radarposten.",
+  // Lagebild Stufe 3: Satelliten, Voraussetzungen von Gebäuden
+  building_requires: "Dafür fehlen Voraussetzungen (andere Gebäude dieses Hafens).",
+  sat_off: "Satelliten gibt es auf diesem Server nicht.",
+  sat_type: "Diese Satellitenart gibt es nicht.",
+  sat_pad: "Satelliten starten nur von einer Startrampe.",
+  sat_tech: "Diese Satellitenart ist noch nicht erforscht (Zweig Raumfahrt).",
+  sat_limit: "Höchstzahl Satelliten erreicht – erst wenn einer verglüht, startet der nächste.",
 };
 
 export function errorText(code: string): string {

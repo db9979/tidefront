@@ -11,6 +11,7 @@ import {
   type IntelBalance,
   type IntelLevel,
   type SensorCircle,
+  type TargetMods,
 } from "@tidefront/game-core";
 import { hexCenterXY } from "@tidefront/world";
 import { tables, type DbOrTx } from "@tidefront/db";
@@ -20,6 +21,8 @@ import { weatherModifiers } from "./weather.ts";
 import { getSetting, setSetting } from "./settings.ts";
 import { withSite } from "./store.ts";
 import { mobileSensors } from "./intel-mobile.ts"; // Lagebild Stufe 2
+import { partySatBases, satelliteSensors } from "./intel-sat.ts"; // Lagebild Stufe 3: Satellitenstreifen
+import { clearCounterCache, counterWorld, objectMods, type CounterWorld } from "./intel-counter.ts"; // Stufe 3: Gegenmittel
 
 export const INTEL_FOG_SETTING = "intel_fog";
 
@@ -49,6 +52,10 @@ export interface Sight {
   atMs: number;
   /** Häfen der Partei (für bewegte Sensoren und Sonar; nur im Zwischenspeicher). */
   bases?: { id: number; playerId: number; name: string; col: number; row: number; state: BaseState; isHome: boolean }[];
+  /** Stufe 3: Gegenmittel der Welt (Tarnnetze, Störsender, Tarnanstrich, Funkdisziplin); null ohne intel.counter. */
+  counter?: CounterWorld | null;
+  /** Stufe 3: Häfen der Partei mit Satelliten (frisch je Abruf). */
+  satBases?: { id: number; playerId: number; name: string; col: number; row: number; state: BaseState }[];
 }
 
 const sightCache = new Map<string, Sight>();
@@ -57,6 +64,7 @@ const fogCache = { value: true, atMs: Number.NaN };
 /** Sicht-Zwischenspeicher leeren (Einstellung geändert, Tests). */
 export function clearSightCache(): void {
   sightCache.clear();
+  clearCounterCache();
   fogCache.atMs = Number.NaN;
 }
 
@@ -130,20 +138,27 @@ export async function sightOf(db: DbOrTx, playerId: number, nowMs: number): Prom
     if (sightCache.size > 500) for (const [k, v] of sightCache) if (nowMs - v.atMs > ttl) sightCache.delete(k);
   }
   if (!ib) return hit;
-  return { ...hit, sensors: [...hit.sensors, ...(await mobileSensors(db, members, hit.bases ?? [], nowMs, ib))] };
+  const satBases = await partySatBases(db, members);
+  const sensors = [...hit.sensors, ...(await mobileSensors(db, members, hit.bases ?? [], nowMs, ib)), ...satelliteSensors(satBases, nowMs, ib)];
+  return { ...hit, sensors, satBases, counter: await counterWorld(db, nowMs) };
 }
 
-/** Kenntnisstufe, mit der die Partei ein Objekt auf Feld col/row jetzt sieht (null = außerhalb jeder Sicht). */
-export function liveAt(sight: Sight, col: number, row: number, target: "object" | "fleet" = "object"): IntelLevel | null {
+/**
+ * Kenntnisstufe, mit der die Partei ein Objekt auf Feld col/row jetzt sieht (null = außerhalb jeder Sicht).
+ * Stufe 3: owner/kind für die Gegenmittel (Tarnnetz des Besitzers, Störsender in der Nähe); mods ersetzt beides.
+ */
+export function liveAt(sight: Sight, col: number, row: number, target: "object" | "fleet" = "object", who?: { ownerId: number | null; kind: "base" | "field" | "post" | "other" } | TargetMods): IntelLevel | null {
   const { x, y } = hexCenterXY(col, row);
-  return liveLevelAt(sight.sensors, x, y, target);
+  const mods = who && "kind" in who ? objectMods(sight.counter, new Set(sight.members), x, y, who.ownerId, who.kind) : (who as TargetMods | undefined) ?? objectMods(sight.counter, new Set(sight.members), x, y, null, "other");
+  return liveLevelAt(sight.sensors, x, y, target, mods);
 }
 
 /** Bester Sensor (Name der Quelle) für einen Punkt, für „Stand: … (Quelle)“. Sonar nur für U-Boote. */
 export function sourceAt(sight: Sight, x: number, y: number): string {
   let best: Sensor | null = null;
   for (const s of sight.sensors) {
-    if (s.kind === "sonar" || (s.x - x) ** 2 + (s.y - y) ** 2 > s.km * s.km) continue;
+    if (s.kind === "sonar") continue;
+    if (s.strip ? x < s.strip.x0 || x > s.strip.x1 : (s.x - x) ** 2 + (s.y - y) ** 2 > s.km * s.km) continue;
     if (!best || ((best.kind === "radar" || best.kind === "posten") && s.kind !== "radar" && s.kind !== "posten")) best = s;
   }
   return best?.label ?? "Sensor";

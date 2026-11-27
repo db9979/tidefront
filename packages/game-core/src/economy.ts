@@ -40,6 +40,8 @@ export function cloneBase(base: BaseState): BaseState {
     ...(base.cable ? { cable: { ...base.cable } } : {}),
     // Außenposten-Markierung: ohne sie greifen die Sperren für Gebäude nur im Heimathafen nach jedem settle nicht mehr.
     ...(base.colony ? { colony: { ...base.colony } } : {}),
+    // Lagebild Stufe 3: gestartete Satelliten (sonst verschwänden sie beim nächsten settle).
+    ...(base.satellites ? { satellites: base.satellites.map((s) => ({ ...s, ...(s.last ? { last: { ...s.last } } : {}) })) } : {}),
   };
 }
 

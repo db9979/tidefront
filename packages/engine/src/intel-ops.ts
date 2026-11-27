@@ -15,6 +15,7 @@ import { campaignContinue, launchCampaign, planCampaign, scoutSighted } from "./
 import { POST_TYPE, launchPost, planPost, postArrive, postTick } from "./intel-post.ts";
 import { launchPostAttack, postAttackArrive, previewPostAttack } from "./intel-post-attack.ts";
 import type { PatrolPlan } from "./intel-route.ts";
+import { satelliteEnd, satellitePass } from "./intel-sat-pass.ts"; // Stufe 3: Satelliten
 
 export type IntelOp = "patrouille" | "kampagne" | "radarposten" | "postenangriff";
 
@@ -95,6 +96,8 @@ export const INTEL_HANDLERS: Record<string, Handler> = {
   patrol_tick: (tx, ev, due) => patrolTick(tx, ev.payload, due) as Promise<HandlerResult>,
   patrol_end: (tx, ev, due) => patrolEnd(tx, ev.payload, due) as Promise<HandlerResult>,
   radar_post_tick: (tx, ev, due) => postTick(tx, ev.payload, due) as Promise<HandlerResult>,
+  satellite_pass: (tx, ev, due) => satellitePass(tx, ev.payload, due), // Stufe 3
+  satellite_end: (tx, ev, due) => satelliteEnd(tx, ev.payload, due),
 };
 
 /** Eigene Ankünfte (Patrouille, Radarposten, Angriff auf einen Posten); null = normale Ankunft. */
