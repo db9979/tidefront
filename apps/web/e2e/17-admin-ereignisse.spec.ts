@@ -10,12 +10,9 @@ test("Verwaltung: fehlgeschlagenes Ereignis ansehen und neu einreihen", async ({
     returning id`;
   try {
     await page.goto("/");
-    await page.getByRole("button", { name: "Handbuch und Einstellungen" }).click();
-    await expect(page.getByRole("heading", { name: "Handbuch" })).toBeVisible();
-    await page.getByRole("button", { name: "Einstellungen" }).last().click();
-    await expect(page.getByRole("heading", { name: "Einstellungen" })).toBeVisible();
-    await page.getByRole("button", { name: "Verwaltung öffnen" }).click();
-    await expect(page.getByRole("heading", { name: "Fehlgeschlagene Ereignisse" })).toBeVisible();
+    await page.getByRole("button", { name: "Menü", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: /^Verwaltung/ }).click();
+    await expect(page.getByRole("heading", { name: "Fehlgeschlagene Ereignisse", level: 2 })).toBeVisible();
     const row = page.getByTestId("admin-failed-events").getByRole("listitem").filter({ hasText: `#${ev.id}` });
     await expect(row).toBeVisible();
     await row.getByRole("button", { name: "Details" }).click();

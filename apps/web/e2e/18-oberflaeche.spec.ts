@@ -6,6 +6,7 @@ import { setBuildings, setUnits } from "./game.ts";
 test.use({ viewport: { width: 390, height: 844 } });
 
 test("Menü: Handbuch, Einstellungen, Verwaltung nur für Admins", async ({ page, player, seed }) => {
+  await seed.sql`update player set is_admin = false where id = ${player.id}`; // Spieler je Worker geteilt
   await page.goto("/");
   const menu = page.getByRole("button", { name: "Menü", exact: true });
   await expect(menu).toBeVisible();
