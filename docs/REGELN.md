@@ -358,8 +358,9 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
   - **Militär:** Einheiten und Anlagen des Stützpunkts einschließlich der Verbände unterwegs.
   - **Kampf:** Kostenwert der gegnerischen Einheiten und Anlagen, die laut Kampfbericht der Saison vernichtet wurden
     (als Angreifer und als Verteidiger, auch gegen Nester und Kartell). Schnellboot zählt 250, Piratenmiliz 40.
-    Abwehr ohne angreifenden Spieler (Kartell-Überfall, Großflotte, Konvoi, Feld) und Angriffe auf Großflotte und
-    Belagerungsring zählen nur `scoring.npcDefenseFactor` (v1.24: × 0,25); Nester, Schatzschiff und Spielerkämpfe voll.
+    Abwehr ohne angreifenden Spieler (Kartell-Überfall, Großflotte, Konvoi, Feld) zählt nur `scoring.npcDefenseFactor`
+    (v1.24: × 0,25). Eigene Angriffe auf Großflotte und Belagerungsring zählen voll (Nutzerentscheid 27.11.2026,
+    `npcWorldEventKinds` leer), ebenso Nester, Schatzschiff und Spielerkämpfe.
   - **Beute:** Wert der Beute aus eigenen Überfällen der Saison (zum Richtpreis).
   - **Befehle:** Punkte aus abgeholten Tagesbefehlen der Saison samt Serienbonus (bereits Punkte, kein Kostenwert;
     siehe Abschnitt Tagesbefehle).
