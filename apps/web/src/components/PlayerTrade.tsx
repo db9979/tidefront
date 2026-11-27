@@ -6,6 +6,7 @@ import { useCommand } from "../lib/command.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { fmtDuration } from "../lib/time.ts";
 import { ActionBar, Badge, Button, Card, ErrorLine, Loading, UnitChips } from "../ui.tsx";
+import { ActionRemedy, ReasonLine } from "./Remedy.tsx"; // „Was hilft?“
 import { Icon } from "../icons.tsx";
 import { DevTag, readerValue, usePrices, ValueLine, type Prices } from "./TradeValue.tsx";
 import { EscortPicker } from "./Naval.tsx"; // See: Konvoi – Geleitschutz
@@ -30,6 +31,7 @@ export function PlayerTrade({ base }: { base: BaseData }) {
   const [visibility, setVisibility] = useState<"public" | "alliance">("public");
   const [done, setDone] = useState<string | null>(null);
   const [sellEscort, setSellEscort] = useState<Record<string, number>>({}); // See: Geleit des Anbieters
+  const [barOpen, setBarOpen] = useState(false); // „Was hilft?“
   const create = useCommand((i: { key: string; give: string; giveQty: number; want: string; wantQty: number; visibility: "public" | "alliance"; escort?: Record<string, number> }) => trpcClient.playerTrade.create.mutate(i), invalidate);
   const accept = useCommand((i: { key: string; offerId: number; escort?: Record<string, number> }) => trpcClient.playerTrade.accept.mutate(i) as Promise<Res>, invalidate);
   const withdraw = useCommand((i: { key: string; offerId: number }) => trpcClient.playerTrade.withdraw.mutate(i) as Promise<Res>, invalidate);
@@ -41,6 +43,8 @@ export function PlayerTrade({ base }: { base: BaseData }) {
   const w = Math.floor(Number(wantQty) || 0);
   const have = give === "credits" ? base.market.credits : base.resources[give] ?? 0;
   const unlocked = base.market.unlocked;
+  // Gesperrt mit bekanntem Grund: der graue Knopf klappt „Was hilft?“ über der Leiste auf.
+  const blockCode = !unlocked ? "locked" : ownOpen >= maxOpen ? "too_many_offers" : g > have ? (give === "credits" ? "funds" : "insufficient_resources") : null;
 
   return (
     <Card title={<><Icon id="transport" size={18} /> Handel mit Spielern</>} right={<span className="text-[11px] text-ink2">Gebühr {fmtNum(fee * 100, 1)} %</span>}>
@@ -79,10 +83,11 @@ export function PlayerTrade({ base }: { base: BaseData }) {
         Bestand {fmtNum(have, give === "credits" ? 2 : 0)} · offene Angebote {ownOpen}/{maxOpen}. Die Ware geht sofort in Treuhand; Rückzug erstattet sie.
         Ressourcen reisen per Konvoi (das Kartell fängt gelegentlich ab, Kriegsgegner gezielt), Kredite werden sofort gutgeschrieben.
       </p>
-      {!unlocked && <p className="text-xs text-ink2 mt-2">Handel ab Hafenkommandantur Stufe 3 in einem deiner Häfen.</p>}
+      {!unlocked && <ReasonLine code="locked" text="Handel ab Hafenkommandantur Stufe 3 in einem deiner Häfen." className="text-xs text-ink2 mt-2" />}
       {/* Fixierte Aktionsleiste: Kurzfassung des Angebots und „Angebot einstellen“. */}
       <ActionBar>
-        <ErrorLine text={create.error} />
+        <ErrorLine text={create.error} code={create.code} detail={{ resource: give, cost: give === "credits" ? { credits: g } : { [give]: g } }} />
+        <ActionRemedy code={blockCode} detail={{ resource: give, cost: give === "credits" ? { credits: g } : { [give]: g } }} open={barOpen} onClose={() => setBarOpen(false)} />
         {done && <p className="text-moos text-sm mb-1">{done}</p>}
         <div className="flex items-center gap-3">
           <span className="min-w-0 flex-1 text-[12.5px] leading-tight" title={visibility === "alliance" ? "Nur Allianz" : "Für alle"}>
@@ -90,6 +95,7 @@ export function PlayerTrade({ base }: { base: BaseData }) {
             <span className="block truncate"><span className="text-moos">will</span> <span className="mono">{fmtNum(w)}</span> {label(want)}</span>
           </span>
           <Button className="shrink-0 px-3" disabled={!unlocked || create.busy || g < 1 || w < 1 || g > have || ownOpen >= maxOpen}
+            onBlocked={blockCode ? () => setBarOpen(!barOpen) : undefined}
             onClick={async () => {
               setDone(null);
               const e = give === "credits" ? {} : Object.fromEntries(Object.entries(sellEscort).filter(([, n]) => n > 0));
@@ -113,7 +119,7 @@ export function PlayerTrade({ base }: { base: BaseData }) {
             onAccept={(escort) => void accept.run({ offerId: o.id, ...(escort ? { escort } : {}) })} onWithdraw={() => void withdraw.run({ offerId: o.id })} />)}
         </ul>
       )}
-      <ErrorLine text={accept.error ?? withdraw.error} />
+      <ErrorLine text={accept.error ?? withdraw.error} code={accept.error ? accept.code : withdraw.code} />
     </Card>
   );
 }

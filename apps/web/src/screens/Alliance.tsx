@@ -110,7 +110,7 @@ function NoAlliance({ data }: { data: View }) {
           </Button>
         </div>
       </Card>
-      <ErrorLine text={act.error} />
+      <ErrorLine text={act.error} code={act.code} />
       <p className="text-[11px] text-ink2 px-1">Verbündete können sich nicht überfallen. Allianzen bestehen über das Saisonende hinaus.</p>
     </div>
   );
@@ -186,7 +186,7 @@ function Overview({ data }: { data: View }) {
           </div>
         </Card>
       )}
-      <ErrorLine text={act.error} />
+      <ErrorLine text={act.error} code={act.code} />
     </div>
   );
 }

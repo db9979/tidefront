@@ -11,6 +11,7 @@ import { liveResources } from "../lib/live.res.ts";
 import { BRANCHES, TECH, modRows, pctText, roman, techEffectText, techName } from "../lib/research.ts";
 import { Icon, IconTile } from "../icons.tsx";
 import { Badge, Bar, Button, Card, Cost, ErrorLine, Loading, Segments, Sheet, StatTable, useSegment } from "../ui.tsx";
+import { ReasonLine, hasRemedy, useWhatHelps } from "../components/Remedy.tsx"; // „Was hilft?“
 import { BreakthroughChoice, DiceRoll } from "../components/ResearchDice.tsx";
 
 type Research = NonNullable<BaseData["research"]>;
@@ -81,7 +82,7 @@ export function ResearchScreen({ base, asOf, onClose }: { base: BaseData; asOf: 
           <p className="text-sm text-ink2 flex items-center gap-2"><Icon id="uhr" size={26} className="shrink-0" /> Keine Forschung läuft. Tippe eine Technik an.</p>
         )}
         {r.halfNext && <p className="text-sm text-emerald-300 mt-2">Durchbruch-Belohnung bereit: die nächste Forschung dauert nur halb so lange.</p>}
-        <ErrorLine text={cancel.error} />
+        <ErrorLine text={cancel.error} code={cancel.code} />
         {r.lastRoll && (
           <div className="mt-3">
             <DiceRoll key={r.lastRoll.atMs} roll={r.lastRoll} animate={false} />
@@ -167,6 +168,9 @@ function TechSheet(props: { id: string; def: TechDef; row: TechRow; research: Re
   const maxed = row.level >= def.maxLevel;
   const enough = affordable(row.cost, res);
   const reason = row.blocker ? BLOCKER[row.blocker] ?? row.blocker : !enough ? "Noch nicht genug Ressourcen." : null;
+  const reasonCode = row.blocker ?? (!enough ? "insufficient_resources" : null); // „Was hilft?“
+  const why = { cost: row.cost, tech: id, building: "forschungsamt" };
+  const [help, setHelp] = useWhatHelps();
   const reqRows: [string, string][] = [
     [`Forschungsamt Stufe ${def.requiresBuildingLevel ?? 1}`, research.buildingLevel >= (def.requiresBuildingLevel ?? 1) ? "✓" : `✗ (jetzt ${research.buildingLevel})`],
     ...Object.entries(def.requires ?? {}).map(([t, n]): [string, string] => [
@@ -209,10 +213,10 @@ function TechSheet(props: { id: string; def: TechDef; row: TechRow; research: Re
       {Object.entries(defs).some(([, d]) => d.requires?.[id]) && (
         <p className="text-xs text-ink2 mb-2">Öffnet: {Object.entries(defs).filter(([, d]) => d.requires?.[id]).map(([t, d]) => `${techName(t)} (ab Stufe ${roman(d.requires![id])})`).join(", ")}</p>
       )}
-      {reason && <p className="text-sm text-brass-300 mb-2">{reason}</p>}
-      <ErrorLine text={start.error} />
+      {reason && <ReasonLine code={reasonCode} text={reason} detail={why} open={help} onOpenChange={setHelp} className="text-sm text-brass-300 mb-2" />}
+      <ErrorLine text={start.error} code={start.code} detail={why} />
       {!maxed && (
-        <Button className="w-full" disabled={!!reason || start.busy} onClick={async () => { const r = await start.run({ techId: id }); if (r?.ok) props.onClose(); }}>
+        <Button className="w-full" disabled={!!reason || start.busy} onBlocked={hasRemedy(reasonCode) ? () => setHelp(!help) : undefined} onClick={async () => { const r = await start.run({ techId: id }); if (r?.ok) props.onClose(); }}>
           Forschen: Stufe {roman(row.level + 1)}
         </Button>
       )}

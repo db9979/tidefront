@@ -27,6 +27,7 @@ export function TemplateBar({ base, units, type, onApply }: {
   const [withType, setWithType] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [code, setCode] = useState<string | null>(null); // „Was hilft?“
   const home = Object.fromEntries(base.units.map((u) => [u.id, u.home]));
   const refresh = () => queryClient.invalidateQueries(trpc.comfort.templates.pathFilter());
   const hasUnits = Object.values(units).some((n) => n > 0);
@@ -34,9 +35,10 @@ export function TemplateBar({ base, units, type, onApply }: {
   const save = async () => {
     setBusy(true);
     setError(null);
+    setCode(null);
     try {
       const r = await trpcClient.comfort.saveTemplate.mutate({ name, units, missionType: withType ? type : null });
-      if (!r.ok) setError(errorText(r.code));
+      if (!r.ok) { setError(errorText(r.code)); setCode(r.code); }
       else {
         setSaving(false);
         setName("");
@@ -96,7 +98,7 @@ export function TemplateBar({ base, units, type, onApply }: {
       ) : (
         <Button kind="secondary" className="w-full" disabled={!hasUnits} onClick={() => setSaving(true)}>Verband als Vorlage speichern</Button>
       )}
-      <ErrorLine text={error} />
+      <ErrorLine text={error} code={code} />
     </Card>
   );
 }

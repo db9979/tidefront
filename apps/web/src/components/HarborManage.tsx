@@ -8,6 +8,7 @@ import { errorText, fmtNum } from "../lib/names.ts";
 import { resetActiveBase } from "../lib/active-base.ts";
 import { Icon } from "../icons.tsx";
 import { Button, CountsLine, ErrorLine, Sheet } from "../ui.tsx";
+import { ReasonLine } from "./Remedy.tsx"; // „Was hilft?“
 
 const NAME_RE = /^[\p{L}\p{N} _.'’-]{2,32}$/u;
 
@@ -59,7 +60,7 @@ function RenameForm({ base }: { base: BaseData }) {
       </div>
       {!valid && clean.length > 0 && <p className="text-xs text-siegel mt-1">{errorText("bad_base_name")}</p>}
       {taken && <p className="text-xs text-siegel mt-1">{errorText("base_name_taken")}</p>}
-      <ErrorLine text={rename.error} />
+      <ErrorLine text={rename.error} code={rename.code} />
     </div>
   );
 }
@@ -89,7 +90,7 @@ function Abandon({ base, onDone }: { base: BaseData; onDone: () => void }) {
       </p>
       {!d ? <p className="text-xs text-ink2 mt-1">Prüfe …</p> : blockers.length > 0 ? (
         <ul className="mt-2 text-xs text-siegel space-y-0.5">
-          {blockers.map((c) => <li key={c}>· {errorText(c)}</li>)}
+          {blockers.map((c) => <li key={c} className="flex gap-1"><span aria-hidden>·</span><ReasonLine code={c} className="min-w-0 flex-1" /></li>)}
         </ul>
       ) : !confirm ? (
         <Button kind="danger" className="mt-2 w-full" onClick={() => setConfirm(true)}>Kolonie aufgeben …</Button>
@@ -110,7 +111,7 @@ function Abandon({ base, onDone }: { base: BaseData; onDone: () => void }) {
           </div>
         </div>
       )}
-      <ErrorLine text={abandon.error} />
+      <ErrorLine text={abandon.error} code={abandon.code} />
     </div>
   );
 }

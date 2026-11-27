@@ -39,7 +39,7 @@ export function RecallSheet({ mission, name, now, onClose }: { mission: MissionD
         </div>
         <p className="text-brass-300">Der Treibstoff ist verbraucht und wird nicht erstattet.{mission.type === "ueberfall" ? " Der Nachtschild bleibt für diese Nacht aufgehoben." : ""}</p>
       </div>
-      <ErrorLine text={cmd.error} />
+      <ErrorLine text={cmd.error} code={cmd.code} />
       <div className="flex gap-2">
         <Button kind="secondary" className="flex-1" onClick={onClose}>Weiterfahren</Button>
         <Button kind="danger" className="flex-1" disabled={cmd.busy} onClick={async () => { const r = await cmd.run({ missionId: mission.id }); if (r?.ok) onClose(); }}>

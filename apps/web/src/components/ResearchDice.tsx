@@ -68,7 +68,7 @@ export function BreakthroughChoice({ research, onDone }: { research: Research; o
         <Button disabled={cmd.busy} onClick={() => void pick("level")}>a) {tech} +1 Stufe</Button>
         <Button kind="secondary" disabled={cmd.busy} onClick={() => void pick("speed")}>b) Nächste Forschung halb so lang</Button>
       </div>
-      <ErrorLine text={cmd.error} />
+      <ErrorLine text={cmd.error} code={cmd.code} />
     </div>
   );
 }

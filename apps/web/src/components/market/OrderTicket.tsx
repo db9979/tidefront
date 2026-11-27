@@ -7,6 +7,11 @@ import { errorText, fmtNum, label } from "../../lib/names.ts";
 import { fmtDuration } from "../../lib/time.ts";
 import { Icon } from "../../icons.tsx";
 import { ActionBar, ErrorLine } from "../../ui.tsx";
+import { ActionRemedy, ReasonLine, hasRemedy } from "../Remedy.tsx";
+import type { RemedyDetail } from "../../lib/remedies/index.ts";
+
+/** Sperrgrund mit Ablehnungscode (für „Was hilft?“). */
+type Why = { text: string; code?: string };
 import { allowedRange, limits, maxSensible, when, DAY, type Limits, type MarketCfg, type MarketRes } from "./calc.ts";
 import { Slip } from "./Slip.tsx";
 
@@ -37,6 +42,7 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
   const [qty, setQty] = useState(100);
   const [done, setDone] = useState<string | null>(null);
   useEffect(() => setDone(null), [qtyText, side, r.id]);
+  const [whyOpen, setWhyOpen] = useState(false); // „Was hilft?“ über dem gesperrten Order-Knopf
   useEffect(() => {
     const t = setTimeout(() => setQty(Math.max(0, Math.floor(Number(qtyText) || 0))), 300);
     return () => clearTimeout(t);
@@ -64,26 +70,29 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
   const buy = side === "buy";
 
   // Sperrgründe, die schon vor jeder Eingabe feststehen.
-  const hard: string[] = [];
-  if (halted) hard.push(`Handelspause für ${label(r.id)}: noch ${fmtDuration(r.haltedUntilMs - nowMs)} (Kursband verletzt).`);
-  if (buy && ctx.siege) hard.push("Belagerungsring vor deinem Hafen: keine Käufe, bis er endet oder gebrochen ist.");
-  if (!buy && ctx.attack) hard.push("Angriff erkannt: Verkäufe gesperrt, bis er vorbei ist.");
-  if (dailyLeft <= 0) hard.push(`Tageslimit für ${label(r.id)} erreicht – neu ab ${when(Math.floor(nowMs / DAY) * DAY + DAY, nowMs)} Uhr.`);
-  if (!buy && ctx.credits >= ctx.creditLimit) hard.push("Kreditkonto am Kreditlimit: Verkäufe erst nach Käufen wieder möglich.");
-  if (!buy && ctx.stock < 1) hard.push(`Kein Bestand an ${label(r.id)} zum Verkaufen.`);
-  if (buy && lim.funds < 1 && !ctx.siege) hard.push("Zu wenig Kredite für einen Kauf. Erst etwas verkaufen.");
+  // Je Grund der Ablehnungscode des Servers, damit „Was hilft?“ passt.
+  const hard: Why[] = [];
+  if (halted) hard.push({ text: `Handelspause für ${label(r.id)}: noch ${fmtDuration(r.haltedUntilMs - nowMs)} (Kursband verletzt).`, code: "halted" });
+  if (buy && ctx.siege) hard.push({ text: "Belagerungsring vor deinem Hafen: keine Käufe, bis er endet oder gebrochen ist.", code: "siege" });
+  if (!buy && ctx.attack) hard.push({ text: "Angriff erkannt: Verkäufe gesperrt, bis er vorbei ist.", code: "under_attack" });
+  if (dailyLeft <= 0) hard.push({ text: `Tageslimit für ${label(r.id)} erreicht – neu ab ${when(Math.floor(nowMs / DAY) * DAY + DAY, nowMs)} Uhr.`, code: "daily_limit" });
+  if (!buy && ctx.credits >= ctx.creditLimit) hard.push({ text: "Kreditkonto am Kreditlimit: Verkäufe erst nach Käufen wieder möglich.", code: "credit_limit" });
+  if (!buy && ctx.stock < 1) hard.push({ text: `Kein Bestand an ${label(r.id)} zum Verkaufen.` });
+  if (buy && lim.funds < 1 && !ctx.siege) hard.push({ text: "Zu wenig Kredite für einen Kauf. Erst etwas verkaufen.", code: "funds" });
 
   // Sperrgründe zur eingegebenen Menge.
-  const soft: string[] = [];
+  const soft: Why[] = [];
   if (valid && hard.length === 0) {
-    if (typed > lim.impact) soft.push(`Kurswirkung zu groß: höchstens ${fmtNum(lim.impact)} je Handel.`);
-    if (typed > dailyLeft) soft.push(`Über dem Tageslimit: heute noch ${fmtNum(dailyLeft)}.`);
-    if (q && buy && q.totalCredits > ctx.credits) soft.push(`Kredite reichen nicht: ${fmtNum(q.totalCredits, 2)} Kr nötig.`);
-    if (!buy && typed > ctx.stock) soft.push(`Nur ${fmtNum(ctx.stock)} im Lager.`);
-    if (q && !buy && ctx.credits + q.totalCredits > ctx.creditLimit) soft.push(`Kreditlimit: höchstens ${fmtNum(ctx.creditLimit - ctx.credits, 2)} Kr Erlös möglich.`);
-    if (q && (q.priceAfter > range.hi || q.priceAfter < range.lo)) soft.push("Der Kurs verließe das Kursband – der Handel würde abgelehnt und eine Pause ausgelöst.");
+    if (typed > lim.impact) soft.push({ text: `Kurswirkung zu groß: höchstens ${fmtNum(lim.impact)} je Handel.`, code: "impact" });
+    if (typed > dailyLeft) soft.push({ text: `Über dem Tageslimit: heute noch ${fmtNum(dailyLeft)}.`, code: "daily_limit" });
+    if (q && buy && q.totalCredits > ctx.credits) soft.push({ text: `Kredite reichen nicht: ${fmtNum(q.totalCredits, 2)} Kr nötig.`, code: "funds" });
+    if (!buy && typed > ctx.stock) soft.push({ text: `Nur ${fmtNum(ctx.stock)} im Lager.` });
+    if (q && !buy && ctx.credits + q.totalCredits > ctx.creditLimit) soft.push({ text: `Kreditlimit: höchstens ${fmtNum(ctx.creditLimit - ctx.credits, 2)} Kr Erlös möglich.`, code: "credit_limit" });
+    if (q && (q.priceAfter > range.hi || q.priceAfter < range.lo)) soft.push({ text: "Der Kurs verließe das Kursband – der Handel würde abgelehnt und eine Pause ausgelöst.", code: "band" });
   }
+  const firstWhy = [...hard, ...soft].find((w) => hasRemedy(w.code));
   const blocked = hard.length > 0 || soft.length > 0;
+  const why: RemedyDetail = { resource: r.id, qty: valid ? typed : undefined };
 
   const tenth = Math.floor(ctx.stock * 0.1);
   const chips: { top: string; sub: string; v: number; aria: string }[] = [
@@ -144,23 +153,27 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
       <DailyBar used={r.dailyUsed} add={valid ? typed : 0} limit={r.dailyLimit} />
 
       {q && hard.length === 0 && <Slip q={q} cfg={cfg} nowMs={nowMs} ctx={ctx} label={label(r.id)} />}
-      {fresh && quote.data && !quote.data.ok && <ErrorLine text={errorText(quote.data.code)} />}
+      {fresh && quote.data && !quote.data.ok && <ErrorLine text={errorText(quote.data.code)} code={quote.data.code} detail={why} />}
 
       {(hard.length > 0 || soft.length > 0) && (
         <ul className="rounded-lg border border-siegel bg-red-950 p-2.5 mb-3 text-sm space-y-1" aria-live="polite">
           {[...hard, ...soft].map((t) => (
-            <li key={t} className="flex gap-2 text-ink"><span className="diamond bg-siegel mt-1.5" aria-hidden="true" />{t}</li>
+            <li key={t.text} className="flex gap-2 text-ink"><span className="diamond bg-siegel mt-1.5 shrink-0" aria-hidden="true" /><ReasonLine code={t.code} text={t.text} detail={why} className="min-w-0 flex-1" /></li>
           ))}
         </ul>
       )}
 
       {/* Fixierte Aktionsleiste: Order-Knopf bleibt über der Navigation sichtbar. */}
       <ActionBar>
+      <ActionRemedy code={firstWhy?.code} detail={why} open={whyOpen} onClose={() => setWhyOpen(false)} />
       <button
         type="button"
-        className={`tap w-full h-12 rounded-lg font-display uppercase text-[14px] text-white disabled:opacity-45 shadow-[0_2px_0_var(--color-ink)] ${buy ? "bg-moos" : "bg-siegel"}`}
-        disabled={!q || blocked || exec.busy}
+        className={`tap w-full h-12 rounded-lg font-display uppercase text-[14px] text-white disabled:opacity-45 shadow-[0_2px_0_var(--color-ink)] ${buy ? "bg-moos" : "bg-siegel"} ${blocked && firstWhy ? "opacity-45" : ""}`}
+        // Gesperrt mit bekanntem Grund: Antippen klappt „Was hilft?“ auf statt nichts zu tun.
+        disabled={(!q || blocked || exec.busy) && !(blocked && firstWhy)}
+        aria-disabled={blocked && !!firstWhy}
         onClick={async () => {
+          if (blocked && firstWhy) return setWhyOpen(!whyOpen);
           if (!q) return;
           setDone(null);
           const res = await exec.run({ side, resource: r.id, qty, expectedPrice: q.executionPrice });
@@ -169,7 +182,7 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
       >
         {buy ? "Kaufen" : "Verkaufen"}{q ? ` · ${fmtNum(q.totalCredits, 2)} Kr` : ""}
       </button>
-      <ErrorLine text={exec.error} />
+      <ErrorLine text={exec.error} code={exec.code} detail={why} />
       {done && <p className="text-moos text-sm mt-1 font-semibold" role="status">{done}</p>}
       </ActionBar>
     </div>

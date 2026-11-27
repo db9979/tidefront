@@ -7,6 +7,7 @@ import { useCommand } from "../lib/command.ts";
 import { fmtNum } from "../lib/names.ts";
 import { fmtDuration, fmtTime, useNow } from "../lib/time.ts";
 import { Button, Card, Cost, ErrorLine } from "../ui.tsx";
+import { ReasonLine } from "./Remedy.tsx"; // „Was hilft?“
 import { Icon } from "../icons.tsx";
 import { AdmiralRecall } from "./Fields.tsx"; // Felder: Admiral ohne Rückruf abziehen
 
@@ -99,10 +100,10 @@ export function AdmiralsCard() {
             <Cost cost={{ credits: v.cost.credits, elektronik: v.cost.elektronik }} />
             <Button disabled={appoint.busy} onClick={() => void appoint.run({ name: name || null, spec })}>Ernennen</Button>
           </div>
-          <ErrorLine text={appoint.error} />
+          <ErrorLine text={appoint.error} code={appoint.code} detail={{ cost: v.cost }} />
         </div>
       ) : (
-        <p className="text-xs text-slate-400 mt-2">{v.slots >= s.max ? "Alle Plätze belegt." : `Weitere Plätze mit dem Ausbau der Hafenkommandantur (je ${s.perHarborLevels} Stufen).`}</p>
+        <ReasonLine code="admiral_slots" text={v.slots >= s.max ? "Alle Plätze belegt." : `Weitere Plätze mit dem Ausbau der Hafenkommandantur (je ${s.perHarborLevels} Stufen).`} className="text-xs text-slate-400 mt-2" />
       )}
       <p className="text-[11.5px] text-ink2 mt-2">
         Erfahrung nur aus gewonnenen Kämpfen, je nach besiegtem Wert. Verliert sein Verband deutlich (über {Math.round(v.risk.lossShare * 100)} % Verluste), entscheidet ein W{v.risk.die}: 1 gefallen, bis {v.risk.capturedMax} gefangen ({v.risk.captiveHours} h oder Lösegeld), bis {v.risk.woundedMax} verwundet ({v.risk.woundedHours} h).
@@ -131,7 +132,7 @@ function AdmiralItem({ a, v, now }: { a: Admiral; v: View; now: number }) {
   const [spec2, setSpec2] = useState("");
   const [confirm, setConfirm] = useState(false);
   const specName = (id: string) => v.specs.find((x) => x.id === id)?.name ?? id;
-  const err = station.error ?? ransom.error ?? second.error ?? dismiss.error;
+  const failed = [station, ransom, second, dismiss].find((c) => c.error);
   return (
     <li className="py-2.5">
       <div className="flex items-start gap-2">
@@ -173,7 +174,7 @@ function AdmiralItem({ a, v, now }: { a: Admiral; v: View; now: number }) {
           <Button disabled={!spec2 || second.busy} onClick={() => void second.run({ admiralId: a.id, spec: spec2 })}>Wählen</Button>
         </div>
       )}
-      <ErrorLine text={err} />
+      <ErrorLine text={failed?.error} code={failed?.code} />
     </li>
   );
 }

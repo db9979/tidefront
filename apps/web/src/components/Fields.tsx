@@ -83,7 +83,7 @@ export function AdmiralRecall({ fieldId, name }: { fieldId: number; name?: strin
     <div className="mt-2">
       {name && <div className="text-xs text-see">Admiral {name} führt die Besatzung.</div>}
       <Button kind="secondary" className="w-full" disabled={go.busy} onClick={() => void go.run({ fieldId })}>Admiral abziehen (fährt allein heim, Besatzung bleibt)</Button>
-      <ErrorLine text={go.error} />
+      <ErrorLine text={go.error} code={go.code} />
     </div>
   );
 }
@@ -93,7 +93,7 @@ function RecallButton({ fieldId }: { fieldId: number }) {
   return (
     <div className="mt-2">
       <Button kind="secondary" className="w-full" disabled={recall.busy} onClick={() => void recall.run({ fieldId })}>Besatzung zurückrufen (Feld wird neutral)</Button>
-      <ErrorLine text={recall.error} />
+      <ErrorLine text={recall.error} code={recall.code} />
     </div>
   );
 }

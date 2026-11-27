@@ -52,7 +52,7 @@ export function AllianceChat() {
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (text.trim()) void send(); } }} />
         <Button disabled={act.busy || text.trim().length === 0} onClick={() => void send()}>Senden</Button>
       </div>
-      <ErrorLine text={act.error} />
+      <ErrorLine text={act.error} code={act.code} />
     </div>
   );
 }

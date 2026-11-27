@@ -58,7 +58,7 @@ export function WeeklyGoals() {
         {!w.bonus.paid && <ResChips values={w.bonus.reward} />}
       </div>
       {note && <p className="text-sm text-moos mt-2" role="status">{note}</p>}
-      <ErrorLine text={claim.error} />
+      <ErrorLine text={claim.error} code={claim.code} />
     </section>
   );
 }

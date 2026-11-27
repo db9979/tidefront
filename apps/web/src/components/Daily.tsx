@@ -90,7 +90,7 @@ export function DailyOrders() {
       )}
 
       {note && <p className="text-sm text-moos mt-2" role="status">{note}</p>}
-      <ErrorLine text={claim.error ?? reroll.error} />
+      <ErrorLine text={claim.error ?? reroll.error} code={claim.error ? claim.code : reroll.code} />
       <p className="text-[11px] text-slate-500 mt-2">
         Befehle in dieser Saison: <span className="mono">{fmtNum(d.seasonPoints)}</span> Punkte.
         {d.rerollAvailable ? " Einen offenen Befehl darfst du heute neu würfeln." : ""}

@@ -4,13 +4,14 @@ import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, type BaseData, type MapData } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
-import { errorText, fmtNum } from "../lib/names.ts";
+import { fmtNum } from "../lib/names.ts";
 import { fmtSeconds, fmtTime } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
 import { HexMap } from "../screens/LazyHexMap.tsx";
 import { Icon } from "../icons.tsx";
 import { RELATION_HEX } from "../map/TacticalIcon.tsx";
 import { Button, Card, ErrorLine } from "../ui.tsx";
+import { ReasonLine } from "./Remedy.tsx"; // „Was hilft?“
 
 type Kind = "erkunden" | "sabotage" | "desinformation" | "kartell";
 
@@ -143,7 +144,7 @@ export function SpyPlan({ base, map, target, setTarget, center, onClose }: { bas
                 <div>Ankunft {fmtTime(p.arriveAtMs)} · zurück {fmtTime(p.returnAtMs)}</div>
               </div>
             ) : (
-              <div className="text-red-300">{errorText(p.code)}</div>
+              <ReasonLine code={p.code} detail={{ type: kind }} className="text-red-300" />
             )}
           </div>
         )}
@@ -158,7 +159,7 @@ export function SpyPlan({ base, map, target, setTarget, center, onClose }: { bas
         >
           Spion entsenden
         </Button>
-        <ErrorLine text={launch.error} />
+        <ErrorLine text={launch.error} code={launch.code} detail={{ type: kind }} />
       </Card>
     </>
   );

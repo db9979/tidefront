@@ -63,7 +63,7 @@ export function AllianceMembers({ data, onCompose }: { data: View; onCompose: (d
                 Ausschließen
               </Button>
             )}
-            <ErrorLine text={act.error} />
+            <ErrorLine text={act.error} code={act.code} />
           </div>
         )}
       </Sheet>
@@ -92,7 +92,7 @@ function Requests({ data }: { data: View }) {
           </li>
         ))}
       </ul>
-      <ErrorLine text={act.error} />
+      <ErrorLine text={act.error} code={act.code} />
     </Card>
   );
 }
@@ -118,7 +118,7 @@ function Invite({ data }: { data: View }) {
         </Button>
       </div>
       {full && <p className="text-xs text-ink2 mt-2">Die Allianz ist voll.</p>}
-      <ErrorLine text={act.error} />
+      <ErrorLine text={act.error} code={act.code} />
     </Card>
   );
 }

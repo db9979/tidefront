@@ -10,6 +10,7 @@ import { label } from "../lib/names.ts";
 import { Icon } from "../icons.tsx";
 import { fmtDuration, useNow } from "../lib/time.ts";
 import { Card, Loading, Segments, useSegment } from "../ui.tsx";
+import { WhatHelps } from "../components/Remedy.tsx";
 import { PlayerTrade } from "../components/PlayerTrade.tsx";
 import { PlayerTradeStats } from "../components/TradeValue.tsx";
 import { useWorldEvents } from "../components/WorldEvents.tsx";
@@ -29,13 +30,14 @@ const SEGS: { id: Seg; label: string }[] = [
   { id: "nachrichten", label: "Nachrichten" },
 ];
 
-export function MarketScreen({ base }: { base: BaseData }) {
+/** initialResource: vorgewählte Ressource (Sprung aus „Was hilft?“). */
+export function MarketScreen({ base, initialResource }: { base: BaseData; initialResource?: string }) {
   const m = useQuery({ ...trpc.market.get.queryOptions(), refetchInterval: 30000 });
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const we = useWorldEvents();
   const naval = useNaval();
   const now = useNow();
-  const [resource, setResource] = useState("stahl");
+  const [resource, setResource] = useState(initialResource ?? "stahl");
   const [seg, setSeg] = useSegment<Seg>("boerse", SEGS.map((x) => x.id), "handel");
   if (!m.data || !meta.data) return <Loading />;
 
@@ -52,7 +54,7 @@ export function MarketScreen({ base }: { base: BaseData }) {
   const halted = m.data.resources.filter((r) => r.haltedUntilMs > now);
 
   const status: MarketStatus = !unlocked
-    ? { tone: "closed", title: "Geschlossen", reasons: [`Öffnet ab Hafenkommandantur Stufe ${fromLevel} (deine: ${harbor}). Kurse kannst du schon beobachten.`] }
+    ? { tone: "closed", title: "Geschlossen", reasons: [{ text: `Öffnet ab Hafenkommandantur Stufe ${fromLevel} (deine: ${harbor}). Kurse kannst du schon beobachten.` }] }
     : siege && attack
       ? { tone: "closed", title: "Gesperrt", reasons: [] }
       : siege
@@ -60,10 +62,10 @@ export function MarketScreen({ base }: { base: BaseData }) {
         : attack
           ? { tone: "partial", title: "Verkäufe gesperrt", reasons: [] }
           : { tone: "open", title: "Geöffnet", reasons: [] };
-  if (unlocked && siege) status.reasons.push("Belagerungsring vor deinem Hafen: keine Börsenkäufe.");
-  if (unlocked && attack) status.reasons.push("Angriff erkannt: keine Verkäufe, bis er vorbei ist.");
-  if (unlocked && naval.data?.ownBlockade) { status.reasons.push("Seeblockade vor deinem Hafen: keine Verkäufe, Lieferungen werden zurückgehalten."); if (status.tone === "open") { status.tone = "partial"; status.title = "Verkäufe gesperrt"; } } // See
-  if (halted.length > 0) status.reasons.push(`Handelspause: ${halted.map((r) => `${label(r.id)} (noch ${fmtDuration(r.haltedUntilMs - now)})`).join(", ")}.`);
+  if (unlocked && siege) status.reasons.push({ text: "Belagerungsring vor deinem Hafen: keine Börsenkäufe.", code: "siege" });
+  if (unlocked && attack) status.reasons.push({ text: "Angriff erkannt: keine Verkäufe, bis er vorbei ist.", code: "under_attack" });
+  if (unlocked && naval.data?.ownBlockade) { status.reasons.push({ text: "Seeblockade vor deinem Hafen: keine Verkäufe, Lieferungen werden zurückgehalten.", code: "blockade" }); if (status.tone === "open") { status.tone = "partial"; status.title = "Verkäufe gesperrt"; } } // See
+  if (halted.length > 0) status.reasons.push({ text: `Handelspause: ${halted.map((r) => `${label(r.id)} (noch ${fmtDuration(r.haltedUntilMs - now)})`).join(", ")}.`, code: "halted" });
   if (unlocked && status.tone === "open" && halted.length > 0) status.tone = "partial";
 
   const pct = sel.history.length ? changePct(sel, now, DAY, cfg.reversionHalfLifeHours) : refPct(sel);
@@ -97,6 +99,7 @@ export function MarketScreen({ base }: { base: BaseData }) {
                 <div className="flex gap-1 mt-1.5" aria-hidden="true">
                   {Array.from({ length: fromLevel }, (_, i) => <span key={i} className={`h-1.5 flex-1 ${i < harbor ? "bg-messing" : "bg-rule"}`} />)}
                 </div>
+                <WhatHelps code="locked" className="mt-2" />
               </div>
             </div>
           )}
