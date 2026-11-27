@@ -59,7 +59,7 @@ export function AchievementBadge({ id, tier, size = 56, title }: { id: string; t
       {[0, 1, 2].map((i) => (
         <circle key={i} cx={24 + i * 8} cy={6.5} r={2.2} fill={i < tier ? PAPER : "none"} stroke={i < tier ? INK : "none"} strokeWidth={1.2} />
       ))}
-      <g transform="translate(17 13) scale(0.47)">{emblem(id)}</g>
+      <g className="tf-still" transform="translate(17 13) scale(0.47)">{emblem(id)}</g>
     </svg>
   );
 }

@@ -200,6 +200,40 @@ input, select, textarea { color: var(--color-ink); }
 .tf-wx-wind { animation: tf-drift 2.6s ease-in-out infinite; }
 .tf-wx-mond { animation: tf-glow 5s ease-in-out infinite; }
 .tf-wx-sturm { animation: tf-shake 0.7s ease-in-out infinite; transform-origin: 50% 80%; }
+/* ---- Bewegte Symbole: Einheiten und Forschungen (icons-motion.tsx, mv()). Drehpunkt kommt inline in Rasterpunkten;
+   ruhig und klein (meist 3–9 s, ±1–4°, 1–2 px). Unter 28 px (Icon setzt .tf-still) steht alles still. */
+.tf-mi { transform-box: view-box; }
+.tf-still .tf-mi { animation: none; }
+@keyframes tf-i-rock { 0%, 100% { transform: rotate(-1.3deg); } 50% { transform: rotate(1.3deg); } }
+.tf-i-rock { animation: tf-i-rock 6.5s ease-in-out infinite; }
+.tf-i-rockfast { animation: tf-i-rock 3.8s ease-in-out infinite; }
+@keyframes tf-i-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1.4px); } }
+.tf-i-bob { animation: tf-i-bob 4.4s ease-in-out infinite; }
+@keyframes tf-i-dive { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1.8px); } }
+.tf-i-dive { animation: tf-i-dive 8s ease-in-out infinite; }
+@keyframes tf-i-look { 0%, 38% { transform: scaleX(1); } 50%, 88% { transform: scaleX(-1); } 100% { transform: scaleX(1); } }
+.tf-i-look { animation: tf-i-look 9s ease-in-out infinite; }
+@keyframes tf-i-hover { 0%, 100% { transform: translate(0, 0) rotate(0); } 33% { transform: translate(0.6px, -1px) rotate(1.2deg); } 66% { transform: translate(-0.6px, 0.5px) rotate(-1deg); } }
+.tf-i-hover { animation: tf-i-hover 7s ease-in-out infinite; }
+@keyframes tf-i-tilt { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
+.tf-i-tilt { animation: tf-i-tilt 5s ease-in-out infinite; }
+@keyframes tf-i-scan { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
+.tf-i-scan { animation: tf-i-scan 6s ease-in-out infinite; }
+@keyframes tf-i-elev { 0%, 20%, 100% { transform: rotate(0); } 55%, 70% { transform: rotate(-5deg); } }
+.tf-i-elev { animation: tf-i-elev 8s ease-in-out infinite; }
+.tf-i-spin { animation: tf-spin 9s linear infinite; }
+.tf-i-spinslow { animation: tf-spin 18s linear infinite; }
+@keyframes tf-i-flag { 0%, 100% { transform: scaleX(1) skewY(0); } 50% { transform: scaleX(0.86) skewY(6deg); } }
+.tf-i-flag { animation: tf-i-flag 2.4s ease-in-out infinite; }
+@keyframes tf-i-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.tf-i-blink { animation: tf-i-blink 3.2s ease-in-out infinite; }
+.tf-i-glow { animation: tf-glow 5s ease-in-out infinite; }
+@keyframes tf-i-ping { 0%, 100% { opacity: 0.25; } 25% { opacity: 1; } 60% { opacity: 0.45; } }
+.tf-i-ping { animation: tf-i-ping 2.7s ease-in-out infinite; }
+@keyframes tf-i-drift { 0%, 100% { transform: translateX(-1.2px); } 50% { transform: translateX(1.2px); } }
+.tf-i-drift { animation: tf-i-drift 5s ease-in-out infinite; }
+@keyframes tf-i-steam { 0% { transform: translateY(1px); opacity: 0.4; } 40% { opacity: 1; } 100% { transform: translateY(-2px); opacity: 0.3; } }
+.tf-i-steam { animation: tf-i-steam 3.6s ease-out infinite; }
 [data-tf-off] .tf-mv, html.tf-hidden .tf-mv { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .tf-grow, .tf-mv { animation: none !important; } }
 

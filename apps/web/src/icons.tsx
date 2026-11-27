@@ -27,10 +27,14 @@ export function IconDefs() {
   );
 }
 
+/** Unter dieser Größe stehen die bewegten Teile von Einheiten und Forschungen still (.tf-still, styles.css). */
+const MOTION_MIN = 28;
+
 /** Symbol ohne Hintergrund. */
 export function Icon({ id, size = 24, className }: { id: string; size?: number; className?: string }) {
+  const cls = size < MOTION_MIN ? (className ? `${className} tf-still` : "tf-still") : className;
   return (
-    <svg viewBox="0 0 64 64" width={size} height={size} className={className} aria-hidden="true" style={{ overflow: "visible" }}>
+    <svg viewBox="0 0 64 64" width={size} height={size} className={cls} aria-hidden="true" style={{ overflow: "visible" }}>
       {ART[id] ?? <circle cx="32" cy="32" r="12" fill="url(#tf-h)" stroke={INK} strokeWidth={2.4} />}
     </svg>
   );
