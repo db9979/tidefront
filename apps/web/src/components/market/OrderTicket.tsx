@@ -140,7 +140,7 @@ export function OrderTicket({ r, cfg, nowMs, ctx }: { r: MarketRes; cfg: MarketC
             <button key={c.top} type="button" disabled={c.v < 1} onClick={() => setQtyText(String(c.v))} aria-label={c.aria}
               className={`tap rounded-lg border leading-tight px-1 py-1 flex flex-col items-center justify-center disabled:opacity-45 ${on ? "bg-ink text-paper border-ink" : "border-ink/60 text-ink bg-card"}`}>
               <span className="font-display uppercase text-[12px]">{c.top}</span>
-              <span className={`mono text-[10.5px] ${on ? "text-paper/80" : "text-ink2"}`}>{c.sub}</span>
+              <span className={`mono text-[11px] ${on ? "text-paper/80" : "text-ink2"}`}>{c.sub}</span>
             </button>
           );
         })}

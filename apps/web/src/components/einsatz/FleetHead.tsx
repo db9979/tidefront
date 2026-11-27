@@ -35,7 +35,7 @@ export function FleetHead({ base, balance, onPlan }: { base: BaseData; balance: 
               <div className="flex items-center gap-1">
                 <Icon id={b.icon} size={26} className={total > 0 ? "" : "opacity-40"} />
                 <div className="min-w-0 leading-none">
-                  <div className="font-display text-[10px] uppercase tracking-[0.12em] text-ink2">{b.text}</div>
+                  <div className="font-display text-[11px] uppercase tracking-[0.12em] text-ink2">{b.text}</div>
                   <div className={`font-serif text-[20px] leading-tight ${total > 0 ? "" : "text-ink2"}`}>{fmtNum(total)}</div>
                 </div>
               </div>

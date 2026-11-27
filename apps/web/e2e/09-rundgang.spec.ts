@@ -58,7 +58,7 @@ test("Rundgang durch alle Bildschirme", async ({ page, player, seed }) => {
 
   // Truppen: alle Unterreiter, Forschung, Kampfsimulator
   await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
-  for (const t of ["Einsatz", "Ausbilden", "Abwehr"]) {
+  for (const t of ["Einsatz", "Ausbilden", "Abwehr", "Allianz"]) {
     await page.getByRole("tab", { name: new RegExp(`^${t}`) }).click();
     await check(page, `Truppen · ${t}`);
   }
@@ -89,13 +89,15 @@ test("Rundgang durch alle Bildschirme", async ({ page, player, seed }) => {
   for (const t of types) {
     const change = page.getByRole("button", { name: "ändern" });
     if (await change.count()) await change.click();
+    const more = page.getByRole("button", { name: /^Weitere Missionsarten/ });
+    if (await more.count()) await more.click();
     const opt = page.locator("main").getByRole("button", { name: new RegExp(`^${t}`) }).first();
     if ((await opt.count()) === 0) continue;
     await opt.click();
     await page.waitForTimeout(150);
     await check(page, `Missionsplanung · ${t}`);
   }
-  await page.getByRole("button", { name: "Schließen" }).click();
+  await page.getByRole("button", { name: "Zurück" }).click();
 
   // Karte: eigener Hafen, Legende, Wetter umschalten
   await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();

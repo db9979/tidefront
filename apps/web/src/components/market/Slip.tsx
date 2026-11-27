@@ -20,9 +20,9 @@ export function Slip({ q, cfg, nowMs, ctx, label }: { q: Quote; cfg: MarketCfg; 
         <span className={`font-display uppercase text-[11px] ${buy ? "text-moos" : "text-siegel"}`}>{buy ? "Kauf" : "Verkauf"} · {fmtNum(q.qty)} {label}</span>
       </div>
       <dl className="text-sm">
-        <Row k="Kurs jetzt" v={fmtNum(q.priceBefore, 4)} />
-        <Row k="Ausführungskurs" v={fmtNum(q.executionPrice, 4)} strong />
-        <Row k="Kurs danach" v={`${fmtNum(q.priceAfter, 4)} (${buy ? "▲" : "▼"} ${signed(move, 2)})`} />
+        <Row k="Kurs jetzt" v={fmtNum(q.priceBefore, 2)} />
+        <Row k="Ausführungskurs" v={fmtNum(q.executionPrice, 2)} strong />
+        <Row k="Kurs danach" v={`${fmtNum(q.priceAfter, 2)} (${buy ? "▲" : "▼"} ${signed(move, 2)})`} />
         <div className="py-1.5 dotted-row">
           <div className="flex justify-between">
             <dt className="text-ink2">Kurswirkung</dt>

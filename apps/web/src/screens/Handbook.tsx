@@ -263,7 +263,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
       id: "allianz", icon: "transport", title: "Allianzen, Diplomatie, Handel",
       body: (
         <>
-          <P>Unter Meldungen → <strong>Allianz</strong> gründest du eine Allianz (Name und Kürzel aus 2–4 Zeichen) oder fragst bei einer an. Führung und Offiziere laden ein und nehmen Anfragen an; die Führung vergibt Rollen und kann die Allianz auflösen. Das Kürzel steht in der Rangliste vor deinem Namen, die <strong>Allianzwertung</strong> zählt die Punkte aller Mitglieder zusammen. Allianzen bleiben über das Saisonende bestehen.</P>
+          <P>Unter Truppen → <strong>Allianz</strong> gründest du eine Allianz (Name und Kürzel aus 2–4 Zeichen) oder fragst bei einer an. Führung und Offiziere laden ein und nehmen Anfragen an; die Führung vergibt Rollen und kann die Allianz auflösen. Das Kürzel steht in der Rangliste vor deinem Namen, die <strong>Allianzwertung</strong> zählt die Punkte aller Mitglieder zusammen. Allianzen bleiben über das Saisonende bestehen.</P>
           <P><strong>Verbündete</strong> können sich nicht überfallen. Im Allianz-Chat sprecht ihr euch ab. Auf der Karte erscheinen ihre Häfen grün mit Doppelring, die von Paktpartnern ocker und die von Kriegsgegnern rot mit Peilstrichen (weit herausgezoomt als farbige Punkte); antippen zeigt das Verhältnis. Die Legende erklärt die Zeichen.</P>
           <P><strong>Diplomatie</strong> gibt es zwischen Allianzen und Spielern ohne Allianz. Ein <strong>Nichtangriffspakt</strong> gilt, wenn beide Seiten zustimmen; danach sind gegenseitige Überfälle ausgeschlossen. Kündigen kann jede Seite, der Pakt gilt dann noch 24 Stunden. Eine <strong>Kriegserklärung</strong> wirkt nach 12 Stunden Vorlauf; während des Vorlaufs kann die erklärende Seite sie noch zurückziehen. Im Krieg entfällt die Schwachziel-Kürzung der Beute. Frieden gibt es, wenn beide Seiten ihn wollen.</P>
           <P>In der Börse findest du den <strong>Handel mit Spielern</strong>: Biete eine Ressource oder Kredite gegen eine andere an, für alle oder nur für deine Allianz. Die Ware geht beim Einstellen in Treuhand und kommt beim Zurückziehen sofort zurück. Wer annimmt, zahlt sofort; Ressourcen reisen auf beiden Seiten per Konvoi nach Entfernung der Häfen, Kredite kommen sofort. Je Seite wird eine kleine Gebühr einbehalten. Offene Angebote verfallen am Saisonende.</P>
@@ -318,12 +318,12 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
         <QuickButton onClick={() => setNews(true)} icon="uhr" title="Was ist neu?" />
       </div>
       {/* Sprungleiste: klebt oben, ein Tipp öffnet das Kapitel und springt hin. */}
-      <nav className="sticky -top-3 z-10 -mx-3 mb-2 px-3 py-1.5 bg-paper border-b border-rule" aria-label="Kapitel">
+      <nav className="sticky -top-3 z-10 -mx-3 mb-2 px-3 bg-paper border-b border-rule" aria-label="Kapitel">
         <HScroll className="gap-1.5" watch={open}>
           {chapters.map((c) => (
-            <button key={c.id} type="button" onClick={() => setOpen(c.id)} aria-current={open === c.id ? "true" : undefined}
-              className={`shrink-0 h-8 rounded-full border px-3 text-[12.5px] whitespace-nowrap ${open === c.id ? "bg-ink text-paper border-ink" : "bg-card text-ink2 border-rule"}`}>
-              {c.title}
+            // Tippfläche 44 px hoch, die Pille darin bleibt schmal.
+            <button key={c.id} type="button" onClick={() => setOpen(c.id)} aria-current={open === c.id ? "true" : undefined} className="shrink-0 h-11 flex items-center">
+              <span className={`h-8 flex items-center rounded-full border px-3 text-[12.5px] whitespace-nowrap ${open === c.id ? "bg-ink text-paper border-ink" : "bg-card text-ink2 border-rule"}`}>{c.title}</span>
             </button>
           ))}
         </HScroll>

@@ -47,7 +47,14 @@ test("Börse: verkaufen und kaufen", async ({ page, player, seed }) => {
   // Weitere Unterreiter
   await page.getByRole("tab", { name: "Spieler" }).click();
   await expectNoHorizontalOverflow(page, "Börse · Spieler");
-  await page.getByRole("tab", { name: "Nachrichten" }).click();
-  await expect(page.getByRole("heading", { name: "Marktnachrichten" })).toBeVisible();
-  await expectNoHorizontalOverflow(page, "Börse · Nachrichten");
+  await page.getByRole("tab", { name: "Marktlage" }).click();
+  await expect(page.getByRole("heading", { name: "Marktlage" })).toBeVisible();
+  await expectNoHorizontalOverflow(page, "Börse · Marktlage");
+  // Kopf einklappen: eine Zeile mit Kreditkonto, Zustand bleibt gemerkt.
+  await page.getByRole("button", { name: "Kopf einklappen" }).click();
+  await expect(page.getByText(/^Kreditkonto [\d.,]+ Kr$/)).toBeVisible();
+  await page.getByRole("button", { name: "Kopf aufklappen" }).click();
+  // Kurse mit Dezimalkomma und zwei Stellen.
+  await page.getByRole("tab", { name: "Handel" }).click();
+  await expect(page.getByRole("radio", { name: /^Stahl: \d+,\d{2} Kredite/ })).toBeVisible();
 });

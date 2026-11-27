@@ -180,7 +180,7 @@ export function MapLegend() {
         <div className="px-3 pb-3 text-xs text-ink max-h-[min(60vh,480px)] overflow-y-auto">
           {GROUPS.map((g) => (
             <section key={g.title} className="pt-1.5">
-              <h3 className="font-display text-[10px] uppercase tracking-[0.12em] text-ink2 border-b border-rule pb-0.5 mb-1">{g.title}</h3>
+              <h3 className="font-display text-[11px] uppercase tracking-[0.12em] text-ink2 border-b border-rule pb-0.5 mb-1">{g.title}</h3>
               <ul className="space-y-1.5">
                 {g.items.map((i) => (
                   <li key={i.text} className="flex items-center gap-2"><span className="flex w-12 shrink-0 justify-center">{i.icon}</span><span className="min-w-0">{i.text}</span></li>

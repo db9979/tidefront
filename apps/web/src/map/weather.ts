@@ -4,10 +4,13 @@
 // Leistung: Alle Wetterwerte und die Geometrie entstehen einmal je 15-Minuten-Fenster. Die Übersicht zeichnet mit
 // Haarlinien (pixelLine, zoomunabhängig) und wird beim Zoomen nicht neu gezeichnet; die Feldzeichen werden nur bei
 // einem Zoomsprung um etwa die Hälfte neu gestrichen. Die T/H-Schilder kommen aus einem Vorrat.
+// Zurückhaltend (0.23): Die ganze Schicht trägt SUBTLE als Deckkraft, Windfahnen der Übersicht erscheinen erst ab
+// VANE_FROM. Bei prefers-reduced-motion gibt es keine weichen Überblendungen beim Zoomen (harte Stufen); sonst bewegt
+// sich die Schicht ohnehin nicht (Neuzeichnen nur je 15-Minuten-Fenster).
 import { Container, Graphics, Text } from "pixi.js";
 import { stormShare, weatherAt, weatherFrontsAt, weatherSystemsAt, type Weather, type WeatherBalance, type WeatherFront } from "@tidefront/game-core";
 import { COLS, HEX_SIZE_KM, ROWS, hexCenter, hexCenterXY, terrainAt } from "@tidefront/world";
-import { weatherAlpha } from "./lod.ts";
+import { LOD_OVERVIEW, weatherAlpha } from "./lod.ts";
 import { INK, PAPER, SEE, SIEGEL } from "./symbols.ts";
 import { barbsOf, drawStormFlag, drawVane, isobars, toXY, windDir, type MapSystem } from "./weather-geo.ts";
 import { FRONT_COLOR, drawFront } from "./weather-fronts.ts"; // Kalt-, Warmfront, Okklusion
@@ -24,6 +27,20 @@ const HEX_FROM = 0.42;
 const LABEL_FROM = 0.35;
 /** Zoomstufen der Feldzeichen: neu gestrichen erst, wenn der Zoom um diesen Faktor springt. */
 const BUCKET = 1.5;
+/** Grunddeckkraft der Wetterschicht: Wetter ist Hintergrund, Zeichen und Ziele haben Vorrang. */
+const SUBTLE = 0.7;
+/** Windfahnen der Übersicht erst ab dieser Zoomstufe (darunter nur Isobaren, Wolken, Fronten). */
+const VANE_FROM = LOD_OVERVIEW;
+
+/** Nutzer wünscht weniger Bewegung: Überblendungen als harte Stufen. */
+function reducedMotion(): boolean {
+  return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+/** Weiche (oder bei reduzierter Bewegung harte) Stufe 0…1 ab `from` über die Breite `width`. */
+function step(scale: number, from: number, width: number, hard: boolean): number {
+  if (hard) return scale >= from + width / 2 ? 1 : 0;
+  return Math.max(0, Math.min(1, (scale - from) / width));
+}
 
 /** Sechseck (Spitze oben) um einen Feldmittelpunkt. */
 function hexPoly(x: number, y: number, r: number): number[] {
@@ -79,13 +96,17 @@ export function buildWeatherLayer(wb: WeatherBalance): WeatherLayer {
   const wash = new Graphics();
   const lines = new Graphics();
   const flags = new Graphics();
+  const vaneLines = new Graphics();
+  const vaneFlags = new Graphics();
+  const vanesBox = new Container();
+  vanesBox.addChild(vaneLines, vaneFlags);
   const labels = new Container();
   const frontLine = new Graphics();
   const frontFill = new Graphics();
   const fields = new Graphics();
   const fieldLines = new Graphics();
   const fieldFill = new Graphics();
-  atmos.addChild(wash, lines, flags);
+  atmos.addChild(wash, lines, flags, vanesBox);
   root.addChild(fields, fieldLines, fieldFill, atmos, frontLine, frontFill, labels);
   const cells: Cell[] = [];
   for (let row = 1; row < ROWS; row += STEP) {
@@ -139,6 +160,8 @@ export function buildWeatherLayer(wb: WeatherBalance): WeatherLayer {
     wash.clear();
     lines.clear();
     flags.clear();
+    vaneLines.clear();
+    vaneFlags.clear();
     const half = cellKm * 0.55;
     const samples = cells.map((c) => ({ c, w: weatherAt({ lat: c.lat, lon: c.lon }, ms, wb) }));
 
@@ -163,7 +186,7 @@ export function buildWeatherLayer(wb: WeatherBalance): WeatherLayer {
     for (const seg of isobars(systems, cellKm * 0.5)) {
       for (let i = 0; i < seg.length; i += 4) lines.moveTo(seg[i], seg[i + 1]).lineTo(seg[i + 2], seg[i + 3]);
     }
-    lines.stroke({ color: INK, alpha: 0.4, ...HAIR });
+    lines.stroke({ color: INK, alpha: 0.3, ...HAIR });
 
     // Regen unter dichten Wolken.
     for (const { c, w } of samples) {
@@ -179,10 +202,10 @@ export function buildWeatherLayer(wb: WeatherBalance): WeatherLayer {
     for (const v of vanes) {
       const w = weatherAt({ lat: v.lat, lon: v.lon }, ms, wb);
       if (w.wind < 0.22) continue;
-      drawVane(lines, flags, v.x, v.y, windDir(v.lat, v.lon, systems), half * 1.4, barbsOf(w.wind, wb));
+      drawVane(vaneLines, vaneFlags, v.x, v.y, windDir(v.lat, v.lon, systems), half * 1.4, barbsOf(w.wind, wb));
     }
-    lines.stroke({ color: INK, alpha: 0.75, ...HAIR });
-    flags.fill({ color: INK, alpha: 0.8 });
+    vaneLines.stroke({ color: INK, alpha: 0.75, ...HAIR });
+    vaneFlags.fill({ color: INK, alpha: 0.8 });
 
     // Sturm: Sturmwimpel in jeder zweiten Sturmzelle; Nebel: gestrichelte Linien.
     samples.forEach(({ c, w }, i) => {
@@ -284,9 +307,12 @@ export function buildWeatherLayer(wb: WeatherBalance): WeatherLayer {
     root,
     update(nowMs: number, scale: number): void {
       // Übersicht (Wetterkarte) blendet aus, Feldzeichen blenden ein; T/H bleiben immer.
-      const near = Math.max(0, Math.min(1, (scale - HEX_FROM) / 0.12));
-      atmos.alpha = weatherAlpha(scale) * (1 - near);
-      fields.alpha = fieldLines.alpha = fieldFill.alpha = near;
+      const hard = reducedMotion();
+      const near = step(scale, HEX_FROM, 0.12, hard);
+      atmos.alpha = SUBTLE * weatherAlpha(scale) * (1 - near);
+      vanesBox.alpha = step(scale, VANE_FROM, 0.06, hard);
+      fields.alpha = fieldLines.alpha = fieldFill.alpha = SUBTLE * near;
+      labels.alpha = SUBTLE + (1 - SUBTLE) / 2;
       const slot = Math.floor(nowMs / REDRAW_MS) * REDRAW_MS;
       if (slot !== slotAt) {
         slotAt = slot;
@@ -299,7 +325,7 @@ export function buildWeatherLayer(wb: WeatherBalance): WeatherLayer {
         fieldBucket = NaN;
       }
       // Fronten: in der Übersicht kräftig, nah etwas zurückgenommen (Feldzeichen haben Vorrang).
-      frontLine.alpha = frontFill.alpha = weatherAlpha(scale) * (1 - 0.45 * near);
+      frontLine.alpha = frontFill.alpha = SUBTLE * weatherAlpha(scale) * (1 - 0.45 * near);
       const fb = Math.round(Math.log(scale) / Math.log(BUCKET));
       if (fb !== frontBucket) {
         frontBucket = fb;

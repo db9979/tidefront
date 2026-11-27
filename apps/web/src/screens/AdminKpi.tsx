@@ -21,7 +21,7 @@ function Grid({ head, rows, cols }: { head: string[]; rows: ReactNode[][]; cols:
   return (
     <div className="grid text-xs gap-x-2" style={{ gridTemplateColumns: cols }} role="table">
       {head.map((h, i) => (
-        <div key={`h${i}`} role="columnheader" className={`font-display uppercase tracking-[0.08em] text-[10px] text-ink2 pb-1 border-b border-rule ${i ? "text-right" : ""}`}>{h}</div>
+        <div key={`h${i}`} role="columnheader" className={`font-display uppercase tracking-[0.08em] text-[11px] text-ink2 pb-1 border-b border-rule ${i ? "text-right" : ""}`}>{h}</div>
       ))}
       {rows.map((r, j) => r.map((c, i) => (
         <div key={`${j}-${i}`} role="cell" className={`py-1 border-b border-dotted border-rule ${i ? "text-right mono" : "min-w-0 truncate"}`}>{c}</div>

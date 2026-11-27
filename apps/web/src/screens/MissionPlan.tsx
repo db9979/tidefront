@@ -8,7 +8,8 @@ import { unitTone } from "../lib/info.ts";
 import { fmtSeconds, fmtTime } from "../lib/time.ts";
 import type { Target } from "../App.tsx";
 import { HexMap } from "./LazyHexMap.tsx";
-import { ActionBar, Button, Card, ErrorLine, Loading, Stepper, SmallButton } from "../ui.tsx";
+import { ActionBar, BackButton, Button, Card, ErrorLine, Loading, Stepper, SmallButton } from "../ui.tsx";
+import { MapGate } from "../components/MapGate.tsx"; // Mini-Karte erst nach Antippen bedienbar
 import { ActionRemedy, ReasonInline, ReasonLine, hasRemedy } from "../components/Remedy.tsx"; // „Was hilft?“
 import { RouteWeather } from "../components/RouteWeather.tsx"; // Wetter auf der Route (v1.6)
 // Komfort: Vorlagen, Wiederholen, Probekampf
@@ -26,7 +27,7 @@ import { RaidOpenCard } from "../components/AllianceOps.tsx";
 import { HoldHours, MineWarning } from "../components/Naval.tsx"; // See: Minen/Blockade/Konvoi
 import { FieldTargetLine, StayAllToggle, fieldsRules, useFields } from "../components/Fields.tsx"; // Felder
 import { ExpansionTargetLine, OriginLine, OwnHarborPick } from "../components/ExpansionPlan.tsx"; // Mehrere Häfen
-import { expansionRules } from "../lib/expansion.ts";
+import { buildingLevel, expansionRules } from "../lib/expansion.ts";
 import { IntelOpsPlan, type IntelOpKind } from "../components/IntelOpsPlan.tsx"; // Lagebild Stufe 2
 
 const TYPES = [
@@ -50,7 +51,12 @@ const TYPES = [
   { id: "radarposten", text: "Radarposten", hint: "Pioniere und ein Landungsschiff errichten auf einer Küste einen Radarposten (250 km)" },
   { id: "postenangriff", text: "Posten angreifen", hint: "Angriff auf einen fremden Radarposten" },
 ] as const;
+/** Neulinge (nur Heimathafen, Kommandozentrale bis Stufe NEWBIE_KZ) sehen zuerst nur diese Arten; der Rest liegt hinter „Weitere Missionsarten“. */
+const BASIC_TYPES = new Set<string>(["ueberfall", "aufklaerung"]);
+const NEWBIE_KZ = 3;
 const INTEL_OPS = new Set<string>(["patrouille", "kampagne", "radarposten", "postenangriff"]); // Lagebild Stufe 2
+/** Nur mit passendem Ziel angeboten – dann auch für Neulinge sichtbar. */
+const CONTEXT_TYPES = new Set<string>(["abfangen", "besetzen", "postenangriff"]);
 type PlanKind = (typeof TYPES)[number]["id"];
 
 /** Bestätigung nach dem Auslaufen, passend zur Art der Mission. */
@@ -92,6 +98,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   // Art: nach der Auswahl auf eine Zeile mit „ändern“ eingeklappt (vorbelegt = schon gewählt).
   const [whyOpen, setWhyOpen] = useState(false); // „Was hilft?“ in der Vorschau
   const [barOpen, setBarOpen] = useState(false); // … und über der Aktionsleiste (grauer Knopf)
+  const [moreTypes, setMoreTypes] = useState(false);
   const [typeOpen, setTypeOpen] = useState(!preset?.type && !initialTarget?.naval && !initialTarget?.convoyId && !initialTarget?.expansion && !initialTarget?.intelOp && !initialTarget?.postId);
   // Frische Bestände beim Öffnen
   useEffect(() => {
@@ -103,7 +110,9 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
     () => [trpc.base.pathFilter().queryKey, trpc.admiral.pathFilter().queryKey], // Admirale: Status
   );
 
-  const chosen = useMemo(() => Object.fromEntries(Object.entries(units).filter(([, n]) => n > 0)), [units]);
+  // Besetzen: nur Schiffe (Seekampf, Server-Code field_ships_only) – Land- und Lufteinheiten sind gar nicht wählbar und zählen nicht mit.
+  const landOk = (id: string) => type !== "besetzen" || meta.data?.balance.units[id]?.branch === "see";
+  const chosen = useMemo(() => Object.fromEntries(Object.entries(units).filter(([id, n]) => n > 0 && landOk(id))), [units, type, meta.data]);
   const cargoSent = type === "transport" || type === "verlegung" ? Object.fromEntries(Object.entries(cargo).filter(([, n]) => n > 0)) : undefined;
   const naval = target?.blockadeId ? { blockadeId: target.blockadeId } : target?.convoyId ? { convoyId: target.convoyId } : type === "blockade" ? { holdHours } : target?.fieldId ? { fieldId: target.fieldId, ...(type === "besetzen" ? { stayAll } : {}) } : {}; // See, Felder
   const input = target ? { type, units: chosen, col: target.col, row: target.row, cargo: cargoSent, ...(target.eventId ? { eventId: target.eventId } : {}), ...(admiralId ? { admiralId } : {}), ...naval } : null;
@@ -114,9 +123,11 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
     placeholderData: keepPreviousData,
   });
 
-  if (!meta.data || !map.data) return <Loading />;
+  if (!meta.data || !map.data) return <Loading cards={3} />;
   const balance = meta.data.balance;
   const xRules = expansionRules(balance); // Mehrere Häfen
+  const offered = TYPES.filter((t) => (t.id !== "abfangen" || target?.convoyId) && (t.id !== "postenangriff" || target?.postId) && (!INTEL_OPS.has(t.id) || !!balance.intel?.patrol) && (t.id !== "besetzen" || target?.fieldId) && (t.id !== "verlegung" || base.bases.length > 1) && (t.id !== "gruendung" || base.bases.length < xRules.maxBases));
+  const hideAdvanced = !moreTypes && base.isHome && base.bases.length === 1 && buildingLevel(base, "kommandozentrale") <= NEWBIE_KZ;
   const ownTarget = target ? base.bases.find((b) => b.col === target.col && b.row === target.row && b.id !== base.id) : undefined;
   let cp = 0, troops = 0, space = 0, cargoCap = 0;
   for (const [id, n] of Object.entries(chosen)) {
@@ -147,7 +158,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
     <div>
       <div className="flex items-center justify-between mb-3">
         <h1 className="font-display text-xl font-bold uppercase">Mission planen</h1>
-        <Button kind="ghost" onClick={onClose}>Schließen</Button>
+        <BackButton onClick={onClose} />
       </div>
 
       <Card title="Art" right={!typeOpen ? <SmallButton className="-my-3" onClick={() => setTypeOpen(true)}>Ändern</SmallButton> : undefined}>
@@ -159,13 +170,16 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
           </div>
         ) : <>
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-          {TYPES.filter((t) => (t.id !== "abfangen" || target?.convoyId) && (t.id !== "postenangriff" || target?.postId) && (!INTEL_OPS.has(t.id) || !!balance.intel?.patrol) && (t.id !== "besetzen" || target?.fieldId) && (t.id !== "verlegung" || base.bases.length > 1) && (t.id !== "gruendung" || base.bases.length < xRules.maxBases)).map((t) => (
+          {offered.filter((t) => !hideAdvanced || BASIC_TYPES.has(t.id) || CONTEXT_TYPES.has(t.id) || t.id === type).map((t) => (
             <button key={t.id} type="button" onClick={() => { setType(t.id); setTypeOpen(false); }} className={`tap rounded-xl px-1 py-2 text-sm flex flex-col items-center gap-1 border ${type === t.id ? "border-sea-400 bg-sea-400/10 font-semibold reticle" : "border-navy-600 bg-navy-900"}`}>
               <Icon id={t.id} size={32} />
               {t.text}
             </button>
           ))}
         </div>
+        {hideAdvanced && offered.some((t) => !BASIC_TYPES.has(t.id) && !CONTEXT_TYPES.has(t.id) && t.id !== type) && (
+          <SmallButton className="mt-2 w-full" expanded={false} onClick={() => setMoreTypes(true)}>Weitere Missionsarten ▾</SmallButton>
+        )}
         <p className="text-xs text-slate-400 mt-1">{TYPES.find((t) => t.id === type)!.hint}</p>
         </>}
       </Card>
@@ -176,11 +190,11 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
       <Card title="Ziel">
         <OriginLine base={base} />
         {(type === "transport" || type === "verlegung") && <OwnHarborPick base={base} target={target} onPick={setTarget} />}
-        <div className="h-56 rounded-lg overflow-hidden mb-2">
+        <MapGate className="h-56 rounded-lg overflow-hidden mb-2">
           <HexMap data={map.data} selected={target} onSelect={(h) => { const f = fieldsQ.data?.fields.find((x) => x.col === h.col && x.row === h.row); setTarget(f ? { ...h, fieldId: f.id } : h); }} center={initialTarget ?? { col: base.col, row: base.row }} fields={fieldLayer} />
-        </div>
+        </MapGate>
         <p className="text-sm">
-          {!target && "Ziel auf der Karte antippen."}
+          {!target && "„Karte bedienen“ und Ziel auf der Karte antippen."}
           {target?.blockadeId && <>Blockadeverband vor dem Hafen – nur Überfall; Seekampf auf dem Feld.<br /></>}
           {target?.convoyId && <>Feindlicher Konvoi – Abfangpunkt wird berechnet.<br /></>}
           {target?.fieldId && <FieldTargetLine fieldId={target.fieldId} />}
@@ -201,7 +215,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
       <Card title="Verband">
         {note && <p className="text-xs text-messing mb-1">{note}</p>}
         <ul className="divide-y divide-navy-700">
-          {base.units.filter((u) => u.home > 0 && !balance.units[u.id]?.covert).map((u) => (
+          {base.units.filter((u) => u.home > 0 && !balance.units[u.id]?.covert && landOk(u.id)).map((u) => (
             <li key={u.id} className="py-2 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0 flex-1"><IconTile id={u.id} size={36} tone={unitTone(balance, u.id)} /><div className="min-w-0 break-words leading-tight">{label(u.id)}<div className="text-xs text-slate-400">{fmtNum(u.home)} daheim</div></div></div>
               <Stepper value={units[u.id] ?? 0} max={u.home} onChange={(v) => setUnits({ ...units, [u.id]: v })} />
@@ -278,7 +292,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         {p && !p.ok && <ActionRemedy code={p.code} detail={why} open={barOpen} onClose={() => setBarOpen(false)} />}
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1 text-sm leading-tight">
-            <div className="font-semibold truncate">{fmtNum(Object.values(chosen).reduce((a, b) => a + b, 0))} Einheiten{ownTarget ? ` → ${ownTarget.name}` : target ? ` · ${type === "gruendung" ? "Außenposten " : "Feld "}${target.col}/${target.row}` : ""}</div>
+            <div className="font-semibold truncate">{unitCount(Object.values(chosen).reduce((a, b) => a + b, 0))}{ownTarget ? ` → ${ownTarget.name}` : target ? ` · ${type === "gruendung" ? "Außenposten " : "Feld "}${target.col}/${target.row}` : ""}</div>
             {p && !p.ok && target && Object.keys(chosen).length > 0
               ? <ReasonInline code={p.code} open={barOpen} onToggle={() => setBarOpen(!barOpen)} />
               : <div className="text-xs text-ink2 truncate">{!target ? "Ziel wählen" : Object.keys(chosen).length === 0 ? "Einheiten wählen" : !p ? "Berechne …" : p.ok ? `Fahrt ${fmtSeconds(p.travelSeconds)} · ${fmtNum(p.fuelCost)} Treibstoff` : errorText(p.code)}</div>}
@@ -300,6 +314,11 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
       </>}
     </div>
   );
+}
+
+/** „1 Einheit“, „3 Einheiten“. */
+function unitCount(n: number): string {
+  return `${fmtNum(n)} ${n === 1 ? "Einheit" : "Einheiten"}`;
 }
 
 /** Grobe Einschätzung gegen ein Nest: Feuerkraft zur See und an Land im Vergleich (keine Simulation). */

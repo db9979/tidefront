@@ -58,7 +58,7 @@ export function AdminCartel() {
         />
         <span className="mono text-base w-14 text-right" aria-live="polite">{pct} %</span>
       </div>
-      <div className="relative h-4 mono text-[10.5px] text-ink2 -mt-1 mb-2 mr-[68px]">
+      <div className="relative h-4 mono text-[11px] text-ink2 -mt-1 mb-2 mr-[68px]">
         <span className="absolute left-0">{MIN} %</span>
         {/* Marke an der echten Position von 100 % (Skala 25–300 ist nicht mittig um 100). */}
         <span className="absolute -translate-x-1/2" style={{ left: `${((100 - MIN) / (MAX - MIN)) * 100}%` }}>│100 %</span>

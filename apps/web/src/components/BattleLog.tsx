@@ -51,7 +51,7 @@ function Side({ name, before, after }: { name: string; before: Counts; after: Co
   const ids = Object.keys(before).filter((id) => (before[id] ?? 0) > 0);
   return (
     <div className="min-w-0">
-      <div className="font-display text-[10px] uppercase tracking-[0.12em] text-see mb-1 truncate">{name}</div>
+      <div className="font-display text-[11px] uppercase tracking-[0.12em] text-see mb-1 truncate">{name}</div>
       {ids.length === 0 ? <span className="text-ink2 text-xs">–</span> : (
         <ul className="space-y-1">
           {ids.map((id) => {
@@ -93,7 +93,7 @@ export function BattleLog({ b, names, role, protectedPerResource = null, salvage
   return (
     <>
       <section className="text-center pb-3 mb-3 border-b border-rule">
-        <div className="font-display text-[10px] uppercase tracking-[0.22em] text-ink2">Kampfbericht · Logbuch</div>
+        <div className="font-display text-[11px] uppercase tracking-[0.22em] text-ink2">Kampfbericht · Logbuch</div>
         <div className="flex items-center gap-2 mx-10 mt-2" aria-hidden="true">
           <i className="flex-1 border-t-[3px] border-double border-ink" /><span className="diamond bg-siegel" /><i className="flex-1 border-t-[3px] border-double border-ink" />
         </div>
@@ -160,7 +160,7 @@ export function BattleLog({ b, names, role, protectedPerResource = null, salvage
                 <div className={`mono text-[13px] font-semibold ${(b.loot[r] ?? 0) > 0 ? (gain ? "text-moos" : "text-siegel") : "text-ink2"}`}>
                   {(b.loot[r] ?? 0) > 0 ? (gain ? "+" : "−") : ""}{fmtNum(b.loot[r] ?? 0)}
                 </div>
-                <div className="text-[10px] text-ink2">{label(r)}</div>
+                <div className="text-[11px] text-ink2">{label(r)}</div>
               </div>
             ))}
           </div>

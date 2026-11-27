@@ -19,7 +19,7 @@ import { HarborVignette, fmtDeg } from "../components/Vignette.tsx";
 import { hexCenter } from "@tidefront/world";
 import { Timeline } from "../components/Timeline.tsx";
 import { WorldEventBanner } from "../components/WorldEvents.tsx";
-import { researchNote } from "../lib/research.ts";
+import { researchNote, roman, techName } from "../lib/research.ts";
 import { buildingBreakdown } from "../lib/breakdown.ts";
 import { Breakdown } from "../components/Breakdown.tsx";
 import { IntelPanel, SabotageBanner, sabotagedUntil } from "../components/Intel.tsx"; // Nachrichtendienst
@@ -72,7 +72,7 @@ export function BaseScreen(props: {
             <h1 className="font-serif text-[26px] leading-none truncate flex-1 min-w-0 pt-1">{base.name}</h1>
             <HarborManageButton base={base} className="-mb-2" />{/* Mehrere Häfen: umbenennen, Kolonie aufgeben */}
           </div>
-          <div className="mono text-[10.5px] text-ink2 mt-1 truncate">{coords(base.col, base.row)} · Feld {base.col}/{base.row}</div>
+          <div className="mono text-[11px] text-ink2 mt-1 truncate">{coords(base.col, base.row)} · Feld {base.col}/{base.row}</div>
           <div className="flex flex-wrap gap-1 mt-1">
             {base.protection.status ? <Badge tone="green">{label(base.protection.status)}</Badge> : <Badge tone="red">ungeschützt</Badge>}
             <Badge>{base.market.port.name} {fmtNum(base.market.port.distanceKm)} km</Badge>
@@ -99,7 +99,7 @@ export function BaseScreen(props: {
       {quests.prominent && questBar}
 
       {/* Bauhof (Bauschlange) */}
-      <BuildYard base={base} now={now} />
+      <BuildYard base={base} now={now} onResearch={props.onResearch} />
 
       {/* Gebäudegruppen */}
       {GROUPS.map((g) => (
@@ -141,7 +141,7 @@ function levelCost(balance: Balance, id: string, level: number): Record<string, 
   return out;
 }
 
-function BuildYard({ base, now }: { base: BaseData; now: number }) {
+function BuildYard({ base, now, onResearch }: { base: BaseData; now: number; onResearch: () => void }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const cancel = useCommand(
     (i: { key: string; buildingId: string; targetLevel: number }) => trpcClient.base.cancelUpgrade.mutate(i),
@@ -194,7 +194,25 @@ function BuildYard({ base, now }: { base: BaseData; now: number }) {
       {queue.length > 1 && <p className="text-xs text-slate-400 mt-1">Abbruch: der laufende Auftrag nach Restzeit, wartende voll erstattet. Spätere Stufen desselben Gebäudes fallen mit weg.</p>}
       <ErrorLine text={cancel.error} code={cancel.code} />
       <p className="text-xs text-ink2 flex items-center gap-1.5 mt-2"><span className="diamond bg-moos shrink-0" aria-hidden="true" /> = jetzt ausbaubar (Rohstoffe reichen, Platz in der Schlange frei)</p>
+      <ResearchLine base={base} now={now} onOpen={onResearch} />
     </Card>
+  );
+}
+
+/** Kleine Statuszeile der Forschung im Bauhof (nur mit Forschungsamt): läuft / fertig / frei; antippen öffnet die Forschung. */
+function ResearchLine({ base, now, onOpen }: { base: BaseData; now: number; onOpen: () => void }) {
+  const r = base.research;
+  if (!r) return null;
+  const o = r.order;
+  const text = r.pendingChoice ? "Durchbruch – Belohnung wählen" : !o ? "Forschungsamt frei – neue Forschung wählen"
+    : `${techName(o.techId)} Stufe ${roman(o.targetLevel)} · ${o.finishesAt <= now ? "wird abgeschlossen …" : `noch ${fmtDuration(o.finishesAt - now)}`}`;
+  return (
+    <button type="button" onClick={onOpen} data-testid="research-line"
+      className="tap w-full mt-2 pt-2 border-t border-dotted border-rule flex items-center gap-2 text-left text-xs text-ink2">
+      <Icon id="forschungsamt" size={20} className="shrink-0" />
+      <span className="min-w-0 flex-1 truncate"><span className="font-display uppercase tracking-[0.08em] text-ink mr-1">Forschung</span>{text}</span>
+      <span aria-hidden>›</span>
+    </button>
   );
 }
 

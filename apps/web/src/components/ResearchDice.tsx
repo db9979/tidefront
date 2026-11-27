@@ -37,7 +37,7 @@ export function DiceRoll({ roll, animate }: { roll: Roll; animate: boolean }) {
     <div className="flex items-center gap-3 rounded-xl bg-paper border-[3px] border-double border-ink p-3" aria-live="polite">
       <Icon id="wuerfel" size={52} className={rolling ? "animate-spin motion-reduce:animate-none" : ""} />
       <div className="min-w-0">
-        <div className="font-display text-[10px] uppercase tracking-[0.2em] text-ink2">Prozentwurf W100 · Durchbruch bei 01–{two(threshold)}</div>
+        <div className="font-display text-[11px] uppercase tracking-[0.2em] text-ink2">Prozentwurf W100 · Durchbruch bei 01–{two(threshold)}</div>
         {rolling ? (
           <div className="mono text-2xl">Wurf {two(shown)} …</div>
         ) : (

@@ -138,6 +138,7 @@ const ERRORS: Record<string, string> = {
   own_base: "Das ist der eigene Stützpunkt.",
   transport_needs_base: "Transporte gehen nur an Stützpunkte.",
   empty_fleet: "Keine Einheiten gewählt.",
+  no_combat_units: "Keine Kampfeinheiten daheim.",
   units_unavailable: "So viele Einheiten sind nicht daheim.",
   no_carrier: "Der Verband braucht Schiffe oder Flugzeuge.",
   cargo_capacity: "Die Ladung übersteigt die Ladekapazität.",

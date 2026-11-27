@@ -52,9 +52,9 @@ test("Registrieren, Heimathafen wählen, abmelden, anmelden", async ({ page, see
   const [row] = await seed.sql`select b.name from base b join player p on p.id = b.player_id where p.name = ${name} and b.is_home`;
   expect(row.name).toBe(harbor);
 
-  // Abmelden über Handbuch → Abmelden, dann wieder anmelden.
-  await page.getByRole("button", { name: "Handbuch und Einstellungen" }).click();
-  await page.getByRole("button", { name: /Abmelden/ }).first().click();
+  // Abmelden über Menü → Abmelden, dann wieder anmelden.
+  await page.getByRole("button", { name: "Menü", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /^Abmelden/ }).click();
   await expect(page.getByRole("button", { name: "Anmelden" }).first()).toBeVisible();
   await page.getByLabel("Name", { exact: true }).fill(name);
   await page.getByLabel(/^Passwort/).fill("falsches-passwort");

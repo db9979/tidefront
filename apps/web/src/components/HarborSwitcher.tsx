@@ -28,9 +28,9 @@ export function HarborSwitcher({ base, now, onSwitch, onPlanFounding }: { base: 
       <button type="button" onClick={() => setOpen(true)} className="w-full flex items-center gap-1.5 px-2 pt-1 -mb-0.5 text-left min-h-[26px]" aria-label={`Hafen ${base.name} – Hafen wechseln`}>
         <Icon id={base.isHome ? "heimathafen" : "gruendung"} size={16} className="shrink-0" />
         <span className="font-serif text-[15px] leading-tight truncate">{base.name}</span>
-        <span className="text-[10px] font-display uppercase tracking-[0.12em] text-ink2 shrink-0">{base.isHome ? "Heimathafen" : "Außenposten"}</span>
+        <span className="text-[11px] font-display uppercase tracking-[0.12em] text-ink2 shrink-0">{base.isHome ? "Heimathafen" : "Außenposten"}</span>
         <span className="text-ink2 text-xs shrink-0" aria-hidden="true">▾</span>
-        {otherAttack && <span className="ml-auto shrink-0 text-[10px] font-display uppercase tracking-wider text-siegel flex items-center gap-1"><span className="w-2 h-2 rotate-45 bg-siegel pulse" />Anderer Hafen bedroht</span>}
+        {otherAttack && <span className="ml-auto shrink-0 text-[11px] font-display uppercase tracking-wider text-siegel flex items-center gap-1"><span className="w-2 h-2 rotate-45 bg-siegel pulse" />Anderer Hafen bedroht</span>}
       </button>
       <Sheet open={open} onClose={() => setOpen(false)} title="Deine Häfen" icon={<Icon id="heimathafen" size={28} />}>
         <HarborList base={base} now={now} onSwitch={(id) => { setOpen(false); onSwitch(id); }} />

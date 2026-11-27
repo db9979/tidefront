@@ -46,7 +46,7 @@ function Badges({ badges, size = 16 }: { badges: Row["badges"]; size?: number })
 
 /** Dezentes Kennzeichen für KI-Spieler. */
 function BotMark() {
-  return <span title="KI-Spieler (Computergegner)" className="ml-1 align-[1px] rounded border border-navy-600 px-1 text-[10px] font-semibold text-slate-400">KI</span>;
+  return <span title="KI-Spieler (Computergegner)" className="ml-1 align-[1px] rounded border border-navy-600 px-1 text-[11px] font-semibold text-slate-400">KI</span>;
 }
 
 function ProtectionBadge({ p }: { p: string | null }) {

@@ -66,7 +66,7 @@ export function ChooseBase() {
       <div className="p-3 bg-navy-800/95 border-b border-navy-600">
         <div className="flex items-start justify-between gap-2">
           <h1 className="font-mono text-sm uppercase tracking-widest text-ink">Standort für deinen Heimathafen</h1>
-          <button type="button" className="text-xs text-sea-300 underline min-h-[44px] -my-3 px-1" onClick={async () => { await trpcClient.auth.logout.mutate(); queryClient.clear(); location.reload(); }}>Abmelden</button>
+          <button type="button" className="text-xs text-sea-300 underline min-h-[44px] -my-3 px-1 whitespace-nowrap hyphens-manual" onClick={async () => { await trpcClient.auth.logout.mutate(); queryClient.clear(); location.reload(); }}>Abmelden</button>
         </div>
         <p className="text-xs text-slate-300">Blau markierte Felder sind freie Küste. Tippe eines an oder nimm unten einen Vorschlag aus der Schnellwahl.</p>
         <NewSeasonNotice />

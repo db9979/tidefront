@@ -29,10 +29,10 @@ export function useWhatHelps(): [boolean, (v: boolean) => void] {
   return useState(false);
 }
 
-/** Knopf „Was hilft?“ im Stil der leisen Nebenaktionen. */
+/** Knopf „Was hilft?“ im Stil der leisen Nebenaktionen (volle 44-px-Tippfläche). */
 export function WhatHelpsToggle({ open, onToggle, className = "" }: { open: boolean; onToggle: () => void; className?: string }) {
   return (
-    <SmallButton expanded={open} onClick={onToggle} className={`h-8 min-h-8 px-2 ${className}`}>
+    <SmallButton expanded={open} onClick={onToggle} className={`px-2 ${className}`}>
       Was hilft? <span aria-hidden className="ml-1 normal-case">{open ? "▴" : "▾"}</span>
     </SmallButton>
   );
@@ -115,7 +115,7 @@ function BlockerCard({ reason, remedy: r, open, setOpen, role }: {
           <span className="block text-sm font-medium leading-snug">{reason}</span>
           {r.summary && <span className="block text-xs text-ink2 mt-0.5">{r.summary}</span>}
         </span>
-        <span className="shrink-0 text-[10.5px] font-display uppercase tracking-[0.1em] text-messing whitespace-nowrap">{open ? "Was hilft ▴" : "Was hilft ▾"}</span>
+        <span className="shrink-0 text-[11px] font-display uppercase tracking-[0.1em] text-messing whitespace-nowrap">{open ? "Was hilft ▴" : "Was hilft ▾"}</span>
       </button>
       {open && <div className="px-3 pb-3 pt-0.5 border-t border-messing/25"><div className="pt-2.5"><RemedyPanel remedy={r} bare onGo={() => setOpen(false)} /></div></div>}
     </div>
@@ -163,7 +163,7 @@ export function ReasonInline({ code, text, open, onToggle }: { code: string; tex
   if (!known) return <div className="text-xs text-siegel truncate">{shown}</div>;
   return (
     <button type="button" aria-expanded={open} onClick={onToggle} className="block w-full text-left text-xs text-siegel truncate">
-      {shown} <span className="text-messing font-display uppercase tracking-[0.1em] text-[10.5px]">· Was hilft {open ? "▴" : "▾"}</span>
+      {shown} <span className="text-messing font-display uppercase tracking-[0.1em] text-[11px]">· Was hilft {open ? "▴" : "▾"}</span>
     </button>
   );
 }

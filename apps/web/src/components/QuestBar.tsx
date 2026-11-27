@@ -95,7 +95,7 @@ function Tile({ icon, title, value, count, ready, onOpen }: { icon: string; titl
       <span className="w-full mt-1"><Bar value={value} tone={value >= 1 ? "green" : "brass"} /></span>
       <span className="mono text-[11px] text-ink2 mt-0.5">{count}</span>
       {ready > 0 && (
-        <span className="absolute -top-2 -right-1.5 rounded-full bg-siegel text-white text-[10.5px] px-1.5 py-0.5 leading-none shadow-sm whitespace-nowrap">
+        <span className="absolute -top-2 -right-1.5 rounded-full bg-siegel text-white text-[11px] px-1.5 py-0.5 leading-none shadow-sm whitespace-nowrap">
           {ready} abholbereit
         </span>
       )}

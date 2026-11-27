@@ -109,7 +109,7 @@ export function PlayerTrade({ base }: { base: BaseData }) {
 
       <div className="flex items-baseline justify-between mt-5 mb-1 border-b-[3px] border-double border-ink pb-1">
         <h3 className="font-display text-[11px] uppercase text-ink">Angebote ({open.length})</h3>
-        <span className="text-[10.5px] text-ink2">Wert ggü. Börse für dich</span>
+        <span className="text-[11px] text-ink2">Wert ggü. Börse für dich</span>
       </div>
       {open.length === 0 ? (
         <p className="text-sm text-ink2 py-3 text-center font-serif italic">Keine offenen Angebote – stelle das erste ein.</p>
@@ -139,9 +139,9 @@ function OfferRow({ o, fee, base, prices, busy, onAccept, onWithdraw }: { o: Off
         <DevTag v={v} />
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 text-sm mt-1.5 rounded bg-[#fffdf8] border border-rule px-2 py-1.5">
-        <span className="min-w-0"><span className="block text-ink2 text-[10.5px] font-display uppercase">{o.own ? "du gibst" : "du bekommst"}</span><Asset id={o.give} qty={o.giveQty} /></span>
+        <span className="min-w-0"><span className="block text-ink2 text-[11px] font-display uppercase">{o.own ? "du gibst" : "du bekommst"}</span><Asset id={o.give} qty={o.giveQty} /></span>
         <span className="text-ink2" aria-hidden="true">⇄</span>
-        <span className="min-w-0 text-right"><span className="block text-ink2 text-[10.5px] font-display uppercase">{o.own ? "du willst" : "du zahlst"}</span><Asset id={o.want} qty={o.wantQty} /></span>
+        <span className="min-w-0 text-right"><span className="block text-ink2 text-[11px] font-display uppercase">{o.own ? "du willst" : "du zahlst"}</span><Asset id={o.want} qty={o.wantQty} /></span>
       </div>
       {!confirm && <ValueLine v={v} />}
       {Object.keys(o.escort).length > 0 && (

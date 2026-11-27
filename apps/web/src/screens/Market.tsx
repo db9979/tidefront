@@ -1,7 +1,8 @@
-// Börse als Handelsoberfläche: Kopf mit Kreditkonto und kompakter Marktnachricht, darunter Unterreiter (gemerkt):
+// Börse als Handelsoberfläche: Unterreiter (gemerkt) ganz oben, darunter der einklappbare Kopf mit Kreditkonto und
+// kompakter Marktlage:
 //   Handel      – Kurstafel, Order direkt darunter (Knopf in der Aktionsleiste), Kursverlauf (eingeklappt), Konvois
 //   Spieler     – Handel mit Spielern (Angebot einstellen in der Aktionsleiste) und Statistik
-//   Nachrichten – Marktnachrichten
+//   Marktlage   – Marktnachrichten (Schlüssel bleibt „nachrichten“, damit gemerkte Wahl und Sprungziele gelten)
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -9,7 +10,7 @@ import { trpc, type BaseData } from "../lib/trpc.ts";
 import { label } from "../lib/names.ts";
 import { Icon } from "../icons.tsx";
 import { fmtDuration, useNow } from "../lib/time.ts";
-import { Card, Loading, Segments, useSegment } from "../ui.tsx";
+import { Card, Loading, SegmentPanel, Segments, useSegment } from "../ui.tsx";
 import { WhatHelps } from "../components/Remedy.tsx";
 import { PlayerTrade } from "../components/PlayerTrade.tsx";
 import { PlayerTradeStats } from "../components/TradeValue.tsx";
@@ -27,7 +28,7 @@ type Seg = "handel" | "spieler" | "nachrichten";
 const SEGS: { id: Seg; label: string }[] = [
   { id: "handel", label: "Handel" },
   { id: "spieler", label: "Spieler" },
-  { id: "nachrichten", label: "Nachrichten" },
+  { id: "nachrichten", label: "Marktlage" },
 ];
 
 /** initialResource: vorgewählte Ressource (Sprung aus „Was hilft?“). */
@@ -39,7 +40,7 @@ export function MarketScreen({ base, initialResource }: { base: BaseData; initia
   const now = useNow();
   const [resource, setResource] = useState(initialResource ?? "stahl");
   const [seg, setSeg] = useSegment<Seg>("boerse", SEGS.map((x) => x.id), "handel");
-  if (!m.data || !meta.data) return <Loading />;
+  if (!m.data || !meta.data) return <Loading cards={3} />;
 
   const cfg = meta.data.balance.market as MarketCfg;
   const fromLevel = (meta.data.balance.buildings as { hafenkommandantur?: { marketFromLevel?: number } }).hafenkommandantur?.marketFromLevel ?? 3;
@@ -78,10 +79,11 @@ export function MarketScreen({ base, initialResource }: { base: BaseData; initia
 
   return (
     <div>
+      <Segments label="Börse" value={seg} onChange={setSeg} items={SEGS} controls />
+      <SegmentPanel label="Börse" value={seg}>
       <MarketHeader credits={credits} creditLimit={base.market.creditLimit} status={status} port={port} travelMs={travelMs} />
-      {/* Kompakte Marktnachricht-Zeile bleibt über den Unterreitern. */}
-      <MarketNews compact />
-      <Segments label="Börse" value={seg} onChange={setSeg} items={SEGS} />
+      {/* Kompakte Marktlage-Zeile über dem Inhalt (nicht auf „Marktlage“ selbst). */}
+      {seg !== "nachrichten" && <MarketNews compact />}
 
       {seg === "handel" && <>
         <PriceBoard resources={m.data.resources} selected={sel.id} onSelect={pick} nowMs={now} halfLife={cfg.reversionHalfLifeHours} />
@@ -120,10 +122,11 @@ export function MarketScreen({ base, initialResource }: { base: BaseData; initia
       </>}
 
       {seg === "nachrichten" && (
-        <Card title={<><Icon id="nav-bericht" size={18} /> Marktnachrichten</>}>
+        <Card title={<><Icon id="nav-bericht" size={18} /> Marktlage</>}>
           <MarketNews limit={20} showRefs />
         </Card>
       )}
+      </SegmentPanel>
     </div>
   );
 }

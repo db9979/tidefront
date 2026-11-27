@@ -78,7 +78,7 @@ export function Timeline({ base, limit = SHOWN }: { base: BaseData; limit?: numb
               <span className={`flex-1 min-w-0 text-sm truncate ${i.alert ? "text-siegel font-semibold" : ""}`}>{i.text}</span>
               <span className="text-right leading-tight">
                 <span className={`block mono text-[13px] ${i.alert ? "text-siegel" : ""}`}>{i.atMs <= now ? "jetzt" : fmtDuration(i.atMs - now)}</span>
-                <span className="block mono text-[10px] text-ink2">{fmtTime(i.atMs)}</span>
+                <span className="block mono text-[11px] text-ink2">{fmtTime(i.atMs)}</span>
               </span>
             </li>
           ))}

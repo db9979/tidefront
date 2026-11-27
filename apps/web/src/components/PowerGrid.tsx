@@ -96,7 +96,7 @@ export function PowerGrid({ base }: { base: BaseData }) {
         {sources.map((s) => (
           <div key={s.key} className="rounded-lg border border-rule bg-paper py-1">
             <SourceArt base={base} k={s.key} icon={s.icon} windCut={windCut} />
-            <div className="text-[10px] text-ink2 leading-tight">{s.label}</div>
+            <div className="text-[11px] text-ink2 leading-tight">{s.label}</div>
             <div className="mono text-xs">{fmtNum(g.now.supply[s.key])}</div>
           </div>
         ))}
@@ -138,7 +138,7 @@ export function PowerGrid({ base }: { base: BaseData }) {
       <Curve curve={g.curve} sources={sources} />
       <SurplusAhead curve={g.curve} />
       {g.forecast && (
-        <p className="text-[10.5px] text-ink2">
+        <p className="text-[11px] text-ink2">
           Vorhersage: je weiter voraus, desto unsicherer (alle {g.forecast.issuedEveryHours} h neu).
           {g.forecast.skill < 0.999 ? ` Funkmesstechnik und Radar: Unsicherheit −${Math.round((1 - g.forecast.skill) * 100)} %.` : " Funkmesstechnik und Radarstation machen sie genauer."}
         </p>
@@ -205,7 +205,7 @@ function Curve({ curve, sources }: { curve: Hour[]; sources: readonly (typeof SO
         })}
         {curve.map((h, i) => (i % 6 === 0 ? <text key={h.atMs} x={i * bw + 1} y={H + 14} fontSize={9} fill={INK} className="mono">{hourOf(h.atMs)} Uhr</text> : null))}
       </svg>
-      <figcaption className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10.5px] text-ink2">
+      <figcaption className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-ink2">
         {sources.map((s) => (
           <span key={s.key} className="flex items-center gap-1">
             <svg width="10" height="10" aria-hidden="true"><rect width="10" height="10" fill={s.fill} stroke={INK} strokeWidth={0.6} /></svg>{s.label}
@@ -259,7 +259,7 @@ function SurplusAhead({ curve }: { curve: Hour[] }) {
   }
   if (t.fuel + t.cable + t.wasted < 1) return null;
   return (
-    <div className="text-[10.5px] text-ink2">
+    <div className="text-[11px] text-ink2">
       <div className="flex flex-wrap gap-x-3 gap-y-0.5">
         <span>Überschuss {curve.length} h (Streifen unter der Kurve):</span>
         {SURPLUS.map((k) => t[k.key] >= 1 && (
@@ -313,7 +313,7 @@ function Forecast({ g }: { g: Grid }) {
       {possible !== null && (
         <p className="text-xs text-ink2 mb-1">Sturm möglich ab etwa {hourOf(possible)} Uhr (oberer Rand der Vorhersage).</p>
       )}
-      <div className="grid grid-cols-8 gap-0.5 text-center text-[10px]">
+      <div className="grid grid-cols-8 gap-0.5 text-center text-[11px]">
         {slots.map((h, i) => (
           <div key={h.atMs} className="rounded border border-rule bg-paper py-0.5">
             <div className="mono">{hourOf(h.atMs)}h</div>
@@ -323,7 +323,7 @@ function Forecast({ g }: { g: Grid }) {
           </div>
         ))}
       </div>
-      <p className="text-[10.5px] text-ink2 mt-0.5">Zeilen: Wind in Beaufort (von–bis), Bewölkung in Prozent. Nebel kürzt die Radar-Vorwarnzeit und trübt Aufklärung.</p>
+      <p className="text-[11px] text-ink2 mt-0.5">Zeilen: Wind in Beaufort (von–bis), Bewölkung in Prozent. Nebel kürzt die Radar-Vorwarnzeit und trübt Aufklärung.</p>
     </div>
   );
 }

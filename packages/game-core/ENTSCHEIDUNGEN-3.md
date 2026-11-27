@@ -485,3 +485,36 @@ Stahl-Gegenwert, Produktion des Militär-Bots (45 % Rüstung) Tag 28 ≈ 1 130/h
    Wochenziele im gewählten Zeitraum, nur Menschen.
 8. **Laufzeit je tRPC-Aufruf:** Middleware an der Wurzel-Prozedur (apps/api/src/trpc.ts), Ringpuffer der letzten 256
    Messungen je Prozedur im Speicher des API-Prozesses (rpc-timing.ts), p50/p95 nach Nearest-Rank; nach Neustart leer.
+
+## S. Oberfläche und Bedienung (ui)
+
+1. **Allianz unter Truppen statt Meldungen.** Meldungen hatte sieben Reiter; „Allianz“ lag als siebter meist außerhalb
+   der sichtbaren Leiste (Tippen + seitlich wischen + Tippen). Unter Truppen ist sie der vierte Reiter neben Einsatz,
+   Ausbilden, Abwehr – zwei Tipps, ohne Wischen, und dort, wo Stationieren und Sammelangriff ohnehin hingehören.
+   Die Alternative „Meldungen in Post und Rang teilen“ hätte eine sechste Hauptnavigation oder einen zusätzlichen
+   Klick für Berichte bedeutet. Sprungziele „Was hilft? → Allianz“ führen über App.navTo auf Truppen → Allianz; die
+   Hinweistexte der Engine („Annehmen unter Truppen → Allianz“) und das Handbuch sind angepasst.
+2. **Reiterleisten** (ui.tsx `Segments`) sind Tabs im ARIA-Muster: Pfeiltasten/Pos1/Ende, nur der gewählte Reiter in
+   der Tab-Reihenfolge, `aria-controls` auf ein `SegmentPanel` (Meldungen, Truppen, Börse).
+3. **Menü statt „?“** in der Kopfleiste (Symbol + „Menü“): Blatt mit Handbuch, Einstellungen, Verwaltung (nur Admins),
+   Abmelden. Einstellungen/Verwaltung öffnen direkt, ohne Umweg über das Handbuch.
+4. **Missionsplanung:** Die Mini-Karte liegt hinter einer Deckfläche („Karte bedienen“), damit Wischen die Seite rollt
+   (die Karte selbst setzt touch-action none); „Fertig“ sperrt wieder. Neulinge (nur Heimathafen, Kommandozentrale bis
+   Stufe 3) sehen zuerst Überfall und Aufklärung; zielbezogene Arten (Besetzen, Abfangen, Posten angreifen) und die
+   gewählte Art bleiben immer sichtbar. Besetzen bietet nur Schiffe an (Server: field_ships_only).
+5. **Kontrast und Größe:** slate-600 = #67624f (≥ 4,5:1 auf allen Papiertönen), Fließtext und Kleinbeschriftungen
+   mindestens 11 px (Kartenbeschriftungen in map/ ausgenommen). Tippflächen ≥ 44 px auch für „Was hilft?“, die
+   Kapitel-Pillen des Handbuchs (Pille bleibt 32 px, Tippfläche 44 px) und kompakte Stepper.
+6. **Börse:** Kurse mit zwei Nachkommastellen und „Kr“ („1,00 Kr“ statt „1,000“, das wie eine Tausendergruppe las);
+   Unterreiter vor dem einklappbaren Kopf; „Nachrichten“ heißt „Marktlage“ (Schlüssel bleibt `nachrichten`).
+7. **Lagebild:** eigene Sensoren und Sichtungen zuerst, Satelliten unten, eingeklappt solange weder Satellit noch
+   Startrampe da ist; die Voraussetzung der Startrampe kommt aus der Balance (`buildings.startrampe.requires`).
+   „Lohnende Ziele“ ohne Kampfeinheiten: „Aufklären“ ist die Hauptaktion, „Angreifen“ bleibt grau mit „Was hilft?“
+   (neuer Hinweis `no_combat_units`).
+8. **Wetterebene dezenter:** Grunddeckkraft 0,7, Isobaren blasser, Windfahnen der Übersicht erst ab Zoom
+   LOD_OVERVIEW. Bei prefers-reduced-motion keine weichen Überblendungen (harte Stufen); die Schicht bewegt sich sonst
+   nicht (Neuzeichnen je 15-Minuten-Fenster).
+9. **Kleinigkeiten:** Stromfeld zeigt bei ausgeglichener Bilanz „gedeckt“ und ohne Speicher die Kraftwerk-Auslastung
+   („KW 64 %“); Produktionsgebäude nennen die Grundproduktion; Forschungsstatus als Zeile im Bauhof; Ladeanzeigen
+   erkennen Drosselung (429) und Fehler und bieten „Erneut versuchen“; Inhalte laden mit Kartenskelett. Desktop ab
+   1024 px: Inhalt bis max-w-3xl, Karte volle Breite.
