@@ -20,7 +20,7 @@ export function ChooseBase() {
   const [nightHour, setNightHour] = useState<number | null>(23);
   const [showHelp, setShowHelp] = useState(true);
   const cmd = useCommand(
-    (i: { key: string; col: number; row: number; name: string; nightShieldStartHour: number | null; tzOffsetMinutes: number }) => trpcClient.base.choose.mutate(i),
+    (i: { key: string; col: number; row: number; name: string; nightShieldStartHour: number | null; tzOffsetMinutes: number; timeZone?: string }) => trpcClient.base.choose.mutate(i),
     () => [trpc.base.pathFilter().queryKey, trpc.world.pathFilter().queryKey],
   );
   const free = useMemo(() => {
@@ -118,7 +118,7 @@ export function ChooseBase() {
               <Button
                 className="w-full"
                 disabled={cmd.busy || name.trim().length < 2}
-                onClick={() => void cmd.run({ col: sel.col, row: sel.row, name: name.trim(), nightShieldStartHour: nightHour, tzOffsetMinutes: -new Date().getTimezoneOffset() })}
+                onClick={() => void cmd.run({ col: sel.col, row: sel.row, name: name.trim(), nightShieldStartHour: nightHour, tzOffsetMinutes: -new Date().getTimezoneOffset(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || undefined })}
               >
                 Heimathafen gründen
               </Button>

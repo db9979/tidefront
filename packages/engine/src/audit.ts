@@ -60,5 +60,7 @@ export async function cleanup(engine: Engine, nowMs: number, wreckHours: number)
   await engine.db.execute(sql`delete from session where expires_at < now()`);
   await engine.db.execute(sql`delete from command_log where created_at < now() - interval '7 days'`);
   await engine.db.execute(sql`delete from game_event where status = 'done' and processed_at < now() - interval '3 days'`);
+  // Prüfläufe (alle 10 min eine Zeile): 14 Tage aufheben, den jüngsten immer (Betriebsstatus ops.ts).
+  await engine.db.execute(sql`delete from audit_run where created_at < now() - interval '14 days' and id < (select max(id) from audit_run)`);
   void eq;
 }

@@ -483,3 +483,38 @@ Stahl-Gegenwert, Produktion des Militär-Bots (45 % Rüstung) Tag 28 ≈ 1 130/h
 5. Kleinkram: Zähler „abholbereit“ zählte die Abschlussbelohnung doppelt (guideView zählt sie schon); „Los“ beim
    Schützen-/Schiffe-Auftrag öffnet Truppen → Ausbilden, beim Nest-Auftrag Truppen → Einsatz (lohnende Ziele);
    Hafenwahl zeigt die Nest-Stufe nur, wenn sie bekannt ist.
+
+## Stabilität und Sicherheit (Prüfung 0.22, Kürzel sta)
+
+1. **Fälligkeit bei Wiederholungen:** Neue Spalte `game_event.orig_due_at` (Migration durch den Integrator). Beim ersten
+   Fehlversuch merkt events.ts die ursprüngliche Fälligkeit; `due_at` ist danach nur noch der Wiederholungszeitpunkt
+   (2^n s). Handler, Meldungen, Tagesbefehle und Erfolge bekommen immer die ursprüngliche Spielzeit – Kampf, Fortschreibung
+   und Rückkehrzeiten verschieben sich nicht, Ketten (field_tick usw.) driften nicht.
+2. **Wächter** (event-watchdog.ts, Worker alle 10 min): Missionen auf outbound/returning ohne offenes Ereignis bekommen
+   Ankunft bzw. Rückkehr (frühestens jetzt); hat die Ankunft schon zweimal endgültig versagt, fährt der Verband ohne Ziel
+   heim (Fahrzeit der Hinfahrt, Kartell löst sich auf), statt endlos zu scheitern. Ketten: jeder Hafen hat ein offenes
+   raid_launch (neu erst nach raidIntervalHours, kein Sofort-Überfall), jeder Radarposten radar_post_tick, jedes aktive
+   Seekabel cable_tick (rechnet bis jetzt ab), jeder fliegende Satellit nächsten Überflug und Ende (verpasste Überflüge
+   werden nicht nachgeholt), Patrouillen auf Station patrol_end/patrol_tick, Sammelangriffe Auslaufen/Ankunft. Jede
+   Reparatur sperrt das Objekt und prüft erneut (keine Doppel neben einem gerade laufenden Handler). Mitglieder von
+   Sammelangriffen (plan.allianceRaidId) und stationierte/haltende Verbände außer Patrouillen bleiben unberührt.
+   Verwaltung → „Fehlgeschlagene Ereignisse“: Liste mit letztem Fehler, „Neu einreihen“ (lehnt ab, wenn für dasselbe
+   Objekt schon ein Ereignis dieses Typs offen ist – sonst liefe eine Kette doppelt).
+3. **Login:** `trustProxy` nur Loopback und private Netze (Env `TRUST_PROXY`, Vorgabe
+   `loopback,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16`): der Proxy im Heimnetz (und die Docker-Bridge) setzt die echte IP,
+   fremde Aufrufer können X-Forwarded-For nicht mehr fälschen. Zusätzlich je Kontoname höchstens 10 Fehlversuche in
+   15 min (erfolgreiche Anmeldung setzt zurück). Bewusst hingenommen: Wer einen Namen kennt, kann dieses Konto 15 min
+   sperren. Zähler atomar per Lua (INCR und EXPIRE in einem Schritt; alte Schlüssel ohne Ablauf bekommen einen).
+4. **Sperren:** world-lock.ts. Spielerweite Sperre (`pg_advisory_xact_lock(7340051, playerId)`) vor Satellitenstart und
+   Gründung/Verlegung, vor der Hafensperre (keine Verklemmung bei Verlegung zwischen zwei eigenen Häfen). Satelliten-ID:
+   Startzeit, bei Gleichstand eins über der höchsten des Spielers. Weltsperre 7340050: Befehle (runCommand, damit auch
+   KI-Spieler) und Ereignisse geteilt, season_end exklusiv – das Saisonende wartet auf laufende Befehle, neue warten auf
+   das Saisonende. Befehle außerhalb von runCommand (Anmeldung, Allianzverwaltung …) sind nicht abgedeckt.
+5. **Wartung:** jeder Schritt im Worker einzeln abgesichert (Fehler geloggt, die übrigen laufen). audit_run: 14 Tage.
+6. **Kartenlast:** Client streut die Invalidierung von world.map nach einer „map“-Meldung zufällig über 300 ms–5 s und
+   fasst sie zusammen. Server: die Häfen aller Spieler (geteilte Weltdaten) 5 s im Speicher (Env `MAP_CACHE_MS`, 0 = aus);
+   jede Karten-/Saisonmeldung verwirft sie sofort, die Sichtlogik je Spieler ist unverändert. WebSocket-Herzschlag: ohne
+   Meldung seit 60 s (Server-ping alle 25 s) baut der Client die Verbindung neu auf.
+7. **Nachtschild-Zeitzone:** Client sendet die IANA-Zone (`Intl`), die Startstunde folgt der Sommerzeit. Alte Stände ohne
+   `protection.timeZone` rechnen weiter mit dem festen Versatz; unbekannte Zonen: fester Versatz statt Ablehnung.
+   Uhrzeiten in Texten (Sammelangriff, See) über `gameTimeZone()`.

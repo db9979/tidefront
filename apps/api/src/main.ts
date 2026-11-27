@@ -10,18 +10,19 @@ import { fastifyTRPCPlugin, type CreateFastifyContextOptions, type FastifyTRPCPl
 import Valkey from "iovalkey";
 import { sql } from "drizzle-orm";
 import { createDb } from "@tidefront/db";
-import { noticeHook, playerForToken, touchLastSeen, type ChangeKind, type Engine } from "@tidefront/engine";
+import { bumpMapGeneration, enableMapCache, noticeHook, playerForToken, touchLastSeen, type ChangeKind, type Engine } from "@tidefront/engine";
 import { appRouter, type AppRouter, type Ctx } from "./router.ts";
 import { registerMailLinks } from "./routers/mail-links.ts";
 import { registerBackupDownload } from "./routers/backup-download.ts";
 import { registerBugReportBodyLimit } from "./routers/bug-report.ts";
+import { createRateLimiter, parseTrustProxy } from "./rate-limit.ts";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://tidefront:tidefront@localhost:5432/tidefront";
 const VALKEY_URL = process.env.VALKEY_URL ?? "redis://localhost:6379";
 const WEB_DIR = resolve(process.env.WEB_DIR ?? "apps/web/dist");
 const COOKIE = "tf_session";
-/** auto: Secure, wenn die Anfrage per HTTPS kam (hinter dem Proxy über X-Forwarded-Proto, trustProxy ist an). */
+/** auto: Secure, wenn die Anfrage per HTTPS kam (hinter dem Proxy über X-Forwarded-Proto, Proxy in TRUST_PROXY). */
 const COOKIE_SECURE = (process.env.COOKIE_SECURE ?? "auto").toLowerCase();
 
 const { db } = createDb(DATABASE_URL, 10);
@@ -34,7 +35,9 @@ const BODY_LIMIT = 256 * 1024;
 // maxParamLength: gebündelte tRPC-Abfragen stehen im Pfad (/trpc/a,b,c…); die Vorgabe 100 lieferte sonst 414.
 const app = Fastify({
   logger: { level: process.env.LOG_LEVEL ?? "info" },
-  trustProxy: true,
+  // Nur Loopback und private Netze (Reverse-Proxy im Heimnetz) dürfen X-Forwarded-For/-Proto setzen; sonst könnte
+  // jeder Aufrufer seine IP für die Login-Drosselung frei wählen. Anpassbar über TRUST_PROXY.
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
   bodyLimit: BODY_LIMIT,
   routerOptions: { maxParamLength: 1000 },
 });
@@ -50,22 +53,16 @@ const engine: Engine = {
 };
 engine.push = noticeHook(() => engine);
 
-/** Feste Fenster je Schlüssel; ohne Valkey wird nicht begrenzt. */
-async function rateLimit(bucket: string, limit: number, windowSec: number): Promise<boolean> {
-  try {
-    const k = `tf:rl:${bucket}`;
-    const n = await pub.incr(k);
-    if (n === 1) await pub.expire(k, windowSec);
-    return n <= limit;
-  } catch {
-    return true;
-  }
-}
+// Drosselung (rate-limit.ts): atomare Zähler je Schlüssel, Fehlversuche je Kontoname beim Login.
+const { rateLimit, failures } = createRateLimiter(pub);
 
 // ---------------------------------------------------------------- WebSocket: Änderungsmeldungen
 const sockets = new Map<number, Set<{ send: (s: string) => void }>>();
 await sub.psubscribe("tf:*");
+// world.map: geteilte Weltdaten 5 s zwischenspeichern (MAP_CACHE_MS, 0 = aus); jede Karten-/Saisonmeldung verwirft sie.
+enableMapCache(Number(process.env.MAP_CACHE_MS ?? 5000));
 sub.on("pmessage", (_p: string, channel: string, message: string) => {
+  if (message.includes('"map"') || message.includes('"season"')) bumpMapGeneration();
   if (channel === "tf:all") {
     for (const set of sockets.values()) for (const s of set) s.send(message);
   } else if (channel.startsWith("tf:player:")) {
@@ -113,6 +110,7 @@ await app.register(fastifyTRPCPlugin, {
         player,
         ip: req.ip,
         rateLimit,
+        failures,
         setSession: (t) => {
           const secure = COOKIE_SECURE === "true" || (COOKIE_SECURE !== "false" && req.protocol === "https");
           if (t === null) res.clearCookie(COOKIE, { path: "/" });

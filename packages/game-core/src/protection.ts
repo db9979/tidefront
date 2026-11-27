@@ -9,26 +9,68 @@ export function createProtection(
   createdAtMs: number,
   nightShieldStartHour: number | null = null,
   tzOffsetMinutes = 0,
+  timeZone: string | null = null,
 ): ProtectionState {
   return {
     createdAtMs,
     nightShieldStartHour,
     tzOffsetMinutes,
+    ...(timeZone && validTimeZone(timeZone) ? { timeZone } : {}),
     nightShieldSuspendedUntilMs: 0,
     defeatShieldUntilMs: 0,
   };
 }
 
-/** Fenster für eine feste Einstellung: das laufende, falls nowMs darin liegt, sonst das nächste. */
-function windowFor(startHour: number | null, tzOffsetMinutes: number, nowMs: number, duration: number) {
+const zoneFormats = new Map<string, Intl.DateTimeFormat | null>();
+
+function zoneFormat(timeZone: string): Intl.DateTimeFormat | null {
+  if (!zoneFormats.has(timeZone)) {
+    let f: Intl.DateTimeFormat | null = null;
+    try {
+      f = new Intl.DateTimeFormat("en-US", {
+        timeZone, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric",
+      });
+    } catch {
+      f = null;
+    }
+    zoneFormats.set(timeZone, f);
+  }
+  return zoneFormats.get(timeZone) ?? null;
+}
+
+/** Gültiger IANA-Zeitzonenname (z. B. "Europe/Berlin")? */
+export function validTimeZone(timeZone: string | null | undefined): timeZone is string {
+  return typeof timeZone === "string" && timeZone.length > 0 && timeZone.length <= 64 && zoneFormat(timeZone) !== null;
+}
+
+/** Versatz der Ortszeit zu UTC in Minuten zum Zeitpunkt ms (Sommerzeit berücksichtigt). */
+export function zoneOffsetAt(timeZone: string, ms: number): number {
+  const f = zoneFormat(timeZone);
+  if (!f) return 0;
+  const p: Record<string, number> = {};
+  for (const x of f.formatToParts(new Date(ms))) if (x.type !== "literal") p[x.type] = Number(x.value);
+  const asUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+  return Math.round((asUtc - Math.floor(ms / 1000) * 1000) / 60000);
+}
+
+/**
+ * Fenster für eine feste Einstellung: das laufende, falls nowMs darin liegt, sonst das nächste. Mit IANA-Zeitzone
+ * folgt die Startstunde der Ortszeit samt Sommerzeit; ältere Stände ohne timeZone rechnen mit dem festen Versatz.
+ */
+function windowFor(startHour: number | null, tzOffsetMinutes: number, nowMs: number, duration: number, timeZone?: string | null) {
   if (startHour === null) return null;
-  const offset = tzOffsetMinutes * 60000;
+  const zone = validTimeZone(timeZone) ? timeZone : null;
+  const offsetAt = (ms: number) => (zone ? zoneOffsetAt(zone, ms) : tzOffsetMinutes) * 60000;
+  const offset = offsetAt(nowMs);
   const local = nowMs + offset;
   const dayStart = Math.floor(local / DAY_MS) * DAY_MS;
   // Fenster, das am Vortag, heute oder morgen beginnt.
   for (let d = -1; d <= 1; d++) {
-    const start = dayStart + d * DAY_MS + startHour * HOUR_MS;
-    if (local < start + duration) return { startMs: start - offset, endMs: start + duration - offset };
+    const localStart = dayStart + d * DAY_MS + startHour * HOUR_MS;
+    // Versatz zum Beginn des Fensters (kann an Umstellungstagen vom jetzigen abweichen).
+    let startMs = localStart - offset;
+    if (zone) startMs = localStart - offsetAt(startMs);
+    if (nowMs < startMs + duration) return { startMs, endMs: startMs + duration };
   }
   return null;
 }
@@ -45,11 +87,11 @@ export function nightShieldWindow(
 ): { startMs: number; endMs: number } | null {
   const duration = balance.protection.nightShieldHours * HOUR_MS;
   const n = p.nightShieldNext;
-  if (n && nowMs >= n.fromMs) return windowFor(n.startHour, n.tzOffsetMinutes, nowMs, duration);
-  const w = windowFor(p.nightShieldStartHour, p.tzOffsetMinutes, nowMs, duration);
+  if (n && nowMs >= n.fromMs) return windowFor(n.startHour, n.tzOffsetMinutes, nowMs, duration, n.timeZone);
+  const w = windowFor(p.nightShieldStartHour, p.tzOffsetMinutes, nowMs, duration, p.timeZone);
   if (!n) return w;
   if (w && w.startMs < n.fromMs) return { startMs: w.startMs, endMs: Math.min(w.endMs, n.fromMs) };
-  const later = windowFor(n.startHour, n.tzOffsetMinutes, n.fromMs, duration);
+  const later = windowFor(n.startHour, n.tzOffsetMinutes, n.fromMs, duration, n.timeZone);
   return later && { startMs: Math.max(later.startMs, n.fromMs), endMs: later.endMs };
 }
 
@@ -57,7 +99,8 @@ export function nightShieldWindow(
 export function settleNightShield(p: ProtectionState, nowMs: number): ProtectionState {
   const n = p.nightShieldNext;
   if (!n || nowMs < n.fromMs) return { ...p };
-  return { ...p, nightShieldStartHour: n.startHour, tzOffsetMinutes: n.tzOffsetMinutes, nightShieldNext: null };
+  const { timeZone: _old, ...rest } = p;
+  return { ...rest, nightShieldStartHour: n.startHour, tzOffsetMinutes: n.tzOffsetMinutes, ...(n.timeZone ? { timeZone: n.timeZone } : {}), nightShieldNext: null };
 }
 
 /**
@@ -71,21 +114,25 @@ export function scheduleNightShieldChange(
   tzOffsetMinutes: number,
   nowMs: number,
   balance: Balance,
+  timeZone: string | null = null,
 ): { ok: true; protection: ProtectionState; fromMs: number } | { ok: false; code: string; untilMs?: number } {
   if (startHour !== null && (!Number.isInteger(startHour) || startHour < 0 || startHour > 23)) return { ok: false, code: "bad_hour" };
   if (!Number.isInteger(tzOffsetMinutes) || Math.abs(tzOffsetMinutes) > 840) return { ok: false, code: "bad_tz" };
+  if (timeZone !== null && !validTimeZone(timeZone)) return { ok: false, code: "bad_tz" };
   const delay = balance.protection.nightShieldChangeHours * HOUR_MS;
   const cur = settleNightShield(p, nowMs);
   const last = cur.nightShieldChangedAtMs ?? -Infinity;
   if (nowMs < last + delay) return { ok: false, code: "shield_cooldown", untilMs: last + delay };
   const pending = cur.nightShieldNext;
-  const target = pending ?? { startHour: cur.nightShieldStartHour, tzOffsetMinutes: cur.tzOffsetMinutes };
-  if (target.startHour === startHour && target.tzOffsetMinutes === tzOffsetMinutes) return { ok: false, code: "shield_unchanged" };
+  const target = pending ?? { startHour: cur.nightShieldStartHour, tzOffsetMinutes: cur.tzOffsetMinutes, timeZone: cur.timeZone };
+  // Mit Zeitzone zählt nur die Zone (der Versatz wechselt mit der Sommerzeit), sonst der Versatz.
+  const sameZone = timeZone !== null ? (target.timeZone ?? null) === timeZone : !target.timeZone && target.tzOffsetMinutes === tzOffsetMinutes;
+  if (target.startHour === startHour && sameZone) return { ok: false, code: "shield_unchanged" };
   const fromMs = nowMs + delay;
   return {
     ok: true,
     fromMs,
-    protection: { ...cur, nightShieldNext: { startHour, tzOffsetMinutes, fromMs }, nightShieldChangedAtMs: nowMs },
+    protection: { ...cur, nightShieldNext: { startHour, tzOffsetMinutes, ...(timeZone !== null ? { timeZone } : {}), fromMs }, nightShieldChangedAtMs: nowMs },
   };
 }
 

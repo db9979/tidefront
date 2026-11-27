@@ -15,6 +15,8 @@ import {
   recallMission,
   scheduleNightShieldChange,
   settle,
+  validTimeZone,
+  expansionOf,
   startTraining,
   startUpgrade,
   market as marketCore,
@@ -28,6 +30,7 @@ import { tables, type Tx } from "@tidefront/db";
 import { nestKnown } from "./intel-query.ts"; // Lagebild
 import { balance, marketBalance, GameError, type ChangeKind, type Engine } from "./context.ts";
 import { processDueForBase } from "./events.ts";
+import { lockPlayerWide, worldLockShared } from "./world-lock.ts";
 import { activeMissionCount, basesOfPlayer, homeBaseOf, lockBases, lockOwnBase, ownBase, saveBase, scheduleEvent, withSite } from "./store.ts";
 import { homeStorageCapacity, maxHarborLevel } from "./player-wide.ts"; // Mehrere Häfen: Börse spielerweit
 import { missionWeather } from "./weather.ts"; // Wetter (v1.6): Sturm auf der Route
@@ -72,9 +75,10 @@ export async function runCommand<T extends { ok: true }>(
   const fullKey = `${playerId}:${key}`;
   const nowMs = Date.now();
   // Mehrere Häfen: fällige Ereignisse aller eigenen Häfen (höchstens balance-maxBases, also wenige).
-  for (const own of (await basesOfPlayer(engine.db, playerId)).slice(0, MAX_DUE_BASES)) await processDueForBase(engine, own.id, nowMs);
+  for (const own of (await basesOfPlayer(engine.db, playerId)).slice(0, maxDueBases())) await processDueForBase(engine, own.id, nowMs);
   const notes: Ctx["notify"] = [];
   const result = await engine.db.transaction(async (tx) => {
+    await worldLockShared(tx); // Saisonwechsel wartet auf laufende Befehle (world-lock.ts)
     const inserted = await tx
       .insert(tables.commandLog)
       .values({ key: fullKey, playerId, command })
@@ -106,8 +110,8 @@ export async function runCommand<T extends { ok: true }>(
   return result;
 }
 
-/** Obergrenze der Häfen, deren fällige Ereignisse ein Befehl vorab verarbeitet. */
-const MAX_DUE_BASES = 3;
+/** Obergrenze der Häfen, deren fällige Ereignisse ein Befehl vorab verarbeitet (Balance: expansion.maxBases). */
+const maxDueBases = (): number => Math.max(1, expansionOf(balance)?.maxBases ?? 3);
 
 /** Gesperrter eigener Hafen: baseId mit Besitzprüfung (sonst "no_base"), ohne baseId der Heimathafen. */
 export function ownBaseLocked(ctx: Ctx, baseId?: number) {
@@ -120,7 +124,7 @@ function fail(code: string): never {
 
 // ---------------------------------------------------------------- Stützpunkt
 
-export function chooseBase(engine: Engine, playerId: number, key: string, input: { col: number; row: number; name: string; nightShieldStartHour: number | null; tzOffsetMinutes: number }) {
+export function chooseBase(engine: Engine, playerId: number, key: string, input: { col: number; row: number; name: string; nightShieldStartHour: number | null; tzOffsetMinutes: number; timeZone?: string | null }) {
   return runCommand(engine, playerId, key, "chooseBase", async (ctx) => {
     if (await homeBaseOf(ctx.tx, playerId)) fail("has_base");
     if (!isCoast(input.col, input.row)) fail("not_coast");
@@ -137,7 +141,8 @@ export function chooseBase(engine: Engine, playerId: number, key: string, input:
       .where(and(eq(tables.nest.col, input.col), eq(tables.nest.row, input.row)));
     if (occupiedNest) fail("field_taken");
     const state: BaseState = createBase(balance, ctx.nowMs, hexCenter(input.col, input.row));
-    state.protection = createProtection(ctx.nowMs, input.nightShieldStartHour, input.tzOffsetMinutes);
+    // IANA-Zeitzone (Sommerzeit); ungültig oder fehlend: fester Versatz wie bisher.
+    state.protection = createProtection(ctx.nowMs, input.nightShieldStartHour, input.tzOffsetMinutes, input.timeZone ?? null);
     const inserted = await ctx.tx
       .insert(tables.base)
       .values({ playerId, name: input.name, col: input.col, row: input.row, state, isHome: true }) // erster Hafen = Heimathafen
@@ -219,7 +224,7 @@ export function cancelTrain(engine: Engine, playerId: number, key: string, built
   });
 }
 
-export function setNightShield(engine: Engine, playerId: number, key: string, startHour: number | null, tzOffsetMinutes: number, baseId?: number) {
+export function setNightShield(engine: Engine, playerId: number, key: string, startHour: number | null, tzOffsetMinutes: number, baseId?: number, timeZone: string | null = null) {
   return runCommand<{ ok: true; fromMs: number }>(engine, playerId, key, "nightShield", async (ctx) => {
     // Mehrere Häfen: Einstellung spielerweit – der aktive Hafen entscheidet über Erfolg und fromMs, die übrigen
     // Häfen übernehmen sie, soweit ihr Schutzzustand es erlaubt. Sperren aufsteigend nach ID.
@@ -230,7 +235,8 @@ export function setNightShield(engine: Engine, playerId: number, key: string, st
     let fromMs = 0;
     for (const x of [b, ...[...locked.values()].filter((y) => y.id !== active)]) {
       const next = settle(x.state, ctx.nowMs, balance, await modsOf(ctx.tx, x, ctx.nowMs));
-      const r = scheduleNightShieldChange(next.protection, startHour, tzOffsetMinutes, ctx.nowMs, balance);
+      // Unbekannte Zone (alter Browser): fester Versatz wie bisher statt Ablehnung.
+      const r = scheduleNightShieldChange(next.protection, startHour, tzOffsetMinutes, ctx.nowMs, balance, validTimeZone(timeZone) ? timeZone : null);
       if (!r.ok) {
         if (x.id === active) return { ok: false as const, code: r.code };
         continue;
@@ -281,8 +287,11 @@ export function launchMission(
   input: LaunchInput,
 ) {
   return runCommand<{ ok: true; missionId: number; arriveAtMs: number }>(engine, playerId, key, "mission", async (ctx) => {
+    const expansion = input.type === FOUNDING_TYPE || input.type === TRANSFER_TYPE;
+    // Spielerweite Grenze (Häfen + laufende Gründungen) über mehrere Häfen: vor der Hafensperre serialisieren.
+    if (expansion) await lockPlayerWide(ctx.tx, playerId);
     const b = await ownBaseLocked(ctx, input.baseId);
-    if (input.type === FOUNDING_TYPE || input.type === TRANSFER_TYPE) return launchExpansion(ctx.tx, playerId, b, input, ctx.nowMs, ctx.notify); // Mehrere Häfen
+    if (expansion) return launchExpansion(ctx.tx, playerId, b, input, ctx.nowMs, ctx.notify); // Mehrere Häfen
     if (input.fieldId !== undefined) return launchField(ctx.tx, playerId, b, { ...input, fieldId: input.fieldId }, ctx.nowMs, ctx.notify); // Felder
     // Weltereignis als Ziel (world-events-missions.ts).
     if (input.eventId !== undefined) return launchAgainstEvent(ctx.tx, playerId, b, { ...input, eventId: input.eventId }, ctx.nowMs, ctx.notify);
