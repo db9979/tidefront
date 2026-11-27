@@ -86,7 +86,9 @@ test("Versorgung: Strom nach Quelle und Rang, Kurve über 24 h, Warnung bei Mang
   const g = (await baseView(engine, p.playerId)).base!.grid;
   assert.equal(g.now.demand.radar, 20);
   assert.equal(g.now.demand.production, 40);
-  assert.equal(g.now.supply.kraftwerk, 60);
+  // Lastfolge (0.21.3): Das Kraftwerk deckt nur, was Wind und Speicher offen lassen (höchstens 60).
+  assert.ok(g.now.supply.kraftwerk <= 60 + 1e-6);
+  assert.ok(Math.abs(g.now.supply.kraftwerk + g.now.supply.wind + g.now.supply.storage - 60) < 1e-6 || g.now.supply.kraftwerk === 0);
   assert.equal(g.now.served.radar, 1);
   for (const h of g.curve) assert.ok(h.wind >= 0 && h.wind <= 1 && h.daylight >= 0 && h.daylight <= 1);
   // Kurve beginnt zur nächsten vollen Stunde (Beschriftung je Stunde stimmt); Sturmwarnung auf 5 Minuten genau.

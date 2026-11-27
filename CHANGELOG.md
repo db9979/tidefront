@@ -2,6 +2,14 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.22.0 – 27.11.2026
+- **Lagebild Stufe 3 – Satelliten:** Neue Gebäude **Startrampe** (ab Kommandozentrale 8, Forschungsamt 5, Radarstation 6) und **Störsender**, neuer Forschungszweig **Raumfahrt**. Ein optischer oder ein Radarsatellit überfliegt alle 6 Stunden einen 600 km breiten Streifen, zeigt ihn 20 Minuten live und hält 7 Tage. Der optische sieht nicht durch Wolken, der Radarsatellit sieht nur Verbände, Wracks und Posten. Unter Meldungen → Lagebild steht der nächste Überflug mit Ort; die Karte zeigt die Streifen und den nächsten Überflug mit Uhrzeit.
+- **Gegenmittel:** Tarnnetze (Zweig Heer), Störsender (fremdes Radar bis −50 %), Tarnanstrich gegen Sicht auf reine Flugzeugverbände; ein Admiral mit Aufklärung halbiert fremdes Radar.
+- Berichte und E-Mails zu Start und Ende eines Satelliten, Handbuch, Legende und „Was hilft?“ für alle neuen Sperren.
+- **KI-Spieler** starten im Spätspiel Satelliten. **Behoben:** Bei viel Wissen fanden Bots kein passendes Nest mehr für Überfälle.
+- **Balance v1.23.**
+- **Behoben (Test):** Ein Servertest erwartete noch das immer voll laufende Kraftwerk.
+
 ## 0.21.3 – 27.11.2026
 - **Kraftwerk regelt nach:** Es liefert nur noch, was Wind, Sonne, Seekabel und Speicher offen lassen, und verbrennt entsprechend weniger Treibstoff (ein reiner Kraftwerkshafen spart rund ein Sechstel, ein gemischter deutlich mehr). Die Versorgung zeigt die aktuelle Auslastung; der rote Hinweis erscheint nur noch bei echtem Treibstoffmangel. Das Kraftwerk lädt den Speicher nicht mehr – der lädt aus Ökostrom.
 - **Bewegte Symbole:** Schiffe schaukeln, das U-Boot taucht leicht, Flugzeuge und Drohne schweben, Waffen und Werkzeuge der Truppen bewegen sich. Auch die Forschungsbilder leben: Turbine und Zahnrad drehen, Sonar pulsiert, Radar schwenkt, Kran-Last pendelt. Kleine Symbole bleiben ruhig; „Bewegung reduzieren“ des Geräts wird beachtet.
