@@ -2,6 +2,14 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.38.1 – 27.11.2026
+
+- Weltereignisse: keine Flut mehr vor Finale-Ankündigung und Saisonende. Ein neues Ereignis entsteht frühestens 48 h nach dem letzten; höchstens 2 laufen gleichzeitig (das Finale zählt nicht mit, Admin-Ereignisse auch nicht).
+- U-Boote halten nichts: Bleiben nach einem Kampf um Konvoi oder Feld nur getauchte Einheiten übrig, ist der Konvoi bzw. das Feld verloren – die U-Boote selbst überleben. Die Geleit-Empfehlung schlägt keine U-Boote mehr vor.
+- Börsennachrichten: keine überflüssigen Einträge mehr, die Wartung räumt alte auf (schnellere Börse).
+- Handel blockiert keine Nachrichten und Missionen mehr.
+- Texte: Wertung im Handbuch mit Zahlen aus den Spielwerten (Großflotte und Belagerung voll, Armada zur Hälfte), Kapitel „Kartell und Schutz“ nennt die Schiffsverluste daheim, KI-Kapitel korrigiert, Begrüßung verweist auf „Menü → Handbuch“.
+
 ## 0.38.0 – 27.11.2026
 - **Empfohlenes Geleit:** Börsen-Order, Spielerhandel und Lieferverträge zeigen einen Kasten „Geleitschutz“: welche Kartellgruppe die Ladung anlockt, wie wahrscheinlich ein Überfall ist, welches kleinste Geleit aus deinen Schiffen sie zu mindestens 90 % abwehrt – und ob es sich lohnt (erwarteter Verlust ohne Geleit gegen Treibstoff, Unterhalt und Zeit, in der die Schiffe fehlen). „Empfehlung übernehmen“ setzt das Geleit mit einem Tipp. Reichen die Schiffe nicht, steht dort, was fehlt.
 - **Probekampf gegen das Kartell** im Konvoi-Blatt für deine eigenen Konvois.
