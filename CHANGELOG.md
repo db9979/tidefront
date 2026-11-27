@@ -2,6 +2,12 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.27.0 – 27.11.2026
+- **Saisonfinale „Leviathan“:** Am 36. Saisontag wird eine Kartell-Armada angekündigt; am 38. Tag um 12:00 Uhr erscheint sie für 72 Stunden an einem zentralen Seefeld (bei weit verstreuten Häfen mit Vorhuten). Ihre Stärke richtet sich nach den Flotten aller Teilnehmer.
+- Jeder Angriff trifft einen Abschnitt passend zur eigenen Kampfkraft – so gewinnt auch ein kleiner Verband und bringt Beute heim, ohne Laderaumgrenze. Das Flaggschiff fällt erst nach den Geschwadern, am besten im Sammelangriff; wer es versenkt, bekommt einen Schatz.
+- Kampfpunkte aus Armada-Kämpfen zählen zur Hälfte, Beute voll. Titel „Bezwinger des Leviathan“ und „Leviathan-Flotte“, Eintrag in der Ruhmeshalle und neuer Erfolg „Armada-Jäger“. Wird sie nicht versenkt, zieht sie ab.
+- Auf Basis, Karte und Missionsplanung: Ankündigung mit Countdown, Lebensbalken, Vorschau mit Abschnitt, Siegchance und Beute. KI-Spieler kämpfen mit, Titel gibt es nur für Menschen.
+
 ## 0.26.0 – 27.11.2026
 - **Kopfgeld auf die Spitze:** Wer die Plätze 1, 2 oder 3 der Rangliste angreift, bekommt +50 / +35 / +20 % Kampfpunkte (wenn er selbst schlechter platziert ist). Die Abwehr der Spitze zählt dabei halb. In der Rangliste steht das Kopfgeld neben dem Namen.
 - **Mutfaktor:** Angriffe auf stärkere Spieler bringen bis zu 50 % mehr Kampf- und Beutepunkte, auf schwächere bis zu 50 % weniger.
