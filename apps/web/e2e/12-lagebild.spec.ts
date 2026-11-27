@@ -47,7 +47,7 @@ test("Fremdes Nest: ohne Sicht keine Stufe, in Radarreichweite schon", async ({ 
     await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
     await tapHex(page, player, inRadar!);
     await expect(page.getByText("Piratennest Stufe 3")).toBeVisible();
-    await expect(page.getByText(/^Live: Radar /)).toBeVisible();
+    await expect(page.getByText(/^Live: Radar /).first()).toBeVisible(); // Nest und ggf. Wrack auf demselben Feld
     await expectNoHorizontalOverflow(page, "Karte mit Nest im Radar");
   } finally {
     await seed.sql`delete from intel_sighting where kind = 'nest' and object_id in ${seed.sql(ids)}`;

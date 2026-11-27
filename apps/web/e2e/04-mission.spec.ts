@@ -6,7 +6,8 @@ import { fastForwardMission, setBuildings, setUnits } from "./game.ts";
 test.use({ spawnNear: "nest" });
 
 test("Überfall auf ein Nest planen, starten und auswerten", async ({ page, player, seed }) => {
-  await setBuildings(seed.sql, player.baseId, { werft: 3, kaserne: 2, hafenkommandantur: 1, kommandozentrale: 3 });
+  // Radar: das Nest liegt sicher in Sicht (Lagebild).
+  await setBuildings(seed.sql, player.baseId, { werft: 3, kaserne: 2, hafenkommandantur: 1, kommandozentrale: 3, radarstation: 8, kraftwerk: 6 });
   await setUnits(seed.sql, player.baseId, { korvette: 6, landungsschiff: 2, schuetzen: 30 });
   const nests = await seed.sql`select id, col, row, level from nest where defeated_at is null`;
   const nest = nests
