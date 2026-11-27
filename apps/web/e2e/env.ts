@@ -7,8 +7,9 @@ const valkeyPort = n(process.env.E2E_VALKEY_PORT, 56392);
 const webPort = n(process.env.E2E_WEB_PORT, 5380);
 
 export const E2E = {
-  pgContainer: "tf-e2e-pg",
-  valkeyContainer: "tf-e2e-valkey",
+  // Containernamen überschreibbar (E2E_PG_CONTAINER, E2E_VALKEY_CONTAINER), damit parallele Läufe sich nicht stören.
+  pgContainer: process.env.E2E_PG_CONTAINER ?? "tf-e2e-pg",
+  valkeyContainer: process.env.E2E_VALKEY_CONTAINER ?? "tf-e2e-valkey",
   pgPort,
   pgPassword,
   valkeyPort,

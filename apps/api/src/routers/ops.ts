@@ -2,6 +2,8 @@
 import { z } from "zod";
 import {
   cartelStrength,
+  intelFogOn,
+  setIntelFog,
   changePassword,
   cleanPrefs,
   createInvite,
@@ -130,6 +132,11 @@ export const adminRouter = t.router({
   })),
   /** Regler Kartell-Stärke in Prozent (server_setting cartel_strength, 25–300, Vorgabe 100). */
   cartelStrength: adminProc.query(async ({ ctx }) => ({ pct: await cartelStrength(ctx.engine.db) })),
+  /** Lagebild: Kartennebel an/aus (Vorgabe an). */
+  intelFog: adminProc.query(async ({ ctx }) => ({ on: await intelFogOn(ctx.engine.db) })),
+  setIntelFog: adminProc
+    .input(z.object({ on: z.boolean() }))
+    .mutation(({ ctx, input }) => setIntelFog(ctx.engine.db, input.on)),
   setCartelStrength: adminProc
     .input(z.object({ pct: z.number().int().min(25).max(300) }))
     .mutation(({ ctx, input }) => setCartelStrength(ctx.engine.db, input.pct)),

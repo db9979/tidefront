@@ -16,7 +16,7 @@ export interface MapField {
 }
 
 const GREY = 0x7d7a70;
-export const FIELD_COLOR: Record<string, number> = { own: INK, allianz: ALLY, pakt: PAKT, krieg: SIEGEL, neutral: SEE, kartell: SIEGEL, frei: GREY };
+export const FIELD_COLOR: Record<string, number> = { own: INK, allianz: ALLY, pakt: PAKT, krieg: SIEGEL, neutral: SEE, kartell: SIEGEL, frei: GREY, unbekannt: GREY };
 
 /** Kleines Feldsymbol (Halbmesser etwa 9 px) nach Art. */
 export function fieldGlyph(kind: string, g: Graphics): void {
@@ -53,6 +53,8 @@ export function fieldSymbol(f: { kind: string; tier: number; relation: string })
     if (f.relation === "allianz") g.circle(0, 0, 13.5).stroke({ color, width: 1 });
   }
   fieldGlyph(f.kind, g);
+  // Lagebild: Besitzer unbekannt – Ring blass, Zeichen etwas zurückgenommen.
+  if (f.relation === "unbekannt") c.alpha = 0.6;
   for (let i = 0; i < f.tier; i++) g.circle((i - (f.tier - 1) / 2) * 4, 14.5, 1.3).fill({ color });
   c.addChild(g);
   return c;

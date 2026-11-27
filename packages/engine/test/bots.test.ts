@@ -10,6 +10,7 @@ import { protectionStatus, type BaseState } from "@tidefront/game-core";
 import {
   addBot, balance, botTurn, chooseBase, createResetCode, ensureStartBots, homeBaseOf, isActiveTime, launchMission, loadBot, loadBots, login,
   nextTurnAt, processDue, pushToPlayer, register, removeBotStep, runBotsDue, seed, setBotsServer, updateBot, type Engine,
+  setIntelFog,
 } from "../src/index.ts";
 import { humanCooldownActive, playerTargets, type TurnCtx } from "../src/bots-war.ts";
 import { botsConfig } from "../src/bots-core.ts";
@@ -56,6 +57,7 @@ before(async () => {
   await db.execute(sql`drop schema if exists public cascade; drop schema if exists drizzle cascade; create schema public;`);
   await migrateDb(db);
   await seed(db, "TEST:100");
+  await setIntelFog(db, false); // Bot-Regeln ohne Kartennebel; mit Nebel: bots-sim.test.ts
   await db.delete(tables.gameEvent).where(sql`${tables.gameEvent.type} like 'world_event%' or ${tables.gameEvent.type} like 'field%'`);
 });
 

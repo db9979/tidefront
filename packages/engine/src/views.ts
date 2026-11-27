@@ -9,7 +9,6 @@ import {
   harborCreditLimit,
   harborMarketUnlocked,
   isNestRespawned,
-  nestRespawnHours,
   maxAllowedLevel,
   missionSlots,
   planMission,
@@ -22,7 +21,6 @@ import {
   trainingSecondsPerUnit,
   upgradeCost,
   upgradeSeconds,
-  wreckRemaining,
   nightShieldWindow,
   market as marketCore,
   type BaseState,
@@ -44,7 +42,7 @@ import { modifierBreakdown, modsOf } from "./modifiers.ts";
 import { veteranView } from "./veterans.ts";
 import { withLuckFactors } from "./battle-stats.ts";
 import { researchView } from "./research.ts";
-import { diplomacyBlock, relationsOf } from "./alliance-core.ts";
+import { diplomacyBlock } from "./alliance-core.ts";
 import { intelView } from "./espionage.ts";
 import { gridView, missionWeather, withArrival } from "./weather.ts";
 import { detectIncoming } from "./radar.ts";
@@ -56,6 +54,8 @@ import { isNavalInput, previewNaval } from "./naval.ts"; // See: Minen/Blockade/
 import { previewField } from "./fields-missions.ts"; // Felder
 import { isExpansionType, OWN_BASE_TARGET, previewExpansion } from "./expansion.ts"; // Mehrere Häfen
 import { homeStorageCapacity, maxHarborLevelOf, settledHome } from "./player-wide.ts"; // Mehrere Häfen: spielerweit
+import { mapViewFor } from "./intel-map.ts"; // Lagebild: Karte nach Sicht
+import { nestKnown } from "./intel-query.ts"; // Lagebild
 
 /**
  * Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband;
@@ -248,40 +248,9 @@ export async function baseView(engine: Engine, playerId: number, baseId?: number
   };
 }
 
+/** Karte: Häfen, Nester, Wracks, fremde Verbände – nach Sicht gefiltert (Lagebild, intel-map.ts). */
 export async function mapView(engine: Engine, playerId: number) {
-  const nowMs = Date.now();
-  const bases = await engine.db
-    .select({ id: tables.base.id, name: tables.base.name, col: tables.base.col, row: tables.base.row, playerId: tables.base.playerId, owner: tables.player.name, state: tables.base.state })
-    .from(tables.base)
-    .innerJoin(tables.player, eq(tables.player.id, tables.base.playerId));
-  const nests = await engine.db.select().from(tables.nest);
-  const wrecks = await engine.db.select().from(tables.wreck);
-  // Freund/Feind aus Sicht des Betrachters (nur eigene Allianz, eigene Pakte und Kriege).
-  const relations = await relationsOf(engine.db, playerId, nowMs);
-  return {
-    serverNow: nowMs,
-    bases: bases.map((b) => ({
-      id: b.id,
-      name: b.name,
-      col: b.col,
-      row: b.row,
-      owner: b.owner,
-      own: b.playerId === playerId,
-      relation: b.playerId === playerId ? ("own" as const) : relations.get(b.playerId) ?? ("neutral" as const),
-      protection: protectionStatus((b.state as BaseState).protection, nowMs, balance).reason,
-    })),
-    nests: nests.map((n) => ({
-      id: n.id,
-      col: n.col,
-      row: n.row,
-      level: n.level,
-      empty: n.defeatedAt !== null && !isNestRespawned(n.defeatedAt.getTime(), nowMs, balance, n.level),
-      respawnAtMs: n.defeatedAt ? n.defeatedAt.getTime() + nestRespawnHours(balance, n.level) * 3600000 : null,
-    })),
-    wrecks: wrecks
-      .map((w) => ({ col: w.col, row: w.row, ...(wreckRemaining({ stahl: w.stahl, elektronik: w.elektronik, createdAtMs: w.createdAt.getTime() }, nowMs, balance) as { stahl: number; elektronik: number }) }))
-      .filter((w) => w.stahl + w.elektronik > 0),
-  };
+  return mapViewFor(engine.db, playerId, Date.now());
 }
 
 /** Vorschau einer Mission ohne Änderung: Entfernung, Reisezeit, Treibstoff, Ablehnungsgrund. */
@@ -309,7 +278,8 @@ export async function missionPreview(
     if (d) return { ok: false as const, code: d, distanceKm };
   }
   if (input.type === "transport" && target.kind !== "base") return { ok: false as const, code: "transport_needs_base", distanceKm };
-  if (input.type === "ueberfall" && target.kind === "nest" && target.defeatedAt && !isNestRespawned(target.defeatedAt.getTime(), nowMs, balance, target.level)) {
+  // Lagebild: „verlassen“ nur, wenn der Spieler das Nest kennt (sonst ein Risiko, keine Auskunft).
+  if (input.type === "ueberfall" && target.kind === "nest" && target.defeatedAt && !isNestRespawned(target.defeatedAt.getTime(), nowMs, balance, target.level) && (await nestKnown(engine.db, playerId, target.id, nowMs))) {
     return { ok: false as const, code: "nest_empty", distanceKm };
   }
   const mods = combineModifiers(await modsOf(engine.db, own, nowMs), await admiralPreviewMods(engine.db, playerId, input.admiralId)); // Admirale

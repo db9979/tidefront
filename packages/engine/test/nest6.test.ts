@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { eq, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
 import { LATE_NEST_LEVEL, LATE_NEST_POINTS, hexAtLonLat, nestSites } from "@tidefront/world";
-import { chooseBase, mapView, register, runningSeason, seasonEnd, seed, type Engine } from "../src/index.ts";
+import { chooseBase, mapView, register, runningSeason, seasonEnd, seed, setIntelFog, type Engine } from "../src/index.ts";
 
 const url = process.env.TEST_DATABASE_URL;
 const HOUR = 3600000;
@@ -68,7 +68,9 @@ test("Karte: Nest 6 nach Sieg 24 h verlassen, Stufe 5 nach 12 h", async () => {
   const [n5] = await db.select().from(tables.nest).where(eq(tables.nest.level, 5)).limit(1);
   const at = new Date(Date.now() - 13 * HOUR);
   await db.update(tables.nest).set({ defeatedAt: at }).where(sql`${tables.nest.id} in (${n6.id}, ${n5.id})`);
+  await setIntelFog(db, false); // Wiederkehr prüfen, nicht die Sicht (Lagebild: lagebild.test.ts)
   const map = await mapView(engine, playerId);
+  await setIntelFog(db, true);
   const v6 = map.nests.find((n) => n.id === n6.id)!;
   const v5 = map.nests.find((n) => n.id === n5.id)!;
   assert.equal(v6.empty, true);

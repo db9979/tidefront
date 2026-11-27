@@ -85,3 +85,8 @@ export { botTurn, runBotsDue, runOneBot } from "./bots-run.ts";
 export { botsAdminView } from "./bots-admin.ts";
 export { isBot, botIds } from "./bots-flag.ts";
 export { ensureNests } from "./nest-sites.ts"; // Nestplätze nachtragen (Stufe 6, v1.15)
+// Lagebild: Sicht je Spieler/Allianz, gespeichertes Wissen, Server-Einstellung intel_fog
+export { intelFogOn, setIntelFog, sightOf, clearSightCache, INTEL_FOG_SETTING, type Sight, type Sensor } from "./intel-sight.ts";
+export { purgeIntel, knownFor, recordSightings, clearPersistThrottle, type IntelTag } from "./intel-store.ts";
+export { mapViewFor, fleetPosition } from "./intel-map.ts";
+export { nestKnown } from "./intel-query.ts";

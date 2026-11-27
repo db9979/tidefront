@@ -17,6 +17,7 @@ import { NavalChapter } from "../components/NavalChapter.tsx"; // See: Minen/Blo
 import { FieldsChapter } from "../components/FieldsChapter.tsx"; // Felder
 import { HarborsChapter } from "../components/HarborsChapter.tsx"; // Mehrere Häfen
 import { BotsChapter } from "../components/BotsChapter.tsx"; // KI-Spieler
+import { LagebildChapter } from "../components/LagebildChapter.tsx"; // Lagebild
 import { requestBugReport } from "../lib/bug-log.ts";
 import { HScroll } from "../components/HScroll.tsx";
 
@@ -196,6 +197,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
     { id: "nachrichtendienst", icon: "spion", title: "Nachrichtendienst", body: <IntelChapter b={b} /> },
     // Admirale (components/Admirals.tsx)
     { id: "admirale", icon: "admiral", title: "Admirale", body: <AdmiralChapter b={b} /> },
+    { id: "lagebild", icon: "radarstation", title: "Lagebild", body: <LagebildChapter b={b} /> }, // Lagebild: Kartennebel, Sensoren
     { id: "see", icon: "mine", title: "Minen, Blockade, Konvois", body: <NavalChapter b={b} /> }, // See
     { id: "felder", icon: "oelfeld", title: "Rohstofffelder", body: <FieldsChapter b={b} /> }, // Felder
     { id: "haefen", icon: "gruendung", title: "Mehrere Häfen", body: <HarborsChapter b={b} /> }, // Mehrere Häfen
@@ -245,7 +247,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
       id: "komfort", icon: "uhr", title: "Planen ohne Rätselraten",
       body: (
         <>
-          <P><strong>Probekampf:</strong> In der Missionsplanung rechnet „Probekampf“ einen Überfall 50-mal durch und zeigt Siegchance, erwartete Verluste, Beute und die Spannweite. Gegen Nester zählt die bekannte Besatzung, gegen Spielerhäfen nur das Lagebild deiner letzten Aufklärung – ohne Aufklärung heißt es: erst aufklären. Unter Truppen → Kampfsimulator stellst du beide Seiten frei zusammen, auch das Kartell gegen deinen Hafen.</P>
+          <P><strong>Probekampf:</strong> In der Missionsplanung rechnet „Probekampf“ einen Überfall 50-mal durch und zeigt Siegchance, erwartete Verluste, Beute und die Spannweite. Gegen erkannte Nester zählt die Besatzung ihrer Stufe (ohne Sicht: Lage unbekannt, kein Probekampf), gegen Spielerhäfen nur das Lagebild deiner letzten Aufklärung – ohne Aufklärung heißt es: erst aufklären. Unter Truppen → Kampfsimulator stellst du beide Seiten frei zusammen, auch das Kartell gegen deinen Hafen.</P>
           <P><strong>Vorlagen:</strong> Speichere einen Verband unter einem Namen (z. B. „Nestjäger“). Ein Tipp setzt ihn in der Planung ein; fehlen Einheiten daheim, wird auf das Verfügbare gekürzt. <strong>Wiederholen</strong> an einem eigenen Bericht oder unter „Zuletzt heimgekehrt“ öffnet die Planung mit demselben Ziel und Verband.</P>
           <P><strong>Als Nächstes:</strong> Die Zeitleiste auf der Basis zeigt Ausbauten, Ausbildungen, Ankunft und Rückkehr deiner Verbände, erkannte Angriffe, Lieferungen, Nachtschild und Saisonende mit Countdown. Der <strong>Morgenbericht</strong> (Einstellungen) fasst einmal am Tag zusammen, was über Nacht geschah.</P>
         </>

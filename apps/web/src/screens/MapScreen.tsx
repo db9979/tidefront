@@ -19,6 +19,7 @@ import { WorldEventCard, useWorldEvents } from "../components/WorldEvents.tsx";
 import { NavalSheet, navalAt, useNaval } from "../components/Naval.tsx"; // See: Minen/Blockade/Konvoi
 import { FieldSheet, fieldAt, fieldsRules, useFields } from "../components/Fields.tsx"; // Felder
 import { FoundingButton, FoundingInfo, OwnHarborActions } from "../components/HarborMapSheet.tsx"; // Mehrere Häfen
+import { FleetLines, IntelStand, UnknownLine } from "../components/IntelStand.tsx"; // Lagebild
 import { expansionRules, isFreeCoast, isThreat } from "../lib/expansion.ts";
 
 const TERRAIN: Record<string, string> = { sea: "Offene See", coast: "Küste", land: "Binnenland" };
@@ -43,6 +44,8 @@ export function MapScreen({ base, focus, onPlan, onSwitchBase }: { base: BaseDat
   const [centerOn, setCenterOn] = useState<Target>(focus ?? { col: base.col, row: base.row });
   // Wetterschicht (v1.6): abschaltbar, Wahl bleibt im Gerät.
   const [showWeather, setShowWeather] = useState(() => localStorage.getItem("tf-wetter") !== "aus");
+  // Lagebild: Schicht „Sensoren“ (gestrichelte Reichweiten) an/aus, Wahl bleibt im Gerät.
+  const [showSensors, setShowSensors] = useState(() => localStorage.getItem("tf-sensoren") !== "aus");
   const now = useNow();
   useEffect(() => {
     if (missionId === null) return;
@@ -65,6 +68,7 @@ export function MapScreen({ base, focus, onPlan, onSwitchBase }: { base: BaseDat
     base: map.data.bases.find((b) => b.col === t.col && b.row === t.row),
     nest: map.data.nests.find((n) => n.col === t.col && n.row === t.row),
     wreck: map.data.wrecks.find((w) => w.col === t.col && w.row === t.row),
+    fleets: map.data.fleets.filter((f) => f.col === t.col && f.row === t.row), // Lagebild: fremde Verbände
     event: worldEvents.data?.events.find((e) => e.col === t.col && e.row === t.row),
     field: fieldAt(fields.data, t), // Felder
     naval: (() => { const n = navalAt(naval.data, t); return n.mines.length > 0 || !!n.blockade || n.convoys.length > 0; })(),
@@ -76,7 +80,7 @@ export function MapScreen({ base, focus, onPlan, onSwitchBase }: { base: BaseDat
     const v = units?.[id]?.speedKmh;
     return v ? fmtSeconds((dist / v) * 3600) : "–";
   };
-  const garrison = info?.nest && meta.data ? meta.data.balance.pirates.nestLevels[String(info.nest.level)] : null;
+  const garrison = info?.nest && info.nest.level !== null && meta.data ? meta.data.balance.pirates.nestLevels[String(info.nest.level)] : null;
   const isHome = info?.base?.id === base.id; // aktiver Hafen
   const otherOwn = info?.base?.own && !isHome ? info.base : null; // eigener, nicht aktiver Hafen
 
@@ -99,6 +103,7 @@ export function MapScreen({ base, focus, onPlan, onSwitchBase }: { base: BaseDat
           fields={fieldLayer}
           weather={showWeather ? meta.data?.balance.weather : null}
           harbors={harbors}
+          showSensors={showSensors}
           controls={<>
             <button type="button" className={MAP_BTN} onClick={() => { setCenterOn(home); setRecenter((n) => n + 1); }} aria-label="Mein Hafen" title="Mein Hafen">
               <TacticalIcon kind="own" size={22} />
@@ -113,6 +118,18 @@ export function MapScreen({ base, focus, onPlan, onSwitchBase }: { base: BaseDat
             >
               <Icon id="wolke" size={24} />
             </button>
+            {map.data.intel.sensors.length > 0 && (
+              <button
+                type="button"
+                aria-pressed={showSensors}
+                aria-label={showSensors ? "Sensoren ausblenden" : "Sensoren einblenden"}
+                title={showSensors ? "Sensoren aus" : "Sensoren an"}
+                className={`${MAP_BTN} ${showSensors ? "" : "opacity-60 !border-rule"}`}
+                onClick={() => setShowSensors((v) => { localStorage.setItem("tf-sensoren", v ? "aus" : "an"); return !v; })}
+              >
+                <Icon id="radarstation" size={24} />
+              </button>
+            )}
           </>}
         />
         {/* Links oben nur noch das kleine Wetterkärtchen (aufklappbar) und die Feindwarnung. */}
@@ -163,13 +180,20 @@ export function MapScreen({ base, focus, onPlan, onSwitchBase }: { base: BaseDat
                   {!info.base.own && (
                     <div className="text-xs font-semibold" style={{ color: RELATION_HEX[info.base.relation] }}>{RELATION_TEXT[info.base.relation]}</div>
                   )}
-                  {info.base.protection ? (
+                  {!info.base.known ? <UnknownLine what="Schutzstatus" /> : info.base.protection ? (
                     <div className="text-emerald-300 text-xs">Schutz: {label(info.base.protection)} – kein Überfall möglich</div>
                   ) : !info.base.own && info.base.relation !== "allianz" && info.base.relation !== "pakt" && <div className="text-siegel text-xs">Kein Schutz aktiv – Überfall möglich</div>}
+                  <IntelStand tag={info.base.intel} now={now} />
                   {isHome && <div className="text-xs text-slate-400">Nächster Handelshafen: {nearestTradePort(home).name} ({fmtNum(nearestTradePort(home).distanceKm)} km)</div>}
                 </div>
               )}
-              {info.nest && (
+              {info.nest && info.nest.level === null && (
+                <div className="mt-1">
+                  <div className="font-serif text-[19px] leading-tight mt-0.5">Piratennest – Lage unbekannt</div>
+                  <UnknownLine what="Stufe und Zustand" />
+                </div>
+              )}
+              {info.nest && info.nest.level !== null && (
                 <div className="mt-1">
                   <div className="font-serif text-[19px] leading-tight flex items-center gap-2 mt-0.5">
                     <TacticalIcon kind={info.nest.empty ? "nestEmpty" : "nest"} level={info.nest.level} size={30} />
@@ -189,14 +213,16 @@ export function MapScreen({ base, focus, onPlan, onSwitchBase }: { base: BaseDat
                       {typeof garrison.respawnHours === "number" && <div>Nach einem Sieg erst nach {garrison.respawnHours} Stunden wieder besetzt.</div>}
                     </div>
                   ) : null}
+                  <IntelStand tag={info.nest.intel} now={now} />
                 </div>
               )}
               {info.wreck && (
                 <div className="text-xs text-slate-300 mt-1 flex items-start gap-2">
                   <TacticalIcon kind="wreck" size={20} />
-                  <span>Wrackfeld: {fmtNum(info.wreck.stahl)} Stahl, {fmtNum(info.wreck.elektronik)} Elektronik – jede Mission hierher birgt es mit freiem Laderaum.</span>
+                  <span>Wrackfeld: {fmtNum(info.wreck.stahl)} Stahl, {fmtNum(info.wreck.elektronik)} Elektronik – jede Mission hierher birgt es mit freiem Laderaum.<IntelStand tag={info.wreck.intel} now={now} /></span>
                 </div>
               )}
+              <FleetLines fleets={info.fleets} now={now} />
               {info.event && (
                 <WorldEventCard e={info.event} onPlan={() => onPlan({ col: info.event!.col, row: info.event!.row, eventId: info.event!.id })} />
               )}
@@ -204,7 +230,7 @@ export function MapScreen({ base, focus, onPlan, onSwitchBase }: { base: BaseDat
               {meta.data?.balance.weather && terrainAt(sel.col, sel.row) !== "land" && <WeatherLine at={sel} wb={meta.data.balance.weather} now={now} home={home} radar={hasRadar} />}
               <NavalSheet data={naval.data} sel={sel} onPlan={onPlan} />
               <FieldSheet data={fields.data} sel={sel} onPlan={onPlan} />
-              {!info.base && !info.nest && !info.wreck && !info.event && !info.naval && !info.field && !freeCoast && (
+              {!info.base && !info.nest && !info.wreck && !info.event && !info.naval && !info.field && !freeCoast && info.fleets.length === 0 && (
                 <div className="text-slate-400 mt-1">Hier ist nichts. Ziele sind Piratennester (rote Raute), Rohstofffelder und fremde Stützpunkte.</div>
               )}
               {!isHome && (info.base || info.nest || info.field) && (

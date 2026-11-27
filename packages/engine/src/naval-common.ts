@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { planMission, settle, type Counts, type Mission, type MissionType, type Modifiers, type ProtectionState, type ResourceMap } from "@tidefront/game-core";
 import { hexCenter } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
+import { recordReportIntel } from "./intel-store.ts"; // Lagebild
 import { balance, type ChangeKind, type NoticeJob } from "./context.ts";
 import { diplomacyBlock, membershipOf, memberIds } from "./alliance-core.ts";
 import { scheduleEvent, type BaseRow } from "./store.ts";
@@ -69,6 +70,7 @@ export async function storeNavalReport(
       winner: v.winner ?? null, seed: v.seed ?? null, report: v.report, balanceVersion: balance.version, createdAt: new Date(v.atMs),
     })
     .returning({ id: tables.battleReport.id });
+  await recordReportIntel(tx, { ...v, defenderBaseId: v.defenderBaseId ?? null, nestId: null }); // Lagebild
   return r.id;
 }
 
