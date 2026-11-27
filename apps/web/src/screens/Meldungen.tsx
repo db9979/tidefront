@@ -1,5 +1,5 @@
-// Meldungen: sechs Reiter – Berichte, Bilanz (Kampfbilanz der Saison), Erfolge (Abzeichen), Nachrichten, Rangliste
-// (mit Spielerübersicht und Ruhmeshalle), Allianz. Die Reiterleiste ist waagerecht scrollbar.
+// Meldungen: sieben Reiter – Berichte, Lagebild (Sichtungen, fremde Patrouillen, Sensoren, Radarposten), Bilanz
+// (Kampfbilanz der Saison), Erfolge (Abzeichen), Nachrichten, Rangliste (mit Spielerübersicht und Ruhmeshalle), Allianz. Die Reiterleiste ist waagerecht scrollbar.
 import { useState } from "react";
 import { HScroll } from "../components/HScroll.tsx";
 import { ReportsScreen } from "./Reports.tsx";
@@ -8,12 +8,14 @@ import { RankingScreen } from "./Ranking.tsx";
 import { AllianceScreen } from "./Alliance.tsx";
 import { BattleStatsScreen } from "./BattleStats.tsx";
 import { AchievementsScreen } from "./Achievements.tsx"; // Erfolge
+import { LagebildTab } from "../components/LagebildTab.tsx"; // Lagebild Stufe 2
 import type { Target } from "../App.tsx";
 
-export type MeldungenTab = "berichte" | "bilanz" | "erfolge" | "nachrichten" | "rangliste" | "allianz";
+export type MeldungenTab = "berichte" | "lagebild" | "bilanz" | "erfolge" | "nachrichten" | "rangliste" | "allianz";
 
 const TABS: { id: MeldungenTab; label: string }[] = [
   { id: "berichte", label: "Berichte" },
+  { id: "lagebild", label: "Lagebild" }, // Lagebild Stufe 2
   { id: "bilanz", label: "Bilanz" },
   { id: "erfolge", label: "Erfolge" }, // Erfolge (Abzeichen)
   { id: "nachrichten", label: "Nachrichten" },
@@ -45,7 +47,7 @@ export function MeldungenScreen(props: {
           })}
         </HScroll>
       </div>
-      {sub === "berichte" ? <ReportsScreen /> : sub === "bilanz" ? <BattleStatsScreen /> : sub === "erfolge" ? <AchievementsScreen /> : sub === "nachrichten" ? (
+      {sub === "berichte" ? <ReportsScreen /> : sub === "lagebild" ? <LagebildTab onShowOnMap={props.onShowOnMap} /> : sub === "bilanz" ? <BattleStatsScreen /> : sub === "erfolge" ? <AchievementsScreen /> : sub === "nachrichten" ? (
         <MessagesScreen setCompose={setCompose} />
       ) : sub === "rangliste" ? (
         <RankingScreen onCompose={setCompose} onShowOnMap={props.onShowOnMap} />

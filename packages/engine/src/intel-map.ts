@@ -5,10 +5,13 @@
 import { and, eq, inArray, ne } from "drizzle-orm";
 import {
   atLeast,
+  disinfoSize,
   fleetSize,
   headingDeg,
+  liveLevelAt,
   visibleUnitCount,
   wreckRemaining,
+  type BaseState,
   type Counts,
   type FleetSize,
   type IntelLevel,
@@ -20,6 +23,8 @@ import { balance } from "./context.ts";
 import { relationsOf, type Relation } from "./alliance-core.ts";
 import { intelFogOn, intelRules, liveAt, sightOf, sourceAt, type Sight } from "./intel-sight.ts";
 import { knownFor, knownGet, nestData, persistLive, protectionOf, type IntelTag, type SightingInput } from "./intel-store.ts";
+import { fleetPosition } from "./intel-route.ts";
+import { postsInSight } from "./intel-post-view.ts"; // Lagebild Stufe 2: Radarposten auf der Karte
 
 type XY = { x: number; y: number };
 export type FleetRelation = Relation | "kartell";
@@ -34,32 +39,14 @@ export interface MapFleet {
   /** Mit Erkennung: Besitzer und Verhältnis, sonst null (nur „da ist etwas“). */
   owner: string | null;
   relation: FleetRelation | null;
+  /** Stufe 2: Verband ist eine Patrouille (Lagebild-Reiter „Fremde Patrouillen“). */
+  patrol?: boolean;
   intel: IntelTag;
 }
 
 const live = (nowMs: number, source: string, level: IntelLevel): IntelTag => ({ age: "live", atMs: nowMs, source, level });
 
-/** Position eines Verbands jetzt (Projektions-km) mit Kurs; null, wenn er nicht auf See ist. */
-export function fleetPosition(m: { status: string; arriveAt: Date; returnAt: Date | null; plan: unknown }, origin: XY, target: XY, nowMs: number): { at: XY; from: XY; to: XY } | null {
-  const plan = m.plan as Partial<Mission>;
-  const arrive = m.arriveAt.getTime();
-  const travel = (plan.travelSeconds ?? 0) * 1000 || Math.max(1, arrive - (plan.departAtMs ?? arrive - 3600000));
-  const lerp = (a: XY, b: XY, t: number) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
-  const frac = (t0: number, t1: number) => Math.max(0, Math.min(1, (nowMs - t0) / Math.max(1, t1 - t0)));
-  if (m.status === "outbound") {
-    const depart = plan.departAtMs ?? arrive - travel;
-    if (nowMs < depart) return null;
-    return { at: lerp(origin, target, frac(depart, arrive)), from: origin, to: target };
-  }
-  if (m.status !== "returning" || !m.returnAt) return null;
-  const end = m.returnAt.getTime();
-  if (plan.recalledAtMs !== undefined && plan.departAtMs !== undefined) {
-    // Rückruf auf der Hinfahrt: Heimfahrt ab dem Punkt des Rückrufs.
-    const turn = lerp(origin, target, Math.max(0, Math.min(1, (plan.recalledAtMs - plan.departAtMs) / Math.max(1, arrive - plan.departAtMs))));
-    return { at: lerp(turn, origin, frac(plan.recalledAtMs, end)), from: turn, to: origin };
-  }
-  return { at: lerp(target, origin, frac(end - travel, end)), from: target, to: origin };
-}
+export { fleetPosition } from "./intel-route.ts";
 
 /** Kartenansicht für einen Spieler (world.map). */
 export async function mapViewFor(db: DbOrTx, playerId: number, nowMs: number) {
@@ -150,6 +137,7 @@ async function mapViewFrom(db: DbOrTx, playerId: number, nowMs: number, bases: B
   }
 
   const fleets = fog && sight ? await fleetsInSight(db, sight, nowMs, bases, nests, relations, known, rows) : [];
+  const posts = await postsInSight(db, playerId, fog ? sight : null, nowMs, rows); // Stufe 2: Radarposten
   if (fog && sight) await persistLive(db, sight, "map", nowMs, () => rows);
   return {
     serverNow: nowMs,
@@ -157,10 +145,13 @@ async function mapViewFrom(db: DbOrTx, playerId: number, nowMs: number, bases: B
     nests: outNests,
     wrecks: outWrecks,
     fleets,
+    posts,
     /** Lagebild: Kartennebel an/aus und die eigenen Sensoren (Allianz eingeschlossen) für Nebel und Sensorgrenzen. */
     intel: {
       fog,
       sensors: (sight?.sensors ?? []).map((s) => ({ col: s.col, row: s.row, km: s.km, kind: s.kind, label: s.label, own: s.playerId === playerId })),
+      /** Stufe 2: Regeln für Planung und Anzeige (Patrouille, Kampagne, Radarposten). */
+      ops: ib ? { patrol: ib.patrol ?? null, campaign: ib.campaign ?? null, post: ib.post ?? null } : null,
       staleHours: ib?.staleHours ?? 24,
     },
   };
@@ -172,12 +163,15 @@ async function fleetsInSight(
   relations: Map<number, Relation>, known: Map<string, import("./intel-store.ts").Known>, rows: SightingInput[],
 ): Promise<MapFleet[]> {
   const ib = intelRules()!;
-  const missions = await db.select().from(tables.mission).where(and(inArray(tables.mission.status, ["outbound", "returning"]), ne(tables.mission.type, "spionage")));
+  // Stufe 2: Patrouillen auf Station (holding) fahren ihre Runde und sind ebenfalls auf See.
+  const missions = (await db.select().from(tables.mission).where(and(inArray(tables.mission.status, ["outbound", "returning", "holding"]), ne(tables.mission.type, "spionage"))))
+    .filter((m) => m.status !== "holding" || m.type === "patrouille");
   const baseXY = new Map(bases.map((b) => [b.id, hexCenterXY(b.col, b.row)]));
   const names = new Map(bases.map((b) => [b.playerId, b.owner]));
   const mates = new Set(sight.members);
   const memberBases = new Set(bases.filter((b) => mates.has(b.playerId)).map((b) => b.id));
   const nestXY = nests.map((n) => hexCenterXY(n.col, n.row));
+  const baseState = new Map(bases.map((b) => [b.id, b.state as BaseState]));
   const defs = { ...balance.npcUnits, ...balance.units };
   const out: MapFleet[] = [];
   const shown = new Set<number>();
@@ -189,25 +183,33 @@ async function fleetsInSight(
     if (!origin) continue;
     const pos = fleetPosition(m, origin, target, nowMs);
     if (!pos) continue;
-    const units = (m.status === "returning" ? (m.returning as Counts | null) : null) ?? ((m.plan as { units?: Counts }).units ?? {});
-    const n = visibleUnitCount(units, defs);
-    if (n <= 0) continue; // nur U-Boote: für Radar und Ausguck unsichtbar
+    const units = (m.status === "returning" || m.status === "holding" ? (m.returning as Counts | null) : null) ?? ((m.plan as { units?: Counts }).units ?? {});
+    // U-Boote sieht nur das Sonar (U-Jagd im Hafen oder auf Patrouille, U-Boote auf Patrouille); 5.7.
+    const subs = Object.entries(units).reduce((a, [id, c]) => a + (c > 0 && defs[id]?.submerged ? c : 0), 0);
+    const sonar = subs > 0 ? liveLevelAt(sight.sensors, pos.at.x, pos.at.y, "submarine") : null;
+    const n = visibleUnitCount(units, defs) + (sonar ? subs : 0);
+    if (n <= 0) continue; // nur U-Boote ohne Sonar: für Radar und Ausguck unsichtbar
     const h = hexAtXY(pos.at.x, pos.at.y);
     let level = liveAt(sight, h.col, h.row, "fleet");
+    if (sonar && (!level || visibleUnitCount(units, defs) === 0)) level = sonar;
     // Vom Radar des Ziels erkannter Angriff (Vorwarnzeit): erscheint als Verband, auch außerhalb der Reichweite.
     const detected = (m.plan as Partial<Mission>).detectedAtMs;
     if (!level && m.status === "outbound" && m.targetKind === "base" && m.targetId !== null && memberBases.has(m.targetId) && typeof detected === "number" && detected <= nowMs) level = "sichtung";
     if (!level) continue;
     const recognized = atLeast(level, "erkennung");
+    // Desinformation (7): hat der Ausgangshafen eine Desinformation gegen die Partei hinterlegt, ist die Größe falsch.
+    const disinfo = (m.baseId !== null ? (baseState.get(m.baseId)?.intel?.disinfo ?? {}) : {}) as Record<string, number>;
+    const fooled = sight.members.some((p) => (disinfo[String(p)] ?? 0) > nowMs);
     const fleet: MapFleet = {
-      id: m.id, col: h.col, row: h.row, heading: headingDeg(pos.from, pos.to), size: fleetSize(n, ib),
+      id: m.id, col: h.col, row: h.row, heading: headingDeg(pos.from, pos.to), size: fooled ? disinfoSize(fleetSize(n, ib), m.id) : fleetSize(n, ib),
+      patrol: m.type === "patrouille",
       owner: recognized ? (m.playerId === null ? "Freibeuter-Kartell" : names.get(m.playerId) ?? "?") : null,
       relation: recognized ? (m.playerId === null ? "kartell" : relations.get(m.playerId) ?? "neutral") : null,
       intel: live(nowMs, sourceAt(sight, pos.at.x, pos.at.y), level),
     };
     out.push(fleet);
     shown.add(m.id);
-    rows.push({ kind: "fleet", objectId: m.id, level, source: fleet.intel.source, data: { col: fleet.col, row: fleet.row, heading: fleet.heading, size: fleet.size, owner: fleet.owner, relation: fleet.relation } });
+    rows.push({ kind: "fleet", objectId: m.id, level, source: fleet.intel.source, data: { col: fleet.col, row: fleet.row, heading: fleet.heading, size: fleet.size, owner: fleet.owner, relation: fleet.relation, patrol: fleet.patrol } });
   }
   for (const k of known.values()) {
     if (k.kind !== "fleet" || shown.has(k.objectId)) continue;

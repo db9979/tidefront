@@ -34,7 +34,8 @@ import { runArmadaSim } from "./armada.ts"; // L7: Großflotte gewichtet wie das
 import { runVeteranSim } from "./veterans.ts"; // v1.13: Veteranen über eine Saison
 import { runUbootNpcSim } from "./uboot-npc.ts"; // v1.13: U-Jagd für Kartell und Nester?
 import { runSeason42Sim } from "./season42.ts"; // Saison 42 Tage: Stillstand, KZ 9, Felder, Weltereignisse
-import { runNest6Sim } from "./nest6.ts"; // v1.15: Nest Stufe 6 (Spätspiel, 42-Tage-Saison)
+import { runNest6Sim } from "./nest6.ts"; // v1.15: Nest Stufe 6
+import { runIntelSim } from "./intel.ts"; // v1.20: Lagebild Stufe 2 (Spätspiel, 42-Tage-Saison)
 
 const balance = JSON.parse(
   readFileSync(new URL("../../balance/v1/balance.json", import.meta.url), "utf8"),
@@ -286,6 +287,7 @@ runVeteranSim(balance, 42); // Saison 42 Tage (SEASON_DAYS)
 runSeason42Sim(balance);
 runUbootNpcSim(balance);
 runNest6Sim(balance); // v1.15: Nest Stufe 6
+runIntelSim(balance, snaps); // v1.20: Lagebild Stufe 2 (Patrouille, Kampagne, Radarposten, Bordsicht)
 
 /** Der Bot schickt alles, was daheim steht (die Doktrin hält ihn innerhalb der Kommandopunkte). */
 function sentFleet(s: BotSnapshot): Counts {

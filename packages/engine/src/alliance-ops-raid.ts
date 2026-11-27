@@ -26,6 +26,7 @@ import { runCommand } from "./commands.ts";
 import { stationsAfterExit } from "./alliance-ops-station.ts";
 import { scheduleAttackWarning } from "./event-notices.ts";
 import { KIND_TEXT, isOpen, readWorldEvent } from "./world-events.ts";
+import { nestKnown } from "./intel-query.ts"; // Lagebild Stufe 2
 import type { Handler, HandlerResult } from "./events.ts";
 
 const MIN = 60000;
@@ -83,7 +84,8 @@ export async function targetProblem(db: DbOrTx, playerId: number, t: { targetKin
   if (t.targetKind === "nest") {
     const [n] = await db.select().from(tables.nest).where(eq(tables.nest.id, t.targetId));
     if (!n) return { code: "no_target" };
-    if (n.defeatedAt && !isNestRespawned(n.defeatedAt.getTime(), nowMs, balance, n.level)) return { code: "nest_empty" };
+    // Lagebild: ein leeres Nest wird nur abgelehnt, wenn der Spieler es weiß (Sicht oder Wissen); sonst Bericht „verlassen“.
+    if (n.defeatedAt && !isNestRespawned(n.defeatedAt.getTime(), nowMs, balance, n.level) && (await nestKnown(db, playerId, n.id, nowMs))) return { code: "nest_empty" };
     return { code: null };
   }
   const ev = await readWorldEvent(db, t.targetId);

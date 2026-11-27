@@ -34,6 +34,7 @@ import { TECH_NAMES } from "./research.ts";
 import { scoutWithDisinfo } from "./espionage.ts";
 import { trackProgress } from "./challenges.ts";
 import { KIND_TEXT, openWorldEvents, systemMessage } from "./world-events.ts";
+import { recordReportIntel } from "./intel-store.ts"; // Lagebild Stufe 2: Dossier als Lagebild
 
 const HOUR_MS = 3600000;
 
@@ -233,6 +234,8 @@ export const spyArrive: Handler = async (tx, ev, due) => {
     attackerBaseId: m.baseId, defenderBaseId: target?.id ?? null, winner: "attacker", seed: spy.seed, atMs: due,
     report: { spy: dice, ...detail },
   });
+  // Lagebild Stufe 2: ein Erkundungs-Dossier zählt als Lagebild des Hafens.
+  if (spy.kind === "erkunden" && target) await recordReportIntel(tx, { kind: "spionage", attackerPlayerId: pid, defenderBaseId: target.id, nestId: null, report: detail, atMs: due });
   await back(reportId, true);
   // Tagesbefehl „erkundung“: erfolgreiche Erkundung (Hafen oder Kartell).
   if (spy.kind === "erkunden" || spy.kind === "kartell") await trackProgress(tx, pid, "erkundung", 1, { atMs: due });

@@ -25,10 +25,21 @@ export interface IntelBalance {
   /** Erkennung rundet Einheiten auf diese Schritte (Einheiten, Anlagen). */
   roundUnits: number;
   roundDefenses: number;
+  /** Stufe 2 (seit v1.20, intel-ops.ts): Patrouille, Kampagne, mobile Radarstation, Sonar; fehlt ein Teil, gibt es ihn nicht. */
+  patrol?: import("./intel-ops.ts").PatrolBalance;
+  campaign?: import("./intel-ops.ts").CampaignBalance;
+  post?: import("./intel-ops.ts").PostBalance;
+  sonar?: import("./intel-ops.ts").SonarBalance;
+  /** Bordsicht (Entscheidung 27.11.2026): jeder eigene Verband auf See sieht um seine Position. */
+  fleetSight?: import("./intel-ops.ts").FleetSightBalance;
 }
 
 export type IntelLevel = "sichtung" | "erkennung" | "lagebild";
-export type SensorKind = "ausguck" | "radar";
+/**
+ * Sensorarten: Ausguck und Radar (Häfen), Posten (mobile Radarstation, wie Radar), Patrouille und Aufklärer (Verbände
+ * auf See, Erkennung), Sonar (sieht nur getauchte U-Boote, sonst nichts).
+ */
+export type SensorKind = "ausguck" | "radar" | "posten" | "patrouille" | "aufklaerer" | "sonar" | "verband" | "flug";
 export type FleetSize = "klein" | "mittel" | "gross";
 /** Alter einer Angabe: live (jetzt im Sensorbereich), bekannt (< staleHours), veraltet (< forgetHours). */
 export type IntelAge = "live" | "bekannt" | "veraltet";
@@ -74,15 +85,20 @@ export interface SensorCircle {
 
 /**
  * Kenntnisstufe, mit der die Sensoren einen Punkt jetzt erfassen (null = außerhalb jeder Sicht).
- * Ausguck: Erkennung für alles. Radar: Erkennung für Objekte (Häfen, Nester, Felder, Wracks), Sichtung für Verbände.
+ * Ausguck, Patrouille, Aufklärer: Erkennung für alles. Radar und Posten: Erkennung für Objekte (Häfen, Nester, Felder,
+ * Wracks), Sichtung für Verbände. Getauchte U-Boote („submarine“) erfasst nur das Sonar (Erkennung); das Sonar
+ * erfasst sonst nichts. Bordsicht: „verband“ (Schiffe, Drohnen) Erkennung, „flug“ (Jäger, Bomber) nur Sichtung von
+ * Verbänden – Objekte erfasst ein Flug nicht (ihre Position ist ohnehin bekannt).
  */
-export function liveLevelAt(sensors: readonly SensorCircle[], x: number, y: number, target: "object" | "fleet"): IntelLevel | null {
+export function liveLevelAt(sensors: readonly SensorCircle[], x: number, y: number, target: "object" | "fleet" | "submarine"): IntelLevel | null {
   let best: IntelLevel | null = null;
   for (const s of sensors) {
+    if ((s.kind === "sonar") !== (target === "submarine")) continue;
+    if (s.kind === "flug" && target !== "fleet") continue;
     const dx = s.x - x;
     const dy = s.y - y;
     if (dx * dx + dy * dy > s.km * s.km) continue;
-    const lvl: IntelLevel = s.kind === "radar" && target === "fleet" ? "sichtung" : "erkennung";
+    const lvl: IntelLevel = (s.kind === "radar" || s.kind === "posten" || s.kind === "flug") && target === "fleet" ? "sichtung" : "erkennung";
     best = maxLevel(best, lvl);
     if (best === "erkennung") return best;
   }

@@ -141,8 +141,8 @@ export async function raidNest(c: TurnCtx, base: BaseRow & { state: BaseState },
     if (p.winRate < c.cfg.probeWinRate || p.lootValue < 0.8 * p.lossValue) continue;
     if (await tryLaunch(c, { type: "ueberfall", units: force, col: n.col, row: n.row, baseId: base.id }, `Überfall auf Piratennest Stufe ${n.level} (${Math.round(n.d)} km).`)) return true;
   }
-  // Freibeuter: unbekannte Nester in Reichweite aufklären (Mission „aufklaerung“), danach entscheidet der Probekampf.
-  if (!scoutsUnknown(c)) return false;
+  // Lagebild: unbekannte Nester in Reichweite aufklären (Kampagne; Freibeuter laufend, Festung mit Pause), danach entscheidet der Probekampf.
+  if (!scoutsUnknown(c, "nest")) return false;
   const unknown = map.nests.filter((n) => !n.known).map((n) => ({ key: `n${n.id}`, col: n.col, row: n.row, label: `Piratennest ${n.col}/${n.row}` }));
   return scoutNearest(c, base, unknown, MAX_RANGE_KM);
 }

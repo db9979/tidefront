@@ -49,6 +49,7 @@ import { navalRouter } from "./routers/naval.ts"; // See: Minen/Blockade/Konvoi
 import { fieldsRouter } from "./routers/fields.ts"; // Felder
 import { botsRouter } from "./routers/bots.ts"; // KI-Spieler (Verwaltung)
 import { powerRouter } from "./routers/power.ts"; // Seekabel (v1.21)
+import { intelRouter } from "./routers/intel.ts"; // Lagebild Stufe 2
 
 export type { Ctx };
 
@@ -209,6 +210,7 @@ export const appRouter = t.router({
   naval: navalRouter, // See: Minen/Blockade/Konvoi
   fields: fieldsRouter, // Felder
   power: powerRouter, // Seekabel / Stromverbund (v1.21)
+  intel: intelRouter, // Lagebild Stufe 2: Patrouille, Kampagne, Radarposten, Übersicht
 });
 
 export type AppRouter = typeof appRouter;

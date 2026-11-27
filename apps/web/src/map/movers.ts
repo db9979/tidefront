@@ -2,6 +2,7 @@
 // Läuft gedrosselt im Ticker der Hexkarte (HexMap.tsx).
 import type { Graphics } from "pixi.js";
 import { hexCenterXY } from "@tidefront/world";
+import { pointOnLoop } from "@tidefront/game-core";
 import { serverNow } from "../lib/time.ts";
 import { INK, SIEGEL, alertRing, shipSymbol } from "./symbols.ts";
 import { pinScale } from "./lod.ts";
@@ -13,6 +14,15 @@ export interface MapMission {
   target: { col: number; row: number };
   arriveAtMs: number;
   returnAtMs: number;
+  /** Lagebild Stufe 2: Bordsicht (km) und Patrouille (Runde auf Station). */
+  sightKm?: number;
+  patrol?: { waypoints: { col: number; row: number }[]; startMs: number | null; endMs: number | null; speedKmh: number } | null;
+}
+
+/** Gestrichelter Kreis (Bordsicht, wandert mit dem Verband). */
+function dashedCircle(g: Graphics, c: { x: number; y: number }, r: number): void {
+  const n = Math.max(24, Math.round(r / 12));
+  for (let i = 0; i < n; i += 2) g.moveTo(c.x + Math.cos((i / n) * Math.PI * 2) * r, c.y + Math.sin((i / n) * Math.PI * 2) * r).arc(c.x, c.y, r, (i / n) * Math.PI * 2, ((i + 1) / n) * Math.PI * 2);
 }
 
 function missionPosition(m: MapMission, home: { x: number; y: number }, tgt: { x: number; y: number }, now: number) {
@@ -44,9 +54,25 @@ export function drawMovers(s: Scene, live: { home?: { col: number; row: number }
   if (home) {
     const now = serverNow();
     for (const m of live.missions ?? []) {
+      if (m.status === "holding" && m.patrol && m.patrol.startMs !== null) {
+        // Patrouille auf Station: Runde gestrichelt, Schiff auf der aktuellen Position, Sichtkreis.
+        const pts = m.patrol.waypoints.map((w) => hexCenterXY(w.col, w.row));
+        const at = pointOnLoop(pts, (m.patrol.speedKmh * Math.max(0, Math.min(now, m.patrol.endMs ?? now) - m.patrol.startMs)) / 3600000);
+        pts.forEach((p, i) => dashed(s.routes, p, pts[(i + 1) % pts.length], 6 / sc));
+        s.routes.stroke({ color: SIEGEL, width: 1.6 / sc, alpha: 0.9 });
+        if (m.sightKm) { dashedCircle(s.routes, at, m.sightKm); s.routes.stroke({ color: INK, width: 1.2 / sc, alpha: 0.7 }); }
+        const key = m.id * 2;
+        let ship = s.ships.get(key);
+        if (!ship) { ship = shipSymbol(SIEGEL); s.ships.set(key, ship); s.world.addChild(ship); }
+        ship.position.set(at.x, at.y);
+        ship.scale.set(pinScale(sc) * (live.focus === m.id ? 1.35 : 1));
+        seen.add(key);
+        continue;
+      }
       if (m.status !== "outbound" && m.status !== "returning") continue;
       const tgt = hexCenterXY(m.target.col, m.target.row);
       const pos = missionPosition(m, home, tgt, now);
+      if (m.sightKm) { dashedCircle(s.routes, pos, m.sightKm); s.routes.stroke({ color: INK, width: 1.2 / sc, alpha: 0.6 }); } // Bordsicht
       const color = pos.outbound ? SIEGEL : INK;
       s.routes.moveTo(home.x, home.y).lineTo(tgt.x, tgt.y).stroke({ color: 0xf4f1e7, width: 5 / sc, alpha: 0.8, cap: "round" });
       dashed(s.routes, home, tgt, 6 / sc);

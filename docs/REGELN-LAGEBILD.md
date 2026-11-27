@@ -120,6 +120,21 @@ Größenklassen für Verbände: **klein** bis 10 Einheiten, **mittel** bis 40, *
   in **60 km**, mit Forschung **Sonar +40 km je Stufe**.
 - U-Boote auf Patrouille sehen andere U-Boote in 60 km.
 
+### 5.8 Bordsicht (Entscheidung vom 27.11.2026)
+- **Jeder eigene Verband auf See sieht unterwegs** – auf Hin- und Rückfahrt, bei allen Missionsarten (Überfall,
+  Transport, Verlegung, Gründung, Feldmissionen, Allianz-Ops, Blockade vor dem Ziel). Sicht um die aktuelle Position;
+  maßgeblich ist die beste Einheit im Verband:
+  - Kriegsschiffe (Korvette, Zerstörer, Minenräumer) **80 km** Erkennung,
+  - Transporter (Landungsschiff, Kolonieschiff, Minenleger) **40 km** Erkennung,
+  - Aufklärungsdrohne **200 km** Erkennung,
+  - Flugzeuge (Jäger, Bomber) **120 km**, nur Sichtung von Verbänden (Objekte erfassen sie nicht),
+  - U-Boote sehen nur andere U-Boote (Sonar, 5.7).
+- Live während der Fahrt. Was der Verband überfährt, bleibt als „bekannt“ im Wissen (Quelle „Verband aus …“); gespeichert
+  wird sparsam beim Kartenabruf, höchstens alle 60 s je Partei. Die Allianz teilt mit.
+- Patrouillen behalten ihre größeren Werte (Schiffe 100 km, Drohnen 200 km) und bleiben das Werkzeug für gezielte
+  Aufklärung. Balance-Block `intel.fleetSight`.
+- **Karte:** gestrichelter Sichtkreis um eigene Verbände, der mitwandert (am Kartenrahmen beschnitten).
+
 ## 6. Gegenmittel
 
 - **Tarnnetze** (neue Technik im Zweig Heer, 2 Stufen): Optische Satelliten und der Ausguck erkennen den eigenen Hafen
@@ -169,7 +184,7 @@ Größenklassen für Verbände: **klein** bis 10 Einheiten, **mittel** bis 40, *
 | Stufe | Inhalt | Ergebnis für Spieler |
 |---|---|---|
 | **1 Grundgerüst** ✔ umgesetzt (Balance v1.17) | Abschnitte 2–4, Ausguck, Radarstation (5.1, 5.2), Allianz-Sicht, Kartennebel, Feld-Blatt mit Stand, Planung „Lage unbekannt“ | Nest-Stufen und fremde Verbände nur noch mit Sicht; Radar wird wichtiger |
-| **2 Aufklärung** | Patrouille (5.4), Kampagne (5.5), mobile Radarstation (5.3), U-Boote/Sonar (5.7), Reiter „Lagebild“ | Aktiv aufklären, Posten bauen, Patrouillen abfangen |
+| **2 Aufklärung** ✔ umgesetzt (Balance v1.20) | Patrouille (5.4), Kampagne (5.5), mobile Radarstation (5.3), U-Boote/Sonar (5.7), Bordsicht (5.8), Reiter „Lagebild“ | Aktiv aufklären, Posten bauen, Patrouillen abfangen |
 | **3 Satelliten** | Startrampe, Raumfahrt, Bahnen mit Wolken (5.6), Tarnnetze und Störsender (6) | Spätspiel-Ziel, Gegenmittel |
 
 Jede Stufe wird ein eigenes Release mit Migration, Tests (auch E2E) und Simulation.
@@ -205,6 +220,51 @@ Abweichungen (begründet):
 - **KI-Spieler** nutzen dieselbe Kartenansicht. Nur der Freibeuter klärt unbekannte Nester und Felder mit der Mission
   „Aufklärung“ auf; Händler und Festung greifen nur an, was sie sehen oder kennen. Im 8-Tage-Testlauf nimmt die Festung
   deshalb kaum noch Nester und Felder (siehe Bericht zur Version).
+
+### Stufe 2: Umsetzung und Abweichungen
+
+Umgesetzt in `packages/game-core/src/intel-ops.ts` (Patrouille, Runde, Sicht, Sonar, Abfangen, Posten, Kampagne,
+Desinformation, Bordsicht), `packages/engine/src/intel-patrol.ts`, `intel-campaign.ts`, `intel-post*.ts`,
+`intel-mobile.ts` (bewegte Sensoren), `intel-route.ts` (Positionen), `intel-ops.ts` (Befehle, Ereignisse, Eingriff in die
+Ankunft), `intel-overview.ts` (Reiter „Lagebild“), neue Tabelle `radar_post` (Migration erzeugt der Integrator).
+Oberfläche: Missionsplanung „Patrouille“, „Kampagne“, „Radarposten“, „Posten angreifen“ (Karte antippen), Feld-Blatt
+(„Patrouille ab hier“, „Radarposten errichten“, „Posten angreifen“), Meldungen → Lagebild, Truppen → Einsatz
+(„Heimholen“), Karte (Posten, Wegpunkte, wandernde Sichtkreise, Sonar grün). Balance-Block `intel` v1.20 mit `patrol`,
+`campaign`, `post`, `sonar`, `fleetSight`.
+
+Abweichungen (begründet):
+- **Drohnen 6 h:** gilt für die Zeit auf Station; mit Drohnen ist deshalb nur die Dauer 4 h wählbar. Die Reichweite
+  800 km gilt bis zum fernsten Wegpunkt; die Runde selbst ist nicht begrenzt.
+- **Treibstoff der Patrouille:** Hin- und Rückweg zum ersten Wegpunkt plus Fahrt mit voller Geschwindigkeit über die
+  ganze Dauer. Die Heimfahrt beginnt an der Position beim Ende (Rückfahrzeit von dort), Treibstoff wird nicht erstattet.
+- **Abfangen:** einmal je Hafen und Patrouille (Prüftakt 30 min, `tickMinutes`), nur durch Häfen, mit denen kein Bündnis
+  oder Pakt besteht; Radarreichweite des Hafens wie in 5.2. Sind alle Einheiten abgeschossen, endet die Mission.
+- **„Fremde Patrouille gesichtet“:** Bericht (Art „sichtung“) und Push, einmal je Spieler und Patrouille, wenn die
+  Patrouille seinen Hafen sieht und selbst im Ausguck oder Radar dieses Hafens liegt. Felder und Posten lösen keine
+  Meldung aus. Ebenso „Aufklärer gesichtet“ (5.5): bei Ankunft jeder Aufklärung an einem fremden Hafen mit Radar.
+- **Kampagne:** Planung prüft jedes Ziel (Luft: jedes in Reichweite); Treibstoff für die ganze Runde. Die
+  Erkennung um die Route gilt für jede Aufklärung auf der Hinfahrt (auch mit einem Ziel). Ein Rückruf auf einem
+  späteren Abschnitt rechnet die Heimfahrt ab der ersten Abfahrt (einfach, eher zu lang).
+- **Radarposten:** Standort freie Küste (kein Hafen, Nest, Handelshafen, Posten) oder eigenes Rohstofffeld. Kosten beim
+  Auslaufen; scheitert die Errichtung bei Ankunft, kommen sie mit zurück. Betrieb stündlich (Ereignis
+  `radar_post_tick`); aus nur, wenn der Hafen nach der laufenden Produktion keine 3 Treibstoff hat. Die Anlage
+  (20 Lebenspunkte) fällt mit der Besatzung: Der Angreifer gewinnt, wenn er Truppen landet und die Pioniere schlägt.
+  Keine Radar-Vorwarnung für Angriffe auf Posten. Abbau: 50 % der Kosten als Ladung der heimkehrenden Besatzung.
+  Tarnnetze Stufe 2 (6) folgen mit Stufe 3.
+- **Sonar** unterwegs gilt auch für Verbände ohne Patrouille (Bordsicht); Sonar erfasst nur U-Boote, keine Objekte.
+- **Bordsicht** der Flugzeuge: nur Verbände (Sichtung); Objekte sichtet ein Flug nicht, ihre Positionen sind ohnehin
+  bekannt. Stationierte Feldbesatzungen sehen nichts zusätzlich (sie liegen fest).
+- **Zwischenspeicher:** Hafensensoren weiter 60 s; bewegte Sensoren (Verbände, Patrouillen, Posten) werden bei jedem
+  Abruf neu gelesen (zwei kleine Abfragen), damit Position und neue Missionen sofort stimmen.
+- **Spionage-Dossiers** (Erkunden) schreiben ein Lagebild des Hafens; nach jedem Kampf kennt der Verteidiger den
+  Ausgangshafen des Angreifers als Lagebild. **Desinformation** (7): Hat der Ausgangshafen eines Verbands eine
+  Desinformation gegen die Partei hinterlegt, ist die gemeldete Größenklasse eine Stufe daneben (fest je Verband).
+  **Sammelangriffe** lehnen ein leeres Nest nur noch ab, wenn der Spieler es kennt (sonst Bericht „verlassen“).
+- **Reiter „Lagebild“:** letzte Sichtungen (live und gespeichert), fremde Patrouillen und Aufklärer (gemeldet und
+  gesichtet), eigene Sensoren je Art mit größter Reichweite, eigene Radarposten mit Abbauen. Der nächste
+  Satellitenüberflug folgt mit Stufe 3.
+- **KI-Spieler:** Festung klärt Nester mit Kampagnen auf (alle 6 h, Felder alle 12 h), Händler einmal am Tag Felder,
+  Freibeuter laufend Kampagnen und alle 12 h eine Patrouille vor seinen Angriffen (siehe ENTSCHEIDUNGEN-3.md, O).
 
 ## 11. Entscheidungen (27.11.2026)
 

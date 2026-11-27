@@ -93,3 +93,7 @@ export { nestKnown } from "./intel-query.ts";
 // Seekabel / Stromverbund (v1.21)
 export { cableOffer, cableAccept, cableSetPrice, cableCut, CABLE_TICK } from "./power-cable.ts";
 export { cablesView } from "./power-cable-view.ts";
+// Lagebild Stufe 2: Patrouille, Aufklärungskampagne, Radarposten, Übersicht „Lagebild“
+export { launchIntelOp, previewIntelOp, endPatrol, type IntelOp, type IntelOpInput } from "./intel-ops.ts";
+export { dismantlePost } from "./intel-post.ts";
+export { intelOverview } from "./intel-overview.ts";

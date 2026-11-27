@@ -56,6 +56,7 @@ import { isExpansionType, OWN_BASE_TARGET, previewExpansion } from "./expansion.
 import { homeStorageCapacity, maxHarborLevelOf, settledHome } from "./player-wide.ts"; // Mehrere Häfen: spielerweit
 import { mapViewFor } from "./intel-map.ts"; // Lagebild: Karte nach Sicht
 import { nestKnown } from "./intel-query.ts"; // Lagebild
+import { intelMissionInfo } from "./intel-route.ts"; // Lagebild Stufe 2
 
 /**
  * Ist ein feindlicher Verband auf dem Anmarsch und schon vom Radar erfasst? (Radar mit `mods`, Tarnung je Verband;
@@ -232,6 +233,7 @@ export async function baseView(engine: Engine, playerId: number, baseId?: number
         reportId: m.reportId,
         spy: (m.plan as { spy?: { kind: string; building?: string } }).spy ?? null,
         allianceRaidId: (m.plan as { allianceRaidId?: number }).allianceRaidId ?? null, // Allianz-Ops
+        ...intelMissionInfo(m.plan), // Lagebild Stufe 2: Patrouille (Wegpunkte, Station), Kampagne (Ziele)
       })),
       incoming,
       deliveries: deliveries.map((d) => ({ id: d.id, resource: d.resource, qty: d.qty, arriveAtMs: d.arriveAt.getTime() })),

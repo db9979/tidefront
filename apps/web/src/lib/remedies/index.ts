@@ -5,11 +5,12 @@ import { MISSIONS } from "./missions.ts";
 import { TRADE } from "./trade.ts";
 import { WORLD } from "./world.ts";
 import { POWER } from "./power.ts"; // Seekabel (v1.21)
+import { INTEL } from "./intel.ts"; // Lagebild Stufe 2
 import type { Remedy, RemedyCtx, RemedyTable } from "./types.ts";
 
 export type { NavTarget, Remedy, RemedyAction, RemedyDetail, RemedyCtx } from "./types.ts";
 
-export const REMEDIES: RemedyTable = { ...ECONOMY, ...MISSIONS, ...TRADE, ...WORLD, ...POWER };
+export const REMEDIES: RemedyTable = { ...ECONOMY, ...MISSIONS, ...TRADE, ...WORLD, ...POWER, ...INTEL };
 
 /** Abhilfe zu einem Code; null, wenn der Spieler nichts tun kann (oder der Code unbekannt ist). */
 export function remedy(code: string | null | undefined, ctx: RemedyCtx): Remedy | null {

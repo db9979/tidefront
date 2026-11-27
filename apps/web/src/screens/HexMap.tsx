@@ -31,7 +31,7 @@ import { buildNavalLayer, type MapNaval } from "../map/naval.ts"; // See: Minen/
 import { buildFieldLayer, type MapField } from "../map/fields.ts"; // Felder: Rohstofffelder und Allianzzonen
 import { drawSelection, type HarborOverlay } from "../map/selection.ts"; // Auswahl, aktiver Hafen, Reichweite
 import { drawMovers, type MapMission } from "../map/movers.ts"; // Routen und eigene Verbände
-import { buildFleetLayer, buildIntelLayer, type MapIntel } from "../map/intel.ts"; // Lagebild: Nebel, Sensoren, fremde Verbände
+import { buildFleetLayer, buildIntelLayer, buildMarkLayer, buildPostLayer, type MapIntel } from "../map/intel.ts"; // Lagebild: Nebel, Sensoren, Verbände, Posten, Wegpunkte
 
 export type { MapMission };
 
@@ -71,6 +71,8 @@ export interface HexMapProps {
   harbors?: Omit<HarborOverlay, "multi"> | null;
   /** Lagebild: gestrichelte Sensorgrenzen zeigen (Vorgabe an). */
   showSensors?: boolean;
+  /** Lagebild Stufe 2: Wegpunkte bzw. Ziele der Planung (nummeriert), loop = Runde der Patrouille. */
+  marks?: { list: { col: number; row: number }[]; loop: boolean } | null;
 }
 
 export interface Scene {
@@ -181,6 +183,9 @@ export function HexMap(props: HexMapProps) {
         const markerLayer = new Container();
         const selection = new Graphics();
         world.addChild(freeG, routes, markerLayer, pinnedLayer, selection);
+        const routesMask = mapClip(); // Routen und wandernde Sichtkreise enden am Kartenrahmen (normale Maske)
+        world.addChild(routesMask);
+        routes.mask = routesMask;
 
         // Lotungen, Beschriftungen und Handelshäfen (fest)
         const pinnedStatic: Pinned[] = [];
@@ -380,9 +385,11 @@ export function HexMap(props: HexMapProps) {
       old.root.destroy({ children: true });
       eventLayer.current = null;
     }
-    if ((!events || events.length === 0) && !naval && !fields && data.fleets.length === 0) return;
+    const posts = data.posts ?? []; // Lagebild Stufe 2: Radarposten
+    if ((!events || events.length === 0) && !naval && !fields && data.fleets.length === 0 && posts.length === 0) return;
     const layer = buildWorldEventLayer(events ?? [], serverNow());
     if (data.fleets.length > 0) { const fl = buildFleetLayer(data.fleets); layer.root.addChild(fl.root); layer.pinned.push(...fl.pinned); } // Lagebild: fremde Verbände
+    if (posts.length > 0) { const pl = buildPostLayer(posts); layer.root.addChild(pl.root); layer.pinned.push(...pl.pinned); } // Lagebild Stufe 2
     if (naval) { const nl = buildNavalLayer(naval, serverNow()); layer.root.addChild(nl.root); layer.pinned.push(...nl.pinned); } // See
     if (fields) { const fl = buildFieldLayer(fields.list, fields.linkKm); layer.root.addChild(fl.root); layer.pinned.push(...fl.pinned); } // Felder
     s.world.addChildAt(layer.root, s.world.getChildIndex(s.markerLayer));
@@ -407,6 +414,17 @@ export function HexMap(props: HexMapProps) {
     return () => { layer.destroy({ children: true }); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, intelKey, props.showSensors]);
+
+  // Lagebild Stufe 2: Wegpunkte und Ziele der Planung über den Routen (endet am Kartenrahmen).
+  const marksKey = JSON.stringify(props.marks ?? null);
+  useEffect(() => {
+    const s = scene.current;
+    if (!ready || !s || !props.marks || props.marks.list.length === 0) return;
+    const layer = buildMarkLayer(props.marks.list, props.marks.loop, mapClip);
+    s.world.addChildAt(layer, s.world.getChildIndex(s.markerLayer));
+    return () => { layer.destroy({ children: true }); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, marksKey]);
 
   // Wetterschicht unter den Zeichen (an- und abschaltbar).
   useEffect(() => {

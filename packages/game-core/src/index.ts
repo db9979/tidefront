@@ -27,3 +27,4 @@ export * from "./alliance-ops.ts"; // Allianz-Ops (Sammelangriff, Stationierung)
 export * from "./fields.ts"; // Felder: Rohstofffelder einnehmen
 export * from "./expansion.ts"; // Mehrere Häfen: Gründung, Verlegung
 export * from "./intel.ts"; // Lagebild: Sensoren, Kenntnisstufen, Alter
+export * from "./intel-ops.ts"; // Lagebild Stufe 2: Patrouille, Kampagne, Radarposten, Sonar

@@ -10,7 +10,7 @@ export type NavTarget =
   | { to: "market"; resource?: string; seg?: "handel" | "spieler" }
   | { to: "troops"; seg: "einsatz" | "ausbilden" | "abwehr" }
   | { to: "map" }
-  | { to: "meldungen"; sub: "berichte" | "erfolge" | "nachrichten" | "rangliste" | "allianz" };
+  | { to: "meldungen"; sub: "berichte" | "erfolge" | "nachrichten" | "rangliste" | "allianz" | "lagebild" };
 
 export interface RemedyAction { label: string; go: NavTarget }
 
