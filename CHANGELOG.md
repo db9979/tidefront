@@ -2,6 +2,19 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.24.0 – 27.11.2026
+- **Echte Seewege:** Schiffe fahren über Wasser statt quer über Land – um Küsten herum und durch Gibraltar, Ärmelkanal, Öresund, Messina, Bosporus, Kertsch und Suez. Fahrzeit und Treibstoff richten sich nach der echten Weglänge; die Karte zeigt den Kurs, und ein Rückruf wendet mitten auf der Route. Auch Kartell-Überfälle und Börsenlieferungen folgen dem Seeweg. Flugzeuge und Drohnen fliegen weiter direkt.
+- **Bordsicht:** Kriegsschiffe und Patrouillen sehen 105 km weit – das eigene Feld und alle sechs Nachbarfelder. Die Aufhellung im Kartennebel wandert flüssig mit dem Schiff.
+- **Fairere Wertung (gilt rückwirkend für die ganze Saison):** Abgewehrte Kartell-Überfälle zählen nur noch ein Viertel der Kampfpunkte; Rohstoffe zählen nach Börsen-Richtpreis (Elektronik mehr als Stahl). Angriffe auf Großflotte, Belagerung, Nester und Spieler zählen voll.
+- **Balance v1.24:** Das Kartell schlägt sanfter zu (Verlust je Überfall etwa halbiert). Startrampe schon ab Kommandozentrale 7, Rampenrabatt 10 % je Stufe (bis 30 %), Radarsatellit günstiger. Mehr Beute aus Nestern der Stufen 4 und 6. Elektrolyse ergiebiger, Chipfabrik produziert mehr, Zerstörer stärker gegen Korvetten, Kampfpanzer günstiger. Ab Kommandozentrale 9 mehr Kommandopunkte je Stufe.
+- **KI-Spieler** bauen zuverlässig weiter aus, gründen einen zweiten Hafen und überfallen Nester – auch die Reederei.
+- **Bedienung:** „Menü“ statt „?“ (Handbuch, Einstellungen, Verwaltung, Abmelden). Die Allianz liegt jetzt unter Truppen. Größere Tippflächen und besser lesbare graue Schrift. Die Karte in der Missionsplanung blockiert das Rollen nicht mehr („Karte bedienen“). Neue Kapitäne sehen zuerst nur Überfall und Aufklärung.
+- **Börse:** Kurse als „1,00 Kr“, Kopfbereich einklappbar, „Marktlage“ statt „Nachrichten“. **Lagebild:** eigene Sensoren und Sichtungen zuerst, Satelliten darunter.
+- **Benachrichtigungen:** neu für bereitliegende Tagesbefehle, leere Bauschlange und wieder besetzte Nester – jede einzeln abschaltbar. Neue Kapitäne bekommen den Morgenbericht automatisch.
+- Belohnungen aus Tagesbefehlen, Wochenzielen und Erfolgen füllen das Lager bis zur Grenze.
+- Mehr Zuverlässigkeit im Hintergrund: Missionen und wiederkehrende Abläufe können nicht mehr hängen bleiben, die Anmeldung ist besser geschützt.
+- **Behoben:** Im Lagebild stand „fischgrund“ statt „Fischgrund“.
+
 ## 0.23.0 – 27.11.2026
 - **Besserer Start:** Jeder neue Hafen hat ein Piratennest der Stufe 1 in höchstens 300 km – du kennst seine Stufe, und es steht in „Lohnende Ziele“ als Auftragsziel.
 - **Gewinnbarer erster Überfall:** Der Vorschlag in „Lohnende Ziele“ kommt jetzt aus einem Probekampf (mindestens 90 % Sieg) und nennt, wie viele Schützen noch fehlen. Der Auftrag verlangt 30 statt 20 Schützen.
