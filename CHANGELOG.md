@@ -2,6 +2,9 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.28.1 – 27.11.2026
+- **Passende Wortwahl in der Missionsplanung:** Reine Flugzeug- und Drohnenverbände „starten“ statt „auslaufen“, die Kurzzeile nennt den „Flug“, und das Wetterkästchen zeigt das Startwetter am Hafen statt eines Zeitzuschlags für Schiffe. Spione werden „losgeschickt“. Verbände mit Schiffen laufen weiter aus.
+
 ## 0.28.0 – 27.11.2026
 - **Ausgewogenere Baukosten (Balance v1.29):** Gebäude kosten mit jeder Stufe etwas weniger Stahl und dafür mehr Elektronik und Proviant – ab Stufe 12 ist gut ein Drittel des bisherigen Stahlanteils verlagert, bei gleichem Gesamtwert. Kaserne und Versorgungshof verlagern je zur Hälfte auf Proviant und Elektronik. So werden alle Rohstoffe gebraucht, statt dass Elektronik und Proviant ungenutzt im Lager liegen; der Ausbau kommt dadurch insgesamt etwas schneller voran.
 - Bereits laufende Bauaufträge behalten ihre Kosten.

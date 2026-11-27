@@ -12,6 +12,7 @@ import { ActionBar, BackButton, Button, Card, ErrorLine, Loading, Stepper, Small
 import { MapGate } from "../components/MapGate.tsx"; // Mini-Karte erst nach Antippen bedienbar
 import { ActionRemedy, ReasonInline, ReasonLine, hasRemedy } from "../components/Remedy.tsx"; // „Was hilft?“
 import { RouteWeather } from "../components/RouteWeather.tsx"; // Wetter auf der Route (v1.6)
+import { departureWords } from "../lib/departure.ts";
 // Komfort: Vorlagen, Wiederholen, Probekampf
 import { fitUnits, isPlanType, type PlanPreset } from "../lib/plan-request.ts";
 import { TemplateBar, shortText } from "../components/Templates.tsx";
@@ -116,6 +117,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
   // Besetzen: nur Schiffe (Seekampf, Server-Code field_ships_only) – Land- und Lufteinheiten sind gar nicht wählbar und zählen nicht mit.
   const landOk = (id: string) => type !== "besetzen" || meta.data?.balance.units[id]?.branch === "see";
   const chosen = useMemo(() => Object.fromEntries(Object.entries(units).filter(([id, n]) => n > 0 && landOk(id))), [units, type, meta.data]);
+  const dep = departureWords(chosen, meta.data?.balance); // Auslaufen / Starten / Losschicken
   const cargoSent = type === "transport" || type === "verlegung" ? Object.fromEntries(Object.entries(cargo).filter(([, n]) => n > 0)) : undefined;
   const naval = target?.blockadeId ? { blockadeId: target.blockadeId } : target?.convoyId ? { convoyId: target.convoyId } : type === "blockade" ? { holdHours } : target?.fieldId ? { fieldId: target.fieldId, ...(type === "besetzen" ? { stayAll } : {}) } : {}; // See, Felder
   const input = target ? { type, units: chosen, col: target.col, row: target.row, cargo: cargoSent, ...(target.eventId ? { eventId: target.eventId } : {}), ...(admiralId ? { admiralId } : {}), ...naval } : null;
@@ -278,12 +280,12 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
                 <div>Ankunft {fmtTime(p.arriveAtMs)} · zurück {fmtTime(p.returnAtMs)}</div>
                 {"intercept" in p && p.intercept && <div>{"finale" in p && p.finale ? "Kampfort" : "Abfangpunkt"} Feld {p.intercept.col}/{p.intercept.row}</div>}
                 {"finale" in p && p.finale && <FinalePreview p={p.finale} />}
-                {"weather" in p && p.weather && balance.weather && <RouteWeather w={p.weather} wb={balance.weather} factor={"weatherFactor" in p ? p.weatherFactor : 1} />}
+                {"weather" in p && p.weather && balance.weather && <RouteWeather w={p.weather} wb={balance.weather} factor={"weatherFactor" in p ? p.weatherFactor : 1} air={dep.kind === "luft"} />}
               </>
             ) : (
               <div className="text-red-300">
                 <ReasonLine code={p.code} detail={why} className="" text={`${errorText(p.code)}${p.code === "target_protected" && tInfo?.base?.protection ? ` Grund: ${label(tInfo.base.protection)}. Ein Überfall ist erst danach möglich.` : ""}`} open={whyOpen} onOpenChange={setWhyOpen} />
-                {"weather" in p && p.weather && balance.weather && <RouteWeather w={p.weather} wb={balance.weather} />}
+                {"weather" in p && p.weather && balance.weather && <RouteWeather w={p.weather} wb={balance.weather} air={dep.kind === "luft"} />}
               </div>
             )}
           </div>
@@ -301,7 +303,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
             <div className="font-semibold truncate">{unitCount(Object.values(chosen).reduce((a, b) => a + b, 0))}{ownTarget ? ` → ${ownTarget.name}` : target ? ` · ${type === "gruendung" ? "Außenposten " : "Feld "}${target.col}/${target.row}` : ""}</div>
             {p && !p.ok && target && Object.keys(chosen).length > 0
               ? <ReasonInline code={p.code} open={barOpen} onToggle={() => setBarOpen(!barOpen)} />
-              : <div className="text-xs text-ink2 truncate">{!target ? "Ziel wählen" : Object.keys(chosen).length === 0 ? "Einheiten wählen" : !p ? "Berechne …" : p.ok ? `Fahrt ${fmtSeconds(p.travelSeconds)} · ${fmtNum(p.fuelCost)} Treibstoff` : errorText(p.code)}</div>}
+              : <div className="text-xs text-ink2 truncate">{!target ? "Ziel wählen" : Object.keys(chosen).length === 0 ? "Einheiten wählen" : !p ? "Berechne …" : p.ok ? `${dep.trip} ${fmtSeconds(p.travelSeconds)} · ${fmtNum(p.fuelCost)} Treibstoff` : errorText(p.code)}</div>}
           </div>
           <Button
             className="shrink-0"
@@ -313,7 +315,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
               if (r && r.ok) setSent({ arriveAtMs: r.arriveAtMs, type });
             }}
           >
-            {type === "gruendung" ? "Gründen" : type === "verlegung" ? "Verlegen" : "Auslaufen"}
+            {type === "gruendung" ? "Gründen" : type === "verlegung" ? "Verlegen" : dep.verb}
           </Button>
         </div>
       </ActionBar>

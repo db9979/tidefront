@@ -40,6 +40,8 @@ const env = {
   LOG_LEVEL: "warn",
   TZ: "Europe/Berlin",
   PUBLIC_URL: E2E.webUrl,
+  // Tests legen Häfen direkt über die Engine an (ohne Live-Meldung) – der 5-s-Kartenzwischenspeicher würde sie verbergen.
+  MAP_CACHE_MS: "0",
 };
 
 function run(name: string, cmd: string, args: string[], extra: Record<string, string> = {}, cwd = root) {

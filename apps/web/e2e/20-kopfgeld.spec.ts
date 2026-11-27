@@ -31,6 +31,8 @@ test("Kopfgeld auf die Spitze: Rangliste, Kartenblatt und Missionsplanung", asyn
   await updateState(seed.sql, tb.id as number, (s) => { s.protection.createdAtMs = 0; });
   // Eigener Verband für die Planung; der eigene Hafen steht noch im Anfängerschutz (neuer Spieler).
   await setUnits(seed.sql, player.baseId, { korvette: 3 });
+  // Radar, damit der Zielhafen unabhängig von Kartennebel und Hafenlage voll sichtbar ist.
+  await updateState(seed.sql, player.baseId, (s) => { s.buildings = { ...s.buildings, radarstation: 8, kraftwerk: 6 }; });
   // Rang-Momentaufnahme des Tages neu rechnen lassen (sonst gilt der Stand von heute früh).
   await seed.sql`delete from server_setting where key = 'pvp_rank_snapshot'`;
 
@@ -48,7 +50,7 @@ test("Kopfgeld auf die Spitze: Rangliste, Kartenblatt und Missionsplanung", asyn
   // Karte: Blatt des fremden Hafens nennt das Kopfgeld.
   await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
   await tapHex(page, player, target!);
-  await expect(page.getByTestId("pvp-hint").getByText(/Kopfgeld \+50 %/)).toBeVisible();
+  await expect(page.getByTestId("pvp-hint").getByText(/Kopfgeld \+50 %/)).toBeVisible({ timeout: 20_000 }); // unter Parallel-Last langsam
   await expectNoHorizontalOverflow(page, "Karte mit Kopfgeld");
   await page.getByRole("button", { name: "Mission planen" }).click();
 

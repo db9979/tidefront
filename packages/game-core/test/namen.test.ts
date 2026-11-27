@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import { hasErrorText, hasLabel } from "../../../apps/web/src/lib/names.ts";
 import { BRANCHES, TECH, pathLabel, shy } from "../../../apps/web/src/lib/research.ts";
 import { BUILDING_TEXT, UNIT_TEXT } from "../../../apps/web/src/lib/info.ts";
+import { departureWords } from "../../../apps/web/src/lib/departure.ts";
 import { countName, countsText, hasName, nameOf, nOf } from "../../engine/src/names.ts";
 import { loadBalance } from "./helpers.ts";
 
@@ -104,4 +105,13 @@ test("Jede Einheit und jedes Gebäude hat eine Beschreibung im Info-Blatt", () =
   const b = loadBalance();
   for (const id of Object.keys(b.units)) assert.ok((UNIT_TEXT[id] ?? "").length > 20, `Einheit ohne Beschreibung: ${id}`);
   for (const id of Object.keys(b.buildings)) assert.ok((BUILDING_TEXT[id]?.lang ?? "").length > 20, `Gebäude ohne Beschreibung: ${id}`);
+});
+
+test("Missionsplanung: Schiffe laufen aus, reine Luftverbände starten, Spione werden losgeschickt", () => {
+  const b = loadBalance() as unknown as Parameters<typeof departureWords>[1];
+  assert.equal(departureWords({ korvette: 2 }, b).verb, "Auslaufen");
+  assert.equal(departureWords({ aufklaerungsdrohne: 1 }, b).verb, "Starten");
+  assert.equal(departureWords({ jagdbomber: 3, abfangjaeger: 1 }, b).trip, "Flug");
+  assert.equal(departureWords({ jagdbomber: 3, korvette: 1 }, b).verb, "Auslaufen");
+  assert.equal(departureWords({ spion: 1 }, b).verb, "Losschicken");
 });

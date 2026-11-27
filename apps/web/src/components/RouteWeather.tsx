@@ -7,7 +7,8 @@ import { Icon } from "../icons.tsx";
 import { fmtTime } from "../lib/time.ts";
 
 /** `factor`: tatsächlicher Zuschlag auf die Reisezeit (1 ohne Schiffe oder ohne Sturm). */
-export function RouteWeather({ w, wb, factor }: { w: RouteWeatherData; wb: WeatherBalance; factor?: number }) {
+/** `air`: reiner Luftverband (fliegt Luftlinie, kein Zeitzuschlag; Sturm am Hafen verhindert den Start). */
+export function RouteWeather({ w, wb, factor, air: airOnly }: { w: RouteWeatherData; wb: WeatherBalance; factor?: number; air?: boolean }) {
   const t = w.atTarget;
   const fog = t ? t.fog : w.avgFog;
   const icon = w.stormAtOrigin || w.maxWind >= wb.stormFrom ? "sturm" : fog >= wb.fogScoutFrom ? "nebel" : w.avgClouds >= 0.55 ? "wolke" : w.avgWind >= wb.shipSlowFrom ? "wind" : "sonne";
@@ -26,14 +27,22 @@ export function RouteWeather({ w, wb, factor }: { w: RouteWeatherData; wb: Weath
     <div className="mt-1.5 rounded-lg border border-rule bg-paper p-2 flex gap-2 items-start">
       <Icon id={icon} size={30} className="shrink-0" />
       <div className="text-xs">
-        <div className="font-display uppercase tracking-wider text-[11px] text-ink2">Wetter auf der Route bei Abfahrt</div>
+        <div className="font-display uppercase tracking-wider text-[11px] text-ink2">{airOnly ? "Wetter auf der Strecke beim Start" : "Wetter auf der Route bei Abfahrt"}</div>
         <div className="mono">Wind im Mittel {beaufort(w.avgWind)} Bft, höchstens {beaufort(w.maxWind)} Bft ({BEAUFORT_WORDS[beaufort(w.maxWind)]})</div>
-        {f > 1.005 ? (
-          <div className="text-siegel">Sturm auf der Route: Reisezeit der Schiffe +{Math.round((f - 1) * 100)} %</div>
+        {airOnly ? (
+          w.stormAtOrigin
+            ? <div className="text-siegel">Sturm am Hafen: Flugzeuge und Drohnen können nicht starten.</div>
+            : <div className="text-moos">Startwetter gut – kein Sturm am Hafen.</div>
         ) : (
-          <div className="text-moos">Kein Zeitzuschlag durch Sturm.</div>
+          <>
+            {f > 1.005 ? (
+              <div className="text-siegel">Sturm auf der Route: Reisezeit der Schiffe +{Math.round((f - 1) * 100)} %</div>
+            ) : (
+              <div className="text-moos">Kein Zeitzuschlag durch Sturm.</div>
+            )}
+            {w.stormAtOrigin && <div className="text-siegel">Sturm am Hafen: Reine Luftmissionen starten nicht.</div>}
+          </>
         )}
-        {w.stormAtOrigin && <div className="text-siegel">Sturm am Hafen: Reine Luftmissionen starten nicht.</div>}
         {t && (
           <>
             <div className="font-display uppercase tracking-wider text-[11px] text-ink2 mt-1.5">
