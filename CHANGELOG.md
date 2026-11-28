@@ -2,6 +2,16 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.48.0 – 28.11.2026
+
+- Karte: eine schmale, einheitliche Bedienleiste mit gleich großen Symbolknöpfen – Zoom (+/−) und Ansicht (Mein Hafen, Sichtungen, Ebenen und Legende), mit Tooltips. Wetter, Gradnetz, Kompass und Position überlappen nicht mehr. Am Handy ist die Kurszeile auf der Karte ausgeblendet (mehr Karte).
+- Nächster lohnender Besuch: Die Lage nennt, wann sich das Wiederkommen lohnt (Bauhof frei, Ausbildung fertig, Verband zurück, Lager voll, Seerat). „Erinnern“ stellt einen Push zu genau dieser Zeit (auch in der Ruhezeit) oder lädt einen Kalendertermin.
+- Neue Benachrichtigungen, je abschaltbar: „Lager fast voll“, „Du wurdest überholt“ (beide auch als E-Mail wählbar), „Seerat-Ergebnis“.
+- Planen vom Ziel: Die Missionsplanung schlägt den kleinsten Verband aus deinem Bestand vor, der mit mindestens 90 % siegt – oder sagt, was fehlt.
+- Neulinge: neuer Auftrag „Überfall auf das Start-Nest losschicken“, „Erste Schritte“ bleiben bis zum ersten Sieg. Ungelesene Post von Mitspielern mit „Antworten“ in der Lage; leere Seiten bieten eine Handlung an.
+- Handbuch: neues Kapitel „Begriffe“ mit Suche.
+- Verwaltung → Welt: Not-Aus der Weltpolitik als Schalter, Fensterzeilen ohne Umbrüche.
+
 ## 0.47.0 – 28.11.2026
 
 Balance v1.36
