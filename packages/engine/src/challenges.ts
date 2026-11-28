@@ -229,12 +229,15 @@ async function after(tx: Tx, ev: EventRow, due: number, snap: NonNullable<Challe
   if (snap.kind === "training") {
     const b = await readBase(tx, ev.baseId!);
     if (!b) return;
-    const left = new Set(b.state.trainingQueue.map((o) => `${o.builtIn}|${o.id}|${o.finishesAt}`));
-    const done = snap.orders.filter((o) => o.finishesAt <= due && !left.has(`${o.builtIn}|${o.id}|${o.finishesAt}`));
+    // Teillieferung (0.44): gezählt wird je Lieferung (done vorher → nachher; verschwundener Auftrag = vollständig).
+    const key = (o: TrainingOrder) => `${o.builtIn}|${o.id}|${o.startedAt}`;
+    const left = new Map(b.state.trainingQueue.map((o) => [key(o), o.done ?? 0]));
     const byKind = new Map<string, number>();
-    for (const o of done) {
+    for (const o of snap.orders) {
+      const n = (left.get(key(o)) ?? (o.finishesAt <= due ? o.count : o.done ?? 0)) - (o.done ?? 0);
+      if (n <= 0) continue;
       const kind = o.kind === "defense" ? "anlagen" : `ausbildung_${balance.units[o.id]?.branch ?? "?"}`;
-      byKind.set(kind, (byKind.get(kind) ?? 0) + o.count);
+      byKind.set(kind, (byKind.get(kind) ?? 0) + n);
     }
     for (const [kind, n] of byKind) await trackProgress(tx, snap.playerId, kind, n, at);
     return;

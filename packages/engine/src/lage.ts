@@ -4,7 +4,7 @@
 // brief: nur die Zahl fürs Navigationszeichen (Angriffe, Nachfristen, leere Bauschlangen, abholbare Belohnungen).
 // Entscheidung „Lagezentrum“ (packages/game-core/ENTSCHEIDUNGEN-5.md).
 import { and, eq, gt, inArray, notInArray, or } from "drizzle-orm";
-import { activeSatellites, nextPass, nightShieldWindow, radarWarningMinutes, type Mission, type Modifiers, type ResourceMap } from "@tidefront/game-core";
+import { activeSatellites, nextPass, nextTrainingDeliveryAt, nightShieldWindow, radarWarningMinutes, trainingDone, type Mission, type Modifiers, type ResourceMap } from "@tidefront/game-core";
 import { COLS, HEX_W, tradePortNameAt } from "@tidefront/world";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance, type Engine } from "./context.ts";
@@ -201,7 +201,10 @@ function queueRows(bases: BaseRow[]): LageRow[] {
       out.push(row({ key: `bau:${b.id}:${o.buildingId}:${o.targetLevel}`, kind: "bau", atMs: o.finishesAt, icon: o.buildingId, text: `${nameOf(o.buildingId)} Stufe ${o.targetLevel} fertig`, sub, jump: { to: "building", baseId: b.id, id: o.buildingId } }));
     }
     for (const o of b.state.trainingQueue) {
-      out.push(row({ key: `ausbildung:${b.id}:${o.builtIn}:${o.id}:${o.finishesAt}`, kind: "ausbildung", atMs: o.finishesAt, icon: o.id, text: `${countsText({ [o.id]: o.count })} ausgebildet`, sub, jump: { to: "troops", baseId: b.id, seg: o.kind === "defense" ? "abwehr" : "ausbilden" } }));
+      // Teillieferung: „3 × Korvette ausgebildet · 1 fertig, nächste 14:05 Uhr“ (Zeitpunkt der Zeile = alle fertig).
+      const next = o.count > 1 ? nextTrainingDeliveryAt(o) : null;
+      const part = next !== null && next < o.finishesAt ? ` · ${fmtInt(trainingDone(o))} fertig, nächste ${clock(next)} Uhr` : "";
+      out.push(row({ key: `ausbildung:${b.id}:${o.builtIn}:${o.id}:${o.finishesAt}`, kind: "ausbildung", atMs: o.finishesAt, icon: o.id, text: `${countsText({ [o.id]: o.count })} ausgebildet${part}`, sub, jump: { to: "troops", baseId: b.id, seg: o.kind === "defense" ? "abwehr" : "ausbilden" } }));
     }
     const r = b.isHome ? b.state.research?.order : null;
     if (r) out.push(row({ key: `forschung:${r.techId}:${r.targetLevel}`, kind: "forschung", atMs: r.finishesAt, icon: "forschungsamt", text: `Forschung ${nameOf(r.techId)} Stufe ${r.targetLevel} fertig`, jump: { to: "research" } }));

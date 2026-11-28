@@ -18,6 +18,7 @@ import {
   settle,
   spyDefenseValue,
   spySuccessValue,
+  trainingLeft,
   worldEventsBalance,
   type Counts,
   type SpyMission,
@@ -82,7 +83,7 @@ async function scoutDossier(tx: Tx, target: BaseRow, viewer: number, senderLevel
     scout, falsified,
     research,
     buildQueue: s.buildQueue.map((o) => ({ buildingId: o.buildingId, targetLevel: o.targetLevel, finishesAt: o.finishesAt })),
-    trainingQueue: s.trainingQueue.map((o) => ({ id: o.id, count: o.count, finishesAt: o.finishesAt })),
+    trainingQueue: s.trainingQueue.map((o) => ({ id: o.id, count: trainingLeft(o), finishesAt: o.finishesAt })), // Teillieferung: nur der Rest
     veterans: veteranView(s).filter((v) => v.xp > 0).map((v) => ({ id: v.id, rankName: v.rankName, xp: v.xp })),
     missions,
   };

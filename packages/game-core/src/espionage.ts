@@ -13,6 +13,7 @@ import { rollDie } from "./luck.ts";
 import { settle } from "./economy.ts";
 import { missionSlots } from "./buildings.ts";
 import { distanceKm } from "./geo.ts";
+import { trainingLeft } from "./units.ts";
 import type { ScoutReport } from "./resolution.ts";
 
 export type SpyKind = "erkunden" | "sabotage" | "desinformation" | "kartell";
@@ -182,11 +183,11 @@ export function resolveSpy(seed: number, success: number, defense: number, die: 
   return { roll, die, threshold, success: roll <= threshold };
 }
 
-/** Spione eines Hafens: daheim, unterwegs, in Ausbildung. */
+/** Spione eines Hafens: daheim, unterwegs, in Ausbildung (nur der noch nicht gelieferte Rest). */
 export function spyCount(base: BaseState, balance: Balance): { home: number; away: number; training: number } {
   const id = espionageOf(balance)?.unit ?? "";
   let training = 0;
-  for (const o of base.trainingQueue) if (o.kind === "unit" && o.id === id) training += o.count;
+  for (const o of base.trainingQueue) if (o.kind === "unit" && o.id === id) training += trainingLeft(o);
   return { home: base.units[id] ?? 0, away: base.unitsAway[id] ?? 0, training };
 }
 

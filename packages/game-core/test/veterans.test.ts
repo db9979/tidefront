@@ -89,7 +89,8 @@ test("Verwässerung: neue Rekruten senken den Schnitt (gewichteter Mittelwert)",
   const r = completeTraining(base, T0 + 2000, balance);
   assert.ok(r.ok);
   assert.equal(r.base.units.korvette, 30);
-  assert.equal(r.base.veterancy?.korvette, 20);
+  // Teillieferung: je Einheit verwässert – der gewichtete Mittelwert ist derselbe (bis auf Rundung).
+  assert.ok(approx(r.base.veterancy!.korvette, 20));
   assert.equal(r.base.veterancy?.schuetzen, 20);
   assert.equal(base.veterancy?.korvette, 40, "Eingabe unverändert");
 });

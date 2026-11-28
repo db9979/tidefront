@@ -138,8 +138,8 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
       body: (
         <>
           <P><strong>Grüne Raute</strong> an einem Gebäude: Es lässt sich jetzt ausbauen – die Rohstoffe reichen, in der Bauschlange ist Platz und die Höchststufe ist nicht erreicht.</P>
-          <P><strong>Bauschlange:</strong> bis zu {b?.building.queueSlots ?? 3} Ausbauten je Hafen, abgearbeitet nacheinander. Die Kosten zahlst du schon beim Einreihen. Werft, Kaserne, Flugfeld und Anlagenbau arbeiten daneben jeweils an einem eigenen Auftrag.</P>
-          <P><strong>Abbrechen</strong> (mit Rückfrage): Ein laufender Auftrag erstattet nur den Anteil der Restzeit, ein wartender alles. Spätere Stufen desselben Gebäudes in der Schlange fallen mit weg und werden voll erstattet.</P>
+          <P><strong>Bauschlange:</strong> bis zu {b?.building.queueSlots ?? 3} Ausbauten je Hafen, abgearbeitet nacheinander. Die Kosten zahlst du schon beim Einreihen. Werft, Kaserne, Flugfeld und Anlagenbau arbeiten daneben jeweils an einem eigenen Auftrag. Jede fertige Einheit oder Anlage eines Auftrags steht sofort im Bestand – bei 3 Korvetten die erste nach einem Drittel der Zeit, nicht erst, wenn alle fertig sind. Erst ab ihrer Ankunft kostet sie Unterhalt und verteidigt den Hafen; die Meldung kommt einmal, wenn der ganze Auftrag fertig ist.</P>
+          <P><strong>Abbrechen</strong> (mit Rückfrage): Ein laufender Auftrag erstattet nur den Anteil der Restzeit, ein wartender alles. Bei der Ausbildung bleiben schon gelieferte Einheiten; erstattet wird nur der Rest. Spätere Stufen desselben Gebäudes in der Schlange fallen mit weg und werden voll erstattet.</P>
           <P>Kein Gebäude darf mehr als {b?.building.levelCapAboveCommand ?? 3} Stufen über der Kommandozentrale liegen.</P>
           {b && (
             <ul className="space-y-2 mt-2">

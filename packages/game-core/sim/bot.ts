@@ -6,6 +6,7 @@ import type { Balance, BaseState, Counts, GeoPoint, ResourceMap } from "../src/i
 import {
   commandPoints,
   completeTraining,
+  trainingLeft,
   completeUpgrade,
   createBase,
   fleetTotals,
@@ -82,7 +83,7 @@ function sum(m: Record<string, number>): number {
 /** Einheiten daheim plus in Ausbildung. */
 function armyWithQueue(base: BaseState): Counts {
   const all: Counts = { ...base.units };
-  for (const o of base.trainingQueue) if (o.kind === "unit") all[o.id] = (all[o.id] ?? 0) + o.count;
+  for (const o of base.trainingQueue) if (o.kind === "unit") all[o.id] = (all[o.id] ?? 0) + trainingLeft(o);
   return all;
 }
 

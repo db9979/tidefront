@@ -111,3 +111,44 @@ Nestfahrten verteilt; der ganze Verband des Freibeuters schlüge Nest 6 sicher (
 der jeweils daheim liegende Teil nicht, und die heimkehrenden Überfallverbände allein reichen meist auch nicht
 (`waitForTopNest` greift daher selten). Das Zielfenster ist am Modell-Verband geprüft (sim/nest6.ts: Tag 35 65 %,
 Tag 38 100 %); der Wächter zur Nest-6-Beute nach Laderaum warnt erst bei einem Sieg und meldet ohne Sieg „ok“.
+
+## Teillieferung der Ausbildung (0.44)
+
+Nutzerwunsch: Fertige Einheiten eines Auftrags sollen sofort in den Bestand, nicht erst nach dem ganzen Auftrag.
+
+- **Zeitpunkte:** Einheit (bzw. Anlage) i von count ist zu `startedAt + floor((finishesAt − startedAt) · i / count)`
+  fertig, die letzte genau zu `finishesAt`. Die beim Start mit der Stromprognose festgelegte Dehnung verteilt sich
+  damit gleichmäßig. Genauer (je Einheit eine eigene Stromprognose) wäre möglich, müsste aber count Zeitpunkte beim
+  Start speichern oder die Prognose beim Liefern mit einem inzwischen veränderten Hafen wiederholen – verworfen.
+  Sabotage verschiebt `finishesAt`: Gelieferte bleiben, die übrigen strecken sich anteilig.
+- **Zustand:** neues optionales Feld `TrainingOrder.done` (gelieferte Anzahl) im JSON-Zustand des Hafens; fehlt es
+  (laufende Aufträge vor 0.44), gilt 0. Keine Schemaänderung, keine Migration.
+- **Kern:** `deliverTraining` (game-core/units.ts) liefert alle fälligen Einheiten in zeitlicher Reihenfolge, schreibt
+  den Hafen jeweils bis zum Lieferzeitpunkt fort (Unterhalt ab Lieferung) und verwässert die Veteranen je Lieferung.
+  Nachholen sehr vieler Lieferungen (z. B. 5000 Schützen nach langer Pause) wird auf höchstens 200 Fortschreibungen
+  gebündelt (je Bündel bis zu seiner letzten Lieferung – Unterhalt dieser Einheiten minimal zu niedrig). Im laufenden
+  Betrieb liefert die Ereigniskette ohnehin einzeln. `completeTraining` bleibt die Hülle (Codes wie bisher,
+  zusätzlich `delivered`). Als „in Ausbildung“ zählt überall nur der Rest `count − done`: Flugzeug-Stellplätze,
+  Höchstzahl der Spione, `spyCount`, Spionage-Dossier.
+- **Server:** Ein Ereignis `training_complete` steht zur nächsten Lieferung des Hafens an; der Handler liefert alles bis
+  zu seiner Fälligkeit und plant das nächste (training-events.ts, ohne Dubletten: geplant wird nur, wenn bis dahin
+  nicht schon eins ansteht; wirkungslose Ereignisse nach Abbruch oder Sabotage reihen sich selbst neu ein). So stehen
+  Einheiten auch ohne Abruf zur richtigen Zeit im Bestand. Ein Angriff am Hafen ist ein späteres Ereignis und kämpft
+  deshalb mit den bis dahin gelieferten Einheiten – eine zusätzliche Lieferung in der Kampfauflösung ist nicht nötig
+  (sie würde Auftragsabschlüsse an den Meldungen und Tagesbefehlen vorbei verbuchen). Befehle und Hafenansicht holen
+  fällige Ereignisse wie bisher vorher nach (processDueForBase). Preis: ein Ereignis je Einheit (Schützen alle ~15–30 s
+  eines Auftrags), dafür überall exakte Zeiten. Holt der Worker einen Rückstand nach, läuft die Kette Ereignis für
+  Ereignis durch; die Live-Meldung „base“ geht dabei erst raus, wenn die nächste Lieferung in der Zukunft liegt oder ein
+  Auftrag fertig ist – sonst holte der Browser je Einheit neu und liefe in die Anfragebremse (429, im E2E gesehen).
+- **Meldungen:** „Ausbildung fertig“ nur, wenn der Auftrag die Schlange verlässt (keine Push-Flut). Tagesbefehle
+  (`ausbildung_*`, `anlagen`) zählen je Lieferung (done vorher → nachher), damit auch bei Abbruch Gelieferte zählen.
+- **Abbruch:** Fällige Einheiten werden vorher geliefert und bleiben; erstattet wird der Rest
+  `floor(Kosten(count − done) · (finishesAt − jetzt) / (finishesAt − Lieferzeit der Einheit done))`. Mathematisch ist das
+  dieselbe Summe wie die bisherige Formel über den ganzen Auftrag – nur ehrlich als Rest ausgewiesen; die Rückfrage
+  nennt die bleibenden Einheiten.
+- **Oberfläche:** Truppen → Ausbilden zeigt „3 × Korvette · 1 fertig“ und „nächste in … · alle in …“ live; die
+  Bestandszahl am Symbol rechnet fällige Einheiten sofort dazu (auch bevor der Server sie verbucht). Zeitleiste der
+  Basis: eigener Eintrag für die nächste Einheit („Korvette 2/3 fertig“); Lage: „… · 1 fertig, nächste 14:05 Uhr“.
+- **Nicht angefasst:** bots-plan.ts zählt Auftragsmengen noch mit `o.count` zur Armee (Bestand + Auftrag); bei
+  Teillieferung sind gelieferte Einheiten dadurch doppelt gezählt – Heuristik der KI, Datei liegt beim
+  Balance-Entwickler (Abhilfe: `trainingLeft(o)` statt `o.count`).

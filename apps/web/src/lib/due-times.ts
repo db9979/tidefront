@@ -1,5 +1,6 @@
 // Fällige Zeitpunkte der Hafenansicht (rein, ohne React/Netz – für useDueRefresh in due.ts und Unit-Tests).
 import type { BaseData } from "./trpc.ts";
+import { nextTrainingDeliveryAt } from "@tidefront/game-core"; // Teillieferung: auch zur nächsten Einheit nachholen
 
 /** Nachholversuche nach dem fälligen Zeitpunkt (ms): der Worker braucht einen Moment. */
 export const DUE_RETRIES_MS = [1500, 8000] as const;
@@ -11,7 +12,7 @@ export function dueTimes(base: DueBase): number[] {
   const out: number[] = [];
   const add = (t: unknown) => { if (typeof t === "number" && Number.isFinite(t)) out.push(t); };
   for (const o of base.buildQueue) add(o.finishesAt);
-  for (const o of base.trainingQueue) add(o.finishesAt);
+  for (const o of base.trainingQueue) { add(o.finishesAt); add(nextTrainingDeliveryAt(o)); }
   add(base.research?.order?.finishesAt);
   for (const m of base.missions) add(m.status === "outbound" ? m.arriveAtMs : m.status === "returning" ? m.returnAtMs : null);
   for (const i of base.incoming) add(i.arriveAtMs);

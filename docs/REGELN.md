@@ -57,6 +57,12 @@ Zehn Spielereinheiten in drei Gattungen, dazu der Spion (kämpft nicht, siehe Na
 - Bau nur, wenn das Gebäude `builtIn` mindestens Stufe `requiresLevel` (Vorgabe 1) hat und kein Versorgungsmangel herrscht.
   Fehlt das Gebäude ganz: `building_required`; liegt es unter der Mindeststufe: `building_level`.
 - Bauzeit je Einheit: `seconds / (1 + buildSpeedPerLevel * (L - 1))`.
+- Teillieferung (0.44): Ein Auftrag über `count` Einheiten oder Anlagen liefert einzeln. Einheit `i` (1..count) ist zu
+  `startedAt + floor((finishesAt − startedAt) · i / count)` fertig (die letzte genau zu `finishesAt`; die beim Start
+  festgelegte Stromdehnung verteilt sich damit anteilig) und steht sofort im Bestand: Unterhalt, Verwässerung der
+  Veteranen, Verteidigung und Missionen ab diesem Zeitpunkt. Der Auftrag merkt sich die gelieferte Anzahl (`done`);
+  als „in Ausbildung“ zählt nur der Rest `count − done` (Stellplätze, Höchstzahl der Spione, Spionage-Lagebild).
+  Die Meldung „Ausbildung fertig“ kommt einmal, wenn der ganze Auftrag fertig ist.
 - Flugzeuge brauchen Stellplätze: `slotsPerLevel * L` (Flugfeld).
 - Ein Verband darf höchstens die Kommandopunkte seines Startstützpunkts kosten.
 - Bodentruppen reisen nur in Landungsschiffen: Summe `size * Anzahl` ≤ Summe `troopSpace`.
@@ -119,6 +125,8 @@ Rückruf:
 
 - Ein laufender Ausbau oder Ausbildungsauftrag kann abgebrochen werden. Erstattet wird je Ressource
   `floor(Kosten * Restzeit / Gesamtdauer)`, auch über die Lagerkapazität. Der Bauplatz ist sofort frei.
+  Ausbildung (Teillieferung): Fällige Einheiten werden vorher geliefert und bleiben; erstattet wird nur der Rest,
+  `floor(Kosten(count − done) * (finishesAt − jetzt) / (finishesAt − Lieferzeit der Einheit done))`.
 - In der Bauschlange ist jeder Auftrag einzeln abbrechbar. Ein noch nicht begonnener Auftrag wird voll erstattet.
   Die Aufträge dahinter rücken nach (Start frühestens jetzt, gleiche Dauer). Hätte ein späterer Auftrag danach eine
   ungültige Stufe (die vorige Stufe desselben Gebäudes fehlt oder der Deckel über die Kommandozentrale wäre
