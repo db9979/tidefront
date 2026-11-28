@@ -9,11 +9,9 @@ import { hexDistanceKm } from "@tidefront/world";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { botsConfig } from "./bots-core.ts";
 import { getSetting, setSetting } from "./settings.ts";
-import { reservedForField } from "./bots-fields.ts";
 import type { BaseRow } from "./store.ts";
 import {
-  forceValue, guardShareOf, humanCooldownActive, lastScout, probe, shipGuardShareOf, strikeForce, tryLaunch, withoutReserve, type TurnCtx,
-} from "./bots-war.ts";
+  forceValue, humanCooldownActive, lastScout, probe, tryLaunch, type TurnCtx, raidForce } from "./bots-war.ts";
 
 export const VERGELTUNG_SETTING = "bots_vergeltung";
 /** Höchstens eine Vergeltung je so viele Stunden (je KI-Spieler). */
@@ -69,7 +67,7 @@ export async function retaliate(c: TurnCtx, base: BaseRow & { state: BaseState }
     .from(tables.base).where(eq(tables.base.id, raid.attackerBaseId));
   if (!target || target.playerId !== raid.attackerPlayerId || hexDistanceKm(base, target) > MAX_RANGE_KM) return false;
   if (await humanCooldownActive(c, target.playerId)) return false;
-  const force = withoutReserve(strikeForce(base.state, guardShareOf(c), shipGuardShareOf(c)), reservedForField(c, base.id));
+  const force = raidForce(c, base);
   if (forceValue(force) < 3000) return false;
   const scout = await lastScout(c, target.id);
   if (!scout) {

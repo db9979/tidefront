@@ -62,6 +62,11 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
   der Verband keines der Nester ab der Mindeststufe, nimmt er eine Stufe darunter. Der Freibeuter hält zwei Plätze für
   Nestfahrten frei (neue Felder erst mit drei freien Plätzen), die Patrouille startet erst mit drei freien Plätzen.
   Ein Platz wird für ein Weltereignis nur freigehalten, wenn der Probekampf dagegen reicht.
+- **Rüstungsplan Nest 6 (v1.37):** Ab Saisontag 30 hält der Freibeuter im Heimathafen ein Paket für die Inselfestung
+  zurück (720 Schützen, 40 Pioniere, 20 Kampfpanzer, 45 Korvetten, 12 Zerstörer, 10 Landungsschiffe ≈ 427 KP, ohne Flugzeuge – sie reichen nicht bis zu den Inseln; bei weniger Kommandopunkten anteilig kleiner –
+  `NEST6_PACKAGE`): Nestfahrten, Weltereignisse, Finale und Vergeltung aus diesem Hafen nehmen nur den Überschuss; die
+  Ausbildung füllt die Lücken zuerst (auch über dem Rüstungsanteil). Reichen die Kommandopunkte nicht, verlegt er
+  überzählige Schiffe in die Kolonie mit den meisten freien Kommandopunkten (höchstens alle 12 h).
 - **Inselfestung bündeln (v1.36):** Ab Saisontag 35 prüft der Freibeuter im Heimathafen, ob sein gebündelter Verband
   (daheim, laufende Überfälle und Feldbesatzungen dieses Hafens) ein bekanntes Nest 6 in 900 km im Probekampf über die
   Würfe schafft (im Mittel ≥ 90 %, ungünstig ≥ 50 %). Dann ruft er die Feldbesatzungen zurück, startet aus dem Hafen

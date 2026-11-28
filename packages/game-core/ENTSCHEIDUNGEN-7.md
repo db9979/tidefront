@@ -377,3 +377,31 @@ Grundlage: `.claude/review-0.22/UX-0.43.md` (B8, B9/U-2, C2, C3) und die Nutzere
   Bau/Ausbildung (`DIGEST_KINDS`, 30-min-Sammelmail). Der Wartungslauf prüft jetzt Menschen mit Push-Abo **oder**
   bestätigter E-Mail-Adresse; Tagesmerker und „1× am Tag“ gelten für beide Kanäle zusammen. Seerat-Ergebnis bleibt
   nur Push (die Systemnachricht ist schon da).
+
+## v1.37 – Rüstungsplan „Truppen für Nest 6 ab Tag 30“ (Nutzerentscheid nach 0.47.0)
+
+Keine Balance-Werte geändert (Balance bleibt v1.36); nur KI-Verhalten (`bots-nest6.ts`, `bots-run.ts`, `bots-econ.ts`,
+`bots-plan.ts`).
+
+1. **Paket:** Ab Saisontag 30 hält der Freibeuter im Heimathafen `NEST6_PACKAGE` zurück – 720 Schützen, 40 Pioniere,
+   20 Kampfpanzer, 45 Korvetten, 12 Zerstörer, 10 Landungsschiffe (≈ 427 KP). Gesucht per Raster über Verbände bis
+   420–540 KP (ohne Modifikatoren): ohne Flugzeuge, weil Jagdbomber (500 km) und Abfangjäger (600 km) die Inseln
+   (≥ 1 600 km) nicht erreichen; gegen den ungünstigsten Wurf 75 %, über die Würfe 100 %. Bei weniger Kommandopunkten
+   anteilig kleiner (`nest6PackageFor`); Forschung und Veteranen gleichen das aus, der Probekampf entscheidet.
+2. **Nestfahrten begrenzt:** Fahrten aus dem Heimathafen (Nester, Weltereignisse, Finale, Vergeltung) nehmen nur den
+   Überschuss über das Paket (`raidForce` → `withoutNest6Hold`); keine neuen Feldbesatzungen aus dem Hafen.
+3. **Ausbildung nach Bedarf:** Solange dem Paket etwas fehlt, bildet der Hafen nur Paket-Einheiten aus (Anteile nach
+   der Lücke, `onlyDoctrine`), auch über dem Rüstungsanteil (`forceMilitary`), und baut in der Zeit nicht aus.
+4. **Kommandopunkte:** Reichen sie nicht, verlegt er überzählige Schiffe (und Flugzeuge, wenn die Kolonie Platz hat) in
+   die Kolonie mit den meisten freien Kommandopunkten; ist daheim nichts überzählig, holt er die Feldbesatzungen heim
+   (höchstens alle 12 h).
+5. **Treibstoff:** Rücklage für Hin- und Rückfahrt (Seeweg ≈ 1,4 × Luftlinie, `nest6FuelNeed`): die Ausbildung nimmt
+   ihn nicht, die Börse verkauft ihn nicht und kauft fehlenden zu (ein Lauf scheiterte zuvor an „fuel“).
+6. **Bündeln** wie v1.36 ab Tag 35, jetzt ohne Flugzeuge außer Reichweite in Probekampf und Fahrt; einmal je Saison,
+   danach besetzt `fieldTurn` die Felder wieder.
+7. **Saisonlauf-Messung korrigiert:** Nest-6-Siege wurden über `report.nest.level` gesucht, das Überfallberichte nicht
+   tragen – Siege blieben unsichtbar. Jetzt über `nest_id` (Stufe 6), angeboten = `battle.setup.defender.fixedLoot`.
+
+Saisonlauf v1.37 (`--strict`, Seed 4242): **Exit 0, keine Warnung.** KI-Sieg über Nest 6 an Tag 39 (Freibeuter, 95 % der
+Beute mitgenommen: 36 000 von 37 700 Einheiten), Kartellverlust 4 % (≈ 1,0 h Produktion je Tag), Kampf + Beute 26 %,
+Befehle 1 %, Freibeuter Nest 4 an Tag 11, Festung höchstes Nest 4, Weltereignis-Angriffe Festung/Freibeuter 2/2.

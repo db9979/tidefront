@@ -22,7 +22,7 @@ import { admiralTurn } from "./bots-admiral.ts"; // Admirale
 import { dailyTurn } from "./bots-daily.ts";
 import { raidWorldEvent } from "./bots-world-events.ts";
 import { retaliate } from "./bots-vergeltung.ts";
-import { nest6Bundle } from "./bots-nest6.ts";
+import { nest6Bundle, nest6Deficit, nest6DoctrineBoost, nest6FreeCommandPoints, nest6FuelNeed, nest6PrepActive } from "./bots-nest6.ts";
 
 /** Zusatzanteile der Doktrin, solange ein Feldverband fehlt (bots-fields.ts). */
 const FIELD_DOCTRINE = { korvette: 0.15, zerstoerer: 0.05 };
@@ -60,8 +60,14 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
   const expansion = await expansionTurn(c, bases, mods);
   if (c.log.length > 0) ({ bases, mods } = await loadOwn(engine, bot.id, nowMs));
 
+  // v1.37: Rüstungsplan „Truppen für Nest 6 ab Tag 30“ (Freibeuter, Heimathafen; bots-nest6.ts).
+  const prepBase = bases.find((b) => b.isHome);
+  c.nest6Hold = prepBase && (await nest6PrepActive(c, prepBase)) ? prepBase.id : undefined;
+  if (c.nest6Hold && prepBase && (await nest6FreeCommandPoints(c, prepBase, bases.filter((b) => !b.isHome)))) ({ bases, mods } = await loadOwn(engine, bot.id, nowMs));
   for (const b of bases) {
-    const plan: PlanCtx = { state: b.state, profile: bot.profile, cfg, mods: mods.get(b.id)!, nowMs, rand, ...(b.isHome ? expansion : {}) };
+    const prep = c.nest6Hold === b.id;
+    const plan: PlanCtx = { state: b.state, profile: bot.profile, cfg, mods: mods.get(b.id)!, nowMs, rand, ...(b.isHome ? expansion : {}), ...(prep && Object.keys(nest6Deficit(b.state)).length > 0 ? { forceMilitary: true, onlyDoctrine: nest6DoctrineBoost(b.state) } : {}) };
+    if (prep) plan.reserve = { ...(plan.reserve ?? {}), treibstoff: Math.max(plan.reserve?.treibstoff ?? 0, nest6FuelNeed(b, mods.get(b.id))) }; // Treibstoff für die Fahrt
     // Bauen: bis zu buildQueue Aufträge in der Schlange (leicht 1, stark 3).
     const build = async () => {
       for (let i = 0; i < cfg.buildQueue; i++) {
@@ -77,7 +83,7 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
     // Ausbilden nach Doktrin (Kolonieschiff steuert expansionTurn).
     const drill = async () => {
       // Fehlen Schiffe für ein Rohstofffeld, bekommt die Doktrin einen Zusatzanteil Kriegsschiffe.
-      const t = chooseTraining(plan, wantsField(c) && c.state.fieldTarget?.baseId === b.id ? FIELD_DOCTRINE : {});
+      const t = chooseTraining(plan, !prep && wantsField(c) && c.state.fieldTarget?.baseId === b.id ? FIELD_DOCTRINE : {});
       for (const o of t.orders) {
         const r = await train(engine, bot.id, c.key("train"), o.id, o.count, b.id);
         if (!r.ok) {
@@ -102,7 +108,10 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
     if (phase === "mil" && share >= target) phase = "build";
     else if (phase === "build" && share < MIL_RESUME * target) phase = "mil";
     c.state.phase = { ...phases, [b.id]: phase };
-    if (phase === "mil") {
+    if (plan.forceMilitary) {
+      // v1.37: Rüstungsplan Nest 6 – solange dem Paket etwas fehlt, gehen die Rohstoffe in die Ausbildung (kein Ausbau).
+      await drill();
+    } else if (phase === "mil") {
       // Fehlt Geld für die dringendste Einheit, wird dafür gespart (kein Ausbau in diesem Zug).
       if (!(await drill())) await build();
     } else {
@@ -138,7 +147,7 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
     const m = mods.get(b.id)!;
     await botSatellite(c, b); // Lagebild Stufe 3: Satellit, wenn viele Nester ohne Lagebild sind
     if (await nest6Bundle(c, b, m)) continue; // ab Tag 35: Verband für Nest 6 bündeln (Freibeuter, Heimathafen)
-    if (await fieldTurn(c, b, m)) continue;
+    if (c.nest6Hold !== b.id && (await fieldTurn(c, b, m))) continue; // v1.37: im Rüstungsplan keine neuen Feldbesatzungen
     if (await raidFinale(c, b, m)) continue; // Saisonfinale: Abschnitt der Armada, wenn sicher gewonnen
     if (await raidWorldEvent(c, b, m)) continue; // Welle 2: Schatzschiff, Großflotte, Belagerung nach Probekampf
     if (await layMines(c, b)) continue;

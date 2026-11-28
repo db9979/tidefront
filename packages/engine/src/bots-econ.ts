@@ -28,6 +28,7 @@ import { FOUNDING_TYPE } from "./expansion.ts";
 import { coastFields } from "./bots-core.ts";
 import { fmtInt, nameOf } from "./names.ts";
 import type { TurnCtx } from "./bots-war.ts";
+import { nest6FuelNeed } from "./bots-nest6.ts"; // v1.37
 import type { BaseRow } from "./store.ts";
 
 type Base = BaseRow & { state: BaseState };
@@ -46,12 +47,18 @@ export async function marketTurn(c: TurnCtx, base: Base, mods: Modifiers): Promi
     room[x.id] = Math.max(0, x.dailyLimit - x.dailyUsed - (x.dailyReserved ?? 0));
     price[x.id] = x.price ?? ref(x.id);
   }
+  // v1.37: Rüstungsplan Nest 6 – Treibstoff für die Fahrt zur Inselfestung nicht verkaufen, fehlenden zukaufen.
+  const fuelNeed = c.nest6Hold === base.id ? nest6FuelNeed(base, mods) : 0;
+  const need = nextBuildNeed(base.state);
+  if (fuelNeed > 0) need.treibstoff = Math.max(need.treibstoff ?? 0, fuelNeed);
   const plan = botMarketPlan({
-    stock: base.state.resources, perHour: productionRates(base.state, balance, mods, c.nowMs).perHour, need: nextBuildNeed(base.state),
+    stock: base.state.resources, perHour: productionRates(base.state, balance, mods, c.nowMs).perHour, need,
     room, price, maxLot: maxLots(), credits: view.credits - (c.creditReserve ?? 0), trader: c.cfg.trade,
   });
   for (const x of plan.sell) await doTrade(c, base, "sell", x.resource, x.qty);
-  if (plan.buy) await doTrade(c, base, "buy", plan.buy.resource, plan.buy.qty, mods);
+  const short = Math.floor(fuelNeed - (base.state.resources.treibstoff ?? 0));
+  if (short > 0 && (room.treibstoff ?? 0) > 0) await doTrade(c, base, "buy", "treibstoff", Math.min(short, Math.floor(room.treibstoff), maxLots().treibstoff ?? short), mods);
+  else if (plan.buy) await doTrade(c, base, "buy", plan.buy.resource, plan.buy.qty, mods);
 }
 
 /** Ab diesem Warenwert (Richtpreis) nehmen KI-Spieler bei Börsenkäufen das empfohlene Geleit, wenn Schiffe daheim sind. */

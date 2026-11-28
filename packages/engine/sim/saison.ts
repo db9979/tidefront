@@ -204,10 +204,13 @@ async function botMetrics(t: number): Promise<SeasonMetrics["bots"]> {
 }
 
 async function nest6Loot(): Promise<SeasonMetrics["nest6"]> {
-  const rows = await db.execute<{ at: string | Date; report: { nest?: { level?: number; garrison?: { loot?: Record<string, number> } | null }; battle?: { loot?: Record<string, number> } } }>(sql`
-    select created_at as at, report from battle_report where winner = 'attacker' and attacker_player_id is not null and (report->'nest'->>'level')::int = 6`);
+  // v1.37: über nest_id (Stufe 6) – Überfallberichte tragen kein report.nest; angeboten = battle.setup.defender.fixedLoot
+  // (Beute samt Wachstum), mitgenommen = battle.loot. Vorher fand die Abfrage keinen Sieg, auch wenn es einen gab.
+  const rows = await db.execute<{ at: string | Date; report: { battle?: { loot?: Record<string, number>; setup?: { defender?: { fixedLoot?: Record<string, number> } } } } }>(sql`
+    select br.created_at as at, br.report from battle_report br join nest n on n.id = br.nest_id
+    where br.winner = 'attacker' and br.attacker_player_id is not null and br.kind = 'ueberfall' and n.level = 6`);
   const sum = (m?: Record<string, number>) => Object.values(m ?? {}).reduce((a, v) => a + (Number(v) || 0), 0);
-  return rows.map((r) => ({ offered: sum(r.report.nest?.garrison?.loot), taken: sum(r.report.battle?.loot), day: Math.floor((new Date(r.at).getTime() - t0) / DAY) + 1 }));
+  return rows.map((r) => ({ offered: sum(r.report.battle?.setup?.defender?.fixedLoot), taken: sum(r.report.battle?.loot), day: Math.floor((new Date(r.at).getTime() - t0) / DAY) + 1 }));
 }
 
 

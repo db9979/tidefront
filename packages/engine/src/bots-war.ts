@@ -32,7 +32,8 @@ import type { BaseRow } from "./store.ts";
 import { reservedForField } from "./bots-fields.ts";
 import { botMap, scoutNearest, scoutsUnknown } from "./bots-intel.ts"; // Lagebild
 import { NEST_TOP_SLACK, nestTopLevel, waitForTopNest } from "./bots-nest-top.ts";
-import { keepSlotForEvent } from "./bots-world-events.ts"; // v1.35 // Welle 2: Nestwahl nach dem ganzen Verband
+import { keepSlotForEvent } from "./bots-world-events.ts"; // v1.35
+import { withoutNest6Hold } from "./bots-nest6.ts"; // v1.37 // Welle 2: Nestwahl nach dem ganzen Verband
 
 export interface TurnCtx {
   engine: Engine;
@@ -47,6 +48,8 @@ export interface TurnCtx {
   admiral?: { id: number; baseId: number; mods: Modifiers };
   /** Admirale: Taler, die die Börse für die Ernennung zurückhält. */
   creditReserve?: number;
+  /** v1.37: Rüstungsplan Nest 6 – dieser Hafen hält das Paket (bots-nest6.ts NEST6_PACKAGE) für die Inselfestung zurück. */
+  nest6Hold?: number;
 }
 
 /** Einheiten, die nicht kämpfen sollen. */
@@ -135,6 +138,14 @@ export function strikeForce(state: BaseState, guardShare: number, shipGuardShare
 
 /** v1.35: so viele Landtruppen bleiben mindestens daheim (30 Schützen halten den Mindestüberfall des Kartells fast immer). */
 export const MIN_HOME_TROOPS = 40;
+
+/**
+ * Angriffsverband eines Zugs: Heimwache ab, Feldverband ab und – v1.37 – während des Rüstungsplans Nest 6 nur der
+ * Überschuss über das Paket (bots-nest6.ts).
+ */
+export function raidForce(c: TurnCtx, base: { id: number; state: BaseState }): Counts {
+  return withoutNest6Hold(c, base, withoutReserve(strikeForce(base.state, guardShareOf(c), shipGuardShareOf(c)), reservedForField(c, base.id)));
+}
 
 /**
  * Feldverband daheim lassen (bots-fields.ts): Kampfschiffe des Angriffsverbands abziehen, bis ihre Kommandopunkte den
@@ -268,7 +279,7 @@ export async function ownNestTargets(c: TurnCtx): Promise<Set<string>> {
 export async function raidNest(c: TurnCtx, base: BaseRow & { state: BaseState }, mods: Modifiers): Promise<boolean> {
   if (!c.cfg.attackNests || c.cfg.probeRuns <= 0) return false;
   if (await keepSlotForEvent(c, base)) return false; // v1.35: Platz für ein laufendes Weltereignis freihalten
-  const force = withoutReserve(strikeForce(base.state, guardShareOf(c), shipGuardShareOf(c)), reservedForField(c, base.id));
+  const force = raidForce(c, base);
   const fv = forceValue(force);
   if (fv < 2000) return false;
   // Welle 2: nur Nester ab der höchsten Stufe, die der ganze Verband schafft (minus eins) – bots-nest-top.ts.
@@ -388,7 +399,7 @@ export function botRaidDue(c: Pick<TurnCtx, "bot" | "state" | "nowMs">): boolean
 /** Angriff auf einen Spielerhafen: erst Aufklärung, dann Probekampf gegen das Lagebild (Durchläufe je Spielweise). */
 export async function raidPlayer(c: TurnCtx, base: BaseRow & { state: BaseState }, mods: Modifiers): Promise<boolean> {
   if (c.cfg.attackPlayers <= 0 || c.cfg.probeRuns <= 0 || c.rand() > c.cfg.attackPlayers) return false;
-  const force = withoutReserve(strikeForce(base.state, guardShareOf(c), shipGuardShareOf(c)), reservedForField(c, base.id));
+  const force = raidForce(c, base);
   if (forceValue(force) < 3000) return false;
   // Welle 2 (ST-17): andere KI überfällt nur der Freibeuter, höchstens alle 48–72 h, die mit dem vollsten Lager zuerst.
   const botsOk = botRaidDue(c);

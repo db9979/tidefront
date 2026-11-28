@@ -21,8 +21,7 @@ import { balance } from "./context.ts";
 import { launchMission } from "./commands.ts";
 import { missionPreview } from "./views.ts";
 import { activeMissionCount, type BaseRow } from "./store.ts";
-import { reservedForField } from "./bots-fields.ts";
-import { forceValue, guardShareOf, shipGuardShareOf, strikeForce, withoutReserve, type TurnCtx } from "./bots-war.ts";
+import { forceValue, type TurnCtx, raidForce } from "./bots-war.ts";
 import { KIND_TEXT, type WorldEventRow } from "./world-events.ts";
 
 /** Nötige Siegquote (Ereignis vernichtet) im Probekampf. */
@@ -78,7 +77,7 @@ export async function keepSlotForEvent(c: TurnCtx, base: BaseRow & { state: Base
   // Ereignis tagelang alle Nestfahrten – Saisonlauf: Freibeuter ohne Nest 4).
   const open = near.filter((e) => !busy.has(e.id));
   if (open.length === 0) return false;
-  const force = eventForce(withoutReserve(strikeForce(base.state, guardShareOf(c), shipGuardShareOf(c)), reservedForField(c, base.id)));
+  const force = eventForce(raidForce(c, base));
   const fv = forceValue(force);
   if (fv < 2000) return false;
   return open.some((e) => {
@@ -102,7 +101,7 @@ export async function raidWorldEvent(c: TurnCtx, base: BaseRow & { state: BaseSt
   const busy = new Set((await db.select({ id: tables.mission.targetId }).from(tables.mission).where(and(
     eq(tables.mission.playerId, c.bot.id), eq(tables.mission.targetKind, "event"), eq(tables.mission.status, "outbound"),
   ))).map((r) => r.id));
-  const force = eventForce(withoutReserve(strikeForce(base.state, guardShareOf(c), shipGuardShareOf(c)), reservedForField(c, base.id)));
+  const force = eventForce(raidForce(c, base));
   const fv = forceValue(force);
   if (fv < 2000) return false;
   const runs = Math.max(EVENT_PROBE_RUNS, c.cfg.probeRuns);
