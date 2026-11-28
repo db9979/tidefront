@@ -66,7 +66,7 @@ export function AdminCartel() {
       </div>
       <p className="text-sm mb-3">{hint(pct)}</p>
       <div className="flex gap-2">
-        <Button disabled={busy || pct === saved} onClick={() => save(pct)}>Speichern</Button>
+        <Button disabled={busy || pct === saved} onClick={() => { if (confirm(`Kartell-Stärke auf ${pct} % setzen? Gilt für alle Überfälle, die ab jetzt auslaufen.`)) void save(pct); }}>Speichern</Button>
         <Button kind="secondary" disabled={busy || saved === 100} onClick={() => { setPct(100); void save(100); }}>Zurück auf 100 %</Button>
       </div>
       {error && <ErrorLine text={error} />}

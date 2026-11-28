@@ -17,6 +17,7 @@ test("Verwaltung: Rohstoffbilanz, Zuflüsse, Welt & Worker, Nutzung je System, M
     await page.goto("/");
     await page.getByRole("button", { name: "Menü", exact: true }).click();
     await page.getByRole("dialog").getByRole("button", { name: /^Verwaltung/ }).click();
+    await page.getByRole("tab", { name: "Statistik" }).click(); // Verwaltung: vier Reiter (UX-0.43 B3)
     const bilanz = page.getByRole("heading", { name: "Rohstoffbilanz", level: 2 });
     await bilanz.scrollIntoViewIfNeeded();
     await expect(bilanz).toBeVisible({ timeout: 20000 });
@@ -24,6 +25,7 @@ test("Verwaltung: Rohstoffbilanz, Zuflüsse, Welt & Worker, Nutzung je System, M
     await expect(card("Rohstoffbilanz").getByRole("cell", { name: /Stahl/ }).first()).toBeVisible();
     await expect(card(/^Zuflüsse/).getByRole("cell", { name: "Produktion" })).toBeVisible();
     const worker = card("Welt & Worker");
+    await worker.getByRole("button", { name: /Welt & Worker/ }).click(); // Technik eingeklappt
     await expect(worker.getByRole("cell", { name: "e2e probe" })).toBeVisible();
     await expect(card("Nutzung je System")).toBeVisible();
     const ms = card("Meilensteine");

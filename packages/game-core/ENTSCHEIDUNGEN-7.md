@@ -152,3 +152,46 @@ Nutzerwunsch: Fertige Einheiten eines Auftrags sollen sofort in den Bestand, nic
 - **Nicht angefasst:** bots-plan.ts zählt Auftragsmengen noch mit `o.count` zur Armee (Bestand + Auftrag); bei
   Teillieferung sind gelieferte Einheiten dadurch doppelt gezählt – Heuristik der KI, Datei liegt beim
   Balance-Entwickler (Abhilfe: `trainingLeft(o)` statt `o.count`).
+
+## UX-0.43: App-Hülle, Menü, Einstellungen, Verwaltung, Desktop (uxs)
+
+Grundlage: `.claude/review-0.22/UX-0.43.md` (B2, A6, B3, B4, B7) und die Nutzerentscheidungen E-1 und E-7.
+
+- **Gleichrangige Ansichten (B2).** Handbuch, Einstellungen und Verwaltung sind eigene Ansichten der App-Hülle
+  (`lib/app-views.ts`), nicht mehr ineinander geschachtelt. Aus dem Menü, per Kürzel oder per Benachrichtigung geöffnet,
+  ersetzt eine Ansicht die offene, „Zurück“ (Knopf, Browser, Esc) führt zum Reiter darunter. Nur ein Querverweis
+  (Textlink, z. B. Handbuch → Einstellungen) legt eine zweite Ebene an; „Zurück“ führt dann zur verweisenden Ansicht.
+  Mehr als zwei Ebenen gibt es nicht. Neues Sprungziel `{ to: "view", view, focus? }` (focus "push" springt zur
+  Push-Karte – die zentrale Stelle für die Push-Frage im Spielablauf).
+- **Jede Funktion ein Ort.** Menü: Handbuch (mit „Was ist neu?“), Einstellungen, Freunde einladen (Blatt), Fehler
+  melden, Verwaltung (Admin), Abmelden. Handbuch und Einstellungen verweisen nur per Textlink. Aus den Einstellungen
+  entfallen die Karten „Freunde einladen“, „Fehler melden“ und „Verwaltung“; aus dem Handbuch Schnellkacheln,
+  „Angemeldet als“ und die Fehler-Karte.
+- **Einstellungen in vier Gruppen (A6).** Benachrichtigungen (Push, Ruhezeit, Morgenbericht mit Kanälen,
+  E-Mail-Arten) · Spiel (Nachtschild-Startzeit – dieselbe Komponente wie Basis → Schutz –, Kurszeile) · Konto (Name,
+  E-Mail-Adresse, Passwort eingeklappt, Abmelden als Textlink) · Hilfe (Handbuch, Neuigkeiten, Fehler melden,
+  Tastaturkürzel, Version). E-Mail-Arten und der E-Mail-Kanal des Morgenberichts sind ohne Mailversand bzw. ohne
+  bestätigte Adresse deaktiviert und nennen den Grund. Alle Uhrzeiten als 24-h-Auswahl (Morgenbericht: Stunde +
+  Viertelstunde statt Browser-Zeitfeld mit AM/PM). Wetter-/Animationsschalter gibt es (noch) nicht – keine neuen
+  Einstellungen erfunden.
+- **Verwaltung in vier Reitern (B3).** Übersicht (Ampel nur mit Handlungsbedarf, jede Zeile springt; Fehlermeldungen,
+  fehlgeschlagene Ereignisse; „Einrichtung“ eingeklappt mit Systemwerten, Sicherungen, E-Mail-Versand und dem dortigen
+  Server-Jargon) · Spieler (Suche, Rücksetzcode, Einladungscodes, Freunde einladen, Auffällige Paare) · Welt
+  (KI-Spieler, Allianzgröße; rot umrandete Gefahrenzone mit Weltpolitik-Not-Aus/Fenster absagen, Kartennebel als echter
+  Schalter, Kartell-Stärke, Saisonfinale – jede Aktion mit Bestätigung) · Statistik (Zeitraum, Kennzahlen, Balance
+  live, Weltpolitik-Übersicht nur lesend; Technik-Karten eingeklappt). Duplikate entfernt: „Fehlgeschlagene Ereignisse“
+  nur noch in der Übersicht. Gewählter Reiter wird geräteweit gemerkt.
+- **Desktop (B4, E-7, E-1).** Handbuch, Einstellungen, Verwaltung, Forschung und Saison (Rangliste/Bilanz/Erfolge)
+  sind Textansichten: Karte ausgeblendet (bleibt geladen), Inhalt in voller Breite (Handbuch Lesebreite, Einstellungen
+  und Verwaltung zweispaltig). Der Leisten-Eintrag „Karte“ ist am Desktop der Umschalter „Karte groß“: er legt die Karte
+  über die aktuelle Ansicht und kehrt beim zweiten Druck genau dorthin zurück (aus dem Reiter Karte: zum vorigen
+  Reiter). Leiste unten: Saison, Handbuch, Einstellungen, Verwaltung (Admin). Kopfleiste: Rohstoffe gruppiert, größer,
+  mit Namen und kräftigem Lagerbalken (Warnfarbe ab 85 %), rechts Fortschritts-Chip „Platz 3 von 8 · 420 bis Platz 2 ·
+  Tag 5/42“ aus `social.ranking` (unter 1280 px Kurzform) – Antippen öffnet die Saison.
+- **Tastaturkürzel.** 1–5 Hauptreiter, A „Alle abholen“ (falls sichtbar), M Karte groß, ? Handbuch, „,“
+  Einstellungen, Esc schließt erst Blätter, dann Ansichten bzw. „Karte groß“. Nie beim Tippen, nie mit
+  Strg/Alt/Cmd, nicht bei offenem Dialog. Reiter tragen `aria-keyshortcuts`; Liste unter Einstellungen → Hilfe.
+- **Zwei Umschalter-Bauformen (B7).** Ebene 1 `Segments` (Unterstrich-Reiter, neu optional `dot` statt Zahlenpille),
+  Ebene 2 `FilterChips` (umbrechend, alle sichtbar, kein Scrollpfeil, radiogroup mit Pfeiltasten). In den eigenen
+  Dateien umgestellt: Handbuch-Kapitel, Einstellungsgruppen, Kurszeile, Zeitraum der Statistik, Filter der
+  Fehlermeldungen. Meldungen/Rangliste/Allianz/Berichte stellt der Lage-Entwickler um.
