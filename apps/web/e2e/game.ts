@@ -128,7 +128,8 @@ export async function fastForwardMission(sql: Sql, missionId: number): Promise<s
  * Freies Küstenfeld für eine Gründung: 3–7 Feldschritte vom eigenen Hafen (nah genug, um es auf der Karte
  * anzutippen), mindestens 4 Schritte zu fremden Häfen, kein Nest, Feld oder Handelshafen, nicht am Kartenrand.
  */
-export async function foundingSpot(sql: Sql, home: { col: number; row: number }, maxKm = Infinity): Promise<{ col: number; row: number }> {
+/** maxKm: höchstens so weit vom Heimathafen; direct: Hafen wird direkt eingetragen (Gründungsabstand zu fremden Häfen egal). */
+export async function foundingSpot(sql: Sql, home: { col: number; row: number }, maxKm = Infinity, direct = false): Promise<{ col: number; row: number }> {
   const bases = await sql`select col, row from base`;
   const blocked = new Set<string>();
   for (const r of await sql`select col, row from nest union all select col, row from resource_field`) blocked.add(`${r.col},${r.row}`);
@@ -141,7 +142,7 @@ export async function foundingSpot(sql: Sql, home: { col: number; row: number },
       const s = hexSteps(home, h);
       if (s < 3 || s > 7 || !awayFromEdge(h) || hexDistanceKm(home, h) > maxKm) continue;
       if (nearestTradePort(h).distanceKm < 1) continue;
-      if (bases.some((b) => !(b.col === home.col && b.row === home.row) && hexSteps({ col: b.col as number, row: b.row as number }, h) < 4)) continue;
+      if (bases.some((b) => (b.col === h.col && b.row === h.row) || (!direct && !(b.col === home.col && b.row === home.row) && hexSteps({ col: b.col as number, row: b.row as number }, h) < 4))) continue;
       out.push({ col, row, s: s * 100 + Math.abs(row - home.row) });
     }
   }

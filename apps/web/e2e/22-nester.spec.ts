@@ -2,7 +2,9 @@
 // Beute 100–130 %), Aufklärung mit Drohne kehrt am Wendepunkt (200 km) um und liefert das genaue Lagebild (Alter,
 // hochgerechnet), „Lohnende Ziele“ zeigt Werte und „Netto“ – alles ohne waagrechten Überlauf bei 390 px.
 import type { Page } from "@playwright/test";
-import { COLS, hexDistanceKm } from "@tidefront/world";
+import { COLS, hexCenter, hexDistanceKm } from "@tidefront/world";
+import { weatherAt } from "@tidefront/game-core";
+import { balance } from "@tidefront/engine";
 import { awayFromEdge, expect, expectNoHorizontalOverflow, tapHex, test, until } from "./fixtures.ts";
 import { setBuildings, setResources, setUnits } from "./game.ts";
 
@@ -69,6 +71,8 @@ test("Aufklärung auf Sicht: Drohne kehrt 200 km vor dem Ziel um, Lagebild genau
   await setResources(seed.sql, player.baseId, { treibstoff: 5000 });
   const spot = freeAround(player, 330, 430, await taken(seed.sql));
   test.skip(!spot, "kein freies Feld in 330–430 km");
+  // Echtes Wetter: Bei Sturm am Hafen starten reine Luftmissionen nicht (Regel, kein Fehler) – dann nichts zu prüfen.
+  test.skip(weatherAt(hexCenter(player.col, player.row), Date.now(), balance.weather!).storm, "Sturm am Heimathafen: Drohnen starten nicht");
   const [n] = await seed.sql`insert into nest (col, row, level) values (${spot!.col}, ${spot!.row}, 3) returning id`;
   try {
     await openMapAt(page, player, spot!);

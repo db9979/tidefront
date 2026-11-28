@@ -169,8 +169,9 @@ export function ReasonInline({ code, text, open, onToggle }: { code: string; tex
   const shown = text ?? errorText(code);
   if (!known) return <div className="text-xs text-siegel truncate">{shown}</div>;
   return (
-    <button type="button" aria-expanded={open} onClick={onToggle} className="block w-full text-left text-xs text-siegel truncate">
-      {shown} <span className="text-messing font-display uppercase tracking-[0.1em] text-[11px]">· Was hilft {open ? "▴" : "▾"}</span>
+    <button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full min-w-0 items-baseline gap-1 text-left text-xs text-siegel">
+      <span className="min-w-0 truncate">{shown}</span>
+      <span className="shrink-0 whitespace-nowrap text-messing font-display uppercase tracking-[0.1em] text-[11px]">· Was hilft {open ? "▴" : "▾"}</span>
     </button>
   );
 }

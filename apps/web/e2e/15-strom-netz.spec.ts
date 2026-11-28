@@ -36,7 +36,7 @@ test.describe("mit freiem Gründungsfeld", () => {
 test("Seekabel zwischen eigenen Häfen legen, ansehen und trennen", async ({ page, player, seed }) => {
   // Zweiter eigener Hafen in Reichweite (Kopie des Heimathafens als Außenposten).
   // Innerhalb der Kabelreichweite (600 km); unter Parallel-Last sind die nächsten Felder oft schon belegt.
-  const spot = await foundingSpot(seed.sql, player, 550);
+  const spot = await foundingSpot(seed.sql, player, 550, true);
   const home = await readState(seed.sql, player.baseId);
   const colonyState = { ...home, buildings: { ...home.buildings, seekabel: 1 }, site: undefined, colony: { foundedAtMs: Date.now() } };
   const [col] = await seed.sql`insert into base (player_id, name, col, row, state, is_home)
