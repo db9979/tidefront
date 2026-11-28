@@ -2,6 +2,12 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.44.0 – 28.11.2026
+
+- Ausbildung: Fertige Einheiten und Verteidigungsanlagen wandern einzeln in den Bestand, nicht erst am Ende des ganzen Auftrags – auch wenn du das Spiel nicht geöffnet hast. Bei einem Angriff verteidigen die schon fertigen mit.
+- Anzeige im Auftrag: „3 × Korvette · 1 fertig“, darunter „nächste in … · alle in …“, live. Die Bestandszahl steigt sofort.
+- Abbrechen: Fertige Einheiten bleiben, erstattet wird nur der Rest. Die Meldung „Ausbildung fertig“ kommt weiterhin einmal am Ende.
+
 ## 0.43.1 – 28.11.2026
 
 - Lage und Konvoi-Blatt: Felderträge nennen jetzt ihr Rohstofffeld als Herkunft („von Rohstofffeld 66/23“) statt „von Handelshafen ?“.
