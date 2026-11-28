@@ -111,3 +111,17 @@ Nestfahrten verteilt; der ganze Verband des Freibeuters schlüge Nest 6 sicher (
 der jeweils daheim liegende Teil nicht, und die heimkehrenden Überfallverbände allein reichen meist auch nicht
 (`waitForTopNest` greift daher selten). Das Zielfenster ist am Modell-Verband geprüft (sim/nest6.ts: Tag 35 65 %,
 Tag 38 100 %); der Wächter zur Nest-6-Beute nach Laderaum warnt erst bei einem Sieg und meldet ohne Sieg „ok“.
+
+## Balance v1.36 – Nachtrag zu v1.35 (Nutzerentscheide nach 0.43.0)
+
+1. **Kartell, zweiter Hebel (ausdrücklich gewünscht):** `pirates.raidIntervalHours` 18 → **24 h** (≈ 0,63 statt 0,83
+   Überfälle je Tag nach Nachtschild). `raidStrengthShareOfDefense` bleibt 0,10. sim/messung.ts rechnet die Überfälle
+   je Tag jetzt aus der Balance (`raidsPerDay`).
+2. **KI bündelt für Nest 6** (`bots-nest6.ts`): Ab Saisontag 35 prüft der Freibeuter im Heimathafen, ob der gebündelte
+   Verband (daheim, laufende Überfälle, Feldbesatzungen dieses Hafens) ein Nest 6 im Probekampf über die Würfe schafft
+   (Mittel ≥ 90 %, ungünstig ≥ 50 % – `nestProbeOk` ohne Lagebild). Dann ruft er die Feldbesatzungen zurück, fährt aus
+   dem Hafen nichts anderes und greift an, sobald der Verband daheim den Probekampf besteht; danach besetzt `fieldTurn`
+   die Felder wieder. Höchstens 24 h Bündeln, danach 12 h Pause. Reichweite 2 500 km: Die fünf Inselfestungen liegen
+   abgelegen (im Saisonlauf ≥ 1 600 km vom Freibeuter – mit den 900 km der übrigen Nestfahrten war Nest 6 für ihn nie
+   erreichbar). Die Inselfestungen gelten auch ohne Lagebild als Stufe 6 (das Handbuch nennt die Inseln).
+3. **Wächter „Angriffe auf Weltereignisse“:** Lockerung aus v1.35 bestätigt.

@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import type { Balance, BaseState, Counts } from "../src/index.ts";
 import { composeRaid, defenderFromBase, nestDefender, productionRates, resolveBattle, trainingCost } from "../src/index.ts";
 import { runBot, value, type BotSnapshot } from "./bot.ts";
-import { RAIDS_PER_DAY } from "./raids.ts";
+import { raidsPerDay } from "./raids.ts";
 
 const SEEDS = 200;
 const RAID_SEED_OFFSET = 100000;
@@ -53,7 +53,7 @@ export function cartelRaid(base: BaseState, balance: Balance, seeds = SEEDS): { 
 export function cartelDailyShare(base: BaseState, balance: Balance, seeds = SEEDS): { perRaid: number; perDay: number; share: number; win: number } {
   const r = cartelRaid(base, balance, seeds);
   const perRaid = r.loot + r.loss;
-  const perDay = perRaid * RAIDS_PER_DAY;
+  const perDay = perRaid * raidsPerDay(balance);
   return { perRaid, perDay, share: perDay / Math.max(1, prodPerHour(base, balance) * 24), win: r.win };
 }
 
@@ -144,7 +144,7 @@ export function runMessungSim(balance: Balance, snapsIn?: BotSnapshot[]): void {
   const at = (day: number) => snaps.find((x) => x.day === day)!;
 
   console.log(`\n=== Messbarkeit (Welle 2) ===`);
-  console.log(`\nKartellkosten je Tag: Bot (45 % Rüstung, ganzer Verband daheim), ${RAIDS_PER_DAY.toFixed(2).replace(".", ",")} Überfälle/Tag, ${SEEDS} Seeds; Ziel ≤ ${pct(CARTEL_TARGET_SHARE)}`);
+  console.log(`\nKartellkosten je Tag: Bot (45 % Rüstung, ganzer Verband daheim), ${raidsPerDay(balance).toFixed(2).replace(".", ",")} Überfälle/Tag, ${SEEDS} Seeds; Ziel ≤ ${pct(CARTEL_TARGET_SHARE)}`);
   console.log(`  Tag   Prod./Tag   Kartell-Sieg   je Überfall   je Tag    Anteil`);
   for (const day of [7, 14, 21, 28, 35, 42]) {
     const s = at(day);

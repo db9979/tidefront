@@ -22,6 +22,7 @@ import { admiralTurn } from "./bots-admiral.ts"; // Admirale
 import { dailyTurn } from "./bots-daily.ts";
 import { raidWorldEvent } from "./bots-world-events.ts";
 import { retaliate } from "./bots-vergeltung.ts";
+import { nest6Bundle } from "./bots-nest6.ts";
 
 /** Zusatzanteile der Doktrin, solange ein Feldverband fehlt (bots-fields.ts). */
 const FIELD_DOCTRINE = { korvette: 0.15, zerstoerer: 0.05 };
@@ -136,6 +137,7 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
   for (const b of bases) {
     const m = mods.get(b.id)!;
     await botSatellite(c, b); // Lagebild Stufe 3: Satellit, wenn viele Nester ohne Lagebild sind
+    if (await nest6Bundle(c, b, m)) continue; // ab Tag 35: Verband für Nest 6 bündeln (Freibeuter, Heimathafen)
     if (await fieldTurn(c, b, m)) continue;
     if (await raidFinale(c, b, m)) continue; // Saisonfinale: Abschnitt der Armada, wenn sicher gewonnen
     if (await raidWorldEvent(c, b, m)) continue; // Welle 2: Schatzschiff, Großflotte, Belagerung nach Probekampf

@@ -169,8 +169,9 @@ test("Überfall scheitert an einer starken Verteidigung", () => {
 });
 
 test("Überfall-Intervall", () => {
-  assert.equal(isRaidDue(T0, T0 + 18 * HOUR - 1, balance), false);
-  assert.equal(isRaidDue(T0, T0 + 18 * HOUR, balance), true);
+  const h = balance.pirates.raidIntervalHours; // v1.36: 24 h (vorher 18)
+  assert.equal(isRaidDue(T0, T0 + h * HOUR - 1, balance), false);
+  assert.equal(isRaidDue(T0, T0 + h * HOUR, balance), true);
 });
 
 test("kein Überfall unter Schutz", () => {

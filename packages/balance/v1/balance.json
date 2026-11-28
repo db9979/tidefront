@@ -1,5 +1,5 @@
 {
-  "version": "v1.35",
+  "version": "v1.36",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -115,7 +115,7 @@
       "6": { "schnellboot": 36, "piratenmiliz": 350, "flakstellung": 4, "kuestenbatterie": 3, "bunkerlinie": 3, "respawnHours": 24, "loot": { "stahl": 3500, "treibstoff": 3000, "elektronik": 21300, "proviant": 1200 } }
     },
     "nestRespawnHours": 12,
-    "raidIntervalHours": 18,
+    "raidIntervalHours": 24,
     "raidStrengthShareOfDefense": 0.1,
     "raidMinSchnellboote": 4,
     "raidMiliPerBoot": 8,

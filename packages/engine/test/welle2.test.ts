@@ -127,6 +127,11 @@ test("Saisonlauf-Wächter: Flut und gescheiterte Ereignisse sind Fehler, Balance
   const we = (inRange: number) => evaluateGuards({ ...base, bots: [{ ...base.bots[0], worldEventAttacks: 0, worldEventsInRange: inRange }] }).find((r) => r.id === "weltereignis-freibeuter")?.ok;
   assert.equal(we(0), true);
   assert.equal(we(2), false);
+  // v1.36: KI-Sieg über Nest 6 im Fenster Tag 35–41 (nur bei ganzer Saison geprüft).
+  const n6 = (day?: number) => evaluateGuards({ ...base, days: 42, nest6: day === undefined ? [] : [{ offered: 100, taken: 90, day }] }).find((r) => r.id === "nest6-sieg")?.ok;
+  assert.equal(n6(38), true);
+  assert.equal(n6(), false);
+  assert.equal(n6(33), false);
 });
 
 // ---------------------------------------------------------------- gegen PostgreSQL

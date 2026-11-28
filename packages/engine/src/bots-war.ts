@@ -4,6 +4,7 @@
 // denselben Menschen (bots.humanAttackCooldownHours). Informationen nur aus der Kartenansicht (Lagebild) und eigenen Berichten.
 import { and, desc, eq, gt, inArray, ne } from "drizzle-orm";
 import {
+  commandPoints,
   fleetTotals,
   liveNestDefender,
   nestDefenders,
@@ -51,6 +52,11 @@ export interface TurnCtx {
 /** Einheiten, die nicht kämpfen sollen. */
 const NON_COMBAT = new Set(["spion", "kolonieschiff", "minenleger", "minenraeumer", "aufklaerungsdrohne"]);
 const MAX_RANGE_KM = 900;
+/**
+ * v1.36: Nestfahrten und ihre Aufklärung bis 1 200 km (Spielerziele weiter 900 km). Im Saisonlauf mit 24-h-Kartell lag
+ * im Umkreis von 900 km um den Heimathafen des Freibeuters kein Nest der Stufe 4.
+ */
+const NEST_RANGE_KM = 1200;
 
 /**
  * Festung (Welle 2, ST-06): feste Heimwache – mindestens dieser Anteil der Landtruppen bleibt daheim. v1.35: 0,5 → 0,3
@@ -88,6 +94,18 @@ export function strikeForce(state: BaseState, guardShare: number, shipGuardShare
     const g = balance.units[id].branch === "land" ? guardShare : shipGuardShare;
     const k = id === "landungsschiff" ? n : Math.floor(n * (1 - g));
     if (k > 0) out[id] = k;
+  }
+  // v1.36: höchstens so viele Kommandopunkte wie ein Verband haben darf (planMission: command_points). Ein Hafen kann mehr
+  // Einheiten halten (Verlegungen, heimgekehrte Feldbesatzungen); dann lehnte die Planung jeden Überfall ab, und die
+  // KI klärte im Saisonlauf tagelang nur auf.
+  const cp = commandPoints(state, balance);
+  const used = fleetTotals(out, balance).commandPointsUsed;
+  if (cp > 0 && used > cp) {
+    const f = cp / used;
+    for (const id of Object.keys(out)) {
+      out[id] = Math.floor(out[id] * f);
+      if (out[id] <= 0) delete out[id];
+    }
   }
   // Truppen kürzen, bis sie in die Landungsschiffe passen.
   const t = fleetTotals(out, balance);
@@ -167,9 +185,26 @@ export function probe(attacker: AttackerInput, defender: DefenderInput, runs: nu
 
 export async function tryLaunch(c: TurnCtx, input: LaunchInput, text: string): Promise<boolean> {
   // Admirale: ein Überfall aus dem Hafen des bereiten Admirals nimmt ihn mit (Probekampf rechnete ihn schon ein).
-  const adm = input.type === "ueberfall" && c.admiral && c.admiral.baseId === input.baseId ? c.admiral : null;
+  let adm = input.type === "ueberfall" && c.admiral && c.admiral.baseId === input.baseId ? c.admiral : null;
   if (adm) input = { ...input, admiralId: adm.id };
-  const p = await missionPreview(c.engine, c.bot.id, input);
+  let p = await missionPreview(c.engine, c.bot.id, input);
+  // v1.36: Lehnt die Planung mit Admiral ab (z. B. Kommandopunkte), ohne ihn versuchen – vorher blieb der ganze
+  // Überfall aus, und die KI klärte statt dessen nur auf.
+  if (!p.ok && adm) {
+    const { admiralId: _drop, ...rest } = input;
+    input = rest;
+    adm = null;
+    p = await missionPreview(c.engine, c.bot.id, input);
+  }
+  // v1.36: Flugzeuge außer Reichweite bleiben daheim (vorher scheiterte der ganze Überfall an „out_of_range“).
+  if (!p.ok && (p as { code?: string }).code === "out_of_range") {
+    const km = (p as { distanceKm?: number }).distanceKm ?? Infinity;
+    const units = Object.fromEntries(Object.entries(input.units).filter(([id]) => balance.units[id]?.branch !== "luft" || (balance.units[id].rangeKm ?? 0) >= km));
+    if (Object.keys(units).length > 0) {
+      input = { ...input, units };
+      p = await missionPreview(c.engine, c.bot.id, input);
+    }
+  }
   if (!p.ok) return false;
   const r = await launchMission(c.engine, c.bot.id, c.key(input.type), input);
   if (r.ok) c.log.push(adm ? `${text} Mit Admiral.` : text);
@@ -243,12 +278,15 @@ export async function raidNest(c: TurnCtx, base: BaseRow & { state: BaseState },
   const nests = map.nests
     .filter((n): n is typeof n & { level: number } => n.level !== null && n.empty === false && n.level <= (c.cfg.nestMaxLevel ?? Infinity))
     .map((n) => ({ ...n, d: hexDistanceKm(base, n) }))
-    .filter((n) => n.d <= MAX_RANGE_KM)
+    .filter((n) => n.d <= NEST_RANGE_KM)
     .sort((a, b) => b.level - a.level || a.d - b.d);
   // Stufen über dem, was der ganze Verband schafft, gar nicht erst proben (die Probekämpfe je Zug sind begrenzt).
   // Mindeststufe höchstens eins unter dem höchsten erreichbaren Nest (sonst wartet der Bot auf Nester, die es nicht gibt).
   const maxLevel = Math.max(1, topLevel);
   const minLevel = Math.max(1, Math.min(maxLevel, Math.max(0, ...nests.filter((n) => n.level <= maxLevel).map((n) => n.level))) - NEST_TOP_SLACK);
+  // v1.36: eine Stufe darunter als Rückfall, wenn der Verband daheim keines der Nester ab minLevel schafft (vorher wartete
+  // die KI dann tagelang, z. B. auf Nest 5 mit halbem Verband).
+  const lower = nests.filter((n) => n.level === minLevel - 1);
   for (let i = nests.length - 1; i >= 0; i--) if (nests[i].level < minLevel || nests[i].level > maxLevel) nests.splice(i, 1);
   // v1.35: Inselfestung – auf heimkehrende Verbände warten, statt mit dem Rest wieder Stufe 5 anzufahren.
   if (await waitForTopNest(c, base, force, mods, nests, guardShareOf(c), shipGuardShareOf(c))) return false;
@@ -260,7 +298,7 @@ export async function raidNest(c: TurnCtx, base: BaseRow & { state: BaseState },
   const maxProbes = balance.pirates.living?.botMaxNests ?? 6;
   let probes = 0;
   let tries = 0;
-  for (const n of nests) {
+  for (const n of [...nests, ...lower]) {
     const lb = n.lagebild;
     const k = lb ? `n${n.id}` : `l${n.level}`;
     if (!fits.has(k)) {
@@ -279,7 +317,7 @@ export async function raidNest(c: TurnCtx, base: BaseRow & { state: BaseState },
   // Lebendige Nester: Freibeuter und Festung klären auch erkannte Nester ohne genaues Lagebild auf (Händler nicht).
   const unknown = map.nests.filter((n) => !n.known || (c.bot.profile !== "haendler" && n.level !== null && n.empty === false && !n.lagebild && nestVaries(n.level, balance) && n.level <= (c.cfg.nestMaxLevel ?? Infinity)))
     .map((n) => ({ key: `n${n.id}`, col: n.col, row: n.row, label: `Piratennest ${n.col}/${n.row}` }));
-  return scoutNearest(c, base, unknown, MAX_RANGE_KM);
+  return scoutNearest(c, base, unknown, NEST_RANGE_KM);
 }
 
 /** Hat der Bot denselben Menschen in der Sperrfrist schon angegriffen (Bericht oder Verband unterwegs)? */

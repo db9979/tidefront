@@ -10,6 +10,10 @@ const SEEDS = 400;
 const RAID_SEED_OFFSET = 100000;
 /** Überfälle je Tag: alle 18 h, davon fallen Start oder Ankunft (1 h später) zu 9 / 24 in den Nachtschild (8 h). */
 export const RAIDS_PER_DAY = (24 / 18) * (15 / 24);
+/** v1.36: dasselbe aus pirates.raidIntervalHours (24 h: 0,63 Überfälle je Tag). */
+export function raidsPerDay(b: { pirates: { raidIntervalHours: number } }): number {
+  return (24 / b.pirates.raidIntervalHours) * (15 / 24);
+}
 const RES = { stahl: 8000, treibstoff: 4000, elektronik: 2000, proviant: 3000 };
 
 export interface RaidStats {

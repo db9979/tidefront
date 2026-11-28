@@ -256,7 +256,8 @@ Nach dem Kampf:
     höchstens 6 Nester je Zug; sie klärt erkannte Nester ohne Lagebild auf.
   - Zielfenster mit dem Bot-Verband (`node packages/game-core/sim/nest-living.ts`, erster Prüftag ≥ 70 %, Zufallsnest):
     Stufe 1 T1, 2 T3, 3 T7, 4 T14, 5 T21, 6 T38 – unverändert gegenüber den festen Nestern (Stufe 6 fest T31).
-- Überfälle auf Spieler alle `raidIntervalHours` je Stützpunkt. Der Verband läuft vom Nest mit dem kürzesten Seeweg
+- Überfälle auf Spieler alle `raidIntervalHours` je Stützpunkt (v1.36: 24 h, vorher 18 h – zweiter Hebel gegen die
+  Kartellkosten, Nutzerentscheid nach v1.35). Der Verband läuft vom Nest mit dem kürzesten Seeweg
   (unter den drei nächsten nach Luftlinie) über Wasser zum Hafen (Seewege, Entscheidung U): Vorlauf 1 h auf offener
   See, mal Umwegfaktor (Seeweg / Luftlinie), höchstens 3 h. Karte, Radar und Position folgen der Route.
 - Stärke der Überfälle (seit v1.1):

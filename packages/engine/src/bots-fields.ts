@@ -142,7 +142,9 @@ export async function fieldTurn(c: TurnCtx, base: Base, mods: Modifiers): Promis
     return false;
   }
   // Die Besatzung belegt dauerhaft einen Missionsplatz: wer Nester angreift, lässt einen Platz für Überfälle frei.
-  if (slotsLeft < (c.cfg.attackNests ? 2 : 1)) return false;
+  // v1.36: der Freibeuter hält zwei Plätze für Nestfahrten frei (vorher einer – mit drei Feldbesatzungen blieb ihm im
+  // Saisonlauf mit 24-h-Kartell nur eine Fahrt zugleich, Nest 4 erst an Tag 20).
+  if (slotsLeft < (c.cfg.attackNests ? (c.bot.profile === "freibeuter" ? 3 : 2) : 1)) return false;
   const candidates = view.fields
     .filter((f) => !busy.has(f.id) && (f.relation === "frei" || (c.cfg.fields === "all" && f.relation === "kartell")))
     .map((f) => ({ ...f, d: hexDistanceKm(base, f) }))

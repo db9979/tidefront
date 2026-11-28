@@ -23,6 +23,8 @@ export const GUARD_LIMITS = {
   ordersShare: 0.05,
   /** Nest-6-Beute: mitgenommener Anteil der angebotenen Beute (Laderaum, M-02). */
   nest6CargoShare: 0.8,
+  /** v1.36: erster KI-Sieg über Nest 6 in diesem Fenster (Saisontage). */
+  nest6WindowDays: [35, 41] as const,
   /** KI an der Börse: Geschäfte je KI-Spieler und Tag (AN-05: ≥ 1). */
   tradesPerBotDay: 1,
   /** Lager der KI in Stunden Produktion am Ende (Nutzerentscheid 5: KI-Lager klein). */
@@ -52,7 +54,7 @@ export interface SeasonMetrics {
     worldEventsInRange?: number;
   }[];
   /** Nest-6-Überfälle (gewonnen): angebotene und mitgenommene Einheiten. */
-  nest6: { offered: number; taken: number }[];
+  nest6: { offered: number; taken: number; day?: number }[];
   /** Schritte des Workers: Höchstdauer in ms (ohne KI-Züge und Ereignisse). */
   stepMax: { step: string; maxMs: number }[];
 }
@@ -95,6 +97,12 @@ export function evaluateGuards(m: SeasonMetrics, L = GUARD_LIMITS): GuardResult[
     add("nest6-laderaum", "warnung", share >= L.nest6CargoShare, `Nest-6-Beute nach Laderaum: ${pct(share)} mitgenommen (${m.nest6.length} Siege), Ziel ≥ ${pct(L.nest6CargoShare)}`, share, L.nest6CargoShare);
   } else add("nest6-laderaum", "warnung", true, "Nest-6-Beute nach Laderaum: kein Sieg über Nest 6", null, L.nest6CargoShare);
 
+  // v1.36 (Nutzerentscheid): die KI besiegt Nest 6 im Fenster Tag 35–41 (gebündelter Verband, bots-nest6.ts).
+  if (m.days >= L.nest6WindowDays[1]) {
+    const first = Math.min(...m.nest6.map((n) => n.day ?? Infinity));
+    const okWin = Number.isFinite(first) && first >= L.nest6WindowDays[0] && first <= L.nest6WindowDays[1];
+    add("nest6-sieg", "warnung", okWin, `KI-Sieg über Nest 6: ${Number.isFinite(first) ? `erster an Tag ${first}` : "keiner"}, Ziel Tag ${L.nest6WindowDays[0]}–${L.nest6WindowDays[1]}`, Number.isFinite(first) ? first : null, L.nest6WindowDays[1]);
+  }
   for (const b of m.bots) {
     const perDay = b.trades / Math.max(1, m.days);
     add(`boerse-${b.profile}`, "warnung", perDay >= L.tradesPerBotDay, `${b.profile}: ${Math.round(perDay * 10) / 10} Börsengeschäfte je Tag, Ziel ≥ ${L.tradesPerBotDay}`, perDay, L.tradesPerBotDay);

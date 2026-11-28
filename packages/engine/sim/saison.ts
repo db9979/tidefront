@@ -204,10 +204,10 @@ async function botMetrics(t: number): Promise<SeasonMetrics["bots"]> {
 }
 
 async function nest6Loot(): Promise<SeasonMetrics["nest6"]> {
-  const rows = await db.execute<{ report: { nest?: { level?: number; garrison?: { loot?: Record<string, number> } | null }; battle?: { loot?: Record<string, number> } } }>(sql`
-    select report from battle_report where winner = 'attacker' and attacker_player_id is not null and (report->'nest'->>'level')::int = 6`);
+  const rows = await db.execute<{ at: string | Date; report: { nest?: { level?: number; garrison?: { loot?: Record<string, number> } | null }; battle?: { loot?: Record<string, number> } } }>(sql`
+    select created_at as at, report from battle_report where winner = 'attacker' and attacker_player_id is not null and (report->'nest'->>'level')::int = 6`);
   const sum = (m?: Record<string, number>) => Object.values(m ?? {}).reduce((a, v) => a + (Number(v) || 0), 0);
-  return rows.map((r) => ({ offered: sum(r.report.nest?.garrison?.loot), taken: sum(r.report.battle?.loot) }));
+  return rows.map((r) => ({ offered: sum(r.report.nest?.garrison?.loot), taken: sum(r.report.battle?.loot), day: Math.floor((new Date(r.at).getTime() - t0) / DAY) + 1 }));
 }
 
 

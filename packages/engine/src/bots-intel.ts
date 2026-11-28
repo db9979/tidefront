@@ -127,7 +127,9 @@ export async function botPatrol(c: TurnCtx, base: BaseRow & { state: BaseState }
   const pb = patrolOf(balance.intel);
   if (!pb || c.bot.profile !== "freibeuter" || (base.state.units.korvette ?? 0) < 4) return false;
   if (c.nowMs - (c.state.recon?.["trip-patrol"] ?? 0) < 24 * HOUR_MS) return false;
-  if (missionSlots(base.state, balance) - (await activeMissionCount(c.engine.db, base.id)) < 2) return false;
+  // v1.36: drei freie Plätze (vorher zwei) – mit Feldbesatzungen und einer Gründung blockierte die Patrouille sonst den
+  // letzten Platz für Nestfahrten (Saisonlauf mit 24-h-Kartell: Freibeuter bis Tag 39 ohne Nest 4).
+  if (missionSlots(base.state, balance) - (await activeMissionCount(c.engine.db, base.id)) < 3) return false;
   const map = await botMap(c);
   const unknown = map.nests.filter((n) => !n.known || n.intel?.age === "veraltet").map((n) => ({ ...n, d: hexDistanceKm(base, n) })).filter((n) => n.d >= 150 && n.d <= 600).sort((a, b) => a.d - b.d);
   if (unknown.length === 0) return false;

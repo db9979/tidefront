@@ -66,7 +66,7 @@ export async function keepSlotForEvent(c: TurnCtx, base: BaseRow & { state: Base
   if (c.bot.profile === "haendler" || c.cfg.probeRuns <= 0) return false;
   const db = c.engine.db;
   if ((await activeMissionCount(db, base.id)) + 1 < missionSlots(base.state, balance)) return false;
-  const rows = await db.select({ id: tables.worldEvent.id, col: tables.worldEvent.col, row: tables.worldEvent.row }).from(tables.worldEvent).where(and(
+  const rows = await db.select({ id: tables.worldEvent.id, col: tables.worldEvent.col, row: tables.worldEvent.row, units: tables.worldEvent.units }).from(tables.worldEvent).where(and(
     inArray(tables.worldEvent.kind, [...KINDS]), inArray(tables.worldEvent.status, ["announced", "active"]), gt(tables.worldEvent.endsAt, new Date(c.nowMs)),
   ));
   const near = rows.filter((e) => hexDistanceKm(base, e) <= EVENT_RANGE_KM);
@@ -74,7 +74,17 @@ export async function keepSlotForEvent(c: TurnCtx, base: BaseRow & { state: Base
   const busy = new Set((await db.select({ id: tables.mission.targetId }).from(tables.mission).where(and(
     eq(tables.mission.playerId, c.bot.id), eq(tables.mission.targetKind, "event"), inArray(tables.mission.status, ["outbound", "returning"]),
   ))).map((r) => r.id));
-  return near.some((e) => !busy.has(e.id));
+  // v1.36: nur für Ereignisse, die der Verband laut Probekampf auch schafft (sonst blockierte ein unerreichbares
+  // Ereignis tagelang alle Nestfahrten – Saisonlauf: Freibeuter ohne Nest 4).
+  const open = near.filter((e) => !busy.has(e.id));
+  if (open.length === 0) return false;
+  const force = eventForce(withoutReserve(strikeForce(base.state, guardShareOf(c), shipGuardShareOf(c)), reservedForField(c, base.id)));
+  const fv = forceValue(force);
+  if (fv < 2000) return false;
+  return open.some((e) => {
+    const p = eventProbe({ units: force }, e.units as Counts, EVENT_PROBE_RUNS);
+    return p.winRate >= EVENT_PROBE_MIN && p.lossValue <= EVENT_MAX_LOSS_SHARE * fv;
+  });
 }
 
 /** Ein Angriff auf ein laufendes Weltereignis aus diesem Hafen, wenn der Probekampf es erlaubt. Rückgabe: ausgelaufen. */

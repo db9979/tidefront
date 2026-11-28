@@ -56,6 +56,11 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
 - **Inselfestung (v1.35):** schafft der Verband daheim das bekannte Nest 6 nicht, wohl aber mit den heimkehrenden
   Überfallverbänden dieses Hafens, wartet die KI höchstens 8 h (danach 16 h nicht) statt Stufe 5 anzufahren
   (`waitForTopNest`).
+- **Inselfestung bündeln (v1.36):** Ab Saisontag 35 prüft der Freibeuter im Heimathafen, ob sein gebündelter Verband
+  (daheim, laufende Überfälle und Feldbesatzungen dieses Hafens) ein bekanntes Nest 6 in 900 km im Probekampf über die
+  Würfe schafft (im Mittel ≥ 90 %, ungünstig ≥ 50 %). Dann ruft er die Feldbesatzungen zurück, startet aus dem Hafen
+  nichts anderes und greift an, sobald der Verband daheim den Probekampf besteht; danach besetzt er Felder wieder.
+  Höchstens 24 h Bündeln, danach 12 h Pause (`bots-nest6.ts`).
 - **Weltereignisse:** Freibeuter und Festung greifen Schatzschiff, Großflotte und Belagerungsring in bis zu 1 200 km an (v1.35, vorher 900; kommt der Verband mit Landungsschiffen zu spät, fährt er ohne sie),
   wenn der Probekampf (Ereignis vernichtet, ohne Truppen) zu ≥ 90 % gewinnt und der erwartete Verlust höchstens 35 %
   des Verbands ist; v1.35 darf dafür auch der letzte freie Missionsplatz genutzt werden (vorher blieb einer frei), und

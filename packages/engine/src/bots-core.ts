@@ -101,6 +101,9 @@ export interface BotState {
   revengeReportId?: number;
   /** Inselfestung (bots-nest-top.ts, v1.35): bis wann der Hafen auf heimkehrende Verbände wartet, je Hafen-ID. */
   topNestWait?: Record<string, number>;
+  /** Inselfestung bündeln (bots-nest6.ts): laufendes Bündeln und Pause bis. */
+  nest6Bundle?: { baseId: number; nestId: number; sinceMs: number };
+  nest6PauseUntil?: number;
 }
 
 export interface BotRow { id: number; name: string; profile: BotProfile; settings: BotSettings; state: BotState }
