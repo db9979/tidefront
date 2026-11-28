@@ -8,6 +8,7 @@ import { isThreat, TRANSFER } from "../lib/expansion.ts"; // Mehrere Häfen
 import { fmtAt, fmtDuration, useNow } from "../lib/time.ts";
 import { Icon } from "../icons.tsx";
 import { Card, SmallButton } from "../ui.tsx";
+import { nextTrainingDeliveryAt, trainingDone } from "@tidefront/game-core"; // Teillieferung
 
 const DAY_MS = 86400000;
 const SHOWN = 6;
@@ -27,6 +28,11 @@ export function timelineItems(base: BaseData, nowMs: number, opts: { seasonEndMs
   }
   for (const o of base.trainingQueue) {
     out.push({ key: `t:${o.builtIn}:${o.id}:${o.finishesAt}`, atMs: o.finishesAt, icon: o.id, text: `${fmtNum(o.count)} × ${label(o.id)} ausgebildet` });
+    // Teillieferung: die nächste einzelne Einheit (vor der letzten) als eigener Eintrag.
+    const next = nextTrainingDeliveryAt(o);
+    if (next !== null && next < o.finishesAt) {
+      out.push({ key: `tn:${o.builtIn}:${o.id}:${o.finishesAt}`, atMs: next, icon: o.id, text: `${label(o.id)} ${fmtNum(trainingDone(o) + 1)}/${fmtNum(o.count)} fertig` });
+    }
   }
   for (const m of base.missions) {
     if (m.status === "outbound") out.push({ key: `ma:${m.id}`, atMs: m.arriveAtMs, icon: m.type, text: `${label(m.type)}: Ankunft Feld ${m.target.col}/${m.target.row}` });

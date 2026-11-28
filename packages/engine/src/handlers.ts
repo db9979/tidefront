@@ -35,6 +35,7 @@ import { cartelRaidPlan, nestSpots } from "./kartell-route.ts"; // Seewege: Kart
 import { cartelLossHours } from "./cartel-loss.ts"; // v1.35: Verlust in Stunden Produktion
 import type { EventRow, Handler, HandlerResult } from "./events.ts";
 import { lockBase, lockBases, randomSeed, readBase, saveBase, scheduleEvent } from "./store.ts";
+import { scheduleNextDelivery } from "./training-events.ts"; // Teillieferung der Ausbildung
 import { attackWarning, scheduleAttackWarning } from "./event-notices.ts";
 import { atWar } from "./alliance-core.ts"; // Diplomatie (Krieg)
 // Weltereignisse (world-events*.ts): Missionsziel „event“ und eigene Ereignistypen.
@@ -73,13 +74,18 @@ const buildComplete: Handler = async (tx, ev, due) => {
   return { notify: [[[b.playerId], "base"]] };
 };
 
+// Teillieferung (0.44): das Ereignis liefert alle bis `due` fertigen Einheiten und plant sich zur nächsten Lieferung
+// neu (Kette je Hafen, siehe training-events.ts). Meldung „Ausbildung fertig“ nur bei vollständigem Auftrag.
 const trainingComplete: Handler = async (tx, ev, due) => {
   const b = await lockBase(tx, ev.baseId!);
   if (!b) return none();
   const r = completeTraining(b.state, due, balance, await modsOf(tx, b, due));
-  if (!r.ok) return none();
-  await saveBase(tx, b.id, r.base);
-  return { notify: [[[b.playerId], "base"]] };
+  const state = r.ok ? r.base : b.state;
+  if (r.ok) await saveBase(tx, b.id, state);
+  const next = await scheduleNextDelivery(tx, b.id, state, ev.id);
+  // Nachholen (Worker-Rückstand): Live-Meldung erst, wenn die Kette die Gegenwart erreicht oder ein Auftrag fertig ist.
+  const live = r.ok && (r.completed.length > 0 || next === null || next > Date.now());
+  return live ? { notify: [[[b.playerId], "base"]] } : none();
 };
 
 interface MissionRow {

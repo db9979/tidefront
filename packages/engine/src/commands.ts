@@ -30,6 +30,7 @@ import { nestKnown } from "./intel-query.ts"; // Lagebild
 import { balance, marketBalance, GameError, type Engine } from "./context.ts";
 import { lockPlayerWide } from "./world-lock.ts";
 import { activeMissionCount, basesOfPlayer, homeBaseOf, lockBases, lockOwnBase, ownBase, saveBase, scheduleEvent, withSite } from "./store.ts";
+import { scheduleNextDelivery } from "./training-events.ts"; // Teillieferung der Ausbildung
 import { homeStorageCapacity, maxHarborLevel } from "./player-wide.ts"; // Mehrere Häfen: Börse spielerweit
 import { missionWeather } from "./weather.ts"; // Wetter (v1.6): Sturm auf der Route
 import { incomingDetected } from "./views.ts";
@@ -155,7 +156,7 @@ export function train(engine: Engine, playerId: number, key: string, id: string,
     const r = startTraining(b.state, id, count, ctx.nowMs, balance, await modsOf(ctx.tx, b, ctx.nowMs));
     if (!r.ok) return r;
     await saveBase(ctx.tx, b.id, r.base);
-    await scheduleEvent(ctx.tx, "training_complete", r.order.finishesAt, {}, b.id);
+    await scheduleNextDelivery(ctx.tx, b.id, r.base); // Teillieferung: Ereignis zur ersten fertigen Einheit
     ctx.notify.push([[playerId], "base"]);
     return { ok: true as const };
   });

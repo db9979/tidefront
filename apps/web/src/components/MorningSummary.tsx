@@ -1,13 +1,13 @@
-// Einstellungen des Morgenberichts (täglich per E-Mail, optional Push) bei den E-Mail-Einstellungen.
+// Einstellungen → Benachrichtigungen: Morgenbericht (einmal am Tag) mit Kanälen. E-Mail geht nur mit eingerichtetem
+// Mailversand und bestätigter Adresse – sonst ist der Kanal deaktiviert und nennt den Grund (UX-0.43 A6); Push ist
+// zuschaltbar. Uhrzeit im 24-h-Format (Stunde und Viertelstunde), nicht als Browser-Zeitfeld mit AM/PM.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient, trpc, trpcClient } from "../lib/trpc.ts";
 import { errorText, failText } from "../lib/names.ts";
 import { Card, ErrorLine, SmallButton } from "../ui.tsx";
 import { Switch } from "./Switch.tsx";
-
-const pad = (n: number) => String(n).padStart(2, "0");
-const toTime = (m: number) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+import { HourSelect, mailBlocked, pad2 } from "./settings/NotifyCards.tsx";
 
 function deviceZone(): string | null {
   try {
@@ -24,8 +24,10 @@ export function SummaryCard() {
   const [busy, setBusy] = useState(false);
   const s = q.data;
   if (!s) return null;
-  const verified = !!acc.data?.email.verified;
+  const blocked = mailBlocked(acc.data?.email);
   const zone = deviceZone();
+  const h = Math.floor(s.minuteOfDay / 60);
+  const m = s.minuteOfDay % 60;
 
   const save = async (patch: Partial<{ enabled: boolean; minuteOfDay: number; timeZone: string; push: boolean }>) => {
     setBusy(true);
@@ -43,30 +45,31 @@ export function SummaryCard() {
 
   return (
     <Card title="Morgenbericht">
-      <p className="text-sm text-slate-300 mb-2">Einmal am Tag eine Zusammenfassung: Kämpfe mit Ergebnis, Beute und Verluste, fertige Aufträge, Lieferungen, neue Nachrichten und dein Rang in der Saison.</p>
-      <Switch label="Morgenbericht per E-Mail" on={s.enabled} disabled={busy} onChange={(v) => void save({ enabled: v, ...(v && zone && s.lastSentAtMs === null ? { timeZone: zone } : {}) })} />
+      <p className="text-sm text-slate-300 mb-2">Einmal am Tag: Kämpfe, Beute und Verluste, fertige Aufträge, Lieferungen, neue Nachrichten und dein Rang.</p>
+      <Switch label="Morgenbericht" on={s.enabled} disabled={busy} onChange={(v) => void save({ enabled: v, ...(v && zone && s.lastSentAtMs === null ? { timeZone: zone } : {}) })} />
       {s.enabled && (
         <div className="mt-2 space-y-2">
-          <label className="flex items-center justify-between gap-3 text-sm">
+          <div className="flex items-center justify-between gap-3 text-sm">
             <span>Uhrzeit</span>
-            <input
-              type="time"
-              step={900}
-              className="h-11 rounded-lg field px-2 mono"
-              value={toTime(s.minuteOfDay)}
-              disabled={busy}
-              onChange={(e) => {
-                const [h, m] = e.target.value.split(":").map(Number);
-                if (Number.isInteger(h) && Number.isInteger(m)) void save({ minuteOfDay: h * 60 + m });
-              }}
-            />
-          </label>
+            <span className="flex items-center gap-1">
+              <HourSelect label="Morgenbericht Stunde" suffix="" value={h} disabled={busy} onChange={(nh) => void save({ minuteOfDay: nh * 60 + m })} />
+              <span aria-hidden>:</span>
+              <select aria-label="Morgenbericht Minute" className="h-11 rounded-lg field px-2 mono" value={m - (m % 15)} disabled={busy}
+                onChange={(e) => void save({ minuteOfDay: h * 60 + Number(e.target.value) })}>
+                {[0, 15, 30, 45].map((x) => <option key={x} value={x}>{pad2(x)}</option>)}
+              </select>
+            </span>
+          </div>
           <div className="text-xs text-slate-400 flex items-center justify-between gap-2">
             <span>Zeitzone {s.timeZone}</span>
             {zone && zone !== s.timeZone && <SmallButton onClick={() => void save({ timeZone: zone })}>{zone} übernehmen</SmallButton>}
           </div>
-          <Switch label="Zusätzlich als Push" on={s.push} disabled={busy} onChange={(v) => void save({ push: v })} />
-          {!verified && <p className="text-xs text-brass-300">Ohne bestätigte E-Mail-Adresse kommt der Bericht nur als Push (falls eingeschaltet).</p>}
+          <div role="group" aria-label="Kanäle des Morgenberichts">
+            <Switch label="per E-Mail" on={!blocked} disabled onChange={() => {}} />
+            {blocked && <p className="text-xs text-brass-300 -mt-0.5 mb-1" data-testid="summary-mail-blocked">{blocked}</p>}
+            <Switch label="als Push" on={s.push} disabled={busy} onChange={(v) => void save({ push: v })} />
+          </div>
+          {blocked && !s.push && <p className="text-xs text-siegel">Ohne E-Mail und ohne Push kommt kein Morgenbericht an.</p>}
         </div>
       )}
       <ErrorLine text={error} />

@@ -49,7 +49,6 @@ test("Handbuch: Kapitel, Neuigkeiten, Einstellungen, Verwaltung", async ({ page,
   await page.getByRole("button", { name: "Menü", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: /^Handbuch/ }).click();
   await expect(page.getByRole("heading", { name: "Handbuch" })).toBeVisible();
-  await expect(page.getByText(`Angemeldet als ${player.name}`)).toBeVisible();
   await expectNoHorizontalOverflow(page, "Handbuch");
 
   // Jedes Kapitel aufklappen und prüfen.
@@ -64,8 +63,8 @@ test("Handbuch: Kapitel, Neuigkeiten, Einstellungen, Verwaltung", async ({ page,
     await expectNoHorizontalOverflow(page, `Handbuch · ${title}`);
   }
 
-  // Sprungleiste öffnet ein Kapitel.
-  await page.getByRole("navigation", { name: "Kapitel" }).getByRole("button", { name: "Börse" }).click();
+  // Kapitelübersicht (Filterchips) öffnet ein Kapitel.
+  await page.getByRole("navigation", { name: "Kapitel" }).getByRole("radio", { name: "Börse" }).click();
   await expect(page.locator("#hb-boerse").getByRole("button").first()).toHaveAttribute("aria-expanded", "true");
 
   // Was ist neu?
@@ -74,12 +73,19 @@ test("Handbuch: Kapitel, Neuigkeiten, Einstellungen, Verwaltung", async ({ page,
   await expectNoHorizontalOverflow(page, "Was ist neu");
   await page.keyboard.press("Escape");
 
-  // Einstellungen und Verwaltung
-  await page.getByRole("button", { name: "Einstellungen" }).last().click();
+  // Querverweis Einstellungen (Textlink): Zurück führt ins Handbuch zurück.
+  await page.getByTestId("handbook-screen").getByRole("button", { name: "Einstellungen", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Einstellungen" })).toBeVisible();
+  await expect(page.getByTestId("settings-screen").getByText(player.name, { exact: true })).toBeVisible(); // Konto: angemeldet als
   await expectNoHorizontalOverflow(page, "Einstellungen");
-  await page.getByRole("button", { name: "Verwaltung öffnen" }).click();
+  await page.getByRole("button", { name: "Zurück" }).click();
+  await expect(page.getByRole("heading", { name: "Handbuch" })).toBeVisible();
+
+  // Verwaltung nur über das Menü (eigene Ansicht), Spieler-Reiter mit Einladungscodes.
+  await page.getByRole("button", { name: "Menü", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /^Verwaltung/ }).click();
   await expect(page.getByRole("heading", { name: "Verwaltung" })).toBeVisible();
+  await page.getByRole("tab", { name: "Spieler" }).click();
   await expect(page.getByRole("heading", { name: "Einladungscodes" })).toBeVisible();
   await expectNoHorizontalOverflow(page, "Verwaltung");
 });

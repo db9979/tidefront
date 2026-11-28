@@ -1,6 +1,5 @@
 // Handbuch: Spielziel, Ablauf und Regeln in kurzen Kapiteln; Einheitentabelle aus der Balance.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useBackLayer } from "../lib/back.ts";
 import { ChangelogSheet, VersionLine } from "../components/Changelog.tsx";
 import { useQuery } from "@tanstack/react-query";
 import { trpc } from "../lib/trpc.ts";
@@ -8,8 +7,7 @@ import { label, fmtNum } from "../lib/names.ts";
 import { BRANCHES } from "../lib/research.ts";
 import { buildingText, unitText, unitTone } from "../lib/info.ts";
 import { Icon, IconTile } from "../icons.tsx";
-import { Button, BackButton } from "../ui.tsx";
-import { SettingsScreen } from "./Settings.tsx";
+import { BackButton, FilterChips } from "../ui.tsx";
 import { IntelChapter } from "../components/IntelChapter.tsx";
 import { AdmiralChapter } from "../components/AdmiralChapter.tsx"; // Admirale
 import { AchievementsChapter } from "../components/AchievementsChapter.tsx"; // Erfolge
@@ -24,7 +22,6 @@ import { CatchUpChapter } from "../components/CatchUpChapter.tsx"; // Aufholhilf
 import { ContractsChapter } from "../components/ContractsChapter.tsx"; // Lieferverträge (v1.31)
 import { PolitikChapter } from "../components/PolitikChapter.tsx"; // Weltpolitik
 import { requestBugReport } from "../lib/bug-log.ts";
-import { HScroll } from "../components/HScroll.tsx";
 
 const ZAHLWORT = ["keinem", "einem", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn"];
 
@@ -53,18 +50,6 @@ function npcEventText(kinds: string[] | undefined, factor: string): string {
   return `Eigene Angriffe auf ${list.join(" und ")} zählen ebenfalls nur zu ${factor}.`;
 }
 
-function QuickButton({ onClick, title, icon, mark, accent = false }: { onClick: () => void; title: string; icon?: string; mark?: string; accent?: boolean }) {
-  return (
-    <button type="button" onClick={onClick} className={`tap panel rounded-xl p-2 flex flex-col items-center gap-1 text-center ${accent ? "border-siegel" : ""}`}>
-      {mark ? (
-        <span aria-hidden className="grid place-items-center w-8 h-8 rounded-full bg-siegel text-[#f6f1e5] font-serif text-lg font-bold">{mark}</span>
-      ) : (
-        <Icon id={icon ?? "anker"} size={32} />
-      )}
-      <span className={`text-xs font-semibold leading-tight ${accent ? "text-siegel" : ""}`}>{title}</span>
-    </button>
-  );
-}
 
 interface Chapter { id: string; icon: string; title: string; body: ReactNode }
 
@@ -72,7 +57,9 @@ function P({ children }: { children: ReactNode }) {
   return <p className="text-sm text-slate-200 mb-2 leading-relaxed">{children}</p>;
 }
 
-export function Handbook({ onClose, onLogout, playerName, initialView, onView }: { onClose: () => void; onLogout: () => void; playerName: string; initialView?: "settings" | "admin" | null; onView?: (v: "settings" | "admin" | null) => void }) {
+// Rahmen (UX-0.43 B2): eigene Ansicht neben Einstellungen und Verwaltung (App.tsx). Kein eingebettetes Einstellungsblatt
+// mehr; Einstellungen und Fehler melden nur als Textlinks (ihr Ort ist das Menü). Kapitel als umbrechende Filterchips.
+export function Handbook({ onClose, onSettings }: { onClose: () => void; onSettings: () => void }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   // Alle Kapitel zu: die Sprungleiste oben ist die Übersicht (vorher war „Worum es geht“ offen).
   const [open, setOpen] = useState<string | null>(null);
@@ -82,10 +69,6 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
     if (!opened.current) { opened.current = true; return; }
     if (open) setTimeout(() => document.getElementById(`hb-${open}`)?.scrollIntoView?.({ block: "start", behavior: "smooth" }), 0);
   }, [open]);
-  const [view, setViewState] = useState(initialView ?? null);
-  // Ansicht an die App melden (Adresse ?view=…); Zurück schließt die Einstellungen.
-  const setView = (v: "settings" | "admin" | null) => { setViewState(v); onView?.(v); };
-  useBackLayer(!!view, () => setView(null), 2);
   const [news, setNews] = useState(false);
   // Regeln nennen die Grundwerte, nicht die gerade wirksamen (Weltpolitik: Gezeit, Beschlüsse).
   const b = meta.data?.baseBalance ?? meta.data?.balance;
@@ -138,8 +121,8 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
       body: (
         <>
           <P><strong>Grüne Raute</strong> an einem Gebäude: Es lässt sich jetzt ausbauen – die Rohstoffe reichen, in der Bauschlange ist Platz und die Höchststufe ist nicht erreicht.</P>
-          <P><strong>Bauschlange:</strong> bis zu {b?.building.queueSlots ?? 3} Ausbauten je Hafen, abgearbeitet nacheinander. Die Kosten zahlst du schon beim Einreihen. Werft, Kaserne, Flugfeld und Anlagenbau arbeiten daneben jeweils an einem eigenen Auftrag.</P>
-          <P><strong>Abbrechen</strong> (mit Rückfrage): Ein laufender Auftrag erstattet nur den Anteil der Restzeit, ein wartender alles. Spätere Stufen desselben Gebäudes in der Schlange fallen mit weg und werden voll erstattet.</P>
+          <P><strong>Bauschlange:</strong> bis zu {b?.building.queueSlots ?? 3} Ausbauten je Hafen, abgearbeitet nacheinander. Die Kosten zahlst du schon beim Einreihen. Werft, Kaserne, Flugfeld und Anlagenbau arbeiten daneben jeweils an einem eigenen Auftrag. Jede fertige Einheit oder Anlage eines Auftrags steht sofort im Bestand – bei 3 Korvetten die erste nach einem Drittel der Zeit, nicht erst, wenn alle fertig sind. Erst ab ihrer Ankunft kostet sie Unterhalt und verteidigt den Hafen; die Meldung kommt einmal, wenn der ganze Auftrag fertig ist.</P>
+          <P><strong>Abbrechen</strong> (mit Rückfrage): Ein laufender Auftrag erstattet nur den Anteil der Restzeit, ein wartender alles. Bei der Ausbildung bleiben schon gelieferte Einheiten; erstattet wird nur der Rest. Spätere Stufen desselben Gebäudes in der Schlange fallen mit weg und werden voll erstattet.</P>
           <P>Kein Gebäude darf mehr als {b?.building.levelCapAboveCommand ?? 3} Stufen über der Kommandozentrale liegen.</P>
           {b && (
             <ul className="space-y-2 mt-2">
@@ -356,32 +339,23 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
     },
   ];
 
-  if (view) return <SettingsScreen onClose={() => setView(null)} initialAdmin={view === "admin"} onAdmin={(a) => setView(a ? "admin" : "settings")} />;
   return (
-    <div>
+    <div data-testid="handbook-screen" className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-3">
         <h1 className="font-display text-xl font-bold uppercase">Handbuch</h1>
         <BackButton onClick={onClose} />
       </div>
-      {/* Schnellzugriff: Fehler melden gut sichtbar ganz oben */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        <QuickButton onClick={requestBugReport} mark="!" title="Fehler melden" accent />
-        <QuickButton onClick={() => setView("settings")} icon="zahnrad" title="Einstellungen" />
-        <QuickButton onClick={() => setNews(true)} icon="uhr" title="Was ist neu?" />
-      </div>
-      {/* Sprungleiste: klebt oben, ein Tipp öffnet das Kapitel und springt hin. */}
-      <nav className="sticky -top-3 z-10 -mx-3 mb-2 px-3 bg-paper border-b border-rule" aria-label="Kapitel">
-        <HScroll className="gap-1.5" watch={open}>
-          {chapters.map((c) => (
-            // Tippfläche 44 px hoch, die Pille darin bleibt schmal.
-            <button key={c.id} type="button" onClick={() => setOpen(c.id)} aria-current={open === c.id ? "true" : undefined} className="shrink-0 h-11 flex items-center">
-              <span className={`h-8 flex items-center rounded-full border px-3 text-[12.5px] whitespace-nowrap ${open === c.id ? "bg-ink text-paper border-ink" : "bg-card text-ink2 border-rule"}`}>{c.title}</span>
-            </button>
-          ))}
-        </HScroll>
+      <p className="text-sm text-ink2 mb-2">
+        <button type="button" className="tap underline text-see" onClick={() => setNews(true)}>Was ist neu?</button>
+        {" · "}<button type="button" className="tap underline text-see" onClick={onSettings}>Einstellungen</button>
+        {" · "}<button type="button" className="tap underline text-see" onClick={requestBugReport}>Fehler melden</button>
+      </p>
+      {/* Kapitelübersicht: ein Tipp öffnet das Kapitel und springt hin. */}
+      <nav aria-label="Kapitel">
+        <FilterChips label="Kapitel" value={open} onChange={setOpen} items={chapters.map((c) => ({ id: c.id, label: c.title }))} />
       </nav>
       {chapters.map((c) => (
-        <section key={c.id} id={`hb-${c.id}`} className="panel rounded-xl mb-2 overflow-hidden scroll-mt-14">
+        <section key={c.id} id={`hb-${c.id}`} className="panel rounded-xl mb-2 overflow-hidden scroll-mt-3">
           <button type="button" className="tap w-full flex items-center gap-3 p-3 text-left" onClick={() => setOpen(open === c.id ? null : c.id)} aria-expanded={open === c.id}>
             <Icon id={c.icon} size={30} />
             <span className="font-serif text-[18px] flex-1">{c.title}</span>
@@ -390,23 +364,6 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
           {open === c.id && <div className="px-3 pb-3">{c.body}</div>}
         </section>
       ))}
-      <div className="panel rounded-xl p-3 mt-4 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm text-slate-300 min-w-0 break-words">Angemeldet als <strong>{playerName}</strong></span>
-        <div className="flex flex-wrap gap-2">
-          <Button kind="secondary" onClick={() => setView("settings")}>Einstellungen</Button>
-          <Button kind="secondary" onClick={onLogout}>Abmelden</Button>
-        </div>
-      </div>
-      <div className="panel rounded-xl p-3 mt-3">
-        <div className="flex items-center gap-3 mb-2">
-          <span aria-hidden className="shrink-0 grid place-items-center w-10 h-10 rounded-full bg-siegel text-[#f6f1e5] font-serif text-xl font-bold">!</span>
-          <div className="min-w-0">
-            <div className="font-serif text-[17px] leading-tight">Etwas stimmt nicht?</div>
-            <div className="text-xs text-slate-400">Screenshot und Protokoll werden automatisch angehängt.</div>
-          </div>
-        </div>
-        <Button className="w-full" onClick={requestBugReport}>Fehler melden</Button>
-      </div>
       <VersionLine onOpen={() => setNews(true)} />
       <ChangelogSheet open={news} onClose={() => setNews(false)} />
     </div>

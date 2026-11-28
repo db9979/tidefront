@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient, trpc, trpcClient } from "../lib/trpc.ts";
 import { failText } from "../lib/names.ts";
-import { Button, Card, ErrorLine } from "../ui.tsx";
+import { Card, ErrorLine } from "../ui.tsx";
+import { Switch } from "../components/Switch.tsx";
 
 export function AdminIntel() {
   const q = useQuery(trpc.admin.intelFog.queryOptions());
@@ -33,10 +34,10 @@ export function AdminIntel() {
         Kartennebel: Spieler sehen fremde Nest-Stufen, Schutzstatus, Wracks, Felder und Verbände nur mit Ausguck, Radar,
         Allianz oder Aufklärung. Hafen- und Nestpositionen bleiben immer sichtbar. Aus: alle sehen alles wie bis 0.17.
       </p>
-      <div className="flex gap-2">
-        <Button disabled={busy || !q.data || on} onClick={() => void save(true)}>Nebel an</Button>
-        <Button kind="secondary" disabled={busy || !q.data || !on} onClick={() => void save(false)}>Nebel aus</Button>
-      </div>
+      {/* Echter Schalter (UX-0.43 A-2): vorher sah der aktive Knopf deaktiviert aus. Abschalten mit Bestätigung. */}
+      <Switch label="Kartennebel" on={on} disabled={busy || !q.data} onChange={(v) => {
+        if (v || confirm("Kartennebel ausschalten? Alle Spieler sehen dann fremde Nest-Stufen, Schutzstatus, Felder und Verbände.")) void save(v);
+      }} />
       {error && <ErrorLine text={error} />}
     </Card>
   );

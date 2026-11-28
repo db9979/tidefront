@@ -17,6 +17,7 @@ import {
   startUpgrade,
   storageCapacity,
   trainingCost,
+  trainingLeft,
   upgradeCost,
   type BaseState,
   type Counts,
@@ -145,7 +146,7 @@ export function holdings(state: BaseState): Counts {
   const all: Counts = { ...state.defenses };
   for (const [id, n] of Object.entries(state.units)) all[id] = (all[id] ?? 0) + n;
   for (const [id, n] of Object.entries(state.unitsAway ?? {})) all[id] = (all[id] ?? 0) + n;
-  for (const o of state.trainingQueue) all[o.id] = (all[o.id] ?? 0) + o.count;
+  for (const o of state.trainingQueue) all[o.id] = (all[o.id] ?? 0) + trainingLeft(o);
   return all;
 }
 
@@ -245,7 +246,7 @@ function armyFits(s: BaseState, id: string, count: number, mods: Modifiers, nowM
   const def = balance.units[id];
   if (!def) return true; // Anlage
   const army: Counts = { ...s.units };
-  for (const o of s.trainingQueue) if (o.kind === "unit") army[o.id] = (army[o.id] ?? 0) + o.count;
+  for (const o of s.trainingQueue) if (o.kind === "unit") army[o.id] = (army[o.id] ?? 0) + trainingLeft(o);
   army[id] = (army[id] ?? 0) + count;
   if (fleetTotals(army, balance).commandPointsUsed > commandPoints(s, balance) + 1e-9) return false;
   return productionRates(s, balance, mods, nowMs).perHour.proviant - (def.upkeepPerHour ?? 0) * count >= 0;
@@ -273,7 +274,7 @@ export function chooseTraining(c: PlanCtx, extra: Counts = {}): { orders: { id: 
   const out: { id: string; count: number }[] = [];
   const troops = () => {
     const army: Counts = { ...s.units };
-    for (const o of s.trainingQueue) if (o.kind === "unit") army[o.id] = (army[o.id] ?? 0) + o.count;
+    for (const o of s.trainingQueue) if (o.kind === "unit") army[o.id] = (army[o.id] ?? 0) + trainingLeft(o);
     return fleetTotals(army, balance);
   };
   for (const { id } of ranked) {

@@ -1,8 +1,13 @@
-// Menü der Kopfleiste (ersetzt den „?“-Knopf): Handbuch, Einstellungen, Verwaltung (nur Admins), Abmelden.
+// Menü der Kopfleiste (UX-0.43 B2): einziger Einstieg, jeder Eintrag genau einmal – Handbuch (mit „Was ist neu?“),
+// Einstellungen, Freunde einladen, Fehler melden, Verwaltung (nur Admins), Abmelden. Handbuch, Einstellungen und
+// Verwaltung sind gleichrangige Ansichten (App.tsx); „Zurück“ führt dorthin, wo das Menü geöffnet wurde.
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc } from "../lib/trpc.ts";
+import { requestBugReport } from "../lib/bug-log.ts";
 import { Icon } from "../icons.tsx";
 import { Sheet } from "../ui.tsx";
+import { InvitePanel } from "./Invite.tsx";
 
 export type MenuItem = "handbuch" | "settings" | "admin" | "logout";
 
@@ -26,14 +31,22 @@ function Row({ icon, mark, title, hint, onClick, danger }: { icon?: string; mark
 export function MenuSheet({ open, onClose, onPick }: { open: boolean; onClose: () => void; onPick: (i: MenuItem) => void }) {
   const me = useQuery({ ...trpc.auth.me.queryOptions(), enabled: open });
   const player = me.data?.player;
+  const [invite, setInvite] = useState(false);
   return (
-    <Sheet open={open} onClose={onClose} title="Menü">
-      <ul className="divide-y divide-rule" aria-label="Menü">
-        <Row mark="?" title="Handbuch" hint="Regeln, Kapitel, Neuigkeiten, Fehler melden" onClick={() => onPick("handbuch")} />
-        <Row icon="zahnrad" title="Einstellungen" hint="Benachrichtigungen, E-Mail, Kurszeile, Passwort" onClick={() => onPick("settings")} />
-        {player?.isAdmin && <Row mark="§" title="Verwaltung" hint="Kennzahlen, KI-Spieler, Einladungen, Sicherungen" onClick={() => onPick("admin")} />}
-        <Row mark="⏻" title="Abmelden" hint={player ? `Angemeldet als ${player.name}` : "Vom Gerät abmelden"} onClick={() => onPick("logout")} danger />
-      </ul>
-    </Sheet>
+    <>
+      <Sheet open={open} onClose={onClose} title="Menü">
+        <ul className="divide-y divide-rule" aria-label="Menü">
+          <Row mark="?" title="Handbuch" hint="Regeln, Kapitel, Was ist neu?" onClick={() => onPick("handbuch")} />
+          <Row icon="zahnrad" title="Einstellungen" hint="Benachrichtigungen, Nachtschild, Konto, Hilfe" onClick={() => onPick("settings")} />
+          <Row mark="+" title="Freunde einladen" hint="Einladungslink oder E-Mail an Freunde" onClick={() => { onClose(); setInvite(true); }} />
+          <Row mark="!" title="Fehler melden" hint="Mit Screenshot und Protokoll an die Verwaltung" onClick={() => { onClose(); requestBugReport(); }} />
+          {player?.isAdmin && <Row mark="§" title="Verwaltung" hint="Ampel, Spieler, Welt, Statistik" onClick={() => onPick("admin")} />}
+          <Row mark="⏻" title="Abmelden" hint={player ? `Angemeldet als ${player.name}` : "Vom Gerät abmelden"} onClick={() => onPick("logout")} danger />
+        </ul>
+      </Sheet>
+      <Sheet open={invite} onClose={() => setInvite(false)} title="Freunde einladen" icon={<Icon id="anker" size={28} />}>
+        {invite && <InvitePanel playerName={player?.name} />}
+      </Sheet>
+    </>
   );
 }
