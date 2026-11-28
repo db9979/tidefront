@@ -58,7 +58,7 @@ test("Kolonieschiff bauen, Außenposten gründen, Hafen wechseln und umbenennen"
   await ship.getByRole("button", { name: "mehr" }).click();
   await expectNoHorizontalOverflow(page, "Gründung planen");
   const found = page.getByRole("button", { name: "Gründen", exact: true });
-  await expect(found).toBeEnabled();
+  await expect(found).toBeEnabled({ timeout: 30_000 }); // freigegeben erst mit der Vorschau des Servers – unter Last langsam
   await found.click();
   await expect(page.getByRole("heading", { name: "Mission gestartet" })).toBeVisible();
   await page.getByRole("button", { name: "Fertig" }).click();
