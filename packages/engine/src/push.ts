@@ -88,6 +88,8 @@ export const PUSH_DEFAULTS: Record<NoticeKind, boolean> = {
   // Spielerbindung: Erinnerungen als Push an; Rückholung und Saisonwechsel als Push an (AN-06: Push-Variante für Spieler
   // ohne bestätigte E-Mail-Adresse, Saisonwechsel an alle).
   daily: true, idle: true, nest: true, comeback: true,
+  // UX-0.43 B8 (push-watch.ts, politik-run.ts, lage-remind.ts): je eigener Schalter, Vorgabe an.
+  storage: true, overtaken: true, council: true, reminder: true, // reminder: selbst gestellt, ohne Schalter
 };
 
 export function wants(prefs: Prefs | null | undefined, defaults: Record<NoticeKind, boolean>, kind: NoticeKind): boolean {

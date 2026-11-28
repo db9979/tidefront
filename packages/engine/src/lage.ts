@@ -20,6 +20,7 @@ import { harborSub, row, SOON_MS, type LageRow, type LageUrgent } from "./lage-t
 import { waitingRows } from "./lage-wait.ts";
 import { allianceRows, beginnerRow, rewardSourceCounts } from "./lage-social.ts"; // TST-15, TX-08, TST-16
 import { politikLage } from "./politik-lage.ts"; // Weltpolitik: Gezeit, Seerat, Gesuche, Ansehen
+import { pickVisit, visitCandidates, type LageVisit } from "./lage-visit.ts"; // UX-0.43 B8: Nächster lohnender Besuch
 
 export type { LageJump, LageRow, LageUrgent } from "./lage-types.ts";
 
@@ -38,6 +39,8 @@ export interface LageView {
   urgent: LageUrgent;
   /** Bauempfehlung je Hafen mit freiem Bauplatz (UX 0.43, E-4): Lage „Nächster Schritt“ (idle) und Hafen „Empfohlen“. */
   advice: LageAdvice[];
+  /** Nächster lohnender Besuch (UX-0.43 B8); null ohne Anlass in den nächsten 36 h. */
+  visit: LageVisit | null;
 }
 
 export interface LageAdvice {
@@ -54,7 +57,7 @@ export async function lageView(engine: Engine, playerId: number, opts: { brief?:
   const nowMs = Date.now();
   const db = engine.db;
   const bases = await basesOfPlayer(db, playerId);
-  const empty: LageView = { serverNow: nowMs, soon: [], underway: [], waiting: [], urgent: { attacks: 0, grace: 0, idleQueues: 0, rewards: 0, keys: [] }, advice: [] };
+  const empty: LageView = { serverNow: nowMs, soon: [], underway: [], waiting: [], urgent: { attacks: 0, grace: 0, idleQueues: 0, rewards: 0, keys: [] }, advice: [], visit: null };
   if (bases.length === 0) return empty;
   const mods = new Map<number, Modifiers>();
   for (const b of bases) mods.set(b.id, await modsOf(db, b, nowMs));
@@ -82,6 +85,7 @@ export async function lageView(engine: Engine, playerId: number, opts: { brief?:
   const pol = await politikLage(db, playerId, nowMs); // Weltpolitik
   soon.push(...queueRows(bases), ...(await worldRows(db, bases, nowMs)), ...pol.soon);
   underway.push(...pol.underway);
+  const visit = pickVisit(await visitCandidates(db, bases, mods, soon, nowMs), nowMs);
   const inWindow = soon.filter((r) => r.atMs !== null && r.atMs > nowMs - 5000 && (r.kind === "angriff" || r.atMs <= nowMs + SOON_MS));
   inWindow.sort((a, b) => Number(b.kind === "angriff") - Number(a.kind === "angriff") || a.atMs! - b.atMs! || a.key.localeCompare(b.key));
   underway.sort((a, b) => (a.atMs ?? Infinity) - (b.atMs ?? Infinity) || a.key.localeCompare(b.key));
@@ -93,7 +97,7 @@ export async function lageView(engine: Engine, playerId: number, opts: { brief?:
     const options = buildAdvice(st, balance, nowMs, mods.get(b.id));
     if (options.length > 0) advice.push({ baseId: b.id, baseName: harborSub(bases, b.id), idle: st.buildQueue.length === 0, options });
   }
-  return { serverNow: nowMs, soon: inWindow, underway, waiting, urgent, advice };
+  return { serverNow: nowMs, soon: inWindow, underway, waiting, urgent, advice, visit };
 }
 
 /** Erkannte Angriffe auf eigene Häfen (Radar wie baseView; markiert neu Erkannte). */
@@ -137,13 +141,12 @@ async function contractRows(db: DbOrTx, playerId: number, nowMs: number): Promis
   });
 }
 
+/** Missionsziel immer „Name · Feld x/y“ (docs/GLOSSAR.md); ohne Namen nur „Feld x/y“. */
 function targetText(m: { targetKind: string; targetCol: number; targetRow: number; targetId: number | null }, names: Map<number, string>): string {
-  if ((m.targetKind === "base" || m.targetKind === OWN_BASE_TARGET) && m.targetId !== null && names.has(m.targetId)) return names.get(m.targetId)!;
-  if (m.targetKind === "nest") return "Piratennest";
-  if (m.targetKind === "field") return "Rohstofffeld";
-  if (m.targetKind === "convoy") return "Konvoi";
-  if (m.targetKind === "event") return "Weltereignis";
-  return `Feld ${m.targetCol}/${m.targetRow}`;
+  const field = `Feld ${m.targetCol}/${m.targetRow}`;
+  const name = (m.targetKind === "base" || m.targetKind === OWN_BASE_TARGET) && m.targetId !== null && names.has(m.targetId) ? names.get(m.targetId)!
+    : m.targetKind === "nest" ? "Piratennest" : m.targetKind === "field" ? "Rohstofffeld" : m.targetKind === "convoy" ? "Konvoi" : m.targetKind === "event" ? "Weltereignis" : null;
+  return name ? `${name} · ${field}` : field;
 }
 
 /** Eigene Verbände: Ankunft/Rückkehr (Gleich) und Fortschritt (Unterwegs). */
@@ -255,4 +258,4 @@ async function worldRows(db: DbOrTx, bases: BaseRow[], nowMs: number): Promise<L
 }
 
 /** Kurzform für die Oberfläche ohne Hafen: leeres Lagezentrum. */
-export const noLage = (nowMs: number): LageView => ({ serverNow: nowMs, soon: [], underway: [], waiting: [], urgent: { attacks: 0, grace: 0, idleQueues: 0, rewards: 0, keys: [] }, advice: [] });
+export const noLage = (nowMs: number): LageView => ({ serverNow: nowMs, soon: [], underway: [], waiting: [], urgent: { attacks: 0, grace: 0, idleQueues: 0, rewards: 0, keys: [] }, advice: [], visit: null });

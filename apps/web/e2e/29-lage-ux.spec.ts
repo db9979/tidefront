@@ -174,7 +174,7 @@ test.describe("Handy 390 × 844", () => {
     await page.goto("/");
     const first = page.getByTestId("lage-first-steps");
     await expect(first).toContainText("Kraftwerk bauen");
-    await expect(first).toContainText("0/11");
+    await expect(first).toContainText("0/10 bis zum ersten Sieg");
     await expect(page.getByTestId("lage-next")).toHaveCount(0);
     await expect(page.getByTestId("politik-line")).toHaveCount(0);
     await expect(first.getByRole("button", { name: "Los" })).toBeInViewport({ ratio: 1 });

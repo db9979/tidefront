@@ -57,6 +57,7 @@ import { expansionArrive, isExpansionType } from "./expansion.ts"; // Mehrere H�
 import { INTEL_HANDLERS, withIntelArrive } from "./intel-ops.ts"; // Lagebild Stufe 2: Patrouille, Kampagne, Radarposten
 import { withPvpStamp } from "./pvp.ts"; // PvP: Rang, Kopfgeld und Mutfaktor beim Kampf festhalten
 import { POLITIK_HANDLERS } from "./politik-run.ts"; // Weltpolitik: Gezeit, Seerat
+import { REMIND_HANDLERS } from "./lage-remind.ts"; // UX-0.43 B8: Erinnerung „Nächster lohnender Besuch“
 import { balanceNow } from "./politik-core.ts"; // Weltpolitik: Überfallintervall (Kartellfehde)
 
 const HOUR_MS = 3600000;
@@ -477,6 +478,7 @@ export const HANDLERS: Record<string, Handler> = {
   ...FIELD_HANDLERS, // Felder
   ...INTEL_HANDLERS, // Lagebild Stufe 2 (patrol_tick, patrol_end, radar_post_tick)
   ...POLITIK_HANDLERS, // Weltpolitik (politik_start, politik_end, seerat_open, seerat_close)
+  ...REMIND_HANDLERS, // UX-0.43 B8 (visit_reminder)
   pact_expire: (tx, _ev, due) => import("./alliance-core.ts").then(async (m) => {
     const notify: HandlerResult["notify"] = [];
     await m.purgeExpired(tx, due, notify);

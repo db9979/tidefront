@@ -14,7 +14,7 @@ export function AchievementsChapter({ b }: { b: Balance | undefined }) {
   if (!a) return <P>Erfolge und Wochenziele gibt es in dieser Saison nicht.</P>;
   return (
     <>
-      <P><strong>Erfolge</strong> sind dauerhafte Abzeichen: Sie bleiben über alle Saisons erhalten. Jedes hat drei Stufen – <strong>Bronze, Silber, Gold</strong>. Erreichst du eine Stufe, bekommst du eine Nachricht (und einen Push, falls eingeschaltet); die Belohnung holst du unter <strong>Meldungen → Rangliste → Erfolge</strong> mit <strong>Abholen</strong> ab, je Stufe genau einmal. Deine drei höchsten Abzeichen stehen in der Rangliste neben deinem Namen.</P>
+      <P><strong>Erfolge</strong> sind dauerhafte Abzeichen: Sie bleiben über alle Saisons erhalten. Jedes hat drei Stufen – <strong>Bronze, Silber, Gold</strong>. Erreichst du eine Stufe, bekommst du eine Nachricht (und einen Push, falls eingeschaltet); die Belohnung holst du unter <strong>Meldungen → Saison → Erfolge</strong> mit <strong>Abholen</strong> ab, je Stufe genau einmal. Deine drei höchsten Abzeichen stehen in der Rangliste neben deinem Namen.</P>
       <div className="text-sm text-slate-200 mb-2">
         Belohnung je Stufe:
         {a.rewards.map((r, i) => (

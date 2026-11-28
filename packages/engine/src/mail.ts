@@ -91,6 +91,8 @@ export const EMAIL_DEFAULTS: Record<NoticeKind, boolean> = {
   attack: true, report: true, build: false, training: false, fleet: false, delivery: false, ops: true, test: true, market: false,
   // Spielerbindung: Erinnerungen per E-Mail nur auf Wunsch; Rückhol-E-Mail (einmal je Pause) an.
   daily: false, idle: false, nest: false, comeback: true,
+  // UX-0.43 B8: nur als Push (Einstellungen zeigen sie nicht unter E-Mail).
+  storage: false, overtaken: false, council: false, reminder: false,
 };
 export const DIGEST_KINDS: NoticeKind[] = ["build", "training", "fleet", "delivery", "idle", "nest"];
 export const DIGEST_INTERVAL_MS = 30 * 60000;

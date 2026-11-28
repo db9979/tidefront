@@ -347,6 +347,7 @@
       "wache": { "stahl": 300, "proviant": 600 },
       "werft": { "stahl": 800, "treibstoff": 300, "elektronik": 100 },
       "flotte": { "stahl": 400, "proviant": 400 },
+      "ausfahrt": { "treibstoff": 200, "proviant": 200 },
       "nest": { "treibstoff": 800, "elektronik": 200 },
       "hafen": { "stahl": 600, "elektronik": 250 },
       "schutz": { "stahl": 600, "treibstoff": 200, "elektronik": 200, "proviant": 300 }

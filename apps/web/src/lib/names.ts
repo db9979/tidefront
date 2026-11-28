@@ -96,6 +96,7 @@ const ERRORS: Record<string, string> = {
   raid_bad_target: "Ein Sammelangriff braucht ein festes Ziel (Hafen, Nest, Großflotte oder Belagerung) – das Schatzschiff fährt.",
   not_joined: "Du bist bei diesem Sammelangriff nicht dabei.",
   bad_time: "Frist oder Ankunftszeit liegt außerhalb des erlaubten Rahmens.",
+  bad_text: "Der Text fehlt oder ist zu lang.", // UX-0.43 B8: Erinnerung
   // Weltereignisse
   no_event: "Dieses Weltereignis gibt es nicht (mehr).",
   event_over: "Dieses Weltereignis ist schon vorbei.",

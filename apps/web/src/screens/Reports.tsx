@@ -18,6 +18,7 @@ const KIND_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "ka
 import { NavalReport } from "../components/Naval.tsx"; // See: Minen/Blockade/Konvoi
 import { FieldReport } from "../components/Fields.tsx"; // Felder
 import { HScroll } from "../components/HScroll.tsx";
+import { useNav } from "../lib/nav.ts"; // UX-0.43 C3: Leerzustand mit Handlung
 const NAVAL_KINDS = ["minen", "blockade", "blockadekampf", "konvoi", "posten", "patrouille", "sichtung", "satellit"]; // See und Lagebild Stufe 2/3: kein „Wiederholen“
 import { IntelOpsReport } from "../components/IntelOpsReport.tsx"; // Lagebild Stufe 2
 import { PvpReportNote } from "../components/Pvp.tsx"; // Spieler gegen Spieler
@@ -87,6 +88,7 @@ export function ReportsScreen() {
         <div className="panel rounded-xl p-5 text-center text-ink2">
           <Icon id="nav-bericht" size={48} className="mx-auto mb-2 text-slate-500" />
           Noch keine Berichte. Nach jedem Kampf, jeder Aufklärung und jedem Transport erscheint hier ein Bericht.
+          <EmptyReportsAction />
         </div>
       )}
       <ul className="space-y-2">
@@ -231,4 +233,10 @@ function NestScout({ n }: { n: { level: number; empty: boolean; garrison: { unit
       )}
     </Card>
   );
+}
+
+/** Leerzustand mit Handlung (UX-0.43 C3/M-4): der erste Bericht kommt vom ersten Einsatz. */
+function EmptyReportsAction() {
+  const nav = useNav();
+  return <Button className="mt-3" onClick={() => nav.go({ to: "troops", seg: "einsatz" })}>Ersten Einsatz planen</Button>;
 }

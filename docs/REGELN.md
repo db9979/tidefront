@@ -690,10 +690,12 @@ Vorlage „Aufholhilfe“ (docs/VORLAGE-AUFHOLHILFE.md) mit Nutzerentscheiden vo
 
 ## Auftragsbuch
 
-- Elf Grundaufträge auf der Basis (Reihenfolge wie in der Oberfläche): Kraftwerk Stufe 1; Stahlwerk Stufe 1; Raffinerie
+- Zwölf Grundaufträge auf der Basis (Reihenfolge wie in der Oberfläche): Kraftwerk Stufe 1; Stahlwerk Stufe 1; Raffinerie
   und Versorgungshof Stufe 1; Kommandozentrale Stufe 1; Kaserne Stufe 1; 30 Schützen (daheim und unterwegs; `GUIDE_GOALS`); Werft
-  Stufe 1; 2 Korvetten und 1 Landungsschiff; ein eigener gewonnener Überfall auf ein Piratennest (Kampfbericht der
+  Stufe 1; 2 Korvetten und 1 Landungsschiff; ein Überfall auf ein Piratennest losgeschickt (eigene Mission oder
+  Kampfbericht gegen ein Nest; seit UX-0.43 C3); ein eigener gewonnener Überfall auf ein Piratennest (Kampfbericht der
   Saison); Hafenkommandantur Stufe 3; Radarstation und Tiefbunker Stufe 1.
+- „Erste Schritte“ auf der Lage führen bis zum ersten gewonnenen Nestüberfall (machbar am ersten Tag).
 - Erfüllung prüft der Server aus dem Stand des Hafens (packages/engine/src/guide.ts), auch für früher Erledigtes.
 - Jeder erfüllte Auftrag gibt ein abholbares Ressourcenpaket, passend zum nächsten Schritt (`balance.guide.steps`):
 
@@ -707,11 +709,12 @@ Vorlage „Aufholhilfe“ (docs/VORLAGE-AUFHOLHILFE.md) mit Nutzerentscheiden vo
   | 30 Schützen | Stahl 300, Proviant 600 |
   | Werft | Stahl 800, Treibstoff 300, Elektronik 100 |
   | 2 Korvetten, 1 Landungsschiff | Stahl 400, Proviant 400 |
+  | Überfall losgeschickt | Treibstoff 200, Proviant 200 |
   | Piratennest | Treibstoff 800, Elektronik 200 |
   | Hafenkommandantur 3 | Stahl 600, Elektronik 250 |
   | Radarstation und Tiefbunker | Stahl 600, Treibstoff 200, Elektronik 200, Proviant 300 |
 
-- Abschlussbelohnung, sobald alle elf abgeholt sind (`balance.guide.final`): Stahl 2.000, Treibstoff 1.000,
+- Abschlussbelohnung, sobald alle zwölf abgeholt sind (`balance.guide.final`): Stahl 2.000, Treibstoff 1.000,
   Elektronik 600, Proviant 1.000; Abzeichen **Hafenmeister** für diese Saison (Rangliste und Spielerübersicht neben
   dem Namen); einmalig −1 Stunde Bauzeit (`buildBoostSeconds` 3.600). Die Verkürzung wirkt direkt an der Bauschlange:
   Der laufende Ausbau wird um bis zu eine Stunde früher fertig (frühestens sofort), die wartenden Aufträge rücken um

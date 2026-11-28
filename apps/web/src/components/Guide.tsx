@@ -11,12 +11,16 @@ import { useCommand } from "../lib/command.ts";
 import { countLabel, fmtNum } from "../lib/names.ts";
 import { Icon } from "../icons.tsx";
 import { Badge, Bar, Button, ErrorLine, ResChips } from "../ui.tsx";
+import { requestPlan } from "../lib/plan-request.ts"; // UX-0.43 C3: „Überfall losschicken“ öffnet die Planung am Start-Nest
 
 /** seg: Unterreiter, der beim Öffnen des Reiters gewählt sein soll (z. B. Truppen → Ausbilden). */
-export type GuideAction = { kind: "building"; id: string } | { kind: "tab"; tab: "karte" | "truppen" | "boerse" | "berichte"; seg?: string };
+/** plan: Missionsplanung mit Ziel öffnen (Verband schlägt die Planung vor, UX-0.43 U-2). */
+export type GuideAction = { kind: "building"; id: string } | { kind: "tab"; tab: "karte" | "truppen" | "boerse" | "berichte"; seg?: string }
+  | { kind: "plan"; col: number; row: number };
 
-/** Unterreiter vormerken (useSegment liest ihn beim Aufbau), dann wie gewohnt navigieren. */
+/** Unterreiter vormerken (useSegment liest ihn beim Aufbau), dann wie gewohnt navigieren; plan öffnet die Planung. */
 export function runGuideAction(a: GuideAction, onAction: (a: GuideAction) => void): void {
+  if (a.kind === "plan") return requestPlan({ target: { col: a.col, row: a.row }, type: "ueberfall" });
   if (a.kind === "tab" && a.seg) localStorage.setItem(`tf-seg:${a.tab}`, a.seg);
   onAction(a);
 }
@@ -49,6 +53,7 @@ export const STEPS: Step[] = [
     const l = bal?.units.landungsschiff;
     return `Das Landungsschiff bringt ${fmtNum(l?.troopSpace ?? 100)} Plätze Truppen an Land und ${fmtNum(l?.cargo ?? 4000)} Beute heim, Korvetten schützen es vor den Schnellbooten stärkerer Nester.`;
   }, action: { kind: "tab", tab: "truppen", seg: "ausbilden" }, actionText: "Schiffe bauen" },
+  { id: "ausfahrt", icon: "ueberfall", title: "Überfall auf das Start-Nest losschicken", why: "Ein Nest der Stufe 1 liegt höchstens 300 km entfernt. „Los“ öffnet die Planung mit dem Nest als Ziel und schlägt den kleinsten Verband aus deinem Bestand vor, der im Probekampf mindestens 9 von 10 Kämpfen gewinnt. Fehlt noch etwas, steht dort, was.", action: { kind: "tab", tab: "truppen", seg: "einsatz" }, actionText: "Überfall planen" },
   { id: "nest", icon: "kartell", title: "Ein Piratennest Stufe 1 überfallen", why: nestWhy, action: { kind: "tab", tab: "truppen", seg: "einsatz" }, actionText: "Zu den Nestern in der Nähe" },
   { id: "hafen", icon: "hafenkommandantur", title: "Hafenkommandantur auf Stufe 3", why: "Öffnet die Börse: Überschüsse verkaufen, Fehlendes kaufen. Jede zweite Stufe bringt einen Missionsplatz.", action: { kind: "building", id: "hafenkommandantur" }, actionText: "Zur Hafenkommandantur" },
   { id: "schutz", icon: "radarstation", title: "Radarstation und Tiefbunker", why: "Das Radar warnt vor Angriffen, der Bunker schützt einen Grundstock vor Plünderung.", action: { kind: "building", id: "radarstation" }, actionText: "Zur Radarstation" },
@@ -65,8 +70,9 @@ function nestWhy(bal: Balance | undefined): string {
 
 const whyText = (s: Step, bal: Balance | undefined) => (typeof s.why === "function" ? s.why(bal) : s.why);
 
-/** Bei Schritten mit zwei Gebäuden zum noch fehlenden führen. */
-export function nextAction(step: Step, b: BaseData): GuideAction {
+/** Bei Schritten mit zwei Gebäuden zum noch fehlenden führen; „ausfahrt“ plant den Überfall auf das Start-Nest. */
+export function nextAction(step: Step, b: BaseData, nest?: { col: number; row: number } | null): GuideAction {
+  if (step.id === "ausfahrt" && nest) return { kind: "plan", col: nest.col, row: nest.row };
   if (step.id === "basis") return { kind: "building", id: lvl(b, "raffinerie") < 1 ? "raffinerie" : "versorgungshof" };
   if (step.id === "schutz") return { kind: "building", id: lvl(b, "radarstation") < 1 ? "radarstation" : "tiefbunker" };
   return step.action;
@@ -161,7 +167,7 @@ export function Guide({ base: snap, onAction }: { base: BaseData; onAction: (a: 
             <p className="text-[13.5px] leading-snug text-ink2">{whyText(current, meta.data?.balance)}</p>
             <p className="mt-1 text-xs text-ink2 flex flex-wrap items-center gap-x-2">Belohnung: <ResChips values={byId.get(current.id)?.reward} /></p>
             {(() => {
-              const a = nextAction(current, base);
+              const a = nextAction(current, base, g.nestTarget);
               // In Arbeit: das Gebäude steht in der Bauschlange (laufend oder eingereiht).
               const pos = a.kind === "building" ? base.buildQueue.findIndex((o) => o.buildingId === a.id) : -1;
               return pos >= 0 ? (
@@ -205,7 +211,7 @@ export function Guide({ base: snap, onAction }: { base: BaseData; onAction: (a: 
   );
 }
 
-/** Abschlusskarte nach allen elf Aufträgen: Paket, Abzeichen und −1 Stunde Bauzeit. */
+/** Abschlusskarte nach allen zwölf Aufträgen: Paket, Abzeichen und −1 Stunde Bauzeit. */
 function FinalCard({ g, busy, onClaim }: { g: GuideData; busy: boolean; onClaim: () => void }) {
   const hours = Math.round(g.final.boostSeconds / 360) / 10;
   const boost = `−${fmtNum(hours)} ${hours === 1 ? "Stunde" : "Stunden"} Bauzeit`;
@@ -226,7 +232,7 @@ function FinalCard({ g, busy, onClaim }: { g: GuideData; busy: boolean; onClaim:
           <>
             <h3 className="font-serif text-[19px] leading-tight mb-0.5">Abschlussbelohnung</h3>
             <p className="text-[13.5px] leading-snug text-ink2">
-              Alle elf Aufträge erfüllt. Zur Belohnung: ein großes Paket, das Abzeichen „Hafenmeister“ für diese Saison und
+              Alle {STEPS.length} Aufträge erfüllt. Zur Belohnung: ein großes Paket, das Abzeichen „Hafenmeister“ für diese Saison und
               einmalig {boost} für den laufenden Ausbau (läuft keiner, für den nächsten).
             </p>
             <p className="mt-1 text-xs"><ResChips values={g.final.reward} /></p>

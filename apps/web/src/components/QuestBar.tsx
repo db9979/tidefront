@@ -59,7 +59,7 @@ export function QuestBar({ base, onAction }: { base: BaseData; onAction: (a: Gui
       </div>
       {/* Neue Spieler: der nächste Schritt bleibt sichtbar, ohne das Blatt zu öffnen. */}
       {current && (() => {
-        const a = nextAction(current, base);
+        const a = nextAction(current, base, g?.nestTarget);
         const building = a.kind === "building" && base.buildQueue.some((o) => o.buildingId === a.id);
         return (
           <div className="mt-2.5 pt-2.5 border-t border-dotted border-rule flex items-center gap-2.5">

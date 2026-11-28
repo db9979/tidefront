@@ -5,7 +5,7 @@
 // einmal, nächstes Ereignis mit Balken) → Als Nächstes (nur Nicht-Missionen, 12 h) → Weltpolitik (einzeilig, groß nur
 // bei Handlungsbedarf) → Aufträge → Zuletzt passiert. Server: lage.get, lage.since, lage.ack (engine/lage*.ts).
 // Live: lib/live.ts invalidiert lage.* mit Hafen-, Missions-, Berichts- und Marktmeldungen; Countdown je Sekunde.
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, type BaseData } from "../../lib/trpc.ts";
 import { useNow } from "../../lib/time.ts";
@@ -26,7 +26,9 @@ import { LageGroup, LageLine, type LageJump, type LageRow } from "./LageList.tsx
 import { PolitikLage } from "../politik/PolitikLine.tsx"; // Weltpolitik: einzeilig oder groß bei Handlungsbedarf
 import { ProgressLine } from "./ProgressLine.tsx";
 import { ReturnCard, useLageAck } from "./ReturnCard.tsx";
-import { BuildAdvice, FirstSteps, useNewcomer } from "./NextStep.tsx";
+import { BuildAdvice, FirstSteps, useBeforeFirstWin, useNewcomer } from "./NextStep.tsx";
+import { NextVisit } from "./NextVisit.tsx"; // UX-0.43 B8: Nächster lohnender Besuch mit „Erinnern“
+import { LagePost, useUnreadPost } from "./LagePost.tsx"; // UX-0.43 C3: Post mit „Antworten“
 
 const RECENT = 5;
 const REPORT_ICON: Record<string, string> = { ueberfall: "ueberfall", kartell: "kartell", aufklaerung: "aufklaerung", transport: "transport", spionage: "spionage", sabotage: "sabotage", konvoi: "konvoi", blockade: "blockade", minen: "mine", patrouille: "patrouille", satellit: "satellit", sichtung: "sichtung" };
@@ -60,6 +62,8 @@ export function LageTab({ onShowOnMap, unreadMsgs, seenReport, quests: questBar,
   const weekly = useWeekly();
   const ach = useAchievements();
   const newcomer = useNewcomer();
+  const beforeWin = useBeforeFirstWin(); // UX-0.43 C3: Erste Schritte bis zum ersten Sieg
+  const post = useUnreadPost();
   const ack = useLageAck(playerId);
   const claim = useClaimAll(ack); // E-3: Abholen quittiert die Rückkehrkarte
   // Stand beim letzten Öffnen: Einträge, die seitdem dazugekommen sind, tragen „neu“ (erster Besuch: keine Markierung).
@@ -118,16 +122,18 @@ export function LageTab({ onShowOnMap, unreadMsgs, seenReport, quests: questBar,
   // A8: dieselbe Zahl wie an „Meldungen“ (ungelesene Berichte + Post; Allianz-Chat zählt bewusst nicht).
   // Ungelesene Berichte wie in App.tsx (dieselbe Abfrage report.list, derselbe Merker seenReport).
   const unreadReports = (reports.data ?? []).filter((r) => r.id > seenReport).length;
-  const mText = meldungenText(unreadReports, unreadMsgs);
+  // Post von Mitspielern steht einzeln mit „Antworten“ da; die Sammelzeile nennt nur den Rest.
+  const mText = meldungenText(unreadReports, Math.max(0, unreadMsgs - post.length));
   const waiting: LageRow[] = [
     ...(quests > 0 ? [local({ key: "belohnung:quests", kind: "belohnung", icon: "hafenmeister", tone: "gut", urgent: true,
       text: `${quests === 1 ? "1 Belohnung" : `${quests} Belohnungen`} abholbereit (${sources})`, jump: { to: "rewards", where: "basis" } })] : []),
     ...(mText ? [local({ key: "meldungen", kind: "nachrichten", icon: "nav-bericht", text: mText })] : []),
-    ...lage.data.waiting,
+    // Neulinge (unter 5 Aufträgen) ohne den ruhigen Allianz-Hinweis.
+    ...lage.data.waiting.filter((r) => !(newcomer && r.kind === "allianz-hinweis")),
   ];
   const openMeldungen = () => nav.go({ to: "meldungen", sub: unreadReports > 0 ? "berichte" : "nachrichten" });
   const recent = (reports.data ?? []).slice(0, RECENT);
-  const empty = soon.length === 0 && underway.length === 0 && waiting.length === 0 && recent.length === 0 && alarm.length === 0;
+  const empty = soon.length === 0 && underway.length === 0 && waiting.length === 0 && post.length === 0 && recent.length === 0 && alarm.length === 0;
   return (
     <div data-testid="lage-tab">
       <ProgressLine />
@@ -137,14 +143,23 @@ export function LageTab({ onShowOnMap, unreadMsgs, seenReport, quests: questBar,
         </LageGroup>
       )}
       <ReturnCard playerId={playerId} onAck={ack} />
-      {(waiting.length > 0 || claim.note) && (
-        <LageGroup title="Wartet auf dich" count={waiting.length} testId="lage-waiting"
+      {(waiting.length > 0 || post.length > 0 || claim.note) && (
+        <LageGroup title="Wartet auf dich" count={waiting.length + post.length} testId="lage-waiting"
           action={<ClaimAllHead count={allReady} busy={claim.busy} onRun={() => void claim.run()} />}>
           {claim.note && <li className="list-none"><ClaimAllNote note={claim.note} /></li>}
-          {waiting.map((r) => <LageLine key={r.key} row={r} nowMs={now} onJump={jump} unread={isNew(r.key)} onTap={r.kind === "nachrichten" ? openMeldungen : undefined} />)}
+          {/* Belohnungen zuerst, dann Post mit „Antworten“, dann der Rest. */}
+          {waiting.map((r, i) => (
+            <Fragment key={r.key}>
+              {i === waiting.findIndex((x) => x.kind !== "belohnung") && <LagePost rows={post} onOpen={() => nav.go({ to: "meldungen", sub: "nachrichten" })} />}
+              <LageLine row={r} nowMs={now} onJump={jump} unread={isNew(r.key)} onTap={r.kind === "nachrichten" ? openMeldungen : undefined} />
+            </Fragment>
+          ))}
+          {waiting.every((x) => x.kind === "belohnung") && <LagePost rows={post} onOpen={() => nav.go({ to: "meldungen", sub: "nachrichten" })} />}
         </LageGroup>
       )}
-      {newcomer ? <FirstSteps base={base} onGuide={onGuide} /> : <BuildAdvice advice={lage.data.advice} />}
+      {beforeWin && <FirstSteps base={base} onGuide={onGuide} />}
+      {!newcomer && <BuildAdvice advice={lage.data.advice} />}
+      <NextVisit visit={lage.data.visit} nowMs={now} />
       {empty && !newcomer && (
         <div className="panel rounded-xl p-5 text-center text-ink2 mb-3" data-testid="lage-empty">
           <Icon id="anker" size={48} className="mx-auto mb-2" />
