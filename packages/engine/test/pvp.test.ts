@@ -135,9 +135,10 @@ test("Kopfgeld im Bericht: Lea (Rang 2) überfällt Kai (Rang 1) – Rang, Kopfg
   const f = stampFactors(s, cfg);
   const lea = st.find((r) => r.playerId === Lea.playerId)!;
   const kai = st.find((r) => r.playerId === Kai.playerId)!;
-  assert.equal(lea.kampf, Math.floor((countsValue(report.battle.defender.losses) * f.kampf) / 100));
+  const pf = balance.scoring?.pvpFactor ?? 1; // v1.38: Spielerkämpfe Kampf × pvpFactor
+  assert.equal(lea.kampf, Math.floor((countsValue(report.battle.defender.losses) * pf * f.kampf) / 100));
   assert.equal(lea.beute, Math.floor((resValue(report.battle.loot) * f.beute) / 100));
-  assert.equal(kai.kampf, Math.floor((countsValue(report.battle.attacker.losses) * 0.5) / 100), "Verteidigung der Spitze zählt halb");
+  assert.equal(kai.kampf, Math.floor((countsValue(report.battle.attacker.losses) * pf * 0.5) / 100), "Verteidigung der Spitze zählt halb");
   assert.ok(countsValue(report.battle.attacker.losses) > 0, "Lea verliert Schiffe");
 
   // Nach dem Kampf: Paarbremse für den nächsten Kampf sichtbar.
@@ -164,8 +165,9 @@ test("Paarbremse aus den Berichten: 1 / 0,5 / 0,25 / 0 je Paar in 72 h, beide Ri
   let st = await computeStandings(db, season.startsAt.getTime(), Date.now());
   const pts = (id: number) => st.find((r) => r.playerId === id)!.kampf;
   // a: Kämpfe 1 (×1), 3 (×0,25), 4 (×0); b: Kampf 2 (×0,5).
-  assert.equal(pts(a.playerId), Math.floor((v * 1.25) / 100));
-  assert.equal(pts(b.playerId), Math.floor((v * 0.5) / 100));
+  const pf = balance.scoring?.pvpFactor ?? 1;
+  assert.equal(pts(a.playerId), Math.floor((v * pf * 1.25) / 100));
+  assert.equal(pts(b.playerId), Math.floor((v * pf * 0.5) / 100));
 
   // Verwaltung: das Paar ist auffällig (4 Kämpfe, Siege ohne Verluste des Verteidigers).
   const list = await suspiciousPairs(db, Date.now());
@@ -175,11 +177,11 @@ test("Paarbremse aus den Berichten: 1 / 0,5 / 0,25 / 0 je Paar in 72 h, beide Ri
   // Ersten Bericht aus der Wertung nehmen: a verliert ihn, die Paarbremse zählt ihn weiter mit.
   await setReportExcluded(db, ids[0], true);
   st = await computeStandings(db, season.startsAt.getTime(), Date.now());
-  assert.equal(pts(a.playerId), Math.floor((v * 0.25) / 100));
+  assert.equal(pts(a.playerId), Math.floor((v * pf * 0.25) / 100));
   assert.equal((await suspiciousPairs(db, Date.now())).pairs.find((p) => p === pair || (p.a === pair.a && p.b === pair.b))!.reports.find((r) => r.id === ids[0])!.excluded, true);
   await setReportExcluded(db, ids[0], false);
   st = await computeStandings(db, season.startsAt.getTime(), Date.now());
-  assert.equal(pts(a.playerId), Math.floor((v * 1.25) / 100));
+  assert.equal(pts(a.playerId), Math.floor((v * pf * 1.25) / 100));
   await assert.rejects(setReportExcluded(db, 999999, true), (e: { code?: string }) => e.code === "no_report");
 });
 

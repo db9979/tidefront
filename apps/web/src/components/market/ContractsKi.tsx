@@ -40,24 +40,38 @@ export function KiOffers({ base, data }: { base: BaseData; data: ContractsData }
           </div>
           <p className="text-xs text-ink2">{CHARACTER[k.profile] ?? ""}</p>
           <KiAnsehen kiId={k.id} name={k.name} />
-          <ul className="mt-1">
-            {k.offers.map((o) => {
-              const id = `${k.id}-${o.side}-${o.resource}`;
-              return (
-                <li key={id} className="dotted-row py-1.5">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Icon id={o.resource} size={18} />
-                    <span className="flex-1 min-w-0">{o.side === "buy" ? "Du kaufst" : "Du lieferst"} {label(o.resource)}
-                      <span className="text-ink2 text-xs"> · Kontingent {o.quota > 0 ? `bis ${fmtNum(o.quota)}` : "erschöpft"}</span></span>
-                    <Button kind="secondary" disabled={o.quota < data.cfg.minQty || !base.market.unlocked} onClick={() => setOpen(open === id ? null : id)}>
-                      {open === id ? "Schließen" : "Angebot"}
-                    </Button>
-                  </div>
-                  {open === id && <DealForm base={base} ki={k} offer={o} minQty={data.cfg.minQty} />}
-                </li>
-              );
-            })}
-          </ul>
+          {/* v1.38 (Welle 5, „Verträge verdichten“): je Richtung eine Zeile mit Ressourcen-Knöpfen statt einer Zeile je Angebot. */}
+          {(["buy", "sell"] as const).map((side) => {
+            const offers = k.offers.filter((o) => o.side === side);
+            if (offers.length === 0) return null;
+            return (
+              <div key={side} className="flex flex-wrap items-center gap-1.5 mt-1.5" role="group" aria-label={`${k.name}: ${side === "buy" ? "Du kaufst" : "Du lieferst"}`}>
+                <span className="text-[11px] font-display uppercase text-ink2 w-[74px] shrink-0">{side === "buy" ? "Du kaufst" : "Du lieferst"}</span>
+                {offers.map((o) => {
+                  const id = `${k.id}-${o.side}-${o.resource}`;
+                  const what = `${side === "buy" ? "Du kaufst" : "Du lieferst"} ${label(o.resource)}`;
+                  const off = o.quota < data.cfg.minQty || !base.market.unlocked;
+                  return (
+                    <button key={id} type="button" aria-label={what} aria-expanded={open === id} disabled={off}
+                      title={o.quota > 0 ? `Kontingent bis ${fmtNum(o.quota)}` : "Kontingent erschöpft"}
+                      onClick={() => setOpen(open === id ? null : id)}
+                      className={`tap inline-flex items-center gap-1 rounded-md px-2 text-sm disabled:opacity-40 ${open === id ? "bg-ink text-paper" : "border border-ink/50"}`}>
+                      <Icon id={o.resource} size={16} /> {label(o.resource)}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+          {k.offers.map((o) => {
+            const id = `${k.id}-${o.side}-${o.resource}`;
+            return open === id ? (
+              <div key={id}>
+                <p className="text-xs text-ink2 mt-2">{o.side === "buy" ? "Du kaufst" : "Du lieferst"} {label(o.resource)} · Kontingent {o.quota > 0 ? `bis ${fmtNum(o.quota)}` : "erschöpft"}</p>
+                <DealForm base={base} ki={k} offer={o} minQty={data.cfg.minQty} />
+              </div>
+            ) : null;
+          })}
         </section>
       ))}
     </Card>

@@ -387,7 +387,9 @@ export function drawDay(c: PoolContext, seedText: string): (Draw & { slot: Tier 
 
 /** Punkte der Kategorie Befehle je Stufe. */
 export const TIER_POINTS = [3, 6, 12];
-const TIER_VALUE = [400, 1000, 2500];
+/** v1.38: Werte und Wachstum aus der Balance (achievements.daily), sonst die Werte bis v1.37. */
+const tierValue = (t: Tier) => balance.achievements?.daily?.tierValue[t] ?? [400, 1000, 2500][t];
+const dailyGrowth = (stage: number) => 1 + stage * (balance.achievements?.daily?.stageGrowth ?? 0.3);
 // Paketschlüssel (Wirtschaftsprüfung 0.24: Stahl ist der Engpass, Proviant im Überfluss).
 const SHARE: Record<string, number> = { stahl: 0.5, treibstoff: 0.25, elektronik: 0.15, proviant: 0.1 };
 
@@ -400,7 +402,7 @@ export function resourcePackage(value: number): ResourceMap {
 
 /** Belohnung eines Befehls: wächst mit der Kommandozentrale. */
 export function challengeReward(tier: Tier, stage: number): { reward: ResourceMap; points: number } {
-  return { reward: resourcePackage(TIER_VALUE[tier] * (1 + stage * 0.3)), points: TIER_POINTS[tier] };
+  return { reward: resourcePackage(tierValue(tier) * dailyGrowth(stage)), points: TIER_POINTS[tier] };
 }
 
 /**
@@ -412,7 +414,7 @@ export function streakBonus(length: number, stage: number): { points: number; re
   if (length === 3) points = 10;
   else if (length >= 7 && length % 7 === 0) points = 25 + 10 * (length / 7 - 1);
   if (points === 0) return null;
-  return { points, reward: resourcePackage(points * 150 * (1 + stage * 0.3)) };
+  return { points, reward: resourcePackage(points * 150 * dailyGrowth(stage)) };
 }
 
 /** Nächster Serientag mit Bonus. */

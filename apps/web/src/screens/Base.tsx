@@ -24,6 +24,7 @@ import { IntelPanel, sabotagedUntil } from "../components/Intel.tsx"; // Nachric
 import { buildingLive, harborWeather } from "../lib/live-art.ts"; // Bewegte Gebäude
 import { CatchUpLine, CreditCost, useBuildCost } from "../components/CatchUp.tsx"; // Aufholhilfe: Baugutschrift
 import { upgradeCost, type Balance as CoreBalance } from "@tidefront/game-core";
+import { ElectrolysisAdvice } from "../components/ElectrolysisAdvice.tsx"; // v1.38: lohnt die nächste Stufe? (M-06)
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 
@@ -280,6 +281,7 @@ function BuildingSheet({ b, live, base, res, onClose, onTroops, onResearch }: { 
         </div>
       )}
       {effective.length > 0 && <div className="mb-3"><Breakdown rows={effective} digits={0} /></div>}
+      {b.id === "elektrolyse" && balance && !maxed && b.planned === b.level && <ElectrolysisAdvice base={base} level={b.level} balance={balance} />}
       {!maxed && (
         <div className="rounded-xl bg-paper border border-rule p-2 mb-3">
           <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-1">Kosten</div>

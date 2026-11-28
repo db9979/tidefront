@@ -1,5 +1,5 @@
 {
-  "version": "v1.36",
+  "version": "v1.38",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -11,13 +11,13 @@
     "levelCapAboveCommand": 3,
     "productionGrowth": 1.15,
     "queueSlots": 3,
-    "costShift": { "perLevel": 0.03, "max": 0.35, "to": { "elektronik": 0.75, "proviant": 0.25 } }
+    "costShift": { "perLevel": 0.03, "max": 0.35, "to": { "elektronik": 0.65, "proviant": 0.35 } }
   },
   "buildings": {
-    "kommandozentrale": { "cost": { "stahl": 400, "treibstoff": 100, "elektronik": 100 }, "seconds": 120, "commandPointsBase": 60, "commandPointsPerLevel": 30, "commandPointsLateFromLevel": 9, "commandPointsLatePerLevel": 60 },
+    "kommandozentrale": { "cost": { "stahl": 400, "treibstoff": 100, "elektronik": 100 }, "seconds": 120, "commandPointsBase": 60, "commandPointsPerLevel": 30, "commandPointsLateFromLevel": 8, "commandPointsLatePerLevel": 60 },
     "stahlwerk": { "cost": { "stahl": 120, "treibstoff": 30, "elektronik": 0 }, "seconds": 20, "produces": "stahl", "perHour": 120, "powerPerLevel": 10 },
     "raffinerie": { "cost": { "stahl": 150, "treibstoff": 20, "elektronik": 10 }, "seconds": 25, "produces": "treibstoff", "perHour": 60, "powerPerLevel": 12 },
-    "chipfabrik": { "cost": { "stahl": 200, "treibstoff": 60, "elektronik": 20 }, "seconds": 40, "produces": "elektronik", "perHour": 45, "powerPerLevel": 15 },
+    "chipfabrik": { "cost": { "stahl": 150, "treibstoff": 40, "elektronik": 10 }, "seconds": 40, "produces": "elektronik", "perHour": 45, "powerPerLevel": 15 },
     "versorgungshof": { "cost": { "stahl": 100, "treibstoff": 20, "elektronik": 0 }, "costShiftTo": { "proviant": 0.5, "elektronik": 0.5 }, "seconds": 20, "produces": "proviant", "perHour": 80, "powerPerLevel": 6 },
     "kraftwerk": { "cost": { "stahl": 140, "treibstoff": 40, "elektronik": 10 }, "seconds": 25, "powerSupplyPerLevel": 60, "fuelPerHourPerLevel": 3 },
     "windpark": { "cost": { "stahl": 180, "treibstoff": 10, "elektronik": 40 }, "seconds": 30, "windPowerPerLevel": 90, "stormCutoff": 0.95 },
@@ -39,7 +39,7 @@
   },
   "units": {
     "korvette": { "branch": "see", "builtIn": "werft", "cost": { "stahl": 400, "treibstoff": 100, "elektronik": 50, "proviant": 0 }, "seconds": 300, "upkeepPerHour": 2, "commandPoints": 3, "hp": 200, "attack": { "see": 40, "luft": 5, "land": 0, "anlage": 15, "uboot": 40 }, "speedKmh": 60, "fuelPer100Km": 4, "cargo": 0, "troopSpace": 0, "bonus": { "schnellboot": 1.5 } },
-    "zerstoerer": { "branch": "see", "builtIn": "werft", "cost": { "stahl": 900, "treibstoff": 250, "elektronik": 200, "proviant": 0 }, "seconds": 720, "upkeepPerHour": 4, "commandPoints": 6, "hp": 450, "attack": { "see": 70, "luft": 60, "land": 0, "anlage": 30, "uboot": 60 }, "speedKmh": 55, "fuelPer100Km": 9, "cargo": 0, "troopSpace": 0, "bonus": { "korvette": 1.6 } },
+    "zerstoerer": { "branch": "see", "builtIn": "werft", "cost": { "stahl": 900, "treibstoff": 250, "elektronik": 200, "proviant": 0 }, "seconds": 720, "upkeepPerHour": 4, "commandPoints": 6, "hp": 450, "attack": { "see": 70, "luft": 45, "land": 0, "anlage": 30, "uboot": 60 }, "speedKmh": 55, "fuelPer100Km": 9, "cargo": 0, "troopSpace": 0, "bonus": { "korvette": 1.6 } },
     "landungsschiff": { "branch": "see", "builtIn": "werft", "cost": { "stahl": 600, "treibstoff": 200, "elektronik": 50, "proviant": 0 }, "seconds": 600, "upkeepPerHour": 3, "commandPoints": 5, "hp": 300, "attack": { "see": 5, "luft": 2, "land": 0, "anlage": 0 }, "speedKmh": 40, "fuelPer100Km": 12, "cargo": 4000, "troopSpace": 100, "bonus": {} },
     "kolonieschiff": { "branch": "see", "builtIn": "werft", "requiresLevel": 6, "cost": { "stahl": 6000, "treibstoff": 3000, "elektronik": 2000, "proviant": 2000 }, "seconds": 10800, "upkeepPerHour": 6, "commandPoints": 10, "hp": 600, "attack": { "see": 0, "luft": 0, "land": 0, "anlage": 0 }, "speedKmh": 30, "fuelPer100Km": 20, "cargo": 3000, "troopSpace": 0, "maxPerLevel": 0.2, "bonus": {} },
     "uboot": { "branch": "see", "builtIn": "werft", "requiresLevel": 3, "submerged": true, "cost": { "stahl": 700, "treibstoff": 250, "elektronik": 250, "proviant": 0 }, "seconds": 900, "upkeepPerHour": 3, "commandPoints": 6, "hp": 250, "attack": { "see": 80, "luft": 0, "land": 0, "anlage": 0, "uboot": 0 }, "speedKmh": 45, "fuelPer100Km": 6, "cargo": 0, "troopSpace": 0, "bonus": { "landungsschiff": 1.5, "schnellboot": 0.5 } },
@@ -128,7 +128,7 @@
       "lootPerHour": 0.01, "lootMax": 1.3, "rangeSamples": 100, "botMaxNests": 6
     }
   },
-  "scoring": { "npcDefenseFactor": 0.1, "npcWorldEventKinds": [], "armadaFactor": 0.5, "nestFactor": 0.5, "ordersMaxShare": 0.05 },
+  "scoring": { "npcDefenseFactor": 0.1, "npcWorldEventKinds": [], "armadaFactor": 0.5, "nestFactor": 0.5, "ordersMaxShare": 0.05, "researchFactor": 0.5, "pvpFactor": 1.5 },
   "pvp": {
     "bountyByRank": [0.5, 0.35, 0.2], "bountyDefenseFactor": 0.5, "mutMin": 0.5, "mutMax": 1.5, "maxFactor": 2,
     "pairWindowHours": 72, "pairFactors": [1, 0.5, 0.25, 0], "collusionDays": 7, "suspiciousFights": 3, "suspiciousDays": 7,
@@ -170,7 +170,7 @@
       "tradeBalance": { "factor": 0.5, "windowHours": 72, "depthMultiple": 3, "max": 0.15, "minPorts": 3, "playerShareDivisor": 3, "holdHours": 1 }
     },
     "contracts": {
-      "baseFee": 0.04, "perDay": 0.005, "depthDivisor": 2,
+      "baseFee": 0.025, "perDay": 0.005, "depthDivisor": 2,
       "durationsDays": [1, 2, 3, 5, 7], "aboDays": [3, 4, 5, 6, 7],
       "minQty": 500, "maxOpen": 5, "perHour": 3,
       "depositShare": 0.25, "penaltyShare": 0.25, "graceHours": 12, "remindHours": 6,
@@ -462,6 +462,7 @@
       "gruenerhafen": { "title": "Grüner Hafen", "description": "Strom-Stunden Ökostrom genutzt (Bedarf, Elektrolyse, Seekabel)", "counter": "oekostrom", "thresholds": [10000, 75000, 300000] },
       "armadajaeger": { "title": "Armada-Jäger", "description": "Anteil am Gesamtschaden der Kartell-Armada im Saisonfinale (Prozent)", "counter": "armada", "thresholds": [5, 15, 30], "tierTexts": ["5 % des Gesamtschadens", "15 % des Gesamtschadens", "30 % des Gesamtschadens"] }
     },
+    "daily": { "tierValue": [200, 500, 1250], "stageGrowth": 0.3 },
     "weekly": { "goalValue": 2500, "goalCredits": 150, "bonusValue": 4500, "bonusCredits": 400, "stageGrowth": 0.15 },
     "minCountedTradeCredits": 500
   },

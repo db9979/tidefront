@@ -39,24 +39,30 @@ export function Contracts({ base }: { base: BaseData }) {
   if (!q.data.enabled) return <Card title="Verträge"><p className="text-sm text-ink2">Lieferverträge gibt es in dieser Saison nicht.</p></Card>;
   const d = q.data;
   const reserved = Object.entries(d.reserved).filter(([, n]) => n > 0);
+  // v1.38 (Welle 5, „Verträge verdichten“): ein Satz statt Regelblock (Regeln aufklappbar), laufende eigene Verträge zuerst.
+  const running = d.mine.some((c) => c.closedAtMs === null);
   return (
     <div>
       <Card title={<><Icon id="credits" size={18} /> Lieferverträge</>} right={<span className="text-[11px] text-ink2">offen {d.openCount}/{d.cfg.maxOpen}</span>}>
-        <p className="text-sm font-serif italic">Ein Vertrag ist nie billiger als die Börse. Du zahlst für den festen Preis und für die Lieferung später.</p>
-        <p className="text-xs text-ink2 mt-1">
-          Anzahlung bzw. Pfand {fmtNum(d.cfg.depositShare * 100)} % sofort in Treuhand, der Rest bei Fälligkeit. Reicht es dann nicht:
-          {" "}{d.cfg.graceHours} h Nachfrist, danach anteilig – {fmtNum(d.cfg.penaltyShare * 100)} % des nicht erfüllten Werts verfallen.
-          Vertragslieferungen je Ressource höchstens {fmtNum(d.contractLimit)} in 24 h ({fmtNum(d.cfg.limitShare * 100)} % des Tageslimits).
-        </p>
+        <p className="text-sm font-serif italic">Heute den Preis festmachen, die Ware später bekommen oder liefern – nahe am Börsenkurs.</p>
+        <details className="mt-1 text-xs text-ink2" data-testid="contracts-rules">
+          <summary className="cursor-pointer min-h-[44px] flex items-center font-display text-[11px] uppercase tracking-[0.12em]">Regeln: Sicherheit, Nachfrist, Grenze</summary>
+          <p className="pb-1">
+            Anzahlung bzw. Pfand {fmtNum(d.cfg.depositShare * 100)} % sofort in Treuhand, der Rest bei Fälligkeit. Reicht es dann nicht:
+            {" "}{d.cfg.graceHours} h Nachfrist, danach anteilig – {fmtNum(d.cfg.penaltyShare * 100)} % des nicht erfüllten Werts verfallen.
+            Vertragslieferungen je Ressource höchstens {fmtNum(d.contractLimit)} in 24 h ({fmtNum(d.cfg.limitShare * 100)} % des Tageslimits).
+          </p>
+        </details>
         {reserved.length > 0 && (
           <p className="text-xs text-ink2 mt-1" data-testid="contracts-reserved">
             Im Tageslimit der Börse für Verträge vorgemerkt (nächste 24 h): {reserved.map(([r, n]) => `${fmtNum(n)} ${label(r)}`).join(", ")}.
           </p>
         )}
       </Card>
+      {running && <MyContracts data={d} />}
       <KiOffers base={base} data={d} />
       <PlayerContracts base={base} data={d} />
-      <MyContracts data={d} />
+      {!running && <MyContracts data={d} />}
     </div>
   );
 }

@@ -25,10 +25,10 @@ test("Verträge: Angebot der Reederei annehmen, Liste mit Status, Kündigung", a
     await page.goto("/");
     await page.getByRole("navigation").getByRole("button", { name: "Börse" }).click();
     await page.getByRole("tab", { name: "Verträge" }).click();
-    await expect(page.getByText("Ein Vertrag ist nie billiger als die Börse.")).toBeVisible();
+    await expect(page.getByText(/Heute den Preis festmachen/)).toBeVisible();
     const card = page.getByRole("region", { name });
     await expect(card).toBeVisible();
-    await card.locator("li", { hasText: "Du kaufst Stahl" }).getByRole("button", { name: "Angebot" }).click();
+    await card.getByRole("button", { name: "Du kaufst Stahl" }).click();
     const form = page.getByRole("group", { name: `Vertrag ${name} Stahl` });
     await form.getByRole("textbox", { name: "Vertragsmenge" }).fill("1000");
     await form.getByRole("radio", { name: "2 Tage" }).click();
@@ -64,6 +64,7 @@ test("Verträge: einem Spieler einen Liefervertrag anbieten und zurückziehen", 
   await page.goto("/");
   await page.getByRole("navigation").getByRole("button", { name: "Börse" }).click();
   await page.getByRole("tab", { name: "Verträge" }).click();
+  await page.getByText("Selbst einen Vertrag anbieten").click();
   const form = page.getByRole("group", { name: "Vertrag anbieten" });
   await form.getByRole("radio", { name: "Ich kaufe" }).click();
   await form.getByRole("combobox", { name: "Vertragsressource" }).selectOption("proviant");
