@@ -30,8 +30,11 @@ async function buildRunning(seed: Seed, player: Player): Promise<void> {
 /** Nächstes sichtbares Nest (Radar) und die Planung von der Karte aus öffnen. */
 async function planFromNest(page: Page, seed: Seed, player: Player): Promise<void> {
   const nests = await seed.sql`select id, col, row from nest where defeated_at is null`;
-  const nest = nests.map((n) => ({ col: n.col as number, row: n.row as number, d: hexDistanceKm(player, { col: n.col as number, row: n.row as number }) }))
+  const nest = nests.map((n) => ({ id: n.id as number, col: n.col as number, row: n.row as number, d: hexDistanceKm(player, { col: n.col as number, row: n.row as number }) }))
     .filter(awayFromEdge).sort((a, b) => a.d - b.d)[0];
+  // Lebende Nester wachsen (und parallele Tests ändern sie): Stufe 1 mit frischer Besatzung festlegen, sonst hängt der
+  // Vorschlag vom Zufall ab („unerreichbar“ gegen ein hochgewachsenes Nest).
+  await seed.sql`update nest set level = 1, garrison = null, garrison_at = null where id = ${nest.id}`;
   await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
   await tapHex(page, player, nest);
   await expect(page.getByText(/Piratennest Stufe \d/)).toBeVisible();
