@@ -28,7 +28,7 @@ test("Startseite Lage: Alle abholen, eine Zahl je Reiter, Hafen bleibt nach Neul
   await expect(page.getByRole("tablist", { name: "Basis" }).getByRole("tab", { name: /^Lage/ })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByTestId("lage-tab")).toBeVisible();
   const quests = page.getByRole("region", { name: "Aufträge" });
-  await expect(quests.getByRole("button", { name: /^Auftragsbuch: 5\/11, 5 abholbereit$/ })).toBeVisible();
+  await expect(quests.getByRole("button", { name: /^Auftragsbuch: 5\/12, 5 abholbereit$/ })).toBeVisible();
   // Eine Zahl je Reiter: Meldungen ohne Ungelesenes trägt keine Zahl; Truppen, Karte, Börse nie.
   const nav = page.getByRole("navigation", { name: "Hauptnavigation" });
   await expect(nav.getByRole("button", { name: "Meldungen", exact: true })).toBeVisible();
@@ -43,7 +43,7 @@ test("Startseite Lage: Alle abholen, eine Zahl je Reiter, Hafen bleibt nach Neul
   await expect(all).toBeVisible();
   await all.click();
   await expect(page.getByTestId("claim-all-note")).toContainText(/Belohnungen abgeholt/);
-  await expect(quests.getByRole("button", { name: /^Auftragsbuch: 5\/11$/ })).toBeVisible();
+  await expect(quests.getByRole("button", { name: /^Auftragsbuch: 5\/12$/ })).toBeVisible();
   const [c] = await seed.sql`select count(*)::int as n from guide_claim where player_id = ${player.id}`;
   expect(c.n).toBe(5);
 

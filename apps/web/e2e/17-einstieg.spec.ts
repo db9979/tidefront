@@ -14,7 +14,7 @@ test("Auftragsbuch: Schützen-Auftrag führt zum Ausbilden, rückt live weiter, 
   const next = page.getByRole("region", { name: "Aufträge" });
   await expect(next.getByText("30 Schützen ausbilden")).toBeVisible();
   // Fünf erfüllte Aufträge: genau fünf abholbereit (Abschlussbelohnung nicht doppelt gezählt).
-  await expect(next.getByRole("button", { name: /^Auftragsbuch: 5\/11, 5 abholbereit$/ })).toBeVisible();
+  await expect(next.getByRole("button", { name: /^Auftragsbuch: 5\/12, 5 abholbereit$/ })).toBeVisible();
 
   await next.getByRole("button", { name: "Los" }).click();
   await expect(page.getByRole("tab", { name: "Ausbilden" })).toHaveAttribute("aria-selected", "true");

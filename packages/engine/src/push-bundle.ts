@@ -16,7 +16,7 @@ export const PUSH_BUNDLE_MS = 15 * 60_000;
 /** Immer sofort, auch in der Ruhezeit. */
 export const URGENT_PUSH_KINDS: readonly NoticeKind[] = ["attack", "ops", "test"];
 /** Routine: gesammelt, höchstens ein Push je PUSH_BUNDLE_MS. */
-export const BUNDLE_PUSH_KINDS: readonly NoticeKind[] = ["build", "training", "fleet", "delivery", "idle", "market"];
+export const BUNDLE_PUSH_KINDS: readonly NoticeKind[] = ["build", "training", "fleet", "delivery", "idle", "market", "storage", "overtaken"];
 const PREFIX = "push:";
 
 /** Ende der laufenden Ruhezeit oder null: eigene Ruhezeit und Nachtschild-Fenster des Heimathafens, das spätere Ende. */

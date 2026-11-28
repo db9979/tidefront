@@ -78,9 +78,18 @@ function NoAlliance({ data }: { data: View }) {
           </ul>
         </Card>
       )}
+      {/* UX-0.43 C3/M-4: Leerzustand mit Nutzen und Handlung. */}
+      <div className="panel rounded-xl p-3.5 mb-3 flex items-start gap-3" data-testid="alliance-empty">
+        <Icon id="sammelangriff" size={40} className="shrink-0" />
+        <div className="min-w-0 text-sm">
+          <strong className="font-serif text-[16px]">Noch ohne Allianz</strong>
+          <p className="text-ink2">Verbündete überfallen sich nicht, sprechen sich im Chat ab, greifen gemeinsam an, verteidigen einander mit und teilen Strom per Seekabel.</p>
+          <Button kind="secondary" className="mt-2" onClick={() => document.getElementById("allianz-gruenden")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Allianz gründen</Button>
+        </div>
+      </div>
       <Card title={`Allianzen (${dir.data?.alliances.length ?? 0})`}>
         {!dir.data ? <Loading /> : dir.data.alliances.length === 0 ? (
-          <p className="text-sm text-ink2">Noch keine Allianz. Gründe die erste!</p>
+          <p className="text-sm text-ink2">Noch keine Allianz in der Runde – gründe die erste und lade Mitspieler ein.</p>
         ) : (
           <ul className="divide-y divide-navy-600/70">
             {dir.data.alliances.map((a) => (
@@ -99,7 +108,7 @@ function NoAlliance({ data }: { data: View }) {
           </ul>
         )}
       </Card>
-      <Card title="Allianz gründen">
+      <Card id="allianz-gruenden" title="Allianz gründen">
         <div className="space-y-2">
           <input aria-label="Name" className="w-full h-12 rounded-lg field px-3" placeholder="Name (3–32 Zeichen)" maxLength={32} value={name} onChange={(e) => setName(e.target.value)} />
           <input aria-label="Kürzel" className="w-full h-12 rounded-lg field px-3 mono uppercase" placeholder="Kürzel (2–4 Zeichen)" maxLength={4} value={tag} onChange={(e) => setTag(e.target.value.replace(/[^\p{L}\p{N}]/gu, ""))} />

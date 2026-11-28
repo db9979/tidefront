@@ -250,7 +250,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       go("basis");
       setBasisSub("hafen");
       setSheet(a.id);
-    } else go(a.tab);
+    } else if (a.kind === "tab") go(a.tab); // plan: runGuideAction öffnet die Planung selbst
   };
   const openPlan = (target: Target | null) => {
     views.closeAll();

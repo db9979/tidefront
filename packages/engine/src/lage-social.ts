@@ -1,7 +1,8 @@
 // Lagezentrum, Ergänzung aus der Abschlussprüfung 0.38:
 //  - TST-15: Beitrittsanfragen (Führung/Offiziere) und Einladungen (an den Spieler) unter „Wartet auf dich“;
 //  - TX-08: „Anfängerschutz endet“ in den letzten 24 h als dringender Termin;
-//  - TST-16: Belohnungen nach Quelle gezählt, im Text nur Quellen mit Anzahl.
+//  - TST-16: Belohnungen nach Quelle gezählt, im Text nur Quellen mit Anzahl;
+//  - UX-0.43 C3 (soziale Zeilen): ohne Allianz und ohne Einladung ein ruhiger Hinweis „Noch ohne Allianz“ (nicht dringend).
 import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { isBeginnerProtected } from "@tidefront/game-core";
 import { tables, type DbOrTx } from "@tidefront/db";
@@ -59,6 +60,16 @@ export async function allianceRows(db: DbOrTx, playerId: number): Promise<LageRo
       .where(and(eq(r.playerId, playerId), eq(r.kind, "einladung"))).orderBy(desc(r.id)).limit(5);
     for (const i of inv) {
       out.push(row({ key: `einladung:${i.id}`, kind: "einladung", icon: "sammelangriff", text: `Einladung in die Allianz [${i.tag}] ${i.name}`, jump: { to: "alliance" } }));
+    }
+    if (inv.length === 0) {
+      const [asked] = await db.select({ id: r.id }).from(r).where(and(eq(r.playerId, playerId), eq(r.kind, "anfrage"))).limit(1);
+      const [a] = await db.select({ n: sql<number>`count(*)::int` }).from(tables.alliance);
+      const n = a?.n ?? 0;
+      out.push(row({
+        key: "ohne-allianz", kind: "allianz-hinweis", icon: "sammelangriff",
+        text: asked ? "Beitrittsanfrage gestellt – wartet auf Antwort" : n > 0 ? `Noch ohne Allianz – ${n === 1 ? "1 Allianz" : `${n} Allianzen`} in der Runde` : "Noch ohne Allianz – gründe die erste",
+        sub: "Verbündete überfallen sich nicht und teilen Chat, Sammelangriffe und Seekabel", jump: { to: "alliance" },
+      }));
     }
   }
   return out;

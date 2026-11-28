@@ -30,6 +30,7 @@ import { ensurePolitikPlan } from "./politik-run.ts";
 import { runGesuche } from "./politik-gesuche.ts";
 import { runSeasonNotice } from "./season-notice.ts";
 import { flushPushes } from "./push.ts";
+import { runOvertakenPushes, runStoragePushes } from "./push-watch.ts"; // UX-0.43 B8
 
 /** Ab dieser Dauer gilt ein Schritt als langsam (Log „slow step“, Zähler slow). */
 export const SLOW_STEP_MS = 2000;
@@ -145,6 +146,15 @@ export function maintenanceSteps(engine: Engine): WorkerStep[] {
     { name: "nudge cleanup", run: () => cleanupNudges(db) },
     // PvP: Rang-Momentaufnahme des Spieltags bald nach Mitternacht festhalten.
     { name: "pvp rank snapshot", run: (now) => rankSnapshot(db, now) },
+    // UX-0.43 B8: Push „Lager fast voll“ (je Rohstoff und Tag) und „Du wurdest überholt“ (stündlich geprüft, 1× am Tag).
+    { name: "storage pushes", run: async (now) => {
+      const n = await runStoragePushes(engine, now);
+      return n > 0 ? { players: n } : null;
+    } },
+    { name: "rank pushes", run: async (now) => {
+      const n = await runOvertakenPushes(engine, now);
+      return n > 0 ? { sent: n } : null;
+    } },
     // Aufholhilfe: einmal je Stunde Median der Ausbaupunkte, Rückstand und Zufluss der Baugutschrift.
     { name: "catch up", run: async (now) => {
       const n = await runCatchUp(engine, now);

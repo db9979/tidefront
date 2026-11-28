@@ -6,6 +6,7 @@ import { errorText, failText } from "../lib/names.ts";
 import { fmtTime } from "../lib/time.ts";
 import { Button, ErrorLine, Loading, Sheet } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
+import { useNav } from "../lib/nav.ts"; // UX-0.43 C3: Leerzustand mit Handlung
 
 type Msg = Outputs["social"]["messages"]["inbox"][number];
 export interface Draft { to: { id: number; name: string } | null; subject: string; body: string }
@@ -24,6 +25,7 @@ export function MessagesScreen({ setCompose }: { setCompose: (d: Draft) => void 
   const inbox = useQuery(trpc.social.messages.inbox.queryOptions());
   const sent = useQuery({ ...trpc.social.messages.sent.queryOptions(), enabled: box === "sent" });
   const list = box === "inbox" ? inbox : sent;
+  const nav = useNav();
 
   const show = async (m: Msg) => {
     setOpen(m);
@@ -53,8 +55,13 @@ export function MessagesScreen({ setCompose }: { setCompose: (d: Draft) => void 
         <Button kind="secondary" onClick={() => setCompose({ to: null, subject: "", body: "" })}>Neu</Button>
       </div>
       {!list.data ? <Loading /> : list.data.length === 0 ? (
-        <div className="panel rounded-xl p-4 text-center text-slate-300 text-sm">
-          {box === "inbox" ? "Keine Nachrichten. Mitspieler findest du in der Rangliste." : "Du hast noch nichts gesendet."}
+        <div className="panel rounded-xl p-4 text-center text-slate-300 text-sm" data-testid="post-empty">
+          <Icon id="nav-bericht" size={40} className="mx-auto mb-1.5" />
+          {box === "inbox" ? "Noch keine Post. Schreib Mitspielern – sie stehen unter Saison → Wertung." : "Du hast noch nichts gesendet."}
+          <div className="flex flex-wrap justify-center gap-2 mt-3">
+            <Button onClick={() => setCompose({ to: null, subject: "", body: "" })}>Nachricht schreiben</Button>
+            {box === "inbox" && <Button kind="secondary" onClick={() => nav.go({ to: "meldungen", sub: "rangliste" })}>Zur Wertung</Button>}
+          </div>
         </div>
       ) : (
         <ul className="space-y-2">

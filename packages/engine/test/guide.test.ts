@@ -1,5 +1,5 @@
 // Integrationstests Auftragsbuch gegen ein echtes PostgreSQL (wird geleert): Erfüllung serverseitig, Abholen genau
-// einmal (auch gleichzeitig), Abschluss erst nach allen elf, Bauzeitverkürzung, Abzeichen und Saisonende.
+// einmal (auch gleichzeitig), Abschluss erst nach allen zwölf, Bauzeitverkürzung, Abzeichen und Saisonende.
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { and, eq, sql } from "drizzle-orm";
@@ -64,7 +64,7 @@ async function stateOf(baseId: number): Promise<BaseState> {
   return b.state as BaseState;
 }
 
-/** Erfüllt alle elf Aufträge: Gebäude, Einheiten und ein gewonnener Nest-Überfall. */
+/** Erfüllt alle zwölf Aufträge: Gebäude, Einheiten und ein gewonnener Nest-Überfall (zählt auch als losgeschickt). */
 async function fulfilAll(p: { playerId: number; baseId: number }) {
   await patchBase(p.baseId, (s) => {
     Object.assign(s.buildings, {
@@ -97,7 +97,7 @@ after(async () => {
   await client.end();
 });
 
-test("Balance: elf Pakete, Summe etwa 1–2 Tage Anfangsproduktion", () => {
+test("Balance: ein Paket je Auftrag, Summe etwa 1–2 Tage Anfangsproduktion", () => {
   assert.deepEqual(Object.keys(guide.steps).sort(), GUIDE_STEPS.map((s) => s.id).sort());
   const total = [...Object.values(guide.steps), guide.final.reward].reduce((a, m) => a + Object.values(m).reduce((x, y) => x + y, 0), 0);
   assert.ok(total >= 8000 && total <= 20000, String(total));
@@ -108,7 +108,8 @@ test("Nicht erfüllt: abgelehnt; unbekannter Auftrag: abgelehnt", async () => {
   const p = await newPlayer("Greta", 2);
   const v = await guideView(engine, p.playerId);
   assert.equal(v.hasBase, true);
-  assert.equal(v.steps.length, 11);
+  assert.equal(v.steps.length, GUIDE_STEPS.length);
+  assert.equal(v.steps.length, 12);
   assert.equal(v.claimable, 0);
   assert.deepEqual(await claimGuideStep(engine, p.playerId, key(), "strom"), { ok: false, code: "not_done" });
   assert.deepEqual(await claimGuideStep(engine, p.playerId, key(), "nest"), { ok: false, code: "not_done" });
@@ -149,11 +150,11 @@ test("Gleichzeitige Doppelaufrufe: nur einer wird ausgezahlt", async () => {
   assert.equal(rows.length, 1);
 });
 
-test("Abschluss erst nach allen elf; −1 Stunde für den laufenden Ausbau; Abzeichen in der Rangliste", async () => {
+test("Abschluss erst nach allen zwölf; −1 Stunde für den laufenden Ausbau; Abzeichen in der Rangliste", async () => {
   const p = await newPlayer("Jost", 5);
   await fulfilAll(p);
-  // Zehn abholen, der elfte fehlt noch.
-  for (const s of GUIDE_STEPS.slice(0, 10)) assert.equal((await claimGuideStep(engine, p.playerId, key(), s.id)).ok, true);
+  // Alle bis auf den letzten abholen, der letzte fehlt noch.
+  for (const s of GUIDE_STEPS.slice(0, -1)) assert.equal((await claimGuideStep(engine, p.playerId, key(), s.id)).ok, true);
   assert.deepEqual(await claimGuideFinal(engine, p.playerId, key()), { ok: false, code: "not_done" });
   assert.equal((await claimGuideStep(engine, p.playerId, key(), "schutz")).ok, true);
   let v = await guideView(engine, p.playerId);
@@ -243,5 +244,5 @@ test("Saisonende: alle Aufträge neu verfügbar, Abzeichen gilt nur für die bee
   assert.equal(v.steps.find((x) => x.id === "strom")?.claimed, true);
   // Die alte Saison bleibt getrennt erhalten.
   const oldRows = await db.select().from(tables.guideClaim).where(and(eq(tables.guideClaim.playerId, p.playerId), eq(tables.guideClaim.seasonId, old.id)));
-  assert.equal(oldRows.length, 12);
+  assert.equal(oldRows.length, GUIDE_STEPS.length + 1); // alle Aufträge und der Abschluss
 });

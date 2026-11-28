@@ -312,3 +312,59 @@ Textknöpfe „Sichtungen“/„Ebenen“, die viel Karte verdecken; dazu Wetter
   in der Navigationsleiste (keine doppelte Bedienung), Sichtungen/Ebenen öffnen wie alle Blätter als rechte Schublade.
 - Testkennungen `map-sichtungen`/`map-ebenen` bleiben; E2E `30-karte-ansicht.spec.ts` prüft Größe, Namen, Tooltips,
   Spalte, Überlappung (Wetter, Positionsanzeige) und Kurszeile bei 390 × 844 und 1440 × 900.
+
+
+## UX-0.43 Pakete B/C: Wiederkehr, Push-Arten, Planen vom Ziel, Glossar, Neulingspfad (uxr)
+
+Grundlage: `.claude/review-0.22/UX-0.43.md` (B8, B9/U-2, C2, C3) und die Nutzerentscheidungen E-1 … E-8.
+
+- **Nächster lohnender Besuch (B8, L-5/W-4).** `lage.get` liefert `visit` (engine/lage-visit.ts): frühester Anlass
+  zwischen +1 min und +36 h und alles, was in den 20 min danach dazukommt. Anlässe: Bauhof frei (letzter Ausbau eines
+  Hafens), Ausbildung fertig, Forschung fertig, Verband am Ziel bzw. zurück, Lager voll (erster Rohstoff an der
+  Lagergrenze, aus der Rate jetzt) und die nächste geplante Seerat-Sitzung. Lieferungen/Konvois zählen bewusst nicht
+  (kommen von selbst ins Lager). Zeile auf der Lage unter „Nächster Schritt“.
+- **Erinnern.** Mit Push auf diesem Gerät: `lage.remind` legt ein Ereignis `visit_reminder` an (game_event, keine
+  Schemaänderung; je Spieler höchstens eins, ein neues ersetzt das alte; 1 min … 48 h voraus). Der Handler schickt einen
+  Push der Art `reminder` – ohne eigenen Schalter (selbst gestellt), die Ruhezeit gilt aber (fällt die Zeit hinein,
+  kommt er danach; nicht gebündelt). Ohne Push (oder ohne Antwort des Service Workers binnen 3 s): Kalenderdatei
+  `tidefront-besuch.ics` mit Alarm zur Startzeit (lib/ics.ts) – geht auch auf dem iPhone ohne Home-Bildschirm-App.
+- **Neue Push-Arten (B8, W-3).** `storage` „Lager fast voll“, `overtaken` „Du wurdest überholt“, `council`
+  „Seerat-Ergebnis“, je mit Schalter (Vorgabe an) unter Einstellungen → Benachrichtigungen, nur als Push (keine E-Mail).
+  `storage` und `overtaken` sind Routinemeldungen (15-min-Bündel), `council` geht tagsüber sofort; alle drei halten die
+  Ruhezeit ein. Wartungslauf (engine/push-watch.ts, nur Menschen mit Push-Abo): Lager ab 90 % (wie die Lage) einmal je
+  Rohstoff und Spieltag über alle Häfen (Merker `server_setting push_storage:<id>`, auch bei abgeschaltetem Schalter
+  gesetzt); Rang höchstens stündlich aus `computeStandings` gegen die letzte Prüfung (`push_rank`), je Spieler höchstens
+  ein Push am Tag, genannt wird der Spieler, der jetzt direkt davor steht und vorher dahinter lag (kein Push ohne
+  solchen, etwa wenn man nur durch Gleichstand abrutscht). Seerat: beim Schluss einer Sitzung an alle mit Hafen (wie die
+  Systemnachricht); REGELN-WELTPOLITIK.md nennt die Ausnahme vom Grundsatz „keine neue Push-Art“.
+- **Planen vom Ziel (U-2).** Öffnet die Planung mit einem Ziel ohne vorgegebenen Verband (Karte „Mission planen“ auf
+  Nest/Hafen, Feld „Besetzen/Angreifen“, Weltereignis, Auftrag „ausfahrt“), rechnet `PlanSuggest` im Web Worker die
+  Suche „Was fehlt zum Sieg?“ mit 90 % (game-core `suggestPlan`/`classifySuggestion`): Bestand reicht → kleinster
+  Verband aus dem Bestand (Suche startet beim ganzen Bestand und verkleinert, geprüft gegen 300 frische Würfe) wird
+  eingesetzt – aber nur, solange der Spieler noch nichts gewählt hat; sonst „Vorschlag einsetzen“. Reicht er nicht →
+  „Es fehlen: +n …“ mit Kosten, Dauer und „Ausbilden“. Lage unbekannt (Nest ohne Stufe, Hafen ohne Aufklärung, Feld ohne
+  Wache/Lagebild) → „Erst aufklären“. Felder rechnen nur mit Schiffen und der Siegregel „halten“, Weltereignisse mit
+  „vernichtung“, das Saisonfinale nicht (eigene Vorschau). Die Art-Auswahl bleibt offen (Überfall vorgewählt), weil vom
+  selben Ziel oft eine andere Art gewählt wird (Aufklärung, Kampagne); der Vorschlag steht direkt unter dem Ziel. Die Knopftexte auf den Kartenblättern (MapScreen) bleiben – Kartenbedienung gehört
+  einem anderen Entwickler.
+- **Glossar (C2, E-5).** `docs/GLOSSAR.md` (Benennungsregeln + Tabelle) und Handbuch-Kapitel „Begriffe“ mit Suche aus
+  `apps/web/src/lib/glossary.ts` (beide zusammen pflegen). Angeglichen: Missionsziel in der Lage immer „Name · Feld x/y“;
+  „Meldungen → Rangliste → Erfolge“ → „Meldungen → Saison → Erfolge“ (Erfolge-Kapitel); Weltpolitik-Ort „Basis → Lage →
+  Weltpolitik“ → Lage-Zeile bzw. Saison → Welt (Kapitel, Regelwerk); „Lagerkapazität“ → „Lagergrenze“ im Handbuch;
+  Post-Leerzustand „Rangliste“ → „Saison → Wertung“. Interne Namen (Lagezentrum in Code-Kommentaren) bleiben.
+- **Neulingspfad bis zum ersten Sieg (C3, W-9).** Neuer Auftrag `ausfahrt` „Überfall auf das Start-Nest losschicken“
+  vor `nest` (erfüllt, sobald eine eigene Mission `ueberfall` → Nest existiert oder ein Nest-Kampfbericht vorliegt),
+  Belohnung 200 Treibstoff + 200 Proviant (balance.json `guide.steps.ausfahrt`, Version nicht gehoben); „Los“ öffnet die
+  Planung am Start-Nest mit dem Vorschlag. Damit zwölf Aufträge. „Erste Schritte“ stehen jetzt bis zum ersten
+  gewonnenen Nestüberfall auf der Lage („6/10 bis zum ersten Sieg“), ab 5 erledigten Aufträgen zusätzlich die
+  Bauempfehlung darunter; Weltpolitik/Nachtschild bleiben nur unter 5 eingeklappt. Rechnung im Servertest: Bauzeiten
+  Stufe 1 + Ausbildung + Fahrt zum Start-Nest < 12 h; Kosten bis zum Sieg (samt Treibstoff) aus Startbestand,
+  Belohnungen davor und 12 h Grundproduktion gedeckt.
+- **Soziale Zeilen und Leerzustände (C3, L-6/W-6/M-4).** Lage: ungelesene Post von Mitspielern einzeln (bis 3) mit
+  Absender, Betreff und „Antworten“ (Schreibblatt der Post), die Sammelzeile nennt nur den Rest; Allianz-Anfragen wie
+  bisher; ohne Allianz und ohne Einladung ein ruhiger Hinweis „Noch ohne Allianz …“ (nicht dringend, nicht für Neulinge
+  unter 5 Aufträgen). Leerzustände: Post („Nachricht schreiben“, „Zur Wertung“), Berichte („Ersten Einsatz planen“),
+  Allianz (Nutzen + „Allianz gründen“).
+- **Bewusst nicht:** Push-Abo-Frage im Erinnern-Knopf (dafür gibt es die Push-Frage im Spielablauf), „Spieler ohne
+  Allianz – Einladen“ als Liste (braucht einen neuen Endpunkt; der Lage-Hinweis führt zur Allianzseite), Umbenennen der
+  Knöpfe auf den Kartenblättern.

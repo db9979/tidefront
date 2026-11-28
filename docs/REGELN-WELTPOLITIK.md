@@ -5,7 +5,8 @@ Teil der Regeln (`docs/REGELN.md`). Grundlage: `docs/VORLAGE-WELTPOLITIK.md` mit
 Abschnitt „Weltpolitik“. Code: `packages/game-core/src/politik-*.ts` (rein), `packages/engine/src/politik-*.ts`
 (Server), Router `politik` (`apps/api/src/routers/politik.ts`), Wartung im Worker.
 
-Grundsatz: **kein neuer Reiter, keine neue Ressource, keine neue Push-Art.** Jede Wirkung verschiebt einen vorhandenen
+Grundsatz: **kein neuer Reiter, keine neue Ressource, keine neue Push-Art** (Ausnahme seit UX-0.43 B8: Push
+„Seerat-Ergebnis“ beim Schluss einer Sitzung, eigener Schalter). Jede Wirkung verschiebt einen vorhandenen
 Regler befristet; jede Handlung ist ein vorhandener Befehl (Liefervertrag, Pakt, Abstimmung als Befehl mit
 Idempotenzschlüssel). Alles hängt an der Saison (`season_id`) und beginnt mit jeder Saison neu.
 
@@ -76,7 +77,7 @@ Idempotenzschlüssel). Alles hängt an der Saison (`season_id`) und beginnt mit 
   Kopfgeld-Zuschlag + 0,1 (nicht bei Absprache). „Ächtung“ im Seerat ist vorbereitet und aus (`seerat.aechtung`).
 - **Pakt mit einem KI-Spieler:** Ist ein Mensch ohne Allianz bei ihm „Vertraut“, **bietet der KI-Spieler den Pakt von
   sich aus an** (Wartungslauf): Systemnachricht, Lage-Eintrag „… bietet dir einen Nichtangriffspakt an“, Annehmen mit
-  einem Tippen oder Ablehnen unter Basis → Lage → Weltpolitik (auch unter Meldungen → Allianz → Diplomatie). Ein neues
+  einem Tippen oder Ablehnen auf der Lage (Weltpolitik) bzw. unter Meldungen → Saison → Welt (auch unter Meldungen → Allianz → Diplomatie). Ein neues
   Angebot desselben KI-Spielers frühestens nach `pactOfferEveryDays` (7) Tagen, auch nach einer Ablehnung. Umgekehrt
   kann der Mensch vorschlagen; bei „Vertraut“ gilt der Pakt sofort, sonst Ablehnung (`ki_not_trusted`). Kündigung mit der üblichen Frist; Überfall bis 48 h nach dem Erlöschen
   ist Paktbruch.
@@ -125,7 +126,7 @@ Idempotenzschlüssel). Alles hängt an der Saison (`season_id`) und beginnt mit 
   Die Option mit den meisten Gewichten gewinnt; bei Gleichstand Ruhige See.
 - Öffnung: 1 Push an alle aktiven Menschen, die noch nicht gestimmt haben, und Lage-Zeile „Der Seerat tagt“ bis zur
   eigenen Stimme. Schluss: Ergebnis als Systemnachricht an alle mit Hafen (Stimmenzahlen, KI-Stimmen mit Namen,
-  keine Menschennamen). Beginnt der Beschluss, gilt die Gezeit-Meldung (Push, Lage).
+  keine Menschennamen) und Push „Seerat-Ergebnis“ (Art `council`, abschaltbar, Ruhezeit gilt). Beginnt der Beschluss, gilt die Gezeit-Meldung (Push, Lage).
 
 ## 6. Oberfläche
 

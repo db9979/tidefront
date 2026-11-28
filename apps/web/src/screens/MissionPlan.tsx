@@ -35,6 +35,7 @@ import { ExpansionTargetLine, OriginLine, OwnHarborPick } from "../components/Ex
 import { buildingLevel, expansionRules } from "../lib/expansion.ts";
 import { IntelOpsPlan, type IntelOpKind } from "../components/IntelOpsPlan.tsx"; // Lagebild Stufe 2
 import { PvpTargetHint } from "../components/Pvp.tsx"; // Spieler gegen Spieler
+import { PlanSuggest, suggestForOf } from "../components/PlanSuggest.tsx"; // UX-0.43 U-2: Planen vom Ziel her
 
 const TYPES = [
   { id: "ueberfall", text: "Überfall", hint: "Kampf am Ziel, Beute bei Sieg" },
@@ -225,6 +226,14 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
       {type === "blockade" && <HoldHours value={holdHours} onChange={setHoldHours} />}
       {type === "besetzen" && <StayAllToggle value={stayAll} onChange={setStayAll} balance={balance} fieldId={target?.fieldId} />}
       {target && Object.keys(chosen).length > 0 && type !== "aufklaerung" && <MineWarning col={target.col} row={target.row} units={chosen} />}
+
+      {/* U-2: Ziel aus einem Blatt/Auftrag ohne vorgegebenen Verband → kleinster siegreicher Verband aus dem Bestand. */}
+      {(() => {
+        const sf = initialTarget && !preset?.units && target && target.col === initialTarget.col && target.row === initialTarget.row
+          ? suggestForOf({ type, target, nest: tInfo?.nest, harbor: tInfo?.base, own: !!ownTarget, event, field: target.fieldId ? fieldsQ.data?.fields.find((f) => f.id === target.fieldId) : null }) : null;
+        return sf && <PlanSuggest key={`${type}:${target!.col}/${target!.row}`} target={sf} base={base} balance={balance} seaOnly={type === "besetzen"} autoApply={Object.keys(chosen).length === 0} onScout={() => setType("aufklaerung")}
+          onApply={(u) => { const f = fitUnits(u, Object.fromEntries(base.units.map((x) => [x.id, x.home]))); setUnits(f.units); setNote(shortText(f.short)); }} />;
+      })()}
 
       {type !== "stationierung" && <TemplateBar base={base} units={chosen} type={isPlanType(type) ? type : "ueberfall"} onApply={(u, t, n) => { setUnits(u); if (t) setType(t); setNote(n); }} />}
 

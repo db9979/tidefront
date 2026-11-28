@@ -18,7 +18,9 @@ export type ChangeKind = "base" | "missions" | "reports" | "market" | "map" | "m
  * Arten von Benachrichtigungen (Push und E-Mail). Spielerbindung (retention.ts): daily = Tagesbefehle bereit /
  * Serie in Gefahr, idle = Bauschlange leer, nest = Nest wieder besetzt, comeback = Rückhol-E-Mail (nur E-Mail).
  */
-export const NOTICE_KINDS = ["attack", "report", "build", "training", "fleet", "delivery", "ops", "test", "market", "daily", "idle", "nest", "comeback"] as const;
+export const NOTICE_KINDS = ["attack", "report", "build", "training", "fleet", "delivery", "ops", "test", "market", "daily", "idle", "nest", "comeback",
+  // UX-0.43 B8: Lager fast voll, überholt (Rangverlust), Seerat-Ergebnis, selbst gestellte Erinnerung („Nächster lohnender Besuch“).
+  "storage", "overtaken", "council", "reminder"] as const;
 export type NoticeKind = (typeof NOTICE_KINDS)[number];
 
 /** Eine Benachrichtigung an einen Spieler. facts: Kennzahlen (z. B. Ankunft in, Beute) für die E-Mail. */

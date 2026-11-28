@@ -1,7 +1,8 @@
 // Lage „Nächster Schritt“ (UX 0.43, A1/A3, Entscheidung E-4b): unter „Wartet auf dich“ eine sichtbare Bauempfehlung
 // je Hafen mit leerer Bauschlange – „Bauhof frei: Stahlwerk 7 · Engpass Stahl · 3 min · Bauen“. Zwei bewusste Taps
-// (Abholen, Bauen), kein Kombi-Knopf. Neulinge (Auftragsbuch unter 5/11) sehen stattdessen „Erste Schritte“ mit dem
-// aktuellen Auftrag, Fortschritt, Belohnung und „Los“. Server: lage.get → advice (engine/lage.ts, game-core/build-advice).
+// (Abholen, Bauen), kein Kombi-Knopf. Neulinge sehen „Erste Schritte“ mit dem aktuellen Auftrag, Fortschritt,
+// Belohnung und „Los“ – seit UX-0.43 C3 bis zum ersten gewonnenen Nestüberfall (Auftrag „nest“); die Bauempfehlung
+// erscheint ab 5 erledigten Aufträgen zusätzlich darunter. Server: lage.get → advice (engine/lage.ts, game-core/build-advice).
 import { trpc, trpcClient, type BaseData, type Outputs } from "../../lib/trpc.ts";
 import { useCommand } from "../../lib/command.ts";
 import { fmtNum, label } from "../../lib/names.ts";
@@ -16,8 +17,11 @@ import { askPushAfter } from "../PushAsk.tsx";
 export type LageAdvice = Outputs["lage"]["get"]["advice"][number];
 type Option = LageAdvice["options"][number];
 
-/** „Erste Schritte“ bis zu diesem Stand des Auftragsbuchs (5 von 11). */
+/** Bis zu diesem Stand des Auftragsbuchs gilt man als ganz neu (Weltpolitik/Nachtschild eingeklappt, keine Bauempfehlung). */
 export const FIRST_STEPS_UNTIL = 5;
+/** „Erste Schritte“ führen bis zu diesem Auftrag (erster gewonnener Nestüberfall, UX-0.43 C3). */
+export const FIRST_WIN_STEP = "nest";
+const WIN_COUNT = STEPS.findIndex((s) => s.id === FIRST_WIN_STEP) + 1;
 
 const REASON: Record<string, (o: Option) => string> = {
   strom: () => "Strom fehlt",
@@ -36,21 +40,28 @@ export function useNewcomer(): boolean {
   return !!g?.hasBase && !g.final.claimed && g.doneCount < FIRST_STEPS_UNTIL;
 }
 
+/** Noch kein gewonnener Nestüberfall: „Erste Schritte“ zeigen (UX-0.43 C3). */
+export function useBeforeFirstWin(): boolean {
+  const g = useGuide().data;
+  return !!g?.hasBase && !g.final.claimed && !g.steps.find((s) => s.id === FIRST_WIN_STEP)?.done;
+}
+
 export function FirstSteps({ base, onGuide }: { base: BaseData; onGuide: (a: GuideAction) => void }) {
   const g = useGuide().data;
-  if (!g?.hasBase || g.final.claimed || g.doneCount >= FIRST_STEPS_UNTIL) return null;
+  if (!g?.hasBase || g.final.claimed || g.steps.find((s) => s.id === FIRST_WIN_STEP)?.done) return null;
   const byId = new Map(g.steps.map((s) => [s.id, s]));
   const current = STEPS.find((s) => !byId.get(s.id)?.done);
   if (!current) return null;
-  const a = nextAction(current, base);
+  const done = STEPS.slice(0, WIN_COUNT).filter((s) => byId.get(s.id)?.done).length;
+  const a = nextAction(current, base, g.nestTarget);
   const building = a.kind === "building" && base.buildQueue.some((o) => o.buildingId === a.id);
   return (
     <section className="panel rounded-xl p-3.5 mb-3 border-l-4 border-see" aria-label="Erste Schritte" data-testid="lage-first-steps">
       <div className="flex items-center gap-2 mb-1.5">
         <h2 className="font-display text-[11px] uppercase tracking-[0.16em] text-ink2 flex-1">Erste Schritte</h2>
-        <span className="mono text-xs text-ink2">{g.doneCount}/{STEPS.length}</span>
+        <span className="mono text-xs text-ink2" data-testid="first-steps-count">{done}/{WIN_COUNT} bis zum ersten Sieg</span>
       </div>
-      <Bar value={g.doneCount / STEPS.length} tone="brass" />
+      <Bar value={done / WIN_COUNT} tone="brass" />
       <div className="mt-2.5 flex items-center gap-2.5">
         <Icon id={current.icon} size={34} />
         <span className="min-w-0 flex-1">

@@ -163,7 +163,9 @@ const seeratClose: Handler = async (tx, ev, due) => {
   if (ids.length > 0) {
     await tx.insert(tables.message).values(ids.map((id) => ({ fromPlayerId: null, toPlayerId: id, subject: `Seerat: ${name}`, body: lines.join("\n"), createdAt: new Date(due) })));
   }
-  return { notify: [[null, "season"], [null, "messages"], [null, "market"]] };
+  // UX-0.43 B8: Push „Seerat-Ergebnis“ (eigener Schalter, Ruhezeit gilt; KI-Spieler bekommen keinen, notices.ts).
+  const push: NoticeJob[] = ids.map((playerId) => ({ playerId, notice: { kind: "council", title: `Seerat: ${name}`, body: lines[0], url: "/?tab=welt", tag: `seerat-${s.id}` } }));
+  return { notify: [[null, "season"], [null, "messages"], [null, "market"]], push };
 };
 
 export const POLITIK_HANDLERS: Record<string, Handler> = {

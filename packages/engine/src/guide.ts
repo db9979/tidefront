@@ -1,4 +1,4 @@
-// Auftragsbuch: elf Grundaufträge mit Belohnung (Quelle der Wahrheit für Erfüllung und Abholstatus) und eine
+// Auftragsbuch: zwölf Grundaufträge mit Belohnung (Quelle der Wahrheit für Erfüllung und Abholstatus) und eine
 // Abschlussbelohnung mit Abzeichen „Hafenmeister“ und einmalig −1 Stunde Bauzeit. Je Spieler und Saison wird
 // jeder Auftrag genau einmal abgeholt (Tabelle guide_claim mit season_id). Abholen über runCommand.
 // Werte: balance.json, Schlüssel guide (REGELN.md, Abschnitt Auftragsbuch).
@@ -34,8 +34,15 @@ const units = (s: BaseState, id: string) => (s.units[id] ?? 0) + (s.unitsAway[id
  */
 export const GUIDE_GOALS = { schuetzen: 30, korvette: 2, landungsschiff: 1 } as const;
 
-/** Die elf Aufträge in Reihenfolge; Texte stehen in der Oberfläche (Guide.tsx). */
-export const GUIDE_STEPS: { id: string; done: (s: BaseState, wonNest: boolean) => boolean }[] = [
+/** Was außer dem Hafenstand zählt: eigener Überfall auf ein Nest losgeschickt bzw. gewonnen. */
+export interface GuideFacts { raidSent: boolean; wonNest: boolean }
+
+/**
+ * Die zwölf Aufträge in Reihenfolge; Texte stehen in der Oberfläche (Guide.tsx). UX-0.43 C3 (Neulingspfad bis zum
+ * ersten Sieg in 24 h): „ausfahrt“ (Überfall auf ein Nest losschicken) vor „nest“ (gewonnen) – der Neuling bekommt
+ * schon fürs Losschicken eine kleine Belohnung und sieht danach, worauf er wartet.
+ */
+export const GUIDE_STEPS: { id: string; done: (s: BaseState, f: GuideFacts) => boolean }[] = [
   { id: "strom", done: (s) => lvl(s, "kraftwerk") >= 1 },
   { id: "stahl", done: (s) => lvl(s, "stahlwerk") >= 1 },
   { id: "basis", done: (s) => lvl(s, "raffinerie") >= 1 && lvl(s, "versorgungshof") >= 1 },
@@ -44,7 +51,8 @@ export const GUIDE_STEPS: { id: string; done: (s: BaseState, wonNest: boolean) =
   { id: "wache", done: (s) => units(s, "schuetzen") >= GUIDE_GOALS.schuetzen },
   { id: "werft", done: (s) => lvl(s, "werft") >= 1 },
   { id: "flotte", done: (s) => units(s, "korvette") >= GUIDE_GOALS.korvette && units(s, "landungsschiff") >= GUIDE_GOALS.landungsschiff },
-  { id: "nest", done: (_s, won) => won },
+  { id: "ausfahrt", done: (_s, f) => f.raidSent || f.wonNest },
+  { id: "nest", done: (_s, f) => f.wonNest },
   { id: "hafen", done: (s) => lvl(s, "hafenkommandantur") >= 3 },
   { id: "schutz", done: (s) => lvl(s, "radarstation") >= 1 && lvl(s, "tiefbunker") >= 1 },
 ];
@@ -64,6 +72,24 @@ async function wonNestRaid(db: DbOrTx, playerId: number): Promise<boolean> {
   return !!row;
 }
 
+/** Eigener Überfall auf ein Nest losgeschickt: Verband unterwegs/zurück oder schon ein Kampfbericht gegen ein Nest. */
+async function sentNestRaid(db: DbOrTx, playerId: number): Promise<boolean> {
+  const m = tables.mission;
+  const [row] = await db.select({ id: m.id }).from(m)
+    .where(and(eq(m.playerId, playerId), eq(m.type, "ueberfall"), eq(m.targetKind, "nest"))).limit(1);
+  if (row) return true;
+  const r = tables.battleReport;
+  const [rep] = await db.select({ id: r.id }).from(r)
+    .where(and(eq(r.kind, "ueberfall"), eq(r.attackerPlayerId, playerId), sql`${r.nestId} is not null`)).limit(1);
+  return !!rep;
+}
+
+/** Fakten für die Aufträge außerhalb des Hafenstands. */
+async function guideFacts(db: DbOrTx, playerId: number): Promise<GuideFacts> {
+  const wonNest = await wonNestRaid(db, playerId);
+  return { wonNest, raidSent: wonNest || (await sentNestRaid(db, playerId)) };
+}
+
 async function claimsOf(db: DbOrTx, playerId: number, seasonId: number) {
   return db.select().from(gc).where(and(eq(gc.playerId, playerId), eq(gc.seasonId, seasonId)));
 }
@@ -75,10 +101,10 @@ export async function guideView(engine: Engine, playerId: number) {
   const own = await baseOfPlayer(engine.db, playerId); // Mehrere Häfen: bewusst Heimathafen (Leitfaden folgt dem Heimathafen)
   const claims = s ? await claimsOf(engine.db, playerId, s.id) : [];
   const claimed = new Map(claims.map((c) => [c.step, c]));
-  const won = own ? await wonNestRaid(engine.db, playerId) : false;
+  const facts = own ? await guideFacts(engine.db, playerId) : { wonNest: false, raidSent: false };
   const steps = GUIDE_STEPS.map((st) => {
     const isClaimed = claimed.has(st.id);
-    const done = isClaimed || (!!own && st.done(own.state, won));
+    const done = isClaimed || (!!own && st.done(own.state, facts));
     return { id: st.id, done, claimed: isClaimed, claimable: !!own && !!s && done && !isClaimed, reward: g.steps[st.id] ?? {} };
   });
   const fin = claimed.get(GUIDE_FINAL);
@@ -145,7 +171,7 @@ export async function claimGuideStepIn(ctx: Ctx, playerId: number, stepId: strin
   const { b, seasonId } = await lockedOwn(ctx.tx, playerId);
   const [had] = await ctx.tx.select({ step: gc.step }).from(gc).where(and(eq(gc.playerId, playerId), eq(gc.seasonId, seasonId), eq(gc.step, stepId)));
   if (had) fail("already_claimed");
-  if (!step.done(b.state, step.id === "nest" ? await wonNestRaid(ctx.tx, playerId) : false)) fail("not_done");
+  if (!step.done(b.state, step.id === "nest" || step.id === "ausfahrt" ? await guideFacts(ctx.tx, playerId) : { wonNest: false, raidSent: false })) fail("not_done");
   await insertClaim(ctx.tx, playerId, seasonId, stepId, ctx.nowMs, null);
   const reward = guideBalance().steps[stepId] ?? {};
   const d = deliverToStorage(b.state, reward, ctx.nowMs, await modsOf(ctx.tx, b, ctx.nowMs));
@@ -155,7 +181,7 @@ export async function claimGuideStepIn(ctx: Ctx, playerId: number, stepId: strin
 }
 
 /**
- * Abschlussbelohnung nach allen elf Aufträgen: Paket, Abzeichen und −1 Stunde Bauzeit für den laufenden Ausbau
+ * Abschlussbelohnung nach allen zwölf Aufträgen: Paket, Abzeichen und −1 Stunde Bauzeit für den laufenden Ausbau
  * (läuft keiner, für den nächsten). Codes: no_base, no_season, not_done, already_claimed.
  */
 export function claimGuideFinal(engine: Engine, playerId: number, key: string) {

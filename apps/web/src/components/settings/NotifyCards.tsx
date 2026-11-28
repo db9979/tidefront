@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../../lib/trpc.ts";
 import { errorText, failText } from "../../lib/names.ts";
-import { currentEndpoint, DENIED_HINT, disablePush, enablePush, isIos, isStandalone, KIND_LABEL, pushDenied, pushSupported } from "../../lib/push.ts";
+import { currentEndpoint, DENIED_HINT, disablePush, enablePush, isIos, isStandalone, KIND_LABEL, PUSH_ONLY, pushDenied, pushSupported } from "../../lib/push.ts";
 import { Badge, Button, Card, ErrorLine } from "../../ui.tsx";
 import { Switch } from "../Switch.tsx";
 
@@ -18,9 +18,9 @@ const LABEL: Record<string, string> = {
   comeback: "Rückkehr-Erinnerung und Saisonwechsel",
 };
 
-/** Arten für Push bzw. E-Mail; Marktnachrichten nur als Push (Rückkehr/Saisonwechsel seit AN-06 auch als Push). */
+/** Arten für Push bzw. E-Mail; Marktnachrichten, Lager, Überholt und Seerat nur als Push (Rückkehr/Saisonwechsel seit AN-06 auch als Push). */
 function kinds(isAdmin: boolean, mail = false): string[] {
-  return Object.keys(LABEL).filter((k) => (k !== "ops" || isAdmin) && !(mail && k === "market"));
+  return Object.keys(LABEL).filter((k) => (k !== "ops" || isAdmin) && !(mail && PUSH_ONLY.has(k)));
 }
 
 export const pad2 = (n: number) => String(n).padStart(2, "0");
