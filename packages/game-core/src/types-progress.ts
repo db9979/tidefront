@@ -27,6 +27,11 @@ export interface AchievementsBalance {
   list: Record<string, AchievementDef>;
   /** Erfolg „Kaufmann“ und Wochenziel „Geschäfte“ zählen nur Börsengeschäfte ab diesem Wert (Taler, seit 0.24.4). */
   minCountedTradeCredits?: number;
+  /**
+   * v1.38 (Welle 5, AN-08): Ressourcenwert der Tagesbefehle je Stufe (leicht, mittel, schwer) bei Kommandozentrale 0, wächst
+   * um stageGrowth je Stufe; auch der Serienbonus wächst so. Fehlt der Block, gelten 400/1000/2500 und 0,3.
+   */
+  daily?: { tierValue: [number, number, number]; stageGrowth: number };
   weekly: {
     /** Ressourcenwert je Ziel bei Kommandozentrale 0; wächst um stageGrowth je Stufe. */
     goalValue: number;

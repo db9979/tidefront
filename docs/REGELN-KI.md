@@ -72,7 +72,7 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
   Würfe schafft (im Mittel ≥ 90 %, ungünstig ≥ 50 %). Dann ruft er die Feldbesatzungen zurück, startet aus dem Hafen
   nichts anderes und greift an, sobald der Verband daheim den Probekampf besteht; danach besetzt er Felder wieder.
   Höchstens 24 h Bündeln, danach 12 h Pause (`bots-nest6.ts`).
-- **Weltereignisse:** Freibeuter und Festung greifen Schatzschiff, Großflotte und Belagerungsring in bis zu 1 200 km an (v1.35, vorher 900; kommt der Verband mit Landungsschiffen zu spät, fährt er ohne sie),
+- **Weltereignisse:** Freibeuter und Festung greifen Schatzschiff, Großflotte und Belagerungsring in bis zu 1 200 km an (v1.35, vorher 900; kommt der Verband mit Landungsschiffen zu spät, fährt er ohne sie; v1.38: Flugzeuge außer Reichweite bleiben zuerst allein daheim),
   wenn der Probekampf (Ereignis vernichtet, ohne Truppen) zu ≥ 90 % gewinnt und der erwartete Verlust höchstens 35 %
   des Verbands ist; v1.35 darf dafür auch der letzte freie Missionsplatz genutzt werden (vorher blieb einer frei), und
   solange ein solches Ereignis in Reichweite läuft, halten Nestfahrten, Aufklärung und Feldfahrten einen Platz frei
@@ -141,3 +141,6 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
   Heimathafen und Spieler gelöscht; bis dahin setzt der Worker das Entfernen jede Minute fort.
 - Saisonwechsel: Ein Bot ohne Hafen wählt im nächsten Zug ein freies Küstenfeld (größtmöglicher Abstand zu allen
   Häfen, Nestern und Feldern) und gründet dort.
+- **Elektrolyse (v1.38, M-06):** Der Händler baut die nächste Stufe nur, wenn sie sich nach der Stromvorhersage der nächsten
+  24 h in höchstens 14 Tagen bezahlt macht (derselbe Rat wie im Gebäudeblatt, `electrolysisAdvice`). Vorher baute er bis
+  Tag 35 rund 26 Stufen für 2 % seines Treibstoffs.

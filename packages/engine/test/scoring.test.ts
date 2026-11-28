@@ -51,9 +51,10 @@ test("Kampfpunkte: Abwehr von Kartell und NPC nur × npcDefenseFactor, Spielerk�
   // Nest und Spieler gegen Spieler: voll für beide Seiten.
   assert.equal(reportScore({ kind: "ueberfall", attackerPlayerId: 7, defenderPlayerId: null, al: {}, dl: boats, loot: null }).attacker!.kampf, v);
   const pvp = reportScore({ kind: "ueberfall", attackerPlayerId: 7, defenderPlayerId: 8, al: { korvette: 1 }, dl: { korvette: 2 }, loot: { elektronik: 100 } });
-  assert.equal(pvp.attacker!.kampf, 2 * unitValue("korvette"));
+  const pf = balance.scoring?.pvpFactor ?? 1; // v1.38: Spielerkämpfe Kampf × pvpFactor (beide Seiten), Beute voll
+  assert.equal(pvp.attacker!.kampf, 2 * unitValue("korvette") * pf);
   assert.equal(pvp.attacker!.beute, 100 * price.elektronik);
-  assert.equal(pvp.defender!.kampf, unitValue("korvette"));
+  assert.equal(pvp.defender!.kampf, unitValue("korvette") * pf);
 });
 
 // ---------------------------------------------------------------- Neuberechnung gegen PostgreSQL
@@ -117,7 +118,7 @@ test("Neuberechnung: alte Berichte (v1.23) zählen sofort nach den neuen Regeln,
   const l = first.find((r) => r.playerId === lea)!;
   const boat = unitValue("schnellboot");
   assert.equal(k.kampf, Math.floor((40 * boat * f) / 100));
-  assert.equal(l.kampf, Math.floor((2 * unitValue("korvette") + 8 * boat) / 100));
+  assert.equal(l.kampf, Math.floor((2 * unitValue("korvette") * (balance.scoring?.pvpFactor ?? 1) + 8 * boat) / 100));
   assert.equal(l.beute, Math.floor((1000 * price.elektronik) / 100));
   assert.equal(k.total, k.ausbau + k.militaer + k.kampf + k.beute + k.befehle);
 });

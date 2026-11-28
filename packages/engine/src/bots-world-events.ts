@@ -121,7 +121,9 @@ export async function raidWorldEvent(c: TurnCtx, base: BaseRow & { state: BaseSt
     let pv = await missionPreview(c.engine, c.bot.id, input);
     const inRange = (id: string) => balance.units[id]?.branch !== "luft" || (balance.units[id].rangeKm ?? 0) >= d;
     const pick = (keep: (id: string) => boolean): Counts => Object.fromEntries(Object.entries(force).filter(([id]) => keep(id)));
-    for (const alt of [pick((id) => id !== "landungsschiff" && inRange(id)), pick((id) => balance.units[id]?.branch === "luft" && inRange(id))]) {
+    // v1.38: zuerst nur die Flugzeuge außer Reichweite weglassen (Saisonlauf: die Festung scheiterte an einem
+    // Belagerungsring in 1 190 km mit „out_of_range“, weil Jagdbomber und Abfangjäger mitfahren sollten).
+    for (const alt of [pick(inRange), pick((id) => id !== "landungsschiff" && inRange(id)), pick((id) => balance.units[id]?.branch === "luft" && inRange(id))]) {
       if (pv.ok) break;
       if (Object.keys(alt).length === 0) continue;
       const pa = eventProbe({ units: alt, modifiers: mods }, ev.units as Counts, runs);

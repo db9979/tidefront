@@ -152,8 +152,10 @@ test("KI-Vertrag: Kauf bei Albers – Anzahlung, Treuhandware, Lieferung zur Fä
 
   const kiBefore = await stock(albers.baseId, "stahl");
   const q = await kiContractQuote(engine, a.playerId, { kiId: albers.playerId, side: "buy", resource: "stahl", qty: 2000, days: 1 });
-  assert.ok(q.ok && q.avgPrice >= q.course * 1.045, "Preis ≥ Kurs × (1 + 4 % + 0,5 %)");
-  assert.ok(q.ok && q.instantPrice !== null && q.avgPrice > q.instantPrice, "Termin nie billiger als die Börse");
+  const cfg = balance.market.contracts!;
+  assert.ok(q.ok && q.avgPrice >= q.course * (1 + cfg.baseFee + cfg.perDay) - 1e-9, "Preis ≥ Kurs × (1 + Grundaufschlag + 0,5 %)");
+  // v1.38 (M-08): bei ruhigem Kurs liegt ein 1-Tages-Vertrag etwa auf Höhe des Sofortkaufs (± 2 %), nicht mehr stets darüber.
+  assert.ok(q.ok && q.instantPrice !== null && Math.abs(q.avgPrice / q.instantPrice - 1) < 0.02, `Termin ${q.ok && q.avgPrice} ≈ Börse ${q.ok && q.instantPrice}`);
   // Abweichung > 1 % → neu anbieten.
   assert.deepEqual(await signKiContract(engine, a.playerId, key(), { kiId: albers.playerId, side: "buy", resource: "stahl", qty: 2000, days: 1, expectedPrice: q.avgPrice * 0.9 }), { ok: false, code: "slippage" });
   const r = await sign(a.playerId, albers.playerId, { side: "buy", resource: "stahl", qty: 2000, days: 1 });
@@ -310,7 +312,7 @@ test("Vertrag zwischen Spielern: Preisband, Konvoi, Gebühr in den Topf, Verbind
   await runUntil(cv.arriveAt.getTime() + 1000);
   assert.equal(await deliveredTo(k.playerId, id, "stahl"), 1000);
   const fees = await db.execute<{ s: string }>(sql`select sum(amount)::text as s from trade_ledger where trade_id = ${`mc-${id}:settle`} and account = 'fees'`);
-  assert.ok(Math.abs(Number(fees[0].s) - 1000 * price * 0.04) < 0.02, "4 % Grundaufschlag in den Gebührentopf");
+  assert.ok(Math.abs(Number(fees[0].s) - 1000 * price * balance.market.contracts!.baseFee) < 0.02, "Grundaufschlag in den Gebührentopf");
   assert.equal(await colluded(db, s.playerId, k.playerId, Date.now()), true, "Lieferung verbindet das Paar");
 
   // Paarbremse: höchstens 20.000 Börsenwert je Paar und 7 Tage.

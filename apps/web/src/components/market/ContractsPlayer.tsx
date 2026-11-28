@@ -21,23 +21,29 @@ export function PlayerContracts({ base, data }: { base: BaseData; data: Contract
   const accept = useCommand((i: { key: string; contractId: number; escort?: Record<string, number> }) => trpcClient.contracts.accept.mutate(i) as Promise<Res>, contractsInvalidate);
   return (
     <Card title={<><Icon id="transport" size={18} /> Verträge mit Spielern</>}>
-      <p className="text-xs text-ink2 mb-2">
-        Preis höchstens {fmtNum(data.cfg.band * 100)} % neben Kurs bzw. erwartetem Kurs. Die Ware fährt per Konvoi über die Seewege (abfangbar,
-        Geleit möglich). {fmtNum(data.cfg.baseFee * 100)} % des Preises und alle Strafen gehen in den Gebührentopf, nie an den Partner.
-        Je Spielerpaar höchstens {fmtNum(data.cfg.pairWeekValue)} Taler Börsenwert in 7 Tagen. Verbundene Spieler (Allianz, Pakt, Handel in den
-        letzten 7 Tagen) dürfen, der Vertrag zählt dann aber nicht für Erfolge und Tagesbefehle.
-      </p>
-      <h3 className="font-display text-[11px] uppercase text-ink2 mb-1">Angebote ({data.proposals.length})</h3>
+      {/* v1.38 (Welle 5, „Verträge verdichten“): Regeln und eigenes Angebot aufklappbar, Angebote zuerst. */}
       {data.proposals.length === 0 ? (
-        <p className="text-sm text-ink2 py-2 text-center font-serif italic">Keine offenen Vertragsangebote.</p>
+        <p className="text-sm text-ink2 py-1 font-serif italic">Keine offenen Vertragsangebote.</p>
       ) : (
-        <ul aria-label="Vertragsangebote von Spielern">
-          {data.proposals.map((p) => <ProposalRow key={p.id} p={p} base={base} now={now} busy={accept.busy}
-            onAccept={(escort) => void accept.run({ contractId: p.id, ...(escort ? { escort } : {}) })} />)}
-        </ul>
+        <>
+          <h3 className="font-display text-[11px] uppercase text-ink2 mb-1">Angebote ({data.proposals.length})</h3>
+          <ul aria-label="Vertragsangebote von Spielern">
+            {data.proposals.map((p) => <ProposalRow key={p.id} p={p} base={base} now={now} busy={accept.busy}
+              onAccept={(escort) => void accept.run({ contractId: p.id, ...(escort ? { escort } : {}) })} />)}
+          </ul>
+        </>
       )}
       <ErrorLine text={accept.error} code={accept.code} />
-      <ProposeForm base={base} data={data} />
+      <details className="mt-2" data-testid="contracts-propose">
+        <summary className="cursor-pointer min-h-[44px] flex items-center font-display text-[12px] uppercase tracking-[0.12em] text-ink2">Selbst einen Vertrag anbieten</summary>
+        <p className="text-xs text-ink2 mb-2">
+          Preis höchstens {fmtNum(data.cfg.band * 100)} % neben Kurs bzw. erwartetem Kurs. Die Ware fährt per Konvoi über die Seewege (abfangbar,
+          Geleit möglich). {fmtNum(data.cfg.baseFee * 100)} % des Preises und alle Strafen gehen in den Gebührentopf, nie an den Partner.
+          Je Spielerpaar höchstens {fmtNum(data.cfg.pairWeekValue)} Taler Börsenwert in 7 Tagen. Verbundene Spieler (Allianz, Pakt, Handel in den
+          letzten 7 Tagen) dürfen, der Vertrag zählt dann aber nicht für Erfolge und Tagesbefehle.
+        </p>
+        <ProposeForm base={base} data={data} />
+      </details>
     </Card>
   );
 }
@@ -106,7 +112,7 @@ function ProposeForm({ base, data }: { base: BaseData; data: ContractsData }) {
   const okPrice = b !== null && price >= b.min - 1e-9 && price <= b.max + 1e-9;
   if (d === null) return <p className="text-xs text-ink2 mt-3">Neue Verträge sind erst wieder in der nächsten Saison möglich (Fälligkeit spätestens 24 h vor Saisonende).</p>;
   return (
-    <div className="mt-4 rounded-lg bg-inset border border-rule p-2" role="group" aria-label="Vertrag anbieten">
+    <div className="rounded-lg bg-inset border border-rule p-2" role="group" aria-label="Vertrag anbieten">
       <h3 className="font-display text-[11px] uppercase text-ink2 mb-1.5">Vertrag anbieten</h3>
       <div className="flex rounded-lg bg-navy-950/70 p-0.5 mb-2" role="radiogroup" aria-label="Richtung">
         {(["sell", "buy"] as const).map((v) => (

@@ -8,6 +8,8 @@ import {
   maxAllowedLevel,
   missingRequirement,
   plannedLevel,
+  powerForecast,
+  electrolysisAdvice,
   productionRates,
   researchCost,
   satelliteOf,
@@ -70,12 +72,15 @@ const BUILD_WEIGHTS: Record<BotProfile, Record<string, number>> = {
 /**
  * Ökostrom (v1.21), nur der Händler: Windpark im Norden, Solarfeld im Süden, Elektrolyse erst bei genug Wind- und
  * Sonnenstufen (sie nimmt nur Überschuss auf). Kraftwerk bleibt die Antwort auf akuten Strommangel.
+ * v1.38 (M-06): die nächste Elektrolyse-Stufe nur, wenn sie sich nach der Stromvorhersage der nächsten 24 h lohnt – derselbe
+ * Rat wie im Gebäudeblatt (electrolysisAdvice). Im Saisonlauf v1.37 baute der Händler 26 Stufen für 2 % seines Treibstoffs.
  */
-function greenWeights(s: BaseState): Record<string, number> {
+function greenWeights(s: BaseState, nowMs: number, mods: Modifiers): Record<string, number> {
   const lat = s.site?.lat ?? 50;
   const renew = (s.buildings.windpark ?? 0) + (s.buildings.solarfeld ?? 0);
   const out: Record<string, number> = { windpark: lat >= 47 ? 1.1 : 0.4, solarfeld: lat < 47 ? 1.1 : 0.4 };
-  if (renew >= 3 && (s.buildings.elektrolyse ?? 0) < Math.floor(renew / 2)) out.elektrolyse = 1.2;
+  const lvl = plannedLevel(s, "elektrolyse");
+  if (renew >= 3 && lvl < Math.floor(renew / 2) && electrolysisAdvice(powerForecast(s, nowMs, 24, balance, mods), lvl, balance)?.worth) out.elektrolyse = 1.2;
   return out;
 }
 
@@ -169,7 +174,7 @@ export function chooseBuild(c: PlanCtx): string | null {
   // Schlange voll: nichts beginnen, aber (reserveWhenBusy) die Kosten des nächsten Ausbaus zurücklegen.
   const busy = s.buildQueue.length >= Math.min(c.cfg.buildQueue, balance.building.queueSlots);
   if (busy && !c.reserveWhenBusy) return null;
-  const weights: Record<string, number> = { ...BUILD_WEIGHTS[c.profile], ...(c.profile === "haendler" ? greenWeights(s) : {}), ...spaceWeights(s, c.profile) };
+  const weights: Record<string, number> = { ...BUILD_WEIGHTS[c.profile], ...(c.profile === "haendler" ? greenWeights(s, c.nowMs, c.mods) : {}), ...spaceWeights(s, c.profile) };
   for (const id of c.boost ?? []) weights[id] = Math.max(weights[id] ?? 1, 1.5) * 4;
   const rates = productionRates(s, balance, c.mods, c.nowMs);
   const cap = storageCapacity(s, balance, c.mods);

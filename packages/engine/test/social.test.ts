@@ -134,13 +134,16 @@ test("Rangliste: Punkte je Kategorie nach Formel", async () => {
   const a = rows.find((r) => r.playerId === A.playerId)!;
   const b = rows.find((r) => r.playerId === B.playerId)!;
   // Stahlwerk: 120 + 30 × 1,8 = 174, Stufe 2: 180 + 45 × 1,8 = 261 – ab v1.29 mit Kostenmischung (3 % des Stahls zu
-  // Elektronik/Proviant, je Ressource aufgerundet): 175 + 45 × 1,8 + 2 × 3 + 3 × 0,6 = 263,8.
-  assert.ok(Math.abs(buildingValue({ stahlwerk: 2 }) - (174 + 263.8)) < 1e-9);
+  // Elektronik/Proviant, je Ressource aufgerundet), v1.38 Mischung 65/35 %: 175 + 45 × 1,8 + 2 × 3 + 4 × 0,6 = 264,4.
+  assert.ok(Math.abs(buildingValue({ stahlwerk: 2 }) - (174 + 264.4)) < 1e-9);
   // A: Ausbau 435, Militär 2 Korvetten 1460, Kampf 1530 + 1400, Beute 1990 + 900. B: Bunkerlinie 460, Kampf 420 + 125.
+  // v1.38: Kampfpunkte aus Spielerkämpfen × pvpFactor (beide Seiten).
+  const pf = balance.scoring!.pvpFactor ?? 1;
+  const ak = Math.floor((1530 * pf + 1400) / 100);
   assert.deepEqual({ ausbau: a.ausbau, militaer: a.militaer, kampf: a.kampf, beute: a.beute, total: a.total },
-    { ausbau: 4, militaer: 14, kampf: 29, beute: 28, total: 75 });
-  // B: Kampf 420 + 500 × npcDefenseFactor (v1.35: 0,1).
-  const bk = Math.floor((420 + 500 * balance.scoring!.npcDefenseFactor) / 100);
+    { ausbau: 4, militaer: 14, kampf: ak, beute: 28, total: 46 + ak });
+  // B: Kampf 420 (× pvpFactor) + 500 × npcDefenseFactor (v1.35: 0,1).
+  const bk = Math.floor((420 * pf + 500 * balance.scoring!.npcDefenseFactor) / 100);
   assert.deepEqual({ ausbau: b.ausbau, militaer: b.militaer, kampf: b.kampf, beute: b.beute, total: b.total },
     { ausbau: 0, militaer: 4, kampf: bk, beute: 0, total: 4 + bk });
   assert.equal(a.rank, 1);

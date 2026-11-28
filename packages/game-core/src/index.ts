@@ -21,6 +21,7 @@ export * from "./weather-fronts.ts"; // Fronten (Kalt-, Warmfront, Okklusion)
 export * from "./weather-forecast.ts"; // Vorhersage mit Unsicherheit (v1.18)
 export * from "./power.ts";
 export * from "./power-green.ts"; // Ökostrom, Elektrolyse, Seekabel (v1.21)
+export * from "./electrolysis-advice.ts"; // v1.38: Rat zur nächsten Stufe der Elektrolyse (M-06)
 export * from "./admirals.ts"; // Admirale
 export * from "./naval.ts"; // See: Minen/Blockade/Konvoi
 export * as market from "./market/index.ts";

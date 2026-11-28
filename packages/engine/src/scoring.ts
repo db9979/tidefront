@@ -4,7 +4,7 @@
 // (30 s Zwischenspeicher) neu, ein Balance-Wechsel (v1.24: Richtpreis, Kartell-Abwehr × npcDefenseFactor) gilt also
 // sofort rückwirkend für die ganze laufende Saison. Nur das Saisonende schreibt season_result.
 import { sql } from "drizzle-orm";
-import { pairFactor, pairIndexes, pairKey, protectionStatus, pvpOf, stampFactors, upgradeCost, type BaseState, type Counts, type PairFight, type PvpStamp, type ResourceMap } from "@tidefront/game-core";
+import { pairFactor, pairIndexes, pairKey, protectionStatus, pvpOf, researchCost, stampFactors, upgradeCost, type BaseState, type Counts, type PairFight, type PvpStamp, type ResourceMap } from "@tidefront/game-core";
 import type { DbOrTx } from "@tidefront/db";
 import { balance } from "./context.ts";
 import { challengePoints } from "./challenges.ts";
@@ -68,6 +68,21 @@ export function buildingValue(buildings: Counts): number {
     for (let l = 0; l < level; l++) s += resValue(upgradeCost(id, l, balance));
   }
   return s;
+}
+
+/**
+ * v1.38 (ST-15): Kostenwert der erforschten Stufen eines Hafens × scoring.researchFactor (zählt zum Ausbau); ohne Faktor 0.
+ */
+export function researchScoreValue(levels: Counts | null | undefined): number {
+  const f = balance.scoring?.researchFactor ?? 0;
+  const techs = balance.research?.techs ?? {};
+  if (f <= 0) return 0;
+  let s = 0;
+  for (const [id, level] of Object.entries(levels ?? {})) {
+    if (!techs[id]) continue;
+    for (let l = 0; l < Math.min(level, techs[id].maxLevel); l++) s += resValue(researchCost(id, l, balance));
+  }
+  return s * f;
 }
 
 const pts = (v: number) => Math.max(0, Math.floor(v / POINT_DIVISOR));
@@ -143,18 +158,20 @@ export function pvpFactors(reports: ScoredReport[]): Map<number, PvpFactors> {
  * Angriffe auf die Weltereignisse in scoring.npcWorldEventKinds (seit dem Nutzerentscheid 27.11.2026 leer: Großflotte und
  * Belagerungsring zählen voll). Saisonfinale × scoring.armadaFactor. v1.35 (Nutzerentscheid 3): Nestüberfälle zählen
  * Kampf und Beute × scoring.nestFactor; Schatzschiff, übrige Weltereignisse und Kämpfe zwischen Spielern zählen voll.
+ * v1.38 (ST-16): Kampfpunkte beider Seiten eines Spielerkampfs × scoring.pvpFactor (Beute nicht).
  */
 export function reportScore(b: ScoredReport, pvp?: PvpFactors): { attacker: { kampf: number; beute: number } | null; defender: { kampf: number } | null } {
   const sc = balance.scoring;
   const f = sc?.npcDefenseFactor ?? 1;
   const npcEvent = b.kind === "weltereignis" && !!b.weKind && (sc?.npcWorldEventKinds ?? []).includes(b.weKind);
   const p = pvp ?? { kampf: 1, beute: 1, defense: 1 }; // PvP: Kopfgeld, Mutfaktor, Paarbremse (pvpFactors)
+  const pf = isPvpReport(b) ? (sc?.pvpFactor ?? 1) : 1; // v1.38 (ST-16): Spielerkämpfe zählen Kampf × pvpFactor, beide Seiten
   // Saisonfinale: Kampfpunkte aus Armada-Kämpfen × scoring.armadaFactor (Beute voll; kein Spielerkampf, PvP-Faktoren 1).
   const armada = b.kind === "weltereignis" && b.weKind === "finale" ? (sc?.armadaFactor ?? 1) : null;
   const nest = b.nest && b.defenderPlayerId === null ? (sc?.nestFactor ?? 1) : 1;
   return {
-    attacker: b.attackerPlayerId === null ? null : { kampf: countsValue(b.dl) * (armada ?? (npcEvent ? f : 1)) * nest * p.kampf, beute: resValue(b.loot) * nest * p.beute },
-    defender: b.defenderPlayerId === null ? null : { kampf: countsValue(b.al) * (b.attackerPlayerId === null ? f : 1) * p.defense },
+    attacker: b.attackerPlayerId === null ? null : { kampf: countsValue(b.dl) * (armada ?? (npcEvent ? f : 1)) * nest * pf * p.kampf, beute: resValue(b.loot) * nest * p.beute },
+    defender: b.defenderPlayerId === null ? null : { kampf: countsValue(b.al) * (b.attackerPlayerId === null ? f : 1) * pf * p.defense },
   };
 }
 
@@ -263,7 +280,7 @@ export async function computeStandings(db: DbOrTx, seasonStartMs: number, nowMs:
     if (p.is_home || !person.base) {
       person.base = { id: p.base_id, name: p.base_name!, col: p.col!, row: p.row!, protection: protectionStatus(p.state.protection, nowMs, balance).reason };
     }
-    r.ausbau += buildingValue(p.state.buildings ?? {});
+    r.ausbau += buildingValue(p.state.buildings ?? {}) + researchScoreValue(p.state.research?.levels); // v1.38: Forschung anteilig
     green.set(p.id, Math.max(green.get(p.id) ?? 0, Math.floor(p.state.powerLog?.greenUsed ?? 0)));
     r.militaer += countsValue(p.state.units) + countsValue(p.state.defenses);
   }

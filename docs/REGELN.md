@@ -33,8 +33,9 @@ Vier Ressourcen: `stahl`, `treibstoff`, `elektronik`, `proviant`. Strom ist eine
 
 - Kosten für den Ausbau von Stufe L auf L+1: `cost * costFactor^L`, je Ressource aufgerundet.
   Kostenmischung (v1.29, `building.costShift`): vor dem Aufrunden wird der Anteil `min(max, perLevel × L)` des Stahls
-  (0,03 je Stufe, höchstens 35 %) wertgleich zum Börsen-Richtpreis auf die Zielmischung `to` umgelegt (Elektronik 75 %,
-  Proviant 25 %; Kaserne und Versorgungshof je 50 % über `costShiftTo`). Stufe 0 bleibt unverändert, höhere Stufen
+  (0,03 je Stufe, höchstens 35 %) wertgleich zum Börsen-Richtpreis auf die Zielmischung `to` umgelegt (v1.38, AN-04:
+  Elektronik 65 %, Proviant 35 % – vorher 75/25; Proviant läuft im Saisonlauf am stärksten über, Treibstoff nicht mehr; Kaserne und Versorgungshof je
+  50 % über `costShiftTo`). Stufe 0 bleibt unverändert, höhere Stufen
   verlagern mehr; Gesamtwert und Bauzeiten bleiben gleich.
 - Bauzeit: `seconds * timeFactor^L`, höchstens `maxBuildSeconds`.
 - Höchststufe `maxLevel`. Kein Gebäude außer der Kommandozentrale darf höher sein als
@@ -44,8 +45,8 @@ Vier Ressourcen: `stahl`, `treibstoff`, `elektronik`, `proviant`. Strom ist eine
   Deckel über die Kommandozentrale gelten für diese Zielstufe, eingereihte Stufen der Kommandozentrale zählen dabei mit.
   Ein Auftrag beginnt, wenn der vorige fertig ist (frühestens beim Einreihen); seine Bauzeit richtet sich nach der Zielstufe.
 - Kommandopunkte eines Stützpunkts: `commandPointsBase + commandPointsPerLevel * L`; ab Stufe
-  `commandPointsLateFromLevel` (v1.24: 9) zählt jede Stufe `commandPointsLatePerLevel` (60) statt 30
-  (KZ 8: 300, KZ 9: 360, KZ 10: 420, KZ 12: 540).
+  `commandPointsLateFromLevel` (v1.24: 9; v1.38, M-17: 8) zählt jede Stufe `commandPointsLatePerLevel` (60) statt 30
+  (KZ 7: 270, KZ 8: 330, KZ 9: 390, KZ 10: 450, KZ 12: 570 – vorher war KZ 8 die teuerste Stufe je Kommandopunkt).
 - Tiefbunker: schützt je Ressource `protectedBase * protectedGrowth^L` vor Plünderung.
 - Missionsplätze: `missionSlotsBase + floor(L / 2) * missionSlotsPerTwoLevels` (Hafenkommandantur).
 - Börse ab Hafenkommandantur Stufe `marketFromLevel`; Kasse (höchstens so viele Taler) `creditLimitPerLevel * L`.
@@ -495,7 +496,8 @@ und bezahlt wird bei Fälligkeit. Gegenpartei ist ein KI-Spieler oder ein andere
   (Abo = einer, eigene Angebote an Spieler zählen mit), höchstens `perHour` (3) Abschlüsse je Stunde.
 - **Preis** (K Kurs jetzt, R effektiver Richtwert jetzt, R_T Richtwert bei Fälligkeit = R plus die angekündigte
   Saisonend-Nachricht, T Laufzeit): erwarteter Kurs `E = R_T + (K − R) · 0,5^(T / reversionHalfLifeHours)`; Aufschlag
-  `a = baseFee + perDay · Tage + Menge / (depthDivisor · Tiefe) − Charakterbonus`; **Kauf `max(K, E) · (1 + a)`, Verkauf
+  `a = baseFee + perDay · Tage + Menge / (depthDivisor · Tiefe) − Charakterbonus` (v1.38, M-08: `baseFee` 0,04 → 0,025 – ein
+  kurzer Vertrag bei ruhigem Kurs liegt damit etwa auf Höhe eines Sofortkaufs mit 4 % Börsengebühr, statt immer darüber); **Kauf `max(K, E) · (1 + a)`, Verkauf
   `min(K, E) · (1 − a)`**, immer innerhalb `[floorFactor, ceilFactor] · Grundrichtwert`. Der Grundaufschlag `baseFee ·
   Bezugskurs` geht in den Gebührentopf (beim Kauf aus dem Preis, beim Verkauf zahlt ihn die KI zusätzlich). Angebote werden
   wie an der Börse mit dem gesehenen Preis bestätigt (`slippage` bei mehr als `slippageTolerance` Abweichung). Keine neuen
@@ -555,7 +557,8 @@ und bezahlt wird bei Fälligkeit. Gegenpartei ist ein KI-Spieler oder ein andere
   Elektronik 3, Proviant 0,6; vorher Summe aller Ressourcen). Punkte je Kategorie = `floor(Kostenwert / 100)`,
   Gesamt = Summe der Kategorien. Die Punkte werden nicht gespeichert, sondern bei jedem Abruf aus Stand und
   Kampfberichten berechnet; eine geänderte Wertung gilt sofort für die ganze laufende Saison.
-  - **Ausbau:** Kosten aller gebauten Gebäudestufen.
+  - **Ausbau:** Kosten aller gebauten Gebäudestufen, dazu (v1.38, ST-15) `scoring.researchFactor` (0,5) × Kosten aller
+    erforschten Stufen aller Häfen (`researchScoreValue`).
   - **Militär:** Einheiten und Anlagen des Stützpunkts einschließlich der Verbände unterwegs.
   - **Kampf:** Kostenwert der gegnerischen Einheiten und Anlagen, die laut Kampfbericht der Saison vernichtet wurden
     (als Angreifer und als Verteidiger, auch gegen Nester und Kartell). Schnellboot zählt 250, Piratenmiliz 40.
@@ -572,6 +575,8 @@ und bezahlt wird bei Fälligkeit. Gegenpartei ist ein KI-Spieler oder ein andere
   jeden Kampfbericht mit Spieler auf beiden Seiten (Überfall, Sammelangriff, Blockadekampf, Konvoi, Feld). Nur die
   Wertung ändert sich; Beute und Verluste bleiben. Ein geplünderter Spieler verliert weiterhin keine Punkte – die
   Paarbremse verhindert, dass zwei Freunde so Punkte erzeugen.
+  - **PvP-Faktor (v1.38, ST-16):** Kampfpunkte beider Seiten eines Spielerkampfs × `scoring.pvpFactor` (1,5), vor Kopfgeld,
+    Mutfaktor und Paarbremse; Beute unverändert. Belohnt Angriff und Verteidigung mit der Flotte daheim.
   - **Rang zum Tagesbeginn:** Beim ersten Abruf des Spieltags (Worker alle 10 min, sonst erster Kampf oder Rangliste)
     hält der Server Rang und Gesamtpunkte aller Spieler fest (`server_setting pvp_rank_snapshot`). Jeder Spielerkampf
     speichert daraus `report.pvp` = { Rang und Punkte beider, Kopfgeld, Mutfaktor, Absprache }.
@@ -678,7 +683,8 @@ Vorlage „Aufholhilfe“ (docs/VORLAGE-AUFHOLHILFE.md) mit Nutzerentscheiden vo
   gelesen: beim Abruf und Abholen, nach jedem abgeschlossenen Ausbau des Spielers und alle 10 Minuten im Worker-Takt
   (nur Spieler mit offenen Befehlen dieser Art). Es zählt der beste Stand des Tages – wer erst abends nachsieht, behält
   den Höchststand von Ökostrom, Stromspeicher oder Vorrat vom Mittag (auf 10 Minuten genau).
-- Belohnung je Befehl: Ressourcenpaket im Wert 400 / 1.000 / 2.500 × (1 + 0,3·s) (Stahl 50 %, Treibstoff 25 %,
+- Belohnung je Befehl: Ressourcenpaket im Wert `achievements.daily.tierValue` × (1 + `stageGrowth`·s), v1.38 (AN-08)
+  200 / 500 / 1.250 × (1 + 0,3·s) (bis v1.37 400 / 1.000 / 2.500) (Stahl 50 %, Treibstoff 25 %,
   Elektronik 15 %, Proviant 10 %, auf 10 gerundet, Schlüssel `SHARE` in engine/src/challenge-pool.ts; s bei der Vergabe) und 3 / 6 / 12 Punkte der Kategorie Befehle.
   Abholen ist ein Befehl mit Idempotenz-Schlüssel und gelingt genau einmal; die Ressourcen werden auch über die
   Lagerkapazität gutgeschrieben. Erfüllte Befehle früherer Tage bleiben bis zum Saisonende abholbar.
@@ -687,7 +693,7 @@ Vorlage „Aufholhilfe“ (docs/VORLAGE-AUFHOLHILFE.md) mit Nutzerentscheiden vo
 - Serie: Ein Tag ist abgeschlossen, wenn alle drei Befehle dieses Tages abgeholt sind. Schließt er an den zuletzt
   abgeschlossenen Tag an, wächst die Serie um 1, sonst beginnt sie bei 1. Serienbonus beim Abschluss: Tag 3 +10 Punkte,
   Tag 7 +25 Punkte, danach jeder 7. Tag 10 Punkte mehr (14: +35, 21: +45, …), dazu ein Ressourcenpaket im Wert
-  Punkte × 150 × (1 + 0,3·s). Die Serie gilt als unterbrochen, wenn weder heute noch gestern abgeschlossen wurde.
+  Punkte × 150 × (1 + `stageGrowth`·s). Die Serie gilt als unterbrochen, wenn weder heute noch gestern abgeschlossen wurde.
 
 ## Auftragsbuch
 

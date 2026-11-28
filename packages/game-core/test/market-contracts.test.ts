@@ -16,26 +16,27 @@ const DAY = 86_400_000;
 const HOUR = 3_600_000;
 const near = (a: number, b: number, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, `${a} ≠ ${b}`);
 
-test("Preisformel: Aufschlag 4 % + 0,5 %/Tag + Menge/(2 × Tiefe), Kauf max(K, E), Verkauf min(K, E)", () => {
-  // Vorlage Rechnung B: Stahl 20.000, Kurs = Richtwert, 1 Tag → 1,095 je Einheit.
+test("Preisformel: Aufschlag baseFee + 0,5 %/Tag + Menge/(2 × Tiefe), Kauf max(K, E), Verkauf min(K, E)", () => {
+  const fee = cfg.baseFee; // v1.38: 0,025 (vorher 0,04)
+  // Vorlage Rechnung B: Stahl 20.000, Kurs = Richtwert, 1 Tag → 1 + baseFee + 0,005 + 0,05 je Einheit.
   const b = contractPrice({ side: "buy", resource: "stahl", qty: 20_000, k: 1, r: 1, rT: 1, termMs: DAY }, balance);
-  near(b.surcharge, 0.04 + 0.005 + 20_000 / (2 * 200_000));
-  near(b.price, 1.095);
-  near(b.feePerUnit, 0.04);
-  near(b.buyerUnit - b.sellerUnit, 0.04);
+  near(b.surcharge, fee + 0.005 + 20_000 / (2 * 200_000));
+  near(b.price, 1 + fee + 0.055);
+  near(b.feePerUnit, fee);
+  near(b.buyerUnit - b.sellerUnit, fee);
   // Stahl dauerhaft hoch (1,52), Richtwert 1: E nach 3 Tagen = 1 + 0,52 × 0,5^3 = 1,065 → Bezug ist der Kurs.
   const hi = contractPrice({ side: "buy", resource: "stahl", qty: 1000, k: 1.52, r: 1, rT: 1, termMs: 3 * DAY }, balance);
   near(hi.expected, 1.065);
   near(hi.basis, 1.52);
   const sell = contractPrice({ side: "sell", resource: "stahl", qty: 1000, k: 1.52, r: 1, rT: 1, termMs: 3 * DAY }, balance);
   near(sell.basis, 1.065);
-  near(sell.price, 1.065 * (1 - (0.04 + 0.015 + 1000 / 400_000)));
-  near(sell.buyerUnit - sell.sellerUnit, 0.04 * 1.065);
+  near(sell.price, 1.065 * (1 - (fee + 0.015 + 1000 / 400_000)));
+  near(sell.buyerUnit - sell.sellerUnit, fee * 1.065);
   // Angekündigte Nachricht (Saisonende +8 %) steckt in R_T: Kauf unter dem Kurs wird teurer.
   const lowK = contractPrice({ side: "buy", resource: "stahl", qty: 1000, k: 0.9, r: 1, rT: 1.08, termMs: 2 * DAY }, balance);
   near(lowK.basis, 1.08 - 0.1 * 0.25);
   // Charakterbonus: 2 Prozentpunkte kleiner.
-  near(contractSurcharge(cfg, 2 * DAY, 1000, 120_000, 0.02), 0.04 + 0.01 + 1000 / 240_000 - 0.02);
+  near(contractSurcharge(cfg, 2 * DAY, 1000, 120_000, 0.02), fee + 0.01 + 1000 / 240_000 - 0.02);
   // Grenzen: Preis immer innerhalb floorFactor … ceilFactor × Grundrichtwert.
   const capped = contractPrice({ side: "buy", resource: "stahl", qty: 1000, k: 2.5, r: 1, rT: 1, termMs: 7 * DAY }, balance);
   near(capped.price, balance.market.ceilFactor * 1);
@@ -172,7 +173,7 @@ test("Laufzeiten bis 24 h vor Saisonende, Preisband für Spielerverträge", () =
   near(band.min, 0.88);
   near(band.max, 1.44);
   const u = playerContractUnits(2, cfg);
-  near(u.sellerUnit, 1.92);
+  near(u.sellerUnit, 2 * (1 - cfg.baseFee));
 });
 
 test("Börse: freier Rahmen = Tageslimit − Umsatz der letzten 24 h − Vertragslieferungen der nächsten 24 h", () => {

@@ -269,6 +269,16 @@ export interface ScoringBalance {
    * Gesamt, also ≤ Anteil/(1 − Anteil) × übrige Punkte); fehlt er, zählen sie unbegrenzt.
    */
   ordersMaxShare?: number;
+  /**
+   * v1.38 (Welle 5, ST-15): Forschung zählt mit diesem Anteil ihres Kostenwerts (erforschte Stufen aller Häfen) zum Ausbau;
+   * fehlt er, zählt Forschung nicht.
+   */
+  researchFactor?: number;
+  /**
+   * v1.38 (Welle 5, ST-16): Faktor auf die Kampfpunkte beider Seiten aus Kämpfen zwischen zwei Spielern (vor Kopfgeld,
+   * Mutfaktor und Paarbremse); Beute unverändert. Fehlt er, 1.
+   */
+  pvpFactor?: number;
 }
 // ---------------------------------------------------------------- Ergebnis
 

@@ -19,6 +19,7 @@ import {
 import { setRandomSeedSource } from "../src/store.ts";
 import { EVENT_RANGE_KM } from "../src/bots-world-events.ts";
 import { evaluateGuards, exitCode, GUARD_LIMITS, type SeasonMetrics } from "./saison-guards.ts";
+import { Wirtschaft } from "./saison-wirtschaft.ts";
 
 const url = process.env.SIM_DATABASE_URL ?? process.env.TEST_DATABASE_URL;
 if (!url) {
@@ -76,6 +77,7 @@ const cartelKinds = new Map<string, number>();
 const eventsInRange = new Map<number, Set<number>>(); // v1.35: je KI die Weltereignisse in Reichweite eines eigenen Hafens
 let finalBots: SeasonMetrics["bots"] = [];
 let finalNest6: SeasonMetrics["nest6"] = [];
+const wirtschaft = new Wirtschaft(db, t0); // v1.38: Füllgrade, Belohnungen, Elektrolyse, Forschung, PvP je Woche
 
 for (let t = t0 + STEP; t <= t0 + DAYS * DAY; t += STEP) {
   fake = t;
@@ -100,7 +102,8 @@ for (let t = t0 + STEP; t <= t0 + DAYS * DAY; t += STEP) {
     botRows = await loadBots(db);
     if (day >= 7) for (const b of botRows) cartel.set(b.id, [...(cartel.get(b.id) ?? []), await cartelShare(db, b.id, t)]);
     await trackEventsInRange();
-    if (day % 7 === 0 || day === DAYS) await weekly(day, t);
+    await wirtschaft.daily(t, botRows);
+    if (day % 7 === 0 || day === DAYS) { await weekly(day, t); await wirtschaft.weekly(day, t, botRows); }
     // Kennzahlen der KI und Nest-6-Beute täglich festhalten: das Saisonende löscht Häfen, Nester und Berichte.
     finalBots = await botMetrics(t);
     finalNest6 = await nest6Loot();
@@ -127,7 +130,7 @@ for (const [step, s] of [...byStep].sort((a, b) => b[1].total - a[1].total)) con
 console.log(`\nKartellverlust der KI nach Berichtsart (Richtwert, ab Tag 7): ${[...cartelKinds].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round(v)}`).join(", ")}`);
 console.log(`\nWächter (Grenzen in saison-guards.ts):`);
 for (const r of results) console.log(`  ${r.ok ? "ok     " : r.level === "fehler" ? "FEHLER " : "WARNUNG"} ${r.text}`);
-if (process.env.SIM_OUT) writeFileSync(process.env.SIM_OUT, JSON.stringify({ limits: GUARD_LIMITS, metrics, results }, null, 1));
+if (process.env.SIM_OUT) writeFileSync(process.env.SIM_OUT, JSON.stringify({ limits: GUARD_LIMITS, metrics, results, wirtschaft: wirtschaft.weeks }, null, 1));
 Date.now = realNow;
 setRandomSeedSource(null);
 await client.end();
