@@ -2,6 +2,19 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.50.0 – 28.11.2026
+
+Balance v1.38
+- Baukosten etwas mehr Proviant statt Elektronik (Proviant lief am stärksten über). Die Chipfabrik ist billiger und rechnet sich jetzt so schnell wie die Raffinerie.
+- Tagesbefehle: Belohnungen halbiert (200/500/1.250 je Stufe).
+- Elektrolyse: Das Gebäudeblatt rechnet vor, wie viel Treibstoff die nächste Stufe am Tag bringt und wann sie sich bezahlt macht.
+- Wertung: Forschung zählt zur Hälfte zum Ausbau. Kampfpunkte aus Kämpfen zwischen Spielern zählen 1,5-fach (für beide Seiten).
+- Lieferverträge: Grundaufschlag 2,5 % statt 4 %; die Vertragsansicht ist kompakter (Regeln und eigenes Angebot aufklappbar, laufende Verträge zuerst).
+- Zerstörer: Luftangriff 45 statt 60 – Bomber gegen Zerstörer nicht mehr übermäßig verlustreich.
+- Kommandopunkte: Der größere Sprung kommt schon ab Kommandozentrale 8.
+- KI-Spieler: Die Festung greift Weltereignisse in Reichweite wieder an (Flugzeuge außer Reichweite bleiben daheim).
+- Sichtungen: Verbände stehen in der Liste vor Nestern und Häfen und gehen nicht mehr unter.
+
 ## 0.49.0 – 28.11.2026
 
 - Weltpolitik: Neue Gezeit-Art „Sturmzeit“ – 72 Stunden mehr und stärkere Stürme, Schiffe langsamer, Konvois sicherer vor dem Kartell, Schatzschiffe doppelt wertvoll. Je Saison kommen drei der vier Arten.
