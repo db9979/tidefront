@@ -42,7 +42,9 @@ test("Rückkehrkarte: ereignisgesteuert, Zeitraum, Nachricht mit Absender, Bau f
   s.buildings.lagerkomplex = 15;
   await db.update(tables.base).set({ state: s }).where(eq(tables.base.id, a.baseId));
   clearRankingCache();
-  await lageAck(engine, a.playerId);
+  // Quittung leicht in der Vergangenheit: Die Nachricht unten bekommt ihren Zeitstempel von der Datenbankuhr, die
+  // gegenüber der Prozessuhr ein paar Millisekunden nachgehen kann (sonst läge sie „vor“ der Quittung).
+  await lageAck(engine, a.playerId, Date.now() - 5000);
   const [p0] = await db.select({ at: tables.player.lageAckAt, rank: tables.player.lageAckRank }).from(tables.player).where(eq(tables.player.id, a.playerId));
   assert.ok(p0.at, "Quittung gespeichert");
   assert.equal(typeof p0.rank, "number", "Rang-Schnappschuss");
