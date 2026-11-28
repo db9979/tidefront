@@ -2,6 +2,19 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.43.0 – 28.11.2026
+
+Balance v1.35 – Werte gelten sofort, die Wertung wird neu berechnet.
+- Kartell: Überfälle auf den Hafen sind deutlich schwächer (Ziel höchstens 10 % der Tagesproduktion). Der Bericht nennt den Verlust zusätzlich in Stunden Produktion.
+- Wertung: Kampf- und Beutepunkte aus Nestern zählen zur Hälfte; PvP und Weltereignisse voll. Tagesbefehle zählen höchstens 5 % des Gesamtrangs.
+- Nest 6: stärkere Besatzung (×1,40), Beute gleich viel wert, aber in weniger Einheiten – mehr passt in den Laderaum. Die Planung zeigt den Anteil, der in den Laderaum passt. Weltereignisse laufen bis Tag 37,5.
+- Saisonfinale: Häfen über 500 km vom Sammelpunkt bekommen eine Vorhut, mehr Beute je Schaden (0,9). Die Armada jagt U-Boote.
+- Kolonien: Ab dem dritten Hafen kostet die Gründung eine Zusatzgebühr; jede Kolonie hat täglichen Unterhalt (höchstens so viel, wie sie selbst erzeugt).
+- Optischer Satellit: Start rund 7.000, Laufzeit 14 Tage.
+- Allianzen: Größe richtet sich nach der Rundengröße (mindestens 3, sonst die Hälfte der Menschen), in der Verwaltung änderbar; Allianzrang ist der Durchschnitt.
+- KI-Spieler: Vergeltung gegen menschliche Angreifer (höchstens einmal je Tag, nur bei klarem Probekampf, abschaltbar in der Verwaltung). Die Festung wagt sich bis Nest 4.
+- Börsenkonvoi: Die Kartellchance rechnet mit allen eigenen Börsenkonvois der letzten 4 Stunden. Aufholhilfe nach Ausbau und Militär. Erfolg „Baumeister“ ab Stufe 12.
+
 ## 0.42.0 – 28.11.2026
 
 - KI-Spieler handeln an der Börse: Sie verkaufen Überschüsse und kaufen Fehlendes nach Stunden Produktion, ihre Lager bleiben dadurch klein.
