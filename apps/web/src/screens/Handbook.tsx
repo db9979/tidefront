@@ -7,7 +7,7 @@ import { label, fmtNum } from "../lib/names.ts";
 import { BRANCHES } from "../lib/research.ts";
 import { buildingText, unitText, unitTone } from "../lib/info.ts";
 import { Icon, IconTile } from "../icons.tsx";
-import { BackButton, FilterChips } from "../ui.tsx";
+import { BackButton } from "../ui.tsx";
 import { IntelChapter } from "../components/IntelChapter.tsx";
 import { AdmiralChapter } from "../components/AdmiralChapter.tsx"; // Admirale
 import { AchievementsChapter } from "../components/AchievementsChapter.tsx"; // Erfolge
@@ -54,15 +54,27 @@ function npcEventText(kinds: string[] | undefined, factor: string): string {
 
 interface Chapter { id: string; icon: string; title: string; body: ReactNode }
 
+/** Themen und Reihenfolge der Kapitel: vom Einstieg über Wirtschaft und Kampf bis zum Nachschlagen. */
+const GROUPS: { title: string; ids: string[] }[] = [
+  { title: "Einstieg", ids: ["ziel", "bauen", "tagesbefehle", "komfort"] },
+  { title: "Wirtschaft", ids: ["wirtschaft", "wetter", "forschung", "haefen", "felder"] },
+  { title: "Flotte und Kampf", ids: ["missionen", "kampf", "schutz", "admirale", "see"] },
+  { title: "Aufklärung", ids: ["lagebild", "nachrichtendienst"] },
+  { title: "Welt und Gegner", ids: ["ki", "weltereignisse", "weltpolitik", "saisonfinale"] },
+  { title: "Handel und Bündnisse", ids: ["boerse", "vertraege", "allianz", "allianz-ops"] },
+  { title: "Saison und Fortschritt", ids: ["saison", "erfolge", "aufholhilfe", "freunde"] },
+  { title: "Nachschlagen", ids: ["einheiten", "begriffe"] },
+];
+
 function P({ children }: { children: ReactNode }) {
   return <p className="text-sm text-slate-200 mb-2 leading-relaxed">{children}</p>;
 }
 
 // Rahmen (UX-0.43 B2): eigene Ansicht neben Einstellungen und Verwaltung (App.tsx). Kein eingebettetes Einstellungsblatt
-// mehr; Einstellungen und Fehler melden nur als Textlinks (ihr Ort ist das Menü). Kapitel als umbrechende Filterchips.
+// mehr; Einstellungen und Fehler melden nur als Textlinks (ihr Ort ist das Menü). Kapitel nach Themen gruppiert (GROUPS).
 export function Handbook({ onClose, onSettings }: { onClose: () => void; onSettings: () => void }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
-  // Alle Kapitel zu: die Sprungleiste oben ist die Übersicht (vorher war „Worum es geht“ offen).
+  // Alle Kapitel zu; die gruppierten Köpfe sind die Übersicht.
   const [open, setOpen] = useState<string | null>(null);
   // Beim Öffnen eines Kapitels (Kopf oder Sprungleiste) dessen Anfang ins Bild holen – nicht beim ersten Anzeigen.
   const opened = useRef(false);
@@ -342,6 +354,11 @@ export function Handbook({ onClose, onSettings }: { onClose: () => void; onSetti
       ) : null,
     },
   ];
+  const byId = new Map(chapters.map((c) => [c.id, c]));
+  // Nicht gruppierte Kapitel landen unter „Nachschlagen“, damit nie eines verloren geht.
+  const grouped = new Set(GROUPS.flatMap((g) => g.ids));
+  const rest = chapters.filter((c) => !grouped.has(c.id)).map((c) => c.id);
+  const groups = GROUPS.map((g, i) => (i === GROUPS.length - 1 ? { ...g, ids: [...g.ids, ...rest] } : g));
 
   return (
     <div data-testid="handbook-screen" className="max-w-3xl mx-auto">
@@ -354,20 +371,26 @@ export function Handbook({ onClose, onSettings }: { onClose: () => void; onSetti
         {" · "}<button type="button" className="tap underline text-see" onClick={onSettings}>Einstellungen</button>
         {" · "}<button type="button" className="tap underline text-see" onClick={requestBugReport}>Fehler melden</button>
       </p>
-      {/* Kapitelübersicht: ein Tipp öffnet das Kapitel und springt hin. */}
-      <nav aria-label="Kapitel">
-        <FilterChips label="Kapitel" value={open} onChange={setOpen} items={chapters.map((c) => ({ id: c.id, label: c.title }))} />
-      </nav>
-      {chapters.map((c) => (
-        <section key={c.id} id={`hb-${c.id}`} className="panel rounded-xl mb-2 overflow-hidden scroll-mt-3">
-          <button type="button" className="tap w-full flex items-center gap-3 p-3 text-left" onClick={() => setOpen(open === c.id ? null : c.id)} aria-expanded={open === c.id}>
-            <Icon id={c.icon} size={30} />
-            <span className="font-serif text-[18px] flex-1">{c.title}</span>
-            <span className="text-slate-400">{open === c.id ? "▴" : "▾"}</span>
-          </button>
-          {open === c.id && <div className="px-3 pb-3">{c.body}</div>}
-        </section>
-      ))}
+      {/* Kapitel nach Themen gruppiert, in Lernreihenfolge (keine doppelte Übersicht mehr). */}
+      {groups.map((g) => {
+        const list = g.ids.map((id) => byId.get(id)).filter((c): c is Chapter => !!c);
+        if (list.length === 0) return null;
+        return (
+          <div key={g.title} role="group" aria-label={g.title} className="mb-4">
+            <h2 className="font-display uppercase text-[11px] tracking-[0.12em] text-ink2 mb-1.5 mt-2">{g.title}</h2>
+            {list.map((c) => (
+              <section key={c.id} id={`hb-${c.id}`} className="panel rounded-xl mb-2 overflow-hidden scroll-mt-3">
+                <button type="button" className="tap w-full flex items-center gap-3 p-3 text-left" onClick={() => setOpen(open === c.id ? null : c.id)} aria-expanded={open === c.id}>
+                  <Icon id={c.icon} size={30} />
+                  <span className="font-serif text-[18px] flex-1">{c.title}</span>
+                  <span className="text-slate-400">{open === c.id ? "▴" : "▾"}</span>
+                </button>
+                {open === c.id && <div className="px-3 pb-3">{c.body}</div>}
+              </section>
+            ))}
+          </div>
+        );
+      })}
       <VersionLine onOpen={() => setNews(true)} />
       <ChangelogSheet open={news} onClose={() => setNews(false)} />
     </div>

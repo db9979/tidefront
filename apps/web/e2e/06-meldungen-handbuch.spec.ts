@@ -63,8 +63,9 @@ test("Handbuch: Kapitel, Neuigkeiten, Einstellungen, Verwaltung", async ({ page,
     await expectNoHorizontalOverflow(page, `Handbuch · ${title}`);
   }
 
-  // Kapitelübersicht (Filterchips) öffnet ein Kapitel.
-  await page.getByRole("navigation", { name: "Kapitel" }).getByRole("radio", { name: "Börse" }).click();
+  // Kapitel sind nach Themen gruppiert (keine doppelte Übersicht); Kopf öffnet das Kapitel.
+  await expect(page.getByRole("radio", { name: "Börse" })).toHaveCount(0);
+  await page.getByRole("group", { name: "Handel und Bündnisse" }).getByRole("button", { name: /^Börse/ }).click();
   await expect(page.locator("#hb-boerse").getByRole("button").first()).toHaveAttribute("aria-expanded", "true");
 
   // Was ist neu?

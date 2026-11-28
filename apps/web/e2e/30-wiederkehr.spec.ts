@@ -123,7 +123,7 @@ test.describe("Handy 390 × 844", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Menü", exact: true }).click();
     await page.getByRole("dialog").getByRole("button", { name: /^Handbuch/ }).click();
-    await page.getByRole("navigation", { name: "Kapitel" }).getByRole("radio", { name: "Begriffe" }).click();
+    await page.getByRole("group", { name: "Nachschlagen" }).getByRole("button", { name: /^Begriffe/ }).click();
     const g = page.getByTestId("glossary");
     await expect(g).toBeVisible();
     for (const term of ["Lage", "Hafenmeisterei", "Marktwetter", "Umstände", "Gezeit", "Seerat", "Ansehen", "Gesuch", "Tagesbefehl", "Auftrag", "Kommandopunkte"]) {
@@ -164,7 +164,7 @@ test.describe("Desktop 1440 px", () => {
     await expectNoHorizontalOverflow(page, "Lage Desktop");
     await shot(page, "d-lage-besuch");
     await page.keyboard.press("?");
-    await page.getByRole("navigation", { name: "Kapitel" }).getByRole("radio", { name: "Begriffe" }).click();
+    await page.getByRole("group", { name: "Nachschlagen" }).getByRole("button", { name: /^Begriffe/ }).click();
     await expect(page.getByTestId("glossary")).toBeVisible();
     await shot(page, "d-begriffe");
   });
