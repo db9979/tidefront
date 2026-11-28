@@ -11,7 +11,7 @@ import { Button, Loading, Sheet } from "../ui.tsx";
 import { LagebildTab } from "../components/LagebildTab.tsx"; // Sichtungen (früher Karte → Sichtungen)
 import { LegendBody } from "../map/Legend.tsx"; // im Blatt „Ebenen“
 import { Switch } from "../components/Switch.tsx";
-import { MAP_BTN } from "../map/controls.ts";
+import { MapButton, SAFE_LEFT, SAFE_RIGHT } from "../map/MapControls.tsx";
 import { Icon } from "../icons.tsx";
 import { RELATION_HEX, TacticalIcon, relationKind } from "../map/TacticalIcon.tsx";
 import { fmtPosition } from "../map/coords.ts";
@@ -140,29 +140,23 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase, layo
           harbors={harbors}
           showSensors={showSensors}
           controls={<>
-            <button type="button" className={MAP_BTN} onClick={() => { setCenterOn(home); setRecenter((n) => n + 1); }} aria-label="Mein Hafen" title="Mein Hafen">
-              <TacticalIcon kind="own" size={22} />
-            </button>
-            {/* UX 0.43 (B6 / K-1): Sichtungen als Textknopf; Wetter, Sensoren und Legende im Blatt „Ebenen“. */}
-            <button type="button" className={`${MAP_BTN} !w-auto px-2 font-display uppercase text-[10px] tracking-[0.08em]`} onClick={() => setSicht(true)} title="Sichtungen: Sensoren, fremde Verbände, Satelliten, Radarposten" data-testid="map-sichtungen">
-              Sichtungen
-            </button>
-            <button type="button" className={`${MAP_BTN} !w-auto px-2 font-display uppercase text-[10px] tracking-[0.08em]`} onClick={() => setLayers(true)} aria-haspopup="dialog" data-testid="map-ebenen">
-              Ebenen
-            </button>
+            {/* Nach 0.46: alles als gleich große Symbolknöpfe mit Namen und Tooltip (Sichtungen und Ebenen bleiben getrennte Blätter). */}
+            <MapButton icon="karte-hafen" label="Mein Hafen" title="Mein Hafen – Karte auf den aktiven Hafen ausrichten" onClick={() => { setCenterOn(home); setRecenter((n) => n + 1); }} />
+            <MapButton icon="karte-fernglas" label="Sichtungen" title="Sichtungen: Sensoren, fremde Verbände, Satelliten, Radarposten" onClick={() => setSicht(true)} testId="map-sichtungen" dialog />
+            <MapButton icon="karte-ebenen" label="Ebenen und Legende" title="Ebenen und Legende: Wetter, Sensoren, Kartenzeichen" onClick={() => setLayers(true)} testId="map-ebenen" dialog />
           </>}
         />
         {/* Links oben nur noch das kleine Wetterkärtchen (aufklappbar) und die Feindwarnung. */}
-        <div className="absolute left-1.5 top-3 flex flex-col gap-1 items-start pointer-events-none">
+        <div className="absolute top-2 flex flex-col gap-1 items-start pointer-events-none max-w-[calc(100%-4.5rem)]" style={SAFE_LEFT}>
           {showWeather && meta.data?.balance.weather && <div className="pointer-events-auto"><WeatherChip at={home} wb={meta.data.balance.weather} now={now} radar={hasRadar} /></div>}
           {alert && (
-            <div className="rounded-[3px] bg-card border border-siegel border-l-4 text-siegel px-2 py-1 text-[11px] font-display uppercase tracking-wider">
+            <div className="rounded-[3px] bg-card/95 border border-siegel border-l-4 text-siegel px-2 py-1 text-[11px] font-display uppercase tracking-wider shadow-sm">
               Feindkontakt – Angriff im Anmarsch
             </div>
           )}
         </div>
         {sel && (
-          <div className="absolute right-2 bottom-2 rounded-[3px] bg-card border border-rule px-2 py-1 text-[11px] mono text-ink2 pointer-events-none">
+          <div className="absolute bottom-2 rounded-[3px] bg-card/95 border border-rule px-2 py-1 text-[11px] mono text-ink2 pointer-events-none" style={SAFE_RIGHT} data-testid="map-position">
             {(() => { const c = hexCenter(sel.col, sel.row); return fmtPosition(c.lat, c.lon); })()}
           </div>
         )}
@@ -270,7 +264,7 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase, layo
         </div>
       )}
       </MapPanels>}
-      <Sheet open={layers} onClose={() => setLayers(false)} title="Ebenen und Legende" icon={<Icon id="wolke" size={36} />}>
+      <Sheet open={layers} onClose={() => setLayers(false)} title="Ebenen und Legende" icon={<Icon id="karte-ebenen" size={32} />}>
         <div className="mb-3 divide-y divide-rule">
           <Switch label="Wetter" on={showWeather} onChange={(v) => { localStorage.setItem("tf-wetter", v ? "an" : "aus"); setShowWeather(v); }} />
           {map.data.intel.sensors.length > 0 && <Switch label="Sensoren (Reichweiten)" on={showSensors} onChange={(v) => { localStorage.setItem("tf-sensoren", v ? "an" : "aus"); setShowSensors(v); }} />}

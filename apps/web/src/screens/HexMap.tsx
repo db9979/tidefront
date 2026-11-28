@@ -12,7 +12,7 @@ import {
   inGrid,
 } from "@tidefront/world";
 import type { MapData } from "../lib/trpc.ts";
-import { MAP_BTN } from "../map/controls.ts";
+import { MapToolbar } from "../map/MapControls.tsx";
 import { serverNow, useNow } from "../lib/time.ts";
 import { registerSnapshotSurface } from "../lib/screenshot.ts";
 import { buildTerrain, hexPoints, xyOf } from "../map/terrain.ts";
@@ -265,10 +265,10 @@ export function HexMap(props: HexMapProps) {
           if (pos !== lastPos) {
             lastPos = pos;
             s.graticule.place(world, w, h);
-            // Windrose klein unten rechts (über der Positionsanzeige), damit sie keine Felder unter der Knopfleiste verdeckt
+            // Windrose klein unten rechts (über der Positionsanzeige, bündig mit der Knopfleiste darüber)
             const cs = 0.55;
             s.compass.scale.set(cs);
-            s.compass.position.set(w - 24, h - 58);
+            s.compass.position.set(w - 31, h - 58);
             s.compass.visible = h > 360 && w > 300;
           }
           const now = performance.now();
@@ -485,12 +485,8 @@ export function HexMap(props: HexMapProps) {
   return (
     <div className="w-full h-full relative">
       <div ref={host} className="w-full h-full overflow-hidden select-none" data-planned-route={props.plannedRoute?.hexes.length ?? 0} />
-      {/* Eine schmale Knopfleiste am rechten Rand (44 px): Zoom und die Knöpfe des Bildschirms. */}
-      <div className="absolute right-1.5 top-3 flex flex-col gap-1">
-        <button type="button" className={MAP_BTN} onClick={() => zoomBy(1.5)} aria-label="Hineinzoomen">+</button>
-        <button type="button" className={MAP_BTN} onClick={() => zoomBy(1 / 1.5)} aria-label="Herauszoomen">−</button>
-        {props.controls}
-      </div>
+      {/* Eine schmale Knopfleiste am rechten Rand (44 px): Zoom und die Knöpfe des Bildschirms (map/MapControls.tsx). */}
+      <MapToolbar onZoom={zoomBy}>{props.controls}</MapToolbar>
     </div>
   );
 }

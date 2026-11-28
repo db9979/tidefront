@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BEAUFORT_WORDS, beaufort, fogRadarFactor, stormShare, weatherAt, type Weather, type WeatherBalance } from "@tidefront/game-core";
 import { hexCenter } from "@tidefront/world";
 import { Icon } from "../icons.tsx";
+import { MAP_CHIP } from "./MapControls.tsx";
 
 type Hex = { col: number; row: number };
 
@@ -59,14 +60,15 @@ export function WeatherChip({ at, wb, now, radar }: { at: Hex; wb: WeatherBalanc
   // Auf dem Kärtchen nur, was am Hafen zählt: Startverbot, Radar, Flugzeuge im Sturm (Schiffe zeigt die Route).
   const effects = weatherEffects(w, wb, true, radar).filter((e) => /Radar|Flugzeuge/.test(e.text));
   const fog = fogText(w);
-  // Klein (Symbol + Windstärke), damit es kaum Karte verdeckt; Antippen klappt die Angaben auf.
+  // Klein (Symbol + Windstärke, 44 px hoch wie die Kartenleiste), damit es kaum Karte verdeckt; Antippen klappt die Angaben auf.
   return (
     <button
       type="button"
       onClick={() => setOpen((o) => !o)}
       aria-expanded={open}
       aria-label={`Wetter am Hafen: ${skyOf(w, wb)}, Wind ${beaufort(w.wind)} Beaufort`}
-      className={`rounded-[3px] bg-card/95 border text-left flex items-center gap-1.5 shadow-sm ${open ? "px-2 py-1 max-w-[240px]" : "h-9 px-1.5"} ${w.storm ? "border-siegel border-l-4" : "border-rule"}`}
+      title={open ? undefined : "Wetter am Hafen – antippen für Wirkung"}
+      className={`${MAP_CHIP} text-left flex items-center gap-1.5 ${open ? "px-2 py-1 max-w-[240px]" : "px-2"} ${w.storm ? "border-siegel border-l-4" : "border-ink"}`}
     >
       <span className={`inline-block tf-mv tf-wx-${iconOf(w, wb)}`}><Icon id={iconOf(w, wb)} size={open ? 24 : 20} /></span>
       {open ? (

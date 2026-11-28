@@ -68,13 +68,14 @@ export class Graticule {
       const wy = xyOf(LON0, lat).y;
       const sy = world.y + wy * s;
       // oben links liegt das Wetterkärtchen: erst darunter beschriften; nur Linien innerhalb des Kartenrahmens
-      t.visible = lat % this.latStep === 0 && sy > top + 84 && sy < h - 20 && wy >= MAP_BOUNDS.y0 && wy <= MAP_BOUNDS.y1;
+      t.visible = lat % this.latStep === 0 && sy > top + 96 && sy < h - 20 && wy >= MAP_BOUNDS.y0 && wy <= MAP_BOUNDS.y1;
       t.position.set(left, sy - 15);
     }
     for (const [lon, t] of this.lonText) {
       const wx = xyOf(lon, LAT1).x;
       const sx = world.x + wx * s;
-      t.visible = lon % this.lonStep === 0 && sx > left + 44 && sx < w - 50 && wx >= MAP_BOUNDS.x0 && wx <= MAP_BOUNDS.x1;
+      // links oben das Wetterkärtchen (bis ~100 px), rechts die Knopfleiste (46 px + Rand): Beschriftung (~45 px breit) nur dazwischen
+      t.visible = lon % this.lonStep === 0 && sx > left + 96 && sx < w - 108 && wx >= MAP_BOUNDS.x0 && wx <= MAP_BOUNDS.x1;
       t.position.set(sx + 3, top);
     }
   }
