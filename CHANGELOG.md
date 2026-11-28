@@ -2,6 +2,10 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.48.2 – 28.11.2026
+
+- Gebäudeblatt: Produktionsgebäude zeigen ihre Leistung in klaren Zeilen – das Gebäude selbst („Raffinerie +60 Treibstoff/h“), den Hafen gesamt mit Grundproduktion („Hafen gesamt +70/h“) und den Strombedarf; bei der nächsten Stufe zusätzlich, was der Ausbau bringt („(+9)“).
+
 ## 0.48.1 – 28.11.2026
 
 - Handbuch: Die doppelte Kapitelübersicht (Blasen) ist weg. Die Kapitel stehen nach Themen geordnet – Einstieg, Wirtschaft, Flotte und Kampf, Aufklärung, Welt und Gegner, Handel und Bündnisse, Saison und Fortschritt, Nachschlagen.
