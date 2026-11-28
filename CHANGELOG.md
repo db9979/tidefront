@@ -2,6 +2,12 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.47.0 – 28.11.2026
+
+Balance v1.36
+- Kartell: Überfälle auf den Hafen nur noch alle 24 statt 18 Stunden (Verlust im Mittel rund 6 % der Tagesproduktion).
+- KI-Spieler: Verbände passen sich den Kommandopunkten an (vorher blieben Überfälle tagelang aus), Flugzeuge außer Reichweite bleiben daheim, Nestfahrten bis 1.200 km. Der Freibeuter hält Plätze für Nestfahrten frei und bündelt ab Tag 35 seine Verbände gegen die Inselfestungen (Nest 6). Die Festung wagt sich bis Nest 5.
+
 ## 0.46.0 – 28.11.2026
 
 - Lage neu geordnet: oben dein Fortschritt („Platz 3 von 8 · 420 bis Platz 2 · Tag 5/42“, Serie der Tagesbefehle), dann Alarm, „Wartet auf dich“ mit „Alle abholen“ ohne Scrollen, der nächste Bauvorschlag („Bauhof frei · Chipfabrik 1 · 40 s · Bauen“), Unterwegs (jede Fahrt nur einmal), Als Nächstes (12 h), Weltpolitik in einer Zeile.
