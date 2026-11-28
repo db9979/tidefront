@@ -2,6 +2,15 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.45.0 – 28.11.2026
+
+- Menü, Handbuch, Einstellungen und Verwaltung sind eigene Ansichten: „Zurück“ (Knopf, Browser, Esc) führt dorthin, wo du herkamst. Jeder Menüeintrag steht nur einmal da.
+- Einstellungen in vier Gruppen: Benachrichtigungen (Push, Ruhezeit, Morgenbericht, E-Mail), Spiel (Nachtschild), Konto, Hilfe. Uhrzeiten im 24-Stunden-Format; Schalter ohne Wirkung sind ausgegraut und nennen den Grund.
+- Verwaltung mit vier Reitern: Übersicht, Spieler, Welt (Gefahrenzone mit Rückfrage), Statistik.
+- Breite Bildschirme: Handbuch, Einstellungen, Verwaltung, Forschung und Saison nutzen die volle Breite; „Karte groß“ holt die Karte zurück. Unten links Saison, Handbuch, Einstellungen, Verwaltung. Rohstoffe oben größer mit Lagerbalken, daneben dein Platz in der Rangliste.
+- Tastaturkürzel: 1–5 Reiter, A Alle abholen, M Karte groß, ? Handbuch, Komma Einstellungen, Esc schließt.
+- „Was hilft“ in der Missionsvorschau ragt am Handy nicht mehr über den Rand.
+
 ## 0.44.0 – 28.11.2026
 
 - Ausbildung: Fertige Einheiten und Verteidigungsanlagen wandern einzeln in den Bestand, nicht erst am Ende des ganzen Auftrags – auch wenn du das Spiel nicht geöffnet hast. Bei einem Angriff verteidigen die schon fertigen mit.
