@@ -50,7 +50,10 @@ export async function intelOverview(engine: Engine, playerId: number) {
         : `${d.submerged ? "U-Boot-Verband" : d.patrol ? "Patrouille" : "Verband"} ${d.owner ? `von ${String(d.owner)}` : "(unbekannt)"} · ${String(d.size ?? "")}`;
       return { kind: k.kind, id: k.objectId, name, col: pos?.col ?? 0, row: pos?.row ?? 0, level: k.level, source: k.source, atMs: k.seenAtMs, age: k.age as string, patrol: k.kind === "fleet" && !!d.patrol };
     });
-  const sightings = [...live, ...stored].slice(0, 40);
+  // Bewegliche Verbände zuerst (kurzlebig und wichtig, z. B. ein vom Satelliten erfasster U-Boot-Verband), dann
+  // Wracks, dann ortsfeste Ziele; innerhalb gleicher Art bleibt die Reihenfolge (live vor gespeichert, neu vor alt).
+  const prio = (k: string) => (k === "fleet" ? 0 : k === "wreck" ? 1 : 2);
+  const sightings = [...live, ...stored].sort((a, b) => prio(a.kind) - prio(b.kind)).slice(0, 40);
   // Gemeldete fremde Patrouillen und Aufklärer (Berichte „sichtung“ der letzten 24 h an die Partei).
   const reports = await db.select().from(tables.battleReport).where(and(
     eq(tables.battleReport.kind, "sichtung"), inArray(tables.battleReport.defenderPlayerId, sight.members), gt(tables.battleReport.createdAt, new Date(nowMs - 24 * HOUR_MS)),
