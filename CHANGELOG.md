@@ -2,6 +2,10 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.48.3 – 28.11.2026
+
+- KI-Spieler: Der Freibeuter rüstet ab Tag 30 gezielt für die Inselfestungen (Nest 6): Er hält ein Angriffspaket im Heimathafen zurück, bildet dafür aus, legt Treibstoff für die Fahrt zurück und greift ab Tag 35 mit gebündelten Verbänden an. Damit wird er im Endspiel ein echter Rivale um die große Beute.
+
 ## 0.48.2 – 28.11.2026
 
 - Gebäudeblatt: Produktionsgebäude zeigen ihre Leistung in klaren Zeilen – das Gebäude selbst („Raffinerie +60 Treibstoff/h“), den Hafen gesamt mit Grundproduktion („Hafen gesamt +70/h“) und den Strombedarf; bei der nächsten Stufe zusätzlich, was der Ausbau bringt („(+9)“).
