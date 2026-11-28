@@ -167,7 +167,10 @@ async function convoyRows(db: DbOrTx, playerId: number, bases: BaseRow[], nowMs:
     const incoming = c.recipientId === playerId;
     const cargo = amounts(c.cargo as ResourceMap);
     const label = CONVOY_TEXT[c.kind] ?? "Konvoi";
-    const from = c.senderId === null ? `Handelshafen ${tradePortNameAt(c.fromCol, c.fromRow) ?? "?"}` : names.get(c.senderId) ?? "?";
+    // Feldertrag kommt vom Rohstofffeld (kein Handelshafen); Börse/Verträge ohne Absender vom Handelshafen.
+    const port = c.senderId === null && c.kind !== "feld" ? tradePortNameAt(c.fromCol, c.fromRow) : null;
+    const from = c.kind === "feld" ? `Rohstofffeld ${c.fromCol}/${c.fromRow}`
+      : c.senderId === null ? (port ? `Handelshafen ${port}` : "Handelshafen") : names.get(c.senderId) ?? "?";
     const sub = incoming
       ? [`von ${from}`, harborSub(bases, c.recipientBaseId)].filter(Boolean).join(" · ")
       : `an ${names.get(c.recipientId) ?? "?"}`;

@@ -90,6 +90,20 @@ test("Börsenkauf kommt nach genau 4 h an – nah und fern gleich, Konvoi mit de
   }
 });
 
+test("Feldertrag nennt das Rohstofffeld als Herkunft, nicht einen Handelshafen", async () => {
+  const a = await newPlayer("Feldherr", coastByPort(150, 600));
+  const d = await buyStahl(a.playerId, 200);
+  // Den Börsenkonvoi zum Feldertrag umwidmen (ohne Absender, Start auf einem Feld statt im Handelshafen).
+  await db.update(tables.convoy).set({ kind: "feld", fromCol: 12, fromRow: 34 }).where(eq(tables.convoy.deliveryId, d.id));
+  const [cv] = await db.select({ id: tables.convoy.id }).from(tables.convoy).where(eq(tables.convoy.deliveryId, d.id));
+  const v = await lageView(engine, a.playerId);
+  const r = v.soon.find((x) => x.key === `konvoi:${cv.id}`);
+  assert.ok(r, "Feldertrag in der Lage");
+  assert.match(r.text, /^Feldertrag trifft ein/);
+  assert.match(r.sub ?? "", /^von Rohstofffeld 12\/34/);
+  assert.doesNotMatch(r.sub ?? "", /Handelshafen/);
+});
+
 test("lage.get bündelt Angriff, Bau, Ausbildung, Mission, Konvoi, Vertrag; brief zählt nur Dringendes", async () => {
   const a = await newPlayer("Lagechef", coastByPort(150, 600));
   const foe = await newPlayer("Angreifer", coastByPort(150, 1200));
