@@ -1,6 +1,6 @@
 // Spielwissen für die Oberfläche: Beschreibungen, Wirkung je Stufe, Rolle der Einheiten.
 import type { Balance } from "./trpc.ts";
-import { fmtNum } from "./names.ts";
+import { fmtNum, label as nameOf } from "./names.ts";
 import { commandPointsAt } from "@tidefront/game-core";
 
 export const BUILDING_TEXT: Record<string, { kurz: string; lang: string }> = {
@@ -156,15 +156,21 @@ export function unitTone(balance: Balance, id: string): Tone {
 }
 
 /** Wirkung eines Gebäudes auf Stufe L als kurzer Text (null, wenn es nichts Messbares gibt). */
-export function buildingEffect(balance: Balance, id: string, level: number): string | null {
+export function buildingEffect(balance: Balance, id: string, level: number, from?: number): string | null {
   const def = balance.buildings[id];
   if (!def) return null;
   const g = balance.building.productionGrowth;
   if (def.produces) {
-    // Grundproduktion des Hafens läuft auch ohne Werk – nennen, sonst wirkt „+0/h“ wie Stillstand.
+    // Gebäude und Hafen gesamt getrennt nennen: Die Grundproduktion des Hafens läuft auch ohne Werk (sonst wirkt
+    // „+0/h“ wie Stillstand); mit `from` (Vergleichsstufe) zusätzlich, was der Ausbau bringt.
     const trickle = balance.baseTricklePerHour?.[def.produces] ?? 0;
-    if (level < 1) return trickle > 0 ? `Werk +0 ${label(def.produces)}/h, Grundproduktion +${fmtNum(trickle)}/h` : `+0 ${label(def.produces)}/h`;
-    return `+${fmtNum((def.perHour ?? 0) * g ** (level - 1))} ${label(def.produces)}/h${trickle > 0 ? ` (dazu Grundproduktion +${fmtNum(trickle)}/h)` : ""}, braucht ${fmtNum((def.powerPerLevel ?? 0) * level)} Strom`;
+    const at = (l: number) => (l < 1 ? 0 : Math.round((def.perHour ?? 0) * g ** (l - 1)));
+    const own = at(level);
+    const gain = from !== undefined && level > from ? ` (+${fmtNum(own - at(from))})` : "";
+    const lines = [`${nameOf(id)} +${fmtNum(own)} ${label(def.produces)}/h${gain}`];
+    if (trickle > 0) lines.push(`Hafen gesamt +${fmtNum(own + trickle)}/h`);
+    if (level >= 1) lines.push(`braucht ${fmtNum((def.powerPerLevel ?? 0) * level)} Strom`);
+    return lines.join("\n"); // eine Angabe je Zeile (Base.tsx: whitespace-pre-line)
   }
   if (def.powerSupplyPerLevel) return `${fmtNum(def.powerSupplyPerLevel * level)} Strom, verbraucht ${fmtNum((def.fuelPerHourPerLevel ?? 0) * level)} Treibstoff/h`;
   if (def.windPowerPerLevel) return `bis ${fmtNum(def.windPowerPerLevel * level)} Strom bei vollem Wind`;

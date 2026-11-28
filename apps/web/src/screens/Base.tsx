@@ -248,7 +248,7 @@ function BuildingSheet({ b, live, base, res, onClose, onTroops, onResearch }: { 
   const reasonCode = maxed ? null : b.requires ? "building_requires" : capped ? "command_cap" : queueFull ? "queue_full" : !enough ? "insufficient_resources" : null;
   const [help, setHelp] = useWhatHelps();
   const now = balance ? buildingEffect(balance, b.id, b.level) : null;
-  const next = balance && !maxed ? buildingEffect(balance, b.id, target) : null;
+  const next = balance && !maxed ? buildingEffect(balance, b.id, target, b.level) : null;
   const trains = ["werft", "kaserne", "flugfeld", "nachrichtendienst"].includes(b.id);
   const sabotaged = sabotagedUntil(base, b.id, Date.now());
   // Wirksame Werte mit Aufschlüsselung nach Quelle (nur, wenn eine Quelle wirkt).
@@ -264,7 +264,7 @@ function BuildingSheet({ b, live, base, res, onClose, onTroops, onResearch }: { 
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="rounded-xl bg-paper border border-rule p-2">
             <div className="text-[11px] uppercase tracking-wider text-slate-400">Jetzt</div>
-            <div className="text-sm font-semibold">{now ?? "–"}</div>
+            <div className="text-sm font-semibold whitespace-pre-line">{now ?? "–"}</div>
           </div>
           {maxed ? (
             <div className="rounded-xl bg-paper border border-messing/60 p-2">
@@ -274,7 +274,7 @@ function BuildingSheet({ b, live, base, res, onClose, onTroops, onResearch }: { 
           ) : (
             <div className="rounded-xl bg-emerald-950 border border-moos/50 p-2">
               <div className="text-[11px] uppercase tracking-wider text-emerald-300">Stufe {target}</div>
-              <div className="text-sm font-semibold">{next ?? "–"}</div>
+              <div className="text-sm font-semibold whitespace-pre-line">{next ?? "–"}</div>
             </div>
           )}
         </div>
