@@ -2,6 +2,10 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.43.1 – 28.11.2026
+
+- Lage und Konvoi-Blatt: Felderträge nennen jetzt ihr Rohstofffeld als Herkunft („von Rohstofffeld 66/23“) statt „von Handelshafen ?“.
+
 ## 0.43.0 – 28.11.2026
 
 Balance v1.35 – Werte gelten sofort, die Wertung wird neu berechnet.
