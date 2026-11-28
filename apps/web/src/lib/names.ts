@@ -244,7 +244,7 @@ const ERRORS: Record<string, string> = {
   // Lieferverträge (v1.31)
   no_contracts: "Lieferverträge gibt es in dieser Saison nicht.",
   no_ki: "Diesen KI-Spieler gibt es nicht (mehr) als Vertragspartner.",
-  ki_refuses: "Dieser KI-Spieler schließt gerade nichts mit dir ab (nach deinem Überfall 72 Stunden lang, als Berüchtigter gar nicht).",
+  ki_refuses: "Dieser KI-Spieler schließt gerade nichts mit dir ab (nach deinem Überfall 72 Stunden lang, als Berüchtigter gar nicht, während einer Ächtung des Seerats kein KI-Spieler).",
   // Weltpolitik (Gezeit, Seerat, Ansehen, Gesuche)
   ki_not_trusted: "Einen Nichtangriffspakt schließt dieser KI-Spieler erst, wenn dein Ansehen bei ihm „Vertraut“ ist.",
   no_gesuch: "Dieses Gesuch gibt es nicht.",

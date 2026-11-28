@@ -9,6 +9,7 @@ import type { GeoPoint } from "./types.ts";
 import { mulberry32 } from "./rng.ts";
 import { frontClouds, frontLines, type FrontLine } from "./weather-fronts.ts";
 import type { ForecastBalance } from "./weather-forecast.ts";
+import { stormAt, stormFromAt, stormKey } from "./weather-storm.ts"; // Weltpolitik: Sturmzeit
 
 const HOUR_MS = 3600000;
 const RAD = Math.PI / 180;
@@ -253,8 +254,8 @@ function computeWeather(lat: number, lon: number, ms: number, wb: WeatherBalance
   let cloudAdd = 0;
   let calm = 0;
   const kmLon = KM_PER_DEG * Math.cos(lat * RAD);
-  // Tiefs im Winter kräftiger als im Sommer.
-  const season = 0.75 + 0.25 * seasonAt(ms);
+  // Tiefs im Winter kräftiger als im Sommer; in einer Sturmzeit (Weltpolitik) zusätzlich um die Sturmstärke.
+  const season = (0.75 + 0.25 * seasonAt(ms)) * (stormAt(ms)?.strength ?? 1);
   for (const { sys, env } of activeSystems(h, wb)) {
     const age = h - sys.bornH;
     const cLat = sys.lat0 + sys.vLat * age;
@@ -287,7 +288,7 @@ function computeWeather(lat: number, lon: number, ms: number, wb: WeatherBalance
   const still = clamp01(1 - (wind - 0.2) / 0.45);
   const fogNoise = 0.5 + 0.5 * noise3(wb.seed ^ 0x3333, lon / 4, lat / 4, h / 6);
   const fog = clamp01(base.fog * still * ((0.75 + 0.25 * (1 - daylight)) * (0.6 + 0.8 * fogNoise) + 0.25 * Math.min(1, calm)));
-  return { wind, clouds, fog, daylight, storm: wind >= wb.stormFrom };
+  return { wind, clouds, fog, daylight, storm: wind >= stormFromAt(wb, ms) };
 }
 
 /**
@@ -295,7 +296,7 @@ function computeWeather(lat: number, lon: number, ms: number, wb: WeatherBalance
  * damit Fortschreibung, Vorhersage und Karte dieselben Felder nicht mehrfach rechnen.
  */
 export function weatherAt(point: GeoPoint, ms: number, wb: WeatherBalance): Weather {
-  const key = `${wb.seed},${Math.round(point.lat * 100)},${Math.round(point.lon * 100)},${Math.floor(ms / 60000)}`;
+  const key = `${wb.seed},${Math.round(point.lat * 100)},${Math.round(point.lon * 100)},${Math.floor(ms / 60000)}${stormKey(ms)}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const w = computeWeather(point.lat, point.lon, Math.floor(ms / 60000) * 60000, wb);
@@ -398,7 +399,8 @@ export interface CombatWeather {
 }
 
 export function combatWeather(point: GeoPoint, ms: number, wb: WeatherBalance): CombatWeather {
-  return combatWeatherOf(weatherAt(point, ms, wb), wb);
+  const w = weatherAt(point, ms, wb);
+  return { ...combatWeatherOf(w, wb), storm: w.storm }; // Sturmschwelle zum Kampfzeitpunkt (Sturmzeit)
 }
 
 /** Kampffaktoren aus Wind und Wolken (auch für vorhergesagtes Wetter: Probekampf zur Ankunft). */

@@ -403,3 +403,8 @@ KI-Reparatur, ist ein fester, testbarer Plan, und ein globaler Ruf ohne Gesuche 
 14. KI-Bündnis: nur Nichtangriffspakt ab Ansehen „Vertraut“.
 15. Paktbruch: ≤ 48 h nach Erlöschen des selbst gekündigten Pakts, Ruf −15.
 16. Start: SOFORT (das Spiel ist gerade gestartet) – nicht erst nach einer Live-Saison.
+
+**Nachtrag 28.11.2026:** Auf Wunsch des Nutzers sind die zunächst „nach einer gemessenen Saison“ verschobenen Punkte
+jetzt umgesetzt (abweichend von 2 und 6): Sturmzeit als vierte Gezeit-Art, globaler Ruf zusätzlich zum Ansehen,
+Ächtung gegen Berüchtigte im Seerat (zu 9). Stimmgewicht bleibt 1 je Mensch (12). Regeln: `docs/REGELN-WELTPOLITIK.md`
+Abschnitte 2, 3a, 5; Begründungen: `packages/game-core/ENTSCHEIDUNGEN-8.md`.

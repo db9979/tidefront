@@ -7,6 +7,7 @@ import { ansehenAt, ansehenEffects, isNotorious, politikOf, type AnsehenEntry, t
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance } from "./context.ts";
 import { politikKis, politikSeason } from "./politik-core.ts";
+import { aechtungUntil, rufOf, rufRules } from "./politik-ruf.ts"; // Stufe 2: globaler Ruf und Ächtung
 
 const HOUR_MS = 3_600_000;
 
@@ -58,8 +59,8 @@ export interface KiAccess {
   level: AnsehenLevel;
   /** Händler/Festung schließen nichts ab und geben keine Gesuche. */
   refuses: boolean;
-  /** Grund der Ablehnung: ueberfall (Sperre nach Überfall) oder beruechtigt. */
-  reason: "ueberfall" | "beruechtigt" | null;
+  /** Grund der Ablehnung: ueberfall (Sperre nach Überfall), beruechtigt (Ruf ≤ −30) oder aechtung (Seerat, alle KI). */
+  reason: "ueberfall" | "beruechtigt" | "aechtung" | null;
   /** Additiv auf den Vertragsbonus dieses KI-Spielers. */
   bonusDelta: number;
   /** Kontingent-Anteil (statt contracts.ki.quotaShare). */
@@ -69,43 +70,63 @@ export interface KiAccess {
   notorious: boolean;
   /** Ende der Sperre nach einem Überfall (Händler/Festung), sonst null. */
   blockedUntilMs: number | null;
+  /** Stufe 2: Ruf „Angesehen“ – Wirkung wie „Vertraut“ bei allen KI-Spielern. */
+  angesehen: boolean;
+  /** Stufe 2: Ende einer laufenden Ächtung (keine KI-Verträge und Gesuche), sonst null. */
+  aechtungUntilMs: number | null;
 }
 
-/** Berüchtigt: Mittel des Ansehens über alle aktiven KI-Spieler ≤ notoriousMean (vorläufiger Ersatz für den Ruf). */
+/**
+ * Berüchtigt: globaler Ruf ≤ −30 (Stufe 2). Ohne Balance-Block ruf gilt der vorläufige Ersatz von Stufe 1: Mittel des
+ * Ansehens über alle aktiven KI-Spieler ≤ notoriousMean.
+ */
 export async function notoriousOf(db: DbOrTx, humanId: number, nowMs: number, all?: Map<number, KiStanding>): Promise<boolean> {
   const cfg = politikOf(balance)?.ansehen;
   if (!cfg) return false;
+  if (rufRules()) return (await rufOf(db, humanId, nowMs))?.level === "beruechtigt";
   const map = all ?? (await ansehenAll(db, humanId, nowMs));
   return isNotorious([...map.values()].map((x) => x.value), map.size, cfg);
 }
 
-/** Zugang dieses Menschen zu einem KI-Spieler (ersetzt kiRefuses). Freibeuter lehnt nie ab. */
+/**
+ * Zugang dieses Menschen zu einem KI-Spieler (ersetzt kiRefuses). Freibeuter lehnt nie ab – außer bei einer Ächtung.
+ * Stufe 2: Ruf „Angesehen“ wirkt wie „Vertraut“ (Bonus, Kontingent, Pakt); Berüchtigt (Ruf ≤ −30): Händler und Festung
+ * schließen nichts ab; Ächtung: kein KI-Spieler schließt ab oder gibt Gesuche.
+ */
 export async function kiAccess(db: DbOrTx, ki: { id: number; profile: string }, humanId: number, nowMs: number, all?: Map<number, KiStanding>): Promise<KiAccess> {
   const cfg = politikOf(balance)?.ansehen;
   const map = all ?? (await ansehenAll(db, humanId, nowMs));
   const st = map.get(ki.id);
   const value = st?.value ?? 0;
-  const level = st?.level ?? "bekannt";
+  const own = st?.level ?? "bekannt";
+  const ruf = rufRules() ? await rufOf(db, humanId, nowMs) : null;
+  const angesehen = ruf?.level === "angesehen";
+  const level = angesehen && own === "bekannt" ? "vertraut" : own;
   const fx = cfg ? ansehenEffects(level, cfg) : { bonusDelta: 0, quotaShare: null, gesuche: true, pakt: false };
-  const notorious = cfg ? isNotorious([...map.values()].map((x) => x.value), map.size, cfg) : false;
+  const notorious = ruf ? ruf.level === "beruechtigt" : cfg ? isNotorious([...map.values()].map((x) => x.value), map.size, cfg) : false;
+  const aechtungUntilMs = ruf ? await aechtungUntil(db, humanId, nowMs) : null;
   const blockHours = Math.max(cfg?.raidBlockHours ?? 0, balance.market.contracts?.ki.attackBlockHours ?? 0);
   const blocked = st?.lastRaidMs != null && nowMs - st.lastRaidMs < blockHours * HOUR_MS;
   const strict = ki.profile !== "freibeuter";
-  const reason = !strict ? null : blocked ? "ueberfall" : notorious ? "beruechtigt" : null;
+  const reason = aechtungUntilMs !== null ? "aechtung" : !strict ? null : blocked ? "ueberfall" : notorious ? "beruechtigt" : null;
   return {
     value, level, refuses: reason !== null, reason, bonusDelta: fx.bonusDelta, quotaShare: fx.quotaShare,
     gesuche: fx.gesuche && reason === null && !notorious, pakt: fx.pakt && reason === null, notorious,
     blockedUntilMs: strict && blocked ? st!.lastRaidMs! + blockHours * HOUR_MS : null,
+    angesehen, aechtungUntilMs,
   };
 }
 
-/** Kopfgeld-Zuschlag für einen Angriff auf diesen Menschen (Berüchtigt: + notoriousBounty), sonst 0. */
+/** Kopfgeld-Zuschlag für einen Angriff auf diesen Menschen: Ächtung + aechtungBounty, sonst Berüchtigt + notoriousBounty, sonst 0. */
 export async function notoriousBounty(db: DbOrTx, defenderId: number, atMs: number): Promise<number> {
   const cfg = politikOf(balance)?.ansehen;
-  if (!cfg || !(cfg.notoriousBounty > 0)) return 0;
+  const rc = rufRules();
+  const base = rc?.notoriousBounty ?? cfg?.notoriousBounty ?? 0;
+  if (!cfg || !(base > 0)) return 0;
   const [p] = await db.select({ bot: tables.player.botProfile }).from(tables.player).where(eq(tables.player.id, defenderId));
   if (!p || p.bot !== null) return 0;
-  return (await notoriousOf(db, defenderId, atMs)) ? cfg.notoriousBounty : 0;
+  if (rc && (await aechtungUntil(db, defenderId, atMs)) !== null) return Math.max(base, rc.aechtungBounty);
+  return (await notoriousOf(db, defenderId, atMs)) ? base : 0;
 }
 
 /** Merker: ein Mensch hat einen Pakt mit einem KI-Spieler gekündigt (Erlöschen endsAtMs) – für den Paktbruch. */

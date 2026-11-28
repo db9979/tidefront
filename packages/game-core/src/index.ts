@@ -19,6 +19,7 @@ export * from "./espionage.ts";
 export * from "./weather.ts";
 export * from "./weather-fronts.ts"; // Fronten (Kalt-, Warmfront, Okklusion)
 export * from "./weather-forecast.ts"; // Vorhersage mit Unsicherheit (v1.18)
+export * from "./weather-storm.ts"; // Weltpolitik Stufe 2: Sturmzeit im Wetterfeld
 export * from "./power.ts";
 export * from "./power-green.ts"; // Ökostrom, Elektrolyse, Seekabel (v1.21)
 export * from "./admirals.ts"; // Admirale
@@ -52,3 +53,4 @@ export * from "./politik-plan.ts";
 export * from "./politik-ansehen.ts";
 export * from "./politik-seerat.ts";
 export * from "./politik-gesuche.ts";
+export * from "./politik-ruf.ts"; // Stufe 2: globaler Ruf und Ächtung

@@ -7,6 +7,7 @@ import type { AppRouter } from "@tidefront/api/router";
 import { noteServerTime } from "./time.ts";
 import { logTrpcError } from "./bug-log.ts";
 import { activeBaseId, isNoBase, withBaseId } from "./active-base.ts";
+import { setStormWindows, stormWindowsOf, type Balance as CoreBalance, type PolitikPlan } from "@tidefront/game-core"; // Sturmzeit
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -80,7 +81,9 @@ queryClient.getQueryCache().subscribe((e) => {
 let metaTimer: ReturnType<typeof setTimeout> | null = null;
 queryClient.getQueryCache().subscribe((e) => {
   if (e.type !== "updated" || e.action.type !== "success") return;
-  const data = e.query.state.data as { politik?: { validUntilMs?: number | null }; serverNow?: number } | undefined;
+  const data = e.query.state.data as { politik?: { validUntilMs?: number | null; plan?: PolitikPlan }; serverNow?: number; baseBalance?: CoreBalance } | undefined;
+  // Sturmzeit (Weltpolitik Stufe 2): Fenster ins Wetterfeld, damit Karte, Vorhersage und Probekampf wie der Server rechnen.
+  if (data?.baseBalance && data.politik?.plan) setStormWindows(stormWindowsOf(data.baseBalance, data.politik.plan), data.baseBalance.weather?.stormFrom ?? null);
   const until = data?.politik?.validUntilMs;
   if (!data?.politik || typeof until !== "number") return;
   if (metaTimer) clearTimeout(metaTimer);

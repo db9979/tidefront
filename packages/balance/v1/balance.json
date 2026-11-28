@@ -557,13 +557,14 @@
     "gezeit": {
       "windowStartDays": [10, 19, 28], "spreadDays": 0.5, "durationHours": 72,
       "earliestStartDays": 9.5, "minGapDays": 5, "latestEndDays": 31.5, "announceHours": 24,
-      "kinds": ["handelskrise", "rohstoffboom", "kartellfehde"], "notFirst": ["kartellfehde"],
+      "kinds": ["handelskrise", "rohstoffboom", "kartellfehde", "sturmzeit"], "notFirst": ["kartellfehde"],
       "boomGoods": ["treibstoff", "proviant", "elektronik"]
     },
     "effects": {
       "handelskrise": { "fee": 1.5, "dailyLimit": 0.75, "kiBonus": 0.02 },
       "rohstoffboom": { "production": 1.2, "fieldYield": 1.2, "pricePct": -0.1 },
       "kartellfehde": { "raidInterval": 2, "fieldCartelChance": 0.5, "kindWeights": { "grossflotte": 3 } },
+      "sturmzeit": { "stormFrom": 0.875, "stormStrength": 1.1, "convoyCartelChance": 0.5, "kindWeights": { "schatzschiff": 2 } },
       "handelsfrieden": { "fee": 0.75, "playerTradeFee": 0.5 },
       "geleitschutz": { "convoyCartelChance": 0.5 },
       "gebuehrensenkung": { "fee": 0.75, "contractFee": 0.75 },
@@ -580,7 +581,15 @@
         "festung": ["geleitschutz", "ruhig", "plan"],
         "freibeuter": ["gemeinsame_aktion", "plan", "ruhig"]
       },
-      "aechtung": false
+      "aechtung": true
+    },
+    "ruf": {
+      "decayPerDay": 0.05, "angesehenFrom": 30, "beruechtigtTo": -30,
+      "contract": 2, "contractMaxPerDay": 4, "gesuch": 5, "feePer": 1000, "feePoint": 1, "feeMaxPerDay": 3,
+      "help": 2, "helpPairFactors": [1, 0.5, 0.25, 0], "helpPairDays": 7,
+      "cartelHold": 1, "cartelHoldMinBoats": 6, "cartelHoldMaxPerWeek": 4,
+      "weakRaid": -8, "penalty": -10, "pactBreak": -15, "pactBreakHours": 48, "blockadePerDay": -3,
+      "protectionDays": 7, "notoriousBounty": 0.1, "aechtungHours": 72, "aechtungBounty": 0.2
     },
     "ansehen": {
       "decayPerDay": 0.05, "vertrautFrom": 30, "misstrautTo": -30,

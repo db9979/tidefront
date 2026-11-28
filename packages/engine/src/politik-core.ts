@@ -3,7 +3,7 @@
 // (wenige Zeilen, Index auf Beginn/Ende) – nur die Produktionsquelle (modsOf, sehr häufig) hält 30 s vor.
 import { and, desc, eq, gt, isNull, lte } from "drizzle-orm";
 import {
-  balanceAt, EMPTY_PLAN, pickKind, politikNow, politikOf, type EffectiveBalance, type FensterEffect, type GezeitKind, type market, type PolitikPlan,
+  balanceAt, EMPTY_PLAN, pickKind, politikNow, politikOf, setStormWindows, stormWindowsOf, type EffectiveBalance, type FensterEffect, type GezeitKind, type market, type PolitikPlan,
   type PolitikWindow,
 } from "@tidefront/game-core";
 import { tables, type DbOrTx } from "@tidefront/db";
@@ -45,7 +45,26 @@ export async function seasonPlan(db: DbOrTx): Promise<PolitikPlan> {
   const s = await politikSeason(db);
   if (!s) return EMPTY_PLAN;
   const rows = await db.select().from(tables.politikFenster).where(eq(tables.politikFenster.seasonId, s.id)).orderBy(tables.politikFenster.startsAt);
-  return withOff(rows.map(toWindow), await politikOff(db));
+  return syncStorms(withOff(rows.map(toWindow), await politikOff(db)));
+}
+
+// ---------------------------------------------------------------- Sturmzeit im Wetterfeld (Stufe 2)
+
+let stormSyncAt = Number.NEGATIVE_INFINITY;
+const STORM_SYNC_MS = 60_000;
+
+/** Sturmzeit-Fenster des Plans ins Wetterfeld (game-core/weather-storm.ts) übernehmen; gibt den Plan zurück. */
+export function syncStorms(plan: PolitikPlan): PolitikPlan {
+  setStormWindows(stormWindowsOf(balance, plan), balance.weather?.stormFrom ?? null);
+  stormSyncAt = Date.now();
+  return plan;
+}
+
+/** Höchstens einmal je Minute den Plan lesen, damit Wetterabfragen (Route, Kampf) die Sturmzeit kennen. */
+export async function ensureStormSync(db: DbOrTx): Promise<void> {
+  if (Math.abs(Date.now() - stormSyncAt) < STORM_SYNC_MS) return;
+  stormSyncAt = Date.now();
+  await seasonPlan(db);
 }
 
 function withOff(windows: PolitikWindow[], off: Record<PolitikPart, boolean>): PolitikPlan {
@@ -63,6 +82,7 @@ export async function planAt(db: DbOrTx, ms: number): Promise<PolitikPlan> {
 
 /** Wirksame Balance zum Zeitpunkt ms (Gezeit und Beschlüsse); ohne Wirkung die Grundbalance selbst. */
 export async function balanceNow(db: DbOrTx, ms: number): Promise<EffectiveBalance> {
+  await ensureStormSync(db); // Sturmzeit: Wetterfeld auf dem Stand des Plans halten
   return balanceAt(balance, await planAt(db, ms), ms);
 }
 
@@ -84,6 +104,7 @@ const PROD_CACHE_MS = 30_000;
 /** Nach Änderungen am Plan (Seerat, Not-Aus, Tests): Zwischenspeicher der Produktionsquelle verwerfen. */
 export function invalidatePolitikCache(): void {
   prodCache = null;
+  stormSyncAt = Number.NEGATIVE_INFINITY; // Sturmzeit beim nächsten Zugriff neu lesen
 }
 
 registerModifierSource(async (db, _playerId, ctx) => {

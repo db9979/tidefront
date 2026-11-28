@@ -32,7 +32,8 @@ export function KiAnsehen({ kiId, name }: { kiId: number; name: string }) {
         <p className="text-siegel mt-1">
           {k.reason === "ueberfall" && blockEnd !== null && blockEnd > now
             ? `Nach deinem Überfall schließt ${name} noch ${fmtDuration(blockEnd - now)} nichts mit dir ab.`
-            : k.reason === "beruechtigt" ? `Du bist berüchtigt – ${name} schließt nichts mit dir ab und gibt keine Gesuche.` : `${name} schließt gerade nichts mit dir ab.`}
+            : k.reason === "beruechtigt" ? `Du bist berüchtigt – ${name} schließt nichts mit dir ab und gibt keine Gesuche.`
+            : k.reason === "aechtung" ? `Der Seerat hat dich geächtet – kein KI-Spieler schließt mit dir ab oder gibt dir Gesuche.` : `${name} schließt gerade nichts mit dir ab.`}
         </p>
       )}
       {!k.refuses && k.pakt && <p className="text-moos mt-1">Vertraut: {name} schließt einen Nichtangriffspakt mit dir.</p>}

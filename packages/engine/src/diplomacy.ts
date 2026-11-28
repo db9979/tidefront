@@ -7,6 +7,7 @@ import { tables, type Tx } from "@tidefront/db";
 import type { Engine } from "./context.ts";
 import { scheduleEvent } from "./store.ts";
 import { kiAccess, kiOfParty, notePactCancelled } from "./politik-ansehen.ts"; // Weltpolitik: Pakt mit KI-Spielern
+import { noteHumanPactCancelled } from "./politik-ruf.ts"; // Weltpolitik Stufe 2: Ruf (Paktbruch unter Menschen)
 import {
   act,
   fail,
@@ -150,6 +151,7 @@ export function cancelPact(engine: Engine, playerId: number, id: number) {
     await scheduleEvent(tx, "pact_expire", endsAtMs, { diplomacyId: p.id }, null);
     const ki = await kiOfParty(tx, other); // Weltpolitik: Merker für den Paktbruch (Überfall ≤ 48 h nach Erlöschen)
     if (ki) await notePactCancelled(tx, playerId, ki.id, endsAtMs, p.id);
+    else await noteHumanPactCancelled(tx, own, other, endsAtMs, p.id); // Stufe 2: Ruf (Paktbruch)
     await tell(tx, notes, [own, other], "Diplomatie: Pakt gekündigt",
       `${ownName} hat den Nichtangriffspakt mit ${await partyName(tx, other)} gekündigt. Er gilt noch bis ${fmt(endsAtMs)} Uhr.`);
     return { ok: true as const, endsAtMs };

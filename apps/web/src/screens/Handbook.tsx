@@ -222,7 +222,7 @@ export function Handbook({ onClose, onSettings }: { onClose: () => void; onSetti
       ),
     },
     { id: "vertraege", icon: "credits", title: "Lieferverträge", body: <ContractsChapter b={b} /> }, // Lieferverträge (v1.31)
-    { id: "weltpolitik", icon: "wind", title: "Weltpolitik: Gezeit, Seerat, Ansehen", body: <PolitikChapter b={b} /> }, // Weltpolitik
+    { id: "weltpolitik", icon: "wind", title: "Weltpolitik: Gezeit, Seerat, Ansehen, Ruf", body: <PolitikChapter b={b} /> }, // Weltpolitik
     {
       id: "forschung", icon: "forschungsamt", title: "Forschung",
       body: (

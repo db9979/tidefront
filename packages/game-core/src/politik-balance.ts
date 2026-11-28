@@ -5,7 +5,8 @@
 // Server, Worker, Bot-Zug und Client (Plan aus `meta`) rechnen damit dasselbe.
 import type { Balance } from "./types.ts";
 
-export const GEZEIT_KINDS = ["handelskrise", "rohstoffboom", "kartellfehde"] as const;
+// Stufe 2 (Ruf, Ächtung, Sturmzeit): ENTSCHEIDUNGEN-8.md, Abschnitt „Weltpolitik Stufe 2“.
+export const GEZEIT_KINDS = ["handelskrise", "rohstoffboom", "kartellfehde", "sturmzeit"] as const;
 export type GezeitKind = (typeof GEZEIT_KINDS)[number];
 export const BESCHLUSS_KINDS = ["handelsfrieden", "geleitschutz", "gebuehrensenkung", "gemeinsame_aktion"] as const;
 export type BeschlussKind = (typeof BESCHLUSS_KINDS)[number];
@@ -30,6 +31,10 @@ export interface EffectDef {
   playerTradeFee?: number;
   contractFee?: number;
   worldEventLoot?: number;
+  /** Sturmzeit: Faktor auf weather.stormFrom (0,875: Sturm ab 0,7 statt 0,8). */
+  stormFrom?: number;
+  /** Sturmzeit: Faktor auf den Wind der Tiefs (Sturmstärke); die Wettersysteme selbst bleiben (nie systemEveryHours). */
+  stormStrength?: number;
 }
 
 export interface PolitikBalance {
@@ -65,9 +70,11 @@ export interface PolitikBalance {
     quorumShare: number;
     activeHours: number;
     kiPreference: Record<string, string[]>;
-    /** Ächtung (kommt mit dem globalen Ruf): vorbereitet, aus. */
+    /** Ächtung nur gegen Berüchtigte (Ruf ≤ −30), als Option der Wochensitzungen (Stufe 2). */
     aechtung: boolean;
   };
+  /** Globaler Ruf (Stufe 2, politik-ruf.ts); fehlt er, gibt es keinen Ruf und keine Ächtung. */
+  ruf?: import("./politik-ruf.ts").RufBalance;
   ansehen: import("./politik-ansehen.ts").AnsehenBalance;
   gesuche: import("./politik-gesuche.ts").GesucheBalance;
 }
@@ -115,6 +122,8 @@ export interface PolitikNow {
   playerTradeFee: number;
   contractFee: number;
   worldEventLoot: number;
+  stormFrom: number;
+  stormStrength: number;
 }
 
 /** Wirkende Fenster zum Zeitpunkt ms (Beginn eingeschlossen, Ende ausgeschlossen), ohne „Ruhige See“. */
@@ -132,7 +141,7 @@ export function politikNow(base: Balance, plan: PolitikPlan | null | undefined, 
   if (!cfg || active.length === 0) return null;
   const n: PolitikNow = {
     active: active.map((w) => w.id), fee: 1, dailyLimit: 1, kiBonus: 0, production: {}, fieldYield: {}, raidInterval: 1,
-    fieldCartelChance: 1, convoyCartelChance: 1, kindWeights: {}, playerTradeFee: 1, contractFee: 1, worldEventLoot: 1,
+    fieldCartelChance: 1, convoyCartelChance: 1, kindWeights: {}, playerTradeFee: 1, contractFee: 1, worldEventLoot: 1, stormFrom: 1, stormStrength: 1,
   };
   for (const w of active) {
     const e = cfg.effects[w.effect as WirkungKind];
@@ -149,6 +158,8 @@ export function politikNow(base: Balance, plan: PolitikPlan | null | undefined, 
     n.playerTradeFee *= e.playerTradeFee ?? 1;
     n.contractFee *= e.contractFee ?? 1;
     n.worldEventLoot *= e.worldEventLoot ?? 1;
+    n.stormFrom *= e.stormFrom ?? 1;
+    n.stormStrength *= e.stormStrength ?? 1;
   }
   const { min, max } = cfg.clamp;
   const c = (x: number) => clampTo(x, min, max);
@@ -163,6 +174,8 @@ export function politikNow(base: Balance, plan: PolitikPlan | null | undefined, 
   n.playerTradeFee = c(n.playerTradeFee);
   n.contractFee = c(n.contractFee);
   n.worldEventLoot = c(n.worldEventLoot);
+  n.stormFrom = c(n.stormFrom);
+  n.stormStrength = c(n.stormStrength);
   return n;
 }
 
@@ -224,6 +237,26 @@ function applyNow(b: EffectiveBalance, n: PolitikNow): void {
   }
   const we = (b as { worldEvents?: { kindWeights: Record<string, number> } }).worldEvents;
   if (we) for (const [k, f] of Object.entries(n.kindWeights)) we.kindWeights[k] = (we.kindWeights[k] ?? 0) * f;
+  // Sturmzeit: nur die Sturmschwelle (Anzeige jetzt); die Sturmstärke wirkt über stormWindowsOf im Wetterfeld.
+  if (b.weather && n.stormFrom !== 1) b.weather.stormFrom *= n.stormFrom;
+}
+
+/**
+ * Sturmzeit-Fenster des Plans für das Wetterfeld (weather-storm.ts): Zeitraum, Sturmschwelle absolut und Sturmstärke.
+ * Das Wetter rechnet damit zu jedem Zeitpunkt (Vorhersage, Route, Kampf), unabhängig davon, wann `meta` geladen wurde.
+ */
+export function stormWindowsOf(base: Balance, plan: PolitikPlan | null | undefined): import("./weather-storm.ts").StormWindow[] {
+  const cfg = politikOf(base);
+  if (!cfg || !base.weather || !plan) return [];
+  const out: import("./weather-storm.ts").StormWindow[] = [];
+  for (const w of plan.windows) {
+    if (w.effect === "ruhig") continue;
+    const e = cfg.effects[w.effect as WirkungKind];
+    if (!e || (e.stormFrom === undefined && e.stormStrength === undefined)) continue;
+    const c = (x: number) => clampTo(x, cfg.clamp.min, cfg.clamp.max);
+    out.push({ startMs: w.startMs, endMs: w.endMs, stormFrom: base.weather.stormFrom * c(e.stormFrom ?? 1), strength: c(e.stormStrength ?? 1) });
+  }
+  return out;
 }
 
 /** Nächster Zeitpunkt nach ms, an dem sich die wirksame Balance ändert (Beginn oder Ende eines Fensters), sonst null. */
@@ -237,13 +270,15 @@ export function nextChangeMs(plan: PolitikPlan | null | undefined, ms: number): 
 }
 
 /** Name und ein Satz je Wirkung (Spielertext). */
-export const WIRKUNG_TEXT: Record<FensterEffect, { name: string; satz: string }> = {
+export const WIRKUNG_TEXT: Record<FensterEffect | "aechtung", { name: string; satz: string }> = {
   handelskrise: { name: "Handelskrise", satz: "Börse teurer – Lieferverträge mit den KI-Spielern lohnen jetzt mehr." },
   rohstoffboom: { name: "Rohstoffboom", satz: "Ein Gut im Überfluss – jetzt fördern, Felder besetzen, später verkaufen." },
   kartellfehde: { name: "Kartellfehde", satz: "Das Kartell bekämpft sich selbst – weniger Überfälle, Zeit zum Aufholen." },
+  sturmzeit: { name: "Sturmzeit", satz: "Schwere See – Vorhersage lesen; das Kartell bleibt im Hafen." },
   handelsfrieden: { name: "Handelsfrieden", satz: "Börse und Spielerhandel kosten weniger Gebühr." },
   geleitschutz: { name: "Geleitschutz", satz: "Das Kartell fängt Konvois nur halb so oft ab." },
   gebuehrensenkung: { name: "Gebührensenkung", satz: "Börse und Lieferverträge kosten weniger Gebühr." },
   gemeinsame_aktion: { name: "Gemeinsame Aktion", satz: "Neue Weltereignisse tragen mehr Beute." },
   ruhig: { name: "Ruhige See", satz: "Nichts ändert sich." },
+  aechtung: { name: "Ächtung", satz: "Wer jetzt berüchtigt ist (Ruf −30 oder tiefer): 72 h keine KI-Verträge und Gesuche, Kopfgeld +20 %." },
 };

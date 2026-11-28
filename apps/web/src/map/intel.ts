@@ -33,6 +33,8 @@ export interface MapFleetIn {
   heading: number;
   size: "klein" | "mittel" | "gross";
   relation: string | null;
+  /** Nur getauchte U-Boote (Sonar oder optischer Satellit): Zeichen gestrichelt, Buchstabe mit „U“. */
+  submerged?: boolean;
   intel: { age: string };
 }
 
@@ -180,12 +182,12 @@ export function fleetArrow(f: MapFleetIn): Container {
   const g = new Graphics();
   const color = f.relation === null ? INK : f.relation === "kartell" ? SIEGEL : RELATION_COLOR[(f.relation as Relation)] ?? SEE;
   const k = SIZE_SCALE[f.size] ?? 1;
-  g.circle(0, 0, 11 * k).fill({ color: PAPER, alpha: 0.9 }).stroke({ color, width: 1.3, alpha: 0.9 });
+  g.circle(0, 0, 11 * k).fill({ color: PAPER, alpha: f.submerged ? 0.6 : 0.9 }).stroke({ color, width: f.submerged ? 0.8 : 1.3, alpha: 0.9 });
   const arrow = new Graphics();
   arrow.poly([0, -10 * k, 6 * k, 6 * k, 0, 2.5 * k, -6 * k, 6 * k]).fill({ color });
   arrow.rotation = (f.heading * Math.PI) / 180;
   c.addChild(g, arrow);
-  const t = new Text({ text: SIZE_LETTER[f.size] ?? "?", style: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 8, fill: INK, fontWeight: "600" } });
+  const t = new Text({ text: `${SIZE_LETTER[f.size] ?? "?"}${f.submerged ? "·U" : ""}`, style: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 8, fill: INK, fontWeight: "600" } });
   t.resolution = 2;
   t.anchor.set(0.5, 0);
   t.position.set(0, 12 * k);

@@ -120,6 +120,7 @@ function inStrip(st: NonNullable<SensorCircle["strip"]>, x: number, factor: numb
  * erfasst sonst nichts. Bordsicht: „verband“ (Schiffe, Drohnen) Erkennung, „flug“ (Jäger, Bomber) nur Sichtung von
  * Verbänden – Objekte erfasst ein Flug nicht (ihre Position ist ohnehin bekannt).
  * Stufe 3: Optischer Satellit Erkennung im Streifen außer unter Wolken (strip.blocked), Radarsatellit nur Sichtung.
+ * Optischer Satellit als eigene Fähigkeit (Nutzerentscheid): sieht im Streifen auch getauchte U-Boote (Sichtung).
  * Gegenmittel (mods): Tarnnetz senkt Ausguck und optischen Satelliten auf Sichtung; Faktoren verkürzen Reichweiten
  * (beim Streifen die Breite um die Mitte).
  */
@@ -128,7 +129,9 @@ export function liveLevelAt(sensors: readonly SensorCircle[], x: number, y: numb
   const radarF = mods?.radarFactor ?? 1;
   const sightF = mods?.sightFactor ?? 1;
   for (const s of sensors) {
-    if ((s.kind === "sonar") !== (target === "submarine")) continue;
+    // Getauchte U-Boote: das Sonar (Erkennung) und – seit Stufe 2 der Weltpolitik – der optische Satellit im Streifen
+    // (nur Sichtung: Größe und Kurs; nicht unter Wolken). Das Sonar erfasst sonst nichts.
+    if (target === "submarine" ? s.kind !== "sonar" && !(s.kind === "satellit" && s.strip) : s.kind === "sonar") continue;
     if (s.kind === "flug" && target !== "fleet") continue;
     const f = sightF * (RADAR_KINDS.has(s.kind) ? radarF : 1);
     if (s.strip) {
@@ -141,7 +144,7 @@ export function liveLevelAt(sensors: readonly SensorCircle[], x: number, y: numb
       if (dx * dx + dy * dy > km * km) continue;
     }
     let lvl: IntelLevel = (s.kind === "radar" || s.kind === "posten" || s.kind === "flug") && target === "fleet" ? "sichtung" : "erkennung";
-    if (s.kind === "radarsatellit") lvl = "sichtung";
+    if (s.kind === "radarsatellit" || (s.kind === "satellit" && target === "submarine")) lvl = "sichtung";
     if (mods?.camouflaged && (s.kind === "ausguck" || s.kind === "satellit")) lvl = "sichtung";
     best = maxLevel(best, lvl);
     if (best === "erkennung") return best;

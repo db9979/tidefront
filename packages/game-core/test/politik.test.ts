@@ -110,7 +110,7 @@ test("Gezeit-Termine über 200 Seeds: 3 Fenster, Tag 10/19/28 ± 0,5, Abstand �
     });
   }
   assert.ok(minGap >= 5 * DAY - 1, `kleinster Abstand ${minGap / DAY} Tage`);
-  assert.deepEqual([...firstKinds].sort(), ["handelskrise", "rohstoffboom"]);
+  assert.deepEqual([...firstKinds].sort(), ["handelskrise", "rohstoffboom", "sturmzeit"], "Stufe 2: Sturmzeit im Plan-Würfel");
   assert.equal(goods.size, 3, "alle drei Boom-Güter kommen vor");
 });
 

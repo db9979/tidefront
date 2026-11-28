@@ -2,7 +2,7 @@
 
 Teil der Regeln (`docs/REGELN.md`). Grundlage: `docs/VORLAGE-WELTPOLITIK.md` mit den Entscheidungen des Nutzers vom
 27.11.2026 (sie gehen vor). Werte im Balance-Block `politik`; Begründungen in `packages/game-core/ENTSCHEIDUNGEN-6.md`,
-Abschnitt „Weltpolitik“. Code: `packages/game-core/src/politik-*.ts` (rein), `packages/engine/src/politik-*.ts`
+Abschnitt „Weltpolitik“, Stufe 2 (Sturmzeit, Ruf, Ächtung) in `ENTSCHEIDUNGEN-8.md`. Code: `packages/game-core/src/politik-*.ts` (rein), `packages/engine/src/politik-*.ts`
 (Server), Router `politik` (`apps/api/src/routers/politik.ts`), Wartung im Worker.
 
 Grundsatz: **kein neuer Reiter, keine neue Ressource, keine neue Push-Art** (Ausnahme seit UX-0.43 B8: Push
@@ -36,14 +36,23 @@ Idempotenzschlüssel). Alles hängt an der Saison (`season_id`) und beginnt mit 
 - Beim Saisonstart einmal ausgewürfelt (Wartungslauf, idempotent): **3 Fenster zu je 72 h**, Beginn Tag **10 / 19 / 28
   ± 0,5 Tag**, frühestens Tag 9,5, Abstand Ende → Beginn ≥ 5 Tage, Ende spätestens Tag 31,5. Bei anderer Saisonlänge
   proportional. Fenster, die eine Regel verletzen würden, entfallen.
-- Arten: **Handelskrise, Rohstoffboom, Kartellfehde** – je Saison jede genau einmal, Reihenfolge per Los, Kartellfehde
-  nie zuerst. Sturmzeit erst nach einer gemessenen Saison.
+- Arten: **Handelskrise, Rohstoffboom, Kartellfehde, Sturmzeit** (Stufe 2, 28.11.2026: auf Wunsch des Nutzers jetzt statt
+  nach einer gemessenen Saison) – je Saison drei der vier, keine doppelt, Reihenfolge per Los (gleichverteilt unter allen
+  Reihenfolgen), Kartellfehde nie zuerst. Die Termine ändern sich dadurch nicht (200-Seed-Test: kleinster Abstand ≥ 5 Tage).
 
 | Art | Was sich 72 h ändert | Satz für den Spieler |
 |---|---|---|
 | Handelskrise | Börsengebühr × 1,5 (4 % → 6 %), Tageslimit × 0,75 (20 % → 15 %), Vertragsbonus aller KI-Spieler + 2 Punkte | „Börse teurer – Lieferverträge mit den KI-Spielern lohnen jetzt mehr.“ |
 | Rohstoffboom | ein Gut per Los (Treibstoff, Proviant, Elektronik, nie Stahl): Produktion und Feldertrag + 20 %, Kurs − 10 % (Marktnachricht `weltlage:<id>`) | „Ein Gut im Überfluss – jetzt fördern, Felder besetzen, später verkaufen.“ |
 | Kartellfehde | Kartell-Überfälle alle 36 statt 18 h, Kartellangriffe auf Felder × 0,5, Großflotte-Gewicht × 3 | „Das Kartell bekämpft sich selbst – weniger Überfälle, Zeit zum Aufholen.“ |
+| Sturmzeit | Sturmschwelle `weather.stormFrom` × 0,875 (0,8 → 0,7, Bft 9 → 8), Wind der Tiefs × 1,1 (Sturmstärke), Kartellchance für Konvois × 0,5, Schatzschiff-Gewicht × 2 | „Schwere See – Vorhersage lesen; das Kartell bleibt im Hafen.“ |
+
+- **Sturmzeit im Wetter:** nur Sturmschwelle und Sturmstärke, **nie `weather.systemEveryHours`** – die Wettersysteme
+  bleiben dieselben, Karte und Vorhersage springen nicht. Die Fenster werden ins Wetterfeld eingetragen
+  (`game-core/weather-storm.ts`, `stormWindowsOf`): Server (bei jedem Planlesen, höchstens minütlich aus `balanceNow`,
+  in den Ereignissen der Weltpolitik und im Wartungslauf) und Oberfläche (aus `meta`) rechnen so jede Wetterabfrage zu
+  jedem Zeitpunkt gleich – Route bei Abfahrt, Kampf, Vorhersage, Karte. Gemessen (Winter, ganze Karte): Felder mit
+  Sturm 0,14 % → 0,45 %, Schiffsbremsung (Wind ≥ 0,5) 8,5 % → 10,1 % der Stunden.
 
 - Während eines Gezeit-Fensters entsteht höchstens `worldEvents.maxConcurrent − 1` gewöhnliches Weltereignis zugleich.
 - **Ankündigung** 24 h vorher als Lage-Zeile („… beginnt“), während des Fensters „… endet“ mit Ende; **ein** Push zum
@@ -72,16 +81,46 @@ Idempotenzschlüssel). Alles hängt an der Saison (`season_id`) und beginnt mit 
 
 - Das Ansehen wirkt **nur auf KI-Verträge, Gesuche und den Pakt**, nicht auf Börse, Spielerhandel oder Rang.
 - **Freibeuter** lehnt nie ab (Bonus und Kontingent folgen trotzdem dem Ansehen).
-- **Berüchtigt** (vorläufiger Ersatz für den globalen Ruf): Mittel des Ansehens über alle aktiven KI-Spieler ≤ − 30.
-  Händler und Festung schließen dann nichts ab und geben keine Gesuche; wer einen Berüchtigten angreift, bekommt
-  Kopfgeld-Zuschlag + 0,1 (nicht bei Absprache). „Ächtung“ im Seerat ist vorbereitet und aus (`seerat.aechtung`).
+- **Berüchtigt** (seit Stufe 2: globaler Ruf ≤ − 30, Abschnitt 3a; ohne Balance-Block `ruf` gilt der frühere Ersatz,
+  Mittel des Ansehens über alle aktiven KI-Spieler ≤ − 30). Händler und Festung schließen dann nichts ab und geben keine
+  Gesuche; wer einen Berüchtigten angreift, bekommt Kopfgeld-Zuschlag + 0,1 (nicht bei Absprache). **Angesehen**
+  (Ruf ≥ + 30): bei allen KI-Spielern Wirkung wie „Vertraut“ (Bonus, Kontingent, Pakt), auch ohne eigenes Ansehen.
 - **Pakt mit einem KI-Spieler:** Ist ein Mensch ohne Allianz bei ihm „Vertraut“, **bietet der KI-Spieler den Pakt von
   sich aus an** (Wartungslauf): Systemnachricht, Lage-Eintrag „… bietet dir einen Nichtangriffspakt an“, Annehmen mit
   einem Tippen oder Ablehnen auf der Lage (Weltpolitik) bzw. unter Meldungen → Saison → Welt (auch unter Meldungen → Allianz → Diplomatie). Ein neues
   Angebot desselben KI-Spielers frühestens nach `pactOfferEveryDays` (7) Tagen, auch nach einer Ablehnung. Umgekehrt
   kann der Mensch vorschlagen; bei „Vertraut“ gilt der Pakt sofort, sonst Ablehnung (`ki_not_trusted`). Kündigung mit der üblichen Frist; Überfall bis 48 h nach dem Erlöschen
   ist Paktbruch.
-- Der globale Ruf (VORLAGE 3.3) folgt nach einer gemessenen Saison.
+## 3a. Ruf (global, Stufe 2)
+
+- Je Mensch eine Zahl − 100 … + 100, Start 0, je Saison, **zusätzlich** zum Ansehen je KI-Spieler. Gerechnet beim Lesen
+  aus den Belegen der Saison (kein Zähler, kein Job; `game-core/politik-ruf.ts`, `engine/politik-ruf.ts`), Formel wie beim
+  Ansehen: **R′ = R + G · (1 − R/100) − 0,05 · R** (Pluspunkte sättigen, Abzüge wirken voll, 5 % Zerfall je Tag auf den
+  Stand vom Tagesbeginn). Drei Stufen: ≤ − 30 **Berüchtigt** · **Unbescholten** · ≥ + 30 **Angesehen**.
+
+| Buchung (Beleg) | Wert | Deckel |
+|---|---|---|
+| KI-Liefervertrag erfüllt (`market_contract` kind ki) | + 2 | + 4 je Tag |
+| Gesuch erfüllt (`ki_gesuch`) | + 5 | – |
+| Handel: gezahlte Gebühr an Börse und bei KI-Verträgen (`trade_ledger`, Konto `fees`) | + 1 je 1 000 Taler | + 3 je Tag; Geschäfte zwischen zwei Menschen zählen nicht |
+| Hilfe: als Stationierter einen Kartell-Überfall im fremden Hafen abgewehrt (Bericht `kartell`, Gäste) | + 2 | je Gastgeber in 7 Tagen × 1 / 0,5 / 0,25 / 0 |
+| Kartell-Abwehr: Konvoi oder Feld gegen eine Kartellgruppe ≥ 6 Boote gehalten (Bericht `konvoi`/`feld`) | + 1 | + 4 je Woche |
+| Überfall auf ein Schwachziel (`isWeakTarget`, im Bericht nach Kriegsprüfung), Ziel ein Mensch | − 8 | – |
+| Vertragsstrafe (jede Vertragsart) | − 10 | – |
+| Blockade vor einem Spielerhafen ohne Krieg (Tabelle `blockade`) | − 3 je angefangenem Tag | – |
+| Paktbruch: Überfall auf den Ex-Partner oder Kriegserklärung an ihn ≤ 48 h nach Erlöschen des selbst gekündigten Pakts | − 15 (einmal) | – |
+| Abwehr im eigenen Hafen, Angriffe auf Gleich-/Stärkere, im Krieg, auf Nester, Kartell, KI-Spieler | 0 | – |
+
+- **Anfängerschutz:** in den ersten 7 Tagen nach der Anmeldung kein Abzug außer der Vertragsstrafe. KI-Spieler haben
+  keinen Ruf; ein Überfall auf einen KI-Spieler wirkt nur auf das Ansehen bei ihm.
+- **Wirkung:** nur bei den KI-Spielern (Angesehen = „Vertraut“ bei allen; Berüchtigt = keine Verträge und Gesuche bei
+  Händler und Festung), Kopfgeld + 0,1 auf Berüchtigte und die Ächtung (5a). **Keine Wirkung auf Börsenpreise und
+  Rang.** Handbuchsatz: „Ruf öffnet Türen, er ändert keine Börsenpreise.“
+- **Sichtbar:** eigener Ruf mit Leiste, Wirkung, Ächtung und Verlauf der letzten 10 Buchungen (Zerfall als eigene Zeile)
+  unter **Meldungen → Saison → Welt**; in der **Rangliste** bei anderen nur ein Zeichen für die äußeren Stufen
+  („⚑ Berüchtigt“ / „✦ Angesehen“, kein Pranger mit Zahlen), beim eigenen Eintrag mit Wert.
+- Merker, die sich nicht aus vorhandenen Zeilen ablesen lassen (Pakt mit einem Menschen gekündigt, Ächtung), liegen in
+  `ansehen_merker` mit `ki_id = 0` (keine Schemaänderung).
 
 ## 4. Gesuche
 
@@ -118,6 +157,13 @@ Idempotenzschlüssel). Alles hängt an der Saison (`season_id`) und beginnt mit 
 | Gebührensenkung | Börsengebühr × 0,75, Vertragsgebühr der KI-Verträge × 0,75 |
 | Gemeinsame Aktion | neu entstehende Weltereignisse tragen + 20 % Beute |
 
+- **Ächtung (5a, Stufe 2, Nutzerentscheid 9):** Option der Wochensitzungen, nur wenn es beim Öffnen Berüchtigte gibt
+  (wird dann vor „Ruhige See“ ergänzt). Niemand wird mit Namen zur Wahl gestellt und kein Rang zählt: Gewinnt sie,
+  trifft sie jeden, der **beim Schluss** berüchtigt ist. Wirkung **72 h** ab Schluss (höchstens bis zur Finale-Sperre):
+  kein KI-Spieler – auch nicht der Freibeuter – schließt ab oder gibt Gesuche, Kopfgeld-Zuschlag **+ 0,2** (statt + 0,1).
+  Missbrauchsschutz: normale Auszählung (Quorum, Allianz höchstens 40 %, KI-Spieler zusammen 1 Stimme und **nie** für die
+  Ächtung), Ergebnis ohne Namen an alle; die Geächteten erhalten eine eigene Nachricht. Das Wochenfenster bleibt „Ruhige
+  See“ (kein Regler). Stimmgewicht weiter 1 je Mensch (Nutzerentscheid 12).
 - **Stimmen:** 1 je Mensch mit Hafen (geheim, bis zum Schluss änderbar); alle KI-Spieler **zusammen 1 Stimme**, nach
   Spielweise verteilt und offen begründet (Händler: Handelsfrieden/Gebührensenkung, Festung: Geleitschutz, Freibeuter:
   Gemeinsame Aktion; sonst Plan bzw. Ruhige See). **Eine Allianz zählt höchstens 40 %** der abgegebenen Gewichte
@@ -135,6 +181,7 @@ Idempotenzschlüssel). Alles hängt an der Saison (`season_id`) und beginnt mit 
   letzten 48 h mit Auszählung (Stimmen, Gewichte, KI-Stimmen), Paktangebote, Kalender der Saison zum Aufklappen.
 - **Tagesbefehle:** offenes Gesuch über den drei Befehlen (Annehmen/Ablehnen); im belegten Platz Lieferung,
   Fälligkeit und Lohn.
+- **Meldungen → Saison → Welt:** zusätzlich der eigene Ruf (3a); **Rangliste:** Zeichen Berüchtigt/Angesehen.
 - **Börse → Verträge:** je KI-Spieler Ansehen (Stufe, Wert, Bonus, Kontingent, Sperre mit Restzeit, Verlauf).
 - **Wo es wirkt:** Hinweis mit Restzeit und Wert danach in Order (Gebühr, Tageslimit), KI-Verträgen (Bonus,
   Vertragsgebühr), Börsenkonvoi und Konvoi-Probekampf (Kartellchance), Spielerhandel (Gebühr).
@@ -143,7 +190,7 @@ Idempotenzschlüssel). Alles hängt an der Saison (`season_id`) und beginnt mit 
 
 ## 7. Schnittstelle
 
-Router `politik`: `overview` (Kalender, wirkende Regler als Zeilen mit Schlüssel/Ende/Wert danach, Sitzungen mit
-eigener Stimme und nach dem Schluss das Ergebnis, Paktangebote), `ki` (Ansehen je KI-Spieler, Verlauf, Sperre, eigene
+Router `politik`: `overview` (Kalender, wirkende Regler als Zeilen mit Schlüssel/Ende/Wert danach – Sturmzeit als
+Schlüssel `storm` –, Sitzungen mit eigener Stimme und nach dem Schluss das Ergebnis, Paktangebote, eigener Ruf `ruf`), `ki` (Ansehen je KI-Spieler, Verlauf, Sperre, eigene
 Gesuche mit Fälligkeit), `vote`, `acceptGesuch`, `declineGesuch`, `acceptPakt`, `declinePakt`, Verwaltung `admin`,
 `adminOff`, `adminCancel`.

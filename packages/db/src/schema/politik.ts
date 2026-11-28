@@ -85,6 +85,9 @@ export const kiGesuch = pgTable("ki_gesuch", {
 /**
  * Merker für das Ansehen, die sich nicht aus vorhandenen Zeilen ablesen lassen (Pakt mit einem KI-Spieler gekündigt:
  * at_ms = Erlöschen). Das Ansehen selbst wird beim Lesen aus Verträgen, Gesuchen, Berichten und diesen Merkern gerechnet.
+ * Stufe 2 (globaler Ruf, Ächtung) nutzt dieselbe Tabelle mit ki_id = 0 (kein KI-Spieler): kind ruf_pakt_ende (Pakt mit
+ * einem Menschen gekündigt, at_ms = Erlöschen, ref = "pakt:<id>:<Erlöschen>:<Partei>") und kind aechtung (at_ms = Beginn,
+ * ref = "sitzung:<id>:<Ende ms>"). Keine Schemaänderung.
  */
 export const ansehenMerker = pgTable("ansehen_merker", {
   id: serial("id").primaryKey(),

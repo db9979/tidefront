@@ -105,7 +105,8 @@ Größenklassen für Verbände: **klein** bis 10 Einheiten, **mittel** bis 40, *
   Neuer Forschungszweig
   **Raumfahrt** mit 2 Techniken:
   - **Optischer Satellit** (Stufe 1): Erkennung, aber nicht durch Wolken. Felder mit Bewölkung über 0,6 bleiben
-    verdeckt.
+    verdeckt. **Eigene Fähigkeit** (Nutzerentscheid 28.11.2026): Beim Überflug sieht er im Streifen auch **getauchte
+    U-Boote** – als Sichtung (Größenklasse und Kurs, ohne Besitzer), nicht unter Wolken. Sonst sieht sie nur das Sonar.
   - **Radarsatellit** (Stufe 2): sieht durch Wolken und Nebel, aber nur Sichtung.
 - **Start** je Satellit: optisch 2 000 Stahl, 700 Treibstoff, 1 250 Elektronik (≈ 7 000 Stahl-Gegenwert; v1.35, Nutzerentscheid
   11B, vorher 5 000 / 2 000 / 3 500 ≈ 19 100), Radarsatellit 5 500 Stahl, 2 200 Treibstoff, 4 000 Elektronik (≈ 21 500; bis
@@ -118,7 +119,7 @@ Größenklassen für Verbände: **klein** bis 10 Einheiten, **mittel** bis 40, *
 - Der nächste Überflug ist vorher bekannt (Anzeige „nächster Überflug in 2 h 10 min über …“).
 
 ### 5.7 U-Boote und Sonar
-- U-Boote sind für Radar, Satelliten und Ausguck **unsichtbar**.
+- U-Boote sind für Radar, Radarsatellit und Ausguck **unsichtbar** (der optische Satellit sieht sie beim Überflug, 5.6).
 - Sehen können sie nur Einheiten mit U-Jagd (`attack.uboot` > 0: Korvette, Zerstörer) auf Patrouille oder im Hafen,
   in **60 km**, mit Forschung **Sonar +40 km je Stufe**.
 - U-Boote auf Patrouille sehen andere U-Boote in 60 km.
@@ -298,6 +299,14 @@ Abweichungen (begründet):
 - **Überflug schreibt Wissen:** Zu Beginn jedes Überflugs speichert der Server alles im Streifen als Wissen der Partei
   (Quelle „Optischer Satellit (Überflug k)“), auch wenn niemand die Karte öffnet; 20 min lang ist der Streifen live.
   Wolken zum Beginn des Überflugs (echtes Wettermodell, Bewölkung > 0,6) verdecken ein Feld für die ganze Zeit.
+- **Optischer Satellit sieht getauchte U-Boote** (Nutzerentscheid 28.11.2026, Umsetzung Weltpolitik Stufe 2):
+  `liveLevelAt(…, "submarine")` liefert für den Streifen eines optischen Satelliten (nicht unter Wolken) die Stufe
+  Sichtung. Ein Verband nur aus U-Booten erscheint damit beim Überflug im Wissen (Quelle „Optischer Satellit (Überflug
+  k)“) und 20 min live auf der Karte – mit Größenklasse und Kurs, ohne Besitzer, gekennzeichnet `submerged`
+  (Kartenzeichen blasser mit „·U“ am Buchstaben, Karte → Sichtungen „U-Boot-Verband“). In gemischten Verbänden zählen die
+  U-Boote bei der Größenklasse mit, solange der Streifen live ist. Radarsatellit, Radar, Posten, Ausguck und Bordsicht
+  sehen U-Boote weiterhin nicht. Test: `engine/test/lagebild-uboot.test.ts` (Testzeit so gewählt, dass im Streifen ein
+  klares Feld liegt, wie in `lagebild3.test.ts`).
 - **Radarsatellit nur Sichtung:** Er schreibt Verbände, Wracks und Radarposten ins Wissen, aber keine Häfen, Nester und
   Felder (deren Position ist ohnehin bekannt; eine Sichtung soll kein älteres Erkennen überschreiben). Auf der Karte
   hebt er den Nebel im Streifen, zeigt aber keine Nest-Stufen oder Schutzstatus. Allgemein: Sichtung (auch durch

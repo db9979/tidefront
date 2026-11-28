@@ -7,6 +7,7 @@
 // Funkmesstechnik und Radarstation verringern die Unsicherheit (forecastSkill).
 import type { BaseState, GeoPoint } from "./types.ts";
 import { combatWeatherOf, daylightAt, weatherAt, weatherNoise, type CombatWeather, type Weather, type WeatherBalance } from "./weather.ts";
+import { stormFromAt } from "./weather-storm.ts"; // Weltpolitik: Sturmzeit
 
 const HOUR_MS = 3600000;
 /** Verstärkung des Rauschens (Spitzen werden bei ±1 gekappt; mittlerer Betrag ≈ 0,55 des Höchstwerts). */
@@ -112,7 +113,7 @@ export function forecastWeatherAt(point: GeoPoint, ms: number, nowMs: number, wb
   const wind = clamp01(shifted.wind * (1 + errorNoise(wb, issued, 2, point, ms) * s.wind));
   const clouds = clamp01(shifted.clouds + errorNoise(wb, issued, 3, point, ms) * s.clouds);
   const fog = clamp01(shifted.fog * (1 + errorNoise(wb, issued, 4, point, ms) * s.fog));
-  return { wind, clouds, fog, daylight: daylightAt(point.lat, point.lon, ms), storm: wind >= wb.stormFrom };
+  return { wind, clouds, fog, daylight: daylightAt(point.lat, point.lon, ms), storm: wind >= stormFromAt(wb, ms) };
 }
 
 /**
@@ -129,7 +130,8 @@ export function forecastRange(point: GeoPoint, ms: number, nowMs: number, wb: We
   const wind: [number, number] = [clamp01(lo((w) => w.wind) / (1 + s.wind)), clamp01(hi((w) => w.wind) / Math.max(0.01, 1 - s.wind))];
   const clouds: [number, number] = [clamp01(lo((w) => w.clouds) - s.clouds), clamp01(hi((w) => w.clouds) + s.clouds)];
   const fog: [number, number] = [clamp01(lo((w) => w.fog) / (1 + s.fog)), clamp01(hi((w) => w.fog) / Math.max(0.01, 1 - s.fog))];
-  return { wind, clouds, fog, stormPossible: wind[1] >= wb.stormFrom, stormCertain: wind[0] >= wb.stormFrom };
+  const from = stormFromAt(wb, ms);
+  return { wind, clouds, fog, stormPossible: wind[1] >= from, stormCertain: wind[0] >= from };
 }
 
 /**

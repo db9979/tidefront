@@ -8,6 +8,7 @@ import { runningSeason } from "./season.ts";
 import { hafenmeisterIds } from "./guide.ts";
 import { topBadges } from "./achievements.ts"; // Erfolge
 import { bountyByPlayer, rankSnapshot } from "./pvp.ts"; // PvP: Kopfgeld auf Rang 1–3 (Stand Tagesbeginn)
+import { rufAllCached } from "./politik-ruf.ts"; // Weltpolitik Stufe 2: Ruf (nur die äußeren Stufen als Zeichen)
 
 // ---------------------------------------------------------------- Rangliste
 
@@ -33,11 +34,18 @@ export async function rankingView(engine: Engine, playerId: number) {
   const hafenmeister = await hafenmeisterIds(engine.db, seasonId); // Abzeichen aus dem Auftragsbuch
   const badges = await topBadges(engine.db, cache.rows.map((r) => r.playerId)); // Erfolge: höchste drei Abzeichen
   const bounty = bountyByPlayer(await rankSnapshot(engine.db, nowMs)); // PvP: Kopfgeld in Prozent
+  // Ruf: fremder Ruf nur als Zeichen für Angesehen/Berüchtigt (kein Pranger mit Zahlen), der eigene mit Wert.
+  const rufs = await rufAllCached(engine.db, nowMs, playerId);
+  const rufMark = (id: number) => {
+    const r = rufs.get(id);
+    if (!r) return null;
+    return { level: r.level === "unbescholten" ? null : r.level, value: id === playerId ? r.value : null };
+  };
   return {
     serverNow: nowMs,
     computedAtMs: cache.at,
     season: s ? { number: s.number, startsAtMs: s.startsAt.getTime(), endsAtMs: s.endsAt.getTime() } : null,
-    rows: cache.rows.map((r) => ({ ...r, own: r.playerId === playerId, hafenmeister: hafenmeister.has(r.playerId), badges: badges.get(r.playerId) ?? [], bounty: bounty.get(r.playerId) ?? null })),
+    rows: cache.rows.map((r) => ({ ...r, own: r.playerId === playerId, hafenmeister: hafenmeister.has(r.playerId), badges: badges.get(r.playerId) ?? [], bounty: bounty.get(r.playerId) ?? null, ruf: rufMark(r.playerId) })),
   };
 }
 

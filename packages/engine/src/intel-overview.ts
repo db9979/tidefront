@@ -30,7 +30,7 @@ export async function intelOverview(engine: Engine, playerId: number) {
   const live = [
     ...view.nests.filter((n) => n.intel?.age === "live").map((n) => ({ kind: "nest" as const, id: n.id, name: n.level === null ? "Piratennest" : `Piratennest Stufe ${n.level}${n.empty ? " (verlassen)" : ""}`, col: n.col, row: n.row, intel: n.intel!, patrol: false })),
     ...view.bases.filter((b) => !b.own && b.intel?.age === "live").map((b) => ({ kind: "base" as const, id: b.id, name: `Hafen ${b.name}`, col: b.col, row: b.row, intel: b.intel!, patrol: false })),
-    ...view.fleets.filter((f) => f.intel.age === "live").map((f) => ({ kind: "fleet" as const, id: f.id, name: `${f.patrol ? "Patrouille" : "Verband"} ${f.owner ? `von ${f.owner}` : "(unbekannt)"} · ${f.size}`, col: f.col, row: f.row, intel: f.intel, patrol: !!f.patrol })),
+    ...view.fleets.filter((f) => f.intel.age === "live").map((f) => ({ kind: "fleet" as const, id: f.id, name: `${f.submerged ? "U-Boot-Verband" : f.patrol ? "Patrouille" : "Verband"} ${f.owner ? `von ${f.owner}` : "(unbekannt)"} · ${f.size}`, col: f.col, row: f.row, intel: f.intel, patrol: !!f.patrol })),
     ...view.wrecks.filter((w) => w.intel?.age === "live").map((w) => ({ kind: "wreck" as const, id: w.id, name: "Wrackfeld", col: w.col, row: w.row, intel: w.intel!, patrol: false })),
   ].map((x) => ({ kind: x.kind, id: x.id, name: x.name, col: x.col, row: x.row, level: x.intel.level, source: x.intel.source, atMs: x.intel.atMs, age: "live" as const, patrol: x.patrol }));
   const liveKeys = new Set(live.map((x) => `${x.kind}:${x.id}`));
@@ -47,7 +47,7 @@ export async function intelOverview(engine: Engine, playerId: number) {
         : k.kind === "field" ? (FIELD_KIND_TEXT[fields.get(k.objectId)?.kind ?? ""] ?? "Rohstofffeld")
         : k.kind === "wreck" ? "Wrackfeld"
         : k.kind === "post" ? `Radarposten (${String(d.owner ?? "?")})`
-        : `${d.patrol ? "Patrouille" : "Verband"} ${d.owner ? `von ${String(d.owner)}` : "(unbekannt)"} · ${String(d.size ?? "")}`;
+        : `${d.submerged ? "U-Boot-Verband" : d.patrol ? "Patrouille" : "Verband"} ${d.owner ? `von ${String(d.owner)}` : "(unbekannt)"} · ${String(d.size ?? "")}`;
       return { kind: k.kind, id: k.objectId, name, col: pos?.col ?? 0, row: pos?.row ?? 0, level: k.level, source: k.source, atMs: k.seenAtMs, age: k.age as string, patrol: k.kind === "fleet" && !!d.patrol };
     });
   const sightings = [...live, ...stored].slice(0, 40);

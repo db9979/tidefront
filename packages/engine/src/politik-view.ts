@@ -2,7 +2,7 @@
 // Navigationsumbau; die Schnittstelle liefert alles, was Streifen, Blatt „Gezeit & Seerat“ und die KI-Karten brauchen.
 import { and, eq, inArray, sql } from "drizzle-orm";
 import {
-  nextChangeMs, politikLimitMs, politikNow, politikOf, WIRKUNG_TEXT, type FensterEffect, type PolitikPlan, type PolitikWindow,
+  beaufort, nextChangeMs, politikLimitMs, politikNow, politikOf, WIRKUNG_TEXT, type FensterEffect, type PolitikPlan, type PolitikWindow,
 } from "@tidefront/game-core";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance, GameError, type Engine } from "./context.ts";
@@ -13,6 +13,7 @@ import { gesucheOf, settleGesuche } from "./politik-gesuche.ts";
 import { ownVotes, tallySitzung, voteCount } from "./politik-seerat.ts";
 import { effectName } from "./politik-run.ts";
 import { kiPaktOffers } from "./politik-pakt.ts";
+import { rufView } from "./politik-ruf.ts"; // Stufe 2: globaler Ruf
 import { RES_NAME } from "./market-news.ts";
 
 const HOUR_MS = 3_600_000;
@@ -32,7 +33,7 @@ function windowView(w: PolitikWindow, nowMs: number) {
 
 /** Eine wirkende Verschiebung: Schlüssel (für die Stelle, an der sie wirkt), Text jetzt, Ende, Wert danach. */
 export interface EffectLine {
-  key: "fee" | "dailyLimit" | "kiBonus" | "production" | "raidInterval" | "fieldCartelChance" | "convoyCartelChance" | "playerTradeFee" | "contractFee" | "worldEventLoot" | "kindWeights";
+  key: "fee" | "dailyLimit" | "kiBonus" | "production" | "raidInterval" | "fieldCartelChance" | "convoyCartelChance" | "playerTradeFee" | "contractFee" | "worldEventLoot" | "kindWeights" | "storm";
   text: string;
   /** Nächster Wechsel der wirksamen Balance (Ende des Fensters), null ohne Ende. */
   untilMs: number | null;
@@ -60,6 +61,11 @@ export function effectLines(plan: PolitikPlan, nowMs: number): EffectLine[] {
   if (n.contractFee !== 1) add("contractFee", `Vertragsgebühr der KI-Verträge ${x(n.contractFee)}`);
   if (n.worldEventLoot !== 1) add("worldEventLoot", `Neue Weltereignisse: Beute +${pct(n.worldEventLoot - 1)}`);
   for (const [k, f] of Object.entries(n.kindWeights)) add("kindWeights", `Weltereignis ${KIND_NAME[k] ?? k} häufiger (${x(f)})`);
+  // Sturmzeit (Stufe 2): Sturmschwelle in Beaufort und Sturmstärke der Tiefs.
+  const wb = balance.weather;
+  if (wb && (n.stormFrom !== 1 || n.stormStrength !== 1)) {
+    add("storm", `Sturm schon ab ${beaufort(wb.stormFrom * n.stormFrom)} Bft${n.stormStrength !== 1 ? `, Tiefs stürmischer (${x(n.stormStrength)})` : ""}`, `ab ${beaufort(wb.stormFrom)} Bft`);
+  }
   return out;
 }
 
@@ -105,6 +111,8 @@ export async function politikOverview(engine: Engine, playerId: number) {
     seerat,
     /** Offene Paktangebote der KI-Spieler an dich (Annehmen/Ablehnen: politik.acceptPakt / declinePakt). */
     pakte: await kiPaktOffers(db, playerId),
+    /** Stufe 2: eigener Ruf (Saison → Welt), null ohne Ruf. */
+    ruf: await rufView(db, playerId, nowMs),
   };
 }
 

@@ -9,8 +9,9 @@ import { balance, type Notice, type NoticeJob } from "./context.ts";
 import type { Handler, HandlerResult } from "./events.ts";
 import { scheduleEvent } from "./store.ts";
 import { closeNews, RES_NAME, upsertNews } from "./market-news.ts";
-import { activeHumans, invalidatePolitikCache, politikOff, politikSeason } from "./politik-core.ts";
+import { activeHumans, invalidatePolitikCache, politikOff, politikSeason, seasonPlan } from "./politik-core.ts";
 import { tallySitzung } from "./politik-seerat.ts";
+import { aechtungOnOpen, applyAechtung } from "./politik-aechtung.ts"; // Stufe 2: Ächtung
 
 const none = (): HandlerResult => ({ notify: [] });
 
@@ -32,6 +33,12 @@ export function effectName(effect: FensterEffect, good: string | null): string {
  */
 export async function ensurePolitikPlan(db: Db, nowMs: number): Promise<number> {
   if (!politikOf(balance)) return 0;
+  const n = await createPolitikPlan(db, nowMs);
+  await seasonPlan(db); // Sturmzeit ins Wetterfeld (auch Absagen aus der Verwaltung, alle 10 min)
+  return n;
+}
+
+async function createPolitikPlan(db: Db, nowMs: number): Promise<number> {
   return db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(7340003)`);
     const s = await politikSeason(tx);
@@ -92,6 +99,7 @@ const politikStart: Handler = async (tx, ev, due) => {
   if (!w || w.startedAt || w.endsAt.getTime() <= due) return none();
   await tx.update(tables.politikFenster).set({ startedAt: new Date(due) }).where(eq(tables.politikFenster.id, w.id));
   invalidatePolitikCache();
+  await seasonPlan(tx); // Sturmzeit: Wetterfeld im Worker auf dem Stand des Plans
   const effect = w.effect as FensterEffect;
   if (effect === "ruhig" || ((await politikOff(tx)).gezeit && w.slot === "gezeit" && w.source === "plan")) return none();
   const cfg = politikOf(balance)!;
@@ -114,6 +122,7 @@ const politikEnd: Handler = async (tx, ev, due) => {
   const id = Number(ev.payload.fensterId);
   await closeNews(tx, `weltlage:${id}`, due);
   invalidatePolitikCache();
+  await seasonPlan(tx);
   return { notify: [[null, "market"], [null, "base"], [null, "season"]] };
 };
 
@@ -128,9 +137,10 @@ const seeratOpen: Handler = async (tx, ev, due) => {
     return none();
   }
   await tx.update(tables.seeratSitzung).set({ status: "offen" }).where(eq(tables.seeratSitzung.id, s.id));
+  const options = await aechtungOnOpen(tx, s, due); // Stufe 2: Ächtung nur, wenn es Berüchtigte gibt
   const [w] = await tx.select().from(tables.politikFenster).where(eq(tables.politikFenster.id, s.fensterId));
   const planName = w?.planKind ? effectName(w.planKind as FensterEffect, w.good) : "";
-  const opts = (s.options as string[]).map((o) => OPTION_TEXT(o, planName)).join(" · ");
+  const opts = options.map((o) => OPTION_TEXT(o, planName)).join(" · ");
   const voters = await tx.select({ playerId: tables.seeratStimme.playerId }).from(tables.seeratStimme).where(eq(tables.seeratStimme.sitzungId, s.id));
   const voted = new Set(voters.map((v) => v.playerId));
   const push: NoticeJob[] = (await activeHumans(tx, due)).filter((p) => !voted.has(p.id))
@@ -146,16 +156,22 @@ const seeratClose: Handler = async (tx, ev, due) => {
   if (!w) return none();
   const tally = await tallySitzung(tx, s, due);
   const result = tally.winner;
-  const effect: FensterEffect = result === "plan" ? ((w.planKind as FensterEffect | null) ?? "ruhig") : (result as FensterEffect);
+  // Ächtung ist kein Regler: das Fenster bleibt ruhig, die Wirkung trifft die Berüchtigten 72 h (politik-aechtung.ts).
+  const aechtung = result === "aechtung" ? await applyAechtung(tx, s, due) : null;
+  const effect: FensterEffect = aechtung ? "ruhig" : result === "plan" ? ((w.planKind as FensterEffect | null) ?? "ruhig") : (result as FensterEffect);
   await tx.update(tables.seeratSitzung).set({ status: "geschlossen", result, tally }).where(eq(tables.seeratSitzung.id, s.id));
   const source = result === "plan" ? "plan" : "seerat";
   await tx.update(tables.politikFenster).set({ effect, source }).where(and(eq(tables.politikFenster.id, w.id), sql`${tables.politikFenster.source} <> 'admin'`));
   invalidatePolitikCache();
-  const name = effectName(effect, w.good);
+  await seasonPlan(tx); // Sturmzeit kann ersetzt sein
+  const name = aechtung ? "Ächtung" : effectName(effect, w.good);
   const counts = Object.entries(tally.humanVotes).map(([o, n]) => `${OPTION_TEXT(o, effectName((w.planKind ?? "ruhig") as FensterEffect, w.good))}: ${n}`).join(", ") || "keine";
   const ki = tally.kiVotes.map((k) => `${k.name} (${k.profile === "haendler" ? "Händler" : k.profile === "festung" ? "Festung" : "Freibeuter"}) stimmt für ${OPTION_TEXT(k.option, effectName((w.planKind ?? "ruhig") as FensterEffect, w.good))}`).join("; ");
   const lines = [
-    `Der Seerat hat entschieden: ${name} (${whenText(w.startsAt.getTime())} bis ${whenText(w.endsAt.getTime())}).`,
+    aechtung && aechtung.count === 0 ? "Der Seerat hat die Ächtung beschlossen, doch niemand ist mehr berüchtigt – sie bleibt ohne Wirkung."
+      : aechtung
+      ? `Der Seerat hat die Ächtung beschlossen: ${aechtung.count === 1 ? "ein berüchtigter Kapitän ist" : `${aechtung.count} berüchtigte Kapitäne sind`} bis ${whenText(aechtung.untilMs)} geächtet (keine KI-Verträge und Gesuche, Kopfgeld +20 %).`
+      : `Der Seerat hat entschieden: ${name} (${whenText(w.startsAt.getTime())} bis ${whenText(w.endsAt.getTime())}).`,
     tally.quorumMet ? `Stimmen der Kapitäne: ${counts} (${tally.voted} von mindestens ${tally.quorum} nötigen).` : `Zu wenige Stimmen (${tally.voted} von ${tally.quorum} nötigen) – es gilt der Plan.`,
     ...(ki ? [`KI-Spieler (zusammen eine Stimme): ${ki}.`] : []),
   ];

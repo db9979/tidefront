@@ -8,6 +8,7 @@ import { fmtDuration, fmtRange, fmtTime, useCountdownNow } from "../../lib/time.
 import { Icon } from "../../icons.tsx";
 import { Badge, Button, ErrorLine } from "../../ui.tsx";
 import { politikInvalidate, usePolitik, type PolitikOverview } from "./use-politik.ts";
+import { RufCard } from "./RufCard.tsx"; // Stufe 2: globaler Ruf (Saison → Welt)
 
 type Win = PolitikOverview["windows"][number];
 type Session = PolitikOverview["seerat"][number];
@@ -52,6 +53,7 @@ export function PolitikPanel({ full = false }: { full?: boolean } = {}) {
           </li>
         ))}
       </ul>
+      {full && d.ruf && <RufCard ruf={d.ruf} />}
       {open.map((s) => <SessionVote key={s.id} s={s} now={now} />)}
       {results.map((s) => <SessionResult key={s.id} s={s} now={now} />)}
       <Calendar windows={d.windows} now={now} initialOpen={full} />
@@ -66,6 +68,7 @@ function SessionVote({ s, now }: { s: Session; now: number }) {
       <div className="flex items-baseline gap-2 flex-wrap">
         <strong className="font-serif text-[16px]">Der Seerat tagt</strong>
         <span className="text-xs text-ink2">{s.kind === "fenster" ? "über das nächste Gezeit-Fenster" : "Wochensitzung"}</span>
+        {s.options.some((o) => o.key === "aechtung") && <span className="text-[11px] text-siegel">Ächtung trifft nur, wer beim Schluss berüchtigt ist</span>}
         <span className="ml-auto mono text-[13px]" title="Abstimmung endet">noch {fmtDuration(s.closesMs - now)}</span>
       </div>
       {s.effectStartMs !== null && s.effectEndMs !== null && (

@@ -45,6 +45,8 @@ export interface MapFleet {
   relation: FleetRelation | null;
   /** Stufe 2: Verband ist eine Patrouille (Lagebild-Reiter „Fremde Patrouillen“). */
   patrol?: boolean;
+  /** Nur getauchte U-Boote (gesehen vom Sonar oder vom optischen Satelliten). */
+  submerged?: boolean;
   intel: IntelTag;
 }
 
@@ -223,14 +225,16 @@ async function fleetsInSight(
     const pos = fleetPosition(m, origin, target, nowMs);
     if (!pos) continue;
     const units = (m.status === "returning" || m.status === "holding" ? (m.returning as Counts | null) : null) ?? ((m.plan as { units?: Counts }).units ?? {});
-    // U-Boote sieht nur das Sonar (U-Jagd im Hafen oder auf Patrouille, U-Boote auf Patrouille); 5.7.
+    // U-Boote sieht das Sonar (U-Jagd im Hafen oder auf Patrouille, U-Boote auf Patrouille; 5.7) und der optische
+    // Satellit im Streifen (Sichtung: Größe und Kurs, nicht unter Wolken; 5.6).
     const subs = Object.entries(units).reduce((a, [id, c]) => a + (c > 0 && defs[id]?.submerged ? c : 0), 0);
     const sonar = subs > 0 ? liveLevelAt(sight.sensors, pos.at.x, pos.at.y, "submarine") : null;
-    const n = visibleUnitCount(units, defs) + (sonar ? subs : 0);
+    const surface = visibleUnitCount(units, defs);
+    const n = surface + (sonar ? subs : 0);
     if (n <= 0) continue; // nur U-Boote ohne Sonar: für Radar und Ausguck unsichtbar
     const h = hexAtXY(pos.at.x, pos.at.y);
     let level = liveAt(sight, h.col, h.row, "fleet", fleetMods(sight.counter, mates, pos.at.x, pos.at.y, m, units, defs));
-    if (sonar && (!level || visibleUnitCount(units, defs) === 0)) level = sonar;
+    if (sonar && (!level || surface === 0)) level = sonar;
     // Vom Radar des Ziels erkannter Angriff (Vorwarnzeit): erscheint als Verband, auch außerhalb der Reichweite.
     const detected = (m.plan as Partial<Mission>).detectedAtMs;
     if (!level && m.status === "outbound" && m.targetKind === "base" && m.targetId !== null && memberBases.has(m.targetId) && typeof detected === "number" && detected <= nowMs) level = "sichtung";
@@ -242,13 +246,14 @@ async function fleetsInSight(
     const fleet: MapFleet = {
       id: m.id, col: h.col, row: h.row, heading: headingDeg(pos.from, pos.to), size: fooled ? disinfoSize(fleetSize(n, ib), m.id) : fleetSize(n, ib),
       patrol: m.type === "patrouille",
+      ...(surface === 0 ? { submerged: true } : {}),
       owner: recognized ? (m.playerId === null ? "Freibeuter-Kartell" : names.get(m.playerId) ?? "?") : null,
       relation: recognized ? (m.playerId === null ? "kartell" : relations.get(m.playerId) ?? "neutral") : null,
       intel: live(nowMs, sourceAt(sight, pos.at.x, pos.at.y), level),
     };
     out.push(fleet);
     shown.add(m.id);
-    rows.push({ kind: "fleet", objectId: m.id, level, source: fleet.intel.source, data: { col: fleet.col, row: fleet.row, heading: fleet.heading, size: fleet.size, owner: fleet.owner, relation: fleet.relation, patrol: fleet.patrol } });
+    rows.push({ kind: "fleet", objectId: m.id, level, source: fleet.intel.source, data: { col: fleet.col, row: fleet.row, heading: fleet.heading, size: fleet.size, owner: fleet.owner, relation: fleet.relation, patrol: fleet.patrol, ...(fleet.submerged ? { submerged: true } : {}) } });
   }
   for (const k of known.values()) {
     if (k.kind !== "fleet" || shown.has(k.objectId)) continue;
