@@ -96,6 +96,11 @@ export interface BotState {
   nestTop?: Record<string, { level: number; atMs: number }>;
   /** Freibeuter (bots-war.ts): letzter Überfall auf eine andere KI. */
   botRaidAtMs?: number;
+  /** KI-Vergeltung (bots-vergeltung.ts, v1.35): letzte Vergeltung und zuletzt beantworteter (oder verworfener) Bericht. */
+  revengeAtMs?: number;
+  revengeReportId?: number;
+  /** Inselfestung (bots-nest-top.ts, v1.35): bis wann der Hafen auf heimkehrende Verbände wartet, je Hafen-ID. */
+  topNestWait?: Record<string, number>;
 }
 
 export interface BotRow { id: number; name: string; profile: BotProfile; settings: BotSettings; state: BotState }
@@ -126,7 +131,8 @@ export async function botsMax(db: DbOrTx): Promise<number> {
   return Number.isInteger(n) && n >= 0 ? n : botsConfig().maxBotsDefault;
 }
 
-export async function setBotsServer(db: DbOrTx, input: { enabled?: boolean; max?: number }): Promise<void> {
+export async function setBotsServer(db: DbOrTx, input: { enabled?: boolean; max?: number; vergeltung?: boolean }): Promise<void> {
+  if (input.vergeltung !== undefined) await (await import("./bots-vergeltung.ts")).setVergeltung(db, input.vergeltung);
   if (input.enabled !== undefined) await setSetting(db, BOTS_ENABLED_KEY, input.enabled ? "1" : "0");
   if (input.max !== undefined) await setSetting(db, BOTS_MAX_KEY, String(Math.max(0, Math.min(50, Math.floor(input.max)))));
 }

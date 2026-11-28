@@ -48,6 +48,8 @@ export interface SeasonMetrics {
     stockHours: number;
     nest4Day: number | null;
     worldEventAttacks: number;
+    /** v1.35: gewöhnliche Weltereignisse, die in der Saison in Reichweite (EVENT_RANGE_KM) eines eigenen Hafens entstanden. */
+    worldEventsInRange?: number;
   }[];
   /** Nest-6-Überfälle (gewonnen): angebotene und mitgenommene Einheiten. */
   nest6: { offered: number; taken: number }[];
@@ -80,7 +82,7 @@ export function evaluateGuards(m: SeasonMetrics, L = GUARD_LIMITS): GuardResult[
 
   const cartel = m.bots.map((b) => median(b.cartelShareByDay));
   const cMed = median(cartel);
-  add("kartellkosten", "warnung", cMed <= L.cartelShare, `Kartellverlust je Tag (Median der KI ab Tag 7): ${pct(cMed)} der Tagesproduktion, Ziel ≤ ${pct(L.cartelShare)}`, cMed, L.cartelShare);
+  add("kartellkosten", "warnung", cMed <= L.cartelShare, `Kartellverlust je Tag (Median der KI ab Tag 7): ${pct(cMed)} der Tagesproduktion (≈ ${(cMed * 24).toFixed(1).replace(".", ",")} h Produktion), Ziel ≤ ${pct(L.cartelShare)}`, cMed, L.cartelShare);
 
   const shares = m.bots.filter((b) => b.points.total > 0).map((b) => ({ fl: (b.points.kampf + b.points.beute) / b.points.total, o: b.points.befehle / b.points.total }));
   const fl = median(shares.map((s) => s.fl));
@@ -97,7 +99,12 @@ export function evaluateGuards(m: SeasonMetrics, L = GUARD_LIMITS): GuardResult[
     const perDay = b.trades / Math.max(1, m.days);
     add(`boerse-${b.profile}`, "warnung", perDay >= L.tradesPerBotDay, `${b.profile}: ${Math.round(perDay * 10) / 10} Börsengeschäfte je Tag, Ziel ≥ ${L.tradesPerBotDay}`, perDay, L.tradesPerBotDay);
     add(`lager-${b.profile}`, "warnung", b.stockHours <= L.botStockHours, `${b.profile}: Lager ${Math.round(b.stockHours)} h Produktion am Ende, Ziel ≤ ${L.botStockHours} h`, b.stockHours, L.botStockHours);
-    if (b.profile !== "haendler") add(`weltereignis-${b.profile}`, "warnung", b.worldEventAttacks > 0, `${b.profile}: ${b.worldEventAttacks} Angriffe auf Weltereignisse`, b.worldEventAttacks, 1);
+    // v1.35: Ohne Ereignis in Reichweite (Lage der Ereignisse ist Zufall) ist „kein Angriff“ kein Fehler der KI.
+    if (b.profile !== "haendler") {
+      const none = b.worldEventsInRange === 0;
+      add(`weltereignis-${b.profile}`, "warnung", b.worldEventAttacks > 0 || none,
+        `${b.profile}: ${b.worldEventAttacks} Angriffe auf Weltereignisse${b.worldEventsInRange !== undefined ? ` (${b.worldEventsInRange} in Reichweite entstanden)` : ""}`, b.worldEventAttacks, 1);
+    }
   }
   const fb = m.bots.find((b) => b.profile === "freibeuter");
   if (fb && m.days >= L.freibeuterNest4Day) {

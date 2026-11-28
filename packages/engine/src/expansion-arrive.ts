@@ -57,7 +57,9 @@ async function foundingArrive(tx: Tx, m: MissionRowLike, plan: Mission, due: num
       kind: "gruendung", title, attackerPlayerId: pid, defenderPlayerId: null, attackerBaseId: m.baseId, atMs: due,
       report: { founding: { col: at.col, row: at.row, ok: false, code: blocker, units: plan.units, cargo: plan.cargo } },
     });
-    await sendHome(tx, m, plan, activeCounts(plan.units), plan.cargo ?? {}, reportId, due);
+    const back = { ...(plan.cargo ?? {}) }; // v1.35: Gründungsgebühr kommt mit zurück
+    for (const [r, v] of Object.entries(plan.foundingFee ?? {})) back[r] = (back[r] ?? 0) + v;
+    await sendHome(tx, m, plan, activeCounts(plan.units), back, reportId, due);
     push.push(pushNotice(pid, "report", title, "Das Kolonieschiff kehrt mit seiner Ladung heim.", "berichte", reportId));
     return { notify, push };
   }

@@ -25,7 +25,7 @@ Teil der Regeln (siehe `docs/REGELN.md`). Werte in `balance.json`, Block `achiev
 | Bollwerk | `abwehr_ohne_verluste` | 1 / 5 / 20 | abgewehrte Angriffe (Spieler, Kartell, Weltereignis) ohne eigene Verluste an Einheiten und Anlagen |
 | Prisenmeister | `beute` | 25.000 / 250.000 / 2.000.000 | Summe der Beute aus Überfällen |
 | Kaufmann | `handel_gebuehr` | 400 / 2.000 / 8.000 | an der Börse gezahlte Gebühr in Talern (Geschäfte ab 500 Talern; früher die Zahl der Geschäfte, M-07) |
-| Baumeister | `prachtbau` | 1 / 4 / 10 | Gebäude auf Stufe 18 oder höher (Prachtbau), Bestwert |
+| Baumeister | `prachtbau` | 1 / 3 / 6 | Gebäude auf Stufe `fromLevel` (v1.35: 12, vorher 18 = Prachtbau) oder höher, Bestwert (M-12: vorher unerreichbar) |
 | Gelehrter | `forschung_voll` | 1 / 5 / 12 | Techniken auf Höchststufe, Bestwert |
 | Meisterspion | `spionage` | 5 / 25 / 100 | gelungene Aufträge des Nachrichtendienstes |
 | Flottenbrecher | `weltereignisse` | 1 / 3 / 10 | Weltereignisse, bei denen der eigene Angriff das Ereignis besiegt |

@@ -22,8 +22,11 @@ export function OrderEscort({ base, resource, qty, value, onChange }: { base: Ba
   if (!b || !cv) return null;
   const km = market.deliveryRiskKm(b.market as unknown as market.MarketBalance["market"], base.market.port.distanceKm); // feste Lieferzeit: Risiko für alle gleich
   const worth = qty * (b.market.refPrice[resource] ?? 0);
-  const chance = Number.isFinite(km) ? cartelChance(km, worth, b, true) : 0;
-  const loss = Number.isFinite(km) ? cartelExpectedLoss(km, worth, b, true) : 0;
+  // v1.35: Die Chance rechnet mit dem Warenwert aller eigenen Börsenkonvois der letzten Stunden samt dieser Order.
+  const recent = (base.market as { recentConvoyValue?: number }).recentConvoyValue ?? 0;
+  const riskValue = worth > 0 ? worth + recent : 0;
+  const chance = Number.isFinite(km) ? cartelChance(km, riskValue, b, true) : 0;
+  const loss = Number.isFinite(km) ? cartelExpectedLoss(km, riskValue, b, true) : 0;
   const escorted = Object.values(value).some((n) => n > 0);
   // Geleitfahrt: zum Handelshafen und mit dem Konvoi heim; die Schiffe fehlen bis zur Ankunft (feste Lieferzeit).
   // Strecke der Geleitfahrt: escortKm = Seeweg Hafen → Handelshafen wie gebucht (TST-02; distanceKm ist die Gegenrichtung).
@@ -38,12 +41,12 @@ export function OrderEscort({ base, resource, qty, value, onChange }: { base: Ba
       {!escorted && (
         <p className="text-xs text-ink2 mt-1" role="note">
           {chance > 0
-            ? <>Ohne Geleit: Das Kartell fängt diesen Konvoi mit etwa {pct(chance)} ab und nimmt dann {pct(cv.lossShareUnescorted)} der Ladung – im Mittel {pct(loss)} Verlust. Kriegsgegner können ihn abfangen.</>
+            ? <>Ohne Geleit: Das Kartell fängt diesen Konvoi mit etwa {pct(chance)} ab und nimmt dann {pct(cv.lossShareUnescorted)} der Ladung – im Mittel {pct(loss)} Verlust.{recent > 0 ? ` Deine Börsenkäufe der letzten ${cv.marketValueWindowHours ?? 4} Stunden (${fmtNum(Math.round(recent))} Warenwert) zählen dabei mit.` : ""} Kriegsgegner können ihn abfangen.</>
             : <>Kurze Strecke: Das Kartell fängt hier nicht ab. Kriegsgegner können den Konvoi abfangen.</>}
         </p>
       )}
       {worth > 0 && Number.isFinite(km) && (
-        <EscortAdvice base={base} cargoValue={worth} riskKm={km} market trip={{ km: base.market.port.escortKm, awayHours }} escort={value}
+        <EscortAdvice base={base} cargoValue={worth} riskValue={riskValue} riskKm={km} market trip={{ km: base.market.port.escortKm, awayHours }} escort={value}
           onApply={(u) => { onChange(u); setOpen(true); }} />
       )}
       {open && <EscortPicker base={base} value={value} onChange={onChange} hint="Die Schiffe fahren dem Konvoi zum Handelshafen entgegen und kommen mit ihm heim (Treibstoff, ein Missionsplatz). Sie kämpfen, wenn das Kartell oder ein Kriegsgegner abfängt." />}

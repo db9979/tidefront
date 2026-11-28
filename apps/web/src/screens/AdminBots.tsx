@@ -59,6 +59,9 @@ export function AdminBots() {
       {msg && <p className="text-sm text-green-300 mb-2">{msg}</p>}
       <Switch label="KI-Spieler ziehen (Server-Schalter)" on={d.enabled} disabled={busy}
         onChange={(v) => run(() => trpcClient.bots.server.mutate({ enabled: v }))} />
+      <Switch label="Vergeltung: KI schlägt gegen menschliche Angreifer zurück" on={d.vergeltung} disabled={busy}
+        onChange={(v) => run(() => trpcClient.bots.server.mutate({ vergeltung: v }))} />
+      <p className="text-[11px] text-slate-500">Auch ohne „Darf Menschen angreifen“: nur gegen den Hafen, von dem der Überfall kam, höchstens einmal je 24 h, nur bei Probekampf ab 75 %; alle Schutzregeln gelten.</p>
       <div className="flex items-center justify-between gap-3 my-2">
         <span className="text-sm text-slate-300">Höchstzahl der KI-Spieler</span>
         <Stepper value={d.max} onChange={(v) => run(() => trpcClient.bots.server.mutate({ max: Math.max(0, Math.min(50, v)) }))} />
@@ -80,8 +83,8 @@ export function AdminBots() {
       </div>
       <p className="text-[11px] text-slate-500 mb-2">
         Händler (leicht): Wirtschaft und Handel, greift nicht an. Festung (mittel): Verteidigung, Forschung, Nester. Freibeuter (stark):
-        Überfälle mit Aufklärung und Probekampf, Minen, frühe Kolonien. Menschen greifen Bots nur an, wenn es hier erlaubt ist –
-        mit allen Schutzregeln und einer Sperrfrist je Mensch.
+        Überfälle mit Aufklärung und Probekampf, Minen, frühe Kolonien. Bots greifen Menschen nur an, wenn es hier erlaubt ist (oder
+        als Vergeltung) – mit allen Schutzregeln und einer Sperrfrist je Mensch.
       </p>
       <ul className="divide-y divide-navy-600/70">
         {d.bots.map((b) => (

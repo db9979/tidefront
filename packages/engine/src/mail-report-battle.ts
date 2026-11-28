@@ -10,6 +10,7 @@ import { nameOf } from "./names.ts";
 import { beaufort } from "@tidefront/game-core";
 
 /** Faktor mit zwei Nachkommastellen und Dezimalkomma, z. B. „0,85“. */
+const dec1 = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 1 });
 const dec2 = (n: number) => n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 interface Outcome { before?: Counts; losses?: Counts; returned?: Counts; final?: Counts; survivors?: Counts }
@@ -100,13 +101,16 @@ function renderBattle(r: ReportView, ctx: ReportCtx) {
   const fazit = gain
     ? won ? `Gewonnen mit ${lossShare} Verlust${lootSum > 0 ? `, Beute ${resText(loot)}` : ""}.` : `Verloren – ${lossShare} der eigenen Einheiten sind gefallen.`
     : won ? `${names[0]} abgewehrt, eigene Verluste ${lossShare}.` : `${target} verloren – ${lootSum > 0 ? `${resText(loot)} geplündert` : "nichts geplündert"}, eigene Verluste ${lossShare}.`;
+  // v1.35: Kartell-Überfall – bleibender Verlust (Plünderung + Einheiten) in Stunden Produktion des Hafens.
+  const lossHours = r.kind === "kartell" ? num(d.lossHours) : null;
+  const lossText = lossHours !== null && lossHours > 0 ? ` Bleibender Verlust (Plünderung und Einheiten) etwa ${dec1(lossHours)} h Produktion.` : "";
   const subject = gain
     ? won ? `Sieg bei ${target}${lootSum > 0 ? ` – Beute ${resText(loot, "", 2)}` : ""}` : `Niederlage bei ${target} – ${lossShare} Verlust`
     : won ? `${target} gehalten – ${names[0]} abgewehrt` : `${target} überwunden${lootSum > 0 ? ` – ${resText(loot, "", 2)} geplündert` : ""}`;
 
   const blocks: MailBlock[] = [
     { type: "banner", tone: won ? "win" : "loss", kicker: `Kampfbericht · ${kindLabel(r.kind)}`, title: won ? (gain ? "Sieg" : "Abgewehrt") : gain ? "Niederlage" : "Verloren", sub: `${names[0]} gegen ${names[1]} · ${target} · ${dateTime(r.atMs)}` },
-    { type: "text", text: fazit },
+    { type: "text", text: fazit + lossText },
     {
       type: "tiles", tiles: [
         { label: "Verluste", value: `${lossShare}`, tone: ownLost > 0 ? "loss" : "win" },
@@ -126,6 +130,7 @@ function renderBattle(r: ReportView, ctx: ReportCtx) {
   const facts: [string, string][] = [];
   const salvage = counts(d.salvage);
   if (gain && sum(salvage) > 0) facts.push(["Zusätzlich geborgen (Wrackgut)", resText(salvage)]);
+  if (lossHours !== null) facts.push(["Bleibender Verlust", `${dec1(lossHours)} h Produktion (Plünderung und Einheiten)`]);
   const prot = num(d.protectedPerResource);
   if (prot !== null) facts.push([`Bunkerschutz ${names[1]}`, `${int(prot)} je Ressource`]);
   facts.push(["Neues Wrackfeld am Kampfort", resText(counts(b.wreck), "keins")]);

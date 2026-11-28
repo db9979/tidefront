@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   camoActive, currentPass, jammerFactorAt, jammerReduction, liveLevelAt, missingRequirement, newSatellite, nextPass,
-  paintFactor, satelliteCost, satelliteLaunchCheck, satelliteLimit, satPass, satPassCount, startUpgrade,
+  paintFactor, satelliteCost, satelliteLaunchCheck, satelliteLifetimeHours, satelliteLimit, satPass, satPassCount, startUpgrade,
   type Balance, type BaseState, type SensorCircle,
 } from "../src/index.ts";
 
@@ -23,7 +23,12 @@ function base(over: Partial<BaseState> = {}): BaseState {
 }
 
 test("Balance: Satellit und Gegenmittel wie im Regelwerk (5.6, 6)", () => {
-  assert.deepEqual(sb.types.optisch.cost, { stahl: 5000, treibstoff: 2000, elektronik: 3500 });
+  // v1.35 (Nutzerentscheid 11B): optisch ≈ 7 000 Richtwert, Lebensdauer 14 Tage.
+  const ref = balance.market.refPrice;
+  const optValue = Object.entries(sb.types.optisch.cost).reduce((a, [r, n]) => a + n * (ref[r] ?? 1), 0);
+  assert.ok(optValue >= 6500 && optValue <= 7500, `optisch ${optValue}`);
+  assert.equal(satelliteLifetimeHours(sb, "optisch"), 14 * 24);
+  assert.equal(satelliteLifetimeHours(sb, "radar"), sb.lifetimeHours);
   assert.deepEqual(sb.types.radar.cost, { stahl: 5500, treibstoff: 2200, elektronik: 4000 }); // v1.24 (vorher 6000/2500/4500)
   assert.equal(sb.lifetimeHours, 168);
   assert.equal(sb.periodHours, 6);
@@ -41,7 +46,8 @@ test("Balance: Satellit und Gegenmittel wie im Regelwerk (5.6, 6)", () => {
 });
 
 test("Bahn: alle 6 h ein Überflug, Streifen 600 km, je Überflug 1 400 km nach Westen, über den Rand zurück", () => {
-  const s = newSatellite(1, "optisch", 5000, 0, sb);
+  const s = newSatellite(1, "radar", 5000, 0, sb); // Radar: 7 Tage Lebensdauer (optisch v1.35: 14 Tage)
+  assert.equal(satPassCount(newSatellite(9, "optisch", 5000, 0, sb)), 55, "optisch 14 Tage: 55 Überflüge");
   assert.equal(satPassCount(s), 27, "7 Tage: 27 Überflüge (der 28. fiele aufs Ende)");
   const p1 = satPass(s, 1, W)!;
   assert.equal(p1.startMs, 6 * H);
@@ -94,9 +100,10 @@ test("Start: Startrampe, Technik, Höchstzahl (2 mit Radarsatellit), Kosten mit 
   assert.equal((satelliteLaunchCheck(poor, "optisch", techs, 0, balance) as { code: string }).code, "insufficient_resources");
   assert.deepEqual(satelliteCost(sb.types.optisch, 1, sb), sb.types.optisch.cost);
   // v1.24: Rampenrabatt −10 % je Stufe über 1 (vorher −4 %), höchstens −30 % (vorher −20 %).
-  assert.equal(satelliteCost(sb.types.optisch, 3, sb).stahl, Math.ceil(5000 * 0.8));
-  assert.equal(satelliteCost(sb.types.optisch, 4, sb).stahl, Math.ceil(5000 * 0.7));
-  assert.equal(satelliteCost(sb.types.optisch, 20, sb).stahl, Math.ceil(5000 * 0.7), "höchstens −30 %");
+  const st = sb.types.optisch.cost.stahl;
+  assert.equal(satelliteCost(sb.types.optisch, 3, sb).stahl, Math.ceil(st * 0.8));
+  assert.equal(satelliteCost(sb.types.optisch, 4, sb).stahl, Math.ceil(st * 0.7));
+  assert.equal(satelliteCost(sb.types.optisch, 20, sb).stahl, Math.ceil(st * 0.7), "höchstens −30 %");
 });
 
 test("Startrampe: Voraussetzungen über missingRequirement und startUpgrade", () => {

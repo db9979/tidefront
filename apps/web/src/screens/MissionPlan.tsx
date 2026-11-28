@@ -376,7 +376,7 @@ function Strength({ balance, units, level, lagebild, weather, modifiers, versorg
   const nest = balance.pirates.nestLevels[String(level)] as Record<string, unknown> | undefined;
   if (!nest) return null;
   const all = { ...balance.units, ...balance.npcUnits } as Balance["units"];
-  let sea = 0, land = 0, enemySea = 0, enemyLand = 0, space = 0, troops = 0, subs = 0, enemyHunt = 0, batteries = 0;
+  let sea = 0, land = 0, enemySea = 0, enemyLand = 0, space = 0, troops = 0, subs = 0, enemyHunt = 0, batteries = 0, cargo = 0;
   for (const [id, n] of Object.entries(units)) {
     const u = all[id];
     if (!u) continue;
@@ -385,7 +385,12 @@ function Strength({ balance, units, level, lagebild, weather, modifiers, versorg
     if (u.submerged) subs += n;
     if (u.branch === "land") { land += u.attack.land * n; troops += (u.size ?? 0) * n; }
     space += (u.troopSpace ?? 0) * n;
+    cargo += (u.cargo ?? 0) * n;
   }
+  // v1.35 (M-02/M-13): Laderaum-Anteil – wie viel der festen Nestbeute (100 % bis zum Beutewachstum) der Verband fasst.
+  const lootUnits = Object.values((nest.loot ?? {}) as Record<string, number>).reduce((a, v) => a + (Number(v) || 0), 0);
+  const lootMax = (balance.pirates as { living?: { lootMax?: number } }).living?.lootMax ?? 1;
+  const fit = (g: number) => lootUnits > 0 ? Math.min(1, cargo / (lootUnits * g)) : 1;
   for (const [id, v] of Object.entries(nest)) {
     if (typeof v !== "number" || v <= 0) continue;
     const u = all[id];
@@ -415,6 +420,11 @@ function Strength({ balance, units, level, lagebild, weather, modifiers, versorg
           </div>
         ))}
         <p className={`font-semibold ${verdict[1]}`} data-testid="einschaetzung">{verdict[0]}</p>
+        {!noLanding && lootUnits > 0 && (
+          <p className="text-xs text-slate-300" data-testid="laderaum-anteil">
+            Laderaum {fmtNum(cargo)} für {fmtNum(lootUnits)} Beute{lootMax > 1 ? ` (gewachsen bis ${fmtNum(Math.round(lootUnits * lootMax))})` : ""}: passt zu {fmtNum(Math.round(fit(1) * 100))} %{lootMax > 1 ? ` bzw. ${fmtNum(Math.round(fit(lootMax) * 100))} %` : ""}{fit(lootMax) < 1 ? " – mehr Landungsschiffe nehmen mehr mit." : "."}
+          </p>
+        )}
         {subs > 0 && (
           <p className="text-xs text-slate-300">
             {enemyHunt > 0 ? "Das Nest hat U-Jagd: auch U-Boote können sinken." : "Das Nest hat keine U-Jagd: deine U-Boote sind dort nicht zu treffen."}

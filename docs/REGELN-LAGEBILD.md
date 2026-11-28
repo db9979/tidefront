@@ -107,8 +107,10 @@ Größenklassen für Verbände: **klein** bis 10 Einheiten, **mittel** bis 40, *
   - **Optischer Satellit** (Stufe 1): Erkennung, aber nicht durch Wolken. Felder mit Bewölkung über 0,6 bleiben
     verdeckt.
   - **Radarsatellit** (Stufe 2): sieht durch Wolken und Nebel, aber nur Sichtung.
-- **Start** je Satellit: optisch 5 000 Stahl, 2 000 Treibstoff, 3 500 Elektronik (≈ 19 100 Stahl-Gegenwert), Radarsatellit
-  5 500 Stahl, 2 200 Treibstoff, 4 000 Elektronik (≈ 21 500; bis v1.23 6 000 / 2 500 / 4 500 ≈ 24 000). Lebensdauer **7 Tage**, höchstens
+- **Start** je Satellit: optisch 2 000 Stahl, 700 Treibstoff, 1 250 Elektronik (≈ 7 000 Stahl-Gegenwert; v1.35, Nutzerentscheid
+  11B, vorher 5 000 / 2 000 / 3 500 ≈ 19 100), Radarsatellit 5 500 Stahl, 2 200 Treibstoff, 4 000 Elektronik (≈ 21 500; bis
+  v1.23 6 000 / 2 500 / 4 500 ≈ 24 000). Lebensdauer optisch **14 Tage** (v1.35, `types.optisch.lifetimeHours` 336), Radar
+  **7 Tage**, höchstens
   **1 Satellit** je Spieler (2 mit Raumfahrt 2).
 - **Bahn:** Alle **6 h** ein Überflug über einen Nord-Süd-Streifen von **600 km** Breite. Der Streifen wandert bei jedem
   Überflug um 1 400 km nach Westen weiter. Nach etwa einem Tag ist die ganze Karte einmal erfasst. Jeder Überflug

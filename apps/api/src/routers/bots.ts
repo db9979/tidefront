@@ -31,7 +31,7 @@ export const botsRouter = t.router({
       return { ok: true as const, ...r };
     }),
   server: adminProc
-    .input(z.object({ enabled: z.boolean().optional(), max: z.number().int().min(0).max(50).optional() }))
+    .input(z.object({ enabled: z.boolean().optional(), max: z.number().int().min(0).max(50).optional(), vergeltung: z.boolean().optional() }))
     .mutation(async ({ ctx, input }) => {
       await setBotsServer(ctx.engine.db, input);
       return { ok: true as const };

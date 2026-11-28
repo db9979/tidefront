@@ -123,6 +123,10 @@ test("Saisonlauf-Wächter: Flut und gescheiterte Ereignisse sind Fehler, Balance
   assert.equal(exitCode(warn, true), 1, "mit --strict schon");
   assert.equal(evaluateGuards({ ...base, failedEvents: 2 }).find((r) => r.id === "ereignisse")?.ok, false);
   assert.ok(GUARD_LIMITS.worldEventsPerDay < 91);
+  // v1.35: kein Angriff auf Weltereignisse ist nur dann eine Warnung, wenn eins in Reichweite entstand.
+  const we = (inRange: number) => evaluateGuards({ ...base, bots: [{ ...base.bots[0], worldEventAttacks: 0, worldEventsInRange: inRange }] }).find((r) => r.id === "weltereignis-freibeuter")?.ok;
+  assert.equal(we(0), true);
+  assert.equal(we(2), false);
 });
 
 // ---------------------------------------------------------------- gegen PostgreSQL
@@ -197,7 +201,10 @@ test("KI-Zug: Überschuss an der Börse verkauft, Tagesbefehle an Tagen mit Blic
   const now = Date.now();
   const actions = await botTurn(engine, (await loadBot(db, bot.id))!, now);
   assert.ok(actions.some((a) => /Börse: .* Proviant verkauft/.test(a)), actions.join(" | "));
-  const [d] = await db.select({ n: sql<number>`count(*)::int` }).from(tables.dailyChallenge)
+  const [d] = await db.select({ n: sql<number>`count(*)::int`, claimed: sql<number>`count(claimed_at)::int` }).from(tables.dailyChallenge)
     .where(sql`${tables.dailyChallenge.playerId} = ${bot.id} and ${tables.dailyChallenge.day} = ${dayKey(now)}`);
-  assert.equal(d.n > 0, dailyEngaged(bot.id, dayKey(now)), "Tagesbefehle genau an den Tagen mit Blick hinein");
+  // An Tagen ohne Blick hinein kann ein Fortschritt (trackProgress, z. B. der Börsenverkauf) die Befehle trotzdem
+  // vergeben – abgeholt wird dann aber nichts (früher hing der Test vom Kalendertag ab).
+  if (dailyEngaged(bot.id, dayKey(now))) assert.ok(d.n > 0, "Tagesbefehle an Tagen mit Blick hinein");
+  else assert.equal(d.claimed, 0, "ohne Blick hinein nichts abgeholt");
 });

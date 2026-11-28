@@ -18,7 +18,7 @@ import {
 } from "@tidefront/game-core";
 import type { DbOrTx } from "@tidefront/db";
 import { balance, type Engine } from "./context.ts";
-import { buildingValue } from "./scoring.ts"; // Ausbaupunkte nur lesen (Kostenwert aller Gebäudestufen)
+import { buildingValue, countsValue } from "./scoring.ts"; // Ausbau- und (v1.35) Militärpunkte nur lesen
 import { runningSeason } from "./season.ts";
 import { getSetting, setSetting } from "./settings.ts";
 
@@ -28,6 +28,8 @@ export const CATCH_UP_KEY = "catch_up";
 
 export interface CatchUpSnapshot {
   atMs: number;
+  /** v1.35: Median der Gebäudeproduktion (Richtwert je Stunde, alle Häfen eines Spielers) derselben Spieler; null: keiner. */
+  medianPerHour: number | null;
   /** Median der Ausbauwerte (Richtwert) der Spieler, deren erster Hafen mindestens minBaseAgeDays alt ist; null: keiner. */
   median: number | null;
   /** Ausbauwert je Spieler (alle Häfen). */
@@ -41,22 +43,34 @@ export function seasonDayAt(seasonStartMs: number, nowMs: number): number {
   return Math.floor((nowMs - seasonStartMs) / DAY_MS) + 1;
 }
 
-/** Median der Ausbaupunkte (Menschen und KI) und Ausbauwert je Spieler – eine Abfrage, nur Gebäudestufen. */
+/**
+ * Median der Ausbaupunkte (Menschen und KI) und Ausbauwert je Spieler – eine Abfrage. v1.35: mit includeMilitary zählt
+ * der Wert der Einheiten (daheim und unterwegs) und Anlagen mit (M-10), dazu der Median der Gebäudeproduktion für den
+ * Mindestzufluss (AN-10).
+ */
 export async function catchUpSnapshot(db: DbOrTx, nowMs: number, cu: CatchUpBalance): Promise<CatchUpSnapshot> {
-  const rows = await db.execute<{ player_id: number; first_ms: number; buildings: Counts | null }>(sql`
-    select player_id, (extract(epoch from min(created_at) over (partition by player_id)) * 1000)::float8 as first_ms,
-      state->'buildings' as buildings
+  const rows = await db.execute<{ player_id: number; first_ms: number; state: BaseState }>(sql`
+    select player_id, (extract(epoch from min(created_at) over (partition by player_id)) * 1000)::float8 as first_ms, state
     from base`);
   const values = new Map<number, number>();
+  const perHour = new Map<number, number>();
   const first = new Map<number, number>();
   for (const r of rows) {
-    values.set(r.player_id, (values.get(r.player_id) ?? 0) + buildingValue(r.buildings ?? {}));
+    const s = r.state;
+    let v = buildingValue(s.buildings ?? {});
+    if (cu.includeMilitary) v += countsValue(s.units) + countsValue(s.unitsAway) + countsValue(s.defenses);
+    values.set(r.player_id, (values.get(r.player_id) ?? 0) + v);
+    if (cu.minFlowShare) perHour.set(r.player_id, (perHour.get(r.player_id) ?? 0) + refValue(productionRates(s, balance, undefined, nowMs).buildingPerHour, balance));
     first.set(r.player_id, r.first_ms);
   }
-  const oldEnough = [...values.entries()].filter(([id]) => nowMs - (first.get(id) ?? nowMs) >= cu.minBaseAgeDays * DAY_MS);
-  const m = median(oldEnough.map(([, v]) => v));
+  const oldEnough = [...values.keys()].filter((id) => nowMs - (first.get(id) ?? nowMs) >= cu.minBaseAgeDays * DAY_MS);
+  const m = median(oldEnough.map((id) => values.get(id) ?? 0));
+  const mp = cu.minFlowShare ? median(oldEnough.map((id) => perHour.get(id) ?? 0)) : null;
   const season = await runningSeason(db);
-  return { atMs: nowMs, median: m !== null && m > 0 ? m : null, values, seasonDay: season ? seasonDayAt(season.startsAt.getTime(), nowMs) : null };
+  return {
+    atMs: nowMs, median: m !== null && m > 0 ? m : null, medianPerHour: mp !== null && mp > 0 ? mp : null, values,
+    seasonDay: season ? seasonDayAt(season.startsAt.getTime(), nowMs) : null,
+  };
 }
 
 /** Zuletzt zwischengespeicherter Median (höchstens zwei Laufabstände alt), sonst null. */
@@ -104,7 +118,8 @@ export async function runCatchUp(engine: Engine, nowMs: number, opts: { force?: 
       const base: CatchUpState = { ...(prev ?? emptyCatchUp(nowMs)), bonus, active, ratio };
       const perHour = refValue(productionRates(row.state, balance, undefined, nowMs).buildingPerHour, balance);
       // Zufluss mit dem Bonus des vorigen Laufs (er galt die vergangene Stunde), danach der neue Bonus.
-      const next = prev ? { ...accrueCatchUp(prev, perHour, nowMs, cu, flowing), bonus, active, ratio } : base;
+      const minPerHour = (cu.minFlowShare ?? 0) * (snap.medianPerHour ?? 0); // v1.35: Mindestzufluss für Rückkehrer
+      const next = prev ? { ...accrueCatchUp(prev, perHour, nowMs, cu, flowing, minPerHour), bonus, active, ratio } : base;
       await tx.execute(sql`update base set state = jsonb_set(state, '{catchUp}', ${JSON.stringify(next)}::jsonb) where id = ${b.id}`);
       return true;
     });

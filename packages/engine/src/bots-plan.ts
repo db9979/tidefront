@@ -98,7 +98,8 @@ const PRODUCERS: Record<string, string> = { stahlwerk: "stahl", raffinerie: "tre
 const DOCTRINES: Record<BotProfile, Record<string, number>> = {
   haendler: { kuestenbatterie: 0.3, flakstellung: 0.15, bunkerlinie: 0.15, korvette: 0.25, schuetzen: 0.15 },
   festung: {
-    kuestenbatterie: 0.18, flakstellung: 0.12, bunkerlinie: 0.12, korvette: 0.14, zerstoerer: 0.1, schuetzen: 0.12, pioniere: 0.04,
+    // v1.35: Schützen 0,12 → 0,16 (Landung gegen Nest 4), Küstenbatterie 0,18 → 0,16, Flak 0,12 → 0,10 – Anlagen bleiben mit 38 % vorn.
+    kuestenbatterie: 0.16, flakstellung: 0.1, bunkerlinie: 0.12, korvette: 0.14, zerstoerer: 0.1, schuetzen: 0.16, pioniere: 0.04,
     jagdbomber: 0.1, abfangjaeger: 0.08,
   },
   freibeuter: {

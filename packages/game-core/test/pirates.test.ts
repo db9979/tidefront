@@ -87,12 +87,18 @@ test("Überfallstärke skaliert mit der Verteidigung einschließlich Bodentruppe
   const raid = composeRaid({ korvette: 10, schuetzen: 100 }, { kuestenbatterie: 3, bunkerlinie: 1 }, balance);
   assert.equal(defenseHp({ korvette: 10, schuetzen: 100 }, { kuestenbatterie: 3, bunkerlinie: 1 }, balance), 5800);
   assert.equal(raid.defenseHp, 4800);
-  // 4800 * 0,40 / 80 = 24 Boote, 192 Miliz (v1.24: raidStrengthShareOfDefense 0,40 statt 0,55)
-  assert.deepEqual(raid.units, { schnellboot: 24, piratenmiliz: 192 });
+  // Grundstärke = max(raidMinSchnellboote, HP × raidStrengthShareOfDefense / 80); Miliz × 8 gerundet, Boote aufgerundet
+  // (v1.24: 0,40 → 24 Boote; v1.35: Nutzerentscheid 2, aus der Balance gelesen).
+  const share = balance.pirates.raidStrengthShareOfDefense;
+  const expect = (hp: number) => {
+    const miliz = Math.max(1, Math.round(Math.max(balance.pirates.raidMinSchnellboote, (hp * share) / 80) * 8));
+    return { schnellboot: Math.ceil(miliz / 8 - 1e-9), piratenmiliz: miliz };
+  };
+  assert.deepEqual(raid.units, expect(4800));
   // Bodentruppen zählen, Flugzeuge nicht
   assert.equal(defenseHp({ schuetzen: 500, kampfpanzer: 2, abfangjaeger: 10, jagdbomber: 3 }, {}, balance), 10600);
-  // Miliz gerundet, Boote aufgerundet: 3300 * 0,5 * 0,40 / 80 = 8,25 -> 66 Miliz auf 9 Booten
-  assert.deepEqual(composeRaid({ korvette: 12, zerstoerer: 2 }, {}, balance).units, { schnellboot: 9, piratenmiliz: 66 });
+  // Miliz gerundet, Boote aufgerundet: Schiffe zählen halb (3300 × 0,5)
+  assert.deepEqual(composeRaid({ korvette: 12, zerstoerer: 2 }, {}, balance).units, expect(3300 * 0.5));
   // monoton wachsend, auch mit Bodentruppen allein
   let last = 0;
   for (let n = 0; n <= 400; n += 40) {
@@ -100,23 +106,24 @@ test("Überfallstärke skaliert mit der Verteidigung einschließlich Bodentruppe
     assert.ok(miliz >= last);
     last = miliz;
   }
-  assert.equal(last, 320); // 8000 HP * 0,40 / 80 * 8
+  assert.equal(last, expect(8000).piratenmiliz); // 8000 HP × Anteil / 80 × 8
 });
 
 test("Überfallstärke schwankt mit dem Seed in den Grenzen von raidStrengthSpread", () => {
   const spread = balance.pirates.raidStrengthSpread;
-  const units = { schuetzen: 200 }; // Grundstärke 4000 HP * 0,40 / 80 = 20 Boote = 160 Miliz
+  const units = { schuetzen: 200 }; // Grundstärke 4000 HP × Anteil / 80 Boote, × 8 Miliz
+  const base = Math.max(balance.pirates.raidMinSchnellboote, (4000 * balance.pirates.raidStrengthShareOfDefense) / 80) * 8;
   const seen = new Set<number>();
   for (let seed = 1; seed <= 300; seed++) {
     const raid = composeRaid(units, {}, balance, seed);
     assert.ok(raid.strengthFactor >= 1 - spread && raid.strengthFactor <= 1 + spread);
-    assert.equal(raid.units.piratenmiliz, Math.round(160 * raid.strengthFactor));
+    assert.equal(raid.units.piratenmiliz, Math.round(base * raid.strengthFactor));
     // jeder Milizionär hat einen Platz
     assert.ok(raid.units.schnellboot * balance.pirates.raidMiliPerBoot >= raid.units.piratenmiliz);
     assert.ok((raid.units.schnellboot - 1) * balance.pirates.raidMiliPerBoot < raid.units.piratenmiliz);
     seen.add(raid.units.piratenmiliz);
   }
-  assert.ok(seen.size > 50);
+  assert.ok(seen.size > 20);
   // gleicher Seed, gleicher Verband
   assert.deepEqual(composeRaid(units, {}, balance, 42), composeRaid(units, {}, balance, 42));
 });

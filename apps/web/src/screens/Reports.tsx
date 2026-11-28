@@ -185,6 +185,9 @@ function ReportDetail({ id, openSim, onBack }: { id: number; openSim: boolean; o
               <p>Ein Verband des Kartells erreichte deinen Hafen, traf aber auf deinen Schutz ({label(String(d.reason ?? "nachtschild"))}) und drehte ohne Kampf ab.</p>
             </Card>
           )}
+          {r.kind === "kartell" && typeof d.lossHours === "number" && d.lossHours > 0 && (
+            <p className="text-sm text-ink2 mt-2" data-testid="cartel-loss-hours">Bleibender Verlust (Plünderung und Einheiten): etwa {fmtNum(d.lossHours, 1)} h Produktion deines Hafens.</p>
+          )}
           {r.kind === "leer" && <Card><p>Das Nest war bei Ankunft verlassen. Der Verband kehrt um.</p></Card>}
         </>
       )}

@@ -226,9 +226,12 @@ Nach dem Kampf:
   Tag 21–28 mit mindestens 70 %. In den Wochen 5 und 6 bleibt Stufe 5 das höchste Nest; Ziele sind dann Weltereignisse
   (werden mit dem Saisonfortschritt stärker und reicher), Felder, der 3. Hafen und andere Spieler. Die Beute einer Stufe passt
   ungefähr in die Ladung der Landungsschiffe eines solchen Verbands.
-- Stufe 6 (seit v1.15, „Inselfestung“, Spätspiel Woche 5–6): ≈ Stufe 5 × 1,35; ein voller Verband siegt an Tag 28 zu
-  etwa 15 %, ab Tag 35 zu 74 %. Fünf feste Inseln (`LATE_NEST_POINTS`, an `nestSites()` angehängt), eigene Wiederkehr
-  `respawnHours` 24 h, Beute 29 000 Einheiten (viel Elektronik). migrate/Seed trägt fehlende Plätze nach (vorhandene
+- Stufe 6 (seit v1.15, „Inselfestung“, Spätspiel Woche 5–6): v1.35 ≈ Stufe 5 × 1,40 (36 Schnellboote, 350 Miliz;
+  Nutzerentscheid 9B, vorher × 1,35). Der Bot-Verband (sim/nest6.ts) siegt an Tag 28 zu etwa 50 %, an Tag 35 zu etwa
+  65 % und ab Tag 38 sicher – Zielfenster Tag 35–38. Fünf feste Inseln (`LATE_NEST_POINTS`, an `nestSites()` angehängt),
+  eigene Wiederkehr `respawnHours` 24 h. Beute v1.35 (Nutzerentscheid 9A): gleicher Wert (≈ 73 500 Richtwert) in weniger
+  Einheiten – 3 500 Stahl, 3 000 Treibstoff, 21 300 Elektronik, 1 200 Proviant = 29 000 Einheiten statt 37 700, damit der
+  Laderaum des Verbands (7–9 Landungsschiffe) sie weitgehend fasst; der Probekampf zeigt, welcher Anteil in den Laderaum passt. migrate/Seed trägt fehlende Plätze nach (vorhandene
   Nester bleiben; Feld mit Hafen erst beim Saisonwechsel). Kein Freischalten nach Saisontag (ENTSCHEIDUNGEN-3.md N).
 - **Lebendige Nester** (Block `pirates.living`, Vorlage docs/VORLAGE-NESTER.md 3, umgesetzt 27.11.2026):
   - **Wurf je Besetzung** (Saisonbeginn und jede Wiederbesetzung; Stufen 2–6): Besatzungsfaktor gleichverteilt in
@@ -261,6 +264,9 @@ Nach dem Kampf:
     Seit v1.13 gewichtet mit `raidHpWeights` (je ID, sonst je Gattung, sonst 1): Schiffe kämpfen nicht am Boden und zählen
     halb (`see` 0,5), Minenräumer 0,1, Landungsschiffe, Kolonieschiffe und Minenleger gar nicht; Bodentruppen und Anlagen voll.
   - Grundstärke in Booten = `raidStrengthShareOfDefense * Verteidigungs-Lebenspunkte / hp(schnellboot)`, mindestens `raidMinSchnellboote`.
+    `raidStrengthShareOfDefense` v1.35 **0,10** (v1.24 0,40; Nutzerentscheid 2: Kartellkosten höchstens 10 % der
+    Tagesproduktion, ein Zahlenhebel). Der Kampfbericht nennt den bleibenden Verlust (Plünderung + endgültig verlorene
+    Einheiten/Anlagen zum Richtpreis) in Stunden Produktion des Hafens (`report.lossHours`).
   - Forschung des Verteidigers (seit v1.7): Vom Zuwachs der Lebenspunkte durch Modifikatoren (`hp` je Gattung, Anlagen
     `anlage`) zählt das Kartell den Anteil `raidResearchWeight` (0,5) mit; ohne Forschung unverändert.
   - Je Überfall wird ein Faktor gleichverteilt aus `[1 - raidStrengthSpread, 1 + raidStrengthSpread]` gezogen (eigener Seed,
@@ -331,15 +337,15 @@ Werte unter `worldEvents.finale`, Kern in `packages/game-core/src/finale.ts`, En
 (Ereignisart `finale`, game_event `finale_announce`, `finale_appear`, `finale_end`). Vorlage: VORLAGE-SAISONFINALE.md.
 
 - **Zeitplan** (bei 42 Tagen Saison, `referenceSeasonDays`): Ankündigung `announceAfterDays` = 35,5 Tage nach
-  Saisonbeginn (Tag 36, 12:00): Systemnachricht und Push an alle, Banner, Karte mit Sammelpunkt und Countdown; ab dann keine
-  gewöhnlichen Weltereignisse. Erscheinen `appearAfterDays` = 37,5 (Tag 38, 12:00), Abzug nach `durationHours` = 72 h
+  Saisonbeginn (Tag 36, 12:00): Systemnachricht und Push an alle, Banner, Karte mit Sammelpunkt und Countdown. Gewöhnliche
+  Weltereignisse entstehen bis `ordinaryEventsUntilDays` = 37,5 (v1.35, Nutzerentscheid 9C; vorher bis zur Ankündigung). Erscheinen `appearAfterDays` = 37,5 (Tag 38, 12:00), Abzug nach `durationHours` = 72 h
   (Tag 41, 12:00). Bei anderer Saisonlänge werden alle Zeiten proportional umgerechnet; der Abzug liegt immer vor dem
   Saisonende. Missionen, die vor dem Erscheinen ankämen, werden abgelehnt (`finale_not_yet`).
 - **Teilnehmer** (Bezug): Häfen von Spielern außerhalb des Anfängerschutzes, die in den letzten `activeHours` (72 h)
-  aktiv waren (zuletzt gesehen oder angemeldet); KI-Spieler zählen immer.
+  aktiv waren (zuletzt gesehen oder angemeldet); KI-Spieler zählen immer, aber nur mit `botKFactor` (v1.35: 0,5) ihres K.
 - **Ort:** Seefeld (offenes Wasser) mit der kleinsten größten Entfernung zu allen Teilnehmerhäfen, beim Ankündigen fest.
-  Liegen zwei Teilnehmerhäfen mehr als `vanguardSpreadKm` (1 500 km) auseinander, bekommt jeder Hafen weiter als
-  `vanguardKm` (400 km) vom Sammelpunkt eine **Vorhut** auf einem Seefeld höchstens 400 km vor sich (Richtung
+  Liegen zwei Teilnehmerhäfen mehr als `vanguardSpreadKm` auseinander (v1.35: 0, also immer), bekommt jeder Hafen weiter als
+  `vanguardKm` (v1.35: 500 km, vorher 400) vom Sammelpunkt eine **Vorhut** auf einem Seefeld höchstens 500 km vor sich (Richtung
   Sammelpunkt; nahe Häfen teilen sich eine). Vorhuten sind weitere Kampforte derselben Geschwader; eine Mission fährt
   zum nächsten Kampfort. Das Flaggschiff liegt immer am Sammelpunkt; sind die Geschwader versenkt, gibt es nur noch ihn.
   Missionsart Überfall, Fahrt über die Seewege, Wetter gilt.
@@ -348,12 +354,15 @@ Werte unter `worldEvents.finale`, Kern in `packages/game-core/src/finale.ts`, En
   H = `referenceFactor` (4) × Σ K, mindestens `minHp` (40 000), mal Kartellstärke-Regler der Verwaltung (25–300 %).
   `squadronShare` (90 %) als Schnellboote mit je `milizPerBoat` (8) Milizionären (240 LP je Boot), der Rest als
   Flaggschiff aus Sektionen (NPC-Einheit `flaggschiff`, 1 000 LP, Angriff See 20, Luft 7 je Sektion).
+  **U-Jagd (v1.35, Nutzerentscheid 1C):** Nur in Kämpfen gegen die Armada haben die Schnellboote `squadronUJagd` (10)
+  Wasserbomben gegen getauchte U-Boote (`finaleBattleBalance`); sim/armada.ts zeigte vorher verlustfreie U-Boot-Angriffe.
+  Kartell, Nester und übrige Weltereignisse bleiben ohne U-Jagd.
 - **Abschnitt je Angriff:** Die Armada stellt jedem Verband `sectorFactor` (0,5) × K des Verbands / LP eines
   Schnellboots Boote (mindestens `minSectorBoats` = 4, höchstens der Rest) mit ihrer Miliz. Beim Sammelangriff zählt K
   aller Teilnehmer zusammen. Sind die Geschwader versenkt, steht das ganze Flaggschiff. Verluste bleiben, sinken alle
   Boote des Abschnitts, ertrinkt ihre Miliz. Vorschau: Abschnitt, Siegchance (Probekampf mit `probeRuns` festen
   Seeds), erwarteter Schaden und Beute.
-- **Beute:** `lootPerHp` (0,6) Richtwert je vernichtetem Lebenspunkt in der Mischung `lootMix` (wie der Beutepool der
+- **Beute:** `lootPerHp` (v1.35: 0,9, vorher 0,6) Richtwert je vernichtetem Lebenspunkt in der Mischung `lootMix` (wie der Beutepool der
   Großflotte), **ohne Laderaumgrenze**, gutgeschrieben bei der Heimkehr im Ausgangshafen (das Lager begrenzt wie immer).
   Versenkt ein Kampf das Flaggschiff, erhalten seine Teilnehmer zusätzlich einen Schatz von `treasureShare` (5 %) × H
   (Richtwert), beim Sammelangriff nach Beitrag.
@@ -541,12 +550,14 @@ und bezahlt wird bei Fälligkeit. Gegenpartei ist ein KI-Spieler oder ein andere
   - **Kampf:** Kostenwert der gegnerischen Einheiten und Anlagen, die laut Kampfbericht der Saison vernichtet wurden
     (als Angreifer und als Verteidiger, auch gegen Nester und Kartell). Schnellboot zählt 250, Piratenmiliz 40.
     Abwehr ohne angreifenden Spieler (Kartell-Überfall, Großflotte, Konvoi, Feld) zählt nur `scoring.npcDefenseFactor`
-    (v1.24: × 0,25). Eigene Angriffe auf Großflotte und Belagerungsring zählen voll (Nutzerentscheid 27.11.2026,
-    `npcWorldEventKinds` leer), ebenso Nester, Schatzschiff und Spielerkämpfe.
+    (v1.35: × 0,1, vorher 0,25). Eigene Angriffe auf Großflotte und Belagerungsring zählen voll (Nutzerentscheid 27.11.2026,
+    `npcWorldEventKinds` leer), ebenso Schatzschiff und Spielerkämpfe. **Nester** (Bericht mit `nest_id`, auch Sammelangriffe)
+    zählen × `scoring.nestFactor` (v1.35: 0,5, Nutzerentscheid 3).
     Angriffe auf die Kartell-Armada des Saisonfinales zählen × `scoring.armadaFactor` (0,5); eine Flaggschiff-Sektion zählt 2 375.
-  - **Beute:** Wert der Beute aus eigenen Überfällen der Saison (zum Richtpreis).
+  - **Beute:** Wert der Beute aus eigenen Überfällen der Saison (zum Richtpreis); Beute aus Nestern × `scoring.nestFactor` (0,5).
   - **Befehle:** Punkte aus abgeholten Tagesbefehlen der Saison samt Serienbonus (bereits Punkte, kein Kostenwert;
-    siehe Abschnitt Tagesbefehle).
+    siehe Abschnitt Tagesbefehle). v1.35 (Nutzerentscheid 4): höchstens `scoring.ordersMaxShare` (5 %) des Gesamtrangs –
+    gezählt werden min(Befehle, ⌊0,05/0,95 × übrige Punkte⌋).
 - **Spieler gegen Spieler** (Vorlage „Mehr Spieler gegen Spieler“, freigegeben 27.11.2026, alle Empfehlungen; Block `pvp`): gilt für
   jeden Kampfbericht mit Spieler auf beiden Seiten (Überfall, Sammelangriff, Blockadekampf, Konvoi, Feld). Nur die
   Wertung ändert sich; Beute und Verluste bleiben. Ein geplünderter Spieler verliert weiterhin keine Punkte – die
@@ -588,8 +599,9 @@ Baugutschrift für Häfen weit unter dem Median und für Spät-Einsteiger (Balan
 Vorlage „Aufholhilfe“ (docs/VORLAGE-AUFHOLHILFE.md) mit Nutzerentscheiden vom 27.11.2026; Rechnung
 `node packages/game-core/sim/aufholhilfe.ts`). Gilt für Menschen und KI-Spieler gleich.
 
-- **Rückstand r** = eigene Ausbaupunkte (Kostenwert aller gebauten Gebäudestufen, alle Häfen) / Median der
-  Ausbaupunkte aller Spieler (KI eingeschlossen), deren erster Hafen mindestens `minBaseAgeDays` (3) Tage alt ist.
+- **Rückstand r** = eigene Ausbaupunkte (Kostenwert aller gebauten Gebäudestufen, alle Häfen) – v1.35 mit
+  `includeMilitary` plus Militärwert (Einheiten daheim und unterwegs, Anlagen; M-10: reine Rüster bekamen sonst
+  Bauzuschuss) – / Median derselben Größe aller Spieler (KI eingeschlossen), deren erster Hafen mindestens `minBaseAgeDays` (3) Tage alt ist.
   Der Worker rechnet einmal je `refreshMinutes` (60) und speichert den Median zwischen (`server_setting catch_up`).
 - **Bonus b** = `cap` × clamp((`from` − r) / (`from` − `full`); 0; 1) mit `from` 0,70, `full` 0,30, `cap` 0,50:
 
@@ -601,6 +613,8 @@ Vorlage „Aufholhilfe“ (docs/VORLAGE-AUFHOLHILFE.md) mit Nutzerentscheiden vo
 - **Zufluss:** je Stunde b × Gebäudeproduktion des Hafens (ohne Grundrate, nach Strom, ohne Forschungszuschläge) zum
   Richtwert in das Konto `catchUp` des Hafens; höchstens `maxCatchUpHours` (2) Stunden je Lauf, Bestand höchstens
   `storeHours` (24) Stunden Zufluss (darüber ruht er). Ab Saisontag `stopDay` (40) kein Zufluss mehr.
+  **Mindestzufluss** (v1.35, AN-10, `minFlowShare` 0,1): solange b > 0, je Stunde mindestens 10 % der Median-
+  Gebäudeproduktion derselben Spieler (Richtwert/h) – Rückkehrer mit wenig eigener Produktion bekommen so spürbar Hilfe.
 - **Startpaket:** Wer seinen ersten Hafen der Saison ab Saisontag `latePackFromDay` (8; Tag 1 = Saisonbeginn) wählt,
   erhält einmalig `latePackShare` (15 %) des Median-Ausbauwerts als Gutschrift (bei der Hafenwahl, Median aus dem
   Zwischenspeicher). Kolonien erhalten kein Paket.

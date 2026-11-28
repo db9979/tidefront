@@ -262,6 +262,13 @@ export interface ScoringBalance {
   npcWorldEventKinds?: string[];
   /** Saisonfinale: Faktor auf Kampfpunkte aus Kämpfen gegen die Armada (Weltereignis finale). */
   armadaFactor?: number;
+  /** v1.35 (Nutzerentscheid 3): Faktor auf Kampf- und Beutepunkte aus Nestüberfällen; fehlt er, zählen Nester voll. */
+  nestFactor?: number;
+  /**
+   * v1.35 (Nutzerentscheid 4): Befehle zählen höchstens mit diesem Anteil am Gesamtrang (Deckel: Befehle ≤ Anteil ×
+   * Gesamt, also ≤ Anteil/(1 − Anteil) × übrige Punkte); fehlt er, zählen sie unbegrenzt.
+   */
+  ordersMaxShare?: number;
 }
 // ---------------------------------------------------------------- Ergebnis
 
@@ -418,6 +425,7 @@ export interface Mission {
   admiralId?: number; // Admirale: Führer des Verbands (Server); fehlt ohne Admiral
   route?: MissionRoute; // Seewege: Route über Wasser (mit Schiffen); fehlt = Luftlinie (auch alte Missionen)
   sightTurn?: import("./recon-sight.ts").SightTurn; // Aufklärung auf Sicht: Wendepunkt (fehlt = bis ans Ziel)
+  foundingFee?: ResourceMap; // v1.35: Gründungsgebühr ab dem 3. Hafen (Server); kommt zurück, wenn die Gründung scheitert
 }
 
 export interface FleetCheck {

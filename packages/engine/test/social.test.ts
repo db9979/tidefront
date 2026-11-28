@@ -139,8 +139,10 @@ test("Rangliste: Punkte je Kategorie nach Formel", async () => {
   // A: Ausbau 435, Militär 2 Korvetten 1460, Kampf 1530 + 1400, Beute 1990 + 900. B: Bunkerlinie 460, Kampf 420 + 125.
   assert.deepEqual({ ausbau: a.ausbau, militaer: a.militaer, kampf: a.kampf, beute: a.beute, total: a.total },
     { ausbau: 4, militaer: 14, kampf: 29, beute: 28, total: 75 });
+  // B: Kampf 420 + 500 × npcDefenseFactor (v1.35: 0,1).
+  const bk = Math.floor((420 + 500 * balance.scoring!.npcDefenseFactor) / 100);
   assert.deepEqual({ ausbau: b.ausbau, militaer: b.militaer, kampf: b.kampf, beute: b.beute, total: b.total },
-    { ausbau: 0, militaer: 4, kampf: 5, beute: 0, total: 9 });
+    { ausbau: 0, militaer: 4, kampf: bk, beute: 0, total: 4 + bk });
   assert.equal(a.rank, 1);
   assert.equal(b.rank, 2);
   assert.equal(a.base?.name, "Hafen Arne");

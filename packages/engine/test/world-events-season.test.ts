@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { createDb, migrateDb, tables } from "@tidefront/db";
 import { COLS, ROWS, isCoast, nestSites } from "@tidefront/world";
-import { finaleBalance, finaleSchedule, mulberry32, worldEventsBalance, WORLD_EVENT_KINDS, type BaseState } from "@tidefront/game-core";
+import { finaleBalance, finaleOrdinaryUntil, finaleSchedule, mulberry32, worldEventsBalance, WORLD_EVENT_KINDS, type BaseState } from "@tidefront/game-core";
 import { balance, chooseBase, ensureWorldEventPlanner, processDue, register, runningSeason, seed, spawnWorldEvent, type Engine } from "../src/index.ts";
 import { setRandomSeedSource } from "../src/store.ts";
 
@@ -138,13 +138,15 @@ test("Ganze Saison ohne Saisonfinale: höchstens ein Ereignis je 48 h, keines in
   await runUntil(Date.now());
 });
 
-test("Ganze Saison mit Saisonfinale: keine Flut vor der Ankündigung, danach kein gewöhnliches Ereignis", { skip: !finaleBlock }, async () => {
+test("Ganze Saison mit Saisonfinale: keine Flut vor dem Ende der gewöhnlichen Ereignisse, danach keins (v1.35: bis 37,5)", { skip: !finaleBlock }, async () => {
   await players("Mit", 200);
   const r = await simulateSeason();
   checkSpacing(r.starts, r.start, "mit Finale");
   assert.ok(r.maxOpen <= w().maxConcurrent!, `gleichzeitig ${r.maxOpen}`);
-  const announce = finaleSchedule(r.start, r.end, balance).announceMs;
-  for (const s of r.starts) assert.ok(s < announce, "nach der Finale-Ankündigung kein gewöhnliches Ereignis");
+  // v1.35 (Nutzerentscheid 9C): gewöhnliche Ereignisse bis ordinaryEventsUntilDays (37,5 = Erscheinen), nicht mehr ab der Ankündigung.
+  const until = finaleOrdinaryUntil(r.start, r.end, balance);
+  assert.ok(until > finaleSchedule(r.start, r.end, balance).announceMs);
+  for (const s of r.starts) assert.ok(s < until, "nach dem Ende der gewöhnlichen Ereignisse kein neues");
   const [fin] = await db.select().from(tables.worldEvent).where(and(eq(tables.worldEvent.kind, "finale"), eq(tables.worldEvent.seasonId, r.season.id)));
   assert.ok(fin, "Saisonfinale angekündigt");
 });

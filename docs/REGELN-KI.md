@@ -48,10 +48,20 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
 - **Tagesbefehle:** an etwa 60 % der Tage (fest je Bot und Tag, höchstens alle 3 h) vergibt sich die KI ihre
   Tagesbefehle und Wochenziele und holt Erledigtes ab – wie ein Mensch, der nicht jeden Tag hineinsieht.
 - **Heimwache:** der Anteil `homeGuardShare` jeder Kampfeinheit bleibt daheim – auch Truppen (Landungsschiffe fahren
-  ganz mit, Laderaum); die Festung hält mindestens die Hälfte daheim.
-- **Weltereignisse:** Freibeuter und Festung greifen Schatzschiff, Großflotte und Belagerungsring in bis zu 900 km an,
+  ganz mit, Laderaum); die Festung hält mindestens 30 % ihrer Truppen daheim (v1.35, vorher die Hälfte), von Schiffen und
+  Flugzeugen nur 20 % – sie verteidigt mit Anlagen und Truppen; Kriegsschiffe daheim heben nur die Kartellstärke.
+  Doktrin der Festung v1.35: Schützen 16 %, Küstenbatterie 16 %, Flak 10 % (Anlagen zusammen 38 %).
+- **Mindestwache (v1.35):** in jedem Hafen bleiben mindestens 40 Landtruppen (`MIN_HOME_TROOPS`, Schützen zuletzt
+  verschickt) – vorher verloren Kolonien ohne Truppen jeden Kartell-Überfall.
+- **Inselfestung (v1.35):** schafft der Verband daheim das bekannte Nest 6 nicht, wohl aber mit den heimkehrenden
+  Überfallverbänden dieses Hafens, wartet die KI höchstens 8 h (danach 16 h nicht) statt Stufe 5 anzufahren
+  (`waitForTopNest`).
+- **Weltereignisse:** Freibeuter und Festung greifen Schatzschiff, Großflotte und Belagerungsring in bis zu 1 200 km an (v1.35, vorher 900; kommt der Verband mit Landungsschiffen zu spät, fährt er ohne sie),
   wenn der Probekampf (Ereignis vernichtet, ohne Truppen) zu ≥ 90 % gewinnt und der erwartete Verlust höchstens 35 %
-  des Verbands ist; ein Missionsplatz bleibt frei. Der Händler nicht.
+  des Verbands ist; v1.35 darf dafür auch der letzte freie Missionsplatz genutzt werden (vorher blieb einer frei), und
+  solange ein solches Ereignis in Reichweite läuft, halten Nestfahrten, Aufklärung und Feldfahrten einen Platz frei
+  (`keepSlotForEvent`). Lehnt die Planung ab (Flugzeuge außer Reichweite, Abfangpunkt mit Landungsschiffen nicht
+  erreichbar), fährt der Verband ohne diese, wenn der Probekampf weiter reicht. Der Händler nicht.
 - **Felder:** alle drei Spielweisen nehmen Rohstofffelder in bis zu 700 km (nahe und niedrige Stufen zuerst). Bewachte
   Felder nur nach Probekampf gegen die Kartell-Wache (bekanntes Lagebild, sonst Wache der Stufe aus dem Handbuch;
   Sieg = Wache vernichtet wie im Feldkampf). Der kleinste Teil der Schiffe, der die Wache schlägt **und** als ganze
@@ -80,6 +90,11 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
   Gründungsschutz, Diplomatie). Zusätzlich: **Sperrfrist** `bots.humanAttackCooldownHours` (12 h) – derselbe Bot
   greift denselben Menschen erst wieder an, wenn sein letzter Überfall auf ihn (Bericht) länger her ist und kein
   Überfall auf ihn unterwegs ist.
+- **Vergeltung** (v1.35, Nutzerentscheid 5B; Server-Einstellung `bots_vergeltung`, Verwaltung → KI-Spieler, **Vorgabe an**):
+  Überfällt ein Mensch einen KI-Spieler (Überfall oder Sammelangriff, Bericht der letzten 24 h), schlägt die KI auch ohne
+  „Darf Menschen angreifen“ zurück – nur gegen den Ausgangshafen dieses Angreifers, höchstens einmal je 24 h je KI, erst
+  nach Aufklärung und nur bei Probekampf ≥ 75 % (sonst wird der Überfall verworfen). Alle Schutzregeln und die Sperrfrist
+  gelten (bots-vergeltung.ts).
 - Andere **KI-Spieler** überfällt nur der Freibeuter, höchstens alle 48–72 h (zuerst Menschen, falls erlaubt, sonst die
   KI mit dem vollsten Lager laut Aufklärung). Piratennester ohne Sperrfrist (normale Regeln); kein zweiter eigener
   Verband zum selben Nest oder Weltereignis.
@@ -102,7 +117,7 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
 ## Verwaltung
 
 - Liste mit Spielweise, Hafen, letztem/nächstem Zug, Dauer, Fehlern und den letzten Aktionen.
-- Je Bot: **Aktiv** und **Darf Menschen angreifen**.
+- Je Bot: **Aktiv** und **Darf Menschen angreifen**; für alle: **Vergeltung** (v1.35, Vorgabe an).
 - **Bot hinzufügen** mit Spielweise; Name aus einer Namensliste je Spielweise (eindeutig, sonst mit „II“ …).
   **Startbesetzung** legt je Spielweise einen an. Obergrenze: Server-Einstellung `bots_max` (Vorgabe 8).
 - **Entfernen** (mit Rückfrage): Angebote zurückziehen, Felder und Verbände zurückrufen, Außenposten aufgeben – über

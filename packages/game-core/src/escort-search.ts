@@ -19,6 +19,8 @@ export interface EscortAdviceInput {
   riskKm: number;
   /** Börse oder Liefervertrag (geringere Kartellchance). */
   market: boolean;
+  /** v1.35: Warenwert für die Chance (Börse: alle eigenen Börsenkonvois der letzten Stunden samt diesem); fehlt: value. */
+  riskValue?: number;
   trip: EscortTrip;
   /** Schiffe daheim (andere Einheiten werden ignoriert). */
   home: Counts;
@@ -75,7 +77,7 @@ export function escortHome(home: Counts, balance: Balance): Counts {
 /** Empfohlenes Geleit für einen Konvoi (siehe Kopf). */
 export function recommendEscort(input: EscortAdviceInput, balance: Balance): EscortAdvice {
   const target = input.target ?? ESCORT_TARGET;
-  const threat = expectedCartelGroup(input.value, input.riskKm, balance, input.market);
+  const threat = expectedCartelGroup(input.value, input.riskKm, balance, input.market, input.riskValue ?? input.value);
   const home = escortHome(input.home, balance);
   const base = { threat, missing: [] as EscortMissing[], commandPointsShort: false, fuelShort: false };
   if (threat.chance <= 0 || Object.keys(threat.force).length === 0) return { ...base, status: "none", units: {}, winRate: null, tradeoff: null };

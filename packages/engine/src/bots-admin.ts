@@ -3,6 +3,7 @@ import { tables } from "@tidefront/db";
 import { inArray } from "drizzle-orm";
 import type { Engine } from "./context.ts";
 import { BOT_PROFILES, PROFILE_TEXT, botsEnabled, botsMax, loadBots } from "./bots-core.ts";
+import { vergeltungOn } from "./bots-vergeltung.ts";
 
 export async function botsAdminView(engine: Engine) {
   const bots = await loadBots(engine.db);
@@ -14,6 +15,7 @@ export async function botsAdminView(engine: Engine) {
     serverNow: Date.now(),
     enabled: await botsEnabled(engine.db),
     max: await botsMax(engine.db),
+    vergeltung: await vergeltungOn(engine.db), // v1.35: KI-Vergeltung (Standard an)
     profiles: BOT_PROFILES.map((id) => ({ id, name: PROFILE_TEXT[id] })),
     bots: bots.map((b) => {
       const own = bases.filter((x) => x.playerId === b.id);

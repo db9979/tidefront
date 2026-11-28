@@ -8,6 +8,7 @@ import { nestSites, isCoast, COLS, ROWS } from "@tidefront/world";
 import type { BaseState } from "@tidefront/game-core";
 import {
   addDays,
+  balance,
   CHALLENGE_KINDS,
   chooseBase,
   claimChallenge,
@@ -380,7 +381,13 @@ test("Serie: drei Tage nacheinander alles abgeholt ergibt Serienbonus, Lücke se
   assert.equal((await dailyView(engine, p.playerId)).streak.length, 0);
 });
 
-test("Punkte in der Rangliste (Kategorie Befehle) und Saisonende setzt zurück", async () => {
+test("Punkte in der Rangliste (Kategorie Befehle) und Saisonende setzt zurück", async (t) => {
+  // v1.35: Der Deckel scoring.ordersMaxShare (höchstens 5 % des Gesamtrangs) hätte Dirk ohne andere Punkte auf 0 gesetzt;
+  // hier geht es um den Weg der Befehlspunkte, der Deckel ist in balance135.test.ts geprüft.
+  const sc = balance.scoring!;
+  const cap = sc.ordersMaxShare;
+  delete sc.ordersMaxShare;
+  t.after(() => { sc.ordersMaxShare = cap; });
   const season = (await runningSeason(db))!;
   const rows = await computeStandings(db, season.startsAt.getTime(), Date.now());
   const [d] = await db.execute<{ id: number }>(sql`select id from player where name = 'Dirk'`);

@@ -1,4 +1,4 @@
-// Aufholhilfe (Balance-Block catchUp, docs/REGELN.md „Aufholhilfe“): Häfen, deren Ausbau weit unter dem Median liegt,
+// Aufholhilfe (Balance-Block catchUp, docs/REGELN.md „Aufholhilfe“): Häfen, deren Ausbau (v1.35: + Militär) weit unter dem Median liegt,
 // bekommen eine Baugutschrift. Sie bezahlt nur Gebäudestufen, liegt in einem eigenen Konto des Hafens (BaseState.catchUp),
 // zählt nicht zum Lager und ist weder plünderbar noch handelbar oder transportierbar. Reine Funktionen; den stündlichen
 // Lauf (Median, Rückstand, Zufluss) und das Startpaket macht der Server (engine/catch-up.ts).
@@ -27,6 +27,16 @@ export interface CatchUpBalance {
   refreshMinutes: number;
   /** Höchstens so viele Stunden Zufluss je Lauf (2), falls der Worker eine Weile stand. */
   maxCatchUpHours: number;
+  /**
+   * v1.35 (M-10): Rückstand nach Ausbau + Militär (Einheiten und Anlagen, auch unterwegs) statt nur Ausbau; fehlt/false:
+   * nur Ausbau.
+   */
+  includeMilitary?: boolean;
+  /**
+   * v1.35 (AN-10): Mindestzufluss für Rückkehrer – solange die Hilfe läuft, je Stunde mindestens dieser Anteil der
+   * Median-Gebäudeproduktion (Richtwert/h), unabhängig von der eigenen Produktion. Fehlt: 0.
+   */
+  minFlowShare?: number;
 }
 
 /** Konto der Aufholhilfe im Hafenzustand. Beträge zum Börsen-Richtwert (market.refPrice, Stahl = 1). */
@@ -113,12 +123,13 @@ export function emptyCatchUp(nowMs: number): CatchUpState {
 }
 
 /**
- * Zufluss eines Laufs: bonus × Gebäudeproduktion (Wert je Stunde) × Stunden (höchstens maxCatchUpHours). Der Bestand
- * wächst höchstens bis storeHours × Zufluss je Stunde; darüber ruht der Zufluss (ein Startpaket darf darüber liegen).
+ * Zufluss eines Laufs: bonus × Gebäudeproduktion (Wert je Stunde) × Stunden (höchstens maxCatchUpHours), v1.35 je Stunde
+ * mindestens `minPerHour` (Mindestzufluss für Rückkehrer), solange ein Bonus läuft. Der Bestand wächst höchstens bis
+ * storeHours × Zufluss je Stunde; darüber ruht der Zufluss (ein Startpaket darf darüber liegen).
  */
-export function accrueCatchUp(state: CatchUpState, buildingValuePerHour: number, nowMs: number, cu: CatchUpBalance, flowing = true): CatchUpState {
+export function accrueCatchUp(state: CatchUpState, buildingValuePerHour: number, nowMs: number, cu: CatchUpBalance, flowing = true, minPerHour = 0): CatchUpState {
   const hours = Math.max(0, Math.min(cu.maxCatchUpHours, (nowMs - state.lastAtMs) / 3600000));
-  const perHour = flowing ? state.bonus * Math.max(0, buildingValuePerHour) : 0;
+  const perHour = flowing && state.bonus > 0 ? Math.max(state.bonus * Math.max(0, buildingValuePerHour), Math.max(0, minPerHour)) : 0;
   const ceiling = cu.storeHours * perHour;
   const add = Math.max(0, Math.min(perHour * hours, ceiling - state.credit));
   return { ...state, credit: state.credit + add, earned: state.earned + add, lastAtMs: nowMs };

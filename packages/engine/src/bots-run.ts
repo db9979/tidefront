@@ -21,6 +21,7 @@ import { raidFinale } from "./bots-finale.ts";
 import { admiralTurn } from "./bots-admiral.ts"; // Admirale
 import { dailyTurn } from "./bots-daily.ts";
 import { raidWorldEvent } from "./bots-world-events.ts";
+import { retaliate } from "./bots-vergeltung.ts";
 
 /** Zusatzanteile der Doktrin, solange ein Feldverband fehlt (bots-fields.ts). */
 const FIELD_DOCTRINE = { korvette: 0.15, zerstoerer: 0.05 };
@@ -141,6 +142,7 @@ export async function botTurn(engine: Engine, bot: BotRow, nowMs = Date.now()): 
     if (await layMines(c, b)) continue;
     // Admirale: der Probekampf rechnet den bereiten Admiral dieses Hafens ein; tryLaunch nimmt ihn mit.
     const raid = c.admiral?.baseId === b.id ? combineModifiers(m, c.admiral.mods) : m;
+    if (await retaliate(c, b, raid)) continue; // v1.35: Vergeltung gegen einen menschlichen Angreifer (Verwaltung „Vergeltung“)
     if (await raidPlayer(c, b, raid)) continue;
     if (await raidNest(c, b, raid)) continue;
     // Lagebild Stufe 2: Patrouille erst, wenn kein Angriff möglich war (früher davor: sie nahm Korvetten und einen

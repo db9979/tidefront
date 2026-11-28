@@ -107,7 +107,8 @@ test("Satellit: Prüfungen, Kosten, Höchstzahl (1, mit Radarsatellit 2)", async
   assert.equal(r.ok, true, JSON.stringify(r));
   const s = await stateOf(A.baseId);
   assert.equal(s.satellites?.length, 1);
-  assert.ok(before - s.resources.elektronik >= 3500 - 1, "Elektronik abgezogen");
+  const optCost = balance.intel!.satellite!.types.optisch.cost.elektronik ?? 0; // v1.35: ≈ 7 000 Richtwert
+  assert.ok(before - s.resources.elektronik >= optCost - 1, "Elektronik abgezogen");
   assert.equal(((await launch("optisch")) as { code?: string }).code, "sat_limit");
   const [rep] = await db.select().from(tables.battleReport).where(and(eq(tables.battleReport.kind, "satellit"), eq(tables.battleReport.attackerPlayerId, A.playerId)));
   assert.match(rep.title, /Optischer Satellit gestartet/);

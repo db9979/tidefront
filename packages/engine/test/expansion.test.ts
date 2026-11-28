@@ -102,7 +102,7 @@ test("Gründung: Vorschau, Ablehnungen, Obergrenze inkl. laufender Gründung, ne
   const units = { [SHIP]: 1, korvette: 2 };
   const pv = await missionPreview(engine, A.playerId, { type: "gruendung", units, col: target.col, row: target.row, cargo: { stahl: 1500 } });
   assert.equal(pv.ok, true, JSON.stringify(pv));
-  assert.deepEqual((pv as { expansion: unknown }).expansion, { bases: 1, pending: 0, allowed: 2, max: E.maxBases });
+  assert.deepEqual((pv as { expansion: unknown }).expansion, { bases: 1, pending: 0, allowed: 2, max: E.maxBases, fee: {} }); // 2. Hafen ohne Gründungsgebühr
   // Ablehnungen in der Vorschau.
   assert.equal(code(await missionPreview(engine, A.playerId, { type: "gruendung", units: { korvette: 2 }, col: target.col, row: target.row })), "colony_ship");
   assert.equal(code(await missionPreview(engine, A.playerId, { type: "gruendung", units: { [SHIP]: 2 }, col: target.col, row: target.row })), "colony_ship");

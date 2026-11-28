@@ -4,6 +4,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { tables } from "@tidefront/db";
 import type { Engine } from "./context.ts";
 import { ALLIANCE_MAX_SETTING, allianceMaxSize, membershipOf, purgeExpired, type Role } from "./alliance-core.ts";
+import { allianceScore } from "./season-alliances.ts";
 import { rankingView } from "./social.ts";
 import { setSetting } from "./settings.ts";
 
@@ -79,7 +80,8 @@ export async function allianceView(engine: Engine, playerId: number) {
 export type Relation = "verbuendet" | "pakt" | "pakt_gekuendigt" | "pakt_angeboten" | "krieg" | "krieg_angekuendigt";
 
 /**
- * Verzeichnis: alle Allianzen mit Allianzwertung (Rang nach Summe der Mitgliederpunkte), Kürzel je Spieler und
+ * Verzeichnis: alle Allianzen mit Allianzwertung (v1.35: Rang nach Durchschnitt der Mitgliederpunkte, Mindestgröße 2,
+ * season-alliances.ts allianceScore), Kürzel je Spieler und
  * die Beziehung der eigenen Partei zu jedem anderen Spieler.
  */
 export async function allianceDirectory(engine: Engine, playerId: number) {
@@ -94,7 +96,7 @@ export async function allianceDirectory(engine: Engine, playerId: number) {
   for (const x of members) byAlliance.set(x.allianceId, [...(byAlliance.get(x.allianceId) ?? []), x.playerId]);
   const rows = alliances.map((a) => {
     const ids = byAlliance.get(a.id) ?? [];
-    return { id: a.id, name: a.name, tag: a.tag, description: a.description, members: ids.length, total: ids.reduce((s, id) => s + (pts.get(id) ?? 0), 0), own: own?.allianceId === a.id };
+    return { id: a.id, name: a.name, tag: a.tag, description: a.description, members: ids.length, total: allianceScore(ids.reduce((s, id) => s + (pts.get(id) ?? 0), 0), ids.length), own: own?.allianceId === a.id };
   });
   rows.sort((x, y) => y.total - x.total || x.name.localeCompare(y.name, "de"));
   let rank = 0;

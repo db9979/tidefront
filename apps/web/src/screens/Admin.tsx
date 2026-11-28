@@ -16,6 +16,7 @@ import { AdminFinale } from "./AdminFinale.tsx"; // Saisonfinale vorziehen
 import { AdminIntel } from "./AdminIntel.tsx"; // Lagebild: Kartennebel an/aus
 import { AdminBots } from "./AdminBots.tsx"; // KI-Spieler
 import { AdminPvp } from "./AdminPvp.tsx"; // Spieler gegen Spieler: Auffällige Paare
+import { AdminAlliance } from "./AdminAlliance.tsx"; // v1.35: Allianzgröße
 import { AdminPolitik } from "./AdminPolitik.tsx"; // Weltpolitik: Not-Aus, Fenster absagen
 
 function when(v: string | Date | null | undefined): string {
@@ -187,6 +188,7 @@ export function AdminScreen({ onClose }: { onClose: () => void }) {
       <AdminPolitik />
       <AdminIntel />
       <AdminPvp />
+      <AdminAlliance />
       <AdminStats />
     </div>
   );

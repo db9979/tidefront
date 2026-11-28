@@ -1,5 +1,6 @@
-// Allianzwertung zum Saisonende: Summe der Mitgliederpunkte (Endstand) je Allianz, Rangliste mit gleichen Plätzen
-// bei Punktgleichheit. Gespeichert in season_alliance_result; gelesen von der Ruhmeshalle (hallOfFame).
+// Allianzwertung zum Saisonende: v1.35 (Nutzerentscheid 6B) Durchschnitt der Mitgliederpunkte (Endstand) je Allianz,
+// geteilt durch mindestens ALLIANCE_MIN_RANK_SIZE Mitglieder (eine Ein-Personen-Allianz zählt halb), plus Feldpunkte;
+// Rangliste mit gleichen Plätzen bei Punktgleichheit. Gespeichert in season_alliance_result; gelesen von der Ruhmeshalle (hallOfFame).
 import { eq, inArray } from "drizzle-orm";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 
@@ -11,6 +12,14 @@ export interface AllianceStanding {
   members: number;
   total: number;
   playerIds: number[];
+}
+
+/** Mindestgröße im Nenner des Allianzrangs (v1.35). */
+export const ALLIANCE_MIN_RANK_SIZE = 2;
+
+/** Allianzpunkte: Summe der Mitgliederpunkte ÷ max(Mindestgröße, Mitglieder), abgerundet, plus Feldpunkte. */
+export function allianceScore(memberSum: number, members: number, fieldPts = 0): number {
+  return Math.floor(memberSum / Math.max(ALLIANCE_MIN_RANK_SIZE, members)) + fieldPts;
 }
 
 /** Rangliste der Allianzen aus den Gesamtpunkten der Spieler (`totals`: playerId → Punkte zum Saisonende). */
@@ -28,7 +37,7 @@ export async function allianceStandings(db: DbOrTx, totals: Map<number, number>)
     by.set(r.allianceId, a);
   }
   const fp = await (await import("./fields-run.ts")).fieldPoints(db); // Felder: Feldpunkte der Allianzen
-  for (const a of by.values()) a.total += fp.get(a.allianceId) ?? 0;
+  for (const a of by.values()) a.total = allianceScore(a.total, a.members, fp.get(a.allianceId) ?? 0);
   const list = [...by.values()].sort((x, y) => y.total - x.total || x.name.localeCompare(y.name, "de"));
   list.forEach((a, i) => { a.rank = i > 0 && a.total === list[i - 1].total ? list[i - 1].rank : i + 1; });
   return list;

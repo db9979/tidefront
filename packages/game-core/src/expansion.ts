@@ -30,6 +30,16 @@ export interface ExpansionDef {
   homeOnlyBuildings: string[];
   /** Mindeststufe der Hafenkommandantur für das Kolonieschiff. */
   harborLevelForShip: number;
+  /**
+   * v1.35 (Nutzerentscheid 12B): Gründungsgebühr ab dem 3. Hafen = Kosten des Kolonieschiffs × (colonyCostGrowth^(n − 2) − 1)
+   * für den n-ten Hafen (3. Hafen: × 1 zusätzlich, also doppelt so teuer wie der 2.). Fehlt sie, keine Gebühr.
+   */
+  colonyCostGrowth?: number;
+  /**
+   * v1.35 (Nutzerentscheid 12C): Unterhalt je Kolonie und Tag, laufend abgezogen; je Ressource höchstens so viel, wie die
+   * Gebäude der Kolonie davon erzeugen (eine neue Kolonie gerät dadurch nie ins Minus).
+   */
+  colonyUpkeepPerDay?: ResourceMap;
 }
 
 export interface HexPos {
@@ -66,6 +76,20 @@ export function nextUnlockLevel(homeState: BaseState, balance: Balance): number 
   if (!e || allowedBases(homeState, balance) >= e.maxBases) return null;
   const kz = buildingLevel(homeState, "kommandozentrale");
   return e.unlockCommandLevels.find((l) => l > kz) ?? null;
+}
+
+/**
+ * Gründungsgebühr für den n-ten eigenen Hafen (n = vorhandene Häfen + laufende Gründungen + 1): Kosten des Kolonieschiffs ×
+ * (colonyCostGrowth^(n − 2) − 1), aufgerundet; für den 2. Hafen und ohne colonyCostGrowth leer.
+ */
+export function foundingFee(n: number, balance: Balance): ResourceMap {
+  const e = expansionOf(balance);
+  const g = e?.colonyCostGrowth;
+  if (!e || !g || n <= 2) return {};
+  const f = g ** (n - 2) - 1;
+  const out: ResourceMap = {};
+  for (const [r, v] of Object.entries(balance.units[e.colonyShip]?.cost ?? {})) if (v > 0) out[r] = Math.ceil(v * f - 1e-9);
+  return out;
 }
 
 export function colonyShipCount(units: Counts, balance: Balance): number {

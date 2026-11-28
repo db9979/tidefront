@@ -119,8 +119,9 @@ export function scoreShares(snaps: BotSnapshot[], balance: Balance, raidsPerDay:
   for (const s of snaps) {
     const fleet = fleetOf(s.base);
     const n = nestScore(fleet, plannedNest(s.day), balance, seeds);
-    kampf += n.kampf * raidsPerDay;
-    beute += n.beute * raidsPerDay;
+    const nf = balance.scoring?.nestFactor ?? 1; // v1.35: Nester zählen Kampf und Beute × nestFactor
+    kampf += n.kampf * raidsPerDay * nf;
+    beute += n.beute * raidsPerDay * nf;
     const mil = Object.entries(s.base.units).reduce((a, [id, c]) => a + c * value(balance.units[id]?.cost ?? {}, balance), 0);
     const row = {
       day: s.day,
@@ -130,6 +131,9 @@ export function scoreShares(snaps: BotSnapshot[], balance: Balance, raidsPerDay:
       beute: Math.floor(beute / POINT_DIVISOR),
       befehle: Math.floor(DAILY_POINTS * DAILY_DAYS * s.day),
     };
+    // v1.35: Befehle höchstens scoring.ordersMaxShare des Gesamtrangs (wie engine/src/scoring.ts cappedOrders).
+    const share = balance.scoring?.ordersMaxShare;
+    if (share !== undefined && share < 1) row.befehle = Math.min(row.befehle, Math.floor((share / (1 - share)) * (row.ausbau + row.militaer + row.kampf + row.beute) + 1e-9));
     out.push({ ...row, total: row.ausbau + row.militaer + row.kampf + row.beute + row.befehle });
   }
   return out;

@@ -1,6 +1,6 @@
 // Allianzen und Diplomatie: gemeinsame Bausteine (Parteien, Mitgliedschaft, Systemnachrichten) und die Abfragen,
 // die Befehle und Kampf-Handler brauchen (ally, pact, Krieg).
-import { and, eq, gt, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
 import { GameError, type ChangeKind, type Engine } from "./context.ts";
 import { getSetting } from "./settings.ts";
@@ -9,8 +9,15 @@ import { recordTies } from "./pvp-ties.ts"; // PvP: Absprache-Sperre nach Pakten
 export const ROLES = ["fuehrung", "offizier", "mitglied"] as const;
 export type Role = (typeof ROLES)[number];
 
-/** Höchstgröße einer Allianz ohne Einstellung (server_setting alliance_max_size). */
+/** Höchstgröße einer Allianz ohne Einstellung bis v1.34 (server_setting alliance_max_size). */
 export const ALLIANCE_MAX_DEFAULT = 8;
+/** v1.35 (Nutzerentscheid 6B): ohne Einstellung max(ALLIANCE_MIN_SIZE, ceil(Menschen / 2)). */
+export const ALLIANCE_MIN_SIZE = 3;
+
+/** Vorgabe der Höchstgröße aus der Rundengröße: max(3, ceil(Menschen / 2)), höchstens 50. */
+export function defaultAllianceSize(humans: number): number {
+  return Math.min(50, Math.max(ALLIANCE_MIN_SIZE, Math.ceil(Math.max(0, humans) / 2)));
+}
 export const ALLIANCE_MAX_SETTING = "alliance_max_size";
 /** Kündigungsfrist eines Nichtangriffspakts. */
 export const PACT_NOTICE_MS = 24 * 3600000;
@@ -33,9 +40,13 @@ export function fail(code: string): never {
   throw new GameError(code);
 }
 
+/** Höchstgröße: Einstellung der Verwaltung (2–50), sonst aus der Rundengröße (Menschen = Spieler ohne KI-Profil). */
 export async function allianceMaxSize(db: DbOrTx): Promise<number> {
-  const n = Number(await getSetting(db, ALLIANCE_MAX_SETTING));
-  return Number.isInteger(n) && n >= 2 && n <= 50 ? n : ALLIANCE_MAX_DEFAULT;
+  const raw = await getSetting(db, ALLIANCE_MAX_SETTING);
+  const n = raw === null ? NaN : Number(raw);
+  if (Number.isInteger(n) && n >= 2 && n <= 50) return n;
+  const [h] = await db.execute<{ n: number }>(sql`select count(*)::int as n from player where bot_profile is null`);
+  return defaultAllianceSize(h?.n ?? 0);
 }
 
 export interface Membership {

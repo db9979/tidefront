@@ -7,6 +7,7 @@ import {
   activeUnits,
   afterSector,
   combineModifiers,
+  finaleBattleBalance,
   finaleLoot,
   finaleProbe,
   finaleSector,
@@ -79,7 +80,7 @@ interface ArriveMission {
 function sectorBattle(ev: WorldEventRow, attacker: AttackerInput, k: number, col: number, row: number, due: number) {
   const sector = finaleSector(activeUnits(ev.units as Counts), k, balance);
   const seed = randomSeed();
-  const res = resolveBattle(attacker, { units: sector.defender, defenses: {} }, balance, seed, battleWeather(col, row, due));
+  const res = resolveBattle(attacker, { units: sector.defender, defenses: {} }, finaleBattleBalance(balance), seed, battleWeather(col, row, due)); // v1.35: Armada mit U-Jagd
   if (!res.ok) throw new Error(`battle: ${res.code}`);
   const { report, destroyed } = settleBattle(res.report, balance, victoryRuleOf("weltereignis"));
   const survivors = activeUnits(report.defender.final);

@@ -86,9 +86,10 @@ test("Sieg auch für schwache und halbe Verbände: jeder gewinnt seinen Abschnit
   assert.ok(finaleProbe({ units: STRONG }, { flaggschiff: 30 }, balance, 20).winRate < 0.5);
 });
 
-test("Beute: 0,6 Richtwert je vernichtetem LP in der Mischung der Großflotte; Schatz 5 % von H; Anteil in Prozent", () => {
+test("Beute: lootPerHp Richtwert je vernichtetem LP in der Mischung der Großflotte; Schatz 5 % von H; Anteil in Prozent", () => {
   const loot = finaleLoot(20000, balance);
-  assert.ok(Math.abs(value(loot) - 0.6 * 20000) < 10, `Wert ${value(loot)}`);
+  const perHp = (balance as unknown as { worldEvents: { finale: { lootPerHp: number } } }).worldEvents.finale.lootPerHp;
+  assert.ok(Math.abs(value(loot) - perHp * 20000) < 10, `Wert ${value(loot)}`);
   assert.ok(Math.abs(loot.stahl / loot.treibstoff - 2) < 0.01, "Mischung 5000 : 2500");
   const t = finaleTreasure(300000, balance);
   assert.ok(Math.abs(value(t) - 0.05 * 300000) < 10);

@@ -40,10 +40,11 @@ export interface CartelThreat {
  * (Börse: feste Strecke deliveryRiskKm, Vertrag/Handel: Luftlinie zwischen den Häfen). `market`: Börse/Vertrag.
  * Die Zusammensetzung hängt nur vom Warenwert ab und ist nicht zufällig (keine Spanne).
  */
-export function expectedCartelGroup(value: number, riskKm: number, balance: Balance, market = false): CartelThreat {
+export function expectedCartelGroup(value: number, riskKm: number, balance: Balance, market = false, riskValue = value): CartelThreat {
   const c = convoysOf(balance);
   const v = Math.max(0, value);
-  const chance = c ? cartelChance(riskKm, v, balance, market) : 0;
+  // v1.35: Börse – Chance nach dem Warenwert der eigenen Börsenkonvois der letzten Stunden (riskValue ≥ value).
+  const chance = c && v > 0 ? cartelChance(riskKm, Math.max(v, riskValue), balance, market) : 0;
   return {
     force: c && v > 0 ? cartelConvoyForce(v, balance) : {},
     chance,

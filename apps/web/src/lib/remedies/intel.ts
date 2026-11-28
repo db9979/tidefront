@@ -56,7 +56,7 @@ export const INTEL: RemedyTable = {
   sat_limit: ({ balance }) => {
     const sb = balance?.intel?.satellite;
     return {
-      hint: sb ? `Du hältst höchstens ${sb.max} Satelliten gleichzeitig, mit erforschtem Radarsatelliten ${sb.maxMore}. Jeder fliegt ${Math.round(sb.lifetimeHours / 24)} Tage.` : "Warte, bis ein Satellit verglüht.",
+      hint: sb ? `Du hältst höchstens ${sb.max} Satelliten gleichzeitig, mit erforschtem Radarsatelliten ${sb.maxMore}. Ein optischer fliegt ${Math.round(((sb.types as Record<string, { lifetimeHours?: number }>).optisch?.lifetimeHours ?? sb.lifetimeHours) / 24)} Tage, ein Radarsatellit ${Math.round(((sb.types as Record<string, { lifetimeHours?: number }>).radar?.lifetimeHours ?? sb.lifetimeHours) / 24)}.` : "Warte, bis ein Satellit verglüht.",
       summary: sb ? `höchstens ${sb.max} (mit Raumfahrt 2: ${sb.maxMore})` : undefined,
       actions: [meldungenLagebild, research],
     };

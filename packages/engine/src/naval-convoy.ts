@@ -80,12 +80,14 @@ export async function createConvoy(
     from: { col: number; row: number }; to: { col: number; row: number }; cargo: ResourceMap; escort?: Counts; departMs: number; arriveMs: number;
     /** Strecke fürs Kartellrisiko (Börse mit fester Lieferzeit, market-convoy.ts); fehlt: Luftlinie Start–Ziel. */
     riskKm?: number;
+    /** v1.35: Warenwert fürs Kartellrisiko (Börse: eigene Börsenkonvois der letzten Stunden samt diesem); fehlt: die Ladung. */
+    riskValue?: number;
   },
 ): Promise<number> {
   const c = convoysOf(balance);
   const dist = v.riskKm ?? distanceKm(hexCenter(v.from.col, v.from.row), hexCenter(v.to.col, v.to.row));
   // Börse und Lieferverträge: geringere Kartellchance (marketChanceFactor/marketMaxChance, docs/REGELN-SEE.md).
-  const roll = c ? cartelRoll(randomSeed(), dist, cargoValue(v.cargo, balance), await balanceNow(tx, v.departMs), MARKET_KINDS.has(v.kind)) : null;
+  const roll = c ? cartelRoll(randomSeed(), dist, Math.max(cargoValue(v.cargo, balance), v.riskValue ?? 0), await balanceNow(tx, v.departMs), MARKET_KINDS.has(v.kind)) : null;
   const cartelAt = roll?.hit ? Math.round(v.departMs + (v.arriveMs - v.departMs) * roll.atShare) : null;
   const [row] = await tx.insert(tables.convoy).values({
     kind: v.kind, deliveryId: v.deliveryId ?? null, missionId: v.missionId ?? null, senderId: v.senderId, recipientId: v.recipientId,

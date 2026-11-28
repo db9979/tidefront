@@ -17,6 +17,8 @@ export interface SatelliteTypeBalance {
   level: IntelLevel;
   /** Nur optisch: Felder mit Bewölkung über diesem Wert bleiben verdeckt (Radar: fehlt, sieht durch Wolken und Nebel). */
   cloudMax?: number;
+  /** v1.35: eigene Lebensdauer dieser Art in Stunden (optisch 336 = 14 Tage); fehlt sie, gilt lifetimeHours des Blocks. */
+  lifetimeHours?: number;
 }
 
 /** Balance-Block `intel.satellite` (seit v1.23). */
@@ -159,10 +161,15 @@ export function satelliteLaunchCheck(
   return { ok: true, cost, def, sb };
 }
 
+/** Lebensdauer einer Satellitenart in Stunden (eigener Wert der Art, sonst der des Blocks). */
+export function satelliteLifetimeHours(sb: SatelliteBalance, type: SatelliteType): number {
+  return sb.types[type]?.lifetimeHours ?? sb.lifetimeHours;
+}
+
 /** Neuer Satellit: erster Streifen über dem Starthafen (x), Bahnwerte aus der Balance. */
 export function newSatellite(id: number, type: SatelliteType, x: number, nowMs: number, sb: SatelliteBalance): SatelliteState {
   return {
-    id, type, launchedAtMs: nowMs, expiresAtMs: nowMs + sb.lifetimeHours * 3600000, x0: x,
+    id, type, launchedAtMs: nowMs, expiresAtMs: nowMs + satelliteLifetimeHours(sb, type) * 3600000, x0: x,
     periodMs: sb.periodHours * 3600000, stripKm: sb.stripKm, shiftKm: sb.shiftKm, liveMs: sb.liveMinutes * 60000,
     passes: 0, seen: 0, clouded: 0,
   };

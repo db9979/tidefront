@@ -38,6 +38,15 @@ Begründung und Simulation: `packages/game-core/ENTSCHEIDUNGEN-2.md`, Abschnitt 
 - **Schutz:** Der Anfängerschutz erbt den Beginn des Heimathafens (keine Verlängerung); dazu **Gründungsschutz** für
   `colonyShieldHours` (24 h). Die Nachtschild-Einstellung wird übernommen. Der erste Kartell-Überfall kommt frühestens
   nach `firstRaidAfterHours` (48 h).
+- **Gründungsgebühr** (v1.35, Nutzerentscheid 12B, `colonyCostGrowth` 2): Für den n-ten eigenen Hafen (eigene Häfen +
+  laufende Gründungen + 1) werden beim Auslaufen zusätzlich Kosten des Kolonieschiffs × (2^(n−2) − 1) aus dem
+  Ausgangshafen abgebucht (aufgerundet je Ressource): 2. Hafen nichts, 3. Hafen ein Kolonieschiff (zusammen also
+  doppelt so teuer). Fehlt sie, scheitert die Planung mit `insufficient_resources`. Scheitert die Gründung bei Ankunft,
+  kommt die Gebühr mit der Ladung zurück (`plan.foundingFee`). Die Vorschau nennt sie (`expansion.fee`).
+- **Unterhalt** (v1.35, Nutzerentscheid 12C, `colonyUpkeepPerDay` 3 000 Stahl und 1 500 Treibstoff): jede Kolonie
+  (`state.colony`) zahlt laufend je Stunde 1/24 davon, je Ressource höchstens ihre eigene Gebäudeproduktion dieser
+  Ressource (ein frischer Außenposten gerät nicht ins Minus; Grundrate bleibt). Ziel laut sim/expansion.ts:
+  Amortisation 2. Hafen 4–5 Tage, 3. Hafen 7–8 Tage (vorher 2–3 Tage) – Kolonien sind eine Entscheidung, keine Pflicht.
 
 ## Verlegung (Missionsart „verlegung“) und Transport
 

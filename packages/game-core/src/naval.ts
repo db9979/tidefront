@@ -66,6 +66,11 @@ export interface ConvoysBalance {
    */
   marketChanceFactor?: number;
   marketMaxChance?: number;
+  /**
+   * v1.35 (M-09): Börsenkonvois rechnen die Kartellchance mit dem Warenwert aller eigenen Börsenkonvois der letzten so
+   * vielen Stunden (einschließlich dieses) – eine geteilte Order senkt das Risiko kaum noch. Fehlt er: nur dieser Konvoi.
+   */
+  marketValueWindowHours?: number;
   /** Größenklasse der Ladung für fremde Konvois (Warenwert bis klein bzw. mittel, darüber groß). */
   cargoSmallMaxValue?: number;
   cargoMediumMaxValue?: number;

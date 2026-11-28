@@ -202,6 +202,9 @@ function piece(base: BaseState, t: number, w: Weather | null, st: GridState, thr
   for (const r of balance.resources) perHour[r] = (balance.baseTricklePerHour[r] ?? 0) + buildingPerHour[r];
   if ("proviant" in perHour) perHour.proviant -= upkeepPerHour(base, balance);
   if ("treibstoff" in perHour) perHour.treibstoff -= fuelPerHour;
+  // v1.35 (Nutzerentscheid 12C): Unterhalt einer Kolonie je Tag, je Ressource höchstens die Gebäudeproduktion der Kolonie.
+  const colonyUpkeep = base.colony ? balance.expansion?.colonyUpkeepPerDay : undefined;
+  if (colonyUpkeep) for (const [r, v] of Object.entries(colonyUpkeep)) if (r in perHour) perHour[r] -= Math.min(Math.max(0, v) / 24, Math.max(0, buildingPerHour[r] ?? 0));
   // Elektrolyse aus Ökostrom-Überschuss; an der Lagergrenze nur so viel, wie der Verbrauch aufnimmt.
   const elec = electrolysisSpecs(base, balance);
   let toFuel = "treibstoff" in perHour ? Math.min(greenSurplus, elec.rate) : 0;

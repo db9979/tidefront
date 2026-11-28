@@ -20,7 +20,7 @@ import { launchMission } from "./commands.ts";
 import { missionPreview } from "./views.ts";
 import { activeMissionCount, type BaseRow } from "./store.ts";
 import { reservedForField } from "./bots-fields.ts";
-import { guardShareOf, strikeForce, withoutReserve, type TurnCtx } from "./bots-war.ts";
+import { guardShareOf, shipGuardShareOf, strikeForce, withoutReserve, type TurnCtx } from "./bots-war.ts";
 import { finaleAim } from "./finale-battle.ts";
 import type { WorldEventRow } from "./world-events.ts";
 
@@ -46,7 +46,7 @@ export async function raidFinale(c: TurnCtx, base: BaseRow & { state: BaseState 
   if (busy) return false;
   // Ein Missionsplatz bleibt frei.
   if ((await activeMissionCount(c.engine.db, base.id)) + 1 >= missionSlots(base.state, balance)) return false;
-  const force: Counts = finaleWarUnits(withoutReserve(strikeForce(base.state, guardShareOf(c)), reservedForField(c, base.id)), balance);
+  const force: Counts = finaleWarUnits(withoutReserve(strikeForce(base.state, guardShareOf(c), shipGuardShareOf(c)), reservedForField(c, base.id)), balance);
   const k = finaleWarHp(force, balance);
   if (k <= 0) return false;
   const sector = finaleSector(activeUnits(ev.units as Counts), k, balance);

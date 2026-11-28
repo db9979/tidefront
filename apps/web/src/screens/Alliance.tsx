@@ -88,7 +88,7 @@ function NoAlliance({ data }: { data: View }) {
                 <span className="w-6 text-right mono text-ink2">{a.rank}</span>
                 <span className="min-w-0 flex-1 text-sm">
                   <strong>[{a.tag}] {a.name}</strong>
-                  <span className="block text-xs text-ink2 truncate">{a.members} von {data.maxSize} · {fmtNum(a.total)} Punkte{a.description ? ` · ${a.description}` : ""}</span>
+                  <span className="block text-xs text-ink2 truncate">{a.members} von {data.maxSize} · Ø {fmtNum(a.total)} Punkte{a.description ? ` · ${a.description}` : ""}</span>
                 </span>
                 <Button kind="secondary" disabled={act.busy || pendingIds.has(a.id) || a.members >= data.maxSize}
                   onClick={() => void act.run(() => trpcClient.alliance.request.mutate({ allianceId: a.id }))}>

@@ -2,7 +2,7 @@
 // einmal festgelegter Stärke (finale_appear), Abzug nach Ablauf (finale_end), Verwaltung: Finale vorziehen (Testsystem).
 // Zeiten: finaleSchedule (Tag 36, 12:00 / Tag 38, 12:00 / +72 h bei 42 Tagen Saison, sonst proportional).
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { composeFinale, finaleBalance, finaleSchedule, finaleStrength, forceHp, type Counts } from "@tidefront/game-core";
+import { composeFinale, finaleBalance, finaleSchedule, finaleStrength, finaleSumK, forceHp, type Counts } from "@tidefront/game-core";
 import { tables, type Tx } from "@tidefront/db";
 import { balance, type Engine, type NoticeJob } from "./context.ts";
 import type { Handler, HandlerResult } from "./events.ts";
@@ -84,7 +84,7 @@ const finaleAppear: Handler = async (tx, ev, due) => {
   const e = await lockWorldEvent(tx, Number(ev.payload.eventId));
   if (!e || e.kind !== "finale" || e.status !== "announced") return none();
   const parts = await finaleParticipants(tx, due);
-  const totalHp = finaleStrength(parts.reduce((s, p) => s + p.k, 0), await cartelStrength(tx), balance);
+  const totalHp = finaleStrength(finaleSumK(parts, balance), await cartelStrength(tx), balance); // v1.35: KI × botKFactor
   const units: Counts = composeFinale(totalHp, balance);
   const vanguards = parts.length > 0 ? finaleVanguards({ col: e.col, row: e.row }, parts) : (e.data.finale?.vanguards ?? []);
   const data = { ...e.data, initialHp: forceHp(units, balance), finale: { ...(e.data.finale ?? emptyFinaleData(0, [])), totalHp, participants: parts.length, vanguards } };

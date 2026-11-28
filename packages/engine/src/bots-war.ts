@@ -30,7 +30,8 @@ import { value } from "./bots-plan.ts";
 import type { BaseRow } from "./store.ts";
 import { reservedForField } from "./bots-fields.ts";
 import { botMap, scoutNearest, scoutsUnknown } from "./bots-intel.ts"; // Lagebild
-import { NEST_TOP_SLACK, nestTopLevel } from "./bots-nest-top.ts"; // Welle 2: Nestwahl nach dem ganzen Verband
+import { NEST_TOP_SLACK, nestTopLevel, waitForTopNest } from "./bots-nest-top.ts";
+import { keepSlotForEvent } from "./bots-world-events.ts"; // v1.35 // Welle 2: Nestwahl nach dem ganzen Verband
 
 export interface TurnCtx {
   engine: Engine;
@@ -51,12 +52,28 @@ export interface TurnCtx {
 const NON_COMBAT = new Set(["spion", "kolonieschiff", "minenleger", "minenraeumer", "aufklaerungsdrohne"]);
 const MAX_RANGE_KM = 900;
 
-/** Festung (Welle 2, ST-06): feste Heimwache – mindestens dieser Anteil jeder Kampfeinheit bleibt daheim. */
-export const FESTUNG_MIN_GUARD = 0.5;
+/**
+ * Festung (Welle 2, ST-06): feste Heimwache – mindestens dieser Anteil der Landtruppen bleibt daheim. v1.35: 0,5 → 0,3
+ * (Saisonlauf v1.34: höchstens Nest 2 – mit der halben Truppe scheiterte die Landung an Nest 4; die Festung verteidigt
+ * vor allem mit ihren Anlagen, und das Kartell ist schwächer geworden).
+ */
+export const FESTUNG_MIN_GUARD = 0.3;
 
-/** Heimwache-Anteil der Spielweise (Festung mindestens FESTUNG_MIN_GUARD). */
+/**
+ * Festung (v1.35, Auftrag Welle 3): Schiffe und Flugzeuge bleiben nur zu diesem Anteil daheim. Die Festung verteidigt mit
+ * Anlagen und Truppen; Kriegsschiffe daheim erhöhen nur die Kartellstärke und gehen bei jedem Überfall verloren – und sie
+ * fehlten dem Nestverband (im Saisonlauf v1.34 höchstens Nest 2).
+ */
+export const FESTUNG_SHIP_GUARD = 0.2;
+
+/** Heimwache-Anteil der Spielweise (Festung mindestens FESTUNG_MIN_GUARD) – für Landtruppen. */
 export function guardShareOf(c: Pick<TurnCtx, "bot" | "cfg">): number {
   return c.bot.profile === "festung" ? Math.max(FESTUNG_MIN_GUARD, c.cfg.homeGuardShare) : c.cfg.homeGuardShare;
+}
+
+/** Heimwache-Anteil für Schiffe und Flugzeuge (Festung FESTUNG_SHIP_GUARD, sonst wie die Truppen). */
+export function shipGuardShareOf(c: Pick<TurnCtx, "bot" | "cfg">): number {
+  return c.bot.profile === "festung" ? FESTUNG_SHIP_GUARD : guardShareOf(c);
 }
 
 /**
@@ -64,11 +81,12 @@ export function guardShareOf(c: Pick<TurnCtx, "bot" | "cfg">): number {
  * Heimwache gilt auch für Landtruppen (früher fuhren alle Truppen mit – die Festung stand mit 12 Schützen daheim).
  * Landungsschiffe fahren vollständig mit (Laderaum für die Beute).
  */
-export function strikeForce(state: BaseState, guardShare: number): Counts {
+export function strikeForce(state: BaseState, guardShare: number, shipGuardShare = guardShare): Counts {
   const out: Counts = {};
   for (const [id, n] of Object.entries(state.units)) {
     if (n <= 0 || NON_COMBAT.has(id) || !balance.units[id]) continue;
-    const k = id === "landungsschiff" ? n : Math.floor(n * (1 - guardShare));
+    const g = balance.units[id].branch === "land" ? guardShare : shipGuardShare;
+    const k = id === "landungsschiff" ? n : Math.floor(n * (1 - g));
     if (k > 0) out[id] = k;
   }
   // Truppen kürzen, bis sie in die Landungsschiffe passen.
@@ -83,8 +101,22 @@ export function strikeForce(state: BaseState, guardShare: number): Counts {
       else delete out[id];
     }
   }
+  // v1.35: mindestens MIN_HOME_TROOPS Landtruppen bleiben in jedem Hafen (Saisonlauf: Kolonien ohne Truppen verloren
+  // jeden Kartell-Überfall – das war der größte Teil des Kartellverlusts der KI).
+  const landHome = Object.entries(state.units).reduce((a, [id, n]) => a + (balance.units[id]?.branch === "land" && !NON_COMBAT.has(id) ? Math.max(0, n) : 0), 0);
+  let over = MIN_HOME_TROOPS - (landHome - Object.entries(out).reduce((a, [id, n]) => a + (balance.units[id]?.branch === "land" ? n : 0), 0));
+  for (const id of Object.keys(out).filter((x) => balance.units[x].branch === "land").sort((a, b) => Number(b === "schuetzen") - Number(a === "schuetzen"))) {
+    if (over <= 0) break;
+    const k = Math.min(out[id], over);
+    out[id] -= k;
+    over -= k;
+    if (out[id] <= 0) delete out[id];
+  }
   return out;
 }
+
+/** v1.35: so viele Landtruppen bleiben mindestens daheim (30 Schützen halten den Mindestüberfall des Kartells fast immer). */
+export const MIN_HOME_TROOPS = 40;
 
 /**
  * Feldverband daheim lassen (bots-fields.ts): Kampfschiffe des Angriffsverbands abziehen, bis ihre Kommandopunkte den
@@ -133,7 +165,7 @@ export function probe(attacker: AttackerInput, defender: DefenderInput, runs: nu
   return { winRate: wins / runs, lossValue: loss / runs, lootValue: loot / runs };
 }
 
-async function tryLaunch(c: TurnCtx, input: LaunchInput, text: string): Promise<boolean> {
+export async function tryLaunch(c: TurnCtx, input: LaunchInput, text: string): Promise<boolean> {
   // Admirale: ein Überfall aus dem Hafen des bereiten Admirals nimmt ihn mit (Probekampf rechnete ihn schon ein).
   const adm = input.type === "ueberfall" && c.admiral && c.admiral.baseId === input.baseId ? c.admiral : null;
   if (adm) input = { ...input, admiralId: adm.id };
@@ -200,11 +232,12 @@ export async function ownNestTargets(c: TurnCtx): Promise<Set<string>> {
 /** Überfall auf ein Piratennest, wenn der Verband es sicher schafft. */
 export async function raidNest(c: TurnCtx, base: BaseRow & { state: BaseState }, mods: Modifiers): Promise<boolean> {
   if (!c.cfg.attackNests || c.cfg.probeRuns <= 0) return false;
-  const force = withoutReserve(strikeForce(base.state, guardShareOf(c)), reservedForField(c, base.id));
+  if (await keepSlotForEvent(c, base)) return false; // v1.35: Platz für ein laufendes Weltereignis freihalten
+  const force = withoutReserve(strikeForce(base.state, guardShareOf(c), shipGuardShareOf(c)), reservedForField(c, base.id));
   const fv = forceValue(force);
   if (fv < 2000) return false;
   // Welle 2: nur Nester ab der höchsten Stufe, die der ganze Verband schafft (minus eins) – bots-nest-top.ts.
-  const topLevel = nestTopLevel(c, base, guardShareOf(c), mods);
+  const topLevel = nestTopLevel(c, base, guardShareOf(c), mods, shipGuardShareOf(c));
   // Lagebild: nur Nester mit bekannter Stufe und Zustand (Sicht oder Wissen), wie bei Menschen.
   const map = await botMap(c);
   const nests = map.nests
@@ -217,6 +250,8 @@ export async function raidNest(c: TurnCtx, base: BaseRow & { state: BaseState },
   const maxLevel = Math.max(1, topLevel);
   const minLevel = Math.max(1, Math.min(maxLevel, Math.max(0, ...nests.filter((n) => n.level <= maxLevel).map((n) => n.level))) - NEST_TOP_SLACK);
   for (let i = nests.length - 1; i >= 0; i--) if (nests[i].level < minLevel || nests[i].level > maxLevel) nests.splice(i, 1);
+  // v1.35: Inselfestung – auf heimkehrende Verbände warten, statt mit dem Rest wieder Stufe 5 anzufahren.
+  if (await waitForTopNest(c, base, force, mods, nests, guardShareOf(c), shipGuardShareOf(c))) return false;
   // Lebendige Nester: Probekampf je Nest – mit genauem Lagebild gegen die hochgerechnete Besatzung, sonst gegen den
   // ungünstigsten Wurf (die KI soll nicht „Glück haben“); ohne Lagebild je Stufe nur einmal. Höchstens botMaxNests
   // Probekämpfe je Zug (Pi-Last), danach höchstens 6 Startversuche.
@@ -290,7 +325,7 @@ export async function playerTargets(c: TurnCtx, base: BaseRow) {
   return out.sort((a, b) => prize(b) - prize(a) || a.d - b.d);
 }
 
-async function lastScout(c: TurnCtx, targetBaseId: number): Promise<ScoutReport | null> {
+export async function lastScout(c: TurnCtx, targetBaseId: number): Promise<ScoutReport | null> {
   const since = new Date(c.nowMs - botsConfig().reconMaxAgeHours * 3600000);
   const [r] = await c.engine.db.select({ report: tables.battleReport.report }).from(tables.battleReport).where(and(
     eq(tables.battleReport.kind, "aufklaerung"), eq(tables.battleReport.attackerPlayerId, c.bot.id),
@@ -315,7 +350,7 @@ export function botRaidDue(c: Pick<TurnCtx, "bot" | "state" | "nowMs">): boolean
 /** Angriff auf einen Spielerhafen: erst Aufklärung, dann Probekampf gegen das Lagebild (Durchläufe je Spielweise). */
 export async function raidPlayer(c: TurnCtx, base: BaseRow & { state: BaseState }, mods: Modifiers): Promise<boolean> {
   if (c.cfg.attackPlayers <= 0 || c.cfg.probeRuns <= 0 || c.rand() > c.cfg.attackPlayers) return false;
-  const force = withoutReserve(strikeForce(base.state, guardShareOf(c)), reservedForField(c, base.id));
+  const force = withoutReserve(strikeForce(base.state, guardShareOf(c), shipGuardShareOf(c)), reservedForField(c, base.id));
   if (forceValue(force) < 3000) return false;
   // Welle 2 (ST-17): andere KI überfällt nur der Freibeuter, höchstens alle 48–72 h, die mit dem vollsten Lager zuerst.
   const botsOk = botRaidDue(c);

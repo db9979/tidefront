@@ -21,7 +21,7 @@ import {
   achievementById,
   achievementList,
   placementScore,
-  PRACHTBAU_FROM,
+  baumeisterFrom,
   TIER_NAMES,
   tierFor,
   tierReward,
@@ -148,7 +148,8 @@ export async function refreshAchievementState(tx: DbOrTx, playerId: number, nowM
   const rows = await tx.select({ state: tables.base.state, isHome: tables.base.isHome }).from(tables.base).where(eq(tables.base.playerId, playerId));
   if (rows.length > 0) {
     type S = { buildings?: Counts; research?: { levels?: Counts } };
-    const pracht = Math.max(...rows.map((r) => Object.values((r.state as S).buildings ?? {}).filter((l) => l >= PRACHTBAU_FROM).length));
+    const from = baumeisterFrom(); // v1.35: Baumeister ab Stufe 12 (M-12)
+    const pracht = Math.max(...rows.map((r) => Object.values((r.state as S).buildings ?? {}).filter((l) => l >= from).length));
     const home = (rows.find((r) => r.isHome) ?? rows[0]).state as S;
     const techs = balance.research?.techs ?? {};
     const full = Object.entries(home.research?.levels ?? {}).filter(([id, l]) => techs[id] && l >= techs[id].maxLevel).length;

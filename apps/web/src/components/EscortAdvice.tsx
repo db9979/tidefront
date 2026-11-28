@@ -23,6 +23,8 @@ export interface EscortAdviceProps {
   base: BaseData;
   /** Warenwert der Ladung zum Richtpreis. */
   cargoValue: number;
+  /** v1.35: Warenwert für die Chance (Börse: samt eigener Börsenkonvois der letzten Stunden); fehlt: cargoValue. */
+  riskValue?: number;
   /** Strecke fürs Kartellrisiko (wie der Server würfelt). */
   riskKm: number;
   /** Börse/Vertrag: geringere Kartellchance. */
@@ -37,7 +39,7 @@ export interface EscortAdviceProps {
 }
 
 /** Empfehlung berechnen (rein, im Browser; wenige Millisekunden). */
-export function useEscortAdvice(base: BaseData, value: number, riskKm: number, market: boolean, trip: { km: number; awayHours: number }): Advice | null {
+export function useEscortAdvice(base: BaseData, value: number, riskKm: number, market: boolean, trip: { km: number; awayHours: number }, riskValue = value): Advice | null {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const b = meta.data?.balance as unknown as CoreBalance | undefined;
   const homeKey = base.units.map((u) => `${u.id}:${u.home}`).join(",");
@@ -45,14 +47,14 @@ export function useEscortAdvice(base: BaseData, value: number, riskKm: number, m
     if (!b || !(value > 0) || !Number.isFinite(riskKm)) return null;
     const home: Counts = Object.fromEntries(base.units.filter((u) => u.home > 0).map((u) => [u.id, u.home]));
     return recommendEscort({
-      value, riskKm, market, trip, home, modifiers: base.modifiers as unknown as Modifiers,
+      value, riskValue, riskKm, market, trip, home, modifiers: base.modifiers as unknown as Modifiers,
       commandPoints: base.commandPoints, fuelAvailable: base.resources.treibstoff,
     }, b);
-  }, [b, value, riskKm, market, trip.km, trip.awayHours, homeKey, base.commandPoints, base.modifiers, Math.floor(base.resources.treibstoff ?? 0)]);
+  }, [b, value, riskValue, riskKm, market, trip.km, trip.awayHours, homeKey, base.commandPoints, base.modifiers, Math.floor(base.resources.treibstoff ?? 0)]);
 }
 
-export function EscortAdvice({ base, cargoValue, riskKm, market, trip, escort, onApply, note }: EscortAdviceProps) {
-  const a = useEscortAdvice(base, cargoValue, riskKm, market, trip);
+export function EscortAdvice({ base, cargoValue, riskValue, riskKm, market, trip, escort, onApply, note }: EscortAdviceProps) {
+  const a = useEscortAdvice(base, cargoValue, riskKm, market, trip, riskValue);
   if (!a) return null;
   const t = a.threat;
   const boats = t.force.schnellboot ?? 0;

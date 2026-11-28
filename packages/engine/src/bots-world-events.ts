@@ -22,7 +22,7 @@ import { launchMission } from "./commands.ts";
 import { missionPreview } from "./views.ts";
 import { activeMissionCount, type BaseRow } from "./store.ts";
 import { reservedForField } from "./bots-fields.ts";
-import { forceValue, guardShareOf, strikeForce, withoutReserve, type TurnCtx } from "./bots-war.ts";
+import { forceValue, guardShareOf, shipGuardShareOf, strikeForce, withoutReserve, type TurnCtx } from "./bots-war.ts";
 import { KIND_TEXT, type WorldEventRow } from "./world-events.ts";
 
 /** Nötige Siegquote (Ereignis vernichtet) im Probekampf. */
@@ -32,7 +32,7 @@ export const EVENT_MAX_LOSS_SHARE = 0.35;
 /** Läufe des Probekampfs gegen ein Ereignis (mindestens). */
 export const EVENT_PROBE_RUNS = 8;
 /** Größte Entfernung zum Ereignis (km). */
-const EVENT_RANGE_KM = 900;
+export const EVENT_RANGE_KM = 1200; // v1.35: 900 → 1200 (die Vorschau prüft, ob der Verband rechtzeitig ankommt)
 const KINDS = ["schatzschiff", "grossflotte", "belagerung"] as const;
 
 /** Verband gegen ein Ereignis auf See: Schiffe und Flugzeuge ohne Heimwache (Truppen kämpfen auf See nicht). */
@@ -57,6 +57,26 @@ export function eventProbe(attacker: AttackerInput, units: Counts, runs: number)
   return { winRate: wins / runs, lossValue: loss / runs };
 }
 
+/**
+ * v1.35: Läuft ein gewöhnliches Weltereignis in Reichweite, das die KI noch nicht angreift, hält sie in diesem Hafen
+ * einen Missionsplatz dafür frei (Nestfahrten und Aufklärung warten). Im Saisonlauf v1.34/Welle 2 waren die Plätze der
+ * Festung mit Feldbesatzungen, Aufklärung und Nestfahrten belegt – sie griff nie ein Ereignis an. Nur Freibeuter/Festung.
+ */
+export async function keepSlotForEvent(c: TurnCtx, base: BaseRow & { state: BaseState }): Promise<boolean> {
+  if (c.bot.profile === "haendler" || c.cfg.probeRuns <= 0) return false;
+  const db = c.engine.db;
+  if ((await activeMissionCount(db, base.id)) + 1 < missionSlots(base.state, balance)) return false;
+  const rows = await db.select({ id: tables.worldEvent.id, col: tables.worldEvent.col, row: tables.worldEvent.row }).from(tables.worldEvent).where(and(
+    inArray(tables.worldEvent.kind, [...KINDS]), inArray(tables.worldEvent.status, ["announced", "active"]), gt(tables.worldEvent.endsAt, new Date(c.nowMs)),
+  ));
+  const near = rows.filter((e) => hexDistanceKm(base, e) <= EVENT_RANGE_KM);
+  if (near.length === 0) return false;
+  const busy = new Set((await db.select({ id: tables.mission.targetId }).from(tables.mission).where(and(
+    eq(tables.mission.playerId, c.bot.id), eq(tables.mission.targetKind, "event"), inArray(tables.mission.status, ["outbound", "returning"]),
+  ))).map((r) => r.id));
+  return near.some((e) => !busy.has(e.id));
+}
+
 /** Ein Angriff auf ein laufendes Weltereignis aus diesem Hafen, wenn der Probekampf es erlaubt. Rückgabe: ausgelaufen. */
 export async function raidWorldEvent(c: TurnCtx, base: BaseRow & { state: BaseState }, mods: Modifiers): Promise<boolean> {
   if (c.bot.profile === "haendler" || c.cfg.probeRuns <= 0) return false;
@@ -65,13 +85,14 @@ export async function raidWorldEvent(c: TurnCtx, base: BaseRow & { state: BaseSt
     inArray(tables.worldEvent.kind, [...KINDS]), inArray(tables.worldEvent.status, ["announced", "active"]), gt(tables.worldEvent.endsAt, new Date(c.nowMs)),
   ))) as unknown as WorldEventRow[];
   if (rows.length === 0) return false;
-  // Ein Missionsplatz bleibt frei (Nester, Felder).
-  if ((await activeMissionCount(db, base.id)) + 1 >= missionSlots(base.state, balance)) return false;
+  // v1.35: auch der letzte freie Missionsplatz darf an ein Weltereignis gehen (selten und befristet; vorher blieb immer
+  // einer frei – mit Feldbesatzungen, Aufklärung und Nestfahrten griff die Festung im Saisonlauf nie ein Ereignis an).
+  if ((await activeMissionCount(db, base.id)) >= missionSlots(base.state, balance)) return false;
   // Kein zweiter eigener Verband gegen dasselbe Ereignis.
   const busy = new Set((await db.select({ id: tables.mission.targetId }).from(tables.mission).where(and(
     eq(tables.mission.playerId, c.bot.id), eq(tables.mission.targetKind, "event"), eq(tables.mission.status, "outbound"),
   ))).map((r) => r.id));
-  const force = eventForce(withoutReserve(strikeForce(base.state, guardShareOf(c)), reservedForField(c, base.id)));
+  const force = eventForce(withoutReserve(strikeForce(base.state, guardShareOf(c), shipGuardShareOf(c)), reservedForField(c, base.id)));
   const fv = forceValue(force);
   if (fv < 2000) return false;
   const runs = Math.max(EVENT_PROBE_RUNS, c.cfg.probeRuns);
@@ -83,8 +104,22 @@ export async function raidWorldEvent(c: TurnCtx, base: BaseRow & { state: BaseSt
   for (const { ev, d } of events.slice(0, 3)) {
     const p = eventProbe({ units: force, modifiers: mods }, ev.units as Counts, runs);
     if (p.winRate < EVENT_PROBE_MIN || p.lossValue > EVENT_MAX_LOSS_SHARE * fv) continue;
-    const input = { type: "ueberfall", units: force, col: ev.col, row: ev.row, eventId: ev.id, baseId: base.id };
-    const pv = await missionPreview(c.engine, c.bot.id, input);
+    // v1.35: Lehnt die Planung ab (Flugzeuge außer Reichweite, mit Landungsschiffen – 40 km/h – zu spät am Abfangpunkt
+    // oder nach dem Ende), fährt der Verband ohne diese – lieber Kampf ohne Laderaum als gar kein Angriff (Saisonlauf:
+    // Festung nie). Der Probekampf muss auch für den kleineren Verband reichen.
+    // Zuletzt fliegen nur die Flugzeuge in Reichweite (schnell genug für jeden Abfangpunkt, aber ohne Laderaum).
+    let input = { type: "ueberfall", units: force, col: ev.col, row: ev.row, eventId: ev.id, baseId: base.id };
+    let pv = await missionPreview(c.engine, c.bot.id, input);
+    const inRange = (id: string) => balance.units[id]?.branch !== "luft" || (balance.units[id].rangeKm ?? 0) >= d;
+    const pick = (keep: (id: string) => boolean): Counts => Object.fromEntries(Object.entries(force).filter(([id]) => keep(id)));
+    for (const alt of [pick((id) => id !== "landungsschiff" && inRange(id)), pick((id) => balance.units[id]?.branch === "luft" && inRange(id))]) {
+      if (pv.ok) break;
+      if (Object.keys(alt).length === 0) continue;
+      const pa = eventProbe({ units: alt, modifiers: mods }, ev.units as Counts, runs);
+      if (pa.winRate < EVENT_PROBE_MIN || pa.lossValue > EVENT_MAX_LOSS_SHARE * forceValue(alt)) continue;
+      input = { ...input, units: alt };
+      pv = await missionPreview(c.engine, c.bot.id, input);
+    }
     if (!pv.ok) continue;
     const r = await launchMission(c.engine, c.bot.id, c.key("event"), input);
     if (r.ok) {

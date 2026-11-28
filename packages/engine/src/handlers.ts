@@ -32,6 +32,7 @@ import { recordReportIntel } from "./intel-store.ts"; // Lagebild
 import { nestConquered, nestDefended, nestEmpty, nestNow, nestState } from "./nest-live.ts"; // Lebendige Nester
 import { balance } from "./context.ts";
 import { cartelRaidPlan, nestSpots } from "./kartell-route.ts"; // Seewege: Kartell fährt über Wasser
+import { cartelLossHours } from "./cartel-loss.ts"; // v1.35: Verlust in Stunden Produktion
 import type { EventRow, Handler, HandlerResult } from "./events.ts";
 import { lockBase, lockBases, randomSeed, readBase, saveBase, scheduleEvent } from "./store.ts";
 import { attackWarning, scheduleAttackWarning } from "./event-notices.ts";
@@ -426,7 +427,7 @@ const raidArrive: Handler = async (tx, ev, due) => {
   const reportId = await storeReport(tx, {
     kind: "kartell", title: `Kartell überfällt ${b.name}`, attackerPlayerId: null, defenderPlayerId: b.playerId,
     attackerBaseId: null, defenderBaseId: b.id, nestId: null, winner: report.winner, seed, atMs: due,
-    report: { battle: report, attackerName: "Freibeuter-Kartell", defenderName: await playerName(tx, b.playerId), targetName: b.name, attacker: plan.attacker, protectedPerResource: defender.protectedPerResource ?? 0, admirals, ...(hostReport.guests ? { guests: hostReport.guests } : {}) },
+    report: { battle: report, attackerName: "Freibeuter-Kartell", defenderName: await playerName(tx, b.playerId), targetName: b.name, attacker: plan.attacker, protectedPerResource: defender.protectedPerResource ?? 0, admirals, lossHours: cartelLossHours(state, report, mods, due), ...(hostReport.guests ? { guests: hostReport.guests } : {}) },
   });
   await tx.update(tables.mission).set({ status: "done", reportId }).where(eq(tables.mission.id, m.id));
   return { notify: [[[b.playerId], "base"], [[b.playerId], "reports"], [[b.playerId], "missions"]] };

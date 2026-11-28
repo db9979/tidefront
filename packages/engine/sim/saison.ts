@@ -11,12 +11,13 @@ import { writeFileSync } from "node:fs";
 import { sql } from "drizzle-orm";
 import { createDb, migrateDb, type Db } from "@tidefront/db";
 import { mulberry32, productionRates, settle, type BaseState } from "@tidefront/game-core";
-import { COLS, ROWS, isCoast, nestSites } from "@tidefront/world";
+import { COLS, ROWS, hexDistanceKm, isCoast, nestSites } from "@tidefront/world";
 import {
   AlertMemory, balance, basesOfPlayer, chooseBase, computeStandings, ensureFieldPlanner, ensureStartBots, loadBots, maintenanceSteps,
   minuteSteps, processDue, register, runBotsDue, runStep, runSteps, seed, setIntelFog, StepStats, auditLedger, type Engine,
 } from "../src/index.ts";
 import { setRandomSeedSource } from "../src/store.ts";
+import { EVENT_RANGE_KM } from "../src/bots-world-events.ts";
 import { evaluateGuards, exitCode, GUARD_LIMITS, type SeasonMetrics } from "./saison-guards.ts";
 
 const url = process.env.SIM_DATABASE_URL ?? process.env.TEST_DATABASE_URL;
@@ -71,6 +72,8 @@ const countAfter = async (table: string, id: number, extra = sql``) => (await db
 let seasonOver = false;
 let botRows = await loadBots(db);
 const lastStockHours = new Map<number, number>();
+const cartelKinds = new Map<string, number>();
+const eventsInRange = new Map<number, Set<number>>(); // v1.35: je KI die Weltereignisse in Reichweite eines eigenen Hafens
 let finalBots: SeasonMetrics["bots"] = [];
 let finalNest6: SeasonMetrics["nest6"] = [];
 
@@ -96,6 +99,7 @@ for (let t = t0 + STEP; t <= t0 + DAYS * DAY; t += STEP) {
   if (!seasonOver) {
     botRows = await loadBots(db);
     if (day >= 7) for (const b of botRows) cartel.set(b.id, [...(cartel.get(b.id) ?? []), await cartelShare(db, b.id, t)]);
+    await trackEventsInRange();
     if (day % 7 === 0 || day === DAYS) await weekly(day, t);
     // Kennzahlen der KI und Nest-6-Beute täglich festhalten: das Saisonende löscht Häfen, Nester und Berichte.
     finalBots = await botMetrics(t);
@@ -120,6 +124,7 @@ console.log(`\nSchrittdauer (ms, ${Math.round((realNow() - started) / 1000)} s L
 const byStep = new Map<string, { runs: number; total: number; max: number }>();
 for (const e of stats.entries()) { const s = byStep.get(e.step) ?? { runs: 0, total: 0, max: 0 }; s.runs += e.runs; s.total += e.totalMs; s.max = Math.max(s.max, e.maxMs); byStep.set(e.step, s); }
 for (const [step, s] of [...byStep].sort((a, b) => b[1].total - a[1].total)) console.log(`  ${step.padEnd(22)} n ${String(s.runs).padStart(6)}  Ø ${(s.total / s.runs).toFixed(1).padStart(7)}  max ${s.max.toFixed(0).padStart(6)}  Summe ${(s.total / 1000).toFixed(1)} s`);
+console.log(`\nKartellverlust der KI nach Berichtsart (Richtwert, ab Tag 7): ${[...cartelKinds].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round(v)}`).join(", ")}`);
 console.log(`\nWächter (Grenzen in saison-guards.ts):`);
 for (const r of results) console.log(`  ${r.ok ? "ok     " : r.level === "fehler" ? "FEHLER " : "WARNUNG"} ${r.text}`);
 if (process.env.SIM_OUT) writeFileSync(process.env.SIM_OUT, JSON.stringify({ limits: GUARD_LIMITS, metrics, results }, null, 1));
@@ -147,16 +152,29 @@ async function addHumans(d: Db, n: number): Promise<number[]> {
   return out;
 }
 
+/** Gewöhnliche Weltereignisse, die in Reichweite (EVENT_RANGE_KM) eines Hafens der KI liegen, je KI sammeln. */
+async function trackEventsInRange(): Promise<void> {
+  const evs = await db.execute<{ id: number; col: number; row: number }>(sql`select id, col, row from world_event where kind <> 'finale'`);
+  for (const b of botRows) {
+    const set = eventsInRange.get(b.id) ?? new Set<number>();
+    const bases = await basesOfPlayer(db, b.id);
+    for (const e of evs) if (bases.some((x) => hexDistanceKm(x, e) <= EVENT_RANGE_KM)) set.add(e.id);
+    eventsInRange.set(b.id, set);
+  }
+}
+
 /** Kartellverlust des Spielers am Saisontag bis t (Beute + bleibende Einheitenverluste) in Anteilen der Tagesproduktion. */
 async function cartelShare(d: Db, playerId: number, t: number): Promise<number> {
-  const reps = await d.execute<{ report: { battle?: { loot?: Record<string, number>; defender?: { losses?: Record<string, number>; returned?: Record<string, number> } } } }>(sql`
-    select report from battle_report where attacker_player_id is null and defender_player_id = ${playerId}
+  const reps = await d.execute<{ kind: string; report: { battle?: { loot?: Record<string, number>; defender?: { losses?: Record<string, number>; returned?: Record<string, number> } } } }>(sql`
+    select kind, report from battle_report where attacker_player_id is null and defender_player_id = ${playerId}
       and created_at > to_timestamp(${(t - DAY) / 1000}) and created_at <= to_timestamp(${t / 1000}) and report ? 'battle'`);
   let loss = 0;
-  for (const { report } of reps) {
+  for (const { kind, report } of reps) {
     const b = report.battle ?? {};
-    loss += resValue(b.loot);
-    for (const [id, n] of Object.entries(b.defender?.losses ?? {})) loss += Math.max(0, n - (b.defender?.returned?.[id] ?? 0)) * unitValue(id);
+    let one = resValue(b.loot);
+    for (const [id, n] of Object.entries(b.defender?.losses ?? {})) one += Math.max(0, n - (b.defender?.returned?.[id] ?? 0)) * unitValue(id);
+    loss += one;
+    cartelKinds.set(kind, (cartelKinds.get(kind) ?? 0) + one); // v1.35: Aufschlüsselung nach Berichtsart (Hafen, Feld, Konvoi, Weltereignis)
   }
   const rows = await d.execute<{ per_hour: Record<string, number> }>(sql`
     select per_hour from base_day where player_id = ${playerId} and day = (select max(day) from base_day where player_id = ${playerId})`);
@@ -179,6 +197,7 @@ async function botMetrics(t: number): Promise<SeasonMetrics["bots"]> {
       nest4Day: await q(sql`select floor(extract(epoch from min(br.created_at) - to_timestamp(${t0 / 1000})) / 86400)::int + 1 as n
         from battle_report br join nest n on n.id = br.nest_id where br.attacker_player_id = ${b.id} and br.winner = 'attacker' and n.level >= 4`),
       worldEventAttacks: (await q(sql`select count(*)::int as n from battle_report where attacker_player_id = ${b.id} and kind in ('weltereignis', 'weltereignis_leer') and title not like '%Armada%'`)) ?? 0,
+      worldEventsInRange: eventsInRange.get(b.id)?.size ?? 0,
     });
   }
   return out;

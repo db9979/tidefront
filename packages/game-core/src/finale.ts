@@ -45,6 +45,15 @@ export interface FinaleBalance {
   botIntervalHours: number;
   /** Marktnachricht während der Armada (wie Kriegslage). */
   market?: { pct: Record<string, number>; fadeHours: number };
+  /** v1.35 (Nutzerentscheid 10A): KI-Spieler zählen mit diesem Anteil ihres K zur Stärke H (fehlt er: voll). */
+  botKFactor?: number;
+  /**
+   * v1.35 (Nutzerentscheid 1C): U-Jagd der Armada-Geschwader (Wasserbomben je Schnellboot gegen getauchte U-Boote). Gilt
+   * nur in Kämpfen gegen die Armada (finaleBattleBalance); Kartell, Nester und übrige Weltereignisse bleiben ohne U-Jagd.
+   */
+  squadronUJagd?: number;
+  /** v1.35 (Nutzerentscheid 9C): gewöhnliche Weltereignisse bis zu diesem Saisontag (fehlt er: bis zur Ankündigung). */
+  ordinaryEventsUntilDays?: number;
 }
 
 export function finaleBalance(balance: Balance): FinaleBalance | null {
@@ -73,6 +82,32 @@ export function finaleSchedule(seasonStartMs: number, seasonEndMs: number, balan
   const appearMs = Math.round(seasonStartMs + f.appearAfterDays * DAY_MS * scale);
   const endMs = Math.min(seasonEndMs - 1, Math.round(appearMs + f.durationHours * HOUR_MS * scale));
   return { announceMs, appearMs, endMs };
+}
+
+/** Ende der gewöhnlichen Weltereignisse (ordinaryEventsUntilDays, sonst die Ankündigung), proportional zur Saisonlänge. */
+export function finaleOrdinaryUntil(seasonStartMs: number, seasonEndMs: number, balance: Balance): number {
+  const f = need(balance);
+  const sch = finaleSchedule(seasonStartMs, seasonEndMs, balance);
+  if (f.ordinaryEventsUntilDays === undefined) return sch.announceMs;
+  const scale = Math.max(0, seasonEndMs - seasonStartMs) / (f.referenceSeasonDays * DAY_MS);
+  return Math.min(sch.appearMs, Math.round(seasonStartMs + f.ordinaryEventsUntilDays * DAY_MS * scale));
+}
+
+/**
+ * Balance für Kämpfe gegen die Armada: mit squadronUJagd bekommen die Schnellboote (nur hier) Wasserbomben gegen
+ * getauchte U-Boote. Ohne Wert dasselbe Objekt.
+ */
+export function finaleBattleBalance(balance: Balance): Balance {
+  const u = finaleBalance(balance)?.squadronUJagd;
+  if (!u) return balance;
+  const sb = balance.npcUnits.schnellboot;
+  return { ...balance, npcUnits: { ...balance.npcUnits, schnellboot: { ...sb, attack: { ...sb.attack, uboot: u } } } };
+}
+
+/** Summe der K für die Stärke: KI-Spieler zählen × botKFactor (v1.35), Menschen voll. */
+export function finaleSumK(parts: { k: number; bot: boolean }[], balance: Balance): number {
+  const bf = need(balance).botKFactor ?? 1;
+  return parts.reduce((s, p) => s + p.k * (p.bot ? bf : 1), 0);
 }
 
 // ---------------------------------------------------------------- Stärke und Zusammensetzung
@@ -176,7 +211,7 @@ export function finaleProbe(attacker: AttackerInput, sector: Counts, balance: Ba
   let wins = 0, dmg = 0;
   const n = Math.max(1, runs);
   for (let i = 0; i < n; i++) {
-    const r = resolveBattle(attacker, { units: sector, defenses: {} }, balance, Math.imul(i + 1, 0x9e3779b1) >>> 0);
+    const r = resolveBattle(attacker, { units: sector, defenses: {} }, finaleBattleBalance(balance), Math.imul(i + 1, 0x9e3779b1) >>> 0);
     if (!r.ok) return { winRate: 0, damageHp: 0 };
     const left = r.report.defender.final;
     const ships = Object.entries(left).some(([id, k]) => k > 0 && all[id]?.branch === "see");

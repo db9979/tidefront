@@ -93,6 +93,8 @@ export interface ScoredReport {
   pvp?: PvpStamp | null;
   /** Verwaltung: Bericht aus der Wertung genommen. */
   pvpExcluded?: boolean | null;
+  /** v1.35: Überfall auf ein Piratennest (battle_report.nest_id gesetzt) – Kampf und Beute × scoring.nestFactor. */
+  nest?: boolean | null;
 }
 
 /** Faktoren eines Spielerkampfs auf Kampf und Beute des Angreifers und Kampf des Verteidigers. */
@@ -139,8 +141,8 @@ export function pvpFactors(reports: ScoredReport[]): Map<number, PvpFactors> {
  * und die Beute, der Verteidiger die Verluste des Angreifers. v1.24: Kämpfe gegen das Kartell zählen nur
  * × scoring.npcDefenseFactor – Abwehr ohne angreifenden Spieler (Kartell-Überfall, Großflotte, Konvoi, Feld) und
  * Angriffe auf die Weltereignisse in scoring.npcWorldEventKinds (seit dem Nutzerentscheid 27.11.2026 leer: Großflotte und
- * Belagerungsring zählen voll). Saisonfinale × scoring.armadaFactor. Nester, Schatzschiff und Kämpfe zwischen Spielern
- * zählen voll; Beute zählt immer voll.
+ * Belagerungsring zählen voll). Saisonfinale × scoring.armadaFactor. v1.35 (Nutzerentscheid 3): Nestüberfälle zählen
+ * Kampf und Beute × scoring.nestFactor; Schatzschiff, übrige Weltereignisse und Kämpfe zwischen Spielern zählen voll.
  */
 export function reportScore(b: ScoredReport, pvp?: PvpFactors): { attacker: { kampf: number; beute: number } | null; defender: { kampf: number } | null } {
   const sc = balance.scoring;
@@ -149,16 +151,28 @@ export function reportScore(b: ScoredReport, pvp?: PvpFactors): { attacker: { ka
   const p = pvp ?? { kampf: 1, beute: 1, defense: 1 }; // PvP: Kopfgeld, Mutfaktor, Paarbremse (pvpFactors)
   // Saisonfinale: Kampfpunkte aus Armada-Kämpfen × scoring.armadaFactor (Beute voll; kein Spielerkampf, PvP-Faktoren 1).
   const armada = b.kind === "weltereignis" && b.weKind === "finale" ? (sc?.armadaFactor ?? 1) : null;
+  const nest = b.nest && b.defenderPlayerId === null ? (sc?.nestFactor ?? 1) : 1;
   return {
-    attacker: b.attackerPlayerId === null ? null : { kampf: countsValue(b.dl) * (armada ?? (npcEvent ? f : 1)) * p.kampf, beute: resValue(b.loot) * p.beute },
+    attacker: b.attackerPlayerId === null ? null : { kampf: countsValue(b.dl) * (armada ?? (npcEvent ? f : 1)) * nest * p.kampf, beute: resValue(b.loot) * nest * p.beute },
     defender: b.defenderPlayerId === null ? null : { kampf: countsValue(b.al) * (b.attackerPlayerId === null ? f : 1) * p.defense },
   };
 }
 
-/** Kostenwerte der vier Kategorien in Punkte umrechnen; befehle sind bereits Punkte. */
+/**
+ * Befehlspunkte nach dem Deckel scoring.ordersMaxShare (v1.35, Nutzerentscheid 4): höchstens dieser Anteil am Gesamtrang,
+ * also Befehle ≤ Anteil ÷ (1 − Anteil) × übrige Punkte (abgerundet). Ohne Deckel unverändert.
+ */
+export function cappedOrders(befehle: number, otherPoints: number): number {
+  const b = Math.max(0, Math.floor(befehle));
+  const share = balance.scoring?.ordersMaxShare;
+  if (share === undefined || share >= 1) return b;
+  return Math.min(b, Math.floor((Math.max(0, share) / (1 - Math.max(0, share))) * Math.max(0, otherPoints) + 1e-9));
+}
+
+/** Kostenwerte der vier Kategorien in Punkte umrechnen; befehle sind bereits Punkte (gedeckelt, cappedOrders). */
 export function makeScore(values: { ausbau: number; militaer: number; kampf: number; beute: number }, befehle = 0): Score {
   const s = { ausbau: pts(values.ausbau), militaer: pts(values.militaer), kampf: pts(values.kampf), beute: pts(values.beute) };
-  const b = Math.max(0, Math.floor(befehle));
+  const b = cappedOrders(befehle, s.ausbau + s.militaer + s.kampf + s.beute);
   return { ...s, befehle: b, total: s.ausbau + s.militaer + s.kampf + s.beute + b };
 }
 
@@ -217,16 +231,16 @@ export async function computeStandings(db: DbOrTx, seasonStartMs: number, nowMs:
   const since = new Date(seasonStartMs).toISOString();
   const reportRows = await db.execute<{
     id: number; at: string | Date; kind: string; we_kind: string | null; attacker_player_id: number | null; defender_player_id: number | null; al: Counts | null; dl: Counts | null; loot: ResourceMap | null;
-    pvp: PvpStamp | null; pvp_excluded: boolean | null; participants: number[] | null;
+    pvp: PvpStamp | null; pvp_excluded: boolean | null; participants: number[] | null; nest: boolean;
   }>(sql`
-    select id, created_at as at, kind, report->'worldEvent'->>'kind' as we_kind, attacker_player_id, defender_player_id,
+    select id, created_at as at, kind, nest_id is not null as nest, report->'worldEvent'->>'kind' as we_kind, attacker_player_id, defender_player_id,
       report->'battle'->'attacker'->'losses' as al, report->'battle'->'defender'->'losses' as dl, report->'battle'->'loot' as loot,
       report->'pvp' as pvp, (report->>'pvpExcluded')::boolean as pvp_excluded,
       case when report ? 'allianceRaid' then jsonb_path_query_array(report, '$.allianceRaid.participants[*].playerId') end as participants
     from battle_report where report ? 'battle' and created_at >= ${since}::timestamptz`);
   const reports: ScoredReport[] = reportRows.map((b) => ({
     id: b.id, atMs: new Date(b.at).getTime(), kind: b.kind, weKind: b.we_kind, attackerPlayerId: b.attacker_player_id, defenderPlayerId: b.defender_player_id,
-    al: b.al, dl: b.dl, loot: b.loot, pvp: b.pvp, pvpExcluded: b.pvp_excluded, participants: b.participants,
+    al: b.al, dl: b.dl, loot: b.loot, pvp: b.pvp, pvpExcluded: b.pvp_excluded, participants: b.participants, nest: b.nest,
   }));
   const pvp = pvpFactors(reports); // PvP: Kopfgeld, Mutfaktor, Paarbremse
   const orders = await challengePoints(db, seasonStartMs);

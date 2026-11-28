@@ -7,16 +7,25 @@ import { HOUR, T0, loadBalance } from "./helpers.ts";
 
 const balance = loadBalance();
 
-test("Nest 6: Besatzung ≈ Nest 5 × 1,35, respawnHours ist kein Besatzungsschlüssel", () => {
+test("Nest 6: Besatzung ≈ Nest 5 × 1,40–1,45 (v1.35, Nutzerentscheid 9B), respawnHours ist kein Besatzungsschlüssel", () => {
   const g = nestGarrison(6, balance);
   assert.ok(g.ok);
-  assert.deepEqual(g.nest.units, { schnellboot: 35, piratenmiliz: 338 });
-  assert.deepEqual(g.nest.defenses, { flakstellung: 4, kuestenbatterie: 3, bunkerlinie: 3 });
+  assert.deepEqual(Object.keys(g.nest.units).sort(), ["piratenmiliz", "schnellboot"]);
   assert.equal("respawnHours" in g.nest.units, false);
   const n5 = nestGarrison(5, balance);
   assert.ok(n5.ok);
   const u6: Record<string, number> = g.nest.units;
-  for (const [id, n] of Object.entries(n5.nest.units)) assert.equal(u6[id], Math.round(n * 1.35));
+  for (const [id, n] of Object.entries(n5.nest.units)) {
+    assert.ok(u6[id] >= Math.round(n * 1.4) && u6[id] <= Math.round(n * 1.45), `${id} ${u6[id]} gegen Nest 5 ${n}`);
+  }
+});
+
+test("Nest 6: Beute in weniger Einheiten bei gleichem Wert (v1.35, Nutzerentscheid 9A) – passt in 8 Landungsschiffe", () => {
+  const value = (m: Record<string, number>) => Object.entries(m).reduce((s, [r, n]) => s + n * (balance.market.refPrice[r] ?? 0), 0);
+  const l6 = balance.pirates.nestLevels["6"].loot;
+  const units = Object.values(l6).reduce((a, b) => a + b, 0);
+  assert.ok(Math.abs(value(l6) - 73580) < 500, `Wert ${value(l6)} (v1.34: 73 580)`);
+  assert.ok(units <= 8 * (balance.units.landungsschiff.cargo ?? 0), `Beute ${units} Einheiten`);
 });
 
 test("Nest 6: Beute lohnt (mehr Wert als Nest 5) und passt ungefähr in 10 Landungsschiffe", () => {

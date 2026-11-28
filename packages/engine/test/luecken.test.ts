@@ -377,10 +377,11 @@ test("Saisonende: Allianzwertung gespeichert, in der Ruhmeshalle und in der Nach
   const rows = await db.select().from(tables.seasonAllianceResult).where(eq(tables.seasonAllianceResult.seasonId, season.id));
   assert.equal(rows.length, 2);
   const nb = rows.find((r) => r.tag === "NB")!;
-  assert.equal(nb.total, total(p1.playerId) + total(p2.playerId));
+  // v1.35 (Nutzerentscheid 6B): Durchschnitt mit Mindestgröße 2 – allein zählt man halb.
+  assert.equal(nb.total, Math.floor((total(p1.playerId) + total(p2.playerId)) / 2));
   assert.equal(nb.members, 2);
   assert.equal(nb.rank, 1, "Nordbund vorn");
-  assert.equal(rows.find((r) => r.tag === "SW")!.total, total(p3.playerId));
+  assert.equal(rows.find((r) => r.tag === "SW")!.total, Math.floor(total(p3.playerId) / 2));
   const hall = await hallOfFame(db, p2.playerId);
   const h = hall.find((x) => x.number === season.number)!;
   assert.deepEqual(h.alliances.map((x) => x.tag), ["NB", "SW"]);

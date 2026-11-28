@@ -120,7 +120,8 @@ test("Ort: Sammelpunkt auf See mit kleinster größter Entfernung; Vorhuten nur 
   const c = finaleCenter([a, b])!;
   assert.equal(terrainAt(c.col, c.row), "sea");
   assert.deepEqual(finaleVanguards(c, [a, b]), [], "nahe Häfen: keine Vorhut");
-  // Weit verteilt (über 1 500 km): Vorhut höchstens 400 km vor dem fernen Hafen.
+  // Weit verteilt: Vorhut höchstens vanguardKm (v1.35: 500 km, vorher 400) vor dem fernen Hafen.
+  const vk = finaleBalance(balance)!.vanguardKm;
   const first = freeCoast(10);
   let second = first;
   for (let k = 11; k < 3000; k += 37) {
@@ -133,11 +134,17 @@ test("Ort: Sammelpunkt auf See mit kleinster größter Entfernung; Vorhuten nur 
   assert.ok(v.length >= 1);
   for (const x of v) {
     assert.equal(terrainAt(x.col, x.row), "sea");
-    assert.ok(far.some((p) => hexDistanceKm(p, x) <= 400), `${x.name} höchstens 400 km vor einem Hafen`);
+    assert.ok(far.some((p) => hexDistanceKm(p, x) <= vk), `${x.name} höchstens ${vk} km vor einem Hafen`);
   }
 });
 
-test("Ablauf: Ankündigung (keine gewöhnlichen Ereignisse mehr), Erscheinen mit fester Stärke, Abschnitte, Beute bei Heimkehr, Abzug „entkommen“, Ruhmeshalle nur Menschen", async () => {
+test("Ablauf: Ankündigung (keine gewöhnlichen Ereignisse mehr), Erscheinen mit fester Stärke, Abschnitte, Beute bei Heimkehr, Abzug „entkommen“, Ruhmeshalle nur Menschen", async (t) => {
+  // v1.35: gewöhnliche Ereignisse laufen bis ordinaryEventsUntilDays (37,5); dieser Ablauf prüft das Finale ohne sie
+  // (Regel der Ankündigung wie bis v1.34), die neue Grenze prüfen balance135 (game-core) und world-events-season.
+  const fin0 = finaleBalance(balance)!;
+  const until0 = fin0.ordinaryEventsUntilDays;
+  delete fin0.ordinaryEventsUntilDays;
+  t.after(() => { fin0.ordinaryEventsUntilDays = until0; });
   const season = (await runningSeason(db))!;
   // Saison so verschieben, dass jetzt Tag 37 ist (Ankündigung fällig, Erscheinen in ~12 h).
   const start = Date.now() - 36 * DAY;
@@ -172,7 +179,8 @@ test("Ablauf: Ankündigung (keine gewöhnlichen Ereignisse mehr), Erscheinen mit
   const k = 40 * 200 + 8 * 450;
   const fd = (e.data as { finale: { totalHp: number; participants: number } }).finale;
   assert.equal(fd.participants, 3);
-  assert.equal(fd.totalHp, Math.max(40000, 4 * 3 * k));
+  // v1.35: die KI („Maschine“) zählt nur × botKFactor.
+  assert.equal(fd.totalHp, Math.max(40000, 4 * (2 + (fin0.botKFactor ?? 1)) * k));
   const units = e.units as Record<string, number>;
   assert.equal(units.flaggschiff, Math.round((0.1 * fd.totalHp) / 1000));
 

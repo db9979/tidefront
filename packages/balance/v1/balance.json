@@ -1,5 +1,5 @@
 {
-  "version": "v1.34",
+  "version": "v1.35",
   "resources": ["stahl", "treibstoff", "elektronik", "proviant"],
   "start": { "stahl": 2000, "treibstoff": 1000, "elektronik": 500, "proviant": 1000 },
   "baseTricklePerHour": { "stahl": 20, "treibstoff": 10, "elektronik": 5, "proviant": 15 },
@@ -112,11 +112,11 @@
       "3": { "schnellboot": 14, "piratenmiliz": 110, "flakstellung": 1, "kuestenbatterie": 1, "bunkerlinie": 1, "loot": { "stahl": 6500, "treibstoff": 2600, "elektronik": 1000, "proviant": 1900 } },
       "4": { "schnellboot": 22, "piratenmiliz": 215, "flakstellung": 2, "kuestenbatterie": 1, "bunkerlinie": 1, "loot": { "stahl": 10750, "treibstoff": 4300, "elektronik": 1700, "proviant": 3050 } },
       "5": { "schnellboot": 26, "piratenmiliz": 250, "flakstellung": 3, "kuestenbatterie": 2, "bunkerlinie": 2, "loot": { "stahl": 14000, "treibstoff": 5600, "elektronik": 2200, "proviant": 4200 } },
-      "6": { "schnellboot": 35, "piratenmiliz": 338, "flakstellung": 4, "kuestenbatterie": 3, "bunkerlinie": 3, "respawnHours": 24, "loot": { "stahl": 10400, "treibstoff": 10400, "elektronik": 14300, "proviant": 2600 } }
+      "6": { "schnellboot": 36, "piratenmiliz": 350, "flakstellung": 4, "kuestenbatterie": 3, "bunkerlinie": 3, "respawnHours": 24, "loot": { "stahl": 3500, "treibstoff": 3000, "elektronik": 21300, "proviant": 1200 } }
     },
     "nestRespawnHours": 12,
     "raidIntervalHours": 18,
-    "raidStrengthShareOfDefense": 0.40,
+    "raidStrengthShareOfDefense": 0.1,
     "raidMinSchnellboote": 4,
     "raidMiliPerBoot": 8,
     "raidStrengthSpread": 0.3,
@@ -128,7 +128,7 @@
       "lootPerHour": 0.01, "lootMax": 1.3, "rangeSamples": 100, "botMaxNests": 6
     }
   },
-  "scoring": { "npcDefenseFactor": 0.25, "npcWorldEventKinds": [], "armadaFactor": 0.5 },
+  "scoring": { "npcDefenseFactor": 0.1, "npcWorldEventKinds": [], "armadaFactor": 0.5, "nestFactor": 0.5, "ordersMaxShare": 0.05 },
   "pvp": {
     "bountyByRank": [0.5, 0.35, 0.2], "bountyDefenseFactor": 0.5, "mutMin": 0.5, "mutMax": 1.5, "maxFactor": 2,
     "pairWindowHours": 72, "pairFactors": [1, 0.5, 0.25, 0], "collusionDays": 7, "suspiciousFights": 3, "suspiciousDays": 7,
@@ -236,12 +236,15 @@
       "milizPerBoat": 8,
       "sectorFactor": 0.5,
       "minSectorBoats": 4,
-      "lootPerHp": 0.6,
+      "lootPerHp": 0.9,
       "lootMix": { "stahl": 5000, "treibstoff": 2500, "elektronik": 1200, "proviant": 1800 },
       "treasureShare": 0.05,
       "excludeUnits": ["landungsschiff", "kolonieschiff", "minenleger", "minenraeumer"],
-      "vanguardSpreadKm": 1500,
-      "vanguardKm": 400,
+      "vanguardSpreadKm": 0,
+      "vanguardKm": 500,
+      "botKFactor": 0.5,
+      "squadronUJagd": 10,
+      "ordinaryEventsUntilDays": 37.5,
       "probeRuns": 12,
       "botIntervalHours": 12,
       "market": { "pct": { "treibstoff": 0.06 }, "fadeHours": 12 }
@@ -283,7 +286,7 @@
     "satellite": {
       "launchpad": "startrampe",
       "types": {
-        "optisch": { "tech": "optischer_satellit", "cost": { "stahl": 5000, "treibstoff": 2000, "elektronik": 3500 }, "level": "erkennung", "cloudMax": 0.6 },
+        "optisch": { "tech": "optischer_satellit", "cost": { "stahl": 2000, "treibstoff": 700, "elektronik": 1250 }, "level": "erkennung", "cloudMax": 0.6, "lifetimeHours": 336 },
         "radar": { "tech": "radarsatellit", "cost": { "stahl": 5500, "treibstoff": 2200, "elektronik": 4000 }, "level": "sichtung" }
       },
       "lifetimeHours": 168, "periodHours": 6, "stripKm": 600, "shiftKm": 1400, "liveMinutes": 20,
@@ -300,7 +303,7 @@
     "cartelBaseChance": 0.02, "cartelChancePer100Km": 0.01, "cartelChancePer1000Value": 0.004, "cartelMaxChance": 0.12, "cartelMinDistanceKm": 150,
     "cartelBoatsPer1000Value": 0.8, "cartelMinBoats": 2, "cartelMaxBoats": 12,
     "lossShareUnescorted": 0.3, "lossShareEscortBeaten": 0.25, "plunderShare": 0.6,
-    "marketChanceFactor": 0.5, "marketMaxChance": 0.08, "cargoSmallMaxValue": 2000, "cargoMediumMaxValue": 10000
+    "marketChanceFactor": 0.5, "marketMaxChance": 0.08, "marketValueWindowHours": 4, "cargoSmallMaxValue": 2000, "cargoMediumMaxValue": 10000
   },
   "weather": {
     "seed": 1906,
@@ -446,7 +449,7 @@
       "bollwerk": { "title": "Bollwerk", "description": "Angriffe abgewehrt, ohne Einheiten oder Anlagen zu verlieren", "counter": "abwehr_ohne_verluste", "thresholds": [1, 5, 20] },
       "prisenmeister": { "title": "Prisenmeister", "description": "Beute aus Überfällen insgesamt (Ressourcen)", "counter": "beute", "thresholds": [25000, 250000, 2000000] },
       "kaufmann": { "title": "Kaufmann", "description": "Taler Börsengebühr gezahlt (Geschäfte ab 500 Talern)", "counter": "handel_gebuehr", "thresholds": [400, 2000, 8000] },
-      "baumeister": { "title": "Baumeister", "description": "Gebäude als Prachtbau (Stufe 18 oder höher)", "counter": "prachtbau", "thresholds": [1, 4, 10] },
+      "baumeister": { "title": "Baumeister", "description": "Gebäude auf Stufe 12 oder höher", "counter": "prachtbau", "thresholds": [1, 3, 6], "fromLevel": 12 },
       "gelehrter": { "title": "Gelehrter", "description": "Techniken vollständig erforscht", "counter": "forschung_voll", "thresholds": [1, 5, 12] },
       "meisterspion": { "title": "Meisterspion", "description": "Aufträge des Nachrichtendienstes gelungen", "counter": "spionage", "thresholds": [5, 25, 100] },
       "flottenbrecher": { "title": "Flottenbrecher", "description": "Weltereignisse mit dem entscheidenden Angriff besiegt", "counter": "weltereignisse", "thresholds": [1, 3, 10] },
@@ -509,7 +512,9 @@
     "firstRaidAfterHours": 48,
     "startResources": { "stahl": 1000, "treibstoff": 500, "elektronik": 250, "proviant": 500 },
     "homeOnlyBuildings": ["forschungsamt"],
-    "harborLevelForShip": 6
+    "harborLevelForShip": 6,
+    "colonyCostGrowth": 2,
+    "colonyUpkeepPerDay": { "stahl": 3000, "treibstoff": 1500 }
   },
   "bots": {
     "timeZone": "Europe/Berlin",
@@ -529,7 +534,7 @@
       },
       "festung": {
         "activeHours": [6, 23], "turnMinutes": [30, 60], "nightShieldStartHour": 0, "noise": 0.15,
-        "buildQueue": 2, "militaryShare": 0.4, "researchShare": 0.2, "homeGuardShare": 0.5, "attackNests": true, "attackPlayers": 0.1,
+        "buildQueue": 2, "militaryShare": 0.4, "researchShare": 0.2, "homeGuardShare": 0.3, "attackNests": true, "attackPlayers": 0.1,
         "probeRuns": 3, "probeWinRate": 1, "expandFromCommandLevel": 5, "fields": "all", "trade": false
       },
       "freibeuter": {
@@ -543,7 +548,7 @@
   "catchUp": {
     "from": 0.7, "full": 0.3, "cap": 0.5, "resumeBelow": 0.6, "minBaseAgeDays": 3,
     "storeHours": 24, "stopDay": 40, "latePackFromDay": 8, "latePackShare": 0.15,
-    "refreshMinutes": 60, "maxCatchUpHours": 2
+    "refreshMinutes": 60, "maxCatchUpHours": 2, "includeMilitary": true, "minFlowShare": 0.1
   },
   "politik": {
     "referenceSeasonDays": 42, "finaleGapHours": 48,

@@ -1,11 +1,24 @@
 // Handbuch-Kapitel „Mehrere Häfen“: Gründung, Hafenwahl, Verlegen, Namen, Belagerung, Kolonie aufgeben, Handel; Zahlen aus balance.expansion (sonst Planwerte).
 import type { ReactNode } from "react";
 import type { Balance } from "../lib/trpc.ts";
-import { fmtNum } from "../lib/names.ts";
+import { fmtNum, label } from "../lib/names.ts";
 import { expansionRules } from "../lib/expansion.ts";
 
 function P({ children }: { children: ReactNode }) {
   return <p className="text-sm text-slate-200 mb-2 leading-relaxed">{children}</p>;
+}
+
+/** v1.35 (Nutzerentscheid 12): Gründungsgebühr ab dem 3. Hafen und Unterhalt je Kolonie – eine Entscheidung, keine Pflicht. */
+function ColonyCosts({ b }: { b: Balance | undefined }) {
+  const e = (b as unknown as { expansion?: { colonyCostGrowth?: number; colonyUpkeepPerDay?: Record<string, number> } } | undefined)?.expansion;
+  if (!e?.colonyCostGrowth && !e?.colonyUpkeepPerDay) return null;
+  const up = Object.entries(e.colonyUpkeepPerDay ?? {}).filter(([, n]) => n > 0).map(([r, n]) => `${fmtNum(n)} ${label(r)}`).join(" und ");
+  return (
+    <P>
+      <strong>Kosten einer Kolonie:</strong>{e.colonyCostGrowth ? ` Jeder weitere Hafen wird teurer – der 3. kostet beim Auslaufen zusätzlich eine Gründungsgebühr in Höhe eines Kolonieschiffs (insgesamt also das ${fmtNum(e.colonyCostGrowth)}-Fache des 2.); scheitert die Gründung, kommt die Gebühr mit dem Schiff zurück.` : ""}
+      {up ? ` Jede Kolonie kostet täglich ${up} Unterhalt, laufend abgezogen – höchstens so viel, wie ihre eigenen Gebäude davon erzeugen; ein frischer Außenposten gerät dadurch nicht ins Minus.` : ""} Ein neuer Hafen rechnet sich so erst nach etwa vier bis acht Tagen: früh gegründet lohnt er, kurz vor Saisonende kaum.
+    </P>
+  );
 }
 
 export function HarborsChapter({ b }: { b: Balance | undefined }) {
@@ -15,6 +28,7 @@ export function HarborsChapter({ b }: { b: Balance | undefined }) {
       {!x.live && <P><em>Die Gründung ist in dieser Saison noch nicht freigeschaltet; die Zahlen unten sind vorläufig.</em></P>}
       <P>Dein erster Hafen ist dein <strong>Heimathafen</strong>. Später kannst du bis zu {x.maxBases} Häfen halten: den 2. ab Kommandozentrale Stufe {x.unlockCommandLevels[0] ?? "–"}, den 3. ab Stufe {x.unlockCommandLevels[1] ?? "–"} (jeweils im Heimathafen).</P>
       <P><strong>Gründen:</strong> Baue in der Werft ein <strong>Kolonieschiff</strong>, tippe auf der Karte ein freies Küstenfeld an (kein Hafen, Nest, Handelshafen oder Rohstofffeld) und wähle „Außenposten gründen“. Das Ziel muss höchstens {fmtNum(x.maxRangeKm)} km vom aktiven Hafen entfernt sein und Abstand zu anderen Häfen halten. Bei Ankunft entsteht der Außenposten, das Kolonieschiff wird verbraucht. Wer zuerst ankommt, bekommt das Feld.</P>
+      <ColonyCosts b={b} />
       <P><strong>Hafenwahl:</strong> Oben in der Kopfleiste steht der aktive Hafen. Ein Tipp darauf zeigt alle Häfen mit Ressourcen, Bauschlange und Angriffswarnung; „Hierhin wechseln“ macht einen Hafen aktiv. Basis, Truppen, Börse und Missionen beziehen sich immer auf den aktiven Hafen – Missionen laufen dort aus. Wird irgendein Hafen angegriffen, blinkt die Warnung an „Basis“.</P>
       <P><strong>Je Hafen</strong> getrennt: Ressourcen, Lager, Strom, Gebäude, Bauschlange, Ausbildung, Einheiten und Schutz. <strong>Für alle</strong> gemeinsam: Forschung (läuft im Heimathafen, das Forschungsamt steht nur dort, wirkt aber überall), Taler, Erfolge, Tagesbefehle, Allianz und die Rangliste (Punkte aller Häfen zusammen).</P>
       <P><strong>Zwischen den Häfen:</strong> Mit „Transport“ schickst du Ladung in einen eigenen Hafen, mit „Verlegen“ ziehen Einheiten (und ihr Admiral) dauerhaft um. Auf der Karte: eigenen Hafen antippen. Im Zielhafen stehen eigene Verlegungen und Transporte unter <strong>Truppen → Eingehend</strong> und in „Als Nächstes“ – als „eigen“ gekennzeichnet, ohne Angriffswarnung.</P>

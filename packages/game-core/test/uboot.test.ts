@@ -156,8 +156,8 @@ test("Mission: Reisezeit und Treibstoff generisch, U-Boote tragen nichts", () =>
 
 test("Kartell: U-Boote daheim zählen zur Verteidigungsstärke", () => {
   assert.equal(defenseHp({ uboot: 2 }, {}, balance), 2 * balance.units.uboot.hp);
-  const without = composeRaid({ schuetzen: 30 }, {}, balance);
-  const withSubs = composeRaid({ schuetzen: 30, uboot: 4 }, {}, balance);
+  const without = composeRaid({ schuetzen: 300 }, {}, balance); // über der Mindeststärke (v1.35: Anteil kleiner)
+  const withSubs = composeRaid({ schuetzen: 300, uboot: 8 }, {}, balance);
   assert.ok(withSubs.units.schnellboot > without.units.schnellboot);
   assert.equal(withSubs.units.uboot, undefined);
 });

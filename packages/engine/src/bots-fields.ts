@@ -18,6 +18,7 @@ import { fmtInt, nameOf } from "./names.ts";
 import type { TurnCtx } from "./bots-war.ts";
 import { scoutNearest, scoutsUnknown } from "./bots-intel.ts"; // Lagebild
 import { activeMissionCount, type BaseRow } from "./store.ts";
+import { keepSlotForEvent } from "./bots-world-events.ts"; // v1.35
 
 type Base = BaseRow & { state: BaseState };
 
@@ -105,6 +106,7 @@ export function wantsField(c: TurnCtx): boolean {
 /** Rohstofffeld besetzen: freie Felder (alle Spielweisen außer „none“), bewachte nach Probekampf („all“). */
 export async function fieldTurn(c: TurnCtx, base: Base, mods: Modifiers): Promise<boolean> {
   if (c.cfg.fields === "none" || !rules() || c.rand() < c.cfg.noise) return false;
+  if (await keepSlotForEvent(c, base)) return false; // v1.35: Platz für ein laufendes Weltereignis freihalten
   const view = await fieldsView(c.engine, c.bot.id);
   if (!view) return false;
   const pending = await c.engine.db.select({ targetId: tables.mission.targetId }).from(tables.mission).where(and(

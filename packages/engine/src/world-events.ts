@@ -3,7 +3,7 @@
 // Ablauf: world-events-spawn.ts (Entstehen), world-events-run.ts (Fahrt, Angriffe, Ende, Handler-Tabelle),
 // world-events-missions.ts (Missionen gegen Ereignisse), world-events-view.ts (Lesemodell).
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { finaleBalance, finaleSchedule, pickKind, worldEventsBalance, WORLD_EVENT_KINDS, type Counts, type ResourceMap, type RoutePoint, type WorldEventKind } from "@tidefront/game-core";
+import { finaleBalance, finaleOrdinaryUntil, pickKind, worldEventsBalance, WORLD_EVENT_KINDS, type Counts, type ResourceMap, type RoutePoint, type WorldEventKind } from "@tidefront/game-core";
 import { tables, type Db, type DbOrTx, type Tx } from "@tidefront/db";
 import { balance, type Notice, type NoticeJob } from "./context.ts";
 import { randomSeed, scheduleEvent } from "./store.ts";
@@ -188,9 +188,12 @@ export async function siegeEffects(db: DbOrTx, baseId: number, nowMs: number): P
 
 // ---------------------------------------------------------------- Planer und Saisonende
 
-/** Saisonfinale: Ankündigung; ab dann entstehen keine gewöhnlichen Weltereignisse mehr (ohne Finale-Block: nie). */
+/**
+ * Saisonfinale: ab hier entstehen keine gewöhnlichen Weltereignisse mehr – v1.35 bis finale.ordinaryEventsUntilDays (37,5,
+ * Erscheinen der Armada), sonst ab der Ankündigung; ohne Finale-Block nie.
+ */
 export function ordinaryEventsUntil(season: { startsAt: Date; endsAt: Date }): number {
-  return finaleBalance(balance) ? finaleSchedule(season.startsAt.getTime(), season.endsAt.getTime(), balance).announceMs : Infinity;
+  return finaleBalance(balance) ? finaleOrdinaryUntil(season.startsAt.getTime(), season.endsAt.getTime(), balance) : Infinity;
 }
 
 async function runningSeasonRow(db: DbOrTx) {

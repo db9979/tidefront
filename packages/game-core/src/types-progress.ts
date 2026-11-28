@@ -17,6 +17,8 @@ export interface AchievementDef {
   tierTexts?: [string, string, string];
   /** Eigene Belohnungen je Stufe; sonst die gemeinsamen. */
   rewards?: [AchievementReward, AchievementReward, AchievementReward];
+  /** v1.35: Mindest-Gebäudestufe für den Zähler prachtbau (Baumeister, M-12); fehlt: 18 (Ausbaubild „Prachtbau“). */
+  fromLevel?: number;
 }
 
 export interface AchievementsBalance {

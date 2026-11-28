@@ -5,7 +5,7 @@
 // Optisch: Felder mit Bewölkung über cloudMax (echtes Wetter zum Überflug) bleiben verdeckt; Radar: durch Wolken.
 import { lockPlayerWide } from "./world-lock.ts";
 import {
-  activeSatellites, currentPass, hasResources, newSatellite, nextPass, satelliteCost, satelliteLaunchCheck, satelliteLimit, satelliteOf, satPassCount,
+  activeSatellites, currentPass, hasResources, newSatellite, nextPass, satelliteCost, satelliteLaunchCheck, satelliteLifetimeHours, satelliteLimit, satelliteOf, satPassCount,
   settle, subtractResources, techLevel, weatherAt,
   type BaseState, type IntelBalance, type SatelliteState, type SatelliteType, type SatPass, type SensorCircle,
 } from "@tidefront/game-core";
@@ -167,7 +167,7 @@ export async function satelliteOptions(db: DbOrTx, playerId: number, nowMs: numb
   return {
     pads, active, limit: satelliteLimit(techs, sb),
     techs: { optisch: techs[sb.types.optisch.tech] ?? 0, radar: techs[sb.types.radar.tech] ?? 0 },
-    rules: { lifetimeHours: sb.lifetimeHours, periodHours: sb.periodHours, stripKm: sb.stripKm, shiftKm: sb.shiftKm, liveMinutes: sb.liveMinutes, max: sb.max, maxMore: sb.maxMore, cloudMax: sb.types.optisch.cloudMax ?? null },
+    rules: { lifetimeHours: sb.lifetimeHours, lifetimeByType: { optisch: satelliteLifetimeHours(sb, "optisch"), radar: satelliteLifetimeHours(sb, "radar") }, periodHours: sb.periodHours, stripKm: sb.stripKm, shiftKm: sb.shiftKm, liveMinutes: sb.liveMinutes, max: sb.max, maxMore: sb.maxMore, cloudMax: sb.types.optisch.cloudMax ?? null },
   };
 }
 

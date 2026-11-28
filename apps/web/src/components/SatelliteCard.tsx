@@ -26,7 +26,7 @@ export interface SatLaunch {
   active: number;
   limit: number;
   techs: { optisch: number; radar: number };
-  rules: { lifetimeHours: number; periodHours: number; stripKm: number; shiftKm: number; liveMinutes: number; max: number; maxMore: number; cloudMax: number | null };
+  rules: { lifetimeHours: number; lifetimeByType?: Record<string, number>; periodHours: number; stripKm: number; shiftKm: number; liveMinutes: number; max: number; maxMore: number; cloudMax: number | null };
 }
 
 /** Kartenziel in der Mitte eines Streifens. */
@@ -118,7 +118,7 @@ export function SatelliteCard({ sats, launch, onShowOnMap }: { sats: SatView[]; 
       <p className="text-xs text-ink2 mt-2">
         Alle {r.periodHours} h ein Überflug über {fmtNum(r.stripKm)} km Breite, je Überflug {fmtNum(r.shiftKm)} km weiter westlich; {r.liveMinutes} min live, danach bekannt.
         Optisch: Erkennung, nicht unter Wolken (über {Math.round((r.cloudMax ?? 0.6) * 100)} %). Radar: durch Wolken, nur Sichtung.
-        Lebensdauer {Math.round(r.lifetimeHours / 24)} Tage, höchstens {r.max} (mit Radarsatellit {r.maxMore}).
+        Lebensdauer {r.lifetimeByType ? `optisch ${Math.round((r.lifetimeByType.optisch ?? r.lifetimeHours) / 24)}, Radar ${Math.round((r.lifetimeByType.radar ?? r.lifetimeHours) / 24)}` : Math.round(r.lifetimeHours / 24)} Tage, höchstens {r.max} (mit Radarsatellit {r.maxMore}).
       </p>
     </Card>
   );

@@ -4,8 +4,8 @@
 // und handlers.ts (missionArrive).
 import { and, eq, ne } from "drizzle-orm";
 import {
-  aircraftSlots, aircraftSlotsUsed, allowedBases, combineModifiers, expansionOf, foundingBlocker, planMission,
-  type Counts, type MissionRoute, type Modifiers, type ResourceMap,
+  aircraftSlots, aircraftSlotsUsed, allowedBases, combineModifiers, expansionOf, foundingBlocker, foundingFee, hasResources, planMission,
+  subtractResources, type Counts, type MissionRoute, type Modifiers, type ResourceMap,
 } from "@tidefront/game-core";
 import { TRADE_PORTS, hexAtLonLat, hexCenter, hexDistanceKm, isCoast } from "@tidefront/world";
 import { tables, type DbOrTx, type Tx } from "@tidefront/db";
@@ -89,13 +89,21 @@ async function transferTarget(db: DbOrTx, playerId: number, own: BaseRow, input:
   return t;
 }
 
+/** v1.35: Gründungsgebühr der nächsten Gründung (n-ter Hafen = eigene Häfen + laufende Gründungen + 1). */
+export async function nextFoundingFee(db: DbOrTx, playerId: number): Promise<ResourceMap> {
+  const own = await db.select({ id: tables.base.id }).from(tables.base).where(eq(tables.base.playerId, playerId));
+  return foundingFee(own.length + (await pendingFoundings(db, playerId)) + 1, balance);
+}
+
 /** Prüfungen und Planung beider Arten; wirft GameError mit dem Ablehnungsgrund. */
 async function planExpansion(db: DbOrTx, playerId: number, own: BaseRow, input: ExpansionInput, nowMs: number, admiralMods: Modifiers | null) {
   if (!expansionOf(balance)) fail("expansion_off");
   let targetId: number | null = null;
+  let fee: ResourceMap = {};
   if (input.type === FOUNDING_TYPE) {
     const blocker = await foundingCheck(db, playerId, input, input.units);
     if (blocker) fail(blocker);
+    fee = await nextFoundingFee(db, playerId);
   } else {
     targetId = (await transferTarget(db, playerId, own, input)).id;
   }
@@ -104,7 +112,13 @@ async function planExpansion(db: DbOrTx, playerId: number, own: BaseRow, input: 
     type: input.type, units: input.units, origin: hexCenter(own.col, own.row), target: hexCenter(input.col, input.row),
     activeMissions: await activeMissionCount(db, own.id), cargo: input.cargo, weather,
   }, nowMs, balance, combineModifiers(await modsOf(db, own, nowMs), admiralMods ?? undefined));
-  return { r, targetId, weather };
+  // v1.35 (Nutzerentscheid 12B): Gründungsgebühr ab dem 3. Hafen, abgebucht beim Auslaufen (zurück, wenn die Gründung scheitert).
+  if (r.ok && Object.keys(fee).length > 0) {
+    if (!hasResources(r.base.resources, fee)) return { r: { ok: false as const, code: "insufficient_resources" }, targetId, weather, fee };
+    r.base = { ...r.base, resources: subtractResources(r.base.resources, fee) };
+    r.mission = { ...r.mission, foundingFee: fee };
+  }
+  return { r, targetId, weather, fee };
 }
 
 /** Auslaufen einer Gründung/Verlegung aus dem gesperrten Hafen `own` (in runCommand). Codes zusätzlich: admiral_elsewhere. */
@@ -143,15 +157,15 @@ export type ExpansionPreview =
     ok: true; distanceKm: number; travelSeconds: number; fuelCost: number; arriveAtMs: number; returnAtMs: number;
     target: { kind: string; own: boolean }; intercept: null; weather: ReturnType<typeof missionWeather>; weatherFactor: number;
     route: MissionRoute | null; // Seewege
-    /** Häfen: eigene, laufende Gründungen, erlaubt (Kommandozentrale des Heimathafens), Höchstzahl. */
-    expansion: { bases: number; pending: number; allowed: number; max: number };
+    /** Häfen: eigene, laufende Gründungen, erlaubt (Kommandozentrale des Heimathafens), Höchstzahl; v1.35 Gründungsgebühr. */
+    expansion: { bases: number; pending: number; allowed: number; max: number; fee: ResourceMap };
   };
 
 /** Vorschau einer Gründung/Verlegung mit Ablehnungsgrund (Code) wie launchExpansion. */
 export async function previewExpansion(db: DbOrTx, playerId: number, own: BaseRow, input: ExpansionInput, nowMs: number): Promise<ExpansionPreview> {
   const distanceKm = hexDistanceKm(own, input);
   try {
-    const { r, weather } = await planExpansion(db, playerId, own, input, nowMs, await admiralPreviewMods(db, playerId, input.admiralId));
+    const { r, weather, fee } = await planExpansion(db, playerId, own, input, nowMs, await admiralPreviewMods(db, playerId, input.admiralId));
     if (!r.ok) return { ok: false as const, code: r.code, distanceKm, weather };
     const home = await homeBaseOf(db, playerId);
     const e = expansionOf(balance)!;
@@ -161,7 +175,7 @@ export async function previewExpansion(db: DbOrTx, playerId: number, own: BaseRo
       ok: true as const, distanceKm: m.distanceKm, travelSeconds: m.travelSeconds, route: m.route ?? null, fuelCost: m.fuelCost, arriveAtMs: m.arriveAtMs,
       returnAtMs: m.returnAtMs, target: { kind: input.type === FOUNDING_TYPE ? SITE_TARGET : "base", own: input.type === TRANSFER_TYPE },
       intercept: null, weather: withArrival(weather, input.col, input.row, m.arriveAtMs, nowMs, own.state), weatherFactor: m.weather?.shipFactor ?? 1,
-      expansion: { bases: bases.length, pending: await pendingFoundings(db, playerId), allowed: home ? allowedBases(home.state, balance) : 1, max: e.maxBases },
+      expansion: { bases: bases.length, pending: await pendingFoundings(db, playerId), allowed: home ? allowedBases(home.state, balance) : 1, max: e.maxBases, fee },
     };
   } catch (err) {
     if (err instanceof GameError) return { ok: false as const, code: err.code, distanceKm };

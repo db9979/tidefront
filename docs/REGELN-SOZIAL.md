@@ -7,7 +7,8 @@ Umsetzung in `packages/engine` (Allianzen, Diplomatie, Spielerhandel), Tabellen 
 
 - Eine Allianz hat einen Namen (3–32 Zeichen) und ein Kürzel (2–4 Buchstaben oder Ziffern), beide eindeutig ohne
   Groß-/Kleinschreibung, dazu eine Beschreibung (höchstens 500 Zeichen). Ein Spieler gehört höchstens einer Allianz an.
-- Höchstgröße: Vorgabe 8 Mitglieder, von Admins einstellbar (2–50, `server_setting` `alliance_max_size`).
+- Höchstgröße (v1.35, Nutzerentscheid 6B): ohne Einstellung max(3, ⌈Menschen / 2⌉) (Menschen = Spieler ohne KI-Profil;
+  vorher fest 8), von Admins einstellbar unter Verwaltung → Allianzen (2–50, `server_setting` `alliance_max_size`).
   Eine verkleinerte Höchstgröße entfernt niemanden, verhindert aber weitere Aufnahmen.
 - Rollen: **Führung** (genau eine), **Offizier**, **Mitglied**. Der Gründer ist Führung.
   - Beitritt nur auf Gegenseitigkeit: Führung oder Offizier lädt ein und der Spieler nimmt an, oder der Spieler fragt an
@@ -22,7 +23,9 @@ Umsetzung in `packages/engine` (Allianzen, Diplomatie, Spielerhandel), Tabellen 
 - Allianz-Chat: höchstens 500 Zeichen je Zeile, 20 Zeilen je Minute und Spieler, sichtbar sind die letzten 100 Zeilen.
 - Saisonende: Allianzen, Mitgliedschaften, Chat und Verträge bleiben bestehen. Die Allianzwertung zum Saisonende wird
   in `season_alliance_result` festgehalten (Ruhmeshalle).
-- Wertung: Allianzpunkte = Summe der Gesamtpunkte der aktuellen Mitglieder; Rang nach Allianzpunkten, Gleichstand teilt den Rang.
+- Wertung (v1.35, Nutzerentscheid 6B): Allianzpunkte = ⌊Summe der Gesamtpunkte der aktuellen Mitglieder ÷ max(2, Mitglieder)⌋
+  (Durchschnitt mit Mindestgröße 2 – eine Ein-Personen-Allianz zählt halb), zum Saisonende plus Feldpunkte; Rang nach
+  Allianzpunkten, Gleichstand teilt den Rang. Die Ansicht der eigenen Allianz zeigt weiter die Summe der Mitglieder.
   Das Kürzel steht in Rangliste und Spielerübersicht vor dem Namen.
 - Saisonende: Allianzen, Mitgliedschaften, Chat und Verträge bleiben bestehen. Allianzpunkte werden nicht in
   `season_result` festgehalten.

@@ -60,6 +60,7 @@ import { homeStorageCapacity, maxHarborLevelOf, settledHome } from "./player-wid
 import { mapViewFor } from "./intel-map.ts"; // Lagebild: Karte nach Sicht
 import { nestKnown } from "./intel-query.ts"; // Lagebild
 import { intelMissionInfo } from "./intel-route.ts"; // Lagebild Stufe 2
+import { recentMarketConvoyValue } from "./market-convoy.ts"; // v1.35: Börsenkonvois der letzten 4 h
 import { withEscortKm } from "./trade-routes.ts"; // TST-02: Geleitstrecke in Buchungsrichtung
 import { balanceNow } from "./politik-core.ts"; // Weltpolitik: wirksame Gebühr und Tageslimit
 
@@ -227,6 +228,7 @@ export async function baseView(engine: Engine, playerId: number, baseId?: number
         credits: (p?.trader as { credits: number } | undefined)?.credits ?? 0,
         // Seewege: Entfernung über Wasser (Lieferzeit); escortKm = Geleitfahrt Hafen → Handelshafen wie gebucht (TST-02).
         port: withEscortKm(own, nearestTradePortBySea(own)),
+        recentConvoyValue: await recentMarketConvoyValue(engine.db, playerId, nowMs), // v1.35: zählt beim Kartellrisiko mit
       },
       missions: missions.map((m) => ({
         id: m.id,

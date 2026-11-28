@@ -27,7 +27,7 @@ export const BUILDING_TEXT: Record<string, { kurz: string; lang: string }> = {
   // Lagebild Stufe 3 (v1.23)
   startrampe: {
     kurz: "Startet Satelliten",
-    lang: "Von hier starten Satelliten (Karte → Sichtungen). Braucht Kommandozentrale {padKz}, Forschungsamt {padFa} und Radarstation {padRadar}; die Technik kommt aus dem Zweig Raumfahrt. Ein Satellit fliegt {satDays} Tage und überfliegt alle {satPeriod} h einen {satStrip} km breiten Nord-Süd-Streifen, der jedes Mal {satShift} km nach Westen wandert; {satLive} min lang ist der Streifen live, danach bleibt das Gesehene bekannt. Optisch: Erkennung, aber nicht unter Wolken; Radar: durch Wolken, nur Sichtung. Jede Stufe über 1 senkt die Startkosten um {padDiscount} % (höchstens {padDiscountMax} %).",
+    lang: "Von hier starten Satelliten (Karte → Sichtungen). Braucht Kommandozentrale {padKz}, Forschungsamt {padFa} und Radarstation {padRadar}; die Technik kommt aus dem Zweig Raumfahrt. Ein optischer Satellit fliegt {satDaysOpt} Tage, ein Radarsatellit {satDays}; jeder überfliegt alle {satPeriod} h einen {satStrip} km breiten Nord-Süd-Streifen, der jedes Mal {satShift} km nach Westen wandert; {satLive} min lang ist der Streifen live, danach bleibt das Gesehene bekannt. Optisch: Erkennung, aber nicht unter Wolken; Radar: durch Wolken, nur Sichtung. Jede Stufe über 1 senkt die Startkosten um {padDiscount} % (höchstens {padDiscountMax} %).",
   },
   stoersender: {
     kurz: "Stört fremdes Radar",
@@ -57,7 +57,7 @@ export const UNIT_TEXT: Record<string, string> = {
   aufklaerungsdrohne: "Kämpft nicht. Schnell und mit großer Reichweite – ideal für Aufklärung.",
   minenleger: "Legt auf offener See nahe dem eigenen Hafen ein Minenfeld (Stärke {mineLayer} je Schiff). Fremde Verbände, die hindurchfahren, verlieren Schiffe.",
   minenraeumer: "Räumt fremde Minenfelder (Stärke {mineSweeper} je Schiff) und schützt im Verband vor Minen. Hat U-Jagd.",
-  kolonieschiff: "Gründet einen weiteren Hafen auf einer freien Küste bis {colonyRange} km vom Heimathafen (Mission „Gründung“) und wird dabei verbraucht. Bringt {colonyStart} als Startvorrat mit. Kämpft nicht – mit Geleitschutz losschicken. Weitere Häfen ab Kommandozentrale {colonyLevels}.",
+  kolonieschiff: "Gründet einen weiteren Hafen auf einer freien Küste bis {colonyRange} km vom Heimathafen (Mission „Gründung“) und wird dabei verbraucht. Bringt {colonyStart} als Startvorrat mit. Kämpft nicht – mit Geleitschutz losschicken. Weitere Häfen ab Kommandozentrale {colonyLevels}. {colonyCosts}",
   spion: "Kämpft nicht und fährt in keinem Verband mit. Reist unauffällig und schnell zu Spionageaufträgen; wird er enttarnt, ist er verloren und das Ziel erfährt den Absender.",
   kuestenbatterie: "Feuert im Seegefecht schwer auf Schiffe und im Bodenkampf auf gelandete Truppen.",
   flakstellung: "Schießt im Luftschlag auf angreifende Bomber.",
@@ -77,6 +77,13 @@ function numbers(b: Balance | undefined): Record<string, string> {
     colonyRange: fmtNum(b?.expansion?.maxRangeKm ?? 900),
     colonyStart: Object.entries(b?.expansion?.startResources ?? { stahl: 1000, treibstoff: 500, elektronik: 250, proviant: 500 }).map(([r, n]) => `${fmtNum(n)} ${label(r)}`).join(", "),
     colonyLevels: (b?.expansion?.unlockCommandLevels ?? [5, 8]).join(" und "),
+    // v1.35 (Nutzerentscheid 12): Gründungsgebühr ab dem 3. Hafen und täglicher Unterhalt je Kolonie.
+    colonyCosts: [
+      (b?.expansion as { colonyCostGrowth?: number } | undefined)?.colonyCostGrowth ? "Der 3. Hafen kostet beim Auslaufen zusätzlich eine Gründungsgebühr in Höhe eines Kolonieschiffs." : "",
+      Object.keys((b?.expansion as { colonyUpkeepPerDay?: Record<string, number> } | undefined)?.colonyUpkeepPerDay ?? {}).length
+        ? `Jede Kolonie kostet täglich ${Object.entries((b?.expansion as { colonyUpkeepPerDay?: Record<string, number> }).colonyUpkeepPerDay ?? {}).map(([r, n]) => `${fmtNum(n)} ${label(r)}`).join(" und ")} Unterhalt (höchstens ihre eigene Gebäudeproduktion).`
+        : "",
+    ].filter(Boolean).join(" "),
     mineLayer: String((b?.units.minenleger as { mineLayer?: number } | undefined)?.mineLayer ?? 25), // See: Minen
     mineSweeper: String((b?.units.minenraeumer as { mineSweeper?: number } | undefined)?.mineSweeper ?? 30),
     werftSpeed: `${Math.round((b?.buildings.werft?.buildSpeedPerLevel ?? 0.1) * 100)} %`,
@@ -109,7 +116,8 @@ function numbers(b: Balance | undefined): Record<string, string> {
     padRadar: String(b?.buildings.startrampe?.requires?.radarstation ?? 6),
     padDiscount: String(Math.round((b?.intel?.satellite?.discountPerLevel ?? 0) * 100)),
     padDiscountMax: String(Math.round((b?.intel?.satellite?.discountMax ?? 0) * 100)),
-    satDays: String(Math.round((b?.intel?.satellite?.lifetimeHours ?? 168) / 24)),
+    satDays: String(Math.round(((b?.intel?.satellite?.types as Record<string, { lifetimeHours?: number }> | undefined)?.radar?.lifetimeHours ?? b?.intel?.satellite?.lifetimeHours ?? 168) / 24)),
+    satDaysOpt: String(Math.round(((b?.intel?.satellite?.types as Record<string, { lifetimeHours?: number }> | undefined)?.optisch?.lifetimeHours ?? b?.intel?.satellite?.lifetimeHours ?? 168) / 24)), // v1.35
     satPeriod: String(b?.intel?.satellite?.periodHours ?? 6),
     satStrip: fmtNum(b?.intel?.satellite?.stripKm ?? 600),
     satShift: fmtNum(b?.intel?.satellite?.shiftKm ?? 1400),

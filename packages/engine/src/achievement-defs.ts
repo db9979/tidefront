@@ -11,6 +11,12 @@ export const TIER_NAMES = ["Bronze", "Silber", "Gold"] as const;
 /** Ab dieser Gebäudestufe gilt ein Gebäude als Prachtbau (Ausbaubild „Prachtbau“). */
 export const PRACHTBAU_FROM = 18;
 
+/** Mindeststufe für den Erfolg Baumeister (Zähler prachtbau): fromLevel des Erfolgs (v1.35: 12), sonst PRACHTBAU_FROM. */
+export function baumeisterFrom(): number {
+  const d = Object.values(balance.achievements?.list ?? {}).find((x) => x.counter === "prachtbau");
+  return d?.fromLevel ?? PRACHTBAU_FROM;
+}
+
 export interface Achievement extends AchievementDef {
   id: string;
 }

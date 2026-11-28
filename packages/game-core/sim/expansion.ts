@@ -1,8 +1,9 @@
 // Mehrere Häfen: Kosten einer Kolonie (Kolonieschiff, Treibstoff) gegen den Ertrag des neuen Hafens. Der neue Hafen
 // wird vom Wirtschafts-Bot ab dem Startbestand (expansion.startResources plus Ladung) ausgebaut; gemessen wird die
-// aufsummierte Nettoproduktion zum Richtwert. Amortisation = Tage, bis sie die Kosten deckt (Ziel 3–5 Tage).
+// aufsummierte Nettoproduktion zum Richtwert (v1.35: nach Unterhalt). Amortisation = Tage, bis sie die Kosten deckt (v1.35:
+// Ziel deutlich über 2–3 Tage, Nutzerentscheid 12 – Kolonien sind eine Entscheidung, keine Pflicht).
 import type { Balance, BaseState } from "../src/index.ts";
-import { expansionOf, fuelCost, productionRates, trainingCost } from "../src/index.ts";
+import { expansionOf, foundingFee, fuelCost, productionRates, trainingCost } from "../src/index.ts";
 import type { BotSnapshot } from "./bot.ts";
 import { runBot, value } from "./bot.ts";
 
@@ -22,7 +23,8 @@ function colonyIncome(balance: Balance, cargo: Record<string, number>, days: num
   const cumulative: number[] = [];
   let lastDay = 0;
   let last: BaseState | null = null;
-  runBot(b, days, [], COLONY_MILITARY_SHARE, undefined, (base, t) => {
+  runBot(b, days, [], COLONY_MILITARY_SHARE, undefined, (base0, t) => {
+    const base = base0.colony ? base0 : { ...base0, colony: { foundedAtMs: 0 } }; // v1.35: Kolonie zahlt Unterhalt
     sum += value(productionRates(base, b).perHour, b) * STEP_H;
     const day = Math.floor(t / 86400000);
     if (day > lastDay) {
@@ -54,12 +56,17 @@ export function runExpansionSim(balance: Balance, snaps: BotSnapshot[]): void {
   const cargoFull: Record<string, number> = {};
   const per = Math.floor((shipDef.cargo ?? 0) / balance.resources.length);
   for (const r of balance.resources) cargoFull[r] = per;
-  for (const [name, cargo] of [["ohne Ladung", {}], ["volle Ladung (gleich verteilt)", cargoFull]] as const) {
-    const extra = value(cargo, balance);
-    const { cumulative, last } = colonyIncome(balance, cargo, 10);
-    const pay = cumulative.findIndex((c) => c >= cost);
-    const prod = value(productionRates(last, balance).perHour, balance);
-    console.log(`  Kolonie ${name}: Ertrag Tag 1/2/3/5/7 = ${[1, 2, 3, 5, 7].map((d) => Math.round(cumulative[d - 1] ?? 0)).join(" / ")}, ` +
-      `Ladung ${Math.round(extra)} (verlegt, keine Kosten) → amortisiert nach ${pay < 0 ? "> 10" : pay + 1} Tagen; Tag 10: KZ ${last.buildings.kommandozentrale}, ${Math.round(prod)}/h`);
+  const upkeep = e.colonyUpkeepPerDay ? value(e.colonyUpkeepPerDay, balance) : 0;
+  console.log(`  v1.35: Unterhalt je Kolonie bis ${Math.round(upkeep)} Richtwert/Tag (höchstens die Gebäudeproduktion), Gründungsgebühr 3. Hafen ${Math.round(value(foundingFee(3, balance), balance))}`);
+  for (const nth of [2, 3]) {
+    const total = cost + value(foundingFee(nth, balance), balance);
+    for (const [name, cargo] of [["ohne Ladung", {}], ["volle Ladung (gleich verteilt)", cargoFull]] as const) {
+      const extra = value(cargo, balance);
+      const { cumulative, last } = colonyIncome(balance, cargo, 14);
+      const pay = cumulative.findIndex((c) => c >= total);
+      const prod = value(productionRates(last, balance).perHour, balance);
+      console.log(`  ${nth}. Hafen (Kosten ${Math.round(total)}), ${name}: Ertrag Tag 1/2/3/5/7 = ${[1, 2, 3, 5, 7].map((d) => Math.round(cumulative[d - 1] ?? 0)).join(" / ")}, ` +
+        `Ladung ${Math.round(extra)} (verlegt, keine Kosten) → amortisiert nach ${pay < 0 ? "> 14" : pay + 1} Tagen; Tag 14: KZ ${last.buildings.kommandozentrale}, ${Math.round(prod)}/h netto`);
+    }
   }
 }
