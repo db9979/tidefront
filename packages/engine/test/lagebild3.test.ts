@@ -67,6 +67,21 @@ let C: Awaited<ReturnType<typeof newPlayer>>;
 
 before(async () => {
   if (!url) throw new Error("TEST_DATABASE_URL fehlt");
+  // Wetter hängt von der Uhrzeit ab: Startzeit so wählen, dass beim ersten Überflug (Start + 6 h) im Streifen über dem
+  // Heimathafen ein klares Feld liegt (sonst scheitert der Überflug-Test je nach Uhrzeit des Laufs).
+  {
+    const wb = balance.weather!;
+    const x0 = hexCenterXY(HOME.col, HOME.row).x;
+    const clearAt = (t: number) => {
+      for (let row = 1; row < ROWS - 1; row++) for (let dc = -4; dc <= 4; dc++) {
+        const p = at(dc, row - HOME.row);
+        if (Math.abs(row - HOME.row) < 4 || Math.abs(hexCenterXY(p.col, p.row).x - x0) >= 250) continue;
+        if (weatherAt(hexCenter(p.col, p.row), t + 6 * HOUR, wb).clouds < 0.4) return true;
+      }
+      return false;
+    };
+    for (let h = 0; h < 96 && !clearAt(fake); h++) fake = realNow() + (h + 1) * HOUR;
+  }
   Date.now = () => fake;
   await db.execute(sql`drop schema if exists public cascade; drop schema if exists drizzle cascade; create schema public;`);
   await migrateDb(db);
