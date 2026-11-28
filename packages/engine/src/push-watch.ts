@@ -5,9 +5,10 @@
 //    Rohstoff und Spieltag – über alle Häfen des Spielers zusammen.
 //  - „Du wurdest überholt“ (overtaken): Rang schlechter als bei der letzten Prüfung (höchstens stündlich gerechnet),
 //    höchstens einmal je Spieltag; genannt wird, wer jetzt direkt davor steht und vorher dahinter lag.
-// Geprüft werden nur Menschen mit Push-Abo (sonst gibt es nichts zu senden). Ablage ohne Schemaänderung in
+// Geprüft werden nur Menschen mit Push-Abo oder bestätigter E-Mail (Nutzerentscheid: beide auch als E-Mail-Art,
+// gebündelt wie Bau/Ausbildung, Vorgabe aus). Ablage ohne Schemaänderung in
 // server_setting: "push_storage:<Spieler>" = {day, res}, "push_rank" = {seasonId, atMs, ranks, told}.
-import { eq, isNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { settle, storageCapacity, type BaseState } from "@tidefront/game-core";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance, type Engine } from "./context.ts";
@@ -19,6 +20,8 @@ import { runningSeason } from "./season.ts";
 import { computeStandings } from "./scoring.ts";
 import { nameOf } from "./names.ts";
 import { pushToPlayer } from "./push.ts";
+import { mailNotice } from "./mail.ts"; // Nutzerentscheid: auch als E-Mail-Art (gebündelt)
+import type { Notice } from "./context.ts";
 import { STORAGE_NEAR_FULL } from "./lage-wait.ts";
 
 /** Rangprüfung höchstens so oft (die Wertung zu rechnen kostet). */
@@ -26,12 +29,21 @@ export const RANK_CHECK_MS = 60 * 60_000;
 const RANK_KEY = "push_rank";
 const storageKey = (playerId: number) => `push_storage:${playerId}`;
 
-/** Menschen mit mindestens einem Push-Abo. */
+/** Menschen mit Push-Abo oder bestätigter E-Mail-Adresse (sonst gibt es nichts zu senden). */
 async function subscribedHumans(db: DbOrTx): Promise<number[]> {
-  const rows = await db.selectDistinct({ id: tables.pushSubscription.playerId }).from(tables.pushSubscription)
+  const push = await db.selectDistinct({ id: tables.pushSubscription.playerId }).from(tables.pushSubscription)
     .innerJoin(tables.player, eq(tables.player.id, tables.pushSubscription.playerId))
     .where(isNull(tables.player.botProfile));
-  return rows.map((r) => r.id).sort((a, b) => a - b);
+  const mail = await db.select({ id: tables.playerEmail.playerId }).from(tables.playerEmail)
+    .innerJoin(tables.player, eq(tables.player.id, tables.playerEmail.playerId))
+    .where(and(isNull(tables.player.botProfile), isNotNull(tables.playerEmail.verifiedAt)));
+  return [...new Set([...push, ...mail].map((r) => r.id))].sort((a, b) => a - b);
+}
+
+/** Push (Ruhezeit/Bündel) und E-Mail (gebündelt wie Bau/Ausbildung, nur mit eigenem Schalter) – Fehler nur protokolliert. */
+async function notify(engine: Engine, playerId: number, n: Notice, nowMs: number): Promise<void> {
+  await pushToPlayer(engine, playerId, n, { nowMs }).catch((err) => engine.log("push error", String(err)));
+  await mailNotice(engine, playerId, n).catch((err) => engine.log("mail error", String(err)));
 }
 
 /** Rohstoffe mit Füllstand ≥ share der Lagergrenze und ihr Anteil (rein). */
@@ -67,9 +79,9 @@ export async function runStoragePushes(engine: Engine, nowMs: number): Promise<n
     if (fresh.size === 0) continue;
     const parts = [...fresh].map(([r, x]) => `${nameOf(r)} ${Math.min(100, Math.round(x.pct * 100))} %${bases.length > 1 ? ` (${x.base})` : ""}`);
     await setSetting(db, storageKey(playerId), JSON.stringify({ day, res: [...told, ...fresh.keys()] }));
-    await pushToPlayer(engine, playerId, {
+    await notify(engine, playerId, {
       kind: "storage", title: "Lager fast voll", body: `${parts.join(", ")} – ausgeben, verkaufen oder Lagerkomplex ausbauen.`, url: "/?tab=basis", tag: "storage",
-    }, { nowMs });
+    }, nowMs);
     n++;
   }
   return n;
@@ -113,9 +125,9 @@ export async function runOvertakenPushes(engine: Engine, nowMs: number, opts: { 
       const o = overtaker(r.playerId, memo.ranks, standings);
       if (!o) continue;
       told[String(r.playerId)] = day;
-      await pushToPlayer(engine, r.playerId, {
+      await notify(engine, r.playerId, {
         kind: "overtaken", title: "Du wurdest überholt", body: `${o.name} hat dich überholt – du stehst jetzt auf Platz ${o.rank} von ${o.total}.`, url: "/?tab=saison", tag: "overtaken",
-      }, { nowMs });
+      }, nowMs);
       sent++;
     }
   }

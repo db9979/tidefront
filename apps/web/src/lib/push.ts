@@ -10,14 +10,14 @@ export const KIND_LABEL: Record<string, string> = {
   delivery: "Lieferung angekommen",
   ops: "Betriebsalarm (Verwaltung)",
   market: "Marktnachricht",
-  // UX-0.43 B8: nur als Push.
+  // UX-0.43 B8 (Seerat nur Push; Lager und Überholt auch als E-Mail).
   storage: "Lager fast voll (je Rohstoff 1× am Tag)",
   overtaken: "Du wurdest überholt (höchstens 1× am Tag)",
   council: "Seerat-Ergebnis",
 };
 
-/** Arten nur als Push (keine E-Mail): Marktnachricht und die neuen Arten aus UX-0.43 B8. */
-export const PUSH_ONLY = new Set(["market", "storage", "overtaken", "council"]);
+/** Arten nur als Push (keine E-Mail): Marktnachricht und Seerat-Ergebnis; Lager und Überholt gibt es auch als E-Mail. */
+export const PUSH_ONLY = new Set(["market", "council"]);
 
 export function pushSupported(): boolean {
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;

@@ -237,3 +237,33 @@ test("Soziale Lagezeile: ohne Allianz ein ruhiger Hinweis, nicht dringend", asyn
   assert.deepEqual(row.jump, { to: "alliance" });
   assert.ok(!(await lageView(engine, p.playerId, { brief: true })).urgent.keys.includes("ohne-allianz"));
 });
+
+test("Nutzerentscheid: Erinnerung kommt auch in der Ruhezeit sofort (kein Bündel)", async () => {
+  const e = await player("Wecker");
+  const ep = await subscribe(e.playerId);
+  const now = Date.now();
+  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: gameTimeZone(), hour: "2-digit", hourCycle: "h23" }).format(now));
+  await setQuietHours(db, e.playerId, { on: true, fromMin: hour * 60, toMin: ((hour + 2) % 24) * 60 }); // läuft jetzt
+  assert.equal(await pushToPlayer(engine, e.playerId, { kind: "report", title: "Leise", body: "x" }, { nowMs: now }), 0, "Routine wartet");
+  assert.equal(await pushToPlayer(engine, e.playerId, { kind: "reminder", title: "Zeit für einen Besuch", body: "Bauhof frei" }, { nowMs: now }), 1, "Erinnerung sofort");
+  assert.equal(sent.filter((p) => p.endpoint === ep).at(-1)!.payload.kind, "reminder");
+  assert.equal((await queuedPushes(db, e.playerId)).some((p) => p.kind === "reminder"), false);
+});
+
+test("Nutzerentscheid: Lager fast voll und überholt auch als E-Mail-Art (Vorgabe aus, gebündelt)", async () => {
+  const m = await player("Postler");
+  await db.insert(tables.playerEmail).values({ playerId: m.playerId, email: `postler-${m.playerId}@example.test`, verifiedAt: new Date(), unsubscribeToken: `t-${m.playerId}-${Date.now()}`, prefs: {} });
+  const now = Date.now();
+  let cap = 0;
+  await patchBase(m.baseId, (s) => { cap = storageCapacity(s, bal); s.resources.stahl = Math.ceil(cap * 0.95); s.resUpdatedAt = now; });
+  const digest = async () => (await db.select().from(tables.mailDigest).where(eq(tables.mailDigest.playerId, m.playerId))).map((r) => r.kind);
+  await runStoragePushes(engine, now);
+  assert.deepEqual(await digest(), [], "Vorgabe aus: keine Mail (ohne Push-Abo wird trotzdem geprüft)");
+  await db.update(tables.playerEmail).set({ prefs: { storage: true } }).where(eq(tables.playerEmail.playerId, m.playerId));
+  await patchBase(m.baseId, (s) => { s.resources.treibstoff = Math.ceil(cap * 0.96); s.resUpdatedAt = now; });
+  await runStoragePushes(engine, now + 60_000);
+  assert.deepEqual(await digest(), ["storage"], "eingeschaltet: in die Sammelmail");
+  const [row] = await db.select().from(tables.mailDigest).where(eq(tables.mailDigest.playerId, m.playerId));
+  assert.equal(row.title, "Lager fast voll");
+  assert.match(row.body, /Treibstoff/);
+});

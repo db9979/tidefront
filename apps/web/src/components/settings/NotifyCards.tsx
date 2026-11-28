@@ -18,7 +18,7 @@ const LABEL: Record<string, string> = {
   comeback: "Rückkehr-Erinnerung und Saisonwechsel",
 };
 
-/** Arten für Push bzw. E-Mail; Marktnachrichten, Lager, Überholt und Seerat nur als Push (Rückkehr/Saisonwechsel seit AN-06 auch als Push). */
+/** Arten für Push bzw. E-Mail; Marktnachrichten und Seerat-Ergebnis nur als Push (Rückkehr/Saisonwechsel seit AN-06 auch als Push). */
 function kinds(isAdmin: boolean, mail = false): string[] {
   return Object.keys(LABEL).filter((k) => (k !== "ops" || isAdmin) && !(mail && PUSH_ONLY.has(k)));
 }
