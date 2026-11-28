@@ -42,6 +42,10 @@ export interface PlanCtx {
   reserveWhenBusy?: boolean;
   /** Diese Baugebäude bleiben für einen besonderen Auftrag frei (Werft für das Kolonieschiff). */
   keepFree?: string[];
+  /** v1.37: Rüstungsplan Nest 6 – auch über dem Rüstungsanteil ausbilden. */
+  forceMilitary?: boolean;
+  /** v1.37: Rüstungsplan Nest 6 – nur diese Anteile ausbilden (statt der Doktrin der Spielweise). */
+  onlyDoctrine?: Record<string, number>;
 }
 
 /** Strom gilt erst unter diesem Anteil als knapp: das Kraftwerk regelt nach (0.21.3), der Faktor liegt oft bei 0,99999…. */
@@ -260,9 +264,9 @@ export function chooseTraining(c: PlanCtx, extra: Counts = {}): { orders: { id: 
   const mil = militaryValue(s);
   const bld = buildingsValue(s);
   const full = balance.resources.some((r) => (s.resources[r] ?? 0) > 0.8 * storageCapacity(s, balance, c.mods));
-  if (mil > militaryTarget(c.cfg, s) * (mil + bld) && !full) return { orders: [], saving: false };
+  if (!c.forceMilitary && mil > militaryTarget(c.cfg, s) * (mil + bld) && !full) return { orders: [], saving: false };
   const reserve = c.reserve ?? {};
-  const doctrine = { ...DOCTRINES[c.profile] };
+  const doctrine = { ...(c.onlyDoctrine ?? DOCTRINES[c.profile]) };
   for (const [id, n] of Object.entries(extra)) doctrine[id] = (doctrine[id] ?? 0) + n;
   const have = holdings(s);
   const spent: Record<string, number> = {};

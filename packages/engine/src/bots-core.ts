@@ -104,6 +104,10 @@ export interface BotState {
   /** Inselfestung bündeln (bots-nest6.ts): laufendes Bündeln und Pause bis. */
   nest6Bundle?: { baseId: number; nestId: number; sinceMs: number };
   nest6PauseUntil?: number;
+  /** Rüstungsplan Nest 6: letzte Verlegung überzähliger Schiffe (bots-nest6.ts). */
+  nest6TransferAt?: number;
+  /** Rüstungsplan Nest 6: Angriff auf die Inselfestung gestartet (danach endet der Plan für diese Saison). */
+  nest6LaunchedAt?: number;
 }
 
 export interface BotRow { id: number; name: string; profile: BotProfile; settings: BotSettings; state: BotState }

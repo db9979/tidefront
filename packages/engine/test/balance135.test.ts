@@ -89,3 +89,18 @@ test("KI: Angriffsverband höchstens mit den Kommandopunkten des Hafens (v1.36)"
   assert.ok(fleetTotals(f, balance).commandPointsUsed <= commandPoints(state, balance) + 1e-9);
   assert.ok((f.korvette ?? 0) > 0);
 });
+
+test("Rüstungsplan Nest 6 (v1.37): Lücke zum Paket, Doktrin-Zuschlag, Fahrten nur mit dem Überschuss", async () => {
+  const { NEST6_PACKAGE, nest6Deficit, nest6DoctrineBoost, withoutNest6Hold } = await import("../src/bots-nest6.ts");
+  const state = { units: { schuetzen: 800, korvette: 10 }, unitsAway: { korvette: 4 }, trainingQueue: [] } as never; // ohne Gebäude: Paket ungekürzt
+  const d = nest6Deficit(state);
+  assert.equal(d.schuetzen, undefined, "Schützen reichen");
+  assert.equal(d.korvette, NEST6_PACKAGE.korvette - 14);
+  const boost = nest6DoctrineBoost(state);
+  assert.ok((boost.korvette ?? 0) > 0 && boost.schuetzen === undefined);
+  const c = { nest6Hold: 5 } as never;
+  const f = withoutNest6Hold(c, { id: 5, state }, { schuetzen: 500, korvette: 8 });
+  assert.equal(f.schuetzen, 800 - NEST6_PACKAGE.schuetzen);
+  assert.equal(f.korvette, undefined, "Korvetten liegen unter dem Paket");
+  assert.deepEqual(withoutNest6Hold(c, { id: 6, state }, { korvette: 8 }), { korvette: 8 }, "andere Häfen unberührt");
+});
