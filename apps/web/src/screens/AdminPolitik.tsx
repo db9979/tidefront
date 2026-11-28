@@ -2,6 +2,7 @@
 // mode "danger" (Welt → Gefahrenzone): Not-Aus je Baustein (Gezeit, Seerat, Gesuche) und Fenster absagen (Ruhige See,
 // der Seerat überschreibt es nicht mehr), jeweils mit Bestätigung. mode "stats" (Statistik): was jetzt wirkt, Fenster der
 // Saison, Seerat-Sitzungen mit Zwischenstand und Zähler der Gesuche – nur lesend.
+import { Switch } from "../components/Switch.tsx";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient, trpc, trpcClient } from "../lib/trpc.ts";
@@ -43,14 +44,12 @@ export function AdminPolitik({ mode }: { mode: "danger" | "stats" }) {
             {PARTS.map((p) => {
               const off = d.off[p.id];
               return (
-                <li key={p.id} className="dotted-row py-1.5 flex flex-wrap items-center gap-2 text-sm">
-                  <span className="flex-1 min-w-40">{p.label}</span>
-                  <Badge tone={off ? "red" : "green"}>{off ? "aus" : "an"}</Badge>
-                  <Button kind={off ? "secondary" : "danger"} className="whitespace-nowrap" disabled={busy} onClick={() => {
-                    if (confirm(off ? `${p.label.split(" ")[0]} wieder einschalten?` : `${p.label.split(" ")[0]} für alle Spieler ausschalten?`)) void run(() => trpcClient.politik.adminOff.mutate({ part: p.id, off: !off }));
-                  }}>
-                    {off ? "Einschalten" : "Ausschalten"}
-                  </Button>
+                <li key={p.id} className="dotted-row py-1.5">
+                  {/* Schalter wie beim Kartennebel: an = Baustein läuft; Umschalten fragt nach. */}
+                  <Switch on={!off} disabled={busy} label={p.label.split(" (")[0]} onChange={(v) => {
+                    if (confirm(v ? `${p.label.split(" ")[0]} wieder einschalten?` : `${p.label.split(" ")[0]} für alle Spieler ausschalten?`)) void run(() => trpcClient.politik.adminOff.mutate({ part: p.id, off: !v }));
+                  }} />
+                  {p.label.includes(" (") && <div className="text-xs text-ink2 -mt-0.5">Aus bedeutet: {p.label.slice(p.label.indexOf(" (") + 2, -1)}.</div>}
                 </li>
               );
             })}
@@ -59,10 +58,12 @@ export function AdminPolitik({ mode }: { mode: "danger" | "stats" }) {
           {cancellable.length === 0 ? <p className="text-xs text-ink2">Kein absagbares Fenster.</p> : (
             <ul data-testid="admin-politik-cancel">
               {cancellable.map((w) => (
-                <li key={w.id} className="dotted-row py-1.5 flex items-center gap-2 text-xs flex-wrap">
-                  <span className="mono">{fmtRange(w.startMs, w.endMs, now)}</span>
-                  <span className="flex-1 min-w-0">{w.name}</span>
-                  <Button kind="ghost" disabled={busy} onClick={() => { if (confirm(`${w.name} absagen?`)) void run(() => trpcClient.politik.adminCancel.mutate({ fensterId: w.id })); }}>Absagen</Button>
+                <li key={w.id} className="dotted-row py-2 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium">{w.name}</div>
+                    <div className="mono text-xs text-ink2 whitespace-nowrap">{fmtRange(w.startMs, w.endMs, now).replace(/ Uhr$/, "")}</div>
+                  </div>
+                  <Button kind="ghost" className="shrink-0 whitespace-nowrap !px-3" disabled={busy} onClick={() => { if (confirm(`${w.name} absagen?`)) void run(() => trpcClient.politik.adminCancel.mutate({ fensterId: w.id })); }}>Absagen</Button>
                 </li>
               ))}
             </ul>
@@ -80,9 +81,11 @@ export function AdminPolitik({ mode }: { mode: "danger" | "stats" }) {
         <h3 className="font-display uppercase text-[11px] text-ink2 mb-1">Fenster der Saison</h3>
         <ul className="mb-3" data-testid="admin-politik-windows">
           {d.windows.map((w) => (
-            <li key={w.id} className="dotted-row py-1.5 flex items-center gap-2 text-xs flex-wrap">
-              <span className="mono">{fmtRange(w.startMs, w.endMs, now)}</span>
-              <span className="flex-1 min-w-0">{w.slot === "gezeit" ? `Gezeit ${w.idx}` : `Woche ${w.idx}`}: {w.name}{w.planName && w.planName !== w.name ? ` (Plan: ${w.planName})` : ""} · {w.source}</span>
+            <li key={w.id} className="dotted-row py-2 flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm">{w.slot === "gezeit" ? `Gezeit ${w.idx}` : `Woche ${w.idx}`}: <span className="font-medium">{w.name}</span>{w.planName && w.planName !== w.name ? ` (Plan: ${w.planName})` : ""}</div>
+                <div className="mono text-xs text-ink2">{fmtRange(w.startMs, w.endMs, now)} · {w.source}</div>
+              </div>
               {w.active && <Badge tone="green">jetzt</Badge>}
             </li>
           ))}
