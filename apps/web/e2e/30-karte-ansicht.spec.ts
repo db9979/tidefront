@@ -53,6 +53,7 @@ async function checkToolbar(page: Page): Promise<Box[]> {
 }
 
 test("Handy 390 × 844: einheitliche Kartenleiste, Kurszeile aus, nichts überlappt", async ({ page, player }) => {
+  test.slow(); // viele Messungen und Blätter; unter Parallel-Last über 60 s
   void player;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => { localStorage.setItem("tf-kurszeile", "oben"); localStorage.setItem("tf-wetter", "an"); });
@@ -102,6 +103,7 @@ test.describe("Desktop 1440 × 900", () => {
   test.use({ viewport: { width: 1440, height: 900 }, isMobile: false, hasTouch: false, deviceScaleFactor: 1 });
 
   test("Kartenleiste neben der Seitenleiste, ohne doppelte Bedienung", async ({ page, player }) => {
+    test.slow(); // wie oben
     void player;
     await page.addInitScript(() => { localStorage.setItem("tf-wetter", "an"); });
     await page.goto("/");
