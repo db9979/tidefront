@@ -2,6 +2,10 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.48.1 – 28.11.2026
+
+- Handbuch: Die doppelte Kapitelübersicht (Blasen) ist weg. Die Kapitel stehen nach Themen geordnet – Einstieg, Wirtschaft, Flotte und Kampf, Aufklärung, Welt und Gegner, Handel und Bündnisse, Saison und Fortschritt, Nachschlagen.
+
 ## 0.48.0 – 28.11.2026
 
 - Karte: eine schmale, einheitliche Bedienleiste mit gleich großen Symbolknöpfen – Zoom (+/−) und Ansicht (Mein Hafen, Sichtungen, Ebenen und Legende), mit Tooltips. Wetter, Gradnetz, Kompass und Position überlappen nicht mehr. Am Handy ist die Kurszeile auf der Karte ausgeblendet (mehr Karte).
