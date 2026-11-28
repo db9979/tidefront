@@ -87,9 +87,11 @@ test("Handy 390 × 844: einheitliche Kartenleiste, Kurszeile aus, nichts überla
   await expect(page.getByRole("dialog").getByTestId("map-legend")).toBeVisible();
   await shot(page, "handy-ebenen");
   await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.getByTestId("map-sichtungen").click();
   await expect(page.getByRole("dialog").getByTestId("lagebild-tab")).toBeVisible();
   await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0); // Blatt ganz zu, sonst fängt der Hintergrund den Tipp ab
 
   // Auf einem anderen Reiter ist die Kurszeile weiter da.
   await page.getByRole("navigation", { name: "Hauptnavigation" }).getByRole("button", { name: "Truppen", exact: true }).click();
