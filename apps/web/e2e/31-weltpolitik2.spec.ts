@@ -79,9 +79,12 @@ test("Optischer Satellit: Überflug zeigt einen getauchten U-Boot-Verband unter 
   await until(async () => ((await readState(seed.sql, player.baseId)).satellites?.[0]?.passes ?? 0) >= 1, "Überflug verarbeitet", 40000);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/?tab=sichtungen");
   const tab = page.getByTestId("lagebild-tab");
-  await expect(tab.getByText(/U-Boot-Verband \(unbekannt\) · klein/).first()).toBeVisible();
+  // Unter Last wird das Wissen des Überflugs etwas später geschrieben: bei Bedarf neu laden.
+  await expect(async () => {
+    await page.goto("/?tab=sichtungen");
+    await expect(tab.getByText(/U-Boot-Verband \(unbekannt\) · klein/).first()).toBeVisible({ timeout: 5000 });
+  }).toPass({ timeout: 30_000 });
   await expect(tab).toContainText("Optischer Satellit");
   await expectNoHorizontalOverflow(page, "Sichtungen mit U-Boot-Verband");
   await seed.sql`delete from mission where player_id = ${botId}`;
