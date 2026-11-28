@@ -103,7 +103,7 @@ export async function disablePush(): Promise<void> {
 
 export type OpenTarget = {
   tab?: "basis" | "karte" | "truppen" | "berichte" | "boerse";
-  /** Unterreiter: Basis lage|hafen, Meldungen berichte|nachrichten|allianz|rangliste|bilanz|erfolge, Karte sichtungen. */
+  /** Unterreiter: Basis lage|hafen, Meldungen berichte|nachrichten (Post)|allianz|saison|rangliste|bilanz|erfolge|welt, Karte sichtungen. */
   sub?: string;
   view?: "settings" | "admin";
   /** Mehrere Häfen: diesen Hafen aktiv machen. */ base?: number;
@@ -119,12 +119,16 @@ const ALIAS: Record<string, { tab: NonNullable<OpenTarget["tab"]>; sub?: string 
   nachrichten: { tab: "berichte", sub: "nachrichten" },
   rangliste: { tab: "berichte", sub: "rangliste" },
   erfolge: { tab: "berichte", sub: "erfolge" },
+  post: { tab: "berichte", sub: "nachrichten" }, // UX 0.43: Reiter „Post“
+  saison: { tab: "berichte", sub: "saison" }, // UX 0.43: Reiter „Saison“
+  welt: { tab: "berichte", sub: "welt" },
+  weltpolitik: { tab: "berichte", sub: "welt" },
   lage: { tab: "basis", sub: "lage" },
   hafen: { tab: "basis", sub: "hafen" },
   sichtungen: { tab: "karte", sub: "sichtungen" },
   lagebild: { tab: "karte", sub: "sichtungen" },
 };
-const SUBS = new Set(["lage", "hafen", "berichte", "nachrichten", "allianz", "rangliste", "bilanz", "erfolge", "sichtungen", "lagebild"]);
+const SUBS = new Set(["lage", "hafen", "berichte", "nachrichten", "post", "allianz", "saison", "rangliste", "bilanz", "erfolge", "welt", "sichtungen", "lagebild"]);
 
 /** Ziel aus einer App-Adresse (Benachrichtigung): ?tab=berichte&sub=nachrichten, ?view=admin, ?base=12 (Hafen). */
 export function parseOpenUrl(url: string): OpenTarget {
@@ -133,7 +137,7 @@ export function parseOpenUrl(url: string): OpenTarget {
   const alias = ALIAS[raw];
   const tab = alias?.tab ?? ((TABS as readonly string[]).includes(raw) ? (raw as OpenTarget["tab"]) : undefined);
   const subRaw = q.get("sub");
-  const sub = subRaw && SUBS.has(subRaw) ? (subRaw === "lagebild" ? "sichtungen" : subRaw) : alias?.sub;
+  const sub = subRaw && SUBS.has(subRaw) ? (subRaw === "lagebild" ? "sichtungen" : subRaw === "post" ? "nachrichten" : subRaw) : alias?.sub;
   const view = q.get("view");
   return {
     tab,

@@ -454,7 +454,8 @@ Werte unter `market.news` (seit v1.5), Kern `packages/game-core/src/market/news.
   laufend) Treibstoff und Proviant `pct × Stärkefaktor`, höchstens `maxPct` (12–15 %); Belagerung Proviant +10 %;
   Schatzschiff erbeutet Stahl und Elektronik −10 %, entkommen +5 %, je `holdHours` voll ab dem Ausgang.
 - **Kriegslage** (Treibstoff): `calm + perWar × laufende Kriege + perRaid × Kartell-Überfälle (24 h)`, begrenzt auf
-  `[calm, max]` = −4 … +8 %, ganze Prozent.
+  `[calm, max]` = −4 … +8 %, ganze Prozent. Ohne Krieg und Überfall lautet der Grund „Marktwetter ruhig – kaum Kämpfe“
+  (bis 0.43 „Ruhige See“, umbenannt, weil das die Weltpolitik-Wahl gleichen Namens ist); die Kurzzeile der Börse heißt „Marktwetter“.
 - **Knappheit** (einmal je Spieltag, Mitternacht Spielzeit wie Tagesbefehle; aktive Häfen = Spieler in `activeDays` Tagen gesehen): Tageswert = `fillWeight × (neutralFill −
   Median Bestand / Median Lagerkapazität) + deficitWeight × Anteil Häfen mit negativer Netto-Produktion`, ±`max` (10 %);
   Wirkung = Mittel der letzten `window` Tageswerte, ganze Prozent. Unter `minBases` (3) aktiven Häfen keine Wirkung.

@@ -61,11 +61,14 @@ test("Karte: Wetter standardmäßig aus, Sichtungen-Blatt, Legende mit „?“-R
   void player;
   await page.goto("/?tab=karte");
   await expect(page.locator("main canvas").first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Wetter einblenden" })).toHaveAttribute("aria-pressed", "false");
-  await page.getByRole("button", { name: /Legende/ }).first().click();
+  // UX 0.43 (B6): „Ebenen“ öffnet Wetter-/Sensoren-Schalter und die Legende als Blatt (Esc schließt).
+  await page.getByTestId("map-ebenen").click();
+  await expect(page.getByRole("dialog").getByRole("switch", { name: "Wetter" })).toHaveAttribute("aria-checked", "false");
   await expect(page.getByText("Piratennest, Stufe unbekannt (keine Sicht) – erst aufklären")).toBeVisible();
   await shot(page, "m-karte-legende");
   await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByTestId("map-sichtungen")).toHaveText("Sichtungen"); // Textknopf statt Symbol
   await page.getByTestId("map-sichtungen").click();
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByRole("heading", { name: "Sichtungen", exact: true }).first()).toBeVisible(); // Blatttitel; die Liste kann eine gleichnamige Zwischenüberschrift tragen
@@ -81,9 +84,13 @@ test("Truppen: Nester in der Nähe – unbekannte Stufe zuerst aufklären", asyn
   await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
   const card = page.locator("section").filter({ has: page.getByRole("heading", { name: "Nester in der Nähe" }) });
   await expect(card).toBeVisible();
-  // Jede Zeile mit unbekannter Stufe hat „Aufklären“ als Hauptknopf (erster, breiter Knopf).
+  // UX 0.43 (U-3): Jede Zeile mit unbekannter Stufe bietet nur „Aufklären · Dauer“ – kein „Angreifen“, kein Gesamtbestand.
   const unknown = card.locator("li[data-target]").filter({ hasText: "Stufe unbekannt" });
-  for (let i = 0; i < (await unknown.count()); i++) await expect(unknown.nth(i).getByRole("button").filter({ hasText: /^(Aufklären|Angreifen)$/ }).first()).toHaveText("Aufklären");
+  for (let i = 0; i < (await unknown.count()); i++) {
+    await expect(unknown.nth(i).getByRole("button", { name: /^Aufklären · / })).toBeVisible();
+    await expect(unknown.nth(i).getByRole("button", { name: "Angreifen" })).toHaveCount(0);
+    await expect(unknown.nth(i).getByLabel("Vorgeschlagener Verband")).toHaveCount(0);
+  }
   await expectNoHorizontalOverflow(page, "Truppen · Nester in der Nähe");
   await shot(page, "m-truppen-nester");
   await page.getByRole("navigation").getByRole("button", { name: /^Meldungen/ }).click();

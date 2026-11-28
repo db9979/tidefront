@@ -13,14 +13,14 @@ test("Bauschlange: ausbauen, einreihen, abbrechen, fertigstellen", async ({ page
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByText("Kosten")).toBeVisible();
   await expectNoHorizontalOverflow(page, "Gebäudeblatt Kraftwerk");
-  await sheet.getByRole("button", { name: "Ausbau auf 1" }).click();
+  await sheet.getByRole("button", { name: /^Bauen/ }).click();
   await expect(sheet).toHaveCount(0);
   await expect(page.getByText("Kraftwerk · Ausbau auf Stufe 1")).toBeVisible();
   await expect(page.getByText("Schlange 1/3")).toBeVisible();
 
   // Stahlwerk einreihen
   await page.getByRole("button", { name: /^Stahlwerk 0/ }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Einreihen: Stufe 1" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /^Einreihen: Stufe 1/ }).click();
   await expect(page.getByText("Stahlwerk · Ausbau auf Stufe 1")).toBeVisible();
   await expect(page.getByText("Schlange 2/3")).toBeVisible();
   await expectNoHorizontalOverflow(page, "Basis mit Bauschlange");

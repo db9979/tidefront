@@ -14,8 +14,9 @@ export type NavTarget =
   | { to: "map" }
   | { to: "lage" } // Basis → Lage (Startseite „Was steht an?“)
   | { to: "sichtungen" } // Karte mit offenem Blatt „Sichtungen“ (früher Karte → Sichtungen)
-  // Meldungen: Berichte · Nachrichten · Allianz · Rangliste (darin Bilanz und Erfolge); „lagebild“ = alter Name der Sichtungen.
-  | { to: "meldungen"; sub: "berichte" | "erfolge" | "bilanz" | "nachrichten" | "rangliste" | "allianz" | "lagebild" };
+  // Meldungen (UX 0.43, E-2/E-6): Berichte · Post („nachrichten“) · Allianz · Saison (Wertung „rangliste“, Bilanz, Erfolge,
+  // Welt = Weltpolitik mit Kalender); „lagebild“ = alter Name der Sichtungen.
+  | { to: "meldungen"; sub: "berichte" | "erfolge" | "bilanz" | "nachrichten" | "rangliste" | "allianz" | "lagebild" | "saison" | "welt" };
 
 export interface RemedyAction { label: string; go: NavTarget }
 

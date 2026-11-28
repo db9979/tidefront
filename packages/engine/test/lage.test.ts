@@ -146,8 +146,17 @@ test("lage.get bündelt Angriff, Bau, Ausbildung, Mission, Konvoi, Vertrag; brie
   const way = v.underway.find((r) => r.key === `konvoi-weg:${cv.id}`);
   assert.ok(way && way.progress && way.progress.toMs - way.progress.fromMs === 4 * HOUR, "Konvoi unterwegs mit Fortschritt");
   assert.ok(v.underway.some((r) => r.key === `verband:${m.id}` && r.progress !== null), "Verband unterwegs");
-  assert.ok(v.waiting.some((r) => r.key === `leer:${second.baseId}` && r.urgent), "leere Bauschlange der Kolonie");
-  assert.ok(!v.waiting.some((r) => r.key === `leer:${a.baseId}`), "Heimathafen baut");
+  // UX 0.43: leere Bauschlange als Bauempfehlung („Nächster Schritt“), nicht mehr unter „Wartet auf dich“.
+  const idle = v.advice.find((x) => x.baseId === second.baseId);
+  assert.ok(idle && idle.idle && idle.options.length > 0, "Bauempfehlung für die Kolonie mit leerer Bauschlange");
+  assert.equal(idle.baseName, "Kolonie Lage", "zwei Häfen: Hafenname");
+  assert.ok(idle.options[0].durationMs > 0 && idle.options[0].level >= 1);
+  assert.ok(!v.advice.some((x) => x.baseId === a.baseId && x.idle), "Heimathafen baut");
+  assert.ok(!v.waiting.some((r) => r.key.startsWith("leer:")), "kein „Bauschlange leer“ mehr in Wartet auf dich");
+  // Eine Zeile je Hafen: kein Hafen mit mehr als einer Leerlauf-Zeile.
+  for (const id of [a.baseId, second.baseId]) assert.ok(v.waiting.filter((r) => r.key === `hafen:${id}`).length <= 1);
+  // Missionsplatz nur mit Kampfeinheiten daheim: die neue Kolonie hat keine.
+  assert.ok(!v.waiting.some((r) => r.key === `hafen:${second.baseId}` && /Missionspl/.test(r.text)), "kein freier Missionsplatz ohne Schiffe");
   { const { keys, ...n } = v.urgent; assert.deepEqual(n, { attacks: 1, grace: 1, idleQueues: 1, rewards: 0, rewardSources: { achievements: 0, weekly: 0 } }); assert.equal(keys.length, 3); assert.ok(keys.includes(`leer:${second.baseId}`)); }
   const jump = v.soon.find((r) => r.key === `ankunft:${m.id}`)!.jump;
   assert.deepEqual(jump, { to: "map", col: foe.col, row: foe.row, baseId: a.baseId, missionId: m.id });
@@ -165,4 +174,5 @@ test("lage.get ohne Hafen: leer", async () => {
   const v = await lageView(engine, p.playerId);
   assert.deepEqual(v.urgent, { attacks: 0, grace: 0, idleQueues: 0, rewards: 0, keys: [] });
   assert.equal(v.soon.length, 0);
+  assert.deepEqual(v.advice, []);
 });

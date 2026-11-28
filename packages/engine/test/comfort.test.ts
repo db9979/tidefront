@@ -207,16 +207,18 @@ test("Morgenbericht: genau einmal je Tag, Inhalt korrekt, Abmelden schaltet ab",
   assert.deepEqual(await setSummarySettings(db, emil.playerId, { enabled: true, minuteOfDay: minute, timeZone: tz, push: false }), { ok: true });
   assert.equal((await summarySettings(db, emil.playerId)).enabled, true);
 
-  // Mitschrift erledigter Aufträge nur bei aktiviertem Bericht.
+  // Mitschrift erledigter Aufträge (seit 0.43 immer: auch die Rückkehrkarte der Lage liest sie); Angriffe nicht.
   await recordSummaryEntry(engine, emil.playerId, { kind: "build", title: "Ausbau fertig", body: "Werft ist jetzt auf Stufe 2." });
   await recordSummaryEntry(engine, emil.playerId, { kind: "delivery", title: "Lieferung angekommen", body: "500 Stahl sind eingetroffen." });
   await recordSummaryEntry(engine, emil.playerId, { kind: "attack", title: "Angriff erkannt", body: "zählt nicht" });
   // Neue Spieler haben den Morgenbericht an (Spielerbindung); Frieda schaltet ihn ab.
   await db.update(tables.morningSummary).set({ enabled: false }).where(eq(tables.morningSummary.playerId, frieda.playerId));
-  await recordSummaryEntry(engine, frieda.playerId, { kind: "build", title: "Ausbau fertig", body: "nicht aktiviert" });
+  await recordSummaryEntry(engine, frieda.playerId, { kind: "build", title: "Ausbau fertig", body: "ohne Morgenbericht" });
   const entries = await db.select().from(tables.summaryEntry);
-  assert.equal(entries.length, 2);
-  assert.ok(entries.every((e) => e.playerId === emil.playerId));
+  assert.equal(entries.length, 3);
+  assert.equal(entries.filter((e) => e.playerId === emil.playerId).length, 2);
+  assert.ok(!entries.some((e) => e.kind === "attack"));
+  await db.delete(tables.summaryEntry).where(eq(tables.summaryEntry.playerId, frieda.playerId));
   await db.update(tables.summaryEntry).set({ createdAt: new Date(raidAtMs - 3600000) });
   await sendMessage(engine, frieda.playerId, { toPlayerId: emil.playerId, body: "Guten Morgen!" });
   await db.update(tables.message).set({ createdAt: new Date(raidAtMs - 1800000) });

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { COLS, QUICK_PICKS, ROWS, hexAtLonLat, hexDistanceKm, hexIndex, isTradePortHex, nearestTradePortBySea, terrainMap } from "@tidefront/world";
+import { COLS, QUICK_PICKS, ROWS, hexAtLonLat, hexCenter, hexDistanceKm, hexIndex, isTradePortHex, nearestTradePortBySea, placeNameAt, terrainMap } from "@tidefront/world";
 import { queryClient, trpc, trpcClient } from "../lib/trpc.ts";
 import { useCommand } from "../lib/command.ts";
 import { fmtNum } from "../lib/names.ts";
@@ -17,6 +17,12 @@ export function ChooseBase() {
   const [sel, setSel] = useState<Hex | null>(null);
   const [view, setView] = useState<{ center: Hex; n: number }>({ center: hexAtLonLat(-8, 49), n: 0 });
   const [name, setName] = useState("");
+  // UX 0.43 (O-1): Hafenname mit dem Ortsnamen vorbelegt (wie neue Kolonien), solange der Spieler nichts eingetippt hat.
+  const [typed, setTyped] = useState(false);
+  const pick = (h: Hex, fallback?: string) => {
+    setSel(h);
+    if (!typed) setName((placeNameAt(hexCenter(h.col, h.row)) ?? (fallback ? `Hafen ${fallback}` : "")).slice(0, 32));
+  };
   const [nightHour, setNightHour] = useState<number | null>(23);
   const [showHelp, setShowHelp] = useState(true);
   const cmd = useCommand(
@@ -37,7 +43,7 @@ export function ChooseBase() {
   if (!map.data) return <Loading />;
   const isFree = sel !== null && free.has(`${sel.col},${sel.row}`);
 
-  const quick = (lon: number, lat: number) => {
+  const quick = (lon: number, lat: number, label?: string) => {
     const target = hexAtLonLat(lon, lat);
     let best: Hex | null = null;
     let bestD = Infinity;
@@ -47,7 +53,7 @@ export function ChooseBase() {
       if (d < bestD) { bestD = d; best = { col, row }; }
     }
     if (best) {
-      setSel(best);
+      pick(best, label);
       setView((v) => ({ center: best!, n: v.n + 1 }));
       setShowHelp(false);
     }
@@ -68,11 +74,10 @@ export function ChooseBase() {
           <h1 className="font-mono text-sm uppercase tracking-widest text-ink">Standort für deinen Heimathafen</h1>
           <button type="button" className="text-xs text-sea-300 underline min-h-[44px] -my-3 px-1 whitespace-nowrap hyphens-manual" onClick={async () => { await trpcClient.auth.logout.mutate(); queryClient.clear(); location.reload(); }}>Abmelden</button>
         </div>
-        <p className="text-xs text-slate-300">Blau markierte Felder sind freie Küste. Tippe eines an oder nimm unten einen Vorschlag aus der Schnellwahl.</p>
         <NewSeasonNotice />
       </div>
       <div className="flex-1 min-h-0 relative">
-        <HexMap data={map.data} selectMode free={free} selected={sel} onSelect={(h) => { setSel(h); setShowHelp(false); }} center={view.center} recenter={view.n} zoom={0.3} />
+        <HexMap data={map.data} selectMode free={free} selected={sel} onSelect={(h) => { pick(h); setShowHelp(false); }} center={view.center} recenter={view.n} zoom={0.3} />
         {showHelp && (
           <div className="absolute inset-x-2 bottom-2 rounded-[4px] bg-navy-800/95 border border-navy-600 p-3 text-xs text-slate-200 backdrop-blur-sm">
             <div className="font-mono text-[11px] uppercase tracking-widest text-ink2 mb-1">Worauf es ankommt</div>
@@ -89,7 +94,7 @@ export function ChooseBase() {
       <div className="bg-navy-800/95 border-t border-navy-600">
         <HScroll className="gap-2 px-3 pt-3 pb-1" role="list" label="Schnellwahl" fade="from-navy-800">
           {QUICK_PICKS.map((q) => (
-            <button key={q.name} type="button" role="listitem" onClick={() => quick(q.lon, q.lat)}
+            <button key={q.name} type="button" role="listitem" onClick={() => quick(q.lon, q.lat, q.name)}
               className="tap shrink-0 rounded-[4px] bg-navy-800 border border-navy-600 px-3 py-1 text-left active:bg-navy-700">
               <div className="text-sm font-semibold">{q.name}</div>
               <div className="text-[11px] text-slate-400 whitespace-nowrap">{q.hint}</div>
@@ -97,7 +102,7 @@ export function ChooseBase() {
           ))}
         </HScroll>
         <div className="p-3 pt-2">
-          {!sel && <p className="text-sm text-slate-300">Einen Vorschlag aus der Schnellwahl direkt hier darüber oder ein blau markiertes Küstenfeld auf der Karte antippen.</p>}
+          {!sel && <p className="text-sm text-slate-300">Einen Vorschlag aus der Schnellwahl direkt hier darüber oder ein blau markiertes Küstenfeld (freie Küste) auf der Karte antippen.</p>}
           {sel && !isFree && <p className="text-sm text-red-300">Dieses Feld ist keine freie Küste – wähle ein blau markiertes Feld.</p>}
           {sel && isFree && f && (
             <div className="space-y-2">
@@ -107,7 +112,8 @@ export function ChooseBase() {
                 <span className="flex items-center gap-1"><TacticalIcon kind="port" size={16} /> Handelshafen</span><span className="text-right">{f.port.name}, {fmtNum(f.port.distanceKm)} km</span>
                 <span className="flex items-center gap-1"><TacticalIcon kind="other" size={16} /> Nächster Spieler</span><span className="text-right">{f.other === undefined ? "keiner" : `${fmtNum(f.other)} km`}</span>
               </div>
-              <input aria-label="Name des Hafens" maxLength={32} className="w-full h-12 rounded-lg field px-3" placeholder="Name des Hafens (2–32 Zeichen)" value={name} onChange={(e) => setName(e.target.value)} />
+              <input aria-label="Name des Hafens" maxLength={32} className="w-full h-12 rounded-lg field px-3" placeholder="Name des Hafens (2–32 Zeichen)" value={name} onChange={(e) => { setName(e.target.value); setTyped(true); }} />
+              {name.trim().length < 2 && <p className="text-xs text-siegel" data-testid="name-hint">Gib deinem Hafen einen Namen (mindestens 2 Zeichen) – dann geht „Heimathafen gründen“.</p>}
               <label className="flex items-center gap-2 text-sm">
                 Nachtschild ab
                 <select className="h-11 rounded-lg field px-2" value={nightHour ?? ""} onChange={(e) => setNightHour(e.target.value === "" ? null : Number(e.target.value))}>

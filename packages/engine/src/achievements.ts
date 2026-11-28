@@ -59,7 +59,7 @@ async function unlock(tx: DbOrTx, playerId: number, counter: string, value: numb
         fromPlayerId: null, toPlayerId: playerId, createdAt: new Date(atMs),
         subject: `Erfolg: ${a.title} (${TIER_NAMES[r.tier - 1]})`,
         body: `Neues Abzeichen „${a.title}“ in ${TIER_NAMES[r.tier - 1]}: ${tierText(a, r.tier)}. ` +
-          "Die Belohnung holst du unter Meldungen → Rangliste → Erfolge ab.",
+          "Die Belohnung holst du unter Meldungen → Saison → Erfolge ab.",
       });
     }
   }
@@ -291,7 +291,7 @@ export async function flushAchievementNotices(engine: Engine, limit = 200): Prom
       ids.add(r.playerId);
       jobs.push({ playerId: r.playerId, notice: {
         kind: "report", url: "/?tab=berichte&sub=erfolge", tag: `erfolg-${r.achievementId}`,
-        title: `Erfolg: ${a.title} (${TIER_NAMES[r.tier - 1]})`, body: `${tierText(a, r.tier)}. Belohnung abholen unter Meldungen → Rangliste → Erfolge.`,
+        title: `Erfolg: ${a.title} (${TIER_NAMES[r.tier - 1]})`, body: `${tierText(a, r.tier)}. Belohnung abholen unter Meldungen → Saison → Erfolge.`,
         facts: [["Erfolg", a.title], ["Stufe", TIER_NAMES[r.tier - 1] ?? String(r.tier)], ["Erreicht", tierText(a, r.tier)]], // E-Mail
         mail: { subject: `Erfolg freigeschaltet: ${a.title} (${TIER_NAMES[r.tier - 1]})` },
       } });

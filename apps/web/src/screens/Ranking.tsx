@@ -14,7 +14,6 @@ import { InvitePanel } from "../components/Invite.tsx";
 import { AchievementBadge, TIER_LABEL } from "../components/achievement-art.tsx"; // Erfolge
 import type { Draft } from "./Messages.tsx";
 import type { Target } from "../App.tsx";
-import { HScroll } from "../components/HScroll.tsx";
 import { BountyMark } from "../components/Pvp.tsx"; // Spieler gegen Spieler: Kopfgeld
 
 type Row = Outputs["social"]["ranking"]["rows"][number];
@@ -72,16 +71,14 @@ export function RankingScreen({ onCompose, onShowOnMap }: { onCompose: (d: Draft
   return (
     <div>
       <SeasonBar season={q.data.season} />
-      {/* Reiter seitlich scrollbar; Verlauf und Pfeil rechts zeigen, dass es weitergeht. */}
-      <div className="mb-2">
-        <HScroll className="gap-1" role="tablist" label="Wertung" watch={sort}>
-          {SORTS.map((s) => (
-            <button key={s.id} type="button" role="tab" aria-selected={sort === s.id} onClick={() => setSort(s.id)}
-              className={`tap shrink-0 rounded-lg px-3 text-xs font-semibold ${sort === s.id ? "bg-ink text-paper" : "bg-navy-950/60 text-slate-400"}`}>
-              {s.label}
-            </button>
-          ))}
-        </HScroll>
+      {/* UX 0.43 (M-2): Kategorien als umbrechende Filterchips – alle sichtbar, kein Scrollpfeil. */}
+      <div className="mb-2 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Wertung">
+        {SORTS.map((s) => (
+          <button key={s.id} type="button" role="radio" aria-checked={sort === s.id} onClick={() => setSort(s.id)}
+            className={`tap rounded-full border px-3 py-1 text-xs font-semibold ${sort === s.id ? "border-ink bg-ink text-paper" : "border-rule text-ink2"}`}>
+            {s.label}
+          </button>
+        ))}
       </div>
       <Card title={`Spieler (${rows.length})`} right={<span className="text-[11px] text-slate-500 tabular-nums">Stand {fmtTime(q.data.computedAtMs)}</span>}>
         {rows.length === 0 ? <p className="text-sm text-slate-400">Noch keine Spieler.</p> : (

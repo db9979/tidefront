@@ -6,7 +6,7 @@ import { fmtTime } from "../lib/time.ts";
 import { Button, Card, CountsLine, Loading, BackButton } from "../ui.tsx";
 import { Icon } from "../icons.tsx";
 import { BattleLog, type Battle } from "../components/BattleLog.tsx";
-import { RepeatButton } from "../components/Repeat.tsx";
+import { RepeatButton, ownLosses } from "../components/Repeat.tsx";
 import { WorldEventReportNote } from "../components/WorldEvents.tsx";
 import { useBackLayer } from "../lib/back.ts";
 import { clearOpenReport, peekOpenReport } from "../lib/push.ts";
@@ -151,7 +151,7 @@ function ReportDetail({ id, openSim, onBack }: { id: number; openSim: boolean; o
       {!blocks.length && <p className="text-xs mono text-slate-400 mb-3">{fmtTime(r.atMs)}</p>}{/* sonst im Kopf */}
       <ReportBlocks blocks={blocks} only={covered ? undefined : ["banner"]} />
       <ReportActions r={{ id: r.id, kind: r.kind, role: r.role, data: d, simulable: r.simulable }} onSim={() => { setMissing(false); setSim(true); }} onMissing={() => { setMissing(true); setSim(true); }} />
-      {r.role === "attacker" && r.kind !== "kartell" && r.kind !== "spionage" && r.kind !== "sammelangriff" && !d.allianceRaid && !r.kind.startsWith("weltereignis") && !NAVAL_KINDS.includes(r.kind) && r.kind !== "feld" && <RepeatButton reportId={r.id} />}
+      {r.role === "attacker" && r.kind !== "kartell" && r.kind !== "spionage" && r.kind !== "sammelangriff" && !d.allianceRaid && !r.kind.startsWith("weltereignis") && !NAVAL_KINDS.includes(r.kind) && r.kind !== "feld" && <RepeatButton reportId={r.id} losses={ownLosses(d, r.role)} />}
       {INTEL_OPS.includes(r.kind) && <IntelOpsReport d={d} />}
       {battle ? <PvpReportNote d={d} /> : null}{/* PvP: Kopfgeld, Mutfaktor */}
       {battle && covered ? (

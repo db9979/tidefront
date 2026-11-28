@@ -33,18 +33,25 @@ test("Registrieren, Heimathafen wählen, abmelden, anmelden", async ({ page, see
   // Wiederholte Läufe (--repeat-each) nehmen verschiedene Vorschläge, damit parallele Läufe nicht um dasselbe Feld ringen.
   await picks.nth(testInfo.repeatEachIndex % 7).click();
   await expect(page.getByText("Handelshafen")).toBeVisible();
+  // UX 0.43 (O-1): Name mit dem Ortsnamen vorbelegt – „Heimathafen gründen“ ist sofort aktiv.
+  await expect(page.getByLabel("Name des Hafens")).not.toHaveValue("");
+  await expect(page.getByRole("button", { name: "Heimathafen gründen" })).toBeEnabled();
   const harbor = `Heimat ${name.slice(-4)}`;
   await page.getByLabel("Name des Hafens").fill(harbor);
   await expectNoHorizontalOverflow(page, "Hafenwahl mit Auswahl");
   await page.getByRole("button", { name: "Heimathafen gründen" }).click();
 
-  // Begrüßung (vier Seiten) durchblättern.
+  // Begrüßung (UX 0.43: zwei Seiten); die letzte endet mit „Kraftwerk bauen“ und öffnet dessen Blatt.
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "Dein Heimathafen steht" })).toBeVisible();
+  await expect(dialog).toContainText("Menü → Einstellungen"); // Nachtschild: schon gewählt, änderbar
   await expectNoHorizontalOverflow(page, "Begrüßung");
-  for (let i = 0; i < 3; i++) await dialog.getByRole("button", { name: "Weiter" }).click();
-  await dialog.getByRole("button", { name: "Los geht’s" }).click();
-  await expect(dialog).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Weiter" }).click();
+  await dialog.getByRole("button", { name: "Kraftwerk bauen" }).click();
+  await expect(page.getByRole("dialog").getByRole("button", { name: /^Bauen · / })).toBeInViewport();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByRole("tablist", { name: "Basis" }).getByRole("tab", { name: /^Lage/ }).click();
 
   // Startseite Basis → Lage; Hafen-Kopf und Bauhof unter Basis → Hafen.
   await expect(page.getByTestId("lage-tab")).toBeVisible();

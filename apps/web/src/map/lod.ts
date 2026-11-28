@@ -82,9 +82,19 @@ export function layout(lists: Pinned[][], scale: number): void {
   }
   cand.sort((a, b) => a.p.prio! - b.p.prio!);
   const taken: typeof cand = [];
+  const hits = (c: { x0: number; y0: number; x1: number; y1: number }) => taken.some((t) => c.x0 < t.x1 && c.x1 > t.x0 && c.y0 < t.y1 && c.y1 > t.y0);
   for (const c of cand) {
-    const hit = taken.some((t) => c.x0 < t.x1 && c.x1 > t.x0 && c.y0 < t.y1 && c.y1 > t.y0);
-    if (hit && c.p.prio! >= 0) c.p.target = 0;
+    c.p.obj.pivot.y = 0;
+    if (!hits(c)) { taken.push(c); continue; }
+    // UX 0.43 (K-2): Namensschild unter dem Zeichen überlappt – erst nach oben spiegeln (Mitte des Schilds auf die
+    // andere Seite des Zeichens), erst dann ausblenden (bzw. bei „immer sichtbar“ überlappend stehen lassen).
+    const flip = c.p.box ? c.p.box.minY + c.p.box.maxY : 0;
+    if (flip > 4) {
+      const f = (c.y1 - c.y0 - 2 * PAD) / Math.max(1e-6, c.p.box!.maxY - c.p.box!.minY);
+      const up = { ...c, y0: c.y0 - flip * f, y1: c.y1 - flip * f };
+      if (!hits(up)) { c.p.obj.pivot.y = flip; taken.push(up); continue; }
+    }
+    if (c.p.prio! >= 0) c.p.target = 0;
     else taken.push(c);
   }
 }
