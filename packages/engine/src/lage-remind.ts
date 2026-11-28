@@ -1,7 +1,7 @@
 // „Erinnern“ am nächsten lohnenden Besuch (UX-0.43 B8): ein Push zur gewählten Zeit. Je Spieler höchstens eine
 // Erinnerung; eine neue ersetzt die alte. Ablage als Ereignis "visit_reminder" (game_event, keine Schemaänderung),
-// Versand nach dem Commit über deliverNotice → pushToPlayer (Art "reminder": ohne Schalter, Ruhezeit gilt – fällt die
-// Zeit in die Ruhezeit, kommt sie danach). Ohne Push setzt die Oberfläche eine Kalenderdatei (ICS) ein.
+// Versand nach dem Commit über deliverNotice → pushToPlayer (Art "reminder": ohne Schalter, Nutzerentscheid: übergeht
+// Ruhezeit und Bündel und kommt pünktlich). Ohne Push setzt die Oberfläche eine Kalenderdatei (ICS) ein.
 import { and, eq, sql } from "drizzle-orm";
 import { tables, type DbOrTx } from "@tidefront/db";
 import type { Engine } from "./context.ts";

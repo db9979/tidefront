@@ -1,6 +1,6 @@
 // Lage „Nächster lohnender Besuch“ (UX-0.43 B8, L-5/W-4): eine Zeile mit Uhrzeit und Anlässen („13:52 · Verband
 // zurück, Bauhof frei“) und „Erinnern“. Mit Push auf diesem Gerät stellt der Server eine Erinnerung zur Zeit
-// (lage.remind, Ruhezeit gilt); sonst gibt es eine Kalenderdatei (ICS) – das geht auch auf dem iPhone ohne
+// (lage.remind, kommt pünktlich, auch in der Ruhezeit); sonst gibt es eine Kalenderdatei (ICS) – das geht auch auf dem iPhone ohne
 // Home-Bildschirm-App. Server: lage.get → visit (engine/lage-visit.ts).
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";

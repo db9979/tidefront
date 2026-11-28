@@ -368,3 +368,12 @@ Grundlage: `.claude/review-0.22/UX-0.43.md` (B8, B9/U-2, C2, C3) und die Nutzere
 - **Bewusst nicht:** Push-Abo-Frage im Erinnern-Knopf (dafür gibt es die Push-Frage im Spielablauf), „Spieler ohne
   Allianz – Einladen“ als Liste (braucht einen neuen Endpunkt; der Lage-Hinweis führt zur Allianzseite), Umbenennen der
   Knöpfe auf den Kartenblättern.
+
+### Nachtrag (Nutzerentscheide nach dem Merge)
+
+- **Erinnern** übergeht Ruhezeit und Bündel und kommt pünktlich (`reminder` in `URGENT_PUSH_KINDS`).
+- **„Lager fast voll“ und „Du wurdest überholt“ auch als E-Mail-Art:** Schalter unter Einstellungen →
+  Benachrichtigungen → E-Mail-Arten (Vorgabe aus, ohne Mailversand/bestätigte Adresse ausgegraut), Versand gebündelt wie
+  Bau/Ausbildung (`DIGEST_KINDS`, 30-min-Sammelmail). Der Wartungslauf prüft jetzt Menschen mit Push-Abo **oder**
+  bestätigter E-Mail-Adresse; Tagesmerker und „1× am Tag“ gelten für beide Kanäle zusammen. Seerat-Ergebnis bleibt
+  nur Push (die Systemnachricht ist schon da).

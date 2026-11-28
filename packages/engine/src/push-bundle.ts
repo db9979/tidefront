@@ -14,7 +14,7 @@ import { getQuietHours, quietEndMs } from "./push-quiet.ts";
 
 export const PUSH_BUNDLE_MS = 15 * 60_000;
 /** Immer sofort, auch in der Ruhezeit. */
-export const URGENT_PUSH_KINDS: readonly NoticeKind[] = ["attack", "ops", "test"];
+export const URGENT_PUSH_KINDS: readonly NoticeKind[] = ["attack", "ops", "test", "reminder"]; // reminder: selbst gestellte Zeit (Nutzerentscheid)
 /** Routine: gesammelt, höchstens ein Push je PUSH_BUNDLE_MS. */
 export const BUNDLE_PUSH_KINDS: readonly NoticeKind[] = ["build", "training", "fleet", "delivery", "idle", "market", "storage", "overtaken"];
 const PREFIX = "push:";
