@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "../lib/trpc.ts";
 import { errorText, failText } from "../lib/names.ts";
-import { Badge, Button, Card, ErrorLine } from "../ui.tsx";
+import { Badge, Button, Card, ErrorLine, FilterChips } from "../ui.tsx";
 
 function when(v: string | Date | null | undefined): string {
   if (!v) return "–";
@@ -94,13 +94,8 @@ export function AdminBugReports() {
       <p className="text-xs text-ink2 mb-3">Mehrere Adressen mit Komma trennen. Leer: alle Admins mit bestätigter E-Mail-Adresse.</p>
       {msg && <p className="text-sm text-moos">{msg}</p>}
       <ErrorLine text={error} />
-      <div className="flex gap-3 text-sm mb-2">
-        {(["offen", "alle"] as const).map((f) => (
-          <button key={f} type="button" className={`tap ${filter === f ? "font-semibold underline underline-offset-4" : "text-ink2"}`} onClick={() => setFilter(f)}>
-            {f === "offen" ? "Offene" : `Alle (${d.reports.length})`}
-          </button>
-        ))}
-      </div>
+      <FilterChips label="Fehlermeldungen filtern" value={filter} onChange={setFilter}
+        items={[{ id: "offen", label: "Offene", badge: openCount }, { id: "alle", label: `Alle (${d.reports.length})` }]} className="mb-2" />
       {list.length === 0 && <p className="text-sm text-ink2">Keine Meldungen.</p>}
       <ul className="divide-y divide-navy-600/70">
         {list.map((r) => (

@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { trpc } from "../lib/trpc.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { Icon } from "../icons.tsx";
-import { Badge, Card, StatTable } from "../ui.tsx";
+import { Badge, Card, FilterChips, StatTable } from "../ui.tsx";
 import { DayBars, HBars, LevelGrid, RateBar } from "../components/Charts.tsx";
 import { AdminKpi } from "./AdminKpi.tsx";
 import { AdminBalance } from "./AdminBalance.tsx"; // Welle 2: Rohstoffbilanz, Zuflüsse, Welt & Worker, Nutzung
@@ -27,32 +27,25 @@ export function AdminStats() {
   const q = useQuery({ ...trpc.adminStats.stats.queryOptions({ days }), refetchInterval: 120000, staleTime: 60000 });
   const s = q.data;
 
+  // Zeitraum als Filterchips (Ebene 2, B7) über allen Statistikkarten.
   const picker = (
-    <div className="flex rounded-lg border border-rule overflow-hidden" role="group" aria-label="Zeitraum">
-      {([7, 28] as Days[]).map((d) => (
-        <button
-          key={d}
-          type="button"
-          aria-pressed={days === d}
-          onClick={() => setDays(d)}
-          className={`tap px-3 text-xs font-display uppercase tracking-[0.1em] ${days === d ? "bg-ink text-paper" : "bg-card text-ink2"}`}
-        >{d} Tage</button>
-      ))}
-    </div>
+    <FilterChips label="Zeitraum" value={String(days) as "7" | "28"} onChange={(v) => setDays(Number(v) as Days)} items={[{ id: "7", label: "7 Tage" }, { id: "28", label: "28 Tage" }]} className="mb-2" />
   );
 
-  if (!s) return <Card title="Statistik" right={picker}><p className="text-sm text-ink2 italic font-serif">{q.isError ? "Statistik nicht verfügbar." : "Wird berechnet …"}</p></Card>;
+  if (!s) return <>{picker}<Card title="Statistik"><p className="text-sm text-ink2 italic font-serif">{q.isError ? "Statistik nicht verfügbar." : "Wird berechnet …"}</p></Card></>;
 
   const dayKeys = s.registrations.perDay.map((d) => d.d);
   const one = (list: { d: string; v: number }[]) => list.map((x) => ({ v: x.v }));
   const c = s.combat;
   const lootTotal = (m: Record<string, number>) => Object.values(m).reduce((a, b) => a + b, 0);
   const a = s.anomalies;
-  const anomalyCount = a.richPlayers.length + a.repeatedAttacks.length + (a.failedEvents.count > 0 ? 1 : 0);
+  // Fehlgeschlagene Ereignisse stehen nur noch unter Übersicht (Ampel, Liste mit „Neu einreihen“).
+  const anomalyCount = a.richPlayers.length + a.repeatedAttacks.length;
 
   return (
     <>
-      <Card title={`Statistik · ${days} Tage`} right={picker}>
+      {picker}
+      <Card title={`Statistik · ${days} Tage`}>
         <p className="text-xs text-ink2 mb-2">
           {s.season ? `Saison ${s.season.number} seit ${new Date(s.season.startsAt).toLocaleDateString("de-DE")}` : "keine laufende Saison"} ·
           Stand {new Date(s.at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} ({s.tz})
@@ -188,15 +181,6 @@ export function AdminStats() {
                 <span><strong>{r.attacker}</strong> → {r.defender}</span>
                 <span className="mono">{r.maxPerDay}/Tag <span className="text-ink2 text-xs">({r.total} im Zeitraum)</span></span>
               </li>
-            ))}
-          </ul>
-        )}
-        <Sub>Fehlgeschlagene Ereignisse</Sub>
-        {a.failedEvents.count === 0 ? <p className="text-sm text-ink2">keine</p> : (
-          <ul className="text-xs space-y-1">
-            <li className="text-sm">{a.failedEvents.count} insgesamt, zuletzt:</li>
-            {a.failedEvents.recent.map((f) => (
-              <li key={f.id} className="break-words"><span className="mono">#{f.id} {f.type}</span> · {new Date(f.at).toLocaleString("de-DE")} · <span className="text-siegel">{f.error ?? "–"}</span></li>
             ))}
           </ul>
         )}

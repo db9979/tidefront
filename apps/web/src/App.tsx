@@ -18,6 +18,13 @@ import { outerOf, type MeldungenTab } from "./screens/Meldungen.tsx";
 const MeldungenScreen = lazy(() => import("./screens/Meldungen.tsx").then((m) => ({ default: m.MeldungenScreen })));
 const MarketScreen = lazy(() => import("./screens/Market.tsx").then((m) => ({ default: m.MarketScreen })));
 const Handbook = lazy(() => import("./screens/Handbook.tsx").then((m) => ({ default: m.Handbook })));
+// Handbuch, Einstellungen, Verwaltung: gleichrangige Ansichten (UX-0.43 B2), nur bei Bedarf geladen.
+const SettingsScreen = lazy(() => import("./screens/Settings.tsx").then((m) => ({ default: m.SettingsScreen })));
+const AdminScreen = lazy(() => import("./screens/Admin.tsx").then((m) => ({ default: m.AdminScreen })));
+import { isSaisonSub, useAppViews, type OpenView, type ViewId } from "./lib/app-views.ts";
+import { useShortcuts, type ShortcutHandlers } from "./lib/shortcuts.ts"; // 1–5, A, M, ?, „,“, Esc
+import { RailFooter, type RailItem } from "./components/RailFooter.tsx"; // Desktop-Leiste unten
+import { ProgressChip } from "./components/ProgressChip.tsx"; // Desktop-Kopfleiste: Platz, Abstand, Saisontag
 import { ResourceBar } from "./components/ResourceBar.tsx";
 import { Welcome, welcomeSeen } from "./components/Welcome.tsx";
 import { useBackLayer } from "./lib/back.ts";
@@ -52,11 +59,11 @@ const LEGACY_SEEN_KEY = "tf-reports-seen";
 
 /** Adresse mit Reiter, Unterreiter (Basis → Hafen, Meldungen außer Berichte) und offener Einstellungs-/Verwaltungs-
  *  ansicht, damit Neuladen dort bleibt. */
-function appUrl(tab: Tab, view: "settings" | "admin" | null, sub: string | null): string {
+function appUrl(tab: Tab, view: ViewId | null, sub: string | null): string {
   const q = new URLSearchParams();
   if (tab !== "basis") q.set("tab", tab);
   if (sub) q.set("sub", sub);
-  if (view) q.set("view", view);
+  if (view === "settings" || view === "admin") q.set("view", view); // Handbuch: ohne Adresse (wie bisher)
   const s = q.toString();
   return s ? `${location.pathname}?${s}` : location.pathname;
 }
@@ -106,13 +113,14 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   useDueRefresh(base.data?.base ?? null);
   // Ziel aus einer Benachrichtigung (?tab=…, ?view=…) beim Start und per Nachricht vom Service Worker.
   const [opened] = useState<OpenTarget>(() => parseOpenUrl(location.href));
+  const views = useAppViews(opened.view ?? null);
   const [tab, setTab] = useState<Tab>(opened.tab ?? "basis");
   const tickerPos = useTickerPos(); // Börsen-Kurszeile oben/unten (Einstellungen)
   const [plan, setPlan] = useState<{ target: Target | null; preset?: PlanPreset; seq?: number } | null>(null);
   // Forschung: Unterbildschirm (aus dem Forschungsamt oder Truppen), die untere Navigation bleibt bei fünf Zielen.
   const [research, setResearch] = useState(false);
   // „Wiederholen“ aus Berichten und Truppen öffnet die Planung mit Ziel und Zusammensetzung.
-  usePlanRequests((r) => { setHelp(false); setResearch(false); setPlan({ target: r.target, preset: { type: r.type, units: r.units }, seq: Date.now() }); });
+  usePlanRequests((r) => { views.closeAll(); setMapBig(false); setResearch(false); setPlan({ target: r.target, preset: { type: r.type, units: r.units }, seq: Date.now() }); });
   // Sprungziel für die Karte (z. B. „auf der Karte zeigen“). Die Karte verbraucht es beim Öffnen einmal; mapSeq erzwingt
   // dafür ein neues Kartenbild. Danach bleibt die Karte bei späterer Rückkehr ohne geöffnetes Missions-/Feldblatt.
   const [mapFocus, setMapFocus] = useState<Target | null>(null);
@@ -122,11 +130,11 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const [mapSichtungen, setMapSichtungen] = useState(opened.tab === "karte" && opened.sub === "sichtungen");
   const openSichtungen = () => { setMapSichtungen(true); setMapSeq((n) => n + 1); go("karte"); };
   const desktop = useDesktop();
-  const [help, setHelp] = useState(!!opened.view);
-  const [helpView, setHelpView] = useState(opened.view ?? null);
+  // Desktop: „Karte groß“ legt die Karte über die gewählte Ansicht, ohne Reiter oder Ansicht zu verlassen.
+  const [mapBig, setMapBig] = useState(false);
+  const lastTab = useRef<Tab>("basis"); // „Karte groß“ aus dem Reiter Karte zurück: voriger Reiter
+  const help = !!views.top;
   const onMarket = tab === "boerse" && !plan && !help;
-  // Neu aufbauen, wenn eine Benachrichtigung eine andere Ansicht öffnet (Wechsel im Handbuch selbst meldet onView).
-  const [helpKey, setHelpKey] = useState(0);
   const [sheet, setSheet] = useState<string | null>(null);
   const [seen, setSeen] = useState(() => initialSeen(playerId));
   // Meldungen: ?bericht= öffnet den Bericht, ?sub= einen Unterreiter; sonst Berichte.
@@ -143,11 +151,11 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const [bug, setBug] = useState<BugDraft | null>(null);
   const [bugReq, setBugReq] = useState(0);
   const screenRef = useRef("");
+  const closeViews = views.closeAll;
   useEffect(() => onBugReportRequest(() => {
-    setHelp(false);
-    setHelpView(null);
+    closeViews();
     setBugReq((n) => n + 1);
-  }), []);
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (bugReq === 0) return;
     let stop = false;
@@ -159,10 +167,8 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
     })();
     return () => { stop = true; };
   }, [bugReq]);
-  // Zurück schließt die offene Ansicht (Handbuch, Planung, Forschung); Blätter haben eigene Ebenen.
-  useBackLayer(help || !!plan || research, () => {
-    setHelp(false);
-    setHelpView(null);
+  // Zurück schließt Planung und Forschung (Handbuch/Einstellungen/Verwaltung: lib/app-views.ts); Blätter haben eigene Ebenen.
+  useBackLayer(!!plan || research, () => {
     setPlan(null);
     setResearch(false);
   }, 1);
@@ -170,17 +176,16 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   // Nach der Zurück-Ebene, damit der neue Verlaufseintrag die neue Adresse trägt.
   useEffect(() => {
     const urlSub = tab === "basis" ? (basisSub === "hafen" ? "hafen" : null) : tab === "berichte" && sub !== "berichte" ? sub : null;
-    history.replaceState(history.state, "", appUrl(tab, help ? helpView : null, urlSub));
-  }, [tab, help, helpView, basisSub, sub]);
+    history.replaceState(history.state, "", appUrl(tab, views.top?.id ?? null, urlSub));
+  }, [tab, views.top, basisSub, sub]);
 
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       if (e.data?.type !== "open" || typeof e.data.url !== "string") return;
       const t = parseOpenUrl(e.data.url);
       setPlan(null);
-      setHelpView(t.view ?? null);
-      setHelpKey((k) => k + 1);
-      setHelp(!!t.view);
+      setMapBig(false);
+      if (t.view) views.open({ id: t.view }); else views.closeAll();
       if (t.tab) setTab(t.tab);
       if (t.tab === "basis") setBasisSub(t.sub === "hafen" ? "hafen" : "lage");
       if (t.tab === "berichte" && t.sub) setSub(t.sub as MeldungenTab);
@@ -202,7 +207,16 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
 
   // Scrollposition je Ansicht (Reiter + Unterreiter); Planung, Handbuch, Forschung öffnen immer oben.
   // Hafenwechsel: eigener Satz Positionen je Hafen (Schlüssel mit Hafen), damit jede Ansicht oben beginnt.
-  const mainScroll = useViewScroll(`${switchKey}|${desktop ? "d" : "m"}|${help ? "handbuch" : research ? "forschung" : plan ? "planung" : tab === "berichte" ? `berichte:${sub}` : tab === "basis" ? `basis:${basisSub}` : tab}`);
+  // Tastaturkürzel: Hook vor den frühen Rückgaben, die Handler werden unten bei jedem Aufbau gesetzt.
+  const keys = useRef<ShortcutHandlers | null>(null);
+  useShortcuts(true, {
+    tab: (i) => keys.current?.tab(i),
+    handbook: () => keys.current?.handbook(),
+    settings: () => keys.current?.settings(),
+    mapToggle: () => keys.current?.mapToggle(),
+    escape: () => keys.current?.escape() ?? false,
+  });
+  const mainScroll = useViewScroll(`${switchKey}|${desktop ? "d" : "m"}|${help ? `ansicht:${views.top?.id}` : research ? "forschung" : plan ? "planung" : tab === "berichte" ? `berichte:${sub}` : tab === "basis" ? `basis:${basisSub}` : tab}`);
 
   if (base.isLoading || !base.data) return <Loading error={base.isLoading ? undefined : base.error} onRetry={() => void base.refetch()} />;
   if (!base.data.base) return <Suspense fallback={<Loading />}><ChooseBase /></Suspense>;
@@ -223,8 +237,8 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       else if (unreadMsgs > 0) setSub("nachrichten");
     }
     setPlan(null);
-    setHelp(false);
-    setHelpView(null);
+    views.closeAll();
+    setMapBig(false);
     setResearch(false);
     setMarketRes(undefined);
     setMarketOrder(undefined);
@@ -238,12 +252,15 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
     } else go(a.tab);
   };
   const openPlan = (target: Target | null) => {
-    setHelp(false);
+    views.closeAll();
+    setMapBig(false);
     setResearch(false);
     setPlan({ target });
   };
 
-  const openResearch = () => { setPlan(null); setHelp(false); setResearch(true); };
+  const openResearch = () => { setPlan(null); views.closeAll(); setMapBig(false); setResearch(true); };
+  /** Handbuch, Einstellungen, Verwaltung öffnen (cross: Querverweis aus einer offenen Ansicht, Zurück führt dorthin). */
+  const openView = (v: OpenView, cross = false) => { setPlan(null); setResearch(false); setMapBig(false); views.open(v, cross); };
   /** Hafenwechsel aus Kopfleiste oder Karte: Planung schließen (Ursprung wäre falsch), Reiter bleibt. */
   const switchBase = (id: number) => {
     setPlan(null);
@@ -268,6 +285,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
         break;
       case "troops": localStorage.setItem("tf-seg:truppen", t.seg); setSheet(null); go("truppen"); break;
       case "map": setSheet(null); go("karte"); break;
+      case "view": setSheet(null); openView({ id: t.view, focus: t.focus ?? null }); break;
       case "meldungen":
         setSheet(null);
         if (t.sub === "lagebild") { openSichtungen(); break; } // alter Name der Sichtungen (Karte)
@@ -276,6 +294,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   };
   /** Sprungziel = aktueller Bildschirm (ohne Vorwahl)? Dann bietet „Was hilft?“ den Knopf nicht an. */
   const here = (t: NavTarget): boolean => {
+    if (t.to === "view") return views.top?.id === t.view;
     if (help || plan) return false;
     if (t.to === "research") return research;
     if (research) return false;
@@ -290,9 +309,11 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       case "meldungen": return t.sub !== "lagebild" && tab === "berichte" && (sub === t.sub || (t.sub === "rangliste" && outerOf(sub) === "rangliste" && sub === "rangliste"));
     }
   };
-  const mapActive = tab === "karte" && !plan && !help && !research;
+  const mapActive = (tab === "karte" && !plan && !help && !research) || (desktop && mapBig);
+  // Desktop-Textansichten (E-7): ohne Karte in voller Breite – Handbuch, Einstellungen, Verwaltung, Forschung, Saison.
+  const textView = desktop && !plan && (help || research || (tab === "berichte" && isSaisonSub(sub)));
   const fullBleed = mapActive && !desktop;
-  screenRef.current = help ? "Handbuch" : research ? "Forschung" : plan ? "Missionsplanung"
+  screenRef.current = help ? ({ handbuch: "Handbuch", settings: "Einstellungen", admin: "Verwaltung" } as const)[views.top!.id] : research ? "Forschung" : plan ? "Missionsplanung"
     : `${TABS.find((x) => x.id === tab)?.label ?? tab}${tab === "berichte" ? ` · ${sub}` : ""}${tab === "basis" ? ` · ${basisSub}` : ""}${tab === "basis" && sheet ? ` · Blatt ${sheet}` : ""}`;
   const attack = lageBadge.attack || b.incoming.some(isThreat) || b.bases.some((x) => x.underAttack);
   // Karte: mobil ganzflächig im Reiter „Karte“; am Desktop immer links sichtbar (side = Feldblatt rechts daneben,
@@ -302,8 +323,11 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       layout={desktop ? (mapActive ? "side" : "embedded") : "mobile"} onActivate={() => go("karte")}
       sichtungen={mapSichtungen} onSichtungenUsed={() => setMapSichtungen(false)} />
   );
-  const content = help ? (
-    <Handbook key={helpKey} onClose={() => { setHelp(false); setHelpView(null); }} onLogout={logout} playerName={playerName} initialView={helpView} onView={setHelpView} />
+  const v = views.top;
+  const content = v ? (
+    v.id === "handbuch" ? <Handbook onClose={views.back} onSettings={() => openView({ id: "settings" }, true)} />
+      : v.id === "settings" ? <SettingsScreen key={v.focus ?? ""} onClose={views.back} onHandbook={() => openView({ id: "handbuch" }, true)} onLogout={() => void logout()} focus={v.focus} />
+      : <AdminScreen onClose={views.back} />
   ) : research ? (
     <ResearchScreen key={b.id} base={b} asOf={base.data.serverNow} onClose={() => setResearch(false)} />
   ) : plan ? (
@@ -321,16 +345,28 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   ) : (
     <MarketScreen key={`${b.id}:${navSeq}`} base={b} initialResource={marketRes} initialOrder={marketOrder} />
   );
-  const pickTab = (t: Tab) => { if (t === "karte" && tab === "karte" && !plan && !help && !research) setMapSeq((n) => n + 1); go(t); }; // erneut „Karte“: Blatt zu, frisch
-  const nav = <NavBar tab={tab} active={!plan && !help} rail={desktop} badges={{ lage: lageBadge.count, attack, unread: unread + unreadMsgs }} onPick={pickTab} />;
+  // Desktop: „Karte groß“ schaltet um (Karte über der Ansicht bzw. zurück zum vorigen Reiter); mobil wie bisher.
+  const toggleMap = () => {
+    if (mapBig) setMapBig(false);
+    else if (mapActive) go(lastTab.current);
+    else setMapBig(true);
+  };
+  const pickTab = (t: Tab) => {
+    if (desktop && t === "karte") { toggleMap(); return; }
+    if (t === "karte" && tab === "karte" && !plan && !help && !research) setMapSeq((n) => n + 1); // erneut „Karte“: Blatt zu, frisch
+    go(t);
+  };
+  if (tab !== "karte") lastTab.current = tab;
+  const openSaison = () => navTo({ to: "meldungen", sub: "rangliste" }); // Saison (Rangliste) – Alias auch nach dem Umbau
+  const railCurrent: RailItem | null = mapBig ? null : v ? v.id : tab === "berichte" && isSaisonSub(sub) && !plan && !research ? "saison" : null;
+  const railFooter = <RailFooter current={railCurrent} onPick={(i) => (i === "saison" ? openSaison() : openView({ id: i }))} />;
+  const nav = <NavBar tab={tab} active={!plan && !help && railCurrent !== "saison"} rail={desktop} badges={{ lage: lageBadge.count, attack, unread: unread + unreadMsgs }} onPick={pickTab}
+    mapBig={desktop && mapActive} footer={railFooter} />;
   const resourceBar = (
     <ResourceBar base={b} asOf={base.data.serverNow} onSwitchBase={switchBase} onPlanFounding={() => go("karte")} onPower={() => { setSheet(null); go("basis"); setBasisSub("hafen"); openCard("basis-versorgung", "versorgung"); }} onMenu={(i) => {
       if (i === "logout") { void logout(); return; }
-      setPlan(null); setResearch(false);
-      setHelpView(i === "handbuch" ? null : i);
-      setHelpKey((k) => k + 1); // Handbuch neu aufbauen, damit die gewählte Ansicht (Einstellungen/Verwaltung) gilt
-      setHelp(true);
-    }} />
+      openView({ id: i });
+    }} desktop={desktop} extra={desktop ? <ProgressChip onOpen={openSaison} /> : undefined} />
   );
   // Kurszeile: auf der Börse immer (oben, außer „unten“ gewählt), sonst nach Einstellung.
   const tickerTop = (onMarket ? tickerPos !== "unten" : tickerPos === "oben") && <TickerBar onOpen={() => go("boerse")} />;
@@ -344,6 +380,18 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
     </>
   );
 
+  keys.current = {
+    tab: (i) => pickTab(TABS[i].id),
+    handbook: () => openView({ id: "handbuch" }),
+    settings: () => openView({ id: "settings" }),
+    mapToggle: () => { if (desktop) toggleMap(); },
+    escape: () => {
+      if (views.top) { views.back(); return true; }
+      if (desktop && mapBig) { setMapBig(false); return true; }
+      return false;
+    },
+  };
+
   if (desktop) {
     // Desktop: Navigationsleiste links, Karte in der Mitte (immer geladen), rechts die Seitenleiste mit dem Reiter.
     return (
@@ -354,13 +402,16 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
           {resourceBar}
           {tickerTop}
           <div className="flex-1 min-h-0 flex">
-            <section className="flex-1 min-w-0 relative" aria-label="Karte" data-testid="desktop-map">
+            {/* Textansichten blenden die Karte aus (bleibt geladen, damit „Karte groß“ sofort da ist). */}
+            <section className={`flex-1 min-w-0 relative ${textView && !mapActive ? "hidden" : ""}`} aria-label="Karte" data-testid="desktop-map">
               <Suspense fallback={<Loading />}>{map}</Suspense>
             </section>
             {!mapActive && (
-              <main ref={mainScroll.ref} onScroll={mainScroll.onScroll} data-testid="desktop-side"
-                className="w-[min(540px,44vw)] shrink-0 border-l-[3px] border-double border-ink bg-paper overflow-y-auto overflow-x-hidden p-3 pb-8 scroll-pb-8">
-                <Suspense fallback={<Loading cards={3} />}>{content}</Suspense><ActionBarHost />
+              <main ref={mainScroll.ref} onScroll={mainScroll.onScroll} data-testid="desktop-side" data-text-view={textView ? "true" : undefined}
+                className={`${textView ? "flex-1 min-w-0" : "w-[min(540px,44vw)] shrink-0 border-l-[3px] border-double border-ink"} bg-paper overflow-y-auto overflow-x-hidden p-3 pb-8 scroll-pb-8`}>
+                <div className={textView ? "mx-auto w-full max-w-[1180px] px-3" : ""}>
+                  <Suspense fallback={<Loading cards={3} />}>{content}</Suspense><ActionBarHost />
+                </div>
               </main>
             )}
           </div>

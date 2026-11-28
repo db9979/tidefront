@@ -104,7 +104,7 @@ export function AdminKpi({ days }: { days: 7 | 28 }) {
         <RateBar label="Abgeholt" wins={d.claimed} total={d.assigned} winLabel="abgeholt" lossLabel="nicht abgeholt" tone="see" />
         <Grid
           cols="1fr 3.5rem 3.5rem 3.5rem"
-          head={["Stufe", "vergeben", "erledigt", "abgeholt"]}
+          head={["Stufe", "Verg.", "Erl.", "Abg."]}
           rows={d.bySlot.map((s) => [slotName[s.slot] ?? String(s.slot), String(s.assigned), share(s.completed, s.assigned), share(s.claimed, s.assigned)])}
         />
         <p className="text-xs text-ink2 mt-1">Alle drei abgeholt: {d.fullDays} von {d.playerDays} Spieler-Tagen ({share(d.fullDays, d.playerDays)}).</p>
@@ -115,7 +115,7 @@ export function AdminKpi({ days }: { days: 7 | 28 }) {
         <p className="text-xs text-ink2">{w.assigned} Ziele in {w.playerWeeks} Spieler-Wochen.</p>
       </Card>
 
-      <Card title="Laufzeit je Aufruf" right={<span className="text-xs text-ink2">seit {new Date(k.rpc.since).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>}>
+      <Card title="Laufzeit je Aufruf" collapsible storageKey="admin-technik-rpc" defaultOpen={false} summary="Technik: Antwortzeiten je tRPC-Aufruf" right={<span className="text-xs text-ink2">seit {new Date(k.rpc.since).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>}>
         {k.rpc.rows.length === 0 ? <p className="text-sm text-ink2 italic font-serif">Noch keine Messungen.</p> : (
           <Grid
             cols="minmax(0,1fr) 2.75rem 3rem 3rem"

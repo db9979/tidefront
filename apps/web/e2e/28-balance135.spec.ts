@@ -10,6 +10,7 @@ test("Verwaltung: Vergeltung der KI schaltbar, Höchstgröße je Allianz", async
   await page.goto("/");
   await page.getByRole("button", { name: "Menü", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: /^Verwaltung/ }).click();
+  await page.getByRole("tab", { name: "Welt" }).click(); // KI-Spieler und Allianzgröße unter „Welt“ (UX-0.43 B3)
   const kiHead = page.getByRole("button", { name: /KI-Spieler/ });
   await kiHead.scrollIntoViewIfNeeded();
   await kiHead.click();

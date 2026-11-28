@@ -127,7 +127,8 @@ test.describe("Desktop 1440 px", () => {
     await expect(page.getByTestId("map-side")).toBeVisible();
     await expect(page.getByTestId("map-side")).toContainText(/Feld \d+\/\d+/);
     await expect(side).toHaveCount(0);
-    await expect(page.getByTestId("nav-rail").getByRole("button", { name: /^Karte/ })).toHaveAttribute("aria-current", "page");
+    // Am Desktop ist „Karte“ der Umschalter „Karte groß“ (UX-0.43 B4): gedrückt statt aktueller Seite.
+    await expect(page.getByTestId("nav-rail").getByRole("button", { name: /^Karte groß/ })).toHaveAttribute("aria-pressed", "true");
     await shot(page, "d-karte-feldblatt");
 
     // Blätter öffnen am Desktop als rechte Schublade.

@@ -1,7 +1,7 @@
 import type { BaseData } from "../lib/trpc.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { RES_ORDER, liveAmount } from "../lib/live.res.ts";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useNow } from "../lib/time.ts";
 import { liveStoredAt } from "../lib/live-base.ts";
 import { Icon } from "../icons.tsx";
@@ -60,16 +60,41 @@ function PowerField({ base, now, onOpen }: { base: BaseData; now: number; onOpen
   );
 }
 
-/** Kopfleiste: Hafenwahl (ab zwei Häfen), Papierstreifen mit vier Ressourcen (Stich, Bestand, Rate, Füllstand), Stromfeld und Menü. */
-export function ResourceBar({ base, asOf, onMenu, onSwitchBase, onPlanFounding, onPower }: { base: BaseData; asOf: number; onMenu: (item: MenuItem) => void; onSwitchBase: (id: number) => void; onPlanFounding: () => void; onPower: () => void }) {
+/**
+ * Kopfleiste: Hafenwahl (ab zwei Häfen), Papierstreifen mit vier Ressourcen (Stich, Bestand, Rate, Füllstand), Stromfeld und Menü.
+ * Desktop (UX-0.43 X-2): Rohstoffe links gruppiert, größer und mit Namen, Lagerbalken kräftig (Warnfarbe ab 85 %),
+ * rechts extra (Fortschritts-Chip) und Menü.
+ */
+export function ResourceBar({ base, asOf, onMenu, onSwitchBase, onPlanFounding, onPower, desktop = false, extra }: { base: BaseData; asOf: number; onMenu: (item: MenuItem) => void; onSwitchBase: (id: number) => void; onPlanFounding: () => void; onPower: () => void; desktop?: boolean; extra?: ReactNode }) {
   const [open, setOpen] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
   const now = useNow(); // gemeinsame Uhr: Bestände sekündlich hochgerechnet
   return (
     <header className="sticky top-0 z-30 bg-paper border-b-[3px] border-double border-ink" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       <HarborSwitcher base={base} now={now} onSwitch={onSwitchBase} onPlanFounding={onPlanFounding} />
-      <div className="flex items-stretch gap-1 pl-2 pr-1.5 py-1.5">
-        {RES_ORDER.map((r) => {
+      <div className={desktop ? "flex items-stretch gap-3 pl-3 pr-2 py-2" : "flex items-stretch gap-1 pl-2 pr-1.5 py-1.5"}>
+        {desktop && <div className="flex items-stretch gap-3 xl:gap-4" role="group" aria-label="Rohstoffe">{RES_ORDER.map((r) => {
+          const v = liveAmount(base, asOf, now, r);
+          const rate = base.rates[r] ?? 0;
+          const fill = Math.min(1, v / base.capacity);
+          const warn = fill >= 0.85;
+          return (
+            <button type="button" key={r} onClick={() => setOpen(r)} data-testid={`res-${r}`} className="tap w-[120px] xl:w-[148px] flex items-center gap-2 text-left" aria-label={`${label(r)} ${fmtNum(v)}, ${fmtNum(rate)} pro Stunde, Lager zu ${Math.round(fill * 100)} % – Details`}>
+              <Icon id={r} size={28} className="shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] leading-tight font-display uppercase tracking-[0.08em] text-ink2 truncate">{label(r)}</div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className={`text-[17px] leading-tight mono font-semibold ${warn ? "text-messing" : ""}`}>{short(v)}</span>
+                  <span className={`text-[12px] mono ${rate < 0 ? "text-siegel" : "text-moos"}`}>{rate >= 0 ? "+" : ""}{short(rate)}/h</span>
+                </div>
+                <div className="h-[4px] mt-0.5 bg-rule/80 overflow-hidden rounded-full" aria-hidden="true">
+                  <div className={`h-full ${warn ? "bg-messing" : r === "proviant" && rate < 0 ? "bg-siegel" : "bg-ink"}`} style={{ width: `${fill * 100}%` }} />
+                </div>
+              </div>
+            </button>
+          );
+        })}</div>}
+        {!desktop && RES_ORDER.map((r) => {
           const v = liveAmount(base, asOf, now, r);
           const rate = base.rates[r] ?? 0;
           const fill = Math.min(1, v / base.capacity);
@@ -90,6 +115,8 @@ export function ResourceBar({ base, asOf, onMenu, onSwitchBase, onPlanFounding, 
           );
         })}
         <PowerField base={base} now={now} onOpen={onPower} />
+        {desktop && <div className="flex-1" />}
+        {extra}
         <button type="button" onClick={() => setMenu(true)} aria-haspopup="dialog" aria-expanded={menu}
           className="tap shrink-0 rounded-lg border border-ink text-ink flex flex-col items-center justify-center gap-[3px] px-1">
           <span aria-hidden className="flex flex-col gap-[3px] w-4">{[0, 1, 2].map((i) => <span key={i} className="block h-[2px] bg-ink rounded-full" />)}</span>

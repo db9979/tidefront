@@ -96,7 +96,7 @@ export function AdminBalance({ days }: { days: 7 | 28 }) {
         <p className="text-xs text-ink2 mt-1">Produktion aus dem Tagesschnappschuss (Netto je Stunde × 24). Belohnungen: abgeholte Tagesbefehle und Wochenziele. „an Kartell“: Beute des Kartells (Überfälle, Weltereignisse). Börse netto: gekauft minus verkauft.</p>
       </Card>
 
-      <Card title="Welt & Worker" right={<span className="text-xs text-ink2">{fmtNum(b.world.newsRows)} Marktnachrichten</span>}>
+      <Card title="Welt & Worker" collapsible storageKey="admin-technik-worker" defaultOpen={false} summary="Technik: Weltereignisse, Marktnachrichten, Schrittdauer" right={<span className="text-xs text-ink2">{fmtNum(b.world.newsRows)} Marktnachrichten</span>}>
         <Sub>Weltereignisse je Tag</Sub>
         <DayBars
           label="Weltereignisse je Tag"
