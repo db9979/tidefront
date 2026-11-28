@@ -129,10 +129,13 @@ test("Überflug: optisch Erkennung im Streifen außer unter Wolken, 20 min live,
   // Streifen 1 liegt über dem Starthafen (±300 km); Nester weit im Süden, außerhalb jedes anderen Sensors.
   const wb = balance.weather!;
   const spots = [];
-  for (let row = 1; row < ROWS - 1; row++) for (const dc of [-1, 0, 1]) if (Math.abs(row - HOME.row) >= 4) spots.push(at(dc, row - HOME.row));
+  // Breiter suchen (ganzer Streifen ±300 km): das Wetter hängt von der Uhrzeit des Testlaufs ab, ein schmaler Streifen
+  // ist manchmal ganz bewölkt.
+  for (let row = 1; row < ROWS - 1; row++) for (const dc of [-1, 0, 1, -2, 2, -3, 3, -4, 4]) if (Math.abs(row - HOME.row) >= 4) spots.push(at(dc, row - HOME.row));
+  const inStrip = (p: { col: number; row: number }) => Math.abs(hexCenterXY(p.col, p.row).x - sat.x0) < 300;
   const clouds = (p: { col: number; row: number }) => weatherAt(hexCenter(p.col, p.row), passAt, wb).clouds;
-  const clear = spots.find((p) => clouds(p) < 0.5)!;
-  const cloudy = spots.find((p) => clouds(p) > 0.65);
+  const clear = spots.find((p) => inStrip(p) && clouds(p) < 0.5)!;
+  const cloudy = spots.find((p) => inStrip(p) && clouds(p) > 0.65);
   assert.ok(clear, "ein klares Feld im Streifen");
   assert.ok(Math.abs(hexCenterXY(clear.col, clear.row).x - sat.x0) < 300);
   const nClear = await nestAt(clear, 3);
