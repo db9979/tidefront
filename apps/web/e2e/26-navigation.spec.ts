@@ -68,7 +68,7 @@ test("Karte: Wetter standardmäßig aus, Sichtungen-Blatt, Legende mit „?“-R
   await shot(page, "m-karte-legende");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.getByTestId("map-sichtungen")).toHaveText("Sichtungen"); // Textknopf statt Symbol
+  await expect(page.getByTestId("map-sichtungen")).toHaveAccessibleName("Sichtungen"); // Symbolknopf (Fernglas) mit Namen, nach 0.46
   await page.getByTestId("map-sichtungen").click();
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByRole("heading", { name: "Sichtungen", exact: true }).first()).toBeVisible(); // Blatttitel; die Liste kann eine gleichnamige Zwischenüberschrift tragen

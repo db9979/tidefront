@@ -149,6 +149,14 @@ export const ART: Record<string, ReactNode> = {
   "nav-truppen": nav("M6 44 H58 L52 52 H12 Z M18 44 V36 H40 V44 M24 36 V29 H34 V36 M30 29 V12 M26 16 H34"),
   "nav-bericht": nav("M14 6 H42 L52 16 V58 H14 Z M42 6 V16 H52 M22 28 H44 M22 37 H44 M22 46 H36"),
   "nav-boerse": nav("M6 56 H58 M10 46 L24 30 L34 38 L54 14 M44 14 H54 V24"),
+  // Kartenleiste (gleiche Linie wie die Navigation): Zoom, Mein Hafen (Anker im Peilkreis), Sichtungen (Fernglas), Ebenen.
+  "karte-plus": nav("M32 12 V52 M12 32 H52"),
+  "karte-minus": nav("M12 32 H52"),
+  "karte-hafen": nav("M32 4 V13 M32 51 V60 M4 32 H13 M51 32 H60 M32 29 V45 M26 33 H38 M23 38 Q25 45 32 45 Q39 45 41 38",
+    <><circle cx="32" cy="32" r="19" fill="none" stroke="currentColor" strokeWidth={3.4} /><circle cx="32" cy="25" r="3.6" fill="none" stroke="currentColor" strokeWidth={3} /></>),
+  "karte-fernglas": nav("M8 42 L15 14 H26 L28 34 M56 42 L49 14 H38 L36 34 M28 28 H36 M18 14 V9 H24 V14 M40 14 V9 H46 V14",
+    <><circle cx="17" cy="44" r="11" fill="none" stroke="currentColor" strokeWidth={3.4} /><circle cx="47" cy="44" r="11" fill="none" stroke="currentColor" strokeWidth={3.4} /></>),
+  "karte-ebenen": nav("M32 8 L58 21 L32 34 L6 21 Z M6 32 L32 45 L58 32 M6 43 L32 56 L58 43"),
   // ---------------------------------------------------------------- Felder: Rohstofffelder und „Besetzen“
   oelfeld: (<><path d="M16 54 L20 34 M48 54 L44 34 M27 54 L28 34 M37 54 L36 34 M18 46 H46" {...ln} strokeWidth={2} /><rect x="12" y="28" width="40" height="7" {...h} /><path d="M24 28 L32 6 L40 28 M27 20 H37 M29.5 13 H34.5" {...ln} strokeWidth={2} /><path d="M44 28 V20 H50 V28" {...p} strokeWidth={1.8} />{WATER}</>),
   erzbucht: (<><path d="M4 50 C10 30 20 22 32 22 C44 22 54 30 60 50" {...ln} /><path d="M12 50 L18 40 L26 44 L22 50 Z M36 50 L40 38 L50 42 L48 50 Z" {...h} /><path d="M26 34 L30 30 L35 33 L32 38 Z" fill={SIEGEL} stroke={INK} strokeWidth={1.6} /><path d="M30 6 L40 16 M28 12 Q34 4 42 10" {...ln} strokeWidth={2.2} />{WATER}</>),

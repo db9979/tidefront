@@ -53,7 +53,7 @@ function GameGroup() {
         {nav.base ? <NightShieldSetting base={nav.base} now={now} id="tf-night-settings" /> : <p className="text-sm text-ink2">Erst einen Hafen gründen.</p>}
       </Card>
       <Card title="Börsen-Kurszeile">
-        <p className="text-sm text-slate-300 mb-2">Laufende Kurse auf allen Bildschirmen – antippen öffnet die Börse.</p>
+        <p className="text-sm text-slate-300 mb-2">Laufende Kurse auf allen Bildschirmen – antippen öffnet die Börse. Am Handy bleibt die Karte frei.</p>
         <TickerChoice />
       </Card>
     </GroupBox>

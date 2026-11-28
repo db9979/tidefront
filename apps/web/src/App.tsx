@@ -369,9 +369,10 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       openView({ id: i });
     }} desktop={desktop} extra={desktop ? <ProgressChip onOpen={openSaison} /> : undefined} />
   );
-  // Kurszeile: auf der Börse immer (oben, außer „unten“ gewählt), sonst nach Einstellung.
-  const tickerTop = (onMarket ? tickerPos !== "unten" : tickerPos === "oben") && <TickerBar onOpen={() => go("boerse")} />;
-  const tickerBottom = tickerPos === "unten" && <TickerBar onOpen={() => go("boerse")} />;
+  // Kurszeile: auf der Börse immer (oben, außer „unten“ gewählt), sonst nach Einstellung – nur nicht über der
+  // ganzflächigen Karte am Handy (dort zählt jede Zeile Karte; nach 0.46).
+  const tickerTop = !fullBleed && (onMarket ? tickerPos !== "unten" : tickerPos === "oben") && <TickerBar onOpen={() => go("boerse")} />;
+  const tickerBottom = !fullBleed && tickerPos === "unten" && <TickerBar onOpen={() => go("boerse")} />;
   const overlays = (
     <>
       {welcome && <Welcome playerId={playerId} onDone={() => setWelcome(false)} />}

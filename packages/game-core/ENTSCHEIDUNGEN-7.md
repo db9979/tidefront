@@ -250,3 +250,26 @@ Grundlage: `.claude/review-0.22/UX-0.43.md`, Nutzerentscheidungen E-1 … E-8 vo
 - **Bewusst nicht:** Kombi-Knopf (E-4), neue Push-Typen und „Nächster lohnender Besuch“ (B8), Kachel-Mini-Hinweise im Hafen,
   Ziel-zuerst-Umbau der Missionsplanung (U-2), Ausbildung (A5, anderer Entwickler), App-Hülle/Einstellungen/Verwaltung (uxs).
 
+
+## Kartenansicht aufgeräumt (nach 0.46, kar)
+
+Nutzerbefund (Handy 390 px): rechts oben ein uneinheitlicher Block – drei quadratische Knöpfe und darunter die breiten
+Textknöpfe „Sichtungen“/„Ebenen“, die viel Karte verdecken; dazu Wetterchip, Kompass und Kurszeile ohne gemeinsame Ordnung.
+
+- **Eine Leiste, eine Breite:** `map/MapControls.tsx` (`MapToolbar`, `MapButton`): Spalte rechts oben, 46 px breit statt
+  ~100 px, alle Knöpfe 44 × 44 px mit `aria-label` und Tooltip (`title`), `role="toolbar"` „Kartensteuerung“. Zwei Gruppen
+  mit gemeinsamem Rahmen: Zoom (+/−) und Ansicht (Mein Hafen, Sichtungen, Ebenen). Symbole neu im Navigationsstil
+  (`karte-plus`, `karte-minus`, `karte-hafen` = Anker im Peilkreis, `karte-fernglas`, `karte-ebenen`), damit Leiste und
+  Navigation eine Linie sprechen; das gefüllte Hafensymbol bleibt den Markierungen auf der Karte vorbehalten.
+- **Sichtungen und Ebenen bleiben zwei Blätter:** unterschiedliche Aufgaben (Lagebild-Liste, oft gebraucht, vs.
+  Darstellung + Legende, selten). Zusammenlegen spart einen 44-px-Knopf, kostet aber jedes Mal einen Reiterwechsel.
+- **Nichts überlappt:** Wetterkärtchen links oben in gleicher Höhe (44 px, Tintenrahmen) wie die Leiste; Gradnetz-Beschriftung
+  oben nur zwischen Kärtchen und Leiste, links erst unter Kärtchen/Feindwarnung; Windrose unten rechts bündig unter der
+  Leiste, Positionsanzeige darunter. Abstände mit `env(safe-area-inset-left/right)` (Querformat mit Notch); oben/unten
+  sorgen Ressourcenleiste und Navigation schon für den sicheren Bereich.
+- **Kurszeile:** über der ganzflächigen Karte am Handy ausgeblendet (auch bei „Immer oben/unten“), auf allen anderen
+  Reitern und am Desktop wie eingestellt; Hinweis in den Einstellungen. Die Karte gewinnt so eine Zeile (~40 px).
+- **Desktop:** dieselbe Leiste in der Karte, links neben dem Feldblatt bzw. der Seitenleiste; „Karte groß“ bleibt allein
+  in der Navigationsleiste (keine doppelte Bedienung), Sichtungen/Ebenen öffnen wie alle Blätter als rechte Schublade.
+- Testkennungen `map-sichtungen`/`map-ebenen` bleiben; E2E `30-karte-ansicht.spec.ts` prüft Größe, Namen, Tooltips,
+  Spalte, Überlappung (Wetter, Positionsanzeige) und Kurszeile bei 390 × 844 und 1440 × 900.
