@@ -112,6 +112,144 @@ der jeweils daheim liegende Teil nicht, und die heimkehrenden Überfallverbände
 (`waitForTopNest` greift daher selten). Das Zielfenster ist am Modell-Verband geprüft (sim/nest6.ts: Tag 35 65 %,
 Tag 38 100 %); der Wächter zur Nest-6-Beute nach Laderaum warnt erst bei einem Sieg und meldet ohne Sieg „ok“.
 
+## Teillieferung der Ausbildung (0.44)
+
+Nutzerwunsch: Fertige Einheiten eines Auftrags sollen sofort in den Bestand, nicht erst nach dem ganzen Auftrag.
+
+- **Zeitpunkte:** Einheit (bzw. Anlage) i von count ist zu `startedAt + floor((finishesAt − startedAt) · i / count)`
+  fertig, die letzte genau zu `finishesAt`. Die beim Start mit der Stromprognose festgelegte Dehnung verteilt sich
+  damit gleichmäßig. Genauer (je Einheit eine eigene Stromprognose) wäre möglich, müsste aber count Zeitpunkte beim
+  Start speichern oder die Prognose beim Liefern mit einem inzwischen veränderten Hafen wiederholen – verworfen.
+  Sabotage verschiebt `finishesAt`: Gelieferte bleiben, die übrigen strecken sich anteilig.
+- **Zustand:** neues optionales Feld `TrainingOrder.done` (gelieferte Anzahl) im JSON-Zustand des Hafens; fehlt es
+  (laufende Aufträge vor 0.44), gilt 0. Keine Schemaänderung, keine Migration.
+- **Kern:** `deliverTraining` (game-core/units.ts) liefert alle fälligen Einheiten in zeitlicher Reihenfolge, schreibt
+  den Hafen jeweils bis zum Lieferzeitpunkt fort (Unterhalt ab Lieferung) und verwässert die Veteranen je Lieferung.
+  Nachholen sehr vieler Lieferungen (z. B. 5000 Schützen nach langer Pause) wird auf höchstens 200 Fortschreibungen
+  gebündelt (je Bündel bis zu seiner letzten Lieferung – Unterhalt dieser Einheiten minimal zu niedrig). Im laufenden
+  Betrieb liefert die Ereigniskette ohnehin einzeln. `completeTraining` bleibt die Hülle (Codes wie bisher,
+  zusätzlich `delivered`). Als „in Ausbildung“ zählt überall nur der Rest `count − done`: Flugzeug-Stellplätze,
+  Höchstzahl der Spione, `spyCount`, Spionage-Dossier.
+- **Server:** Ein Ereignis `training_complete` steht zur nächsten Lieferung des Hafens an; der Handler liefert alles bis
+  zu seiner Fälligkeit und plant das nächste (training-events.ts, ohne Dubletten: geplant wird nur, wenn bis dahin
+  nicht schon eins ansteht; wirkungslose Ereignisse nach Abbruch oder Sabotage reihen sich selbst neu ein). So stehen
+  Einheiten auch ohne Abruf zur richtigen Zeit im Bestand. Ein Angriff am Hafen ist ein späteres Ereignis und kämpft
+  deshalb mit den bis dahin gelieferten Einheiten – eine zusätzliche Lieferung in der Kampfauflösung ist nicht nötig
+  (sie würde Auftragsabschlüsse an den Meldungen und Tagesbefehlen vorbei verbuchen). Befehle und Hafenansicht holen
+  fällige Ereignisse wie bisher vorher nach (processDueForBase). Preis: ein Ereignis je Einheit (Schützen alle ~15–30 s
+  eines Auftrags), dafür überall exakte Zeiten. Holt der Worker einen Rückstand nach, läuft die Kette Ereignis für
+  Ereignis durch; die Live-Meldung „base“ geht dabei erst raus, wenn die nächste Lieferung in der Zukunft liegt oder ein
+  Auftrag fertig ist – sonst holte der Browser je Einheit neu und liefe in die Anfragebremse (429, im E2E gesehen).
+- **Meldungen:** „Ausbildung fertig“ nur, wenn der Auftrag die Schlange verlässt (keine Push-Flut). Tagesbefehle
+  (`ausbildung_*`, `anlagen`) zählen je Lieferung (done vorher → nachher), damit auch bei Abbruch Gelieferte zählen.
+- **Abbruch:** Fällige Einheiten werden vorher geliefert und bleiben; erstattet wird der Rest
+  `floor(Kosten(count − done) · (finishesAt − jetzt) / (finishesAt − Lieferzeit der Einheit done))`. Mathematisch ist das
+  dieselbe Summe wie die bisherige Formel über den ganzen Auftrag – nur ehrlich als Rest ausgewiesen; die Rückfrage
+  nennt die bleibenden Einheiten.
+- **Oberfläche:** Truppen → Ausbilden zeigt „3 × Korvette · 1 fertig“ und „nächste in … · alle in …“ live; die
+  Bestandszahl am Symbol rechnet fällige Einheiten sofort dazu (auch bevor der Server sie verbucht). Zeitleiste der
+  Basis: eigener Eintrag für die nächste Einheit („Korvette 2/3 fertig“); Lage: „… · 1 fertig, nächste 14:05 Uhr“.
+- **Nicht angefasst:** bots-plan.ts zählt Auftragsmengen noch mit `o.count` zur Armee (Bestand + Auftrag); bei
+  Teillieferung sind gelieferte Einheiten dadurch doppelt gezählt – Heuristik der KI, Datei liegt beim
+  Balance-Entwickler (Abhilfe: `trainingLeft(o)` statt `o.count`).
+
+## UX-0.43: App-Hülle, Menü, Einstellungen, Verwaltung, Desktop (uxs)
+
+Grundlage: `.claude/review-0.22/UX-0.43.md` (B2, A6, B3, B4, B7) und die Nutzerentscheidungen E-1 und E-7.
+
+- **Gleichrangige Ansichten (B2).** Handbuch, Einstellungen und Verwaltung sind eigene Ansichten der App-Hülle
+  (`lib/app-views.ts`), nicht mehr ineinander geschachtelt. Aus dem Menü, per Kürzel oder per Benachrichtigung geöffnet,
+  ersetzt eine Ansicht die offene, „Zurück“ (Knopf, Browser, Esc) führt zum Reiter darunter. Nur ein Querverweis
+  (Textlink, z. B. Handbuch → Einstellungen) legt eine zweite Ebene an; „Zurück“ führt dann zur verweisenden Ansicht.
+  Mehr als zwei Ebenen gibt es nicht. Neues Sprungziel `{ to: "view", view, focus? }` (focus "push" springt zur
+  Push-Karte – die zentrale Stelle für die Push-Frage im Spielablauf).
+- **Jede Funktion ein Ort.** Menü: Handbuch (mit „Was ist neu?“), Einstellungen, Freunde einladen (Blatt), Fehler
+  melden, Verwaltung (Admin), Abmelden. Handbuch und Einstellungen verweisen nur per Textlink. Aus den Einstellungen
+  entfallen die Karten „Freunde einladen“, „Fehler melden“ und „Verwaltung“; aus dem Handbuch Schnellkacheln,
+  „Angemeldet als“ und die Fehler-Karte.
+- **Einstellungen in vier Gruppen (A6).** Benachrichtigungen (Push, Ruhezeit, Morgenbericht mit Kanälen,
+  E-Mail-Arten) · Spiel (Nachtschild-Startzeit – dieselbe Komponente wie Basis → Schutz –, Kurszeile) · Konto (Name,
+  E-Mail-Adresse, Passwort eingeklappt, Abmelden als Textlink) · Hilfe (Handbuch, Neuigkeiten, Fehler melden,
+  Tastaturkürzel, Version). E-Mail-Arten und der E-Mail-Kanal des Morgenberichts sind ohne Mailversand bzw. ohne
+  bestätigte Adresse deaktiviert und nennen den Grund. Alle Uhrzeiten als 24-h-Auswahl (Morgenbericht: Stunde +
+  Viertelstunde statt Browser-Zeitfeld mit AM/PM). Wetter-/Animationsschalter gibt es (noch) nicht – keine neuen
+  Einstellungen erfunden.
+- **Verwaltung in vier Reitern (B3).** Übersicht (Ampel nur mit Handlungsbedarf, jede Zeile springt; Fehlermeldungen,
+  fehlgeschlagene Ereignisse; „Einrichtung“ eingeklappt mit Systemwerten, Sicherungen, E-Mail-Versand und dem dortigen
+  Server-Jargon) · Spieler (Suche, Rücksetzcode, Einladungscodes, Freunde einladen, Auffällige Paare) · Welt
+  (KI-Spieler, Allianzgröße; rot umrandete Gefahrenzone mit Weltpolitik-Not-Aus/Fenster absagen, Kartennebel als echter
+  Schalter, Kartell-Stärke, Saisonfinale – jede Aktion mit Bestätigung) · Statistik (Zeitraum, Kennzahlen, Balance
+  live, Weltpolitik-Übersicht nur lesend; Technik-Karten eingeklappt). Duplikate entfernt: „Fehlgeschlagene Ereignisse“
+  nur noch in der Übersicht. Gewählter Reiter wird geräteweit gemerkt.
+- **Desktop (B4, E-7, E-1).** Handbuch, Einstellungen, Verwaltung, Forschung und Saison (Rangliste/Bilanz/Erfolge)
+  sind Textansichten: Karte ausgeblendet (bleibt geladen), Inhalt in voller Breite (Handbuch Lesebreite, Einstellungen
+  und Verwaltung zweispaltig). Der Leisten-Eintrag „Karte“ ist am Desktop der Umschalter „Karte groß“: er legt die Karte
+  über die aktuelle Ansicht und kehrt beim zweiten Druck genau dorthin zurück (aus dem Reiter Karte: zum vorigen
+  Reiter). Leiste unten: Saison, Handbuch, Einstellungen, Verwaltung (Admin). Kopfleiste: Rohstoffe gruppiert, größer,
+  mit Namen und kräftigem Lagerbalken (Warnfarbe ab 85 %), rechts Fortschritts-Chip „Platz 3 von 8 · 420 bis Platz 2 ·
+  Tag 5/42“ aus `social.ranking` (unter 1280 px Kurzform) – Antippen öffnet die Saison.
+- **Tastaturkürzel.** 1–5 Hauptreiter, A „Alle abholen“ (falls sichtbar), M Karte groß, ? Handbuch, „,“
+  Einstellungen, Esc schließt erst Blätter, dann Ansichten bzw. „Karte groß“. Nie beim Tippen, nie mit
+  Strg/Alt/Cmd, nicht bei offenem Dialog. Reiter tragen `aria-keyshortcuts`; Liste unter Einstellungen → Hilfe.
+- **Zwei Umschalter-Bauformen (B7).** Ebene 1 `Segments` (Unterstrich-Reiter, neu optional `dot` statt Zahlenpille),
+  Ebene 2 `FilterChips` (umbrechend, alle sichtbar, kein Scrollpfeil, radiogroup mit Pfeiltasten). In den eigenen
+  Dateien umgestellt: Handbuch-Kapitel, Einstellungsgruppen, Kurszeile, Zeitraum der Statistik, Filter der
+  Fehlermeldungen. Meldungen/Rangliste/Allianz/Berichte stellt der Lage-Entwickler um.
+
+## UX 0.43 – Lage, Rückkehr, Meldungen, Neulingspfad (uxl)
+
+Grundlage: `.claude/review-0.22/UX-0.43.md`, Nutzerentscheidungen E-1 … E-8 vom 28.11.2026.
+
+- **Lage-Reihenfolge (A1/A2):** Fortschrittszeile → Alarm (fremde Angriffe, Nachfrist) → Rückkehrkarte → Wartet auf
+  dich („Alle abholen“ in der Kopfzeile) → Nächster Schritt → Unterwegs → Als Nächstes → Weltpolitik → Aufträge →
+  Zuletzt passiert. Eigene Verbände und Konvois stehen nur unter „Unterwegs“ (eine Zeile mit nächstem Ereignis und
+  Balken); „Als Nächstes“ filtert die Oberfläche auf 12 h und Nicht-Missionen – der Server liefert `soon` unverändert
+  (24 h, mit Ankunft/Rückkehr), damit Badge und bestehende Abfragen gleich bleiben. „Als nächstes“ im Hafen entfällt.
+- **Je Hafen eine Zeile, Leerlauf nur handelbar (L-2):** `lage-wait.ts` fasst Ausbildung frei / Missionsplätze / Lager
+  fast voll zu `hafen:<id>` zusammen. Ausbildung frei nur, wenn mindestens eine Einheit dort bezahlbar ist
+  (`startTraining` auf dem Stand); Missionsplatz nur mit Kampfeinheiten daheim (Angriffswert > 0).
+- **Bauempfehlung (E-4b):** `game-core/build-advice.ts` (rein): Strom fehlt → Kraftwerk/Wind/Sonne; Lager ≥ 85 % →
+  Lagerkomplex; Engpass = Erzeuger des Rohstoffs mit der kleinsten Netto-Rate zum Richtpreis; sonst günstigster Ausbau.
+  Strom und Lager bleiben vorn, auch wenn noch Rohstoffe fehlen (dann „fehlt …“ und „Ansehen“), sonst geht Bezahlbares
+  vor. Nur gebaute Gebäude und die Grundausstattung (Kraftwerk, Werke, Lager, Kommandozentrale) werden vorgeschlagen.
+  `lage.get` liefert `advice` je Hafen mit freiem Bauplatz; „Bauen“ beginnt den Ausbau direkt (bewusster zweiter Tap,
+  kein Kombi-Knopf). Die Zeile „Bauschlange leer“ in „Wartet auf dich“ entfällt; der Schlüssel `leer:<id>` zählt weiter
+  fürs Navigationszeichen. Im Hafen „Empfohlen als Nächstes“ (bis 3) über dem Bauhof; die grüne Raute markiert nur noch
+  diese Empfehlungen; Stufe-0-Gebäude stehen eingeklappt als Chips unter „Noch nicht gebaut (n)“.
+- **Rückkehrkarte (B1, E-3b):** neue Spalten `player.lage_ack_at` (timestamptz) und `player.lage_ack_rank` (integer),
+  Migration macht der Integrator. `lage.since` (engine/lage-since.ts, auf `buildSummary`): Rückblick ab der letzten
+  Quittung, höchstens 72 h (so lange hält `summary_entry`), ohne Quittung 24 h, nie vor der Anmeldung; Zeitraum wird
+  angezeigt. Anlass (`show`): Kampf, Bau/Ausbildung fertig, Rangänderung gegen den Schnappschuss, neue Nachricht oder
+  geschätzte Produktion (Rate jetzt × Stunden, je Hafen bis zur Lagergrenze) ≥ 10 % des Lagers. Quittung `lage.ack`
+  beim Schließen (✕) und bei „Alle abholen“. `summary_entry` wird dafür seit 0.43 immer mitgeschrieben (vorher nur mit
+  aktivem Morgenbericht). „Neu in Version x“ steht gebündelt in der Karte (Changelog.tsx `useVersionNotice`); das
+  eigene Blatt nach einem Update entfällt, der Hinweis „neuere Version online – neu laden“ bleibt.
+- **Fortschritt (E-1a):** Zeile oben auf der Lage aus `social.ranking` („Platz 3 von 8 · 420 bis Platz 2 · Tag 5/42“) und
+  der Serie aus `daily.get`; Antippen → Meldungen → Saison. Der Saisonbalken nennt zusätzlich „Tag x/42“.
+- **Meldungen (E-2a, E-6a, A8):** Reiter Berichte · Post · Allianz · Saison; Saison mit Ebene 2 als umbrechende Chips
+  Wertung · Bilanz · Erfolge · Welt (PolitikPanel mit offenem Kalender und „jetzt“-Marke). Schlüssel bleiben
+  (`nachrichten` = Post, `rangliste`/`bilanz`/`erfolge`/`welt` = Saison-Abschnitte; `saison` und `post` als Adresse).
+  Zählung: Navigationszahl und Lagezeile nennen dieselben Posten (ungelesene Berichte + Post, `lib/meldungen-count.ts`);
+  Allianz-Chat zählt ausdrücklich nicht. Weltpolitik auf der Lage einzeilig, groß nur bei offener Abstimmung oder
+  Paktangebot; Neulinge sehen die ruhige Zeile nicht.
+- **Umbenennungen (E-5a):** Marktnachricht ohne Krieg „Marktwetter ruhig – kaum Kämpfe“ (alte Zeilen „Ruhige See – …“
+  werden beim Finale weiter ausgeblendet), Kurzzeile der Börse „Marktwetter“; Absender der Systemnachrichten
+  „Hafenmeisterei“; Mail-Abschnitt „Lage“ → „Umstände“ (Radarwarnung, Kampfbericht, Morgenbericht).
+- **Neulingspfad (A3):** Hafenname mit dem Ortsnamen (`placeNameAt`) vorbelegt, Hinweis bei < 2 Zeichen; Begrüßung zwei
+  Seiten, letzte „Kraftwerk bauen“ öffnet das Gebäudeblatt; „Erste Schritte“ statt Bauempfehlung, solange das
+  Auftragsbuch unter 5/11 steht; ohne Einheiten „Erste Einheiten ausbilden“ statt „Mission planen“.
+- **Push im Moment des Nutzens (A7):** nach dem ersten Bau bzw. der ersten Mission einmal je Gerät
+  (`localStorage tf-push-asked`); mit „Ja“ Ruhezeit = Nachtschild-Fenster, falls keine gesetzt; iPhone ohne
+  Home-Bildschirm-App nur der Installationshinweis; bei Browser-Sperre oder bestehendem Abo nie fragen.
+- **Kleinkram (A4, A9, B6, B9):** Gebäudeblatt mit fester Aktionsleiste („Bauen · 25 s“ / „Ausbauen auf n · …“), ein Bild,
+  solange sich das Bild nicht ändert; Allianz ohne Admin-Block, Mitgliedschaft eingeklappt mit Umriss-Knöpfen; Börsenkopf
+  außerhalb „Handel“ einzeilig, Kaufknopf ohne ausführbare Order grau („Erst verkaufen“), Sprung zur Hafenkommandantur;
+  Einsatz bei unbekannter Stufe nur „Aufklären · Dauer“ mit Aufklärern; Kampfbericht „Verluste ersetzen“ (Ausbilden
+  vorbelegt); Karte: „Sichtungen“ und „Ebenen“ als Textknöpfe, Wetter/Sensoren/Legende im Blatt (Esc), Namensschilder
+  weichen bei Überlappung nach oben aus; Missionsplanung „Wie letzte Mission“.
+- **Bewusst nicht:** Kombi-Knopf (E-4), neue Push-Typen und „Nächster lohnender Besuch“ (B8), Kachel-Mini-Hinweise im Hafen,
+  Ziel-zuerst-Umbau der Missionsplanung (U-2), Ausbildung (A5, anderer Entwickler), App-Hülle/Einstellungen/Verwaltung (uxs).
+
 ## Balance v1.36 – Nachtrag zu v1.35 (Nutzerentscheide nach 0.43.0)
 
 1. **Kartell, zweiter Hebel (ausdrücklich gewünscht):** `pirates.raidIntervalHours` 18 → **24 h** (≈ 0,63 statt 0,83

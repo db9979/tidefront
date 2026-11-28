@@ -314,5 +314,5 @@ test("Kriegslage: ruhige See senkt Treibstoff um 4 %", async () => {
   const [row] = await rowsOf("kriegslage");
   assert.equal(row.resource, "treibstoff");
   assert.equal(row.pct, news.war.calm);
-  assert.match(row.reason, /Ruhige See/);
+  assert.match(row.reason, /^Marktwetter ruhig/);
 });

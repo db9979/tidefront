@@ -317,6 +317,12 @@ export interface TrainingOrder {
   builtIn: string;
   startedAt: number;
   finishesAt: number;
+  /**
+   * Bereits gelieferte Anzahl (Teillieferung, 0.44): Einheit i (1..count) ist zu
+   * startedAt + (finishesAt − startedAt) · i / count fertig und wandert sofort in den Bestand.
+   * Fehlt bei älteren Aufträgen → 0.
+   */
+  done?: number;
 }
 
 export interface BaseState {

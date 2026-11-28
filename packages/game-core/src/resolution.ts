@@ -13,7 +13,7 @@ import type {
 import { addResources, bunkerProtection, buildingLevel, settle } from "./economy.ts";
 import { upgradeCost } from "./buildings.ts";
 import { emptyCatchUp, refValue } from "./catch-up.ts";
-import { trainingCost } from "./units.ts";
+import { deliverTraining, trainingCost, trainingLeft, trainingUnitAt, trainingDone } from "./units.ts";
 import { applyDefeatShield } from "./protection.ts";
 import { battleVeterancy } from "./veterans.ts";
 import type { Modifiers } from "./modifiers.ts";
@@ -321,8 +321,9 @@ export function cancelUpgrade(
 }
 
 /**
- * Bricht den Ausbildungsauftrag eines Baugebäudes (oder des Platzes "anlagen") ab; Erstattung wie
- * beim Ausbau. Codes: no_order, already_finished.
+ * Bricht den Ausbildungsauftrag eines Baugebäudes (oder des Platzes "anlagen") ab. Fällige Einheiten werden vorher
+ * geliefert und bleiben (Teillieferung); erstattet wird nur der noch nicht gelieferte Rest, anteilig nach der Restzeit
+ * seiner Spanne (letzte Lieferung bis finishesAt) – wie beim Ausbau. Codes: no_order, already_finished.
  */
 export function cancelTraining(
   base: BaseState,
@@ -334,10 +335,11 @@ export function cancelTraining(
   const order = base.trainingQueue.find((o) => o.builtIn === builtIn);
   if (order === undefined) return { ok: false, code: "no_order" };
   if (nowMs >= order.finishesAt) return { ok: false, code: "already_finished" };
-  const cost = trainingCost(order.id, order.count, balance);
-  const refund = scaled(cost, refundShare(order.startedAt, order.finishesAt, nowMs));
-  const next = settle(base, nowMs, balance, mods);
-  next.trainingQueue = next.trainingQueue.filter((o) => o !== order && o.builtIn !== builtIn);
+  const next = settle(deliverTraining(base, nowMs, balance, mods).base, nowMs, balance, mods);
+  const rest = next.trainingQueue.find((o) => o.builtIn === builtIn) ?? order;
+  const cost = trainingCost(rest.id, trainingLeft(rest), balance);
+  const refund = scaled(cost, refundShare(trainingUnitAt(rest, trainingDone(rest)), rest.finishesAt, nowMs));
+  next.trainingQueue = next.trainingQueue.filter((o) => o.builtIn !== builtIn);
   next.resources = addResources(next.resources, refund);
   return { ok: true, base: next, refund };
 }

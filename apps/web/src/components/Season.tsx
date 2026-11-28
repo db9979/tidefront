@@ -24,6 +24,12 @@ function remaining(endsAtMs: number, now: number): string {
 }
 
 /** Saisonleiste für die Rangliste. */
+/** Saisontag (1-basiert) und Länge in Tagen (UX 0.43: „Tag 5/42“ statt eines leeren Balkens an Tag 1). */
+export function seasonDay(season: { startsAtMs: number; endsAtMs: number }, now: number): { day: number; days: number } {
+  const days = Math.max(1, Math.round((season.endsAtMs - season.startsAtMs) / DAY));
+  return { day: Math.min(days, Math.max(1, Math.floor((now - season.startsAtMs) / DAY) + 1)), days };
+}
+
 export function SeasonBar({ season }: { season: { number: number; startsAtMs: number; endsAtMs: number } | null }) {
   const now = useNow(60000);
   if (!season) return null;
@@ -31,7 +37,7 @@ export function SeasonBar({ season }: { season: { number: number; startsAtMs: nu
   return (
     <div className="panel rounded-xl p-3 mb-3">
       <div className="flex items-baseline justify-between gap-2 mb-2">
-        <span className="font-serif text-lg">Saison {season.number}</span>
+        <span className="font-serif text-lg">Saison {season.number} <span className="mono text-sm text-ink2" data-testid="season-day">· Tag {seasonDay(season, now).day}/{seasonDay(season, now).days}</span></span>
         <span className="text-xs text-slate-300 tabular-nums">
           {remaining(season.endsAtMs, now)} · Ende {new Date(season.endsAtMs).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
         </span>
@@ -50,7 +56,7 @@ export function SeasonEndBanner({ onOpen }: { onOpen: () => void }) {
   return (
     <button type="button" onClick={onOpen} className="tap w-full text-left rounded-xl p-3 mb-3 border border-siegel border-l-4 bg-red-950 text-sm">
       <strong>Saison {s.number} endet {remaining(s.endsAtMs, now).replace("noch ", "in ")}.</strong>{" "}
-      <span className="text-slate-300">Danach wird die Welt zurückgesetzt. Zur Rangliste →</span>
+      <span className="text-slate-300">Danach wird die Welt zurückgesetzt. Zur Saison →</span>
     </button>
   );
 }

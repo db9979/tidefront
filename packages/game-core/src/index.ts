@@ -35,6 +35,7 @@ export * from "./route-position.ts"; // Seewege: Position unterwegs (Route, Rüc
 export * from "./nest-living.ts"; // Lebendige Nester: Wurf, Erholung, Beutewachstum, Spanne
 export * from "./raid-plan.ts"; // Einstieg: kleinster siegreicher Verband gegen ein Nest
 export * from "./pvp.ts"; // Spieler gegen Spieler: Kopfgeld, Mutfaktor, Paarbremse
+export * from "./build-advice.ts"; // Bauempfehlung (Lage „Nächster Schritt“, Hafen „Empfohlen“)
 export * from "./catch-up.ts"; // Aufholhilfe: Baugutschrift für kleine Häfen und Spät-Einsteiger
 export * from "./battle-setup.ts"; // Kampfbedingungen im Bericht
 export * from "./report-sim.ts"; // Bericht → Kampfsimulator

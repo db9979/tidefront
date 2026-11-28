@@ -375,7 +375,7 @@ export async function notifyInviter(engine: Engine, newPlayerId: number): Promis
   await sendMessage(engine, null, {
     toPlayerId: r.inviterId,
     subject: "Einladung angenommen",
-    body: `${r.name} ist deiner Einladung gefolgt und hat sich bei TIDEFRONT angemeldet. Unter Meldungen → Rangliste findest du den neuen Mitspieler und kannst ihm eine Nachricht schreiben.`,
+    body: `${r.name} ist deiner Einladung gefolgt und hat sich bei TIDEFRONT angemeldet. Unter Meldungen → Saison findest du den neuen Mitspieler und kannst ihm eine Nachricht schreiben.`,
   });
   const notice: Notice = {
     kind: "report",

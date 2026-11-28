@@ -42,7 +42,7 @@ export function AdminFinale() {
           {CHOICES.map((m) => <option key={m} value={m}>{m === 0 ? "sofort" : m < 60 ? `${m} Minuten` : `${m / 60} Stunden`}</option>)}
         </select>
       </label>
-      <Button disabled={busy} onClick={() => void start()}>Finale jetzt ankündigen</Button>
+      <Button disabled={busy} onClick={() => { if (confirm("Saisonfinale jetzt für alle ankündigen? Ein beendetes Finale dieser Saison wird ersetzt.")) void start(); }}>Finale jetzt ankündigen</Button>
       {done && <p className="text-sm text-moos mt-2" role="status">{done}</p>}
       {error && <ErrorLine text={error} />}
     </Card>

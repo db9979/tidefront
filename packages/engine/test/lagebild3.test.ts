@@ -67,6 +67,21 @@ let C: Awaited<ReturnType<typeof newPlayer>>;
 
 before(async () => {
   if (!url) throw new Error("TEST_DATABASE_URL fehlt");
+  // Wetter hängt von der Uhrzeit ab: Startzeit so wählen, dass beim ersten Überflug (Start + 6 h) im Streifen über dem
+  // Heimathafen ein klares Feld liegt (sonst scheitert der Überflug-Test je nach Uhrzeit des Laufs).
+  {
+    const wb = balance.weather!;
+    const x0 = hexCenterXY(HOME.col, HOME.row).x;
+    const clearAt = (t: number) => {
+      for (let row = 1; row < ROWS - 1; row++) for (let dc = -4; dc <= 4; dc++) {
+        const p = at(dc, row - HOME.row);
+        if (Math.abs(row - HOME.row) < 4 || Math.abs(hexCenterXY(p.col, p.row).x - x0) >= 250) continue;
+        if (weatherAt(hexCenter(p.col, p.row), t + 6 * HOUR, wb).clouds < 0.4) return true;
+      }
+      return false;
+    };
+    for (let h = 0; h < 96 && !clearAt(fake); h++) fake = realNow() + (h + 1) * HOUR;
+  }
   Date.now = () => fake;
   await db.execute(sql`drop schema if exists public cascade; drop schema if exists drizzle cascade; create schema public;`);
   await migrateDb(db);
@@ -129,10 +144,13 @@ test("Überflug: optisch Erkennung im Streifen außer unter Wolken, 20 min live,
   // Streifen 1 liegt über dem Starthafen (±300 km); Nester weit im Süden, außerhalb jedes anderen Sensors.
   const wb = balance.weather!;
   const spots = [];
-  for (let row = 1; row < ROWS - 1; row++) for (const dc of [-1, 0, 1]) if (Math.abs(row - HOME.row) >= 4) spots.push(at(dc, row - HOME.row));
+  // Breiter suchen (ganzer Streifen ±300 km): das Wetter hängt von der Uhrzeit des Testlaufs ab, ein schmaler Streifen
+  // ist manchmal ganz bewölkt.
+  for (let row = 1; row < ROWS - 1; row++) for (const dc of [-1, 0, 1, -2, 2, -3, 3, -4, 4]) if (Math.abs(row - HOME.row) >= 4) spots.push(at(dc, row - HOME.row));
+  const inStrip = (p: { col: number; row: number }) => Math.abs(hexCenterXY(p.col, p.row).x - sat.x0) < 300;
   const clouds = (p: { col: number; row: number }) => weatherAt(hexCenter(p.col, p.row), passAt, wb).clouds;
-  const clear = spots.find((p) => clouds(p) < 0.5)!;
-  const cloudy = spots.find((p) => clouds(p) > 0.65);
+  const clear = spots.find((p) => inStrip(p) && clouds(p) < 0.5)!;
+  const cloudy = spots.find((p) => inStrip(p) && clouds(p) > 0.65);
   assert.ok(clear, "ein klares Feld im Streifen");
   assert.ok(Math.abs(hexCenterXY(clear.col, clear.row).x - sat.x0) < 300);
   const nClear = await nestAt(clear, 3);

@@ -26,7 +26,7 @@ test("Gebäudeblatt offen: Bestand steigt, Wartezeit sinkt, Blocker verschwindet
   await page.getByRole("button", { name: /^Stahlwerk 4/ }).click();
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByText("Noch nicht genug Ressourcen.")).toBeVisible();
-  const up = sheet.getByRole("button", { name: "Ausbau auf 5" });
+  const up = sheet.getByRole("button", { name: /^Ausbauen auf 5/ });
   await expect(up).toHaveAttribute("aria-disabled", "true");
 
   const release = await holdFetches(page);

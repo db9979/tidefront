@@ -264,11 +264,13 @@ export async function setSummarySettings(
 /** Arten, die für den Morgenbericht mitgeschrieben werden (Kämpfe kommen aus den Berichten). */
 const ENTRY_KINDS = new Set(["build", "training", "fleet", "delivery"]);
 
-/** Schreibt eine Meldung für den Morgenbericht mit, wenn der Spieler ihn aktiviert hat. */
+/**
+ * Schreibt eine Meldung für den Morgenbericht und die Rückkehrkarte der Lage („Seit deinem letzten Besuch“, UX 0.43)
+ * mit – seit 0.43 immer, nicht nur bei aktiviertem Morgenbericht. Aufgeräumt wird nach 3 Tagen (runMorningSummaries).
+ */
 export async function recordSummaryEntry(engine: Engine, playerId: number, n: Notice): Promise<void> {
   if (!ENTRY_KINDS.has(n.kind)) return;
   await engine.db.execute(sql`
     insert into summary_entry (player_id, kind, title, body)
-    select ${playerId}, ${n.kind}, ${n.title.slice(0, 200)}, ${n.body.slice(0, 500)}
-    where exists (select 1 from morning_summary where player_id = ${playerId} and enabled)`);
+    values (${playerId}, ${n.kind}, ${n.title.slice(0, 200)}, ${n.body.slice(0, 500)})`);
 }

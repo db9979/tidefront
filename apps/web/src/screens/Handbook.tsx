@@ -1,6 +1,5 @@
 // Handbuch: Spielziel, Ablauf und Regeln in kurzen Kapiteln; Einheitentabelle aus der Balance.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useBackLayer } from "../lib/back.ts";
 import { ChangelogSheet, VersionLine } from "../components/Changelog.tsx";
 import { useQuery } from "@tanstack/react-query";
 import { trpc } from "../lib/trpc.ts";
@@ -8,8 +7,7 @@ import { label, fmtNum } from "../lib/names.ts";
 import { BRANCHES } from "../lib/research.ts";
 import { buildingText, unitText, unitTone } from "../lib/info.ts";
 import { Icon, IconTile } from "../icons.tsx";
-import { Button, BackButton } from "../ui.tsx";
-import { SettingsScreen } from "./Settings.tsx";
+import { BackButton, FilterChips } from "../ui.tsx";
 import { IntelChapter } from "../components/IntelChapter.tsx";
 import { AdmiralChapter } from "../components/AdmiralChapter.tsx"; // Admirale
 import { AchievementsChapter } from "../components/AchievementsChapter.tsx"; // Erfolge
@@ -24,7 +22,6 @@ import { CatchUpChapter } from "../components/CatchUpChapter.tsx"; // Aufholhilf
 import { ContractsChapter } from "../components/ContractsChapter.tsx"; // Lieferverträge (v1.31)
 import { PolitikChapter } from "../components/PolitikChapter.tsx"; // Weltpolitik
 import { requestBugReport } from "../lib/bug-log.ts";
-import { HScroll } from "../components/HScroll.tsx";
 
 const ZAHLWORT = ["keinem", "einem", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn"];
 
@@ -53,18 +50,6 @@ function npcEventText(kinds: string[] | undefined, factor: string): string {
   return `Eigene Angriffe auf ${list.join(" und ")} zählen ebenfalls nur zu ${factor}.`;
 }
 
-function QuickButton({ onClick, title, icon, mark, accent = false }: { onClick: () => void; title: string; icon?: string; mark?: string; accent?: boolean }) {
-  return (
-    <button type="button" onClick={onClick} className={`tap panel rounded-xl p-2 flex flex-col items-center gap-1 text-center ${accent ? "border-siegel" : ""}`}>
-      {mark ? (
-        <span aria-hidden className="grid place-items-center w-8 h-8 rounded-full bg-siegel text-[#f6f1e5] font-serif text-lg font-bold">{mark}</span>
-      ) : (
-        <Icon id={icon ?? "anker"} size={32} />
-      )}
-      <span className={`text-xs font-semibold leading-tight ${accent ? "text-siegel" : ""}`}>{title}</span>
-    </button>
-  );
-}
 
 interface Chapter { id: string; icon: string; title: string; body: ReactNode }
 
@@ -72,7 +57,9 @@ function P({ children }: { children: ReactNode }) {
   return <p className="text-sm text-slate-200 mb-2 leading-relaxed">{children}</p>;
 }
 
-export function Handbook({ onClose, onLogout, playerName, initialView, onView }: { onClose: () => void; onLogout: () => void; playerName: string; initialView?: "settings" | "admin" | null; onView?: (v: "settings" | "admin" | null) => void }) {
+// Rahmen (UX-0.43 B2): eigene Ansicht neben Einstellungen und Verwaltung (App.tsx). Kein eingebettetes Einstellungsblatt
+// mehr; Einstellungen und Fehler melden nur als Textlinks (ihr Ort ist das Menü). Kapitel als umbrechende Filterchips.
+export function Handbook({ onClose, onSettings }: { onClose: () => void; onSettings: () => void }) {
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   // Alle Kapitel zu: die Sprungleiste oben ist die Übersicht (vorher war „Worum es geht“ offen).
   const [open, setOpen] = useState<string | null>(null);
@@ -82,10 +69,6 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
     if (!opened.current) { opened.current = true; return; }
     if (open) setTimeout(() => document.getElementById(`hb-${open}`)?.scrollIntoView?.({ block: "start", behavior: "smooth" }), 0);
   }, [open]);
-  const [view, setViewState] = useState(initialView ?? null);
-  // Ansicht an die App melden (Adresse ?view=…); Zurück schließt die Einstellungen.
-  const setView = (v: "settings" | "admin" | null) => { setViewState(v); onView?.(v); };
-  useBackLayer(!!view, () => setView(null), 2);
   const [news, setNews] = useState(false);
   // Regeln nennen die Grundwerte, nicht die gerade wirksamen (Weltpolitik: Gezeit, Beschlüsse).
   const b = meta.data?.baseBalance ?? meta.data?.balance;
@@ -102,7 +85,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
         <>
           <P>Du führst einen Hafen an der Küste des Nordatlantiks oder des Mittelmeers. Baue deine Wirtschaft auf, stelle eine Flotte mit Truppen auf, überfalle die Nester des Freibeuter-Kartells und halte deinen Hafen gegen Überfälle.</P>
           <P>Alles läuft in Echtzeit weiter, auch wenn die App geschlossen ist: Bauaufträge werden fertig, Flotten fahren, das Kartell greift an. Schau ein paar Mal am Tag vorbei.</P>
-          <P><strong>Wo was steht:</strong> Die App öffnet mit <strong>Basis → Lage</strong> – „Was steht an?“: Belohnungen (mit „Alle abholen“), Aufträge, was gleich fertig wird, was unterwegs ist und was zuletzt passiert ist. Gebäude und Bauhof liegen unter <strong>Basis → Hafen</strong>. Die <strong>Karte</strong> zeigt mit dem Knopf <strong>Sichtungen</strong> Sensoren, fremde Verbände, Satelliten und Radarposten. <strong>Truppen</strong> hat Einsatz, Ausbilden und Abwehr; <strong>Meldungen</strong> hat Berichte, Nachrichten, Allianz und Rangliste (mit Bilanz und Erfolgen). Die Zahl an „Basis“ zählt Neues in der Lage, die an „Meldungen“ Ungelesenes. Auf breiten Bildschirmen steht die Karte immer links, der gewählte Reiter rechts daneben.</P>
+          <P><strong>Wo was steht:</strong> Die App öffnet mit <strong>Basis → Lage</strong> – „Was steht an?“: oben dein Platz in der Saison (antippen öffnet die Saison) und deine Serie, dann Angriffe, nach einer Pause „Seit deinem letzten Besuch“ (Kämpfe, fertige Bauten, Rang, Post, Produktion; verschwindet mit ✕ oder „Alle abholen“), „Wartet auf dich“ mit „Alle abholen“, der <strong>nächste Schritt</strong> (Bauempfehlung mit „Bauen“, für Neue die „Ersten Schritte“), was unterwegs ist, was in den nächsten 12 Stunden ansteht, die Weltpolitik in einer Zeile, Aufträge und was zuletzt passiert ist. Gebäude und Bauhof liegen unter <strong>Basis → Hafen</strong> (oben „Empfohlen als Nächstes“). Die <strong>Karte</strong> zeigt mit dem Knopf <strong>Sichtungen</strong> Sensoren, fremde Verbände, Satelliten und Radarposten; <strong>Ebenen</strong> schaltet Wetter und Sensoren und zeigt die Legende. <strong>Truppen</strong> hat Einsatz, Ausbilden und Abwehr; <strong>Meldungen</strong> hat Berichte, Post, Allianz und Saison (Wertung, Bilanz, Erfolge, Welt mit dem Kalender der Weltpolitik). Die Zahl an „Basis“ zählt Neues in der Lage, die an „Meldungen“ ungelesene Berichte und Post (der Allianz-Chat zählt nicht mit). Auf breiten Bildschirmen steht die Karte links, der gewählte Reiter rechts daneben; Handbuch, Einstellungen, Verwaltung, Forschung und Saison nutzen die volle Breite, „Karte groß“ (Taste M) holt die Karte jederzeit zurück. Kürzel: 1–5 Reiter, A Alle abholen, ? Handbuch, Esc schließt.</P>
           <P>Das <strong>Auftragsbuch</strong> auf der Basis (Lage) führt dich Schritt für Schritt durch die ersten Tage. Jeder erfüllte Auftrag bringt ein Ressourcenpaket für den nächsten Schritt – tippe auf <strong>Abholen</strong>, auch für Aufträge, die du schon früher erledigt hast. Belohnungen füllen das Lager höchstens bis zur Lagergrenze; ist es zu voll, warnt das Auftragsbuch – baue dann erst den Lagerkomplex aus, die Belohnung bleibt die ganze Saison abholbar. Nach allen elf gibt es ein großes Paket, einmalig eine Stunde weniger Bauzeit für den laufenden (sonst den nächsten) Ausbau und das Abzeichen <strong>Hafenmeister</strong>, das diese Saison in der Rangliste neben deinem Namen steht. In jeder neuen Saison beginnt das Auftragsbuch von vorn.</P>
         </>
       ),
@@ -138,8 +121,8 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
       body: (
         <>
           <P><strong>Grüne Raute</strong> an einem Gebäude: Es lässt sich jetzt ausbauen – die Rohstoffe reichen, in der Bauschlange ist Platz und die Höchststufe ist nicht erreicht.</P>
-          <P><strong>Bauschlange:</strong> bis zu {b?.building.queueSlots ?? 3} Ausbauten je Hafen, abgearbeitet nacheinander. Die Kosten zahlst du schon beim Einreihen. Werft, Kaserne, Flugfeld und Anlagenbau arbeiten daneben jeweils an einem eigenen Auftrag.</P>
-          <P><strong>Abbrechen</strong> (mit Rückfrage): Ein laufender Auftrag erstattet nur den Anteil der Restzeit, ein wartender alles. Spätere Stufen desselben Gebäudes in der Schlange fallen mit weg und werden voll erstattet.</P>
+          <P><strong>Bauschlange:</strong> bis zu {b?.building.queueSlots ?? 3} Ausbauten je Hafen, abgearbeitet nacheinander. Die Kosten zahlst du schon beim Einreihen. Werft, Kaserne, Flugfeld und Anlagenbau arbeiten daneben jeweils an einem eigenen Auftrag. Jede fertige Einheit oder Anlage eines Auftrags steht sofort im Bestand – bei 3 Korvetten die erste nach einem Drittel der Zeit, nicht erst, wenn alle fertig sind. Erst ab ihrer Ankunft kostet sie Unterhalt und verteidigt den Hafen; die Meldung kommt einmal, wenn der ganze Auftrag fertig ist.</P>
+          <P><strong>Abbrechen</strong> (mit Rückfrage): Ein laufender Auftrag erstattet nur den Anteil der Restzeit, ein wartender alles. Bei der Ausbildung bleiben schon gelieferte Einheiten; erstattet wird nur der Rest. Spätere Stufen desselben Gebäudes in der Schlange fallen mit weg und werden voll erstattet.</P>
           <P>Kein Gebäude darf mehr als {b?.building.levelCapAboveCommand ?? 3} Stufen über der Kommandozentrale liegen.</P>
           {b && (
             <ul className="space-y-2 mt-2">
@@ -220,7 +203,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
           <P><strong>Tageslimit:</strong> Je Ressource lassen sich in 24 Stunden {Math.round((b?.market.dailyLimitShareOfStorage ?? 0.2) * 100)} % der Lagergröße handeln, Kauf und Verkauf zusammen. Das Limit gleitet: Was du handelst, wird 24 Stunden nach der vollen Stunde des Handels wieder frei (ein Kauf um 13:40 also ab 13:00 am nächsten Tag). An der Order steht, wann wie viel wieder frei wird.</P>
           <P><strong>Kursverlauf:</strong> Unter der Order zeigt das Diagramm die letzte Stunde, 24 Stunden, 7 Tage oder die ganze Saison (Schlusskurs jeder vollen Stunde) mit Grund- und aktuellem Richtwert. Zum Saisonende beginnt der Verlauf neu.</P>
           <P><strong>Lieferzeit:</strong> Jeder Börsenkauf kommt nach genau {(b?.market as { deliveryHours?: number } | undefined)?.deliveryHours ?? 4} Stunden an, egal wie weit der Handelshafen entfernt ist – der Konvoi fährt den Seeweg entsprechend schneller oder langsamer. Auch das Kartellrisiko ist dadurch für alle gleich und hängt nur vom Warenwert ab. Lieferverträge behalten ihre eigene Fälligkeit.</P>
-          <P><strong>Marktnachrichten:</strong> Die Welt verschiebt den Richtwert vorübergehend – eine Großflotte macht Treibstoff und Proviant teurer, eine Belagerung Proviant, ein erbeutetes Schatzschiff drückt Stahl und Elektronik, Kriege und Kartell-Überfälle heben Treibstoff, volle oder leere Lager aller Häfen wirken einmal am Tag, und in der letzten Saisonwoche steigen Stahl und Elektronik. Die <strong>Handelsbilanz</strong> folgt den Börsengeschäften aller Häfen der letzten {b?.market.news?.tradeBalance?.windowHours ?? 72} Stunden: Wird eine Ressource mehr gekauft als verkauft, steigt ihr Richtwert, im umgekehrten Fall fällt er – höchstens ±{Math.round((b?.market.news?.tradeBalance?.max ?? 0.15) * 100)} %, erst ab {b?.market.news?.tradeBalance?.minPorts ?? 3} aktiven Häfen, und ein einzelner Händler zählt höchstens zu einem Drittel. Zusammen höchstens ±{Math.round((b?.market.news?.maxTotal ?? 0.25) * 100)} %, und der Richtwert bewegt sich höchstens {Math.round((b?.market.news?.maxChangePerHour ?? 0.05) * 100)} % je Stunde. Der Kurs springt nicht, er folgt dem neuen Richtwert langsam. Nach dem Anlass klingt die Wirkung über ein bis zwei Tage ab. Als Push „Marktnachricht“ abonnierbar (Einstellungen).</P>
+          <P><strong>Marktnachrichten</strong> (auf der Börse als Zeile „Marktwetter“ – nicht zu verwechseln mit der Gezeit der Weltpolitik): Die Welt verschiebt den Richtwert vorübergehend – eine Großflotte macht Treibstoff und Proviant teurer, eine Belagerung Proviant, ein erbeutetes Schatzschiff drückt Stahl und Elektronik, Kriege und Kartell-Überfälle heben Treibstoff, volle oder leere Lager aller Häfen wirken einmal am Tag, und in der letzten Saisonwoche steigen Stahl und Elektronik. Die <strong>Handelsbilanz</strong> folgt den Börsengeschäften aller Häfen der letzten {b?.market.news?.tradeBalance?.windowHours ?? 72} Stunden: Wird eine Ressource mehr gekauft als verkauft, steigt ihr Richtwert, im umgekehrten Fall fällt er – höchstens ±{Math.round((b?.market.news?.tradeBalance?.max ?? 0.15) * 100)} %, erst ab {b?.market.news?.tradeBalance?.minPorts ?? 3} aktiven Häfen, und ein einzelner Händler zählt höchstens zu einem Drittel. Zusammen höchstens ±{Math.round((b?.market.news?.maxTotal ?? 0.25) * 100)} %, und der Richtwert bewegt sich höchstens {Math.round((b?.market.news?.maxChangePerHour ?? 0.05) * 100)} % je Stunde. Der Kurs springt nicht, er folgt dem neuen Richtwert langsam. Nach dem Anlass klingt die Wirkung über ein bis zwei Tage ab. Als Push „Marktnachricht“ abonnierbar (Einstellungen).</P>
         </>
       ),
     },
@@ -266,7 +249,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
       id: "saison", icon: "nav-bericht", title: "Saison und Wertung",
       body: (
         <>
-          <P>Gespielt wird in <strong>Saisons</strong> von einigen Wochen. Unter Meldungen → Rangliste siehst du, welche Saison läuft und wie viele Tage bleiben. In den letzten drei Tagen erscheint zusätzlich ein Hinweis auf der Basis.</P>
+          <P>Gespielt wird in <strong>Saisons</strong> von einigen Wochen. Unter Meldungen → Saison (und oben auf der Lage) siehst du, welche Saison läuft und wie viele Tage bleiben. In den letzten drei Tagen erscheint zusätzlich ein Hinweis auf der Basis.</P>
           <P>Die <strong>Rangliste</strong> zählt fünf Kategorien; in den ersten vier ergibt je 100 Kostenwert ein Punkt. Der Kostenwert bewertet Ressourcen zum Richtpreis der Börse (Stahl {fmtNum(b?.market?.refPrice?.stahl ?? 1, 1)}, Treibstoff {fmtNum(b?.market?.refPrice?.treibstoff ?? 1.8, 1)}, Elektronik {fmtNum(b?.market?.refPrice?.elektronik ?? 3, 1)}, Proviant {fmtNum(b?.market?.refPrice?.proviant ?? 0.6, 1)}).</P>
           <ul className="text-sm list-disc pl-5 space-y-1 mb-2 text-slate-200">
             <li><strong>Ausbau:</strong> Kosten aller gebauten Gebäudestufen.</li>
@@ -284,7 +267,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
           </ul>
           <P>Am Saisonende wird der Endstand festgehalten: Gold, Silber und Bronze für die ersten drei Plätze, dazu je eine Auszeichnung für den Besten jeder Kategorie. Jeder erhält eine Nachricht mit seinem Platz; die <strong>Ruhmeshalle</strong> zeigt alle vergangenen Saisons.</P>
           <P>Danach beginnt die Welt neu: Häfen, Flotten, Berichte, Lieferungen und Taler verfallen, Nester und Börse starten frisch. Dein Konto und deine Nachrichten bleiben – du wählst einfach einen neuen Hafen und hast wieder Anfängerschutz.</P>
-          <P>Unter Meldungen → Rangliste findest du auch alle Mitspieler. Tippe einen an, um ihm eine <strong>Nachricht</strong> zu schreiben oder seinen Hafen auf der Karte zu zeigen.</P>
+          <P>Unter Meldungen → Saison findest du auch alle Mitspieler. Tippe einen an, um ihm eine <strong>Nachricht</strong> zu schreiben oder seinen Hafen auf der Karte zu zeigen.</P>
         </>
       ),
     },
@@ -292,7 +275,7 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
       id: "freunde", icon: "anker", title: "Freunde einladen",
       body: (
         <>
-          <P>Unter Einstellungen → <strong>Freunde einladen</strong> (oder Meldungen → Rangliste) schickst du einem Freund eine Einladung per E-Mail – mit persönlicher Nachricht – oder teilst einen persönlichen Link über Messenger und Co.</P>
+          <P>Unter Einstellungen → <strong>Freunde einladen</strong> (oder Meldungen → Saison) schickst du einem Freund eine Einladung per E-Mail – mit persönlicher Nachricht – oder teilst einen persönlichen Link über Messenger und Co.</P>
           <P>Jede Einladung hat einen eigenen Code, gilt einmal und 14 Tage. Folgt dein Freund ihr, bekommst du eine Nachricht. Unter „Meine Einladungen“ siehst du den Stand, kannst Einladungen zurückziehen oder nach einem Tag erneut senden. Wie viele Einladungen offen sein dürfen, legt die Verwaltung fest.</P>
         </>
       ),
@@ -356,32 +339,23 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
     },
   ];
 
-  if (view) return <SettingsScreen onClose={() => setView(null)} initialAdmin={view === "admin"} onAdmin={(a) => setView(a ? "admin" : "settings")} />;
   return (
-    <div>
+    <div data-testid="handbook-screen" className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-3">
         <h1 className="font-display text-xl font-bold uppercase">Handbuch</h1>
         <BackButton onClick={onClose} />
       </div>
-      {/* Schnellzugriff: Fehler melden gut sichtbar ganz oben */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        <QuickButton onClick={requestBugReport} mark="!" title="Fehler melden" accent />
-        <QuickButton onClick={() => setView("settings")} icon="zahnrad" title="Einstellungen" />
-        <QuickButton onClick={() => setNews(true)} icon="uhr" title="Was ist neu?" />
-      </div>
-      {/* Sprungleiste: klebt oben, ein Tipp öffnet das Kapitel und springt hin. */}
-      <nav className="sticky -top-3 z-10 -mx-3 mb-2 px-3 bg-paper border-b border-rule" aria-label="Kapitel">
-        <HScroll className="gap-1.5" watch={open}>
-          {chapters.map((c) => (
-            // Tippfläche 44 px hoch, die Pille darin bleibt schmal.
-            <button key={c.id} type="button" onClick={() => setOpen(c.id)} aria-current={open === c.id ? "true" : undefined} className="shrink-0 h-11 flex items-center">
-              <span className={`h-8 flex items-center rounded-full border px-3 text-[12.5px] whitespace-nowrap ${open === c.id ? "bg-ink text-paper border-ink" : "bg-card text-ink2 border-rule"}`}>{c.title}</span>
-            </button>
-          ))}
-        </HScroll>
+      <p className="text-sm text-ink2 mb-2">
+        <button type="button" className="tap underline text-see" onClick={() => setNews(true)}>Was ist neu?</button>
+        {" · "}<button type="button" className="tap underline text-see" onClick={onSettings}>Einstellungen</button>
+        {" · "}<button type="button" className="tap underline text-see" onClick={requestBugReport}>Fehler melden</button>
+      </p>
+      {/* Kapitelübersicht: ein Tipp öffnet das Kapitel und springt hin. */}
+      <nav aria-label="Kapitel">
+        <FilterChips label="Kapitel" value={open} onChange={setOpen} items={chapters.map((c) => ({ id: c.id, label: c.title }))} />
       </nav>
       {chapters.map((c) => (
-        <section key={c.id} id={`hb-${c.id}`} className="panel rounded-xl mb-2 overflow-hidden scroll-mt-14">
+        <section key={c.id} id={`hb-${c.id}`} className="panel rounded-xl mb-2 overflow-hidden scroll-mt-3">
           <button type="button" className="tap w-full flex items-center gap-3 p-3 text-left" onClick={() => setOpen(open === c.id ? null : c.id)} aria-expanded={open === c.id}>
             <Icon id={c.icon} size={30} />
             <span className="font-serif text-[18px] flex-1">{c.title}</span>
@@ -390,23 +364,6 @@ export function Handbook({ onClose, onLogout, playerName, initialView, onView }:
           {open === c.id && <div className="px-3 pb-3">{c.body}</div>}
         </section>
       ))}
-      <div className="panel rounded-xl p-3 mt-4 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm text-slate-300 min-w-0 break-words">Angemeldet als <strong>{playerName}</strong></span>
-        <div className="flex flex-wrap gap-2">
-          <Button kind="secondary" onClick={() => setView("settings")}>Einstellungen</Button>
-          <Button kind="secondary" onClick={onLogout}>Abmelden</Button>
-        </div>
-      </div>
-      <div className="panel rounded-xl p-3 mt-3">
-        <div className="flex items-center gap-3 mb-2">
-          <span aria-hidden className="shrink-0 grid place-items-center w-10 h-10 rounded-full bg-siegel text-[#f6f1e5] font-serif text-xl font-bold">!</span>
-          <div className="min-w-0">
-            <div className="font-serif text-[17px] leading-tight">Etwas stimmt nicht?</div>
-            <div className="text-xs text-slate-400">Screenshot und Protokoll werden automatisch angehängt.</div>
-          </div>
-        </div>
-        <Button className="w-full" onClick={requestBugReport}>Fehler melden</Button>
-      </div>
       <VersionLine onOpen={() => setNews(true)} />
       <ChangelogSheet open={news} onClose={() => setNews(false)} />
     </div>

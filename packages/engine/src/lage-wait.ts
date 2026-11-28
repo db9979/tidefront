@@ -1,8 +1,8 @@
-// Lagezentrum „Wartet auf dich“: leere Bauschlange, freie Ausbildungs- und Missionsplätze, Lager fast voll,
+// Lagezentrum „Wartet auf dich“: je Hafen eine Zeile (freie Ausbildung, Missionsplätze, Lager fast voll – nur handelbar),
 // Versorgungsmangel, Aufholhilfe-Gutschrift, verfallende Lagebilder lohnender Ziele, abholbare Erfolge/Wochenziele.
 // Tagesbefehle und Auftragsbuch ergänzt die Oberfläche aus ihren ohnehin geladenen Abfragen (daily.get, guide.get).
 import { and, desc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
-import { missionSlots, settle, storageCapacity, type Modifiers, type ResourceMap } from "@tidefront/game-core";
+import { missionSlots, settle, startTraining, storageCapacity, type Modifiers, type ResourceMap } from "@tidefront/game-core";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance } from "./context.ts";
 import { ADMIRAL_RETURN_TYPE, type BaseRow } from "./store.ts";
@@ -47,22 +47,25 @@ export async function waitingRows(
   for (const b of bases) {
     const sub = harborSub(bases, b.id);
     const s = settle(b.state, nowMs, balance, mods.get(b.id));
-    if (s.buildQueue.length === 0) {
-      out.push(row({ key: `leer:${b.id}`, kind: "bauschlange", icon: "kran", urgent: true, text: "Bauschlange leer", sub: sub ?? b.name, jump: { to: "base", baseId: b.id } }));
-    }
-    const free = TRAINERS.filter((id) => (s.buildings[id] ?? 0) >= 1 && !s.trainingQueue.some((o) => o.builtIn === id));
-    if (free.length > 0) {
-      out.push(row({ key: `ausbildung-frei:${b.id}`, kind: "ausbildung-frei", icon: free[0], text: `Ausbildung frei: ${free.map(nameOf).join(", ")}`, sub, jump: { to: "troops", baseId: b.id, seg: "ausbilden" } }));
-    }
+    // UX 0.43 (L-2): eine Zeile je Hafen; Leerlauf nur, wenn eine Handlung möglich ist. Die leere Bauschlange steht
+    // als Bauempfehlung unter „Nächster Schritt“ (lage.ts advice), nicht mehr hier.
+    const parts: { text: string; jump: LageRow["jump"] }[] = [];
+    const free = TRAINERS.filter((id) => (s.buildings[id] ?? 0) >= 1 && !s.trainingQueue.some((o) => o.builtIn === id)
+      && Object.keys(balance.units).some((u) => balance.units[u].builtIn === id && startTraining(s, u, 1, nowMs, balance, mods.get(b.id)).ok));
+    if (free.length > 0) parts.push({ text: `Ausbildung frei: ${free.map(nameOf).join(", ")}`, jump: { to: "troops", baseId: b.id, seg: "ausbilden" } });
     const slots = missionSlots(s, balance) - (used.get(b.id) ?? 0);
-    if (slots > 0) {
-      out.push(row({ key: `missionsplatz:${b.id}`, kind: "missionsplatz", icon: "anker", text: slots === 1 ? "1 Missionsplatz frei" : `${slots} Missionsplätze frei`, sub, jump: { to: "troops", baseId: b.id, seg: "einsatz" } }));
-    }
+    const fighters = Object.entries(s.units).some(([u, n]) => n > 0 && Object.values(balance.units[u]?.attack ?? {}).some((v) => Number(v) > 0));
+    if (slots > 0 && fighters) parts.push({ text: slots === 1 ? "1 Missionsplatz frei" : `${slots} Missionsplätze frei`, jump: { to: "troops", baseId: b.id, seg: "einsatz" } });
     const cap = storageCapacity(s, balance, mods.get(b.id));
     const full = balance.resources.filter((r) => cap > 0 && (s.resources[r] ?? 0) >= STORAGE_NEAR_FULL * cap);
     if (full.length > 0) {
       const pct = (r: string) => Math.min(100, Math.floor(((s.resources[r] ?? 0) / cap) * 100));
-      out.push(row({ key: `lager:${b.id}`, kind: "lager", icon: "lagerkomplex", text: `Lager fast voll: ${full.map((r) => `${nameOf(r)} ${pct(r)} %`).join(", ")}`, sub, jump: { to: "building", baseId: b.id, id: "lagerkomplex" } }));
+      parts.push({ text: `Lager fast voll: ${full.map((r) => `${nameOf(r)} ${pct(r)} %`).join(", ")}`, jump: { to: "building", baseId: b.id, id: "lagerkomplex" } });
+    }
+    if (parts.length > 0) {
+      const kind = parts.length > 1 ? "hafen" : parts[0].text.startsWith("Lager") ? "lager" : parts[0].text.startsWith("Ausbildung") ? "ausbildung-frei" : "missionsplatz";
+      const icon = kind === "lager" ? "lagerkomplex" : kind === "ausbildung-frei" ? free[0] : kind === "missionsplatz" ? "anker" : "hafenkommandantur";
+      out.push(row({ key: `hafen:${b.id}`, kind, icon, text: parts.map((p) => p.text).join(" · "), sub, jump: parts[0].jump }));
     }
     if (s.versorgungsmangel) {
       out.push(row({ key: `mangel:${b.id}`, kind: "versorgung", icon: "proviant", tone: "alarm", text: "Versorgungsmangel: keine Ausbildung, Angriff schwächer", sub, jump: { to: "building", baseId: b.id, id: "versorgungshof" } }));

@@ -104,7 +104,7 @@ async function syncWar(tx: Tx, nowMs: number): Promise<boolean> {
   if (!cfg) return false;
   const { wars, raids } = await warSituation(tx, nowMs);
   const pct = Math.round(marketCore.warPct(wars, raids, cfg) * 100) / 100;
-  const reason = wars === 0 && raids === 0 ? "Ruhige See – kaum Kämpfe"
+  const reason = wars === 0 && raids === 0 ? "Marktwetter ruhig – kaum Kämpfe"
     : `Kriegslage: ${wars} ${wars === 1 ? "Krieg" : "Kriege"}, ${raids} Kartell-Überfälle in 24 h`;
   const hold = cfg.holdHours * HOUR_MS;
   return upsertNews(tx, { key: "kriegslage", source: "kriegslage", resource: cfg.resource, pct, reason, startMs: nowMs, endMs: nowMs + hold, fadeMs: hold }, nowMs);

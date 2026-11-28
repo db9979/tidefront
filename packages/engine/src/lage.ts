@@ -4,7 +4,7 @@
 // brief: nur die Zahl fürs Navigationszeichen (Angriffe, Nachfristen, leere Bauschlangen, abholbare Belohnungen).
 // Entscheidung „Lagezentrum“ (packages/game-core/ENTSCHEIDUNGEN-5.md).
 import { and, eq, gt, inArray, notInArray, or } from "drizzle-orm";
-import { activeSatellites, nextPass, nightShieldWindow, radarWarningMinutes, type Mission, type Modifiers, type ResourceMap } from "@tidefront/game-core";
+import { activeSatellites, buildAdvice, nextPass, nextTrainingDeliveryAt, nightShieldWindow, radarWarningMinutes, settle, trainingDone, type BuildAdvice, type Mission, type Modifiers, type ResourceMap } from "@tidefront/game-core";
 import { COLS, HEX_W, tradePortNameAt } from "@tidefront/world";
 import { tables, type DbOrTx } from "@tidefront/db";
 import { balance, type Engine } from "./context.ts";
@@ -36,6 +36,17 @@ export interface LageView {
   /** Wartet auf dich: Zustände, die eine Handlung brauchen. */
   waiting: LageRow[];
   urgent: LageUrgent;
+  /** Bauempfehlung je Hafen mit freiem Bauplatz (UX 0.43, E-4): Lage „Nächster Schritt“ (idle) und Hafen „Empfohlen“. */
+  advice: LageAdvice[];
+}
+
+export interface LageAdvice {
+  baseId: number;
+  /** Hafenname nur bei mehreren Häfen. */
+  baseName: string | null;
+  /** Bauschlange leer (sonst nur ein freier Platz). */
+  idle: boolean;
+  options: BuildAdvice[];
 }
 
 /** Lagezentrum eines Spielers. brief: nur `urgent` (Navigationszeichen), Listen bleiben leer. */
@@ -43,7 +54,7 @@ export async function lageView(engine: Engine, playerId: number, opts: { brief?:
   const nowMs = Date.now();
   const db = engine.db;
   const bases = await basesOfPlayer(db, playerId);
-  const empty: LageView = { serverNow: nowMs, soon: [], underway: [], waiting: [], urgent: { attacks: 0, grace: 0, idleQueues: 0, rewards: 0, keys: [] } };
+  const empty: LageView = { serverNow: nowMs, soon: [], underway: [], waiting: [], urgent: { attacks: 0, grace: 0, idleQueues: 0, rewards: 0, keys: [] }, advice: [] };
   if (bases.length === 0) return empty;
   const mods = new Map<number, Modifiers>();
   for (const b of bases) mods.set(b.id, await modsOf(db, b, nowMs));
@@ -76,7 +87,13 @@ export async function lageView(engine: Engine, playerId: number, opts: { brief?:
   underway.sort((a, b) => (a.atMs ?? Infinity) - (b.atMs ?? Infinity) || a.key.localeCompare(b.key));
   const waiting = [...(await waitingRows(db, playerId, bases, mods, nowMs, rewardSources)), ...pol.waiting];
   for (const r of waiting) if (r.kind === "beitritt") urgent.keys.push(r.key); // TST-15: Zahl am Navigationszeichen
-  return { serverNow: nowMs, soon: inWindow, underway, waiting, urgent };
+  const advice: LageAdvice[] = [];
+  for (const b of bases) {
+    const st = settle(b.state, nowMs, balance, mods.get(b.id));
+    const options = buildAdvice(st, balance, nowMs, mods.get(b.id));
+    if (options.length > 0) advice.push({ baseId: b.id, baseName: harborSub(bases, b.id), idle: st.buildQueue.length === 0, options });
+  }
+  return { serverNow: nowMs, soon: inWindow, underway, waiting, urgent, advice };
 }
 
 /** Erkannte Angriffe auf eigene Häfen (Radar wie baseView; markiert neu Erkannte). */
@@ -167,7 +184,10 @@ async function convoyRows(db: DbOrTx, playerId: number, bases: BaseRow[], nowMs:
     const incoming = c.recipientId === playerId;
     const cargo = amounts(c.cargo as ResourceMap);
     const label = CONVOY_TEXT[c.kind] ?? "Konvoi";
-    const from = c.senderId === null ? `Handelshafen ${tradePortNameAt(c.fromCol, c.fromRow) ?? "?"}` : names.get(c.senderId) ?? "?";
+    // Feldertrag kommt vom Rohstofffeld (kein Handelshafen); Börse/Verträge ohne Absender vom Handelshafen.
+    const port = c.senderId === null && c.kind !== "feld" ? tradePortNameAt(c.fromCol, c.fromRow) : null;
+    const from = c.kind === "feld" ? `Rohstofffeld ${c.fromCol}/${c.fromRow}`
+      : c.senderId === null ? (port ? `Handelshafen ${port}` : "Handelshafen") : names.get(c.senderId) ?? "?";
     const sub = incoming
       ? [`von ${from}`, harborSub(bases, c.recipientBaseId)].filter(Boolean).join(" · ")
       : `an ${names.get(c.recipientId) ?? "?"}`;
@@ -198,7 +218,10 @@ function queueRows(bases: BaseRow[]): LageRow[] {
       out.push(row({ key: `bau:${b.id}:${o.buildingId}:${o.targetLevel}`, kind: "bau", atMs: o.finishesAt, icon: o.buildingId, text: `${nameOf(o.buildingId)} Stufe ${o.targetLevel} fertig`, sub, jump: { to: "building", baseId: b.id, id: o.buildingId } }));
     }
     for (const o of b.state.trainingQueue) {
-      out.push(row({ key: `ausbildung:${b.id}:${o.builtIn}:${o.id}:${o.finishesAt}`, kind: "ausbildung", atMs: o.finishesAt, icon: o.id, text: `${countsText({ [o.id]: o.count })} ausgebildet`, sub, jump: { to: "troops", baseId: b.id, seg: o.kind === "defense" ? "abwehr" : "ausbilden" } }));
+      // Teillieferung: „3 × Korvette ausgebildet · 1 fertig, nächste 14:05 Uhr“ (Zeitpunkt der Zeile = alle fertig).
+      const next = o.count > 1 ? nextTrainingDeliveryAt(o) : null;
+      const part = next !== null && next < o.finishesAt ? ` · ${fmtInt(trainingDone(o))} fertig, nächste ${clock(next)} Uhr` : "";
+      out.push(row({ key: `ausbildung:${b.id}:${o.builtIn}:${o.id}:${o.finishesAt}`, kind: "ausbildung", atMs: o.finishesAt, icon: o.id, text: `${countsText({ [o.id]: o.count })} ausgebildet${part}`, sub, jump: { to: "troops", baseId: b.id, seg: o.kind === "defense" ? "abwehr" : "ausbilden" } }));
     }
     const r = b.isHome ? b.state.research?.order : null;
     if (r) out.push(row({ key: `forschung:${r.techId}:${r.targetLevel}`, kind: "forschung", atMs: r.finishesAt, icon: "forschungsamt", text: `Forschung ${nameOf(r.techId)} Stufe ${r.targetLevel} fertig`, jump: { to: "research" } }));
@@ -232,4 +255,4 @@ async function worldRows(db: DbOrTx, bases: BaseRow[], nowMs: number): Promise<L
 }
 
 /** Kurzform für die Oberfläche ohne Hafen: leeres Lagezentrum. */
-export const noLage = (nowMs: number): LageView => ({ serverNow: nowMs, soon: [], underway: [], waiting: [], urgent: { attacks: 0, grace: 0, idleQueues: 0, rewards: 0, keys: [] } });
+export const noLage = (nowMs: number): LageView => ({ serverNow: nowMs, soon: [], underway: [], waiting: [], urgent: { attacks: 0, grace: 0, idleQueues: 0, rewards: 0, keys: [] }, advice: [] });

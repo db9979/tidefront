@@ -225,6 +225,13 @@
       "when": 1795817792388,
       "tag": "0031_messbarkeit",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795856776446,
+      "tag": "0032_lage_quittung",
+      "breakpoints": true
     }
   ]
 }

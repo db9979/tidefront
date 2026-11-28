@@ -72,6 +72,29 @@ export async function finishTraining(sql: Sql, baseId: number): Promise<void> {
 }
 
 /**
+ * Teillieferung: Ausbildung so vorspulen, dass die ersten `units` Einheiten des Auftrags von `builtIn` fertig sind
+ * (Zeiten und Ereignisse um die Restzeit bis zur Einheit `units` vorziehen), dann auf die Lieferung warten.
+ */
+export async function finishTrainingUnits(sql: Sql, baseId: number, builtIn: string, units: number): Promise<void> {
+  await sql.begin(async (tx) => {
+    const [row] = await tx`select state from base where id = ${baseId} for update`;
+    const s = row.state as State;
+    const o = (s.trainingQueue as State[]).find((x) => x.builtIn === builtIn)!;
+    const at = units >= o.count ? o.finishesAt : o.startedAt + Math.floor(((o.finishesAt - o.startedAt) * units) / o.count);
+    const delta = Math.round(at - Date.now() + 200);
+    if (delta <= 0) return;
+    for (const x of s.trainingQueue as State[]) { x.startedAt -= delta; x.finishesAt -= delta; }
+    await tx`update base set state = ${JSON.stringify(s)}::jsonb where id = ${baseId}`;
+    await tx`update game_event set due_at = due_at - ${delta} * interval '1 millisecond'
+             where base_id = ${baseId} and type = 'training_complete' and status = 'pending'`;
+  });
+  await until(async () => {
+    const o = ((await readState(sql, baseId)).trainingQueue as State[]).find((x) => x.builtIn === builtIn);
+    return !o || (o.done ?? 0) >= units;
+  }, `Teillieferung ${units}`);
+}
+
+/**
  * Mission vorspulen: alle Zeiten (Plan, Ankunft, Rückkehr, Ereignisse) um die Restzeit bis zum nächsten
  * Schritt vorziehen. Liefert den neuen Status, nachdem der Worker das Ereignis verarbeitet hat.
  */
@@ -105,7 +128,8 @@ export async function fastForwardMission(sql: Sql, missionId: number): Promise<s
  * Freies Küstenfeld für eine Gründung: 3–7 Feldschritte vom eigenen Hafen (nah genug, um es auf der Karte
  * anzutippen), mindestens 4 Schritte zu fremden Häfen, kein Nest, Feld oder Handelshafen, nicht am Kartenrand.
  */
-export async function foundingSpot(sql: Sql, home: { col: number; row: number }): Promise<{ col: number; row: number }> {
+/** maxKm: höchstens so weit vom Heimathafen; direct: Hafen wird direkt eingetragen (Gründungsabstand zu fremden Häfen egal). */
+export async function foundingSpot(sql: Sql, home: { col: number; row: number }, maxKm = Infinity, direct = false): Promise<{ col: number; row: number }> {
   const bases = await sql`select col, row from base`;
   const blocked = new Set<string>();
   for (const r of await sql`select col, row from nest union all select col, row from resource_field`) blocked.add(`${r.col},${r.row}`);
@@ -116,9 +140,9 @@ export async function foundingSpot(sql: Sql, home: { col: number; row: number })
       const h = { col, row };
       if (t[hexIndex(col, row)] !== "coast" || blocked.has(`${col},${row}`)) continue;
       const s = hexSteps(home, h);
-      if (s < 3 || s > 7 || !awayFromEdge(h)) continue;
+      if (s < 3 || s > 7 || !awayFromEdge(h) || hexDistanceKm(home, h) > maxKm) continue;
       if (nearestTradePort(h).distanceKm < 1) continue;
-      if (bases.some((b) => !(b.col === home.col && b.row === home.row) && hexSteps({ col: b.col as number, row: b.row as number }, h) < 4)) continue;
+      if (bases.some((b) => (b.col === h.col && b.row === h.row) || (!direct && !(b.col === home.col && b.row === home.row) && hexSteps({ col: b.col as number, row: b.row as number }, h) < 4))) continue;
       out.push({ col, row, s: s * 100 + Math.abs(row - home.row) });
     }
   }

@@ -9,7 +9,8 @@ import type { Target } from "../App.tsx";
 import { HexMap } from "./LazyHexMap.tsx";
 import { Button, Loading, Sheet } from "../ui.tsx";
 import { LagebildTab } from "../components/LagebildTab.tsx"; // Sichtungen (früher Karte → Sichtungen)
-import { MapLegend } from "../map/Legend.tsx";
+import { LegendBody } from "../map/Legend.tsx"; // im Blatt „Ebenen“
+import { Switch } from "../components/Switch.tsx";
 import { MAP_BTN } from "../map/controls.ts";
 import { Icon } from "../icons.tsx";
 import { RELATION_HEX, TacticalIcon, relationKind } from "../map/TacticalIcon.tsx";
@@ -58,6 +59,7 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase, layo
   // Sprungziel nur einmal verwenden: sonst öffnet sich das Blatt bei jeder Rückkehr zur Karte erneut.
   useEffect(() => { if (focus) onFocusUsed?.(); if (openSicht) onSichtungenUsed?.(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [sicht, setSicht] = useState(!!openSicht);
+  const [layers, setLayers] = useState(false); // Blatt „Ebenen“: Wetter, Sensoren, Legende
   const embedded = layout === "embedded";
   const side = layout === "side";
   /** Feld wählen; neben einem anderen Reiter (Desktop) wechselt das zuerst zur Karte. */
@@ -141,31 +143,13 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase, layo
             <button type="button" className={MAP_BTN} onClick={() => { setCenterOn(home); setRecenter((n) => n + 1); }} aria-label="Mein Hafen" title="Mein Hafen">
               <TacticalIcon kind="own" size={22} />
             </button>
-            <button
-              type="button"
-              aria-pressed={showWeather}
-              aria-label={showWeather ? "Wetter ausblenden" : "Wetter einblenden"}
-              title={showWeather ? "Wetter aus" : "Wetter an"}
-              className={`${MAP_BTN} ${showWeather ? "" : "opacity-60 !border-rule"}`}
-              onClick={() => setShowWeather((v) => { localStorage.setItem("tf-wetter", v ? "aus" : "an"); return !v; })}
-            >
-              <Icon id="wolke" size={24} />
+            {/* UX 0.43 (B6 / K-1): Sichtungen als Textknopf; Wetter, Sensoren und Legende im Blatt „Ebenen“. */}
+            <button type="button" className={`${MAP_BTN} !w-auto px-2 font-display uppercase text-[10px] tracking-[0.08em]`} onClick={() => setSicht(true)} title="Sichtungen: Sensoren, fremde Verbände, Satelliten, Radarposten" data-testid="map-sichtungen">
+              Sichtungen
             </button>
-            <button type="button" className={MAP_BTN} onClick={() => setSicht(true)} aria-label="Sichtungen" title="Sichtungen: Sensoren, fremde Verbände, Satelliten, Radarposten" data-testid="map-sichtungen">
-              <Icon id="sichtung" size={24} />
+            <button type="button" className={`${MAP_BTN} !w-auto px-2 font-display uppercase text-[10px] tracking-[0.08em]`} onClick={() => setLayers(true)} aria-haspopup="dialog" data-testid="map-ebenen">
+              Ebenen
             </button>
-            {map.data.intel.sensors.length > 0 && (
-              <button
-                type="button"
-                aria-pressed={showSensors}
-                aria-label={showSensors ? "Sensoren ausblenden" : "Sensoren einblenden"}
-                title={showSensors ? "Sensoren aus" : "Sensoren an"}
-                className={`${MAP_BTN} ${showSensors ? "" : "opacity-60 !border-rule"}`}
-                onClick={() => setShowSensors((v) => { localStorage.setItem("tf-sensoren", v ? "aus" : "an"); return !v; })}
-              >
-                <Icon id="radarstation" size={24} />
-              </button>
-            )}
           </>}
         />
         {/* Links oben nur noch das kleine Wetterkärtchen (aufklappbar) und die Feindwarnung. */}
@@ -182,7 +166,6 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase, layo
             {(() => { const c = hexCenter(sel.col, sel.row); return fmtPosition(c.lat, c.lon); })()}
           </div>
         )}
-        {!sel && <MapLegend />}
       </div>
       {!embedded && <MapPanels side={side}>
       {(() => {
@@ -287,6 +270,14 @@ export function MapScreen({ base, focus, onFocusUsed, onPlan, onSwitchBase, layo
         </div>
       )}
       </MapPanels>}
+      <Sheet open={layers} onClose={() => setLayers(false)} title="Ebenen und Legende" icon={<Icon id="wolke" size={36} />}>
+        <div className="mb-3 divide-y divide-rule">
+          <Switch label="Wetter" on={showWeather} onChange={(v) => { localStorage.setItem("tf-wetter", v ? "an" : "aus"); setShowWeather(v); }} />
+          {map.data.intel.sensors.length > 0 && <Switch label="Sensoren (Reichweiten)" on={showSensors} onChange={(v) => { localStorage.setItem("tf-sensoren", v ? "an" : "aus"); setShowSensors(v); }} />}
+        </div>
+        <p className="text-xs text-ink2 mb-2">„?“-Raute = Piratennest, Stufe unbekannt – erst aufklären.</p>
+        <LegendBody />
+      </Sheet>
       <Sheet open={sicht} onClose={() => setSicht(false)} title="Sichtungen" icon={<Icon id="sichtung" size={36} />}>
         <LagebildTab onShowOnMap={(t) => { setSicht(false); setMissionId(null); select(t); setCenterOn(t); setRecenter((n) => n + 1); }} />
       </Sheet>

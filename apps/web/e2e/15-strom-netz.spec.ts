@@ -11,7 +11,7 @@ test("Elektrolyse ausbauen: Gebäudeblatt, Stufe 1, Versorgung mit Ökostrom-Ant
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByText(/Strom-Stunden ergeben 1 Treibstoff/)).toBeVisible();
   await expectNoHorizontalOverflow(page, "Gebäudeblatt Elektrolyse");
-  await sheet.getByRole("button", { name: "Ausbau auf 1" }).click();
+  await sheet.getByRole("button", { name: /^Bauen/ }).click();
   await expect(page.getByText("Elektrolyse · Ausbau auf Stufe 1")).toBeVisible();
   await finishBuilds(seed.sql, player.baseId);
   await page.reload();
@@ -35,7 +35,8 @@ test.describe("mit freiem Gründungsfeld", () => {
 
 test("Seekabel zwischen eigenen Häfen legen, ansehen und trennen", async ({ page, player, seed }) => {
   // Zweiter eigener Hafen in Reichweite (Kopie des Heimathafens als Außenposten).
-  const spot = await foundingSpot(seed.sql, player);
+  // Innerhalb der Kabelreichweite (600 km); unter Parallel-Last sind die nächsten Felder oft schon belegt.
+  const spot = await foundingSpot(seed.sql, player, 550, true);
   const home = await readState(seed.sql, player.baseId);
   const colonyState = { ...home, buildings: { ...home.buildings, seekabel: 1 }, site: undefined, colony: { foundedAtMs: Date.now() } };
   const [col] = await seed.sql`insert into base (player_id, name, col, row, state, is_home)

@@ -2,6 +2,36 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.46.0 – 28.11.2026
+
+- Lage neu geordnet: oben dein Fortschritt („Platz 3 von 8 · 420 bis Platz 2 · Tag 5/42“, Serie der Tagesbefehle), dann Alarm, „Wartet auf dich“ mit „Alle abholen“ ohne Scrollen, der nächste Bauvorschlag („Bauhof frei · Chipfabrik 1 · 40 s · Bauen“), Unterwegs (jede Fahrt nur einmal), Als Nächstes (12 h), Weltpolitik in einer Zeile.
+- Neu: „Seit deinem letzten Besuch“ – wenn etwas passiert ist (Kampf, Bau oder Ausbildung fertig, Rangänderung, Nachricht, viel Produktion, neue Version), fasst eine Karte es zusammen.
+- Meldungen: Berichte · Post · Allianz · Saison. Saison bündelt Wertung, Bilanz, Erfolge und die Weltpolitik mit Kalender.
+- Neue Begriffe: „Marktwetter“ (statt Marktstimmung), Absender „Hafenmeisterei“ (statt Lagezentrum), Berichtsabschnitt „Umstände“ (statt Lage).
+- Hafen: „Empfohlen als Nächstes“ oben, noch nicht gebaute Gebäude eingeklappt. Gebäudeblatt mit fester Bauleiste („Ausbauen auf 5 · 3 min“).
+- Neulinge: Hafenname vorbelegt, Begrüßung auf zwei Seiten, „Erste Schritte“ oben, „Erste Einheiten ausbilden“.
+- Push-Benachrichtigungen werden einmal im passenden Moment angeboten (nach dem ersten Bau oder der ersten Mission).
+- Kampfbericht: „Verluste ersetzen“. Missionsplanung: „Wie letzte Mission“. Karte: Knöpfe „Sichtungen“ und „Ebenen“ (mit Legende), Namensschilder überlappen nicht mehr.
+
+## 0.45.0 – 28.11.2026
+
+- Menü, Handbuch, Einstellungen und Verwaltung sind eigene Ansichten: „Zurück“ (Knopf, Browser, Esc) führt dorthin, wo du herkamst. Jeder Menüeintrag steht nur einmal da.
+- Einstellungen in vier Gruppen: Benachrichtigungen (Push, Ruhezeit, Morgenbericht, E-Mail), Spiel (Nachtschild), Konto, Hilfe. Uhrzeiten im 24-Stunden-Format; Schalter ohne Wirkung sind ausgegraut und nennen den Grund.
+- Verwaltung mit vier Reitern: Übersicht, Spieler, Welt (Gefahrenzone mit Rückfrage), Statistik.
+- Breite Bildschirme: Handbuch, Einstellungen, Verwaltung, Forschung und Saison nutzen die volle Breite; „Karte groß“ holt die Karte zurück. Unten links Saison, Handbuch, Einstellungen, Verwaltung. Rohstoffe oben größer mit Lagerbalken, daneben dein Platz in der Rangliste.
+- Tastaturkürzel: 1–5 Reiter, A Alle abholen, M Karte groß, ? Handbuch, Komma Einstellungen, Esc schließt.
+- „Was hilft“ in der Missionsvorschau ragt am Handy nicht mehr über den Rand.
+
+## 0.44.0 – 28.11.2026
+
+- Ausbildung: Fertige Einheiten und Verteidigungsanlagen wandern einzeln in den Bestand, nicht erst am Ende des ganzen Auftrags – auch wenn du das Spiel nicht geöffnet hast. Bei einem Angriff verteidigen die schon fertigen mit.
+- Anzeige im Auftrag: „3 × Korvette · 1 fertig“, darunter „nächste in … · alle in …“, live. Die Bestandszahl steigt sofort.
+- Abbrechen: Fertige Einheiten bleiben, erstattet wird nur der Rest. Die Meldung „Ausbildung fertig“ kommt weiterhin einmal am Ende.
+
+## 0.43.1 – 28.11.2026
+
+- Lage und Konvoi-Blatt: Felderträge nennen jetzt ihr Rohstofffeld als Herkunft („von Rohstofffeld 66/23“) statt „von Handelshafen ?“.
+
 ## 0.43.0 – 28.11.2026
 
 Balance v1.35 – Werte gelten sofort, die Wertung wird neu berechnet.

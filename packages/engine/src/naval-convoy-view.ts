@@ -121,7 +121,7 @@ export async function convoysView(db: DbOrTx, playerId: number, nowMs: number): 
       cargo: exact ? cargo : null, size: cargoSizeClass(cargo, balance),
       escort: exact ? escort : null, escorted: recognized ? hasShips(escort) : null,
       events: routed ? ((c.events as ConvoyEvent[]) ?? []) : [],
-      sender: !recognized ? null : c.senderId === null ? (port ? `Handelshafen ${port}` : null) : c.senderId === playerId ? "du" : await nameOf(c.senderId),
+      sender: !recognized ? null : c.kind === "feld" ? `Rohstofffeld ${c.fromCol}/${c.fromRow}` : c.senderId === null ? (port ? `Handelshafen ${port}` : null) : c.senderId === playerId ? "du" : await nameOf(c.senderId),
       recipient: !recognized ? null : c.recipientId === playerId ? "du" : await nameOf(c.recipientId),
       recipientBase: recognized ? baseNames.get(c.recipientBaseId) ?? null : null,
       intel: own || !level || !sight ? null : { age: "live", atMs: nowMs, source: sourceAt(sight, pos.at.x, pos.at.y), level },

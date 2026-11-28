@@ -24,7 +24,9 @@ export async function rankingView(engine: Engine, playerId: number) {
   const nowMs = Date.now();
   const s = await runningSeason(engine.db);
   const seasonId = s?.id ?? null;
-  if (!cache || cache.seasonId !== seasonId || nowMs - cache.at > RANKING_TTL_MS) {
+  // Neu angemeldete Spieler fehlen im Zwischenspeicher: dann neu rechnen, damit jeder sich selbst findet
+  // (Lage-Fortschrittszeile seit UX 0.43 fragt die Wertung bei jedem Start ab).
+  if (!cache || cache.seasonId !== seasonId || nowMs - cache.at > RANKING_TTL_MS || !cache.rows.some((r) => r.playerId === playerId)) {
     const rows = await computeStandings(engine.db, s ? s.startsAt.getTime() : 0, nowMs);
     cache = { at: nowMs, seasonId, rows };
   }

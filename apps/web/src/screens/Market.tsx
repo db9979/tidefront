@@ -15,6 +15,7 @@ import { fmtDuration, useNow } from "../lib/time.ts";
 import { liveBaseAt } from "../lib/live-base.ts"; // Bestand live hochgerechnet
 import { Card, Loading, SegmentPanel, Segments, useSegment } from "../ui.tsx";
 import { WhatHelps } from "../components/Remedy.tsx";
+import { useNav } from "../lib/nav.ts";
 import { PlayerTrade } from "../components/PlayerTrade.tsx";
 import { PlayerTradeStats } from "../components/TradeValue.tsx";
 import { useWorldEvents } from "../components/WorldEvents.tsx";
@@ -43,6 +44,7 @@ export function MarketScreen({ base, initialResource, initialOrder }: { base: Ba
   const we = useWorldEvents();
   const naval = useNaval();
   const now = useNow();
+  const nav = useNav();
   const [resource, setResource] = useState(initialResource ?? "stahl");
   const [seg, setSeg] = useSegment<Seg>("boerse", SEGS.map((x) => x.id), "handel");
   const ready = !!m.data && !!meta.data;
@@ -91,7 +93,7 @@ export function MarketScreen({ base, initialResource, initialOrder }: { base: Ba
     <div>
       <Segments label="Börse" value={seg} onChange={setSeg} items={SEGS} controls />
       <SegmentPanel label="Börse" value={seg}>
-      <MarketHeader credits={credits} creditLimit={base.market.creditLimit} status={status} port={port} travelMs={travelMs} />
+      <MarketHeader credits={credits} creditLimit={base.market.creditLimit} status={status} port={port} travelMs={travelMs} compact={seg !== "handel"} />
       {/* Kompakte Marktlage-Zeile über dem Inhalt (nicht auf „Marktlage“ selbst). */}
       {seg !== "nachrichten" && <MarketNews compact />}
 
@@ -112,6 +114,8 @@ export function MarketScreen({ base, initialResource, initialOrder }: { base: Ba
                 <div className="flex gap-1 mt-1.5" aria-hidden="true">
                   {Array.from({ length: fromLevel }, (_, i) => <span key={i} className={`h-1.5 flex-1 ${i < harbor ? "bg-messing" : "bg-rule"}`} />)}
                 </div>
+                {/* UX 0.43 (B-2): direkter Sprung zum Gebäude. */}
+                <button type="button" className="tap mt-2 rounded-lg btn-quiet px-3 py-1.5 font-display uppercase tracking-[0.08em] text-[12px]" onClick={() => nav.go({ to: "building", id: "hafenkommandantur" })}>Zur Hafenkommandantur</button>
                 <WhatHelps code="locked" className="mt-2" />
               </div>
             </div>

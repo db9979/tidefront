@@ -15,6 +15,10 @@ export const player = pgTable("player", {
   isAdmin: boolean("is_admin").notNull().default(false),
   /** Letzte Aktivität (höchstens alle paar Minuten fortgeschrieben). */
   lastSeenAt: ts("last_seen_at"),
+  /** UX 0.43 (Rückkehrkarte): letzte Quittung „Seit deinem letzten Besuch“ (Abholen/Schließen auf der Lage); null = nie. */
+  lageAckAt: ts("lage_ack_at"),
+  /** Rang in der Saison zur letzten Quittung (für „Platz 3 → 2“); null = unbekannt. */
+  lageAckRank: integer("lage_ack_rank"),
   /** KI-Spieler: Spielweise ("haendler" | "festung" | "freibeuter"); null = Mensch. */
   botProfile: text("bot_profile"),
   /** KI-Spieler: Einstellungen der Verwaltung ({ active, attackHumans }). */

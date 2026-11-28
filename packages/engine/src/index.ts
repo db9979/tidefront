@@ -130,7 +130,8 @@ export { cancelContract } from "./contracts-cancel.ts";
 export { contractBandView, contractsView } from "./contracts-view.ts";
 export { voidContracts } from "./contracts-run.ts";
 // Lagezentrum (Basis → Lage): alles Anstehende aller eigenen Häfen gebündelt; brief nur die Zahl fürs Navigationszeichen.
-export { lageView, noLage, type LageJump, type LageRow, type LageUrgent, type LageView } from "./lage.ts";
+export { lageView, noLage, type LageAdvice, type LageJump, type LageRow, type LageUrgent, type LageView } from "./lage.ts";
+export { lageAck, lageSince, SINCE_MAX_MS, type LageSince } from "./lage-since.ts"; // UX 0.43: Rückkehrkarte „Seit deinem letzten Besuch“
 // Live-Verbindungen je Spieler (TE-04): Leck beim Trennen während der Prüfung, Neuprüfung der Sitzung, Obergrenze.
 export { LiveHub, type LiveHubOptions, type LiveSocket } from "./live-sockets.ts";
 // AN-06/AN-07: Saisonwechsel-Nachricht, Push-Bündel und Ruhezeit.

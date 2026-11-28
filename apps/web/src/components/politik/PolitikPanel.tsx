@@ -18,11 +18,12 @@ const RESULT_SHOW_MS = 2 * DAY;
 
 const windowLabel = (w: Win) => (w.slot === "gezeit" && w.source === "plan" ? "Gezeit" : w.source === "admin" ? "Abgesagt" : "Seerat-Beschluss");
 
-export function PolitikPanel() {
+/** full (Meldungen → Saison → Welt, UX 0.43): Kalender als Zeitleiste offen, Überschrift ohne Kartenrahmen-Wiederholung. */
+export function PolitikPanel({ full = false }: { full?: boolean } = {}) {
   const q = usePolitik();
   const d = q.data;
   const now = useCountdownNow(d?.nextChangeMs, ...(d?.seerat.map((s) => s.closesMs) ?? []));
-  if (!d || !d.enabled) return null;
+  if (!d || !d.enabled) return full && d ? <p className="panel rounded-xl p-3.5 text-sm text-ink2" data-testid="politik-off">Weltpolitik ist in dieser Saison nicht aktiv.</p> : null;
   const shown = d.windows.filter((w) => w.effect !== "ruhig" && w.endMs > now && (w.active || w.announced));
   const open = d.seerat.filter((s) => s.status === "offen");
   const results = d.seerat.filter((s) => s.status === "geschlossen" && s.tally && now - s.closesMs < RESULT_SHOW_MS);
@@ -53,7 +54,7 @@ export function PolitikPanel() {
       </ul>
       {open.map((s) => <SessionVote key={s.id} s={s} now={now} />)}
       {results.map((s) => <SessionResult key={s.id} s={s} now={now} />)}
-      <Calendar windows={d.windows} now={now} />
+      <Calendar windows={d.windows} now={now} initialOpen={full} />
     </section>
   );
 }
@@ -137,8 +138,9 @@ function PaktOffer({ offer }: { offer: PolitikOverview["pakte"][number] }) {
   );
 }
 
-function Calendar({ windows, now }: { windows: Win[]; now: number }) {
-  const [open, setOpen] = useState(false);
+function Calendar({ windows, now, initialOpen = false }: { windows: Win[]; now: number; initialOpen?: boolean }) {
+  const [open, setOpen] = useState(initialOpen);
+  const firstFuture = windows.findIndex((w) => w.endMs > now);
   if (windows.length === 0) return null;
   return (
     <div className="mt-2">
@@ -147,8 +149,10 @@ function Calendar({ windows, now }: { windows: Win[]; now: number }) {
       </button>
       {open && (
         <ul className="mt-1 text-xs" data-testid="politik-calendar">
-          {windows.map((w) => (
-            <li key={w.id} className={`dotted-row py-1 flex gap-2 ${w.endMs <= now ? "text-ink2" : ""}`}>
+          {windows.map((w, i) => (
+            <li key={w.id} className={`dotted-row py-1 flex flex-wrap gap-2 ${w.endMs <= now ? "text-ink2" : ""}`}>
+              {/* Zeitleiste: Marke „jetzt“ vor dem ersten noch offenen Fenster. */}
+              {i === firstFuture && i > 0 && <span className="w-full -mt-1 mb-0.5 border-t-2 border-siegel text-[10px] uppercase tracking-[0.14em] text-siegel" data-testid="politik-now">jetzt</span>}
               <span className="mono shrink-0">{fmtRange(w.startMs, w.endMs, now)}</span>
               <span className="flex-1 min-w-0">{windowLabel(w)}: {w.announced || w.slot === "woche" ? w.name : "angekündigt 24 h vorher"}</span>
               {w.active && <Badge tone="green">jetzt</Badge>}

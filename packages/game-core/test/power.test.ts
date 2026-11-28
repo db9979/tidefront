@@ -181,7 +181,11 @@ test("Ausbildung ohne Strom langsamer; Fertigstellung beim Start fest und konsis
   assert.equal(a.order.finishesAt, T0 + 300 * 1000);
   // Ohne Strom: Mindesttempo power.minSpeed (0,25).
   assert.equal(b.order.finishesAt, T0 + 300 * 1000 / balance.power!.minSpeed);
-  assert.deepEqual(completeTraining(b.base, b.order.finishesAt - 1, balance), { ok: false, code: "not_finished" });
+  // Teillieferung: 9 der 10 sind kurz vor Schluss da, die letzte genau zur (stromgedehnten) Fertigstellung.
+  const almost = completeTraining(b.base, b.order.finishesAt - 1, balance);
+  assert.ok(almost.ok);
+  assert.equal(almost.base.units.schuetzen, 9);
+  assert.equal(almost.base.trainingQueue[0].done, 9);
   const done = completeTraining(b.base, b.order.finishesAt, balance);
   assert.ok(done.ok);
   assert.equal(done.base.units.schuetzen, 10);

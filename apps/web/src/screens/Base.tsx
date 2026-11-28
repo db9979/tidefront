@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { shy } from "../lib/research.ts";
 import { trpc, trpcClient, type Balance, type BaseData } from "../lib/trpc.ts";
@@ -14,13 +15,14 @@ import { ReasonLine, useWhatHelps } from "../components/Remedy.tsx"; // „Was h
 import { Supply, Protection } from "../components/BaseInfo.tsx"; // Versorgung (inkl. PowerGrid), Schutz
 import { HarborVignette, fmtDeg } from "../components/Vignette.tsx";
 import { hexCenter } from "@tidefront/world";
-import { Timeline } from "../components/Timeline.tsx";
+import { HarborAdvice, useHarborAdvice } from "../components/HarborAdvice.tsx";
+import { askPushAfter } from "../components/PushAsk.tsx"; // A7: Push nach dem ersten Bau anbieten // UX 0.43 (B5): Empfohlen als Nächstes
 import { researchNote, roman, techName } from "../lib/research.ts";
 import { buildingBreakdown } from "../lib/breakdown.ts";
 import { Breakdown } from "../components/Breakdown.tsx";
 import { IntelPanel, sabotagedUntil } from "../components/Intel.tsx"; // Nachrichtendienst
 import { buildingLive, harborWeather } from "../lib/live-art.ts"; // Bewegte Gebäude
-import { CatchUpLine, CreditCost, buildCostSplit, useBuildCost } from "../components/CatchUp.tsx"; // Aufholhilfe: Baugutschrift
+import { CatchUpLine, CreditCost, useBuildCost } from "../components/CatchUp.tsx"; // Aufholhilfe: Baugutschrift
 import { upgradeCost, type Balance as CoreBalance } from "@tidefront/game-core";
 
 const invalidateBase = () => [trpc.base.pathFilter().queryKey];
@@ -47,11 +49,15 @@ export function BaseScreen(props: {
   const now = useNow();
   const res = liveResources(base, asOf, now);
   const queue = base.buildQueue;
-  const queueFull = queue.length >= base.buildQueueSlots;
   const byId = Object.fromEntries(base.buildings.map((b) => [b.id, b]));
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const windCut = meta.data?.balance.buildings.windpark?.stormCutoff;
   const live = (b: Building) => buildingLive(base, b.id, b.level, now, windCut);
+  const recommended = new Set(useHarborAdvice(base).map((o) => o.buildingId));
+  const [showUnbuilt, setShowUnbuilt] = useState(false);
+  const built = (id: string) => !!byId[id] && (byId[id].level > 0 || byId[id].planned > 0);
+  const unbuilt = GROUPS.flatMap((g) => g.ids).filter((id) => byId[id] && !built(id));
+  const tile = (id: string) => <BuildingTile key={id} b={byId[id]} live={live(byId[id])} sabotaged={sabotagedUntil(base, id, now) !== null} recommended={recommended.has(id)} running={queue[0]?.buildingId === id} queued={queue.some((o) => o.buildingId === id)} onOpen={() => setSheet(id)} />;
 
   // Basis → Hafen (screens/Basis.tsx legt Banner und Unterreiter darüber; Aufträge stehen seit dem Umbau in der Lage):
   // Kopf → Bauhof → Gebäude → Zeitleiste → Versorgung/Schutz.
@@ -74,20 +80,31 @@ export function BaseScreen(props: {
         </div>
       </section>
 
-      {/* Bauhof (Bauschlange) */}
+      {/* UX 0.43 (B5): Empfehlung oben, dann Bauhof (Bauschlange) */}
+      <HarborAdvice base={base} onOpen={setSheet} />
       <BuildYard base={base} now={now} onResearch={props.onResearch} />
 
-      {/* Gebäudegruppen */}
-      {GROUPS.map((g) => (
+      {/* Gebäudegruppen: nur gebaute; Stufe 0 eingeklappt unter „Noch nicht gebaut“. „Als Nächstes“ steht auf der Lage. */}
+      {GROUPS.map((g) => g.ids.some(built) && (
         <Card key={g.title} title={g.title}>
-          <div className="grid grid-cols-3 gap-2">
-            {g.ids.map((id) => byId[id] && <BuildingTile key={id} b={byId[id]} stock={buildCostSplit(base, byId[id].cost, meta.data?.balance as CoreBalance | undefined).stock} live={live(byId[id])} sabotaged={sabotagedUntil(base, id, now) !== null} res={res} queueFull={queueFull} running={queue[0]?.buildingId === id} queued={queue.some((o) => o.buildingId === id)} onOpen={() => setSheet(id)} />)}
-          </div>
+          <div className="grid grid-cols-3 gap-2">{g.ids.filter(built).map(tile)}</div>
         </Card>
       ))}
-
-      {/* Zeitleiste (die volle Liste steht in Basis → Lage) */}
-      <Timeline base={base} limit={2} />
+      {unbuilt.length > 0 && (
+        <Card title={<button type="button" className="tap w-full text-left" aria-expanded={showUnbuilt} onClick={() => setShowUnbuilt(!showUnbuilt)}>Noch nicht gebaut ({unbuilt.length}) {showUnbuilt ? "▴" : "▾"}</button>}>
+          {showUnbuilt ? <div className="grid grid-cols-3 gap-2" data-testid="unbuilt">{unbuilt.map(tile)}</div>
+            : (
+              <div className="flex flex-wrap gap-1.5">
+                {unbuilt.map((id) => (
+                  <button key={id} type="button" aria-label={`${label(id)} 0 (noch nicht gebaut)`} onClick={() => setSheet(id)}
+                    className={`tap rounded-full border px-2.5 py-1 text-xs flex items-center gap-1 ${recommended.has(id) ? "border-moos text-moos" : "border-rule text-ink2"}`}>
+                    <Icon id={id} size={16} />{label(id)}
+                  </button>
+                ))}
+              </div>
+            )}
+        </Card>
+      )}
 
       {/* Versorgung (inkl. Strom) und Schutz – einklappbar */}
       <Supply base={base} />
@@ -167,7 +184,7 @@ function BuildYard({ base, now, onResearch }: { base: BaseData; now: number; onR
       )}
       {queue.length > 1 && <p className="text-xs text-slate-400 mt-1">Abbruch: der laufende Auftrag nach Restzeit, wartende voll erstattet. Spätere Stufen desselben Gebäudes fallen mit weg.</p>}
       <ErrorLine text={cancel.error} code={cancel.code} />
-      <p className="text-xs text-ink2 flex items-center gap-1.5 mt-2"><span className="diamond bg-moos shrink-0" aria-hidden="true" /> = jetzt ausbaubar (Rohstoffe reichen, Platz in der Schlange frei)</p>
+      <p className="text-xs text-ink2 flex items-center gap-1.5 mt-2"><span className="diamond bg-moos shrink-0" aria-hidden="true" /> = empfohlen als Nächstes (siehe oben)</p>
       <ResearchLine base={base} now={now} onOpen={onResearch} />
       <CatchUpLine base={base} />
     </Card>
@@ -177,7 +194,8 @@ function BuildYard({ base, now, onResearch }: { base: BaseData; now: number; onR
 /** Kleine Statuszeile der Forschung im Bauhof (nur mit Forschungsamt): läuft / fertig / frei; antippen öffnet die Forschung. */
 function ResearchLine({ base, now, onOpen }: { base: BaseData; now: number; onOpen: () => void }) {
   const r = base.research;
-  if (!r) return null;
+  // UX 0.43 (H-1): ohne Forschungsamt keine Forschungszeile.
+  if (!r || (base.buildings.find((b) => b.id === "forschungsamt")?.level ?? 0) < 1) return null;
   const o = r.order;
   const text = r.pendingChoice ? "Durchbruch – Belohnung wählen" : !o ? "Forschungsamt frei – neue Forschung wählen"
     : `${techName(o.techId)} Stufe ${roman(o.targetLevel)} · ${o.finishesAt <= now ? "wird abgeschlossen …" : `noch ${fmtDuration(o.finishesAt - now)}`}`;
@@ -191,8 +209,7 @@ function ResearchLine({ base, now, onOpen }: { base: BaseData; now: number; onOp
   );
 }
 
-function BuildingTile({ b, stock, live, res, queueFull, running, queued, onOpen, sabotaged }: { b: Building; stock: Record<string, number> | null; live: Live; res: Record<string, number>; queueFull: boolean; running: boolean; queued: boolean; onOpen: () => void; sabotaged?: boolean }) {
-  const can = !queueFull && !b.requires && b.planned < b.maxAllowed && affordable(stock, res); // Aufholhilfe: nach Abzug der Baugutschrift
+function BuildingTile({ b, live, recommended, running, queued, onOpen, sabotaged }: { b: Building; live: Live; recommended: boolean; running: boolean; queued: boolean; onOpen: () => void; sabotaged?: boolean }) {
   return (
     <button
       type="button"
@@ -205,7 +222,7 @@ function BuildingTile({ b, stock, live, res, queueFull, running, queued, onOpen,
         <span className={`w-[22px] h-[22px] rounded-full grid place-items-center text-[11px] mono border ${b.level > 0 ? "border-ink text-ink" : "border-rule text-ink2"}`}>{b.level}</span>
         {sabotaged ? <Badge tone="red">sabotiert</Badge> : running ? <Badge tone="red">Ausbau</Badge> : queued ? <Badge tone="sea">→ {b.planned}</Badge> : null}
       </span>
-      {can && <span className="absolute top-1.5 left-1.5 diamond bg-moos" title="Ausbau möglich" aria-label="Ausbau jetzt möglich" />}
+      {recommended && <span className="absolute top-1.5 left-1.5 diamond bg-moos" title="Empfohlen" aria-label="Empfohlen als Nächstes" />}
     </button>
   );
 }
@@ -271,18 +288,21 @@ function BuildingSheet({ b, live, base, res, onClose, onTroops, onResearch }: { 
         </div>
       )}
       {b.planned > b.level && <p className="text-sm text-sea-300 mb-2">In der Bauschlange bis Stufe {b.planned}. Ein weiterer Ausbau wird dahinter eingereiht.</p>}
-      {reason && <ReasonLine code={reasonCode} text={reason} detail={{ cost: b.cost, building: b.id }} open={help} onOpenChange={setHelp} className="text-sm text-brass-300 mb-2" />}
-      <ErrorLine text={up.error} code={up.code} detail={{ cost: b.cost, building: b.id }} />
-      <div className="flex gap-2">
-        {trains && b.level > 0 && <Button kind="secondary" className="flex-1" onClick={() => { onClose(); onTroops(); }}>Ausbilden</Button>}
-        {b.id === "forschungsamt" && <Button kind="secondary" className="flex-1" onClick={() => { onClose(); onResearch(); }}>Forschung</Button>}
-        {!maxed && (
-          <Button className="flex-1" disabled={!!reason || up.busy} onBlocked={reasonCode ? () => setHelp(!help) : undefined} onClick={async () => { const r = await up.run({ buildingId: b.id }); if (r?.ok) onClose(); }}>
-            {used > 0 ? `Einreihen: Stufe ${target}` : `Ausbau auf ${target}`}
-          </Button>
-        )}
+      {b.id === "hafenkommandantur" && <p className="text-xs text-slate-400 mb-2">Missionsplätze jetzt: {base.missionSlots}</p>}
+      {/* UX 0.43 (A4 / H-2): feste Aktionsleiste am Blattende – Bauknopf mit Dauer immer sichtbar, ohne Scrollen. */}
+      <div className="sticky bottom-0 -mx-4 px-4 pt-2 pb-1 mt-2 bg-card border-t-[3px] border-double border-ink z-10" data-testid="building-actions">
+        {reason && <ReasonLine code={reasonCode} text={reason} detail={{ cost: b.cost, building: b.id }} open={help} onOpenChange={setHelp} className="text-sm text-brass-300 mb-1.5" />}
+        <ErrorLine text={up.error} code={up.code} detail={{ cost: b.cost, building: b.id }} />
+        <div className="flex gap-2">
+          {trains && b.level > 0 && <Button kind="secondary" className="flex-1 whitespace-nowrap !px-2" onClick={() => { onClose(); onTroops(); }}>Ausbilden</Button>}
+          {b.id === "forschungsamt" && <Button kind="secondary" className="flex-1 whitespace-nowrap !px-2" onClick={() => { onClose(); onResearch(); }}>Forschung</Button>}
+          {!maxed && (
+            <Button className="flex-[2] whitespace-nowrap !px-2" disabled={!!reason || up.busy} onBlocked={reasonCode ? () => setHelp(!help) : undefined} onClick={async () => { const r = await up.run({ buildingId: b.id }); if (r?.ok) { onClose(); askPushAfter("bau"); } }}>
+              {used > 0 ? `Einreihen: Stufe ${target}` : b.planned === 0 ? "Bauen" : `Ausbauen auf ${target}`}{b.seconds !== null ? ` · ${fmtSeconds(b.seconds)}` : ""}
+            </Button>
+          )}
+        </div>
       </div>
-      {b.id === "hafenkommandantur" && <p className="text-xs text-slate-400 mt-2">Missionsplätze jetzt: {base.missionSlots}</p>}
     </Sheet>
   );
 }
@@ -291,23 +311,28 @@ function BuildingSheet({ b, live, base, res, onClose, onTroops, onResearch }: { 
 function StagePictures({ id, level, target, live }: { id: string; level: number; target: number | null; live: Live }) {
   const next = nextStageLevel(level);
   const changes = target !== null && stageOf(target) !== stageOf(level);
+  // UX 0.43 (H-2): ein kleines Bild, solange der Ausbau das Bild nicht ändert; zwei nur, wenn es sichtbar wächst.
+  if (!changes) {
+    return (
+      <div className="mb-3 flex items-center gap-3">
+        <figure className="rounded-xl bg-[#f6f1e5] border border-rule p-1 shrink-0"><BuildingArt id={id} level={level} size={84} live={live} /></figure>
+        <p className="text-xs text-ink2">{target === null ? "Prachtbau – höchste Ausbaustufe." : next !== null ? `Neues Ausbaubild ab Stufe ${next}.` : ""}</p>
+      </div>
+    );
+  }
   return (
     <div className="mb-3">
       <div className="grid grid-cols-2 gap-2">
         <figure className="rounded-xl bg-[#f6f1e5] border border-rule p-1.5 flex flex-col items-center">
-          <BuildingArt id={id} level={level} size={128} live={live} />
+          <BuildingArt id={id} level={level} size={104} live={live} />
           <figcaption className="text-[11px] uppercase tracking-wider text-slate-400 mt-1">Jetzt · Stufe {level}</figcaption>
         </figure>
-        {target !== null ? (
-          <figure className={`rounded-xl bg-[#f6f1e5] border p-1.5 flex flex-col items-center ${changes ? "border-moos/60" : "border-rule"}`}>
-            <BuildingArt id={id} level={target} size={128} />
-            <figcaption className={`text-[11px] uppercase tracking-wider mt-1 ${changes ? "text-emerald-300" : "text-slate-400"}`}>Stufe {target}</figcaption>
-          </figure>
-        ) : (
-          <div className="rounded-xl border border-rule p-2 grid place-items-center text-center text-xs text-ink2">Prachtbau – höchste Ausbaustufe.</div>
-        )}
+        <figure className="rounded-xl bg-[#f6f1e5] border border-moos/60 p-1.5 flex flex-col items-center">
+          <BuildingArt id={id} level={target!} size={104} />
+          <figcaption className="text-[11px] uppercase tracking-wider mt-1 text-emerald-300">Stufe {target}</figcaption>
+        </figure>
       </div>
-      {next !== null && <p className="text-xs text-ink2 mt-1">{changes ? "Mit diesem Ausbau wächst das Gebäude sichtbar." : `Neues Ausbaubild ab Stufe ${next}.`}</p>}
+      <p className="text-xs text-ink2 mt-1">Mit diesem Ausbau wächst das Gebäude sichtbar.</p>
     </div>
   );
 }

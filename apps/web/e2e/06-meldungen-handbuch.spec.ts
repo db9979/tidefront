@@ -7,27 +7,27 @@ test("Meldungen: alle Unterreiter", async ({ page, player }) => {
   await page.goto("/");
   await page.getByRole("navigation").getByRole("button", { name: /^Meldungen/ }).click();
   const tabs = page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab");
-  // Navigationsumbau: vier Reiter (Lage → Basis, Lagebild → Karte „Sichtungen“, Allianz aus Truppen).
+  // Vier kurze Reiter (UX 0.43, E-2/E-6): Berichte · Post · Allianz · Saison.
   await expect(tabs).toHaveCount(4);
   await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Berichte\s*\d*$/ })).toHaveAttribute("aria-selected", "true");
-  for (const name of ["Berichte", "Nachrichten", "Allianz", "Rangliste"]) {
+  for (const name of ["Berichte", "Post", "Allianz", "Saison"]) {
     await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}\\s*\\d*$`) }).click();
     await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}\\s*\\d*$`) })).toHaveAttribute("aria-selected", "true");
     await expectNoHorizontalOverflow(page, `Meldungen · ${name}`);
   }
   // Kein Scrollpfeil mehr: alle vier Reiter passen bei 390 px.
-  for (const name of ["Berichte", "Rangliste"]) await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}`) })).toBeInViewport();
-  // Rangliste zeigt den eigenen Spieler; Bilanz und Erfolge sind Abschnitte der Rangliste.
-  await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Rangliste/ }).click();
+  for (const name of ["Berichte", "Saison"]) await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}`) })).toBeInViewport();
+  // Saison zeigt die Wertung mit dem eigenen Spieler; Bilanz, Erfolge und Welt sind Abschnitte der Saison.
+  await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Saison/ }).click();
   await expect(page.getByRole("tabpanel").getByText(player.name).first()).toBeVisible();
-  const inner = page.getByRole("tablist", { name: "Rangliste" });
-  for (const name of ["Bilanz", "Erfolge", "Wertung"]) {
+  const inner = page.getByRole("tablist", { name: "Saison" });
+  for (const name of ["Bilanz", "Erfolge", "Welt", "Wertung"]) {
     await inner.getByRole("tab", { name: new RegExp(`^${name}`) }).click();
     await expect(inner.getByRole("tab", { name: new RegExp(`^${name}`) })).toHaveAttribute("aria-selected", "true");
-    await expectNoHorizontalOverflow(page, `Meldungen · Rangliste · ${name}`);
+    await expectNoHorizontalOverflow(page, `Meldungen · Saison · ${name}`);
   }
   // Pfeiltasten wechseln den Reiter (Tabs-Muster).
-  await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Rangliste/ }).focus();
+  await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Saison/ }).focus();
   await page.keyboard.press("ArrowLeft");
   await expect(page.getByRole("tab", { name: /^Allianz/ })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("tab", { name: /^Allianz/ })).toBeFocused();
@@ -49,7 +49,6 @@ test("Handbuch: Kapitel, Neuigkeiten, Einstellungen, Verwaltung", async ({ page,
   await page.getByRole("button", { name: "Menü", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: /^Handbuch/ }).click();
   await expect(page.getByRole("heading", { name: "Handbuch" })).toBeVisible();
-  await expect(page.getByText(`Angemeldet als ${player.name}`)).toBeVisible();
   await expectNoHorizontalOverflow(page, "Handbuch");
 
   // Jedes Kapitel aufklappen und prüfen.
@@ -64,8 +63,8 @@ test("Handbuch: Kapitel, Neuigkeiten, Einstellungen, Verwaltung", async ({ page,
     await expectNoHorizontalOverflow(page, `Handbuch · ${title}`);
   }
 
-  // Sprungleiste öffnet ein Kapitel.
-  await page.getByRole("navigation", { name: "Kapitel" }).getByRole("button", { name: "Börse" }).click();
+  // Kapitelübersicht (Filterchips) öffnet ein Kapitel.
+  await page.getByRole("navigation", { name: "Kapitel" }).getByRole("radio", { name: "Börse" }).click();
   await expect(page.locator("#hb-boerse").getByRole("button").first()).toHaveAttribute("aria-expanded", "true");
 
   // Was ist neu?
@@ -74,12 +73,19 @@ test("Handbuch: Kapitel, Neuigkeiten, Einstellungen, Verwaltung", async ({ page,
   await expectNoHorizontalOverflow(page, "Was ist neu");
   await page.keyboard.press("Escape");
 
-  // Einstellungen und Verwaltung
-  await page.getByRole("button", { name: "Einstellungen" }).last().click();
+  // Querverweis Einstellungen (Textlink): Zurück führt ins Handbuch zurück.
+  await page.getByTestId("handbook-screen").getByRole("button", { name: "Einstellungen", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Einstellungen" })).toBeVisible();
+  await expect(page.getByTestId("settings-screen").getByText(player.name, { exact: true })).toBeVisible(); // Konto: angemeldet als
   await expectNoHorizontalOverflow(page, "Einstellungen");
-  await page.getByRole("button", { name: "Verwaltung öffnen" }).click();
+  await page.getByRole("button", { name: "Zurück" }).click();
+  await expect(page.getByRole("heading", { name: "Handbuch" })).toBeVisible();
+
+  // Verwaltung nur über das Menü (eigene Ansicht), Spieler-Reiter mit Einladungscodes.
+  await page.getByRole("button", { name: "Menü", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /^Verwaltung/ }).click();
   await expect(page.getByRole("heading", { name: "Verwaltung" })).toBeVisible();
+  await page.getByRole("tab", { name: "Spieler" }).click();
   await expect(page.getByRole("heading", { name: "Einladungscodes" })).toBeVisible();
   await expectNoHorizontalOverflow(page, "Verwaltung");
 });

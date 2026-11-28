@@ -1,6 +1,6 @@
 // Reiter „Basis“ (Navigationsumbau nach 0.38): zwei Unterreiter.
-//   Lage – Startseite „Was steht an?“: Wartet auf dich (mit „Alle abholen“), Aufträge, Gleich/heute, Unterwegs,
-//          Zuletzt passiert (components/lage/LageTab.tsx; bis 0.38 unter Meldungen).
+//   Lage – Startseite „Was steht an?“: Fortschritt, Alarm, Rückkehrkarte, Wartet auf dich (mit „Alle abholen“),
+//          Nächster Schritt, Unterwegs, Als Nächstes, Weltpolitik, Aufträge, Zuletzt passiert (components/lage/LageTab.tsx).
 //   Hafen – Hafen-Kopf, Bauhof, Gebäude, Zeitleiste, Versorgung, Schutz (screens/Base.tsx).
 // Über beiden: Angriffs-, Sabotage-, Weltereignis-, Blockade- und Saisonende-Banner (auf jeder Basis-Seite sichtbar).
 import type { BaseData } from "../lib/trpc.ts";
@@ -63,7 +63,7 @@ export function BasisScreen(props: {
       ]} />
       <SegmentPanel label="Basis" value={sub}>
         {sub === "lage" ? (
-          <LageTab onShowOnMap={props.onShowOnMap} unreadMsgs={props.unreadMsgs} seenReport={props.seenReport}
+          <LageTab onShowOnMap={props.onShowOnMap} unreadMsgs={props.unreadMsgs} seenReport={props.seenReport} base={base} onGuide={props.onGuide}
             quests={<QuestBar base={base} onAction={props.onGuide} />} />
         ) : (
           <BaseScreen key={base.id} base={base} asOf={props.asOf} sheet={props.sheet} setSheet={props.setSheet} onTroops={props.onTroops} onResearch={props.onResearch} />

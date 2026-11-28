@@ -8,16 +8,35 @@ import { fmtTime } from "../lib/time.ts";
 import { isPlanType, requestPlan } from "../lib/plan-request.ts";
 import { Icon } from "../icons.tsx";
 import { Button, Card, UnitChips } from "../ui.tsx";
+import { useNav } from "../lib/nav.ts";
+import { setTrainPreset } from "../lib/train-request.ts"; // „Verluste ersetzen“ → Ausbilden vorbelegt
 
 function repeat(r: { type: string; col: number; row: number; units: Record<string, number> }) {
   requestPlan({ target: { col: r.col, row: r.row }, type: isPlanType(r.type) ? r.type : undefined, units: r.units });
 }
 
-/** Knopf an einem eigenen Bericht; erscheint nur, wenn es die zugehörige Mission gibt. */
-export function RepeatButton({ reportId }: { reportId: number }) {
+/** Eigene Verluste eines Kampfberichts (Verluste ohne Heimkehrer); leer ohne Kampf. */
+export function ownLosses(data: Record<string, unknown>, role: string): Record<string, number> {
+  const b = data.battle as { attacker?: { losses?: Record<string, number>; returned?: Record<string, number> }; defender?: { losses?: Record<string, number>; returned?: Record<string, number> } } | undefined;
+  const side = role === "attacker" ? b?.attacker : b?.defender;
+  const out: Record<string, number> = {};
+  for (const [id, n] of Object.entries(side?.losses ?? {})) {
+    const lost = n - (side?.returned?.[id] ?? 0);
+    if (lost > 0) out[id] = lost;
+  }
+  return out;
+}
+
+/**
+ * Knopf an einem eigenen Bericht; erscheint nur, wenn es die zugehörige Mission gibt. UX 0.43 (U-5): dazu
+ * „Verluste ersetzen“ – öffnet Truppen → Ausbilden mit den verlorenen Einheiten vorbelegt.
+ */
+export function RepeatButton({ reportId, losses = {} }: { reportId: number; losses?: Record<string, number> }) {
   const q = useQuery(trpc.comfort.repeat.queryOptions({ reportId }));
+  const nav = useNav();
   if (!q.data) return null;
   const r = q.data;
+  const lost = Object.keys(losses).length > 0;
   return (
     <Card>
       <div className="flex items-center gap-3">
@@ -29,6 +48,12 @@ export function RepeatButton({ reportId }: { reportId: number }) {
         </div>
         <Button disabled={!!r.blocked} onClick={() => repeat(r)}>Wiederholen</Button>
       </div>
+      {lost && (
+        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-dotted border-rule">
+          <span className="text-xs text-ink2 flex-1 min-w-0">Verloren: <UnitChips counts={losses} /></span>
+          <Button kind="secondary" className="whitespace-nowrap" onClick={() => { setTrainPreset(losses); nav.go({ to: "troops", seg: "ausbilden" }); }}>Verluste ersetzen</Button>
+        </div>
+      )}
     </Card>
   );
 }

@@ -1,20 +1,18 @@
 // Basis, unterer Teil: Versorgung (Strom, Lager, Proviant) und Schutz (Nachtschild) als einklappbare Karten.
 // Zugeklappt zeigt jede Karte eine Zeile Zusammenfassung; der Zustand wird geräteweit gemerkt.
 // Hinweis Zusammenführen: PowerGrid (Wetter) bleibt inhaltlich unverändert und steht hier in „Versorgung“.
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { trpc, trpcClient, type BaseData } from "../lib/trpc.ts";
-import { useCommand } from "../lib/command.ts";
+import { trpc, type BaseData } from "../lib/trpc.ts";
 import { fmtNum, label } from "../lib/names.ts";
 import { fmtDuration, fmtRange, fmtTime, useNow } from "../lib/time.ts";
 import { useLiveBase } from "../lib/live-base.ts";
 import { researchNote } from "../lib/research.ts";
 import { Icon } from "../icons.tsx";
-import { Button, Card, ErrorLine } from "../ui.tsx";
+import { Card } from "../ui.tsx";
 import { PowerGrid } from "./PowerGrid.tsx";
 import { PowerCable } from "./PowerCable.tsx"; // Seekabel (v1.21)
+import { NightShieldSetting } from "./NightShieldSetting.tsx"; // Nachtschild-Startzeit
 
-const invalidateBase = () => [trpc.base.pathFilter().queryKey];
 const sum = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a + b, 0);
 
 export function Supply({ base }: { base: BaseData }) {
@@ -84,17 +82,6 @@ export function Protection({ base, now }: { base: BaseData; now: number }) {
   const p = base.protection;
   const meta = useQuery({ ...trpc.meta.queryOptions(), staleTime: Infinity });
   const prot = meta.data?.balance.protection;
-  // Vorgemerkte Einstellung gilt erst ab fromMs; Änderungen höchstens einmal je Frist.
-  const next = p.nightShieldNext && p.nightShieldNext.fromMs > now ? p.nightShieldNext : null;
-  const chosen = next ? next.startHour : p.nightShieldStartHour;
-  const [hour, setHour] = useState<number | null>(chosen);
-  const save = useCommand(
-    (i: { key: string; startHour: number | null; tzOffsetMinutes: number; timeZone?: string }) => trpcClient.base.nightShield.mutate(i),
-    invalidateBase,
-  );
-  const changeH = prot?.nightShieldChangeHours ?? 24;
-  const lockedUntil = p.nightShieldChangedAtMs !== undefined ? p.nightShieldChangedAtMs + changeH * 3600000 : 0;
-  const locked = lockedUntil > now;
   const win = p.nightWindow;
   const beginnerEnd = p.createdAtMs + (prot?.beginnerDays ?? 7) * 86400000;
   return (
@@ -116,27 +103,7 @@ export function Protection({ base, now }: { base: BaseData; now: number }) {
           )}
         </div>
       </div>
-      {next && (
-        <p className="text-xs text-sea-300 mt-2">
-          Neue Einstellung ab {fmtTime(next.fromMs)}: {next.startHour === null ? "kein Nachtschild" : `Beginn um ${next.startHour}:00 Uhr`}.
-        </p>
-      )}
-      <label className="block text-xs text-slate-400 mt-3 mb-1" htmlFor="tf-night">Nachtschild ({prot?.nightShieldHours ?? 8} Stunden täglich) beginnt</label>
-      <div className="flex items-center gap-2">
-        <select id="tf-night" disabled={locked} className="h-11 flex-1 rounded-lg field px-2" value={hour ?? ""} onChange={(e) => setHour(e.target.value === "" ? null : Number(e.target.value))}>
-          <option value="">kein Nachtschild</option>
-          {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>um {h}:00 Uhr</option>)}
-        </select>
-        <Button kind="secondary" disabled={save.busy || locked || hour === chosen} onClick={() => void save.run({ startHour: hour, tzOffsetMinutes: -new Date().getTimezoneOffset(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || undefined })}>
-          Speichern
-        </Button>
-      </div>
-      <p className="text-xs text-slate-400 mt-1">
-        {locked
-          ? `Nächste Änderung ab ${fmtTime(lockedUntil)} möglich.`
-          : `Eine Änderung gilt erst nach ${changeH} Stunden und ist danach ${changeH} Stunden gesperrt – den Schild gegen einen schon gemeldeten Angriff einzuschalten geht nicht.`}
-      </p>
-      <ErrorLine text={save.error} code={save.code} />
+      <div className="mt-3"><NightShieldSetting base={base} now={now} /></div>{/* auch unter Einstellungen → Spiel */}
     </Card>
   );
 }

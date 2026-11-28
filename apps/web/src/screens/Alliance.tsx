@@ -123,7 +123,6 @@ function Overview({ data }: { data: View }) {
   const act = useAct();
   const [edit, setEdit] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<"leave" | "dissolve" | null>(null);
-  const [size, setSize] = useState(String(data.maxSize));
   const officer = a.role !== "mitglied";
   const rank = dir.data?.alliances.find((x) => x.id === a.id)?.rank;
   return (
@@ -153,11 +152,12 @@ function Overview({ data }: { data: View }) {
           ["Gegründet", fmtTime(a.createdAtMs)],
         ]} />
       </Card>
-      <Card title="Mitgliedschaft">
+      {/* UX 0.43 (M-3): Austreten/Auflösen eingeklappt und als Umriss-Knöpfe; die Allianz-Höchstgröße steht nur in der Verwaltung. */}
+      <Card title="Mitgliedschaft" collapsible defaultOpen={false} storageKey="allianz-mitgliedschaft">
         {confirm === null ? (
           <div className="grid grid-cols-2 gap-2">
             <Button kind="secondary" onClick={() => setConfirm("leave")}>Austreten</Button>
-            {a.role === "fuehrung" && <Button kind="danger" onClick={() => setConfirm("dissolve")}>Auflösen</Button>}
+            {a.role === "fuehrung" && <Button kind="secondary" className="!text-siegel !border-siegel" onClick={() => setConfirm("dissolve")}>Auflösen</Button>}
           </div>
         ) : (
           <div className="space-y-2">
@@ -176,16 +176,6 @@ function Overview({ data }: { data: View }) {
           </div>
         )}
       </Card>
-      {me.data?.player?.isAdmin && (
-        <Card title="Verwaltung">
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-ink2 flex-1" htmlFor="alliance-max">Höchstgröße je Allianz</label>
-            <input id="alliance-max" inputMode="numeric" className="w-20 h-11 rounded-lg field text-center mono" value={size} onChange={(e) => setSize(e.target.value.replace(/\D/g, ""))} />
-            <Button kind="secondary" disabled={act.busy || Number(size) < 2 || Number(size) > 50}
-              onClick={() => void act.run(() => trpcClient.alliance.setMaxSize.mutate({ size: Number(size) }))}>Setzen</Button>
-          </div>
-        </Card>
-      )}
       <ErrorLine text={act.error} code={act.code} />
     </div>
   );

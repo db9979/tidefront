@@ -12,6 +12,119 @@ function isPositiveInt(n: number): boolean {
   return Number.isInteger(n) && n > 0;
 }
 
+// ---------------------------------------------------------------- Teillieferung (0.44)
+
+/** Bereits gelieferte Einheiten eines Auftrags (ältere Aufträge ohne Feld: 0). */
+export function trainingDone(o: TrainingOrder): number {
+  return Math.min(o.count, Math.max(0, o.done ?? 0));
+}
+
+/** Noch nicht gelieferte Einheiten (count − done): nur sie zählen als „in Ausbildung“. */
+export function trainingLeft(o: TrainingOrder): number {
+  return o.count - trainingDone(o);
+}
+
+/** Fertigstellung der Einheit i (1..count): anteilig über die (stromgedehnte) Gesamtdauer, die letzte genau zu finishesAt. */
+export function trainingUnitAt(o: TrainingOrder, i: number): number {
+  if (i >= o.count) return o.finishesAt;
+  return o.startedAt + Math.floor(((o.finishesAt - o.startedAt) * i) / o.count);
+}
+
+/** Zum Zeitpunkt t fertige Einheiten (geliefert oder fällig), 0..count. */
+export function trainingReadyBy(o: TrainingOrder, t: number): number {
+  if (t >= o.finishesAt) return o.count;
+  const span = o.finishesAt - o.startedAt;
+  if (t < o.startedAt || span <= 0) return 0;
+  let n = Math.min(o.count, Math.max(0, Math.floor(((t - o.startedAt) * o.count) / span)));
+  while (n < o.count && trainingUnitAt(o, n + 1) <= t) n++;
+  while (n > 0 && trainingUnitAt(o, n) > t) n--;
+  return n;
+}
+
+/** Zeitpunkt der nächsten noch nicht gelieferten Einheit (null: alles geliefert). */
+export function nextTrainingDeliveryAt(o: TrainingOrder): number | null {
+  const d = trainingDone(o);
+  return d >= o.count ? null : trainingUnitAt(o, d + 1);
+}
+
+/** Frühester nächster Lieferzeitpunkt aller Aufträge eines Hafens (null: keine Aufträge). */
+export function nextTrainingDelivery(base: BaseState): number | null {
+  let best: number | null = null;
+  for (const o of base.trainingQueue) {
+    const at = nextTrainingDeliveryAt(o);
+    if (at !== null && (best === null || at < best)) best = at;
+  }
+  return best;
+}
+
+/** Höchstens so viele Fortschreibungen je Aufruf (Nachholen nach langer Pause); darüber werden Lieferungen gebündelt. */
+const MAX_DELIVERY_STEPS = 200;
+
+/**
+ * Liefert alle bis nowMs fertigen Einheiten und Anlagen aus (Teillieferung). In zeitlicher Reihenfolge: der Hafen wird
+ * jeweils bis zum Lieferzeitpunkt fortgeschrieben (Unterhalt ab Lieferung), Veteranen werden je Lieferung verwässert,
+ * vollständige Aufträge verlassen die Schlange. Der Rückgabe-Hafen ist bis zum letzten Lieferzeitpunkt fortgeschrieben
+ * (nicht bis nowMs). Ohne fällige Lieferung bleibt `base` unverändert (dasselbe Objekt).
+ */
+export function deliverTraining(
+  base: BaseState,
+  nowMs: number,
+  balance: Balance,
+  mods?: Modifiers,
+): { base: BaseState; delivered: { order: TrainingOrder; count: number }[]; completed: TrainingOrder[] } {
+  // Alle fälligen Lieferungen (Zeit, Auftrag, Einheit i) sammeln; je Zeitpunkt und Auftrag eine Stufe.
+  const steps: { at: number; key: string; upTo: number }[] = [];
+  for (const o of base.trainingQueue) {
+    const ready = trainingReadyBy(o, nowMs);
+    for (let i = trainingDone(o) + 1; i <= ready; i++) {
+      const at = trainingUnitAt(o, i);
+      const last = steps[steps.length - 1];
+      if (last && last.key === orderKey(o) && last.at === at) last.upTo = i;
+      else steps.push({ at, key: orderKey(o), upTo: i });
+    }
+  }
+  if (steps.length === 0) return { base, delivered: [], completed: [] };
+  steps.sort((a, b) => a.at - b.at);
+  // Nachholen sehr vieler Lieferungen: gebündelt (je Bündel bis zum Zeitpunkt seiner letzten Lieferung fortgeschrieben).
+  const chunk = Math.ceil(steps.length / MAX_DELIVERY_STEPS);
+  const deliveredBy = new Map<string, number>();
+  const completed: TrainingOrder[] = [];
+  let next = base;
+  for (let k = 0; k < steps.length; k += chunk) {
+    const group = steps.slice(k, k + chunk);
+    next = settle(next, group[group.length - 1].at, balance, mods);
+    const upTo = new Map<string, number>();
+    for (const st of group) upTo.set(st.key, Math.max(upTo.get(st.key) ?? 0, st.upTo));
+    const queue: TrainingOrder[] = [];
+    for (const o of next.trainingQueue) {
+      const target = upTo.get(orderKey(o));
+      if (target === undefined) { queue.push(o); continue; }
+      const n = target - trainingDone(o);
+      if (n > 0) {
+        if (o.kind === "unit") {
+          const v = diluteBase(next, o.id, n); // Veteranen: neue Rekruten verwässern die Erfahrung des Typs
+          if (v) next.veterancy = v;
+        }
+        const pool = o.kind === "unit" ? next.units : next.defenses;
+        pool[o.id] = (pool[o.id] ?? 0) + n;
+        deliveredBy.set(orderKey(o), (deliveredBy.get(orderKey(o)) ?? 0) + n);
+      }
+      if (target >= o.count) completed.push({ ...o, done: o.count });
+      else queue.push({ ...o, done: target });
+    }
+    next.trainingQueue = queue;
+  }
+  const delivered = base.trainingQueue
+    .filter((o) => deliveredBy.has(orderKey(o)))
+    .map((o) => ({ order: { ...o }, count: deliveredBy.get(orderKey(o))! }));
+  return { base: next, delivered, completed };
+}
+
+/** Auftrag eindeutig je Hafen: höchstens einer je ausführendem Gebäude. */
+function orderKey(o: TrainingOrder): string {
+  return `${o.builtIn}|${o.id}|${o.startedAt}`;
+}
+
 /** Baukosten für `count` Einheiten oder Anlagen eines Typs. */
 export function trainingCost(id: string, count: number, balance: Balance): ResourceMap {
   const def = balance.units[id] ?? balance.defenses[id];
@@ -37,7 +150,7 @@ export function aircraftSlots(base: BaseState, balance: Balance): number {
   return (balance.buildings.flugfeld.slotsPerLevel ?? 0) * buildingLevel(base, "flugfeld");
 }
 
-/** Belegte Stellplätze: Flugzeuge daheim, auf Mission und in Ausbildung. */
+/** Belegte Stellplätze: Flugzeuge daheim, auf Mission und in Ausbildung (nur der noch nicht gelieferte Rest). */
 export function aircraftSlotsUsed(base: BaseState, balance: Balance): number {
   let used = 0;
   for (const [id, def] of Object.entries(balance.units)) {
@@ -45,7 +158,7 @@ export function aircraftSlotsUsed(base: BaseState, balance: Balance): number {
     used += (base.units[id] ?? 0) + (base.unitsAway[id] ?? 0);
   }
   for (const order of base.trainingQueue) {
-    if (order.kind === "unit" && balance.units[order.id]?.branch === "luft") used += order.count;
+    if (order.kind === "unit" && balance.units[order.id]?.branch === "luft") used += trainingLeft(order);
   }
   return used;
 }
@@ -90,10 +203,10 @@ export function startTraining(
       return { ok: false, code: "no_aircraft_slots" };
     }
   }
-  // Höchstzahl je Stufe (Spione): Bestand daheim, unterwegs und in Ausbildung zählt.
+  // Höchstzahl je Stufe (Spione): Bestand daheim, unterwegs und in Ausbildung (Rest) zählt.
   if (isUnit && balance.units[id].maxPerLevel !== undefined) {
     let have = (base.units[id] ?? 0) + (base.unitsAway[id] ?? 0);
-    for (const o of base.trainingQueue) if (o.kind === "unit" && o.id === id) have += o.count;
+    for (const o of base.trainingQueue) if (o.kind === "unit" && o.id === id) have += trainingLeft(o);
     if (have + count > balance.units[id].maxPerLevel! * buildingLevel(base, builtIn)) return { ok: false, code: "unit_cap" };
   }
   const cost = trainingCost(id, count, balance);
@@ -120,34 +233,18 @@ export function startTraining(
 }
 
 /**
- * Schließt alle fälligen Ausbildungsaufträge ab (in Reihenfolge der Fertigstellung; die
- * Bestände werden jeweils bis zum Fertigstellungszeitpunkt fortgeschrieben, weil neue
- * Einheiten den Unterhalt ändern). Codes: no_order, not_finished.
+ * Verbucht alle fälligen Lieferungen (Teillieferungen und vollständige Aufträge, siehe deliverTraining) und schreibt den
+ * Hafen bis nowMs fort. `completed`: vollständig abgeschlossene Aufträge; `delivered`: je Auftrag die jetzt gelieferte
+ * Anzahl. Codes: no_order, not_finished (nichts fällig).
  */
 export function completeTraining(
   base: BaseState,
   nowMs: number,
   balance: Balance,
   mods?: Modifiers,
-): Result<{ base: BaseState; completed: TrainingOrder[] }> {
+): Result<{ base: BaseState; completed: TrainingOrder[]; delivered: { order: TrainingOrder; count: number }[] }> {
   if (base.trainingQueue.length === 0) return { ok: false, code: "no_order" };
-  const due = base.trainingQueue
-    .filter((o) => o.finishesAt <= nowMs)
-    .sort((a, b) => a.finishesAt - b.finishesAt);
-  if (due.length === 0) return { ok: false, code: "not_finished" };
-  let next = base;
-  for (const order of due) {
-    next = settle(next, order.finishesAt, balance, mods);
-    // Veteranen: neue Rekruten verwässern die Erfahrung des Typs (gewichteter Mittelwert).
-    if (order.kind === "unit") {
-      const v = diluteBase(next, order.id, order.count);
-      if (v) next.veterancy = v;
-    }
-    const target = order.kind === "unit" ? next.units : next.defenses;
-    target[order.id] = (target[order.id] ?? 0) + order.count;
-    next.trainingQueue = next.trainingQueue.filter(
-      (o) => !(o.builtIn === order.builtIn && o.finishesAt === order.finishesAt && o.id === order.id),
-    );
-  }
-  return { ok: true, base: settle(next, nowMs, balance, mods), completed: due.map((o) => ({ ...o })) };
+  const r = deliverTraining(base, nowMs, balance, mods);
+  if (r.delivered.length === 0) return { ok: false, code: "not_finished" };
+  return { ok: true, base: settle(r.base, nowMs, balance, mods), completed: r.completed, delivered: r.delivered };
 }

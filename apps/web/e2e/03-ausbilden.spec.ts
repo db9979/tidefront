@@ -1,6 +1,6 @@
 // Einheiten ausbilden: Werft und Kaserne per Seed, Korvetten und Schützen in Auftrag geben, vorspulen.
 import { expect, expectNoHorizontalOverflow, test } from "./fixtures.ts";
-import { finishTraining, readState, setBuildings, setResources } from "./game.ts";
+import { finishTraining, finishTrainingUnits, readState, setBuildings, setResources } from "./game.ts";
 
 test("Truppen: Korvetten und Schützen ausbilden", async ({ page, player, seed }) => {
   await setBuildings(seed.sql, player.baseId, { werft: 2, kaserne: 2, kraftwerk: 2, lagerkomplex: 3 });
@@ -49,4 +49,35 @@ test("Truppen: Korvetten und Schützen ausbilden", async ({ page, player, seed }
   await page.getByRole("tab", { name: "Ausbilden" }).click();
   await expect(page.getByRole("button", { name: "Korvette: Info, Bestand 2" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Schützen: Info, Bestand 10" })).toBeVisible();
+});
+
+test("Truppen: Teillieferung – fertige Korvetten stehen sofort im Bestand", async ({ page, player, seed }) => {
+  await setBuildings(seed.sql, player.baseId, { werft: 2, kraftwerk: 2, lagerkomplex: 3 });
+  await setResources(seed.sql, player.baseId, { stahl: 5000, treibstoff: 3000, elektronik: 2000, proviant: 3000 });
+  await page.goto("/");
+  await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
+  await page.getByRole("tab", { name: "Ausbilden" }).click();
+  const korv = page.getByRole("listitem").filter({ has: page.getByRole("button", { name: /^Korvette: Info/ }) });
+  await korv.getByLabel("Anzahl").fill("3");
+  await korv.getByRole("button", { name: "Bauen" }).click();
+  const order = page.locator("[data-training-order=korvette]");
+  await expect(order).toContainText("3 × Korvette");
+  await expect(order).toContainText(/nächste in .* · alle in /);
+  await expect(page.getByRole("button", { name: "Korvette: Info, Bestand 0" })).toBeVisible();
+
+  // Erste Korvette fertig: der Worker liefert sie ohne Zutun des Spielers.
+  await finishTrainingUnits(seed.sql, player.baseId, "werft", 1);
+  const s = await readState(seed.sql, player.baseId);
+  expect(s.units.korvette).toBe(1);
+  expect(s.trainingQueue[0].done).toBe(1);
+  await page.reload();
+  await page.getByRole("navigation").getByRole("button", { name: "Truppen" }).click();
+  await page.getByRole("tab", { name: "Ausbilden" }).click();
+  await expect(order).toContainText("3 × Korvette · 1 fertig");
+  await expect(order).toContainText(/nächste in .* · alle in /);
+  await expect(page.getByRole("button", { name: "Korvette: Info, Bestand 1" })).toBeVisible();
+
+  await finishTraining(seed.sql, player.baseId);
+  await expect(page.getByRole("button", { name: "Korvette: Info, Bestand 3" })).toBeVisible();
+  await expect(order).toHaveCount(0);
 });

@@ -136,7 +136,8 @@ export const test = base.extend<{ player: Player; consoleErrors: string[]; spawn
     if (!chosen) throw new Error("kein freies Küstenfeld gefunden");
     const [b] = await seed.sql`select id from base where player_id = ${r.playerId} and is_home`;
     await context.addCookies([{ name: "tf_session", value: r.token, url: E2E.webUrl }]);
-    await context.addInitScript(() => localStorage.setItem("tf-welcome-v1", "1"));
+    // Push-Frage nach dem ersten Bau (UX 0.43) gilt als gestellt; der eigene Test entfernt die Marke wieder.
+    await context.addInitScript(() => { localStorage.setItem("tf-welcome-v1", "1"); localStorage.setItem("tf-push-asked", "e2e"); });
     await use({ id: r.playerId, name, password, baseId: b.id as number, ...chosen });
   },
 });

@@ -29,7 +29,7 @@ test("Startrampe bauen, Satellit starten, Überflug angekündigt und live", asyn
   // Mit Radarstation 6 bauen und fertigstellen.
   await page.goto("/?sub=hafen");
   await page.getByRole("button", { name: /^Start\u00AD?rampe 0/ }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Ausbau auf 1" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /^Bauen/ }).click();
   await expect(page.getByText("Startrampe · Ausbau auf Stufe 1")).toBeVisible();
   await finishBuilds(seed.sql, player.baseId);
   await page.reload();

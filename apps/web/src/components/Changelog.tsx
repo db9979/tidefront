@@ -115,54 +115,53 @@ export function ChangelogSheet({ open, onClose, highlightAfter }: { open: boolea
 }
 
 const seenKey = (playerId: number) => `tf-seen-version:${playerId}`;
+const versionSubs = new Set<() => void>();
 
 /**
- * Nach einem Update einmal je Spieler „Neu in Version …“ zeigen; außerdem ein Banner, wenn auf dem
- * Server schon eine neuere Fassung läuft als die geladene App (dann neu laden). paused: solange die
- * Begrüßung offen ist, wartet „Neu in Version“ (nie beides gleichzeitig).
+ * „Neu in Version …“ (UX 0.43, O-4): nicht mehr als eigenes Blatt, sondern gebündelt in der Rückkehrkarte der Lage.
+ * Liefert die gesehene Version; markSeen merkt die laufende. Neuer Spieler auf diesem Gerät: gilt als gesehen.
  */
-export function UpdateNotices({ playerId, paused = false }: { playerId: number; paused?: boolean }) {
-  const meta = useQuery({ ...trpc.meta.queryOptions(), refetchInterval: 5 * 60000 });
-  const [seen, setSeen] = useState<string | null>(() => localStorage.getItem(seenKey(playerId)));
-  const [open, setOpen] = useState(false);
-  const tickerBelow = useTickerPos() === "unten";
-
+export function useVersionNotice(playerId: number | null): { unseen: string | null; seen: string | null; markSeen: () => void } {
+  const [seen, setSeen] = useState<string | null>(() => (playerId === null ? null : localStorage.getItem(seenKey(playerId))));
   useEffect(() => {
-    const s = localStorage.getItem(seenKey(playerId));
-    setSeen(s);
-    // Neuer Spieler auf diesem Gerät: nichts zeigen, nur merken (die Begrüßung erklärt das Spiel).
-    if (s === null) {
-      localStorage.setItem(seenKey(playerId), APP_VERSION);
-      setSeen(APP_VERSION);
-    } else if (compareVersions(APP_VERSION, s) > 0) {
-      setOpen(true);
-    }
+    if (playerId === null) return;
+    const read = () => setSeen(localStorage.getItem(seenKey(playerId)));
+    if (localStorage.getItem(seenKey(playerId)) === null) localStorage.setItem(seenKey(playerId), APP_VERSION);
+    read();
+    versionSubs.add(read);
+    return () => { versionSubs.delete(read); };
   }, [playerId]);
-
-  const close = () => {
+  const unseen = seen !== null && compareVersions(APP_VERSION, seen) > 0 ? APP_VERSION : null;
+  const markSeen = () => {
+    if (playerId === null) return;
     localStorage.setItem(seenKey(playerId), APP_VERSION);
-    setOpen(false);
-    setSeen(APP_VERSION);
+    for (const f of versionSubs) f();
   };
-  // Protokoll nur laden, wenn es eine neue Version zu zeigen gibt.
-  const releases = useReleases(open);
-  const newer = (releases ?? []).filter((r) => seen && compareVersions(r.version, seen) > 0 && compareVersions(r.version, APP_VERSION) <= 0);
+  return { unseen, seen, markSeen };
+}
+
+/** Änderungen zwischen der gesehenen und der laufenden Version (für die Rückkehrkarte). */
+export function NewReleases({ since }: { since: string | null }) {
+  const releases = useReleases(since !== null);
+  const newer = (releases ?? []).filter((r) => since && compareVersions(r.version, since) > 0 && compareVersions(r.version, APP_VERSION) <= 0);
+  return releases ? <ReleaseList releases={newer} /> : <p className="text-sm text-slate-400">Wird geladen …</p>;
+}
+
+/**
+ * Banner, wenn auf dem Server schon eine neuere Fassung läuft als die geladene App (dann neu laden). „Neu in Version“
+ * zeigt seit 0.43 die Rückkehrkarte der Lage (useVersionNotice); playerId/paused bleiben für die Einbindung in App.tsx.
+ */
+export function UpdateNotices(_props: { playerId: number; paused?: boolean }) {
+  const meta = useQuery({ ...trpc.meta.queryOptions(), refetchInterval: 5 * 60000 });
+  const tickerBelow = useTickerPos() === "unten";
   const serverVersion = meta.data?.version;
   const outdated = !!serverVersion && compareVersions(serverVersion, APP_VERSION) > 0;
-
+  if (!outdated) return null;
   return (
-    <>
-      {outdated && (
-        <div className="fixed left-2 right-2 z-40 panel rounded-xl p-3 flex items-center gap-3" style={{ bottom: `calc(${tickerBelow ? 108 : 70}px + env(safe-area-inset-bottom))` }} role="status">
-          <span className="text-sm flex-1">Version {serverVersion} ist online. Du nutzt noch {APP_VERSION}.</span>
-          <Button onClick={() => void reloadApp()}>Neu laden</Button>
-        </div>
-      )}
-      <Sheet open={open && !paused && newer.length > 0} onClose={close} title={`Neu in Version ${APP_VERSION}`}>
-        <ReleaseList releases={newer} />
-        <Button className="w-full mt-4" onClick={close}>Verstanden</Button>
-      </Sheet>
-    </>
+    <div className="fixed left-2 right-2 z-40 panel rounded-xl p-3 flex items-center gap-3" style={{ bottom: `calc(${tickerBelow ? 108 : 70}px + env(safe-area-inset-bottom))` }} role="status">
+      <span className="text-sm flex-1">Version {serverVersion} ist online. Du nutzt noch {APP_VERSION}.</span>
+      <Button onClick={() => void reloadApp()}>Neu laden</Button>
+    </div>
   );
 }
 

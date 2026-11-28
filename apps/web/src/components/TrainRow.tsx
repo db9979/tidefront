@@ -15,6 +15,7 @@ import { Icon, IconTile } from "../icons.tsx";
 import { cancelLoss, cancelQuestion, unitStats, unitText, unitTone } from "../lib/info.ts";
 import { Progress } from "../screens/Base.tsx";
 import { unitBreakdown } from "../lib/breakdown.ts";
+import { trainingDone, trainingReadyBy, trainingUnitAt } from "@tidefront/game-core"; // Teillieferung
 import { Breakdown, RankBadge, VeteranLine } from "./Breakdown.tsx";
 
 /** Werte, die die Aufschlüsselung zeigt (aus der festen Werte-Tabelle ausgeblendet). */
@@ -42,15 +43,21 @@ export function TrainGroup({ builtIn, title, base, balance, now }: { builtIn: st
   const cancel = useCommand((i: { key: string; builtIn: string }) => trpcClient.base.cancelTraining.mutate(i), invalidateBase);
   const order = base.trainingQueue.find((o) => o.builtIn === builtIn);
   const level = builtIn === "anlagen" ? 1 : base.buildings.find((b) => b.id === builtIn)?.level ?? 0;
+  // Teillieferung: bis jetzt fertige Einheiten (live, auch bevor der Server sie verbucht hat) zählen sofort zum Bestand.
+  const ready = order ? trainingReadyBy(order, now) : 0;
+  const fresh = order ? Math.max(0, ready - trainingDone(order)) : 0;
+  const plus = (id: string) => (order && order.id === id ? fresh : 0);
   return (
     <Card title={<span className="flex items-center gap-2"><Icon id={builtIn === "anlagen" ? "kuestenbatterie" : builtIn} size={22} />{title}</span>} right={builtIn !== "anlagen" ? <span className="text-xs text-slate-400">Stufe {level}</span> : undefined}>
       {builtIn === "flugfeld" && <p className="text-xs text-slate-400 mb-1">Stellplätze {base.aircraftSlots.used}/{base.aircraftSlots.total}</p>}
       {builtIn === "nachrichtendienst" && base.intel && level > 0 && <p className="text-xs text-slate-400 mb-1">Spione {base.intel.spies.home + base.intel.spies.away + base.intel.spies.training}/{base.intel.cap} · Aufträge über „Mission planen“ → Spionage</p>}
       {order && (
         <div className="rounded-lg bg-paper border border-rule p-2 mb-2 flex items-center justify-between gap-2">
-          <div className="text-sm">
-            {fmtNum(order.count)} × {label(order.id)}
-            <div className="text-sea-300">{order.finishesAt <= now ? "wird abgeschlossen …" : `noch ${fmtDuration(order.finishesAt - now)}`}</div>
+          <div className="text-sm" data-training-order={order.id}>
+            {fmtNum(order.count)} × {label(order.id)}{order.count > 1 && ready > 0 && ready < order.count ? ` · ${fmtNum(ready)} fertig` : ""}
+            <div className="text-sea-300">{order.finishesAt <= now ? "wird abgeschlossen …"
+              : order.count > 1 && ready < order.count - 1 ? `nächste in ${fmtDuration(trainingUnitAt(order, ready + 1) - now)} · alle in ${fmtDuration(order.finishesAt - now)}`
+              : `noch ${fmtDuration(order.finishesAt - now)}`}</div>
             <Progress start={order.startedAt} end={order.finishesAt} now={now} />
           </div>
           <Button
@@ -58,8 +65,12 @@ export function TrainGroup({ builtIn, title, base, balance, now }: { builtIn: st
             disabled={cancel.busy || order.finishesAt <= now}
             onClick={() => {
               const def = balance.units[order.id] ?? balance.defenses[order.id];
-              const loss = cancelLoss(scale(def?.cost, order.count), order.startedAt, order.finishesAt, Date.now());
-              if (confirm(cancelQuestion(`Ausbildung von ${fmtNum(order.count)} × ${label(order.id)}`, loss))) void cancel.run({ builtIn });
+              // Teillieferung: Gelieferte bleiben; erstattet wird der Rest anteilig nach der Restzeit seiner Spanne.
+              const t = Date.now();
+              const got = trainingReadyBy(order, t);
+              const loss = cancelLoss(scale(def?.cost, order.count - got), trainingUnitAt(order, got), order.finishesAt, t);
+              const rest = got > 0 ? `der restlichen ${fmtNum(order.count - got)} × ${label(order.id)} (${fmtNum(got)} bleiben)` : `von ${fmtNum(order.count)} × ${label(order.id)}`;
+              if (confirm(cancelQuestion(`Ausbildung ${rest}`, loss))) void cancel.run({ builtIn });
             }}
           >Abbruch</Button>
         </div>
@@ -78,10 +89,10 @@ export function TrainGroup({ builtIn, title, base, balance, now }: { builtIn: st
         <ul className="divide-y divide-navy-700">
           {builtIn === "anlagen"
             ? base.defenses.map((d) => (
-                <TrainRow key={d.id} id={d.id} have={d.count} away={0} base={base} balance={balance} busy={!!order} secondsEach={balance.defenses[d.id].seconds} cost={balance.defenses[d.id].cost} />
+                <TrainRow key={d.id} id={d.id} have={d.count + plus(d.id)} away={0} base={base} balance={balance} busy={!!order} secondsEach={balance.defenses[d.id].seconds} cost={balance.defenses[d.id].cost} />
               ))
             : base.units.filter((u) => u.builtIn === builtIn).map((u) => (
-                <TrainRow key={u.id} id={u.id} have={u.home} away={u.away} base={base} balance={balance} busy={!!order} secondsEach={u.secondsEach} cost={balance.units[u.id].cost} needLevel={(balance.units[u.id].requiresLevel ?? 1) > level ? balance.units[u.id].requiresLevel : undefined} />
+                <TrainRow key={u.id} id={u.id} have={u.home + plus(u.id)} away={u.away} base={base} balance={balance} busy={!!order} secondsEach={u.secondsEach} cost={balance.units[u.id].cost} needLevel={(balance.units[u.id].requiresLevel ?? 1) > level ? balance.units[u.id].requiresLevel : undefined} />
               ))}
         </ul>
       )}

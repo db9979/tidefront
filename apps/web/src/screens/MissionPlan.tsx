@@ -16,6 +16,7 @@ import { RouteWeather } from "../components/RouteWeather.tsx"; // Wetter auf der
 import { departureWords } from "../lib/departure.ts";
 // Komfort: Vorlagen, Wiederholen, Probekampf
 import { fitUnits, isPlanType, type PlanPreset } from "../lib/plan-request.ts";
+import { askPushAfter } from "../components/PushAsk.tsx";
 import { TemplateBar, shortText } from "../components/Templates.tsx";
 import { ProbeCard } from "../components/SimLauncher.tsx";
 // Weltereignisse als Ziel
@@ -173,6 +174,8 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
         <BackButton onClick={onClose} />
       </div>
 
+      {!preset && !initialTarget && <LastMission base={base} onApply={(m) => { const f = fitUnits(m.units, Object.fromEntries(base.units.map((u) => [u.id, u.home]))); setType(m.type as PlanKind); setTypeOpen(false); setTarget({ col: m.col, row: m.row }); setUnits(f.units); setNote(shortText(f.short)); }} />}
+
       <Card title="Art" right={!typeOpen ? <SmallButton className="-my-3" onClick={() => setTypeOpen(true)}>Ändern</SmallButton> : undefined}>
         {!typeOpen ? (
           <div className="flex items-center gap-2">
@@ -325,7 +328,7 @@ export function MissionPlan({ base, initialTarget, onClose, preset }: { base: Ba
               if (type === "ueberfall" && tInfo?.nest && probeRate !== null && probeRate < 0.1
                 && !window.confirm(`Probekampf: ${fmtNum(Math.round(probeRate * 100))} % Sieg – aussichtslos. Trotzdem ${dep.verb.toLowerCase()}?`)) return;
               const r = await launch.run(input);
-              if (r && r.ok) setSent({ arriveAtMs: r.arriveAtMs, type });
+              if (r && r.ok) { setSent({ arriveAtMs: r.arriveAtMs, type }); askPushAfter("mission"); } // A7: Push im Moment des Nutzens
             }}
           >
             {type === "gruendung" ? "Gründen" : type === "verlegung" ? "Verlegen" : dep.verb}
@@ -434,5 +437,23 @@ function Strength({ balance, units, level, lagebild, weather, modifiers, versorg
         <p className="text-xs text-slate-400">Balken: Angriffswerte ohne Zufall, Boni und Lebenspunkte. Das Urteil kommt aus dem Probekampf (50 Durchläufe, mit Wetter am Ziel). Eine Aufklärung zeigt die Besatzung genau.</p>
       </div>
     </Card>
+  );
+}
+
+/** UX 0.43 (B9): „Wie letzte Mission“ – Art, Ziel und Verband der zuletzt heimgekehrten Mission übernehmen. */
+function LastMission({ base, onApply }: { base: BaseData; onApply: (m: { type: string; col: number; row: number; units: Record<string, number> }) => void }) {
+  const q = useQuery(trpc.comfort.recentMissions.queryOptions());
+  const m = (q.data ?? []).find((x) => !x.blocked && isPlanType(x.type));
+  if (!m || base.units.every((u) => u.home === 0)) return null;
+  return (
+    <button type="button" data-testid="plan-last" onClick={() => onApply(m)}
+      className="tap w-full panel rounded-xl px-3 py-2 mb-3 flex items-center gap-2.5 text-left">
+      <Icon id={m.type} size={26} className="shrink-0" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">Wie letzte Mission</span>
+        <span className="block text-xs text-ink2 truncate">{label(m.type)} · Feld {m.col}/{m.row}</span>
+      </span>
+      <span aria-hidden className="text-ink2">›</span>
+    </button>
   );
 }

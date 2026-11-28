@@ -101,7 +101,11 @@ test("completeTraining: zu früh, dann Einheiten im Bestand", () => {
   const base = makeBase(balance, { resources: rich, buildings: { werft: 1, kraftwerk: 1 }, units: { korvette: 1 } });
   const started = startTraining(base, "korvette", 2, T0, balance);
   assert.ok(started.ok);
-  assert.deepEqual(completeTraining(started.base, T0 + 599999, balance), { ok: false, code: "not_finished" });
+  assert.deepEqual(completeTraining(started.base, T0 + 299999, balance), { ok: false, code: "not_finished" });
+  const half = completeTraining(started.base, T0 + 599999, balance);
+  assert.ok(half.ok);
+  assert.equal(half.base.units.korvette, 2, "erste Korvette nach der Hälfte geliefert");
+  assert.deepEqual(half.completed, []);
   const done = completeTraining(started.base, T0 + 600000, balance);
   assert.ok(done.ok);
   assert.equal(done.base.units.korvette, 3);
@@ -111,14 +115,15 @@ test("completeTraining: zu früh, dann Einheiten im Bestand", () => {
   assert.deepEqual(completeTraining(done.base, T0 + 700000, balance), { ok: false, code: "no_order" });
 });
 
-test("neue Einheiten kosten erst ab Fertigstellung Unterhalt", () => {
+test("neue Einheiten kosten erst ab ihrer Lieferung Unterhalt", () => {
   const base = makeBase(balance, { buildings: { werft: 1, kraftwerk: 1 }, resources: { stahl: 5000, treibstoff: 5000, elektronik: 5000, proviant: 1000 } });
   const started = startTraining(base, "zerstoerer", 5, T0, balance);
   assert.ok(started.ok);
-  // fertig nach 3600 s, verbucht eine Stunde später: 1 h +15, 1 h (15 - 20)
+  // Je 720 s ein Zerstörer (Unterhalt 4/h je Stück), verbucht nach 2 h: Förderung 2 h × 15 = 30,
+  // Unterhalt 4/h × Σ(2 h − i · 0,2 h) für i = 1..5 = 4 × 7 h = 28.
   const done = completeTraining(started.base, T0 + 2 * HOUR, balance);
   assert.ok(done.ok);
-  assert.ok(approx(done.base.resources.proviant, 1000 + 15 - 5));
+  assert.ok(approx(done.base.resources.proviant, 1000 + 30 - 28), String(done.base.resources.proviant));
 });
 
 test("Verteidigungsanlagen: ohne Gebäude, eigener Bauplatz", () => {

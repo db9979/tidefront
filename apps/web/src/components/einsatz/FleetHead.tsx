@@ -6,7 +6,7 @@ import { Icon } from "../../icons.tsx";
 import { Bar, Button } from "../../ui.tsx";
 import { ReasonLine } from "../Remedy.tsx"; // „Was hilft?“
 
-export function FleetHead({ base, balance, onPlan }: { base: BaseData; balance: Balance; onPlan: () => void }) {
+export function FleetHead({ base, balance, onPlan, onTrain }: { base: BaseData; balance: Balance; onPlan: () => void; onTrain?: () => void }) {
   const groups = homeByBranch(base, balance);
   const all = { ...groups.see, ...groups.land, ...groups.luft };
   const cpHome = commandPointsOf(all, balance);
@@ -60,7 +60,10 @@ export function FleetHead({ base, balance, onPlan }: { base: BaseData; balance: 
         {cpHome > cpMax && <p className="text-[11px] text-ink2 mt-0.5">Mehr daheim, als ein Verband führen kann – auf mehrere Missionen verteilen.</p>}
       </div>
 
-      <Button className="w-full mt-3" onClick={onPlan}>Mission planen</Button>
+      {/* UX 0.43 (U-4): ohne Einheiten daheim zuerst ausbilden statt einer leeren Missionsplanung. */}
+      {onTrain && base.units.every((u) => u.home === 0)
+        ? <Button className="w-full mt-3" onClick={onTrain}>Erste Einheiten ausbilden</Button>
+        : <Button className="w-full mt-3" onClick={onPlan}>Mission planen</Button>}
       {full && <ReasonLine code="no_mission_slot" className="text-sm text-brass-300 mt-2" />}
     </section>
   );

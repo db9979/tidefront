@@ -5,6 +5,7 @@ import { retryFailed, useThrottled } from "./lib/throttle.ts";
 import { Icon } from "./icons.tsx";
 import { useBackLayer } from "./lib/back.ts";
 import { HScroll } from "./components/HScroll.tsx";
+export { FilterChips, type ChipItem } from "./components/FilterChips.tsx"; // Ebene 2 der Umschalter (B7)
 import { ReasonLine } from "./components/Remedy.tsx";
 import type { RemedyDetail } from "./lib/remedies/types.ts";
 
@@ -366,11 +367,11 @@ function segId(aria: string): string {
 }
 
 /**
- * Segment-Schalter (Unterreiter) im Muster von Meldungen: klebt oben, rote Linie unter dem gewählten.
+ * Ebene 1 der zwei Umschalter-Bauformen (Ebene 2: FilterChips). Segment-Schalter (Unterreiter) im Muster von Meldungen: klebt oben, rote Linie unter dem gewählten.
  * Wahl wird mit storageKey geräteweit gemerkt (useSegment). Barrierefrei als Tabs: Pfeiltasten (←/→, Pos1/Ende)
  * wechseln, nur der gewählte Reiter liegt in der Tab-Reihenfolge; den Inhalt in <SegmentPanel label=…> legen.
  */
-export function Segments<T extends string>({ items, value, onChange, label: aria, controls = false }: { items: { id: T; label: ReactNode; badge?: number }[]; value: T; onChange: (v: T) => void; label: string; /** Inhalt liegt in <SegmentPanel>. */ controls?: boolean }) {
+export function Segments<T extends string>({ items, value, onChange, label: aria, controls = false }: { items: { id: T; label: ReactNode; badge?: number; /** Zahl nur als Punkt zeigen (schmale Reiter); die Zahl steht im Namen für Screenreader. */ dot?: boolean }[]; value: T; onChange: (v: T) => void; label: string; /** Inhalt liegt in <SegmentPanel>. */ controls?: boolean }) {
   const id = segId(aria);
   const onKey = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     const i = items.findIndex((t) => t.id === value);
@@ -390,7 +391,8 @@ export function Segments<T extends string>({ items, value, onChange, label: aria
             tabIndex={value === t.id ? 0 : -1} onClick={() => onChange(t.id)} onKeyDown={onKey}
             className={`tap flex-auto shrink-0 px-3 whitespace-nowrap text-[14px] font-serif flex items-center justify-center gap-1.5 border-b-[3px] -mb-px ${value === t.id ? "border-siegel text-ink" : "border-transparent text-ink2"}`}>
             <span>{t.label}</span>
-            {!!t.badge && <span className="shrink-0 min-w-5 h-5 px-1 rounded-full bg-siegel text-white text-[11px] font-sans mono grid place-items-center">{t.badge}</span>}
+            {!!t.badge && t.dot && <><span aria-hidden="true" data-testid="seg-dot" className="shrink-0 w-2 h-2 rounded-full bg-siegel" /><span className="sr-only">, {t.badge} neu</span></>}
+            {!!t.badge && !t.dot && <span className="shrink-0 min-w-5 h-5 px-1 rounded-full bg-siegel text-white text-[11px] font-sans mono grid place-items-center">{t.badge}</span>}
           </button>
         ))}
       </HScroll>

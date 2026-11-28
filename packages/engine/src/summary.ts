@@ -195,7 +195,7 @@ export function summaryMail(d: SummaryData, name: string, timeZone: string, unsu
       { label: "Beute", value: lootSum > 0 ? `+${fmtInt(lootSum)}` : "0", tone: lootSum > 0 ? "win" : undefined },
       { label: "Erledigt", value: String(done) },
     ] },
-    { type: "section", title: "Lage" },
+    { type: "section", title: "Umstände" },
     { type: "facts", facts },
   ];
   if (d.battles.length) {

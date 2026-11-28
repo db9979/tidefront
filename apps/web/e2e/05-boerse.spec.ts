@@ -52,12 +52,15 @@ test("Börse: verkaufen und kaufen", async ({ page, player, seed }) => {
   await page.getByRole("tab", { name: "Marktlage" }).click();
   await expect(page.getByRole("heading", { name: "Marktlage" })).toBeVisible();
   await expectNoHorizontalOverflow(page, "Börse · Marktlage");
-  // Kopf einklappen: eine Zeile mit Talerkonto, Zustand bleibt gemerkt.
+  // UX 0.43 (B-1): außerhalb von „Handel“ ist der Kopf eine Zeile mit dem Talerkonto (ohne Klappknopf).
+  await expect(page.getByText(/^Konto [\d.,]+ T$/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Kopf einklappen" })).toHaveCount(0);
+  // Unter „Handel“ einklappbar: eine Zeile mit Talerkonto, Zustand bleibt gemerkt.
+  await page.getByRole("tab", { name: "Handel" }).click();
   await page.getByRole("button", { name: "Kopf einklappen" }).click();
   await expect(page.getByText(/^Konto [\d.,]+ T$/)).toBeVisible();
   await page.getByRole("button", { name: "Kopf aufklappen" }).click();
   // Kurse mit Dezimalkomma und zwei Stellen.
-  await page.getByRole("tab", { name: "Handel" }).click();
   await expect(page.getByRole("radio", { name: /^Stahl: \d+,\d{2} Taler/ })).toBeVisible();
 });
 
@@ -72,6 +75,8 @@ test("Börse: 0 Taler – Hinweis schaltet auf Verkaufen mit Überschuss-Rohstof
   await expect(page.getByRole("heading", { name: "Order Stahl" })).toBeVisible();
   const reason = page.getByRole("button", { name: /Du hast 0 Taler\. Verkaufe zuerst Rohstoffe – z\. B\. Proviant \(Überschuss\)\./ });
   await expect(reason).toBeVisible();
+  // UX 0.43 (B-1): ohne Taler kein grüner Kaufknopf, sondern „Erst verkaufen“.
+  await expect(page.getByRole("button", { name: /^Erst verkaufen/ })).toBeVisible();
   await reason.click();
   // Auf der Börse kein „Zur Börse“ – stattdessen direkt verkaufen.
   const order = page.locator("#tf-order");

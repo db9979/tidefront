@@ -17,12 +17,16 @@ export function clockOf(ms: number, nowMs: number): string {
     : d.toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-export function LageGroup({ title, count, testId, children }: { title: string; count?: number; testId: string; children: ReactNode }) {
+/** Gruppe mit Kopf; action steht rechts in der Kopfzeile (z. B. „Alle abholen“, UX 0.43 A1). */
+export function LageGroup({ title, count, testId, action, tone, children }: { title: string; count?: number; testId: string; action?: ReactNode; tone?: "alarm"; children: ReactNode }) {
   return (
-    <section className="panel rounded-xl p-3.5 mb-3" data-testid={testId} aria-label={title}>
-      <h2 className="font-display text-[11px] uppercase text-ink2 tracking-[0.16em] flex items-center gap-2 mb-1">
-        {title}{count !== undefined && count > 0 && <span className="mono normal-case tracking-normal">{count}</span>}
-      </h2>
+    <section className={`panel rounded-xl p-3.5 mb-3 ${tone === "alarm" ? "border-siegel border-l-4" : ""}`} data-testid={testId} aria-label={title}>
+      <div className="flex items-center gap-2 mb-1 min-h-8">
+        <h2 className={`font-display text-[11px] uppercase tracking-[0.16em] flex items-center gap-2 flex-1 min-w-0 ${tone === "alarm" ? "text-siegel" : "text-ink2"}`}>
+          {title}{count !== undefined && count > 0 && <span className="mono normal-case tracking-normal">{count}</span>}
+        </h2>
+        {action}
+      </div>
       <ul>{children}</ul>
     </section>
   );

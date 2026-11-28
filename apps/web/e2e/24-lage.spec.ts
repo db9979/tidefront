@@ -1,5 +1,5 @@
-// Lagezentrum (Basis → Lage, Startseite der App seit dem Navigationsumbau): zeigt einen Börsenkonvoi (Gleich/heute und
-// Unterwegs mit Fortschritt) und einen laufenden Ausbau; Antippen springt ins Gebäudeblatt (Basis → Hafen); die Zahl
+// Lagezentrum (Basis → Lage, Startseite der App seit dem Navigationsumbau): zeigt einen Börsenkonvoi (seit UX 0.43 nur
+// unter Unterwegs mit Fortschritt, nicht doppelt unter „Als Nächstes“) und einen laufenden Ausbau; Antippen springt ins Gebäudeblatt (Basis → Hafen); die Zahl
 // am Navigationszeichen „Basis“ steigt mit einer abholbaren Belohnung.
 import { nearestTradePortBySea } from "@tidefront/world";
 import { expect, expectNoHorizontalOverflow, test } from "./fixtures.ts";
@@ -22,11 +22,12 @@ test("Lage: Konvoi und Bau, Antippen springt, Zahl am Navigationszeichen bei abh
   // Startseite: Basis → Lage.
   await expect(page.getByRole("tablist", { name: "Basis" }).getByRole("tab", { name: /^Lage(\s*\d+)?$/ })).toHaveAttribute("aria-selected", "true");
   const soon = page.getByTestId("lage-soon");
-  await expect(soon.locator(`[data-lage-key="konvoi:${cv.id}"]`)).toContainText("Börsenlieferung trifft ein: 100 Stahl");
+  await expect(page.locator(`[data-lage-key="konvoi:${cv.id}"]`)).toHaveCount(0); // nur einmal: unter „Unterwegs“
   await expect(soon.locator(`[data-lage-key="bau:${player.baseId}:stahlwerk:3"]`)).toContainText("Stahlwerk Stufe 3 fertig");
   const way = page.getByTestId("lage-underway").locator(`[data-lage-key="konvoi-weg:${cv.id}"]`);
   await expect(way.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
   await expect(way).toContainText(`von Handelshafen ${port.name}`);
+  await expect(way).toContainText("Börsenlieferung: 100 Stahl");
   await expectNoHorizontalOverflow(page, "Basis · Lage");
 
   // Antippen: Bau → Basis → Hafen mit Gebäudeblatt.
