@@ -10,7 +10,7 @@ import { Icon } from "../icons.tsx";
 type Msg = Outputs["social"]["messages"]["inbox"][number];
 export interface Draft { to: { id: number; name: string } | null; subject: string; body: string }
 
-const SYSTEM = "Lagezentrum";
+const SYSTEM = "Hafenmeisterei";
 const MAX = 2000;
 
 const SEND_ERRORS: Record<string, string> = {

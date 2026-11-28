@@ -40,7 +40,7 @@ test("Kopfgeld auf die Spitze: Rangliste, Kartenblatt und Missionsplanung", asyn
     await seed.sql`delete from server_setting where key = 'pvp_rank_snapshot'`;
     await page.goto("/");
     await page.getByRole("navigation").getByRole("button", { name: /^Meldungen/ }).click();
-    await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Rangliste/ }).click();
+    await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Saison/ }).click(); // Wertung (UX 0.43: Reiter „Saison“)
     await expect(row.getByTestId("bounty-mark")).toHaveText("+50 %", { timeout: 5000 });
   }).toPass({ timeout: 40_000 });
   await expectNoHorizontalOverflow(page, "Rangliste mit Kopfgeld");

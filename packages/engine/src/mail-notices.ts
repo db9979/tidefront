@@ -52,7 +52,7 @@ export function attackWarningMail(input: {
       { label: "Größe", value: size ?? "unbekannt" },
       { label: "Schutz", value: shield.protected ? "aktiv" : "keiner", tone: shield.protected ? "win" : "loss" },
     ] },
-    { type: "section", title: "Lage" },
+    { type: "section", title: "Umstände" },
     { type: "facts", facts: [
       ["Angreifer", input.attacker],
       ["Ziel", input.targetName],

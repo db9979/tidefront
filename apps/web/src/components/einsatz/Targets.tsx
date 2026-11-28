@@ -110,7 +110,8 @@ export function TargetsCard({ base, balance, map, onShowOnMap }: { base: BaseDat
           <ul className="divide-y divide-rule">
             {[...rows].sort((a, b) => Number(worthwhile(plans[b.key])) - Number(worthwhile(plans[a.key])) || Number(b.mission) - Number(a.mission) || a.nest.distanceKm - b.nest.distanceKm).map((r) => <TargetRow key={r.key} row={r} plan={plans[r.key]} base={base} balance={balance} onShowOnMap={onShowOnMap} />)}
           </ul>
-          {!noFleet && <p className="text-[11px] text-ink2 mt-1">Vorschlag: kleinster Verband aus deinem Bestand, der im Probekampf (mit dem vorhergesagten Wetter am Nest zur Ankunft, geprüft gegen 200 weitere Würfe) mindestens 9 von 10 Kämpfen gewinnt – mit Lagebild genau, sonst im Mittel über die Spanne der Besatzung. Netto: Beute bei Sieg zum Richtpreis minus Treibstoff hin und zurück und erwartete Verluste. Raute antippen zeigt das Nest auf der Karte.</p>}
+          {/* UX 0.43 (U-3): Erklärtext hinter „?“ statt acht Zeilen unter der Liste. */}
+          {!noFleet && <details className="text-[11px] text-ink2 mt-1"><summary className="cursor-pointer">? Wie entsteht der Vorschlag?</summary><p className="mt-0.5">Vorschlag: kleinster Verband aus deinem Bestand, der im Probekampf (mit dem vorhergesagten Wetter am Nest zur Ankunft, geprüft gegen 200 weitere Würfe) mindestens 9 von 10 Kämpfen gewinnt – mit Lagebild genau, sonst im Mittel über die Spanne der Besatzung. Netto: Beute bei Sieg zum Richtpreis minus Treibstoff hin und zurück und erwartete Verluste. Raute antippen zeigt das Nest auf der Karte.</p></details>}
         </>
       )}
     </Card>
@@ -122,13 +123,15 @@ function TargetRow({ row, plan, base, balance, onShowOnMap }: { row: Row; plan: 
   const target = { col: nest.col, row: nest.row };
   const units = plan?.units ?? full;
   const rate = plan === undefined ? undefined : plan?.winRate ?? null;
-  const t = travelMs(units, nest.distanceKm, balance, base.modifiers);
   const known = nest.level !== null;
+  // UX 0.43 (U-3): Stufe unbekannt → nur Aufklären vorschlagen (mit Dauer), nicht den ganzen Bestand.
+  const scoutUnits = suggestScout(base, balance, nest.distanceKm);
+  const t = travelMs(known ? units : scoutUnits, nest.distanceKm, balance, base.modifiers);
   const empty = Object.keys(full).length === 0;
   const tone = rate === undefined || rate === null ? null : rate >= 0.8 ? "green" : rate >= 0.5 ? "brass" : "red";
   const color = tone ? { green: "text-moos", brass: "text-messing", red: "text-siegel" }[tone] : "text-ink2";
   const [why, setWhy] = useState(false);
-  const scout = () => requestPlan({ target, type: "aufklaerung", units: suggestScout(base, balance, nest.distanceKm) });
+  const scout = () => requestPlan({ target, type: "aufklaerung", units: scoutUnits });
   // Unter 50 % (oder noch ohne Probekampf) kein Hauptknopf; unter 10 % mit Rückfrage.
   const strong = known && rate !== undefined && (rate === null || rate < 0.5);
   const attack = () => {
@@ -167,7 +170,8 @@ function TargetRow({ row, plan, base, balance, onShowOnMap }: { row: Row; plan: 
               {plan?.worth && <p className="text-[11px] text-ink2 mt-0.5">Beute bei Sieg ≈ {fmtNum(Math.round(plan.worth.loot[0]))}{plan.worth.loot[1] > plan.worth.loot[0] + 1 ? `–${fmtNum(Math.round(plan.worth.loot[1]))}` : ""} · Verluste ≈ {fmtNum(Math.round(plan.worth.loss))} · Treibstoff ≈ {fmtNum(Math.round(plan.worth.fuel))} (Richtpreis)</p>}
             </details>
           )}
-          {!empty && <div className="text-xs mt-1" aria-label="Vorgeschlagener Verband"><UnitChips counts={units} /></div>}
+          {!empty && known && <div className="text-xs mt-1" aria-label="Vorgeschlagener Verband"><UnitChips counts={units} /></div>}
+          {!known && Object.keys(scoutUnits).length > 0 && <div className="text-xs mt-1" aria-label="Aufklärer"><UnitChips counts={scoutUnits} /></div>}
           {plan && !plan.enough && <p className="text-xs text-messing mt-0.5">{shortfall(plan)}</p>}
         </div>
       </div>
@@ -175,8 +179,11 @@ function TargetRow({ row, plan, base, balance, onShowOnMap }: { row: Row; plan: 
         {empty ? <>
           <Button className="flex-1" onClick={scout}>Aufklären</Button>
           <Button kind="secondary" disabled onBlocked={() => setWhy(!why)}>Angreifen</Button>
-        </> : !known || strong ? <>
-          {/* Stufe unbekannt bzw. zu stark: erst aufklären, Angreifen nur als Zweitknopf. */}
+        </> : !known ? <>
+          {/* Stufe unbekannt: nur Aufklären (Dauer steht oben). */}
+          <Button className="flex-1" onClick={scout}>Aufklären{t !== null ? ` · ${fmtDuration(t)}` : ""}</Button>
+        </> : strong ? <>
+          {/* Zu stark: erst aufklären, Angreifen nur als Zweitknopf. */}
           <Button className="flex-1" onClick={scout}>Aufklären</Button>
           <SmallButton onClick={attack}>Angreifen</SmallButton>
         </> : <>

@@ -12,14 +12,14 @@ export type MarketNewsItem = MarketNewsData["news"][number];
 
 /**
  * Marktnachrichten; aktualisiert sich mit jeder Börsenmeldung (WebSocket „market“) und spätestens jede Minute.
- * TST-17: Solange die Kartell-Armada (Saisonfinale) vor der Küste liegt, entfällt „Ruhige See – kaum Kämpfe“.
+ * TST-17: Solange die Kartell-Armada (Saisonfinale) vor der Küste liegt, entfällt „Marktwetter ruhig – kaum Kämpfe“ (bis 0.43 „Ruhige See – …“; E-5: Marktwetter ≠ Weltpolitik-Gezeit).
  */
 export function useMarketNews(enabled = true) {
   const we = useWorldEvents();
   const finale = !!we.data?.events.some((e) => e.finale && e.status === "active");
   return useQuery({
     ...trpc.market.news.queryOptions(), enabled, refetchInterval: 60000,
-    select: (d) => (finale ? { ...d, news: d.news.filter((n) => !/^Ruhige See/.test(n.reason)) } : d),
+    select: (d) => (finale ? { ...d, news: d.news.filter((n) => !/^(Marktwetter ruhig|Ruhige See)/.test(n.reason)) } : d),
   });
 }
 
@@ -102,7 +102,8 @@ export function MarketNewsTicker({ data }: { data: MarketNewsData | undefined })
   const active = (data?.news ?? []).filter((n) => n.active);
   if (active.length === 0) return null;
   return (
-    <div className="overflow-x-auto whitespace-nowrap text-xs py-1" role="marquee" aria-label="Marktnachrichten">
+    <div className="overflow-x-auto whitespace-nowrap text-xs py-1" role="marquee" aria-label="Marktwetter">
+      <span className="font-display uppercase tracking-[0.12em] text-[10px] text-ink2 mr-2">Marktwetter</span>
       {active.map((n, i) => (
         <span key={n.id} className="inline-flex items-center gap-1 mr-4">
           {i > 0 && <span aria-hidden className="text-ink2 mr-3">·</span>}

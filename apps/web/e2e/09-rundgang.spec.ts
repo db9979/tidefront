@@ -107,30 +107,32 @@ test("Rundgang durch alle Bildschirme", async ({ page, player, seed }) => {
   await page.getByRole("navigation").getByRole("button", { name: "Karte" }).click();
   await page.getByRole("button", { name: "Mein Hafen" }).click();
   await check(page, "Karte · Mein Hafen");
-  await page.getByRole("button", { name: "Wetter einblenden" }).click(); // standardmäßig aus (UI-05)
+  // UX 0.43 (B6): Wetter, Sensoren und Legende im Blatt „Ebenen“ (Esc schließt).
+  await page.getByTestId("map-ebenen").click();
+  await page.getByRole("dialog").getByRole("switch", { name: "Wetter" }).click(); // standardmäßig aus (UI-05)
+  await closeDialog(page);
   await page.getByRole("button", { name: /^Wetter am Hafen/ }).click(); // Wetterkärtchen aufklappen
   await expect(page.getByText(/^Am Hafen:/)).toBeVisible();
   await check(page, "Karte · Wetter aufgeklappt");
   await page.getByRole("button", { name: /^Wetter am Hafen/ }).click();
-  await page.getByRole("button", { name: "Wetter ausblenden" }).click();
+  await page.getByTestId("map-ebenen").click();
+  await page.getByRole("dialog").getByRole("switch", { name: "Wetter" }).click();
+  await check(page, "Karte · Ebenen und Legende");
+  await closeDialog(page);
   await check(page, "Karte · Wetter aus");
-  await page.getByRole("button", { name: "Wetter einblenden" }).click();
-  await page.getByRole("button", { name: "Legende öffnen" }).click();
-  await check(page, "Karte · Legende");
-  await page.getByRole("button", { name: /Legende schließen/ }).click();
   await page.getByTestId("map-sichtungen").click();
   await check(page, "Karte · Sichtungen");
   await closeDialog(page);
 
   // Meldungen: alle Unterreiter, Rangliste mit Bilanz und Erfolgen
   await page.getByRole("navigation").getByRole("button", { name: /^Meldungen/ }).click();
-  for (const t of ["Berichte", "Nachrichten", "Allianz", "Rangliste"]) {
+  for (const t of ["Berichte", "Post", "Allianz", "Saison"]) {
     await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${t}`) }).click();
     await check(page, `Meldungen · ${t}`);
   }
   for (const t of ["Bilanz", "Erfolge"]) {
-    await page.getByRole("tablist", { name: "Rangliste" }).getByRole("tab", { name: new RegExp(`^${t}`) }).click();
-    await check(page, `Meldungen · Rangliste · ${t}`);
+    await page.getByRole("tablist", { name: "Saison" }).getByRole("tab", { name: new RegExp(`^${t}`) }).click();
+    await check(page, `Meldungen · Saison · ${t}`);
   }
 
   // Börse: jede Ressource

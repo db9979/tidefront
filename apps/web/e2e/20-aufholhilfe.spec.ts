@@ -35,7 +35,7 @@ test("Baugutschrift: sichtbar in Leiste und Bauhof, verrechnet in den Baukosten,
   await expect(sheet.getByTestId("kosten-gutschrift")).toContainText("Baugutschrift (Aufholhilfe):");
   await expect(sheet.getByTestId("kosten-gutschrift")).toContainText("aus dem Lager:");
   await expectNoHorizontalOverflow(page, "Gebäudeblatt mit Baugutschrift");
-  await sheet.getByRole("button", { name: "Ausbau auf 1" }).click();
+  await sheet.getByRole("button", { name: /^Bauen/ }).click();
   await expect(sheet).toHaveCount(0);
   await expect(page.getByText("Kraftwerk · Ausbau auf Stufe 1")).toBeVisible();
 

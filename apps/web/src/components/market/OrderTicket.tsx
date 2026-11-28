@@ -185,7 +185,8 @@ export function OrderTicket({ r, cfg, nowMs, ctx, base, initial }: { r: MarketRe
       <ActionRemedy code={firstWhy?.code} detail={why} open={whyOpen} onClose={() => setWhyOpen(false)} />
       <button
         type="button"
-        className={`tap w-full h-12 rounded-lg font-display uppercase text-[14px] text-white disabled:opacity-45 shadow-[0_2px_0_var(--color-ink)] ${buy ? "bg-moos" : "bg-siegel"} ${blocked && firstWhy ? "opacity-45" : ""}`}
+        // UX 0.43 (B-1): ohne ausführbare Order kein farbiger Kaufknopf – grauer Umriss mit dem Grund („Erst verkaufen“).
+        className={`tap w-full h-12 rounded-lg font-display uppercase text-[14px] disabled:opacity-45 ${blocked ? "bg-card text-ink2 border border-rule" : `text-white shadow-[0_2px_0_var(--color-ink)] ${buy ? "bg-moos" : "bg-siegel"}`}`}
         // Gesperrt mit bekanntem Grund: Antippen klappt „Was hilft?“ auf statt nichts zu tun.
         disabled={(!q || blocked || exec.busy) && !(blocked && firstWhy)}
         aria-disabled={blocked && !!firstWhy}
@@ -199,7 +200,7 @@ export function OrderTicket({ r, cfg, nowMs, ctx, base, initial }: { r: MarketRe
           if (res?.ok) setDone(buy ? `Gekauft: ${fmtNum(qty)} ${label(r.id)} – der Konvoi ist unterwegs${esc ? " (mit Geleit)" : ""}.` : `Verkauft: ${fmtNum(qty)} ${label(r.id)}.`);
         }}
       >
-        {buy ? "Kaufen" : "Verkaufen"}{q ? ` · ${fmtNum(q.totalCredits, 2)} T` : ""}
+        {buy && blocked && firstWhy?.code === "funds" ? "Erst verkaufen – Was hilft?" : <>{buy ? "Kaufen" : "Verkaufen"}{q ? ` · ${fmtNum(q.totalCredits, 2)} T` : ""}</>}
       </button>
       <ErrorLine text={exec.error} code={exec.code} detail={why} />
       {done && <p className="text-moos text-sm mt-1 font-semibold" role="status">{done}</p>}

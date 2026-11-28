@@ -73,7 +73,7 @@ test("Fehlende Ressourcen beim Ausbau → Was hilft? → Börse mit Elektronik",
   await expect(sheet.getByText("Noch nicht genug Ressourcen.")).toBeVisible();
 
   // Der graue Ausbau-Knopf klappt den Hinweis auf.
-  const up = sheet.getByRole("button", { name: "Ausbau auf 1" });
+  const up = sheet.getByRole("button", { name: /^Bauen/ });
   await expect(up).toHaveAttribute("aria-disabled", "true");
   await up.click({ force: true });
   const hint = sheet.locator("[data-remedy]");

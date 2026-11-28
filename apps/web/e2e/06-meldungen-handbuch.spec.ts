@@ -7,27 +7,27 @@ test("Meldungen: alle Unterreiter", async ({ page, player }) => {
   await page.goto("/");
   await page.getByRole("navigation").getByRole("button", { name: /^Meldungen/ }).click();
   const tabs = page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab");
-  // Navigationsumbau: vier Reiter (Lage → Basis, Lagebild → Karte „Sichtungen“, Allianz aus Truppen).
+  // Vier kurze Reiter (UX 0.43, E-2/E-6): Berichte · Post · Allianz · Saison.
   await expect(tabs).toHaveCount(4);
   await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Berichte\s*\d*$/ })).toHaveAttribute("aria-selected", "true");
-  for (const name of ["Berichte", "Nachrichten", "Allianz", "Rangliste"]) {
+  for (const name of ["Berichte", "Post", "Allianz", "Saison"]) {
     await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}\\s*\\d*$`) }).click();
     await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}\\s*\\d*$`) })).toHaveAttribute("aria-selected", "true");
     await expectNoHorizontalOverflow(page, `Meldungen · ${name}`);
   }
   // Kein Scrollpfeil mehr: alle vier Reiter passen bei 390 px.
-  for (const name of ["Berichte", "Rangliste"]) await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}`) })).toBeInViewport();
-  // Rangliste zeigt den eigenen Spieler; Bilanz und Erfolge sind Abschnitte der Rangliste.
-  await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Rangliste/ }).click();
+  for (const name of ["Berichte", "Saison"]) await expect(page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: new RegExp(`^${name}`) })).toBeInViewport();
+  // Saison zeigt die Wertung mit dem eigenen Spieler; Bilanz, Erfolge und Welt sind Abschnitte der Saison.
+  await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Saison/ }).click();
   await expect(page.getByRole("tabpanel").getByText(player.name).first()).toBeVisible();
-  const inner = page.getByRole("tablist", { name: "Rangliste" });
-  for (const name of ["Bilanz", "Erfolge", "Wertung"]) {
+  const inner = page.getByRole("tablist", { name: "Saison" });
+  for (const name of ["Bilanz", "Erfolge", "Welt", "Wertung"]) {
     await inner.getByRole("tab", { name: new RegExp(`^${name}`) }).click();
     await expect(inner.getByRole("tab", { name: new RegExp(`^${name}`) })).toHaveAttribute("aria-selected", "true");
-    await expectNoHorizontalOverflow(page, `Meldungen · Rangliste · ${name}`);
+    await expectNoHorizontalOverflow(page, `Meldungen · Saison · ${name}`);
   }
   // Pfeiltasten wechseln den Reiter (Tabs-Muster).
-  await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Rangliste/ }).focus();
+  await page.getByRole("tablist", { name: "Meldungen" }).getByRole("tab", { name: /^Saison/ }).focus();
   await page.keyboard.press("ArrowLeft");
   await expect(page.getByRole("tab", { name: /^Allianz/ })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("tab", { name: /^Allianz/ })).toBeFocused();

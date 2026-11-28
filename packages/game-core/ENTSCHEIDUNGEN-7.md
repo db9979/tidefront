@@ -111,3 +111,58 @@ Nestfahrten verteilt; der ganze Verband des Freibeuters schlüge Nest 6 sicher (
 der jeweils daheim liegende Teil nicht, und die heimkehrenden Überfallverbände allein reichen meist auch nicht
 (`waitForTopNest` greift daher selten). Das Zielfenster ist am Modell-Verband geprüft (sim/nest6.ts: Tag 35 65 %,
 Tag 38 100 %); der Wächter zur Nest-6-Beute nach Laderaum warnt erst bei einem Sieg und meldet ohne Sieg „ok“.
+
+## UX 0.43 – Lage, Rückkehr, Meldungen, Neulingspfad (uxl)
+
+Grundlage: `.claude/review-0.22/UX-0.43.md`, Nutzerentscheidungen E-1 … E-8 vom 28.11.2026.
+
+- **Lage-Reihenfolge (A1/A2):** Fortschrittszeile → Alarm (fremde Angriffe, Nachfrist) → Rückkehrkarte → Wartet auf
+  dich („Alle abholen“ in der Kopfzeile) → Nächster Schritt → Unterwegs → Als Nächstes → Weltpolitik → Aufträge →
+  Zuletzt passiert. Eigene Verbände und Konvois stehen nur unter „Unterwegs“ (eine Zeile mit nächstem Ereignis und
+  Balken); „Als Nächstes“ filtert die Oberfläche auf 12 h und Nicht-Missionen – der Server liefert `soon` unverändert
+  (24 h, mit Ankunft/Rückkehr), damit Badge und bestehende Abfragen gleich bleiben. „Als nächstes“ im Hafen entfällt.
+- **Je Hafen eine Zeile, Leerlauf nur handelbar (L-2):** `lage-wait.ts` fasst Ausbildung frei / Missionsplätze / Lager
+  fast voll zu `hafen:<id>` zusammen. Ausbildung frei nur, wenn mindestens eine Einheit dort bezahlbar ist
+  (`startTraining` auf dem Stand); Missionsplatz nur mit Kampfeinheiten daheim (Angriffswert > 0).
+- **Bauempfehlung (E-4b):** `game-core/build-advice.ts` (rein): Strom fehlt → Kraftwerk/Wind/Sonne; Lager ≥ 85 % →
+  Lagerkomplex; Engpass = Erzeuger des Rohstoffs mit der kleinsten Netto-Rate zum Richtpreis; sonst günstigster Ausbau.
+  Strom und Lager bleiben vorn, auch wenn noch Rohstoffe fehlen (dann „fehlt …“ und „Ansehen“), sonst geht Bezahlbares
+  vor. Nur gebaute Gebäude und die Grundausstattung (Kraftwerk, Werke, Lager, Kommandozentrale) werden vorgeschlagen.
+  `lage.get` liefert `advice` je Hafen mit freiem Bauplatz; „Bauen“ beginnt den Ausbau direkt (bewusster zweiter Tap,
+  kein Kombi-Knopf). Die Zeile „Bauschlange leer“ in „Wartet auf dich“ entfällt; der Schlüssel `leer:<id>` zählt weiter
+  fürs Navigationszeichen. Im Hafen „Empfohlen als Nächstes“ (bis 3) über dem Bauhof; die grüne Raute markiert nur noch
+  diese Empfehlungen; Stufe-0-Gebäude stehen eingeklappt als Chips unter „Noch nicht gebaut (n)“.
+- **Rückkehrkarte (B1, E-3b):** neue Spalten `player.lage_ack_at` (timestamptz) und `player.lage_ack_rank` (integer),
+  Migration macht der Integrator. `lage.since` (engine/lage-since.ts, auf `buildSummary`): Rückblick ab der letzten
+  Quittung, höchstens 72 h (so lange hält `summary_entry`), ohne Quittung 24 h, nie vor der Anmeldung; Zeitraum wird
+  angezeigt. Anlass (`show`): Kampf, Bau/Ausbildung fertig, Rangänderung gegen den Schnappschuss, neue Nachricht oder
+  geschätzte Produktion (Rate jetzt × Stunden, je Hafen bis zur Lagergrenze) ≥ 10 % des Lagers. Quittung `lage.ack`
+  beim Schließen (✕) und bei „Alle abholen“. `summary_entry` wird dafür seit 0.43 immer mitgeschrieben (vorher nur mit
+  aktivem Morgenbericht). „Neu in Version x“ steht gebündelt in der Karte (Changelog.tsx `useVersionNotice`); das
+  eigene Blatt nach einem Update entfällt, der Hinweis „neuere Version online – neu laden“ bleibt.
+- **Fortschritt (E-1a):** Zeile oben auf der Lage aus `social.ranking` („Platz 3 von 8 · 420 bis Platz 2 · Tag 5/42“) und
+  der Serie aus `daily.get`; Antippen → Meldungen → Saison. Der Saisonbalken nennt zusätzlich „Tag x/42“.
+- **Meldungen (E-2a, E-6a, A8):** Reiter Berichte · Post · Allianz · Saison; Saison mit Ebene 2 als umbrechende Chips
+  Wertung · Bilanz · Erfolge · Welt (PolitikPanel mit offenem Kalender und „jetzt“-Marke). Schlüssel bleiben
+  (`nachrichten` = Post, `rangliste`/`bilanz`/`erfolge`/`welt` = Saison-Abschnitte; `saison` und `post` als Adresse).
+  Zählung: Navigationszahl und Lagezeile nennen dieselben Posten (ungelesene Berichte + Post, `lib/meldungen-count.ts`);
+  Allianz-Chat zählt ausdrücklich nicht. Weltpolitik auf der Lage einzeilig, groß nur bei offener Abstimmung oder
+  Paktangebot; Neulinge sehen die ruhige Zeile nicht.
+- **Umbenennungen (E-5a):** Marktnachricht ohne Krieg „Marktwetter ruhig – kaum Kämpfe“ (alte Zeilen „Ruhige See – …“
+  werden beim Finale weiter ausgeblendet), Kurzzeile der Börse „Marktwetter“; Absender der Systemnachrichten
+  „Hafenmeisterei“; Mail-Abschnitt „Lage“ → „Umstände“ (Radarwarnung, Kampfbericht, Morgenbericht).
+- **Neulingspfad (A3):** Hafenname mit dem Ortsnamen (`placeNameAt`) vorbelegt, Hinweis bei < 2 Zeichen; Begrüßung zwei
+  Seiten, letzte „Kraftwerk bauen“ öffnet das Gebäudeblatt; „Erste Schritte“ statt Bauempfehlung, solange das
+  Auftragsbuch unter 5/11 steht; ohne Einheiten „Erste Einheiten ausbilden“ statt „Mission planen“.
+- **Push im Moment des Nutzens (A7):** nach dem ersten Bau bzw. der ersten Mission einmal je Gerät
+  (`localStorage tf-push-asked`); mit „Ja“ Ruhezeit = Nachtschild-Fenster, falls keine gesetzt; iPhone ohne
+  Home-Bildschirm-App nur der Installationshinweis; bei Browser-Sperre oder bestehendem Abo nie fragen.
+- **Kleinkram (A4, A9, B6, B9):** Gebäudeblatt mit fester Aktionsleiste („Bauen · 25 s“ / „Ausbauen auf n · …“), ein Bild,
+  solange sich das Bild nicht ändert; Allianz ohne Admin-Block, Mitgliedschaft eingeklappt mit Umriss-Knöpfen; Börsenkopf
+  außerhalb „Handel“ einzeilig, Kaufknopf ohne ausführbare Order grau („Erst verkaufen“), Sprung zur Hafenkommandantur;
+  Einsatz bei unbekannter Stufe nur „Aufklären · Dauer“ mit Aufklärern; Kampfbericht „Verluste ersetzen“ (Ausbilden
+  vorbelegt); Karte: „Sichtungen“ und „Ebenen“ als Textknöpfe, Wetter/Sensoren/Legende im Blatt (Esc), Namensschilder
+  weichen bei Überlappung nach oben aus; Missionsplanung „Wie letzte Mission“.
+- **Bewusst nicht:** Kombi-Knopf (E-4), neue Push-Typen und „Nächster lohnender Besuch“ (B8), Kachel-Mini-Hinweise im Hafen,
+  Ziel-zuerst-Umbau der Missionsplanung (U-2), Ausbildung (A5, anderer Entwickler), App-Hülle/Einstellungen/Verwaltung (uxs).
+

@@ -56,13 +56,13 @@ export function TroopsScreen({ base, onPlan, onShowOnMap, onResearch }: { base: 
 
       <SegmentPanel label="Truppen" value={seg}>
       {seg === "einsatz" && <>
-        <FleetHead base={base} balance={balance} onPlan={onPlan} />
+        <FleetHead base={base} balance={balance} onPlan={onPlan} onTrain={() => setSeg("ausbilden")} />
+        <EinsatzTiles base={base} balance={balance} onShowOnMap={onShowOnMap} />{/* UX 0.43 (U-3): Kachelreihe direkt unter „Flotte daheim“ */}
         {base.missions.length > 0 && <MissionsCard base={base} map={map.data} now={now} onShowOnMap={onShowOnMap} />}
         <TargetsCard base={base} balance={balance} map={map.data} onShowOnMap={onShowOnMap} />
         {base.missions.length === 0 && <MissionsCard base={base} map={map.data} now={now} onShowOnMap={onShowOnMap} />}
         <IncomingCard base={base} now={now} />{/* Mehrere Häfen: eigene Verlegungen/Transporte */}
         <StationedGuestsCard base={base} now={now} />
-        <EinsatzTiles base={base} balance={balance} onShowOnMap={onShowOnMap} />
         <RecentMissions />
       </>}
 

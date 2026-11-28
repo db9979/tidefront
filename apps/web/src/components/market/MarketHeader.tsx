@@ -10,18 +10,21 @@ import { useStoredOpen } from "../../ui.tsx";
 export type MarketReason = { text: string; code?: string };
 export type MarketStatus = { tone: "open" | "partial" | "closed"; title: string; reasons: MarketReason[] };
 
-export function MarketHeader({ credits, creditLimit, status, port, travelMs }: {
+export function MarketHeader({ credits, creditLimit, status, port, travelMs, compact = false }: {
   credits: number;
   creditLimit: number;
   status: MarketStatus;
   port: string;
   travelMs: number | null;
+  /** UX 0.43 (B-1): außerhalb von „Handel“ nur eine Zeile (Konto · Status) plus Sperrgründe. */
+  compact?: boolean;
 }) {
   const share = creditLimit > 0 ? Math.min(1, credits / creditLimit) : 0;
   const near = share >= 0.9;
   const dot = { open: "bg-moos", partial: "bg-messing", closed: "bg-siegel" }[status.tone];
   const text = { open: "text-moos", partial: "text-messing", closed: "text-siegel" }[status.tone];
-  const [open, setOpen] = useStoredOpen("boerse-kopf", true);
+  const [stored, setOpen] = useStoredOpen("boerse-kopf", true);
+  const open = stored && !compact;
   return (
     <header className="panel rounded-xl mb-3 overflow-hidden">
       <div className={`px-3.5 pt-3 pb-2 flex items-start justify-between gap-3 ${open ? "border-b-[3px] border-double border-ink" : ""}`}>
@@ -34,8 +37,8 @@ export function MarketHeader({ credits, creditLimit, status, port, travelMs }: {
         <div className={`flex items-center gap-1.5 font-display uppercase text-[11px] ${text}`} role="status">
           <span className={`w-2.5 h-2.5 rounded-full ${dot}`} aria-hidden="true" />
           {status.title}
-          <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} aria-label={open ? "Kopf einklappen" : "Kopf aufklappen"}
-            className="tap -my-3 -mr-2 text-ink2 text-[13px] leading-none">{open ? "▴" : "▾"}</button>
+          {!compact && <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} aria-label={open ? "Kopf einklappen" : "Kopf aufklappen"}
+            className="tap -my-3 -mr-2 text-ink2 text-[13px] leading-none">{open ? "▴" : "▾"}</button>}
         </div>
       </div>
       {open && <>

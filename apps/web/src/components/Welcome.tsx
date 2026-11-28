@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Icon } from "../icons.tsx";
 import { Button } from "../ui.tsx";
+import { useNav } from "../lib/nav.ts";
 
 const key = (playerId: number) => `tf-welcome-v1:${playerId}`;
 /** Früherer, geräteweiter Merker: übernimmt der erste Spieler, danach wird er gelöscht. */
@@ -16,16 +17,17 @@ export function welcomeSeen(playerId: number): boolean {
   return true;
 }
 
+// UX 0.43 (O-2): zwei Seiten statt vier; die letzte endet mit „Kraftwerk bauen“ und öffnet das Gebäudeblatt.
+// Nachtschild: die Startzeit wurde bei der Hafenwahl schon gewählt – änderbar unter Einstellungen.
 const SLIDES = [
-  { icon: "anker", title: "Dein Heimathafen steht", text: "Willkommen, Kommandant. Von hier aus baust du Wirtschaft und Flotte auf; später gründest du weitere Häfen. Alles läuft in Echtzeit weiter, auch wenn die App geschlossen ist." },
-  { icon: "stahlwerk", title: "Erst die Wirtschaft", text: "Oben siehst du deine vier Ressourcen und ihre Stundenrate. Baue zuerst das Kraftwerk (ohne Strom liefern die Werke nichts), dann das Stahlwerk – das Auftragsbuch in der Basis sagt dir jeweils den nächsten Schritt." },
-  { icon: "kartell", title: "Piraten an der Küste", text: "Das Freibeuter-Kartell hat Nester entlang der Küsten. Überfalle sie mit Korvetten, Landungsschiffen und Schützen – und halte Truppen daheim, denn das Kartell schlägt zurück, sobald dein Anfängerschutz endet." },
-  { icon: "schild", title: "Sieben Tage Schonzeit", text: "In der ersten Woche bist du vor Angriffen geschützt. Danach schützt dich der Nachtschild jede Nacht acht Stunden – die Startzeit wählst du in der Basis. Fragen? Oben rechts unter „Menü“ → Handbuch." },
+  { icon: "anker", title: "Dein Heimathafen steht", text: "Willkommen, Kommandant. Alles läuft in Echtzeit weiter, auch wenn die App geschlossen ist. Die erste Woche bist du vor Angriffen geschützt; danach schützt dich jede Nacht acht Stunden der Nachtschild – die Startzeit hast du eben gewählt, ändern kannst du sie unter Menü → Einstellungen." },
+  { icon: "kraftwerk", title: "Erst der Strom", text: "Ohne Strom liefern Stahlwerk, Raffinerie und Chipfabrik nichts. Baue zuerst das Kraftwerk – die Lage zeigt dir danach unter „Erste Schritte“ jeweils den nächsten Auftrag. Fragen? Menü → Handbuch." },
 ];
 
 /** Nur anzeigen, wenn welcomeSeen false lieferte; onDone nach dem Schließen. */
 export function Welcome({ playerId, onDone }: { playerId: number; onDone: () => void }) {
   const [step, setStep] = useState(0);
+  const nav = useNav();
   if (step < 0) return null;
   const s = SLIDES[step];
   const last = step === SLIDES.length - 1;
@@ -47,7 +49,7 @@ export function Welcome({ playerId, onDone }: { playerId: number; onDone: () => 
         </div>
         <div className="flex gap-2">
           <Button kind="secondary" className="flex-1 !px-2 !tracking-[0.06em]" onClick={close}>Überspringen</Button>
-          <Button className="flex-1 !px-2 !tracking-[0.06em]" onClick={() => (last ? close() : setStep(step + 1))}>{last ? "Los geht’s" : "Weiter"}</Button>
+          <Button className="flex-1 !px-2 !tracking-[0.06em]" onClick={() => { if (!last) { setStep(step + 1); return; } close(); nav.go({ to: "building", id: "kraftwerk" }); }}>{last ? "Kraftwerk bauen" : "Weiter"}</Button>
         </div>
       </div>
     </div>

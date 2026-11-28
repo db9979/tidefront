@@ -14,7 +14,7 @@ import { BasisScreen, type BasisTab } from "./screens/Basis.tsx"; // Basis: Lage
 const MapScreen = lazy(() => import("./screens/MapScreen.tsx").then((m) => ({ default: m.MapScreen })));
 const TroopsScreen = lazy(() => import("./screens/Troops.tsx").then((m) => ({ default: m.TroopsScreen })));
 const MissionPlan = lazy(() => import("./screens/MissionPlan.tsx").then((m) => ({ default: m.MissionPlan })));
-import { outerOf, type MeldungenTab } from "./screens/Meldungen.tsx";
+import { asMeldungenTab, MELDUNGEN_SUBS, type MeldungenTab } from "./screens/Meldungen.tsx"; // UX 0.43: Berichte · Post · Allianz · Saison
 const MeldungenScreen = lazy(() => import("./screens/Meldungen.tsx").then((m) => ({ default: m.MeldungenScreen })));
 const MarketScreen = lazy(() => import("./screens/Market.tsx").then((m) => ({ default: m.MarketScreen })));
 const Handbook = lazy(() => import("./screens/Handbook.tsx").then((m) => ({ default: m.Handbook })));
@@ -22,6 +22,7 @@ import { ResourceBar } from "./components/ResourceBar.tsx";
 import { Welcome, welcomeSeen } from "./components/Welcome.tsx";
 import { useBackLayer } from "./lib/back.ts";
 import { UpdateNotices } from "./components/Changelog.tsx";
+import { PushAsk } from "./components/PushAsk.tsx"; // UX 0.43 (A7): Push einmalig im Moment des Nutzens
 import { TickerBar, useTickerPos } from "./components/market/TickerBar.tsx";
 import { useGuide, type GuideAction } from "./components/Guide.tsx";
 import { useDaily } from "./components/Daily.tsx";
@@ -130,7 +131,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   const [sheet, setSheet] = useState<string | null>(null);
   const [seen, setSeen] = useState(() => initialSeen(playerId));
   // Meldungen: ?bericht= öffnet den Bericht, ?sub= einen Unterreiter; sonst Berichte.
-  const [sub, setSub] = useState<MeldungenTab>(() => (opened.report === undefined && opened.tab === "berichte" && opened.sub && ["nachrichten", "allianz", "rangliste", "bilanz", "erfolge"].includes(opened.sub) ? opened.sub as MeldungenTab : "berichte"));
+  const [sub, setSub] = useState<MeldungenTab>(() => (opened.report === undefined && opened.tab === "berichte" && opened.sub && MELDUNGEN_SUBS.includes(opened.sub) ? asMeldungenTab(opened.sub) : "berichte"));
   // Basis: Startseite ist die Lage („Was steht an?“); ?sub=hafen (Neuladen auf dem Hafen) öffnet den Hafen.
   const [basisSub, setBasisSub] = useState<BasisTab>(() => ((opened.tab ?? "basis") === "basis" && opened.sub === "hafen" ? "hafen" : "lage"));
   // „Was hilft?“: Zähler je Sprung (baut Truppen/Börse mit dem gewählten Unterreiter neu auf), Ressource für die Börse.
@@ -183,7 +184,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       setHelp(!!t.view);
       if (t.tab) setTab(t.tab);
       if (t.tab === "basis") setBasisSub(t.sub === "hafen" ? "hafen" : "lage");
-      if (t.tab === "berichte" && t.sub) setSub(t.sub as MeldungenTab);
+      if (t.tab === "berichte" && t.sub) setSub(asMeldungenTab(t.sub));
       if (t.tab === "karte" && t.sub === "sichtungen") { setMapSichtungen(true); setMapSeq((n) => n + 1); }
       if (t.base) setActiveBase(t.base);
     };
@@ -287,7 +288,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       case "market": return tab === "boerse" && !t.resource && !t.side && (localStorage.getItem("tf-seg:boerse") ?? "handel") === (t.seg ?? "handel");
       case "troops": return tab === "truppen" && localStorage.getItem("tf-seg:truppen") === t.seg;
       case "map": return tab === "karte";
-      case "meldungen": return t.sub !== "lagebild" && tab === "berichte" && (sub === t.sub || (t.sub === "rangliste" && outerOf(sub) === "rangliste" && sub === "rangliste"));
+      case "meldungen": return t.sub !== "lagebild" && tab === "berichte" && (sub === t.sub || (t.sub === "saison" && sub === "rangliste") || (t.sub === "rangliste" && sub === "saison"));
     }
   };
   const mapActive = tab === "karte" && !plan && !help && !research;
@@ -311,7 +312,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
   ) : tab === "basis" ? (
     <BasisScreen base={b} asOf={base.data.serverNow} sub={basisSub} setSub={setBasisSub} lageCount={lageBadge.count} sheet={sheet} setSheet={setSheet}
       onGuide={onGuide} onTroops={() => go("truppen")} onResearch={openResearch} onShowOnMap={showOnMap}
-      onSeasonEnd={() => { go("berichte"); setSub("rangliste"); }} unreadMsgs={unreadMsgs} seenReport={seen} />
+      onSeasonEnd={() => { go("berichte"); setSub("saison"); }} unreadMsgs={unreadMsgs} seenReport={seen} />
   ) : tab === "karte" ? (
     desktop ? null : map
   ) : tab === "truppen" ? (
@@ -340,6 +341,7 @@ function Game({ playerId, playerName, onLoggedOut }: { playerId: number; playerN
       {welcome && <Welcome playerId={playerId} onDone={() => setWelcome(false)} />}
       <ResearchRollPopup key={b.id} base={b} />
       <UpdateNotices playerId={playerId} paused={welcome} />
+      {!welcome && <PushAsk nightStartHour={b.protection.nightShieldStartHour} />}
       {bug && <Suspense fallback={null}><BugReportSheet draft={bug} playerName={playerName} onClose={() => setBug(null)} /></Suspense>}
     </>
   );

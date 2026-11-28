@@ -141,7 +141,7 @@ function renderBattle(r: ReportView, ctx: ReportCtx) {
   if (w) facts.push(["Wetter", w]);
   const phases = (b.phases ?? []).filter((p) => !p.skipped).map((p) => nameOf(p.phase));
   if (phases.length) facts.push(["Phasen", phases.join(" → ")]);
-  blocks.push({ type: "section", title: "Lage" }, { type: "facts", facts });
+  blocks.push({ type: "section", title: "Umstände" }, { type: "facts", facts });
 
   const adm = d.admirals as { attacker?: AdmiralSide; defender?: AdmiralSide } | undefined;
   const admLines = adm ? [...admiralLines(names[0], adm.attacker), ...admiralLines(names[1], adm.defender)] : [];

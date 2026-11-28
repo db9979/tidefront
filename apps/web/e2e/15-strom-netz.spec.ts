@@ -11,7 +11,7 @@ test("Elektrolyse ausbauen: Gebäudeblatt, Stufe 1, Versorgung mit Ökostrom-Ant
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByText(/Strom-Stunden ergeben 1 Treibstoff/)).toBeVisible();
   await expectNoHorizontalOverflow(page, "Gebäudeblatt Elektrolyse");
-  await sheet.getByRole("button", { name: "Ausbau auf 1" }).click();
+  await sheet.getByRole("button", { name: /^Bauen/ }).click();
   await expect(page.getByText("Elektrolyse · Ausbau auf Stufe 1")).toBeVisible();
   await finishBuilds(seed.sql, player.baseId);
   await page.reload();
