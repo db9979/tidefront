@@ -104,7 +104,9 @@ const DOCTRINES: Record<BotProfile, Record<string, number>> = {
     jagdbomber: 0.1, abfangjaeger: 0.08,
   },
   freibeuter: {
-    korvette: 0.25, zerstoerer: 0.08, uboot: 0.1, schuetzen: 0.25, pioniere: 0.08, kampfpanzer: 0.05, jagdbomber: 0.12,
+    // v1.36: Schützen 0,25 → 0,37, Korvette 0,25 → 0,17, U-Boot 0,10 → 0,06 – im Saisonlauf hatte der Freibeuter an Tag 38
+    // 126 Korvetten, aber nur 133 Schützen (Nestfahrten zehren die Truppen auf); Nest 6 braucht die Landung.
+    korvette: 0.17, zerstoerer: 0.08, uboot: 0.06, schuetzen: 0.37, pioniere: 0.08, kampfpanzer: 0.05, jagdbomber: 0.12,
     aufklaerungsdrohne: 0.02, minenleger: 0.03, kuestenbatterie: 0.02,
   },
 };

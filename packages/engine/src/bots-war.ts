@@ -98,7 +98,7 @@ export function strikeForce(state: BaseState, guardShare: number, shipGuardShare
   // v1.36: höchstens so viele Kommandopunkte wie ein Verband haben darf (planMission: command_points). Ein Hafen kann mehr
   // Einheiten halten (Verlegungen, heimgekehrte Feldbesatzungen); dann lehnte die Planung jeden Überfall ab, und die
   // KI klärte im Saisonlauf tagelang nur auf.
-  const cp = commandPoints(state, balance);
+  const cp = state.buildings ? commandPoints(state, balance) : 0;
   const used = fleetTotals(out, balance).commandPointsUsed;
   if (cp > 0 && used > cp) {
     const f = cp / used;

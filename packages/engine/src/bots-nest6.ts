@@ -1,6 +1,6 @@
 // KI bündelt für die Inselfestung (Nest 6, Nutzerentscheid nach v1.35): Ab Saisontag NEST6_FROM_DAY prüft der
 // Freibeuter im Heimathafen, ob sein gebündelter Verband – daheim, heimkehrende Überfälle und die Feldbesatzungen
-// dieses Hafens – ein bekanntes Nest 6 im Probekampf schafft (über die Würfe im Mittel ≥ 90 %, ungünstig ≥ 50 %,
+// dieses Hafens, ohne Heimwache außer der Mindestwache – ein bekanntes Nest 6 im Probekampf schafft (über die Würfe im Mittel ≥ 90 %, ungünstig ≥ 50 %,
 // nestProbeOk ohne Lagebild). Dann ruft er die Feldbesatzungen des Hafens zurück, startet keine neuen Fahrten aus ihm
 // und greift an, sobald der Verband daheim den Probekampf besteht. Danach besetzt fieldTurn die Felder wieder. Bricht
 // nach NEST6_BUNDLE_HOURS ab (dann NEST6_PAUSE_HOURS Pause). Saisonlauf v1.35: ohne Bündeln nie ein Sieg über Nest 6.
@@ -13,7 +13,7 @@ import { runningSeason } from "./season.ts";
 import { fieldRecall } from "./fields-missions.ts";
 import { botMap } from "./bots-intel.ts";
 import { missionPreview } from "./views.ts";
-import { nestProbeOk, shipGuardShareOf, guardShareOf, strikeForce, tryLaunch, type TurnCtx } from "./bots-war.ts";
+import { nestProbeOk, strikeForce, tryLaunch, type TurnCtx } from "./bots-war.ts";
 
 export const NEST6_FROM_DAY = 35;
 export const NEST6_BUNDLE_HOURS = 24;
@@ -69,7 +69,7 @@ export async function nest6Bundle(c: TurnCtx, base: BaseRow & { state: BaseState
   }
   if (!active) {
     const all = await bundledUnits(c, base);
-    if (!ok(strikeForce({ ...base.state, units: all.units }, guardShareOf(c), shipGuardShareOf(c)))) {
+    if (!ok(strikeForce({ ...base.state, units: all.units }, 0, 0))) {
       st.nest6PauseUntil = c.nowMs + 3 * HOUR_MS; // nicht jeden Zug neu proben (Pi-Last)
       return false;
     }
@@ -84,7 +84,7 @@ export async function nest6Bundle(c: TurnCtx, base: BaseRow & { state: BaseState
     c.log.push("Bündeln für die Inselfestung abgebrochen (Verband nicht rechtzeitig daheim).");
     return false;
   }
-  const force = strikeForce(base.state, guardShareOf(c), shipGuardShareOf(c));
+  const force = strikeForce(base.state, 0, 0); // alles hinein (nur die Mindestwache von 40 Truppen bleibt)
   if (!ok(force)) return true; // warten, bis alle daheim sind
   const input = { type: "ueberfall", units: force, col: target.col, row: target.row, baseId: base.id };
   const pv = await missionPreview(c.engine, c.bot.id, input);

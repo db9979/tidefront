@@ -56,6 +56,12 @@ Abschnitt M. Code: `packages/engine/src/bots-*.ts`, Takt im Worker (`apps/worker
 - **Inselfestung (v1.35):** schafft der Verband daheim das bekannte Nest 6 nicht, wohl aber mit den heimkehrenden
   Überfallverbänden dieses Hafens, wartet die KI höchstens 8 h (danach 16 h nicht) statt Stufe 5 anzufahren
   (`waitForTopNest`).
+- **Verband und Plätze (v1.36):** Der Angriffsverband hat höchstens die Kommandopunkte des Hafens (sonst lehnte die
+  Planung jeden Überfall mit `command_points` ab), Flugzeuge außer Reichweite bleiben daheim, und scheitert die Planung
+  mit Admiral, fährt der Verband ohne ihn. Nestfahrten und ihre Aufklärung bis 1 200 km (Spielerziele 900 km); schafft
+  der Verband keines der Nester ab der Mindeststufe, nimmt er eine Stufe darunter. Der Freibeuter hält zwei Plätze für
+  Nestfahrten frei (neue Felder erst mit drei freien Plätzen), die Patrouille startet erst mit drei freien Plätzen.
+  Ein Platz wird für ein Weltereignis nur freigehalten, wenn der Probekampf dagegen reicht.
 - **Inselfestung bündeln (v1.36):** Ab Saisontag 35 prüft der Freibeuter im Heimathafen, ob sein gebündelter Verband
   (daheim, laufende Überfälle und Feldbesatzungen dieses Hafens) ein bekanntes Nest 6 in 900 km im Probekampf über die
   Würfe schafft (im Mittel ≥ 90 %, ungünstig ≥ 50 %). Dann ruft er die Feldbesatzungen zurück, startet aus dem Hafen

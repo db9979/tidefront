@@ -263,3 +263,28 @@ Grundlage: `.claude/review-0.22/UX-0.43.md`, Nutzerentscheidungen E-1 … E-8 vo
    abgelegen (im Saisonlauf ≥ 1 600 km vom Freibeuter – mit den 900 km der übrigen Nestfahrten war Nest 6 für ihn nie
    erreichbar). Die Inselfestungen gelten auch ohne Lagebild als Stufe 6 (das Handbuch nennt die Inseln).
 3. **Wächter „Angriffe auf Weltereignisse“:** Lockerung aus v1.35 bestätigt.
+4. **KI-Fehler, die erst mit dem 24-h-Kartell sichtbar wurden** (Saisonlauf: Freibeuter bis Tag 39 ohne Nest 4, Festung
+   nur Nest 2): Der Angriffsverband überstieg die Kommandopunkte des Hafens (heimgekehrte Feldbesatzungen, Verlegungen) –
+   `planMission` lehnte jeden Überfall mit `command_points` ab, die KI klärte stattdessen tagelang nur auf. Jetzt kürzt
+   `strikeForce` anteilig auf die Kommandopunkte; Flugzeuge außer Reichweite bleiben daheim; mit Admiral abgelehnt →
+   ohne Admiral. Dazu Nestfahrten bis 1 200 km, eine Stufe darunter als Rückfall, zwei freie Plätze für den Freibeuter
+   (Felder, Patrouille) und das Freihalten eines Platzes für Weltereignisse nur bei bestandenem Probekampf.
+5. **Freibeuter-Doktrin:** Schützen 25 → 37 %, Korvette 25 → 17 %, U-Boot 10 → 6 % (an Tag 38 standen 126 Korvetten
+   gegen 133 Schützen). Das Bündeln für Nest 6 nimmt den ganzen Verband ohne Heimwache (nur die Mindestwache bleibt).
+
+### Saisonlauf v1.36 (`--strict`, Seed 4242)
+
+| Kennzahl | v1.35 (0.43.0) | v1.36 |
+|---|---|---|
+| Kartellverlust je Tag (Median der KI) | 10 % (≈ 2,3 h) | 6 % (≈ 1,3 h; Zwischenläufe 4–7 %) |
+| Kampf + Beute am Gesamtrang | 28 % | 27 % |
+| Freibeuter: Nester bis Tag 35 / erster Sieg Nest 4 | 40 / Tag 15 | 87 / Tag 16 |
+| Festung: höchstes Nest | 4 | 5 |
+| Weltereignis-Angriffe Festung / Freibeuter | 1 / 2 | 1 / 2 |
+| KI-Sieg über Nest 6 | keiner | **keiner** (einzige Warnung, Exit 1) |
+
+Nest 6 bleibt offen: Der Freibeuter zehrt seine Truppen in den vielen Nestfahrten auf (Tag 39: 105 Schützen daheim und
+unterwegs), sein gebündelter Verband besteht den geforderten Probekampf (Mittel ≥ 90 %, ungünstig ≥ 50 %) gegen die
+Besatzung von 350 Miliz bis Saisonende nicht; das Bündeln startet daher nicht. Die nächste Insel liegt ≥ 1 600 km
+entfernt (≈ 40 h Fahrt mit Landungsschiffen). Ein eigener Rüstungsplan „Truppen für Nest 6 ab Tag 30“ wäre der nächste
+Schritt (nicht umgesetzt).

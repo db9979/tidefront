@@ -81,3 +81,11 @@ test("KI: mindestens MIN_HOME_TROOPS Landtruppen bleiben daheim; Festung lässt 
   assert.equal(g.korvette, Math.floor(10 * (1 - FESTUNG_SHIP_GUARD)));
   assert.equal(g.schuetzen, Math.floor(200 * (1 - FESTUNG_MIN_GUARD)));
 });
+
+test("KI: Angriffsverband höchstens mit den Kommandopunkten des Hafens (v1.36)", async () => {
+  const { commandPoints, fleetTotals } = await import("@tidefront/game-core");
+  const state = { buildings: { kommandozentrale: 3 }, units: { schuetzen: 2000, korvette: 200, landungsschiff: 200 } } as never;
+  const f = strikeForce(state, 0.1);
+  assert.ok(fleetTotals(f, balance).commandPointsUsed <= commandPoints(state, balance) + 1e-9);
+  assert.ok((f.korvette ?? 0) > 0);
+});
