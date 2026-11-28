@@ -2,6 +2,13 @@
 
 Änderungen an TIDEFRONT, neueste zuerst. Die Version steht im Handbuch unten und auf dem Anmeldebildschirm.
 
+## 0.49.0 – 28.11.2026
+
+- Weltpolitik: Neue Gezeit-Art „Sturmzeit“ – 72 Stunden mehr und stärkere Stürme, Schiffe langsamer, Konvois sicherer vor dem Kartell, Schatzschiffe doppelt wertvoll. Je Saison kommen drei der vier Arten.
+- Ruf: Neben dem Ansehen bei den KI-Spielern gibt es jetzt deinen Ruf in der ganzen Welt. Er steigt durch Verträge, Gesuche, Handel und Hilfe gegen das Kartell und sinkt durch Angriffe auf Schwächere, Vertragsbruch, Blockaden und Paktbruch. In den ersten 7 Tagen kein Abzug (außer Vertragsbruch). Zu sehen unter Saison → Welt; in der Rangliste stehen „Angesehen“ und „Berüchtigt“. Kein Einfluss auf Preise und Rang.
+- Ächtung: Gibt es Berüchtigte, kann der Seerat in einer Wochensitzung ihre Ächtung beschließen – 72 Stunden keine Verträge und Gesuche bei KI-Spielern, Kopfgeld +0,2.
+- Optischer Satellit: Beim Überflug sieht er im Streifen auch getauchte U-Boote und Verbände auf See (nicht unter Wolken) – auf der Karte mit „·U“.
+
 ## 0.48.3 – 28.11.2026
 
 - KI-Spieler: Der Freibeuter rüstet ab Tag 30 gezielt für die Inselfestungen (Nest 6): Er hält ein Angriffspaket im Heimathafen zurück, bildet dafür aus, legt Treibstoff für die Fahrt zurück und greift ab Tag 35 mit gebündelten Verbänden an. Damit wird er im Endspiel ein echter Rivale um die große Beute.
