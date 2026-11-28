@@ -11,9 +11,9 @@ import { useBackLayer } from "./back.ts";
 export type ViewId = "handbuch" | "settings" | "admin";
 export interface OpenView { id: ViewId; /** Einstellungen: zu einem Abschnitt springen (z. B. Push). */ focus?: "push" | null }
 
-/** Ist ein Meldungen-Unterreiter Teil der Saison (Rangliste, Bilanz, Erfolge)? Am Desktop eine Textansicht. */
+/** Ist ein Meldungen-Unterreiter Teil der Saison (Rangliste, Bilanz, Erfolge, Welt)? Am Desktop eine Textansicht. */
 export function isSaisonSub(sub: string): boolean {
-  return sub === "saison" || sub === "rangliste" || sub === "bilanz" || sub === "erfolge";
+  return sub === "saison" || sub === "rangliste" || sub === "bilanz" || sub === "erfolge" || sub === "welt";
 }
 
 export function useAppViews(initial: ViewId | null) {
